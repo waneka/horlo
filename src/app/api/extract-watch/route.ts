@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchAndExtract } from '@/lib/extractors'
+import { SsrfError } from '@/lib/ssrf'
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +48,13 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Extraction error:', error)
+
+    if (error instanceof SsrfError) {
+      return NextResponse.json(
+        { error: "That URL points to a private address and can't be imported." },
+        { status: 400 }
+      )
+    }
 
     const message = error instanceof Error ? error.message : 'Extraction failed'
 

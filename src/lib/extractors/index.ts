@@ -1,6 +1,7 @@
 import { extractStructuredData } from './structured'
 import { extractFromHtml } from './html'
 import { extractWithLlm } from './llm'
+import { safeFetch } from '@/lib/ssrf'
 import {
   type ExtractedWatchData,
   type ExtractionResult,
@@ -81,8 +82,8 @@ export async function fetchAndExtract(
   url: string,
   options: ExtractionOptions = {}
 ): Promise<ExtractionResult> {
-  // Fetch the page
-  const response = await fetch(url, {
+  // Fetch the page through the SSRF-safe wrapper (DNS pinning + manual redirect validation)
+  const response = await safeFetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; WatchCollectionBot/1.0)',
       'Accept': 'text/html,application/xhtml+xml',
