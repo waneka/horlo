@@ -613,22 +613,25 @@ None — no test framework exists yet, none required for Phase 1. Phase 2 Wave 0
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **base-ui Sheet / Drawer for mobile nav:**
    - What we know: `@base-ui/react` 1.3.0 is installed and includes `drawer` in its package structure
    - What's unclear: Whether the drawer API matches shadcn's `Sheet` component (which is what UI-SPEC registry lists)
    - Recommendation: Run `npx shadcn add sheet` to get the shadcn Sheet wrapper that delegates to base-ui internally; this is the pattern already used for Dialog
+   - **RESOLVED:** Plan 01 installs the shadcn Sheet primitive via `npx shadcn add sheet`. Plan 04 consumes it for MobileNav and the home-page FilterBar drawer. No direct base-ui drawer usage.
 
 2. **WatchDetail layout restructure scope:**
    - What we know: Current detail has a small image thumbnail (w-32/w-48) next to text as a flex row, not the two-column grid the UI-SPEC calls for
    - What's unclear: Whether the layout change is purely additive (adding the `lg:grid-cols-[2fr_1fr]` wrapper) or requires extracting the image gallery into its own sub-component
    - Recommendation: The planner should scope this as a layout restructure task with the detail page, not just a token swap
+   - **RESOLVED:** Plan 04 Task 2C wraps WatchDetail in `lg:grid-cols-[2fr_1fr]` (additive — no gallery sub-component extraction). Plan 05 then performs the classname token pass on the restructured file.
 
 3. **Preferences page mobile layout:**
    - What we know: The preferences page was not inspected in this research pass
    - What's unclear: Whether it already stacks correctly at 375px or has fixed-width elements
    - Recommendation: Planner should include a grep/read of `src/app/preferences/page.tsx` as a task before declaring mobile done
+   - **RESOLVED:** Plan 04 Task 2D audits `src/app/preferences/page.tsx` and enforces `w-full` on form fields + `max-w-2xl` container. Plan 05 owns token migration on the same file.
 
 ---
 

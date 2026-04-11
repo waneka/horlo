@@ -30,7 +30,14 @@ Horlo's MVP (CRUD, grid, filters, tagging, preferences, similarity engine, URL i
   4. User sees a chart on the insights page showing their collection's style / role / dial color distribution
   5. `POST /api/extract-watch` refuses URLs that resolve to RFC 1918 / loopback / link-local IPs, pins the resolved IP for the fetch, and blocks redirects to private ranges
   6. Every watch image renders through `next/image` with the source host present in `remotePatterns`; untrusted hosts fail to render rather than load raw
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0: test runner (Vitest) + next-themes ThemeProvider + ThemeToggle + shadcn chart/popover/sheet primitives (VIS-01)
+- [ ] 01-02-PLAN.md — Wave 1: SSRF hardening — src/lib/ssrf.ts with DNS-pinned safeFetch, integrate into extractors, 400 response with UI-SPEC copy (SEC-01)
+- [ ] 01-03-PLAN.md — Wave 1: Image allow-list — next.config.ts remotePatterns + getSafeImageUrl helper + next/image migration in WatchCard/WatchDetail (SEC-02, VIS-04)
+- [ ] 01-04-PLAN.md — Wave 2: Mobile responsive — MobileNav drawer, FilterBar Sheet drawer <lg, WatchDetail 2-col grid, Preferences audit (VIS-02)
+- [ ] 01-05-PLAN.md — Wave 2: Semantic tokens — warm/brass palette in globals.css + component-wide raw-palette migration + invariant test (VIS-03, VIS-04)
+- [ ] 01-06-PLAN.md — Wave 3: Insights chart — BalanceChart rewrite with Recharts via shadcn Chart primitive (VIS-06)
 **UI hint**: yes
 
 ### Phase 2: Feature Completeness & Test Foundation
@@ -103,7 +110,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Visual Polish & Security Hardening | 0/TBD | Not started | - |
+| 1. Visual Polish & Security Hardening | 0/6 | Not started | - |
 | 2. Feature Completeness & Test Foundation | 0/TBD | Not started | - |
 | 3. Data Layer Foundation | 0/TBD | Not started | - |
 | 4. Authentication | 0/TBD | Not started | - |
