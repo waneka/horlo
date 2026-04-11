@@ -36,7 +36,7 @@ export function FilterBar() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4">
       {/* Style Tags */}
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-2">Style</h4>

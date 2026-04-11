@@ -272,7 +272,7 @@ export default function PreferencesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 max-w-xs">
+            <div className="grid grid-cols-2 gap-4 w-full sm:max-w-xs">
               <div className="space-y-2">
                 <Label htmlFor="minSize">Min Size</Label>
                 <Input
@@ -322,7 +322,7 @@ export default function PreferencesPage() {
             <CardTitle>Collection Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2 max-w-xs">
+            <div className="space-y-2 w-full sm:max-w-xs">
               <Label htmlFor="overlapTolerance">Overlap Tolerance</Label>
               <Select
                 value={preferences.overlapTolerance}
@@ -349,7 +349,7 @@ export default function PreferencesPage() {
               </Select>
             </div>
 
-            <div className="space-y-2 max-w-xs">
+            <div className="space-y-2 w-full sm:max-w-xs">
               <Label htmlFor="collectionGoal">Collection Goal</Label>
               <Select
                 value={preferences.collectionGoal ?? ''}

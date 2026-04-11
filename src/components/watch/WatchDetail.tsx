@@ -79,11 +79,11 @@ export function WatchDetail({ watch }: WatchDetailProps) {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex gap-6">
+      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+        {/* Left column: image + title + actions */}
+        <div className="space-y-6">
           {/* Image */}
-          <div className="relative aspect-square w-32 sm:w-48 shrink-0 overflow-hidden rounded-lg bg-muted">
+          <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-muted">
             {safeUrl ? (
               <Image
                 src={safeUrl}
@@ -112,47 +112,47 @@ export function WatchDetail({ watch }: WatchDetailProps) {
               <p className="text-sm text-gray-500 mt-1">Ref. {watch.reference}</p>
             )}
           </div>
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2">
+            {watch.status === 'owned' && (
+              <Button variant="outline" onClick={handleMarkAsWorn}>
+                Mark as Worn
+              </Button>
+            )}
+            <Link href={`/watch/${watch.id}/edit`}>
+              <Button variant="outline">Edit</Button>
+            </Link>
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <DialogTrigger render={<Button variant="destructive" />}>
+                Delete
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Watch</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete {watch.brand} {watch.model}?
+                    This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDeleteDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDelete}>
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          {watch.status === 'owned' && (
-            <Button variant="outline" onClick={handleMarkAsWorn}>
-              Mark as Worn
-            </Button>
-          )}
-          <Link href={`/watch/${watch.id}/edit`}>
-            <Button variant="outline">Edit</Button>
-          </Link>
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DialogTrigger render={<Button variant="destructive" />}>
-              Delete
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Watch</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete {watch.brand} {watch.model}?
-                  This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDeleteDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDelete}>
-                  Delete
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Right column: spec cards */}
+        <div className="grid gap-6">
         {/* Specifications */}
         <Card>
           <CardHeader>
@@ -311,6 +311,7 @@ export function WatchDetail({ watch }: WatchDetailProps) {
             </dl>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* Collection Fit Analysis */}
