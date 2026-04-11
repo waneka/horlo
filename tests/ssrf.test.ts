@@ -2,11 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { isPrivateIp, SsrfError } from '@/lib/ssrf'
 
 // Mock node:dns for resolveAndValidate + safeFetch tests
-vi.mock('node:dns', () => ({
-  promises: {
-    lookup: vi.fn(),
-  },
-}))
+vi.mock('node:dns', () => {
+  const promises = { lookup: vi.fn() }
+  return { promises, default: { promises } }
+})
 
 import { promises as dns } from 'node:dns'
 import { resolveAndValidate, safeFetch } from '@/lib/ssrf'
