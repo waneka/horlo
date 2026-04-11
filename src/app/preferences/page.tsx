@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { usePreferencesStore } from '@/store/preferencesStore'
+import { useIsHydrated } from '@/lib/hooks/useIsHydrated'
 import {
   STYLE_TAGS,
   DESIGN_TRAITS,
@@ -32,6 +33,10 @@ type StringArrayKeys = NonNullable<
 
 export default function PreferencesPage() {
   const { preferences, updatePreferences } = usePreferencesStore()
+  const hydrated = useIsHydrated()
+  if (!hydrated) {
+    return <div className="container mx-auto px-4 py-8 max-w-3xl" />
+  }
 
   const toggleArrayItem = (field: StringArrayKeys, item: string) => {
     const currentArray = preferences[field]

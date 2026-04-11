@@ -1,6 +1,7 @@
 'use client'
 
 import { useWatchStore } from '@/store/watchStore'
+import { useIsHydrated } from '@/lib/hooks/useIsHydrated'
 import { WatchGrid } from '@/components/watch/WatchGrid'
 import { StatusToggle } from '@/components/filters/StatusToggle'
 import { FilterBar } from '@/components/filters/FilterBar'
@@ -16,7 +17,9 @@ import { SlidersHorizontal } from 'lucide-react'
 
 export default function Home() {
   const { getFilteredWatches, watches } = useWatchStore()
-  const filteredWatches = getFilteredWatches()
+  const hydrated = useIsHydrated()
+  const filteredWatches = hydrated ? getFilteredWatches() : []
+  const totalWatches = hydrated ? watches.length : 0
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -39,7 +42,7 @@ export default function Home() {
               <div>
                 <h1 className="font-serif text-3xl md:text-4xl text-foreground">Collection</h1>
                 <p className="text-sm text-muted-foreground">
-                  {filteredWatches.length} of {watches.length} watches
+                  {filteredWatches.length} of {totalWatches} watches
                 </p>
               </div>
               <div className="flex items-center gap-2">

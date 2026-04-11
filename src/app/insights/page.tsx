@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BalanceChart } from '@/components/insights/BalanceChart'
 import { useWatchStore } from '@/store/watchStore'
+import { useIsHydrated } from '@/lib/hooks/useIsHydrated'
 import type { Watch } from '@/lib/types'
 
 function calculateDistribution(
@@ -57,7 +58,9 @@ function daysSince(dateStr?: string): number | null {
 }
 
 export default function InsightsPage() {
-  const { watches } = useWatchStore()
+  const { watches: storedWatches } = useWatchStore()
+  const hydrated = useIsHydrated()
+  const watches = hydrated ? storedWatches : []
 
   const ownedWatches = useMemo(
     () => watches.filter((w) => w.status === 'owned'),
