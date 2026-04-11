@@ -1,53 +1,38 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
+import { Watch as WatchIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { getSafeImageUrl } from '@/lib/images'
 import type { Watch } from '@/lib/types'
 
 interface WatchCardProps {
   watch: Watch
 }
 
-const statusColors: Record<Watch['status'], string> = {
-  owned: 'bg-green-100 text-green-800',
-  wishlist: 'bg-blue-100 text-blue-800',
-  sold: 'bg-gray-100 text-gray-800',
-  grail: 'bg-purple-100 text-purple-800',
-}
-
 export function WatchCard({ watch }: WatchCardProps) {
+  const safeUrl = getSafeImageUrl(watch.imageUrl)
+
   return (
     <Link href={`/watch/${watch.id}`}>
       <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
-        <div className="relative aspect-square bg-gray-100">
-          {watch.imageUrl ? (
-            <img
-              src={watch.imageUrl}
+        <div className="relative aspect-[4/5] bg-muted">
+          {safeUrl ? (
+            <Image
+              src={safeUrl}
               alt={`${watch.brand} ${watch.model}`}
-              className="h-full w-full object-cover"
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-gray-400">
-              <svg
-                className="h-16 w-16"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <div className="flex h-full w-full items-center justify-center">
+              <WatchIcon className="h-10 w-10 text-muted-foreground/40" />
             </div>
           )}
-          <Badge
-            className={`absolute top-2 right-2 ${statusColors[watch.status]}`}
-            variant="secondary"
-          >
+          <Badge className="absolute top-2 right-2" variant="secondary">
             {watch.status}
           </Badge>
         </div>
