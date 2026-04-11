@@ -38,8 +38,8 @@ export default function PreferencesPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Preferences</h1>
-        <p className="text-gray-500">
+        <h1 className="font-serif text-3xl md:text-4xl text-foreground">Preferences</h1>
+        <p className="text-muted-foreground mt-2">
           Configure your collecting taste to get personalized insights.
         </p>
       </div>
@@ -55,7 +55,7 @@ export default function PreferencesPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Preferred Styles
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -77,7 +77,7 @@ export default function PreferencesPage() {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Disliked Styles
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -110,7 +110,7 @@ export default function PreferencesPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Preferred Traits
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -132,7 +132,7 @@ export default function PreferencesPage() {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Disliked Traits
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -166,7 +166,7 @@ export default function PreferencesPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Preferred Complications
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -188,7 +188,7 @@ export default function PreferencesPage() {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Exception Complications (Always Allowed)
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -218,7 +218,7 @@ export default function PreferencesPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Preferred Colors
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -240,7 +240,7 @@ export default function PreferencesPage() {
             </div>
 
             <div>
-              <Label className="text-sm font-medium mb-3 block">
+              <Label className="text-sm font-semibold mb-3 block">
                 Disliked Colors
               </Label>
               <div className="flex flex-wrap gap-4">
@@ -312,7 +312,7 @@ export default function PreferencesPage() {
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Range: 20mm – 55mm</p>
+            <p className="text-xs text-muted-foreground mt-2">Range: 20mm – 55mm</p>
           </CardContent>
         </Card>
 

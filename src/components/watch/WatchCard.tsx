@@ -32,16 +32,16 @@ export function WatchCard({ watch }: WatchCardProps) {
               <WatchIcon className="h-10 w-10 text-muted-foreground/40" />
             </div>
           )}
-          <Badge className="absolute top-2 right-2" variant="secondary">
+          <Badge className="absolute top-2 right-2" variant="outline">
             {watch.status}
           </Badge>
         </div>
         <CardContent className="p-4">
-          <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+          <h3 className="font-semibold text-card-foreground group-hover:text-accent">
             {watch.brand}
           </h3>
-          <p className="text-sm text-gray-600">{watch.model}</p>
-          <div className="mt-2 flex flex-wrap gap-1 text-xs text-gray-500">
+          <p className="text-sm text-muted-foreground">{watch.model}</p>
+          <div className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground">
             {watch.caseSizeMm && <span>{watch.caseSizeMm}mm</span>}
             {watch.caseSizeMm && watch.movement && <span>·</span>}
             {watch.movement && (

@@ -23,19 +23,19 @@ export function SimilarityBadge({ watch }: SimilarityBadgeProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-3">
           Collection Fit
-          <Badge className={labelDisplay.color}>{labelDisplay.text}</Badge>
+          <Badge variant="outline">{labelDisplay.text}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600">{labelDisplay.description}</p>
+        <p className="text-sm text-muted-foreground">{labelDisplay.description}</p>
 
         {result.reasoning.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Analysis</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <h4 className="text-sm font-semibold text-foreground mb-2">Analysis</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
               {result.reasoning.map((reason, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
+                  <span className="text-muted-foreground/70">•</span>
                   {reason}
                 </li>
               ))}
@@ -45,16 +45,16 @@ export function SimilarityBadge({ watch }: SimilarityBadgeProps) {
 
         {result.mostSimilarWatches.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
+            <h4 className="text-sm font-semibold text-foreground mb-2">
               Most Similar in Collection
             </h4>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <ul className="text-sm text-muted-foreground space-y-1">
               {result.mostSimilarWatches.map(({ watch: similar, score }) => (
                 <li key={similar.id} className="flex items-center justify-between">
                   <span>
                     {similar.brand} {similar.model}
                   </span>
-                  <span className="text-gray-400">
+                  <span className="text-muted-foreground/70">
                     {Math.round(score * 100)}% similar
                   </span>
                 </li>
@@ -64,7 +64,7 @@ export function SimilarityBadge({ watch }: SimilarityBadgeProps) {
         )}
 
         {result.roleOverlap && (
-          <p className="text-sm text-yellow-600 flex items-center gap-2">
+          <p className="text-sm text-accent flex items-center gap-2">
             <svg
               className="w-4 h-4"
               fill="none"

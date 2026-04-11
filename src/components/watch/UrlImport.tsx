@@ -54,12 +54,6 @@ export function UrlImport({ onDataExtracted }: UrlImportProps) {
     }
   }
 
-  const confidenceColors = {
-    high: 'bg-green-100 text-green-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-red-100 text-red-800',
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -89,14 +83,14 @@ export function UrlImport({ onDataExtracted }: UrlImportProps) {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-destructive">{error}</p>
         )}
 
         {result && (
-          <div className="space-y-3 pt-2 border-t">
+          <div className="space-y-3 pt-2 border-t border-border">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Extraction Result</span>
-              <Badge className={confidenceColors[result.confidence]}>
+              <span className="text-sm font-semibold">Extraction Result</span>
+              <Badge variant="outline">
                 {result.confidence} confidence
               </Badge>
               {result.llmUsed && (
@@ -106,44 +100,44 @@ export function UrlImport({ onDataExtracted }: UrlImportProps) {
 
             <div className="text-sm space-y-1">
               {result.data.brand && (
-                <p><span className="text-gray-500">Brand:</span> {result.data.brand}</p>
+                <p><span className="text-muted-foreground">Brand:</span> {result.data.brand}</p>
               )}
               {result.data.model && (
-                <p><span className="text-gray-500">Model:</span> {result.data.model}</p>
+                <p><span className="text-muted-foreground">Model:</span> {result.data.model}</p>
               )}
               {result.data.reference && (
-                <p><span className="text-gray-500">Reference:</span> {result.data.reference}</p>
+                <p><span className="text-muted-foreground">Reference:</span> {result.data.reference}</p>
               )}
               {result.data.caseSizeMm && (
-                <p><span className="text-gray-500">Case Size:</span> {result.data.caseSizeMm}mm</p>
+                <p><span className="text-muted-foreground">Case Size:</span> {result.data.caseSizeMm}mm</p>
               )}
               {result.data.movement && (
-                <p><span className="text-gray-500">Movement:</span> {result.data.movement}</p>
+                <p><span className="text-muted-foreground">Movement:</span> {result.data.movement}</p>
               )}
               {result.data.waterResistanceM && (
-                <p><span className="text-gray-500">Water Resistance:</span> {result.data.waterResistanceM}m</p>
+                <p><span className="text-muted-foreground">Water Resistance:</span> {result.data.waterResistanceM}m</p>
               )}
               {result.data.dialColor && (
-                <p><span className="text-gray-500">Dial:</span> {result.data.dialColor}</p>
+                <p><span className="text-muted-foreground">Dial:</span> {result.data.dialColor}</p>
               )}
               {result.data.strapType && (
-                <p><span className="text-gray-500">Strap:</span> {result.data.strapType}</p>
+                <p><span className="text-muted-foreground">Strap:</span> {result.data.strapType}</p>
               )}
               {result.data.crystalType && (
-                <p><span className="text-gray-500">Crystal:</span> {result.data.crystalType}</p>
+                <p><span className="text-muted-foreground">Crystal:</span> {result.data.crystalType}</p>
               )}
               {result.data.complications?.length ? (
-                <p><span className="text-gray-500">Complications:</span> {result.data.complications.join(', ')}</p>
+                <p><span className="text-muted-foreground">Complications:</span> {result.data.complications.join(', ')}</p>
               ) : null}
               {result.data.styleTags?.length ? (
-                <p><span className="text-gray-500">Style:</span> {result.data.styleTags.join(', ')}</p>
+                <p><span className="text-muted-foreground">Style:</span> {result.data.styleTags.join(', ')}</p>
               ) : null}
               {result.data.marketPrice && (
-                <p><span className="text-gray-500">Price:</span> ${result.data.marketPrice.toLocaleString()}</p>
+                <p><span className="text-muted-foreground">Price:</span> ${result.data.marketPrice.toLocaleString()}</p>
               )}
             </div>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {result.fieldsExtracted.length} fields extracted
             </p>
 

@@ -22,7 +22,7 @@ export function Header() {
         <div className="flex items-center gap-2 md:gap-8">
           <MobileNav />
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold">Horlo</span>
+            <span className="font-serif text-xl">Horlo</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             {navItems.map((item) => (
@@ -30,10 +30,10 @@ export function Header() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'text-sm font-medium transition-colors hover:text-gray-900',
+                  'text-sm font-semibold transition-colors hover:text-foreground',
                   pathname === item.href
-                    ? 'text-gray-900'
-                    : 'text-gray-500'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground'
                 )}
               >
                 {item.label}

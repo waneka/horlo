@@ -1,5 +1,6 @@
 'use client'
 
+import { Watch as WatchIcon } from 'lucide-react'
 import { WatchCard } from './WatchCard'
 import type { Watch } from '@/lib/types'
 
@@ -10,32 +11,20 @@ interface WatchGridProps {
 export function WatchGrid({ watches }: WatchGridProps) {
   if (watches.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <svg
-          className="h-16 w-16 text-gray-300"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1}
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <h3 className="mt-4 text-lg font-medium text-gray-900">
-          No watches found
-        </h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Add your first watch to get started.
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <WatchIcon className="h-16 w-16 text-muted-foreground/50" />
+        <h2 className="mt-6 font-serif text-3xl text-foreground">
+          Your collection is empty.
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground max-w-sm">
+          Add your first watch to begin tracking what you own and what you want.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
       {watches.map((watch) => (
         <WatchCard key={watch.id} watch={watch} />
       ))}

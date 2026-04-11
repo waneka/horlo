@@ -189,7 +189,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
               placeholder="e.g., Omega"
             />
             {errors.brand && (
-              <p className="text-sm text-red-500">{errors.brand}</p>
+              <p className="text-sm text-destructive">{errors.brand}</p>
             )}
           </div>
 
@@ -204,7 +204,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
               placeholder="e.g., Speedmaster"
             />
             {errors.model && (
-              <p className="text-sm text-red-500">{errors.model}</p>
+              <p className="text-sm text-destructive">{errors.model}</p>
             )}
           </div>
 
@@ -451,7 +451,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
             ))}
           </div>
           {errors.styleTags && (
-            <p className="mt-2 text-sm text-red-500">{errors.styleTags}</p>
+            <p className="mt-2 text-sm text-destructive">{errors.styleTags}</p>
           )}
         </CardContent>
       </Card>
@@ -480,7 +480,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
             ))}
           </div>
           {errors.roleTags && (
-            <p className="mt-2 text-sm text-red-500">{errors.roleTags}</p>
+            <p className="mt-2 text-sm text-destructive">{errors.roleTags}</p>
           )}
         </CardContent>
       </Card>

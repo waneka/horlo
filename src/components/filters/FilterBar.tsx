@@ -39,7 +39,7 @@ export function FilterBar() {
     <div className="w-full space-y-4">
       {/* Style Tags */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Style</h4>
+        <h4 className="text-sm font-semibold text-foreground mb-2">Style</h4>
         <div className="flex flex-wrap gap-2">
           {STYLE_TAGS.map((tag) => (
             <Badge
@@ -49,7 +49,7 @@ export function FilterBar() {
                 'cursor-pointer capitalize transition-colors',
                 filters.styleTags.includes(tag)
                   ? ''
-                  : 'hover:bg-gray-100'
+                  : 'hover:bg-accent hover:text-accent-foreground'
               )}
               onClick={() => toggleStyleTag(tag)}
             >
@@ -61,7 +61,7 @@ export function FilterBar() {
 
       {/* Role Tags */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Role</h4>
+        <h4 className="text-sm font-semibold text-foreground mb-2">Role</h4>
         <div className="flex flex-wrap gap-2">
           {ROLE_TAGS.map((tag) => (
             <Badge
@@ -71,7 +71,7 @@ export function FilterBar() {
                 'cursor-pointer capitalize transition-colors',
                 filters.roleTags.includes(tag)
                   ? ''
-                  : 'hover:bg-gray-100'
+                  : 'hover:bg-accent hover:text-accent-foreground'
               )}
               onClick={() => toggleRoleTag(tag)}
             >
@@ -83,7 +83,7 @@ export function FilterBar() {
 
       {/* Dial Colors */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Dial Color</h4>
+        <h4 className="text-sm font-semibold text-foreground mb-2">Dial Color</h4>
         <div className="flex flex-wrap gap-2">
           {DIAL_COLORS.map((color) => (
             <Badge
@@ -93,7 +93,7 @@ export function FilterBar() {
                 'cursor-pointer capitalize transition-colors',
                 filters.dialColors.includes(color)
                   ? ''
-                  : 'hover:bg-gray-100'
+                  : 'hover:bg-accent hover:text-accent-foreground'
               )}
               onClick={() => toggleDialColor(color)}
             >
@@ -109,7 +109,7 @@ export function FilterBar() {
           variant="ghost"
           size="sm"
           onClick={resetFilters}
-          className="text-gray-500"
+          className="text-muted-foreground"
         >
           Clear all filters
         </Button>

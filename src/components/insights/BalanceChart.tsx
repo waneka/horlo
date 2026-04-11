@@ -14,18 +14,10 @@ interface BalanceChartProps {
   emptyMessage?: string
 }
 
-const colors = [
-  'bg-blue-500',
-  'bg-green-500',
-  'bg-purple-500',
-  'bg-yellow-500',
-  'bg-red-500',
-  'bg-pink-500',
-  'bg-indigo-500',
-  'bg-teal-500',
-]
-
-export function BalanceChart({ title, data, emptyMessage = 'No data' }: BalanceChartProps) {
+// Interim implementation — Plan 01-06 replaces this with a Recharts chart
+// wired through the shadcn Chart primitive. Until then, render as a sorted
+// list with counts/percentages using semantic tokens only.
+export function BalanceChart({ title, data, emptyMessage = 'Not enough data yet.' }: BalanceChartProps) {
   if (data.length === 0) {
     return (
       <Card>
@@ -33,7 +25,7 @@ export function BalanceChart({ title, data, emptyMessage = 'No data' }: BalanceC
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500">{emptyMessage}</p>
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         </CardContent>
       </Card>
     )
@@ -46,23 +38,20 @@ export function BalanceChart({ title, data, emptyMessage = 'No data' }: BalanceC
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {sortedData.map((item, index) => (
-          <div key={item.label} className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="capitalize font-medium">{item.label}</span>
-              <span className="text-gray-500">
-                {item.count} ({Math.round(item.percentage)}%)
+      <CardContent>
+        <ul className="space-y-2">
+          {sortedData.map((item) => (
+            <li
+              key={item.label}
+              className="flex items-center justify-between text-sm"
+            >
+              <span className="capitalize text-foreground">{item.label}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {item.count} · {Math.round(item.percentage)}%
               </span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${colors[index % colors.length]} rounded-full transition-all duration-500`}
-                style={{ width: `${item.percentage}%` }}
-              />
-            </div>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )

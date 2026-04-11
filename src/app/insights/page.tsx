@@ -148,10 +148,12 @@ export default function InsightsPage() {
   if (watches.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-16">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Insights</h1>
-          <p className="text-gray-500">
-            Add some watches to your collection to see insights.
+        <div className="text-center py-24">
+          <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-4">
+            Insights
+          </h1>
+          <p className="text-muted-foreground">
+            Insights unlock once you add a few watches.
           </p>
         </div>
       </div>
@@ -161,8 +163,10 @@ export default function InsightsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Collection Insights</h1>
-        <p className="text-gray-500">
+        <h1 className="font-serif text-3xl md:text-4xl text-foreground">
+          Collection Insights
+        </h1>
+        <p className="text-muted-foreground mt-2">
           Understand your collection composition and identify gaps or biases.
         </p>
       </div>
@@ -171,34 +175,34 @@ export default function InsightsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{ownedWatches.length}</div>
-            <p className="text-sm text-gray-500">Owned Watches</p>
+            <div className="text-2xl font-semibold">{ownedWatches.length}</div>
+            <p className="text-sm text-muted-foreground">Owned Watches</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{wishlistWatches.length}</div>
-            <p className="text-sm text-gray-500">Wishlist / Grail</p>
+            <div className="text-2xl font-semibold">{wishlistWatches.length}</div>
+            <p className="text-sm text-muted-foreground">Wishlist / Grail</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-semibold">
               {collectionValue.totalPaid > 0
                 ? formatCurrency(collectionValue.totalPaid)
                 : '-'}
             </div>
-            <p className="text-sm text-gray-500">Total Invested</p>
+            <p className="text-sm text-muted-foreground">Total Invested</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-semibold">
               {collectionValue.totalMarket > 0
                 ? formatCurrency(collectionValue.totalMarket)
                 : '-'}
             </div>
-            <p className="text-sm text-gray-500">Est. Market Value</p>
+            <p className="text-sm text-muted-foreground">Est. Market Value</p>
           </CardContent>
         </Card>
       </div>
@@ -235,7 +239,7 @@ export default function InsightsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {wearInsights.totalWithWearData === 0 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 No wear data yet. Mark watches as worn to see insights.
               </p>
             ) : (
@@ -248,10 +252,10 @@ export default function InsightsPage() {
                 </div>
                 {wearInsights.notWornIn30Days.length > 0 && (
                   <div>
-                    <p className="text-sm text-yellow-600 mb-2">
+                    <p className="text-sm text-accent mb-2">
                       Not worn in 30+ days:
                     </p>
-                    <ul className="text-sm text-gray-600 space-y-1">
+                    <ul className="text-sm text-muted-foreground space-y-1">
                       {wearInsights.notWornIn30Days.slice(0, 5).map((watch) => (
                         <li key={watch.id}>
                           {watch.brand} {watch.model} (
@@ -259,7 +263,7 @@ export default function InsightsPage() {
                         </li>
                       ))}
                       {wearInsights.notWornIn30Days.length > 5 && (
-                        <li className="text-gray-400">
+                        <li className="text-muted-foreground/70">
                           +{wearInsights.notWornIn30Days.length - 5} more
                         </li>
                       )}
@@ -268,17 +272,17 @@ export default function InsightsPage() {
                 )}
                 {wearInsights.unwornWatches.length > 0 && (
                   <div>
-                    <p className="text-sm text-gray-500 mb-2">
+                    <p className="text-sm text-muted-foreground mb-2">
                       Never worn (no data):
                     </p>
-                    <ul className="text-sm text-gray-600 space-y-1">
+                    <ul className="text-sm text-muted-foreground space-y-1">
                       {wearInsights.unwornWatches.slice(0, 3).map((watch) => (
                         <li key={watch.id}>
                           {watch.brand} {watch.model}
                         </li>
                       ))}
                       {wearInsights.unwornWatches.length > 3 && (
-                        <li className="text-gray-400">
+                        <li className="text-muted-foreground/70">
                           +{wearInsights.unwornWatches.length - 3} more
                         </li>
                       )}
@@ -295,14 +299,14 @@ export default function InsightsPage() {
             <CardTitle>Collection Observations</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="text-sm text-gray-600 space-y-2">
+            <ul className="text-sm text-muted-foreground space-y-2">
               {styleDistribution.length > 0 && (
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
+                  <span className="text-muted-foreground/70">•</span>
                   <span>
                     {Math.round(styleDistribution[0]?.percentage || 0)}% of your
                     collection is{' '}
-                    <span className="font-medium capitalize">
+                    <span className="font-semibold capitalize text-foreground">
                       {styleDistribution[0]?.label}
                     </span>{' '}
                     style
@@ -311,10 +315,10 @@ export default function InsightsPage() {
               )}
               {roleDistribution.length > 0 && (
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
+                  <span className="text-muted-foreground/70">•</span>
                   <span>
                     Most common role:{' '}
-                    <span className="font-medium capitalize">
+                    <span className="font-semibold capitalize text-foreground">
                       {roleDistribution[0]?.label}
                     </span>{' '}
                     ({roleDistribution[0]?.count} watches)
@@ -323,10 +327,10 @@ export default function InsightsPage() {
               )}
               {dialColorDistribution.length === 1 && (
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
+                  <span className="text-muted-foreground/70">•</span>
                   <span>
                     All watches have{' '}
-                    <span className="font-medium capitalize">
+                    <span className="font-semibold capitalize text-foreground">
                       {dialColorDistribution[0]?.label}
                     </span>{' '}
                     dials - consider variety
@@ -335,10 +339,10 @@ export default function InsightsPage() {
               )}
               {strapDistribution.length === 1 && (
                 <li className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
+                  <span className="text-muted-foreground/70">•</span>
                   <span>
                     All watches on{' '}
-                    <span className="font-medium capitalize">
+                    <span className="font-semibold capitalize text-foreground">
                       {strapDistribution[0]?.label}
                     </span>
                   </span>
@@ -347,14 +351,14 @@ export default function InsightsPage() {
               {ownedWatches.length > 0 &&
                 roleDistribution.every((r) => r.label !== 'formal') && (
                   <li className="flex items-start gap-2">
-                    <span className="text-yellow-500">•</span>
+                    <span className="text-accent">•</span>
                     <span>No formal/dress watches in collection</span>
                   </li>
                 )}
               {ownedWatches.length > 0 &&
                 roleDistribution.every((r) => r.label !== 'travel') && (
                   <li className="flex items-start gap-2">
-                    <span className="text-yellow-500">•</span>
+                    <span className="text-accent">•</span>
                     <span>No dedicated travel watch</span>
                   </li>
                 )}
