@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -15,7 +16,7 @@ export function Header() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
@@ -39,6 +40,7 @@ export function Header() {
           </nav>
         </div>
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link href="/watch/new">
             <Button>Add Watch</Button>
           </Link>
