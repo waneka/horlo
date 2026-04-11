@@ -21,19 +21,31 @@ import {
 } from '@/lib/constants'
 import type { OverlapTolerance, CollectionGoal } from '@/lib/types'
 
+// Narrow to only those keys of UserPreferences whose value type is a
+// string array. A refactor adding a string-valued field will no longer
+// compile through toggleArrayItem, removing the runtime-cast footgun.
+type ArrayKeys<T> = {
+  [K in keyof T]: T[K] extends string[] ? K : never
+}[keyof T]
+
 export default function PreferencesPage() {
   const { preferences, updatePreferences } = usePreferencesStore()
 
-  const toggleArrayItem = (
-    field: keyof typeof preferences,
+  const toggleArrayItem = <K extends ArrayKeys<typeof preferences>>(
+    field: K,
     item: string
   ) => {
     const currentArray = preferences[field] as string[]
     const newArray = currentArray.includes(item)
       ? currentArray.filter((i) => i !== item)
       : [...currentArray, item]
-    updatePreferences({ [field]: newArray })
+    updatePreferences({ [field]: newArray } as Partial<typeof preferences>)
   }
+
+  const CASE_SIZE_MIN = 20
+  const CASE_SIZE_MAX = 55
+  const clampCaseSize = (n: number) =>
+    Math.max(CASE_SIZE_MIN, Math.min(CASE_SIZE_MAX, n))
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -278,17 +290,28 @@ export default function PreferencesPage() {
                 <Input
                   id="minSize"
                   type="number"
-                  min={20}
-                  max={55}
+                  min={CASE_SIZE_MIN}
+                  max={CASE_SIZE_MAX}
                   value={preferences.preferredCaseSizeRange?.min ?? ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    // Leave prior value on empty input so mid-keystroke
+                    // clears don't silently reset the range to the floor.
+                    if (e.target.value === '') return
+                    const parsed = Number(e.target.value)
+                    if (!Number.isFinite(parsed)) return
+                    const nextMin = clampCaseSize(parsed)
+                    const currentMax =
+                      preferences.preferredCaseSizeRange?.max ?? 46
+                    // Only commit if min <= max; otherwise ignore until
+                    // the user produces a valid pair.
+                    if (nextMin > currentMax) return
                     updatePreferences({
                       preferredCaseSizeRange: {
-                        min: e.target.value ? Number(e.target.value) : 20,
-                        max: preferences.preferredCaseSizeRange?.max ?? 46,
+                        min: nextMin,
+                        max: currentMax,
                       },
                     })
-                  }
+                  }}
                   placeholder="36"
                 />
               </div>
@@ -297,17 +320,24 @@ export default function PreferencesPage() {
                 <Input
                   id="maxSize"
                   type="number"
-                  min={20}
-                  max={55}
+                  min={CASE_SIZE_MIN}
+                  max={CASE_SIZE_MAX}
                   value={preferences.preferredCaseSizeRange?.max ?? ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    if (e.target.value === '') return
+                    const parsed = Number(e.target.value)
+                    if (!Number.isFinite(parsed)) return
+                    const nextMax = clampCaseSize(parsed)
+                    const currentMin =
+                      preferences.preferredCaseSizeRange?.min ?? 34
+                    if (nextMax < currentMin) return
                     updatePreferences({
                       preferredCaseSizeRange: {
-                        min: preferences.preferredCaseSizeRange?.min ?? 34,
-                        max: e.target.value ? Number(e.target.value) : 46,
+                        min: currentMin,
+                        max: nextMax,
                       },
                     })
-                  }
+                  }}
                   placeholder="42"
                 />
               </div>
