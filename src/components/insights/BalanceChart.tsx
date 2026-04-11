@@ -1,5 +1,12 @@
 'use client'
 
+import { Bar, BarChart, XAxis, YAxis, Cell } from 'recharts'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface DistributionItem {
@@ -14,10 +21,18 @@ interface BalanceChartProps {
   emptyMessage?: string
 }
 
-// Interim implementation — Plan 01-06 replaces this with a Recharts chart
-// wired through the shadcn Chart primitive. Until then, render as a sorted
-// list with counts/percentages using semantic tokens only.
-export function BalanceChart({ title, data, emptyMessage = 'Not enough data yet.' }: BalanceChartProps) {
+const chartConfig = {
+  count: {
+    label: 'Count',
+    color: 'var(--chart-1)',
+  },
+} satisfies ChartConfig
+
+export function BalanceChart({
+  title,
+  data,
+  emptyMessage = 'Not enough data yet.',
+}: BalanceChartProps) {
   if (data.length === 0) {
     return (
       <Card>
@@ -32,6 +47,9 @@ export function BalanceChart({ title, data, emptyMessage = 'Not enough data yet.
   }
 
   const sortedData = [...data].sort((a, b) => b.count - a.count)
+  const summary = sortedData
+    .map((d) => `${d.label}: ${d.count}`)
+    .join(', ')
 
   return (
     <Card>
@@ -39,19 +57,34 @@ export function BalanceChart({ title, data, emptyMessage = 'Not enough data yet.
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-2">
-          {sortedData.map((item) => (
-            <li
-              key={item.label}
-              className="flex items-center justify-between text-sm"
-            >
-              <span className="capitalize text-foreground">{item.label}</span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {item.count} · {Math.round(item.percentage)}%
-              </span>
-            </li>
-          ))}
-        </ul>
+        <ChartContainer
+          config={chartConfig}
+          className="min-h-[200px] w-full"
+          aria-label={`${title}: ${summary}`}
+        >
+          <BarChart
+            accessibilityLayer
+            data={sortedData}
+            layout="vertical"
+            margin={{ left: 8, right: 24, top: 8, bottom: 8 }}
+          >
+            <XAxis type="number" hide />
+            <YAxis
+              type="category"
+              dataKey="label"
+              width={96}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              {sortedData.map((_, i) => (
+                <Cell key={i} fill={`var(--chart-${(i % 5) + 1})`} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
       </CardContent>
     </Card>
   )
