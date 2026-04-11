@@ -19,27 +19,26 @@ import {
   COMPLICATIONS,
   DIAL_COLORS,
 } from '@/lib/constants'
-import type { OverlapTolerance, CollectionGoal } from '@/lib/types'
+import type { OverlapTolerance, CollectionGoal, UserPreferences } from '@/lib/types'
 
 // Narrow to only those keys of UserPreferences whose value type is a
 // string array. A refactor adding a string-valued field will no longer
 // compile through toggleArrayItem, removing the runtime-cast footgun.
-type ArrayKeys<T> = {
-  [K in keyof T]: T[K] extends string[] ? K : never
-}[keyof T]
+type StringArrayKeys = NonNullable<
+  {
+    [K in keyof UserPreferences]: UserPreferences[K] extends string[] ? K : never
+  }[keyof UserPreferences]
+>
 
 export default function PreferencesPage() {
   const { preferences, updatePreferences } = usePreferencesStore()
 
-  const toggleArrayItem = <K extends ArrayKeys<typeof preferences>>(
-    field: K,
-    item: string
-  ) => {
-    const currentArray = preferences[field] as string[]
+  const toggleArrayItem = (field: StringArrayKeys, item: string) => {
+    const currentArray = preferences[field]
     const newArray = currentArray.includes(item)
       ? currentArray.filter((i) => i !== item)
       : [...currentArray, item]
-    updatePreferences({ [field]: newArray } as Partial<typeof preferences>)
+    updatePreferences({ [field]: newArray } as Partial<UserPreferences>)
   }
 
   const CASE_SIZE_MIN = 20
