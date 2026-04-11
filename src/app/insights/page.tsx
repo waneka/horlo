@@ -1,0 +1,367 @@
+'use client'
+
+import { useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { BalanceChart } from '@/components/insights/BalanceChart'
+import { useWatchStore } from '@/store/watchStore'
+import type { Watch } from '@/lib/types'
+
+function calculateDistribution(
+  watches: Watch[],
+  getValues: (watch: Watch) => string[]
+): Array<{ label: string; count: number; percentage: number }> {
+  const counts: Record<string, number> = {}
+
+  watches.forEach((watch) => {
+    getValues(watch).forEach((value) => {
+      counts[value] = (counts[value] || 0) + 1
+    })
+  })
+
+  const total = watches.length
+  return Object.entries(counts).map(([label, count]) => ({
+    label,
+    count,
+    percentage: total > 0 ? (count / total) * 100 : 0,
+  }))
+}
+
+function calculateSingleValueDistribution(
+  watches: Watch[],
+  getValue: (watch: Watch) => string | undefined
+): Array<{ label: string; count: number; percentage: number }> {
+  const counts: Record<string, number> = {}
+
+  watches.forEach((watch) => {
+    const value = getValue(watch)
+    if (value) {
+      counts[value] = (counts[value] || 0) + 1
+    }
+  })
+
+  const total = watches.length
+  return Object.entries(counts).map(([label, count]) => ({
+    label,
+    count,
+    percentage: total > 0 ? (count / total) * 100 : 0,
+  }))
+}
+
+function daysSince(dateStr?: string): number | null {
+  if (!dateStr) return null
+  const date = new Date(dateStr)
+  const today = new Date()
+  const diffTime = today.getTime() - date.getTime()
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24))
+}
+
+export default function InsightsPage() {
+  const { watches } = useWatchStore()
+
+  const ownedWatches = useMemo(
+    () => watches.filter((w) => w.status === 'owned'),
+    [watches]
+  )
+
+  const wishlistWatches = useMemo(
+    () => watches.filter((w) => w.status === 'wishlist' || w.status === 'grail'),
+    [watches]
+  )
+
+  const styleDistribution = useMemo(
+    () => calculateDistribution(ownedWatches, (w) => w.styleTags),
+    [ownedWatches]
+  )
+
+  const roleDistribution = useMemo(
+    () => calculateDistribution(ownedWatches, (w) => w.roleTags),
+    [ownedWatches]
+  )
+
+  const dialColorDistribution = useMemo(
+    () => calculateSingleValueDistribution(ownedWatches, (w) => w.dialColor),
+    [ownedWatches]
+  )
+
+  const movementDistribution = useMemo(
+    () => calculateSingleValueDistribution(ownedWatches, (w) => w.movement),
+    [ownedWatches]
+  )
+
+  const strapDistribution = useMemo(
+    () => calculateSingleValueDistribution(ownedWatches, (w) => w.strapType),
+    [ownedWatches]
+  )
+
+  // Calculate wear insights
+  const wearInsights = useMemo(() => {
+    const watchesWithWearData = ownedWatches.filter((w) => w.lastWornDate)
+    const unwornWatches = ownedWatches.filter((w) => !w.lastWornDate)
+
+    const notWornIn30Days = watchesWithWearData.filter((w) => {
+      const days = daysSince(w.lastWornDate)
+      return days !== null && days > 30
+    })
+
+    const recentlyWorn = watchesWithWearData.filter((w) => {
+      const days = daysSince(w.lastWornDate)
+      return days !== null && days <= 7
+    })
+
+    return {
+      unwornWatches,
+      notWornIn30Days,
+      recentlyWorn,
+      totalWithWearData: watchesWithWearData.length,
+    }
+  }, [ownedWatches])
+
+  // Calculate collection value
+  const collectionValue = useMemo(() => {
+    const totalPaid = ownedWatches.reduce(
+      (sum, w) => sum + (w.pricePaid || 0),
+      0
+    )
+    const totalMarket = ownedWatches.reduce(
+      (sum, w) => sum + (w.marketPrice || 0),
+      0
+    )
+    const watchesWithBothPrices = ownedWatches.filter(
+      (w) => w.pricePaid && w.marketPrice
+    )
+
+    return {
+      totalPaid,
+      totalMarket,
+      watchesWithPriceData: watchesWithBothPrices.length,
+    }
+  }, [ownedWatches])
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+    }).format(amount)
+
+  if (watches.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-16">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Insights</h1>
+          <p className="text-gray-500">
+            Add some watches to your collection to see insights.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Collection Insights</h1>
+        <p className="text-gray-500">
+          Understand your collection composition and identify gaps or biases.
+        </p>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{ownedWatches.length}</div>
+            <p className="text-sm text-gray-500">Owned Watches</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{wishlistWatches.length}</div>
+            <p className="text-sm text-gray-500">Wishlist / Grail</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">
+              {collectionValue.totalPaid > 0
+                ? formatCurrency(collectionValue.totalPaid)
+                : '-'}
+            </div>
+            <p className="text-sm text-gray-500">Total Invested</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">
+              {collectionValue.totalMarket > 0
+                ? formatCurrency(collectionValue.totalMarket)
+                : '-'}
+            </div>
+            <p className="text-sm text-gray-500">Est. Market Value</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Distribution Charts */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <BalanceChart
+          title="Style Distribution"
+          data={styleDistribution}
+          emptyMessage="No style tags in collection"
+        />
+        <BalanceChart
+          title="Role Distribution"
+          data={roleDistribution}
+          emptyMessage="No role tags in collection"
+        />
+        <BalanceChart
+          title="Dial Color Distribution"
+          data={dialColorDistribution}
+          emptyMessage="No dial colors specified"
+        />
+        <BalanceChart
+          title="Movement Types"
+          data={movementDistribution}
+          emptyMessage="No movement data"
+        />
+      </div>
+
+      {/* Wear Insights */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Wear Insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {wearInsights.totalWithWearData === 0 ? (
+              <p className="text-sm text-gray-500">
+                No wear data yet. Mark watches as worn to see insights.
+              </p>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Worn in last 7 days</span>
+                  <Badge variant="secondary">
+                    {wearInsights.recentlyWorn.length}
+                  </Badge>
+                </div>
+                {wearInsights.notWornIn30Days.length > 0 && (
+                  <div>
+                    <p className="text-sm text-yellow-600 mb-2">
+                      Not worn in 30+ days:
+                    </p>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      {wearInsights.notWornIn30Days.slice(0, 5).map((watch) => (
+                        <li key={watch.id}>
+                          {watch.brand} {watch.model} (
+                          {daysSince(watch.lastWornDate)} days)
+                        </li>
+                      ))}
+                      {wearInsights.notWornIn30Days.length > 5 && (
+                        <li className="text-gray-400">
+                          +{wearInsights.notWornIn30Days.length - 5} more
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+                {wearInsights.unwornWatches.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">
+                      Never worn (no data):
+                    </p>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      {wearInsights.unwornWatches.slice(0, 3).map((watch) => (
+                        <li key={watch.id}>
+                          {watch.brand} {watch.model}
+                        </li>
+                      ))}
+                      {wearInsights.unwornWatches.length > 3 && (
+                        <li className="text-gray-400">
+                          +{wearInsights.unwornWatches.length - 3} more
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Collection Observations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="text-sm text-gray-600 space-y-2">
+              {styleDistribution.length > 0 && (
+                <li className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>
+                    {Math.round(styleDistribution[0]?.percentage || 0)}% of your
+                    collection is{' '}
+                    <span className="font-medium capitalize">
+                      {styleDistribution[0]?.label}
+                    </span>{' '}
+                    style
+                  </span>
+                </li>
+              )}
+              {roleDistribution.length > 0 && (
+                <li className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>
+                    Most common role:{' '}
+                    <span className="font-medium capitalize">
+                      {roleDistribution[0]?.label}
+                    </span>{' '}
+                    ({roleDistribution[0]?.count} watches)
+                  </span>
+                </li>
+              )}
+              {dialColorDistribution.length === 1 && (
+                <li className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>
+                    All watches have{' '}
+                    <span className="font-medium capitalize">
+                      {dialColorDistribution[0]?.label}
+                    </span>{' '}
+                    dials - consider variety
+                  </span>
+                </li>
+              )}
+              {strapDistribution.length === 1 && (
+                <li className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>
+                    All watches on{' '}
+                    <span className="font-medium capitalize">
+                      {strapDistribution[0]?.label}
+                    </span>
+                  </span>
+                </li>
+              )}
+              {ownedWatches.length > 0 &&
+                roleDistribution.every((r) => r.label !== 'formal') && (
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-500">•</span>
+                    <span>No formal/dress watches in collection</span>
+                  </li>
+                )}
+              {ownedWatches.length > 0 &&
+                roleDistribution.every((r) => r.label !== 'travel') && (
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-500">•</span>
+                    <span>No dedicated travel watch</span>
+                  </li>
+                )}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
