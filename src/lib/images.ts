@@ -20,7 +20,9 @@ export function getSafeImageUrl(
 ): string | null {
   if (!url) return null
   try {
-    const { hostname } = new URL(url)
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') return null
+    const { hostname } = parsed
     const isAllowed = ALLOWED_HOSTS.some(
       (h) => hostname === h || hostname.endsWith('.' + h),
     )

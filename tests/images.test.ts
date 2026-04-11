@@ -18,6 +18,13 @@ describe('getSafeImageUrl', () => {
     expect(getSafeImageUrl('https://pinterest.com/pin/123')).toBeNull()
   })
 
+  it('returns null for non-https protocols even on allowed hosts (WR-02 regression)', () => {
+    expect(getSafeImageUrl('http://hodinkee.com/foo.jpg')).toBeNull()
+    expect(getSafeImageUrl('http://www.rolex.com/foo.jpg')).toBeNull()
+    expect(getSafeImageUrl('ftp://hodinkee.com/foo.jpg')).toBeNull()
+    expect(getSafeImageUrl('javascript:alert(1)')).toBeNull()
+  })
+
   it('returns the URL for exact-host matches', () => {
     expect(getSafeImageUrl('https://hodinkee.com/foo.jpg')).toBe(
       'https://hodinkee.com/foo.jpg',
