@@ -56,10 +56,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const message = error instanceof Error ? error.message : 'Extraction failed'
-
+    // Return a generic error to avoid leaking library internals or
+    // provider error shapes to the client. Full details are logged
+    // above for server-side debugging.
     return NextResponse.json(
-      { error: message },
+      { error: 'Failed to extract watch data from URL.' },
       { status: 500 }
     )
   }
