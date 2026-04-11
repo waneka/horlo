@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Watch as WatchIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { getSafeImageUrl } from '@/lib/images'
 import {
   Dialog,
   DialogContent,
@@ -72,6 +75,7 @@ export function WatchDetail({ watch }: WatchDetailProps) {
   }
 
   const daysSinceWorn = daysSince(watch.lastWornDate)
+  const safeUrl = getSafeImageUrl(watch.imageUrl)
 
   return (
     <div className="space-y-8">
@@ -79,28 +83,18 @@ export function WatchDetail({ watch }: WatchDetailProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-6">
           {/* Image */}
-          <div className="w-32 h-32 sm:w-48 sm:h-48 bg-gray-100 rounded-lg overflow-hidden shrink-0">
-            {watch.imageUrl ? (
-              <img
-                src={watch.imageUrl}
+          <div className="relative aspect-square w-32 sm:w-48 shrink-0 overflow-hidden rounded-lg bg-muted">
+            {safeUrl ? (
+              <Image
+                src={safeUrl}
                 alt={`${watch.brand} ${watch.model}`}
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                <svg
-                  className="w-16 h-16"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+              <div className="flex h-full w-full items-center justify-center">
+                <WatchIcon className="h-16 w-16 text-muted-foreground/40" />
               </div>
             )}
           </div>
