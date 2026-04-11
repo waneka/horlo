@@ -33,7 +33,13 @@ function isPrivateIpv4(ip: string): boolean {
 
 function isPrivateIpv6(ip: string): boolean {
   const lower = ip.toLowerCase()
-  if (lower === '::1') return true
+  if (lower === '::' || lower === '::1') return true
+  // IPv4-mapped IPv6: ::ffff:a.b.c.d
+  const v4mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
+  if (v4mapped) return isPrivateIpv4(v4mapped[1])
+  // IPv4-compatible IPv6: ::a.b.c.d
+  const v4compat = lower.match(/^::(\d+\.\d+\.\d+\.\d+)$/)
+  if (v4compat) return isPrivateIpv4(v4compat[1])
   return PRIVATE_IPV6_PREFIXES.some((prefix) => lower.startsWith(prefix))
 }
 

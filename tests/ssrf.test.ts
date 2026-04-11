@@ -43,6 +43,13 @@ describe('isPrivateIp - IPv6', () => {
     ['ff00::1', true],
     ['2001:4860:4860::8888', false],
     ['2606:4700:4700::1111', false],
+    ['::', true],
+    ['::ffff:127.0.0.1', true],
+    ['::ffff:169.254.169.254', true],
+    ['::ffff:10.0.0.1', true],
+    ['::ffff:192.168.1.1', true],
+    ['::ffff:8.8.8.8', false],
+    ['::127.0.0.1', true],
   ])('isPrivateIp(%s) -> %s', (ip, expected) => {
     expect(isPrivateIp(ip as string)).toBe(expected)
   })
