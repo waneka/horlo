@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google'
-import { ThemeProvider } from 'next-themes'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 import { Header } from '@/components/layout/Header'
 
@@ -17,17 +18,21 @@ export const metadata: Metadata = {
   description: 'A taste-aware decision engine for watch collectors',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies()
+  const stored = cookieStore.get('horlo-theme')?.value
+  const themeClass = stored === 'dark' ? 'dark' : stored === 'light' ? 'light' : ''
+
   return (
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${themeClass} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="horlo-theme">
+        <ThemeProvider initialTheme={stored === 'dark' || stored === 'light' ? stored : 'system'}>
           <Header />
           <main className="flex-1">{children}</main>
         </ThemeProvider>
