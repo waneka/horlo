@@ -42,7 +42,7 @@ const initialFormData: FormData = {
   brand: '',
   model: '',
   reference: '',
-  status: 'owned',
+  status: 'wishlist',
   pricePaid: undefined,
   targetPrice: undefined,
   marketPrice: undefined,
@@ -225,9 +225,16 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
             <Select
               value={formData.status}
               onValueChange={(value) => {
-                if (value) {
-                  setFormData((prev) => ({ ...prev, status: value as WatchStatus }))
-                }
+                if (!value) return
+                const next = value as WatchStatus
+                setFormData((prev) => ({
+                  ...prev,
+                  status: next,
+                  targetPrice:
+                    next === 'wishlist' || next === 'grail'
+                      ? prev.targetPrice
+                      : undefined,
+                }))
               }}
             >
               <SelectTrigger>
@@ -512,64 +519,78 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
       </Card>
 
       {/* Pricing */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pricing</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-6 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="pricePaid">Price Paid</Label>
-            <Input
-              id="pricePaid"
-              type="number"
-              value={formData.pricePaid ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  pricePaid: e.target.value ? Number(e.target.value) : undefined,
-                }))
+      {(() => {
+        const showTargetPrice =
+          formData.status === 'wishlist' || formData.status === 'grail'
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing</CardTitle>
+            </CardHeader>
+            <CardContent
+              className={
+                showTargetPrice
+                  ? 'grid gap-6 sm:grid-cols-3'
+                  : 'grid gap-6 sm:grid-cols-2'
               }
-              placeholder="$"
-            />
-          </div>
+            >
+              <div className="space-y-2">
+                <Label htmlFor="pricePaid">Price Paid</Label>
+                <Input
+                  id="pricePaid"
+                  type="number"
+                  value={formData.pricePaid ?? ''}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      pricePaid: e.target.value ? Number(e.target.value) : undefined,
+                    }))
+                  }
+                  placeholder="$"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="targetPrice">Target Price</Label>
-            <Input
-              id="targetPrice"
-              type="number"
-              value={formData.targetPrice ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  targetPrice: e.target.value
-                    ? Number(e.target.value)
-                    : undefined,
-                }))
-              }
-              placeholder="$"
-            />
-          </div>
+              {showTargetPrice && (
+                <div className="space-y-2">
+                  <Label htmlFor="targetPrice">Target Price</Label>
+                  <Input
+                    id="targetPrice"
+                    type="number"
+                    value={formData.targetPrice ?? ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        targetPrice: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                    placeholder="$"
+                  />
+                </div>
+              )}
 
-          <div className="space-y-2">
-            <Label htmlFor="marketPrice">Market Price</Label>
-            <Input
-              id="marketPrice"
-              type="number"
-              value={formData.marketPrice ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  marketPrice: e.target.value
-                    ? Number(e.target.value)
-                    : undefined,
-                }))
-              }
-              placeholder="$"
-            />
-          </div>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor="marketPrice">Market Price</Label>
+                <Input
+                  id="marketPrice"
+                  type="number"
+                  value={formData.marketPrice ?? ''}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      marketPrice: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    }))
+                  }
+                  placeholder="$"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Notes */}
       <Card>
