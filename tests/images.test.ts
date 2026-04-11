@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getSafeImageUrl, ALLOWED_HOSTS } from '@/lib/images'
+import { getSafeImageUrl } from '@/lib/images'
 
 describe('getSafeImageUrl', () => {
   it('returns null for undefined/null/empty', () => {
@@ -12,52 +12,38 @@ describe('getSafeImageUrl', () => {
     expect(getSafeImageUrl('not-a-url')).toBeNull()
   })
 
-  it('returns null for disallowed hosts', () => {
-    expect(getSafeImageUrl('https://evil.example.com/foo.jpg')).toBeNull()
-    expect(getSafeImageUrl('http://localhost/foo')).toBeNull()
-    expect(getSafeImageUrl('https://pinterest.com/pin/123')).toBeNull()
+  it('auto-upgrades http: URLs to https:', () => {
+    expect(getSafeImageUrl('http://hodinkee.com/foo.jpg')).toBe(
+      'https://hodinkee.com/foo.jpg',
+    )
+    expect(
+      getSafeImageUrl(
+        'http://teddybaldassarre.com/cdn/shop/products/L38124636_clipped_rev_1.jpg?v=1647892798',
+      ),
+    ).toBe(
+      'https://teddybaldassarre.com/cdn/shop/products/L38124636_clipped_rev_1.jpg?v=1647892798',
+    )
   })
 
-  it('returns null for non-https protocols even on allowed hosts (WR-02 regression)', () => {
-    expect(getSafeImageUrl('http://hodinkee.com/foo.jpg')).toBeNull()
-    expect(getSafeImageUrl('http://www.rolex.com/foo.jpg')).toBeNull()
+  it('returns null for non-http(s) protocols (WR-02 regression)', () => {
     expect(getSafeImageUrl('ftp://hodinkee.com/foo.jpg')).toBeNull()
     expect(getSafeImageUrl('javascript:alert(1)')).toBeNull()
+    expect(getSafeImageUrl('file:///etc/passwd')).toBeNull()
   })
 
-  it('returns the URL for exact-host matches', () => {
+  it('passes through any https: URL', () => {
     expect(getSafeImageUrl('https://hodinkee.com/foo.jpg')).toBe(
       'https://hodinkee.com/foo.jpg',
     )
     expect(getSafeImageUrl('https://cdn.shopify.com/s/foo.jpg')).toBe(
       'https://cdn.shopify.com/s/foo.jpg',
     )
-  })
-
-  it('returns the URL for subdomain matches', () => {
     expect(
-      getSafeImageUrl('https://cdn.hodinkee.imgix.net.hodinkee.com/foo.jpg'),
-    ).toMatch(/hodinkee/)
-    expect(getSafeImageUrl('https://www.rolex.com/watches/foo.jpg')).toBe(
-      'https://www.rolex.com/watches/foo.jpg',
+      getSafeImageUrl(
+        'https://timex.com/cdn/shop/files/T2N647_c501daf4.png?v=1773814334&width=480',
+      ),
+    ).toBe(
+      'https://timex.com/cdn/shop/files/T2N647_c501daf4.png?v=1773814334&width=480',
     )
-    expect(getSafeImageUrl('https://images.squarespace-cdn.com/foo.jpg')).toBe(
-      'https://images.squarespace-cdn.com/foo.jpg',
-    )
-  })
-
-  it('ALLOWED_HOSTS includes required retailer set', () => {
-    const required = [
-      'hodinkee.com',
-      'chrono24.com',
-      'rolex.com',
-      'omega-watches.com',
-      'tudorwatch.com',
-      'seikowatches.com',
-      'cdn.shopify.com',
-    ]
-    for (const host of required) {
-      expect(ALLOWED_HOSTS).toContain(host)
-    }
   })
 })

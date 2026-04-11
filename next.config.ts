@@ -1,19 +1,13 @@
 import type { NextConfig } from 'next'
-import { ALLOWED_HOSTS } from './src/lib/images'
 
-// Single source of truth: derive next/image remotePatterns from the
-// same ALLOWED_HOSTS list that `getSafeImageUrl` enforces. Each entry
-// gets both an apex and a wildcard-subdomain pattern so `next/image`
-// accepts exactly what `getSafeImageUrl` accepts. `**.example.com`
-// does NOT match the apex `example.com`, hence the two entries.
-const remotePatterns = ALLOWED_HOSTS.flatMap((host) => [
-  { protocol: 'https' as const, hostname: host },
-  { protocol: 'https' as const, hostname: `**.${host}` },
-])
-
+// Watch image URLs come from arbitrary retailer product pages. Rather
+// than maintain a host allow-list, we serve images unoptimized — the
+// browser fetches directly from the source, so Next.js never performs
+// a server-side fetch and there is no SSRF surface via /_next/image.
+// getSafeImageUrl() still enforces https: at the client boundary.
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns,
+    unoptimized: true,
   },
 }
 
