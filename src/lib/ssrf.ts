@@ -1,5 +1,6 @@
 import { promises as dns } from 'node:dns'
 import * as net from 'node:net'
+import { Agent } from 'undici'
 
 // Private, loopback, link-local, and reserved ranges
 const PRIVATE_RANGES_V4 = [
@@ -77,8 +78,39 @@ export async function resolveAndValidate(hostname: string): Promise<string> {
 }
 
 /**
+ * Builds an undici Agent whose connect hook performs DNS resolution
+ * through `resolveAndValidate`, pinning the dialed address to one that
+ * was just validated against the private-IP allowlist. This closes the
+ * TOCTOU / DNS-rebinding gap between validation and the actual socket
+ * connect — fetch's internal resolver is never consulted, because we
+ * hand it the validated IP via the lookup callback.
+ */
+export function createSsrfSafeDispatcher(): Agent {
+  return new Agent({
+    connect: {
+      lookup: (
+        hostname: string,
+        _opts: unknown,
+        cb: (err: Error | null, address: string, family: number) => void
+      ) => {
+        resolveAndValidate(hostname)
+          .then((ip) => {
+            const family = net.isIPv4(ip) ? 4 : net.isIPv6(ip) ? 6 : 0
+            cb(null, ip, family)
+          })
+          .catch((err) => {
+            cb(err instanceof Error ? err : new Error(String(err)), '', 0)
+          })
+      },
+    },
+  })
+}
+
+/**
  * Fetch with SSRF protection:
- * - Resolves and validates the initial URL
+ * - Resolves and validates the initial URL (rejects private IPs early)
+ * - Pins the validated IP into the socket via an undici dispatcher so
+ *   the address `fetch` dials is the exact IP that was validated
  * - Follows redirects manually, re-validating each hop
  * - Throws SsrfError for any private-range redirect
  */
@@ -89,14 +121,21 @@ export async function safeFetch(
 ): Promise<Response> {
   let currentUrl = url
   let redirectsLeft = maxRedirects
+  const dispatcher = createSsrfSafeDispatcher()
 
   while (true) {
     const parsed = new URL(currentUrl)
+    // Early validation: fail fast with SsrfError before involving fetch.
+    // The dispatcher below also validates at connect time — this is
+    // intentional defense in depth and ensures a consistent error type.
     await resolveAndValidate(parsed.hostname)
 
     const response = await fetch(currentUrl, {
       ...options,
       redirect: 'manual',
+      // @ts-expect-error - Node's global fetch accepts an undici dispatcher,
+      // but the DOM RequestInit type does not declare it.
+      dispatcher,
     })
 
     if (response.status >= 300 && response.status < 400) {
