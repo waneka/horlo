@@ -129,6 +129,9 @@ export function UrlImport({ onDataExtracted }: UrlImportProps) {
               {result.data.strapType && (
                 <p><span className="text-gray-500">Strap:</span> {result.data.strapType}</p>
               )}
+              {result.data.crystalType && (
+                <p><span className="text-gray-500">Crystal:</span> {result.data.crystalType}</p>
+              )}
               {result.data.complications?.length ? (
                 <p><span className="text-gray-500">Complications:</span> {result.data.complications.join(', ')}</p>
               ) : null}

@@ -4,6 +4,8 @@ export type MovementType = 'automatic' | 'manual' | 'quartz' | 'spring-drive' | 
 
 export type StrapType = 'bracelet' | 'leather' | 'rubber' | 'nato' | 'other'
 
+export type CrystalType = 'sapphire' | 'mineral' | 'acrylic' | 'hesalite' | 'hardlex'
+
 export type OverlapTolerance = 'low' | 'medium' | 'high'
 
 export type CollectionGoal = 'balanced' | 'specialist' | 'variety-within-theme'
@@ -29,6 +31,7 @@ export interface Watch {
   waterResistanceM?: number
 
   strapType?: StrapType
+  crystalType?: CrystalType
 
   dialColor?: string
 

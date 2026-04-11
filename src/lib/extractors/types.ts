@@ -1,4 +1,4 @@
-import type { MovementType, StrapType } from '@/lib/types'
+import type { MovementType, StrapType, CrystalType } from '@/lib/types'
 
 export interface ExtractedWatchData {
   brand?: string
@@ -10,6 +10,7 @@ export interface ExtractedWatchData {
   lugToLugMm?: number
   waterResistanceM?: number
   strapType?: StrapType
+  crystalType?: CrystalType
   dialColor?: string
   styleTags?: string[]
   designTraits?: string[]

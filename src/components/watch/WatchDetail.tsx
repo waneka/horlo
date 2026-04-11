@@ -194,6 +194,12 @@ export function WatchDetail({ watch }: WatchDetailProps) {
                   <dd className="font-medium capitalize">{watch.strapType}</dd>
                 </div>
               )}
+              {watch.crystalType && (
+                <div>
+                  <dt className="text-gray-500">Crystal</dt>
+                  <dd className="font-medium capitalize">{watch.crystalType}</dd>
+                </div>
+              )}
               {watch.dialColor && (
                 <div>
                   <dt className="text-gray-500">Dial Color</dt>

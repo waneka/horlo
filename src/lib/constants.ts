@@ -20,7 +20,6 @@ export const DESIGN_TRAITS = [
   'refined',
   'utilitarian',
   'textured-dial',
-  'domed-crystal',
   'applied-indices',
 ] as const
 
@@ -84,6 +83,14 @@ export const STRAP_TYPES = [
   'rubber',
   'nato',
   'other',
+] as const
+
+export const CRYSTAL_TYPES = [
+  'sapphire',
+  'mineral',
+  'acrylic',
+  'hesalite',
+  'hardlex',
 ] as const
 
 export const WATCH_STATUSES = [

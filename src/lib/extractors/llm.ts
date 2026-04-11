@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import * as cheerio from 'cheerio'
 import type { ExtractedWatchData } from './types'
-import type { MovementType, StrapType } from '@/lib/types'
+import type { MovementType, StrapType, CrystalType } from '@/lib/types'
 import {
   STYLE_TAGS,
   DESIGN_TRAITS,
@@ -10,6 +10,7 @@ import {
   DIAL_COLORS,
   MOVEMENT_TYPES,
   STRAP_TYPES,
+  CRYSTAL_TYPES,
 } from '@/lib/constants'
 
 const EXTRACTION_PROMPT = `You are extracting watch specifications from a product page. Extract as much information as possible from the provided text.
@@ -25,6 +26,7 @@ Return a JSON object with these fields (omit fields if not found):
   "lugToLugMm": number,
   "waterResistanceM": number (in meters),
   "strapType": "bracelet|leather|rubber|nato|other",
+  "crystalType": "one of: ${CRYSTAL_TYPES.join(', ')}",
   "dialColor": "one of: ${DIAL_COLORS.join(', ')}",
   "styleTags": ["array of: ${STYLE_TAGS.join(', ')}"],
   "designTraits": ["array of: ${DESIGN_TRAITS.join(', ')}"],
@@ -35,7 +37,10 @@ Important:
 - Only include fields you're confident about
 - styleTags should describe what TYPE of watch it is (diver, dress, field, etc.)
 - designTraits should describe visual/aesthetic characteristics
-- For complications, only include what's explicitly mentioned
+- For complications, only include features VISIBLE on the dial:
+  - "power-reserve" means a power reserve INDICATOR on the dial, NOT just "50hr power reserve" as a movement spec
+  - "date" means a date window/aperture on the dial
+  - "chrono" means chronograph pushers and subdials
 - Return ONLY valid JSON, no explanation
 
 Page content:
@@ -153,6 +158,10 @@ function validateAndCleanData(data: Record<string, unknown>): ExtractedWatchData
 
   if (typeof data.strapType === 'string' && STRAP_TYPES.includes(data.strapType as typeof STRAP_TYPES[number])) {
     cleaned.strapType = data.strapType as StrapType
+  }
+
+  if (typeof data.crystalType === 'string' && CRYSTAL_TYPES.includes(data.crystalType as typeof CRYSTAL_TYPES[number])) {
+    cleaned.crystalType = data.crystalType as CrystalType
   }
 
   if (typeof data.dialColor === 'string' && DIAL_COLORS.includes(data.dialColor as typeof DIAL_COLORS[number])) {

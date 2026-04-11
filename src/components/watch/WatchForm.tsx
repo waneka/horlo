@@ -26,9 +26,10 @@ import {
   DIAL_COLORS,
   MOVEMENT_TYPES,
   STRAP_TYPES,
+  CRYSTAL_TYPES,
   WATCH_STATUSES,
 } from '@/lib/constants'
-import type { Watch, WatchStatus, MovementType, StrapType } from '@/lib/types'
+import type { Watch, WatchStatus, MovementType, StrapType, CrystalType } from '@/lib/types'
 
 interface WatchFormProps {
   watch?: Watch
@@ -51,6 +52,7 @@ const initialFormData: FormData = {
   lugToLugMm: undefined,
   waterResistanceM: undefined,
   strapType: undefined,
+  crystalType: undefined,
   dialColor: undefined,
   styleTags: [],
   designTraits: [],
@@ -81,6 +83,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
           lugToLugMm: watch.lugToLugMm,
           waterResistanceM: watch.waterResistanceM,
           strapType: watch.strapType,
+          crystalType: watch.crystalType,
           dialColor: watch.dialColor,
           styleTags: watch.styleTags,
           designTraits: watch.designTraits,
@@ -153,6 +156,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
       lugToLugMm: data.lugToLugMm ?? prev.lugToLugMm,
       waterResistanceM: data.waterResistanceM ?? prev.waterResistanceM,
       strapType: data.strapType || prev.strapType,
+      crystalType: data.crystalType || prev.crystalType,
       dialColor: data.dialColor || prev.dialColor,
       styleTags: data.styleTags?.length ? data.styleTags : prev.styleTags,
       designTraits: data.designTraits?.length ? data.designTraits : prev.designTraits,
@@ -346,6 +350,27 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
               </SelectTrigger>
               <SelectContent>
                 {STRAP_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    <span className="capitalize">{type}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="crystalType">Crystal</Label>
+            <Select
+              value={formData.crystalType ?? ''}
+              onValueChange={(value) => {
+                setFormData((prev) => ({ ...prev, crystalType: (value || undefined) as CrystalType | undefined }))
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {CRYSTAL_TYPES.map((type) => (
                   <SelectItem key={type} value={type}>
                     <span className="capitalize">{type}</span>
                   </SelectItem>

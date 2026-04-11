@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio'
 import type { ExtractedWatchData } from './types'
-import type { MovementType, StrapType } from '@/lib/types'
-import { DIAL_COLORS, MOVEMENT_TYPES, STRAP_TYPES, COMPLICATIONS } from '@/lib/constants'
+import type { MovementType, StrapType, CrystalType } from '@/lib/types'
+import { DIAL_COLORS, MOVEMENT_TYPES, STRAP_TYPES, CRYSTAL_TYPES, COMPLICATIONS } from '@/lib/constants'
 
 export function extractFromHtml(html: string): ExtractedWatchData {
   const $ = cheerio.load(html)
@@ -171,6 +171,17 @@ function parseSpecRow(label: string, value: string, data: ExtractedWatchData): v
     }
   }
 
+  // Crystal / Glass
+  if (label.includes('crystal') || label.includes('glass')) {
+    const valueLower = value.toLowerCase()
+    for (const crystal of CRYSTAL_TYPES) {
+      if (valueLower.includes(crystal)) {
+        data.crystalType = crystal as CrystalType
+        break
+      }
+    }
+  }
+
   // Reference / Model number
   if (label.includes('reference') || label.includes('ref') || label.includes('model number')) {
     if (value.length > 0 && value.length < 30) {
@@ -249,13 +260,13 @@ function extractComplications(text: string, data: ExtractedWatchData): void {
   const found: string[] = []
 
   const complicationPatterns: Record<string, string[]> = {
-    'date': ['date', 'day-date', 'date window', 'date display'],
+    'date': ['date window', 'date display', 'date at 3', 'date at 6', 'date aperture'],
     'day-date': ['day-date', 'day and date', 'day/date'],
-    'gmt': ['gmt', 'dual time', 'second timezone', 'second time zone'],
-    'chrono': ['chronograph', 'chrono', 'stopwatch'],
-    'moon-phase': ['moon phase', 'moonphase', 'moon-phase'],
-    'power-reserve': ['power reserve', 'power-reserve'],
-    'world-time': ['world time', 'worldtime', 'world-time'],
+    'gmt': ['gmt', 'dual time', 'second timezone', 'second time zone', 'gmt hand', 'gmt bezel'],
+    'chrono': ['chronograph', 'chrono', 'stopwatch', 'tachymeter'],
+    'moon-phase': ['moon phase', 'moonphase', 'moon-phase', 'lunar'],
+    'power-reserve': ['power reserve indicator', 'power reserve display', 'power reserve complication'],
+    'world-time': ['world time', 'worldtime', 'world-time', 'world timer'],
   }
 
   for (const [complication, patterns] of Object.entries(complicationPatterns)) {
