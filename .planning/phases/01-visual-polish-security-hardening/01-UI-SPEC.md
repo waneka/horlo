@@ -1,7 +1,8 @@
 ---
 phase: 1
 slug: visual-polish-security-hardening
-status: draft
+status: approved
+reviewed_at: 2026-04-11
 shadcn_initialized: true
 preset: pre-existing (shadcn components in src/components/ui/, tokens in src/app/globals.css)
 created: 2026-04-11
