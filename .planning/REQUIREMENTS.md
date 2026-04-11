@@ -81,6 +81,46 @@ Brownfield project. The MVP (CRUD, grid, filters, tagging, preferences, similari
 
 ## Traceability
 
-<!-- Filled in by roadmapper: REQ-ID → Phase mapping -->
+REQ-ID → Phase mapping (populated by roadmapper 2026-04-11):
 
-*(To be populated during roadmap creation)*
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| VIS-01 | Phase 1 | Pending |
+| VIS-02 | Phase 1 | Pending |
+| VIS-03 | Phase 1 | Pending |
+| VIS-04 | Phase 1 | Pending |
+| VIS-05 | Phase 2 | Pending |
+| VIS-06 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Pending |
+| FEAT-01 | Phase 2 | Pending |
+| FEAT-02 | Phase 2 | Pending |
+| FEAT-03 | Phase 2 | Pending |
+| FEAT-04 | Phase 2 | Pending |
+| FEAT-05 | Phase 2 | Pending |
+| FEAT-06 | Phase 2 | Pending |
+| DATA-01 | Phase 3 | Pending |
+| DATA-02 | Phase 3 | Pending |
+| DATA-03 | Phase 3 | Pending |
+| DATA-04 | Phase 3 | Pending |
+| DATA-05 | Phase 5 | Pending |
+| AUTH-01 | Phase 4 | Pending |
+| AUTH-02 | Phase 4 | Pending |
+| AUTH-03 | Phase 4 | Pending |
+| AUTH-04 | Phase 4 | Pending |
+| MIG-01 | Phase 5 | Pending |
+| MIG-02 | Phase 5 | Pending |
+| TEST-01 | Phase 2 | Pending |
+| TEST-02 | Phase 2 | Pending |
+| TEST-03 | Phase 2 | Pending |
+| TEST-04 | Phase 6 | Pending |
+| TEST-05 | Phase 6 | Pending |
+| TEST-06 | Phase 6 | Pending |
+
+**Coverage:** 31/31 v1 requirements mapped. No orphans. No duplicates.
+
+**Sequencing notes:**
+- VIS-05 moved to Phase 2 (not Phase 1) because the "Sleeping Beauties" framing is an insight feature that pairs naturally with the collection-goal / complicationException rewiring, not the visual polish pass.
+- TEST-01/02/03 pulled into Phase 2 (not deferred to end) per research open question #4: pure-function tests catch regressions from the similarity engine rewiring in the same phase.
+- DATA-05 (similarity engine props rewire) lives in Phase 5 alongside Zustand cleanup — it is the same operation (demoting Zustand) and strictly requires MIG-01/02 to land first.
+- TEST-04/05/06 stay in the final phase because they test stabilized code (store reducers post-demotion, route handler post-auth, components post-redesign).
