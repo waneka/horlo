@@ -55,11 +55,11 @@ Plans:
   8. Running `npm test` executes Vitest with RTL and MSW configured, and green tests exist for `similarity.ts` (all six labels incl. preference-aware paths) and the three extractor stages
 **Plans**: 5 plans
 Plans:
-- [ ] 02-01-PLAN.md — Wave 1: Schema extensions — Watch.productionYear, Watch.isFlaggedDeal, CollectionGoal += brand-loyalist, generateId → crypto.randomUUID (FEAT-06)
-- [ ] 02-02-PLAN.md — Wave 2: Similarity engine rewire — complicationExceptions filter, goal-aware thresholds + reasoning, brand-loyalist routing, new gapFill.ts (FEAT-01, FEAT-02, FEAT-05)
-- [ ] 02-03-PLAN.md — Wave 3: Wishlist UX — productionYear input, Deal + gap-fill badges, last-worn line, flagged-deal toggle, gap-fill callout, wishlist sort (VIS-05, FEAT-03, FEAT-04, FEAT-05)
-- [ ] 02-04-PLAN.md — Wave 3: Insights additions — GoodDealsSection + SleepingBeautiesSection + goal-aware observation copy (VIS-05, FEAT-02, FEAT-04)
-- [ ] 02-05-PLAN.md — Wave 3: Test foundation — MSW devDep install, similarity.ts + gapFill.ts test suites, 3-stage extractor pipeline fixture tests (TEST-01, TEST-02, TEST-03)
+- [x] 02-01-PLAN.md — Wave 1: Schema extensions — Watch.productionYear, Watch.isFlaggedDeal, CollectionGoal += brand-loyalist, generateId → crypto.randomUUID (FEAT-06)
+- [x] 02-02-PLAN.md — Wave 2: Similarity engine rewire — complicationExceptions filter, goal-aware thresholds + reasoning, brand-loyalist routing, new gapFill.ts (FEAT-01, FEAT-02, FEAT-05)
+- [x] 02-03-PLAN.md — Wave 3: Wishlist UX — productionYear input, Deal + gap-fill badges, last-worn line, flagged-deal toggle, gap-fill callout, wishlist sort (VIS-05, FEAT-03, FEAT-04, FEAT-05)
+- [x] 02-04-PLAN.md — Wave 3: Insights additions — GoodDealsSection + SleepingBeautiesSection + goal-aware observation copy (VIS-05, FEAT-02, FEAT-04)
+- [x] 02-05-PLAN.md — Wave 3: Test foundation — MSW devDep install, similarity.ts + gapFill.ts test suites, 3-stage extractor pipeline fixture tests (TEST-01, TEST-02, TEST-03)
 **UI hint**: yes
 
 ### Phase 3: Data Layer Foundation
