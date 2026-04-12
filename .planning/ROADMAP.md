@@ -71,7 +71,11 @@ Plans:
   2. Every file under `src/data/` imports `server-only` and exposes DAL functions that accept an explicit `userId` and scope all queries by it
   3. Watch and preference mutations exist as Server Actions under `src/app/actions/` that delegate to the DAL and call `revalidatePath` on success
   4. Existing pages continue to render from Zustand (unchanged), but the Server Actions and DAL are callable end-to-end from a test or REPL against a seeded user
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 03-01-PLAN.md — Wave 1: Drizzle schema + DB connection + deps + Supabase push (DATA-01)
+- [ ] 03-02-PLAN.md — Wave 2: server-only DAL in src/data/ with userId-scoped CRUD and domain type mapping (DATA-02)
+- [ ] 03-03-PLAN.md — Wave 3: Server Actions with Zod validation + revalidatePath + build verification (DATA-03, DATA-04)
 
 ### Phase 4: Authentication
 **Goal**: Real users can sign up and log in, session is enforced at the proxy layer AND independently re-verified inside every Server Action and DAL function.
@@ -118,7 +122,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Visual Polish & Security Hardening | 0/6 | Not started | - |
 | 2. Feature Completeness & Test Foundation | 0/5 | Not started | - |
-| 3. Data Layer Foundation | 0/TBD | Not started | - |
+| 3. Data Layer Foundation | 0/3 | Not started | - |
 | 4. Authentication | 0/TBD | Not started | - |
 | 5. Migration, Zustand Cleanup & Similarity Rewire | 0/TBD | Not started | - |
 | 6. Test Suite Completion | 0/TBD | Not started | - |
