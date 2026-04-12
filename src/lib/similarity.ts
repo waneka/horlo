@@ -1,4 +1,10 @@
-import type { Watch, UserPreferences, SimilarityLabel, SimilarityResult } from './types'
+import type {
+  Watch,
+  UserPreferences,
+  SimilarityLabel,
+  SimilarityResult,
+  CollectionGoal,
+} from './types'
 
 // Scoring weights for different dimensions
 const WEIGHTS = {
@@ -18,6 +24,33 @@ const THRESHOLDS = {
   medium: { coreFit: 0.75, familiarTerritory: 0.55, roleConflict: 0.7 },
   high: { coreFit: 0.8, familiarTerritory: 0.6, roleConflict: 0.8 },
 }
+
+// Goal-aware thresholds (CONTEXT.md decisions > "Collection goals")
+// Soft shifts from the baseline; hard-mismatch is NEVER modified by goal.
+type GoalThresholds = { coreFit: number; familiarTerritory: number; roleConflict: number }
+const GOAL_THRESHOLDS: Record<CollectionGoal, GoalThresholds> = {
+  'balanced':              { coreFit: 0.65, familiarTerritory: 0.45, roleConflict: 0.70 },
+  'specialist':            { coreFit: 0.65, familiarTerritory: 0.45, roleConflict: 0.78 },
+  'variety-within-theme':  { coreFit: 0.65, familiarTerritory: 0.40, roleConflict: 0.65 },
+  'brand-loyalist':        { coreFit: 0.65, familiarTerritory: 0.45, roleConflict: 0.70 },
+}
+
+/**
+ * Detect dominant brands in the owned collection. A brand is "loyal" when it
+ * accounts for ≥30% of holdings. Requires ≥3 watches for a signal to emerge.
+ */
+function detectLoyalBrands(owned: Watch[]): string[] {
+  if (owned.length < 3) return []
+  const counts = new Map<string, number>()
+  for (const w of owned) counts.set(w.brand, (counts.get(w.brand) ?? 0) + 1)
+  const loyal: string[] = []
+  for (const [brand, count] of counts) {
+    if (count / owned.length >= 0.30) loyal.push(brand)
+  }
+  return loyal
+}
+
+export { GOAL_THRESHOLDS, detectLoyalBrands }
 
 function arrayOverlap(arr1: string[], arr2: string[]): number {
   if (arr1.length === 0 || arr2.length === 0) return 0
@@ -48,7 +81,11 @@ function waterResistanceBandSimilarity(wr1?: number, wr2?: number): number {
   return getBand(wr1) === getBand(wr2) ? 1 : 0.3
 }
 
-function calculatePairSimilarity(watch1: Watch, watch2: Watch): number {
+function calculatePairSimilarity(
+  watch1: Watch,
+  watch2: Watch,
+  exceptions: readonly string[] = [],
+): number {
   let score = 0
 
   // Style tags
@@ -63,8 +100,15 @@ function calculatePairSimilarity(watch1: Watch, watch2: Watch): number {
   // Dial color
   score += WEIGHTS.dialColor * (watch1.dialColor === watch2.dialColor ? 1 : 0)
 
-  // Complications
-  score += WEIGHTS.complications * arrayOverlap(watch1.complications, watch2.complications)
+  // Complications — complicationExceptions drop out of the overlap calc entirely
+  // so a user can own several chronographs without a similarity penalty.
+  const filtered1 = exceptions.length
+    ? watch1.complications.filter((c) => !exceptions.includes(c))
+    : watch1.complications
+  const filtered2 = exceptions.length
+    ? watch2.complications.filter((c) => !exceptions.includes(c))
+    : watch2.complications
+  score += WEIGHTS.complications * arrayOverlap(filtered1, filtered2)
 
   // Case size
   score += WEIGHTS.caseSize * caseSizeSimilarity(watch1.caseSizeMm, watch2.caseSizeMm)
@@ -192,10 +236,11 @@ export function analyzeSimilarity(
     }
   }
 
-  // Calculate similarity with each owned watch
+  // Calculate similarity with each owned watch (with complicationExceptions applied)
+  const exceptions = preferences.complicationExceptions ?? []
   const watchSimilarities = ownedWatches.map((watch) => ({
     watch,
-    score: calculatePairSimilarity(targetWatch, watch),
+    score: calculatePairSimilarity(targetWatch, watch, exceptions),
   }))
 
   // Sort by similarity and get top matches
@@ -212,9 +257,26 @@ export function analyzeSimilarity(
   // Check preference alignment
   const preferenceCheck = checkPreferenceAlignment(targetWatch, preferences)
 
-  // Get thresholds based on tolerance
-  const tolerance = preferences.overlapTolerance || 'medium'
-  const thresholds = THRESHOLDS[tolerance]
+  // Goal-aware threshold resolution. Below the detection floor (<3 owned),
+  // force balanced behavior regardless of stated goal.
+  const requestedGoal: CollectionGoal = preferences.collectionGoal ?? 'balanced'
+  let effectiveGoal: CollectionGoal = ownedWatches.length < 3 ? 'balanced' : requestedGoal
+
+  // Brand-loyalist: route on-brand watches to specialist thresholds,
+  // off-brand watches get the off-brand reasoning line.
+  let offBrandReasoning: string | null = null
+  if (effectiveGoal === 'brand-loyalist') {
+    const loyalBrands = detectLoyalBrands(ownedWatches)
+    if (loyalBrands.length === 0) {
+      effectiveGoal = 'balanced'
+    } else if (loyalBrands.includes(targetWatch.brand)) {
+      effectiveGoal = 'specialist'
+    } else {
+      offBrandReasoning = `Off-brand — breaks your ${loyalBrands.join('/')} pattern`
+    }
+  }
+
+  const thresholds = GOAL_THRESHOLDS[effectiveGoal]
 
   // Determine label
   let label: SimilarityLabel
@@ -225,11 +287,30 @@ export function analyzeSimilarity(
     reasoning.push('Conflicts with stated preferences')
   } else if (roleOverlap && avgSimilarity > thresholds.roleConflict) {
     label = 'role-duplicate'
-    reasoning.push('Similar role to existing watches')
+    if (effectiveGoal === 'specialist') {
+      reasoning.push('Continues the specialist path')
+    } else {
+      reasoning.push('Similar role to existing watches')
+    }
     reasoning.push(`High similarity (${Math.round(avgSimilarity * 100)}%)`)
   } else if (avgSimilarity > thresholds.coreFit && preferenceCheck.aligned) {
     label = 'core-fit'
     reasoning.push('Highly aligned with your taste')
+    if (effectiveGoal === 'specialist') {
+      // Compute dominant style tag count for depth callout
+      const styleCounts = new Map<string, number>()
+      for (const w of ownedWatches) for (const s of w.styleTags) {
+        styleCounts.set(s, (styleCounts.get(s) ?? 0) + 1)
+      }
+      let topStyle: string | null = null
+      let topCount = 0
+      for (const [s, c] of styleCounts) {
+        if (c > topCount) { topStyle = s; topCount = c }
+      }
+      if (topStyle && topCount > 0) {
+        reasoning.push(`${topCount} ${topStyle} watches — strong depth`)
+      }
+    }
   } else if (avgSimilarity > thresholds.familiarTerritory) {
     label = 'familiar-territory'
     reasoning.push('Similar to watches you already have')
@@ -238,7 +319,16 @@ export function analyzeSimilarity(
     reasoning.push('Different from your current collection')
   } else {
     label = 'taste-expansion'
-    reasoning.push('Adds variety while staying aligned')
+    if (effectiveGoal === 'variety-within-theme') {
+      reasoning.push('Exactly what this collection needs')
+    } else {
+      reasoning.push('Adds variety while staying aligned')
+    }
+  }
+
+  // Brand-loyalist off-brand reasoning line appended last, score untouched.
+  if (offBrandReasoning && label !== 'hard-mismatch') {
+    reasoning.push(offBrandReasoning)
   }
 
   return {
