@@ -93,3 +93,5 @@ export interface SimilarityResult {
   roleOverlap: boolean
   reasoning: string[]
 }
+
+export type { GapFillResult } from './gapFill'
