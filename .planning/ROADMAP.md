@@ -73,9 +73,9 @@ Plans:
   4. Existing pages continue to render from Zustand (unchanged), but the Server Actions and DAL are callable end-to-end from a test or REPL against a seeded user
 **Plans**: 3 plans
 Plans:
-- [ ] 03-01-PLAN.md — Wave 1: Drizzle schema + DB connection + deps + Supabase push (DATA-01)
-- [ ] 03-02-PLAN.md — Wave 2: server-only DAL in src/data/ with userId-scoped CRUD and domain type mapping (DATA-02)
-- [ ] 03-03-PLAN.md — Wave 3: Server Actions with Zod validation + revalidatePath + build verification (DATA-03, DATA-04)
+- [x] 03-01-PLAN.md — Wave 1: Drizzle schema + DB connection + deps + Supabase push (DATA-01)
+- [x] 03-02-PLAN.md — Wave 2: server-only DAL in src/data/ with userId-scoped CRUD and domain type mapping (DATA-02)
+- [x] 03-03-PLAN.md — Wave 3: Server Actions with Zod validation + revalidatePath + build verification (DATA-03, DATA-04)
 
 ### Phase 4: Authentication
 **Goal**: Real users can sign up and log in, session is enforced at the proxy layer AND independently re-verified inside every Server Action and DAL function.
