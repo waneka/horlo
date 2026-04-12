@@ -1,12 +1,35 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BalanceChart } from '@/components/insights/BalanceChart'
+import { GoodDealsSection } from '@/components/insights/GoodDealsSection'
+import { SleepingBeautiesSection } from '@/components/insights/SleepingBeautiesSection'
 import { useWatchStore } from '@/store/watchStore'
+import { usePreferencesStore } from '@/store/preferencesStore'
 import { useIsHydrated } from '@/lib/hooks/useIsHydrated'
-import type { Watch } from '@/lib/types'
+import { detectLoyalBrands } from '@/lib/similarity'
+import { daysSince } from '@/lib/wear'
+import type { CollectionGoal, Watch } from '@/lib/types'
+
+function observationCopy(goal: CollectionGoal, ownedWatches: Watch[]): string {
+  switch (goal) {
+    case 'specialist':
+      return 'Your collection is building depth. Every owned piece reinforces a single specialty — redundancy reads as mastery here.'
+    case 'variety-within-theme':
+      return 'Distinct roles anchored by shared design DNA. Additions that add a new role while staying on-theme are exactly what this collection needs.'
+    case 'brand-loyalist': {
+      const loyal = detectLoyalBrands(ownedWatches)
+      return loyal.length > 0
+        ? `You're leaning into ${loyal.join(' and ')}. Off-brand additions will feel like detours.`
+        : 'Your brand pattern is still emerging. Keep collecting and a loyal-brand signal will surface.'
+    }
+    case 'balanced':
+    default:
+      return 'A balanced collection — breadth across style, role, and dial color. New additions should fill a gap rather than double a slot.'
+  }
+}
 
 function calculateDistribution(
   watches: Watch[],
@@ -49,16 +72,10 @@ function calculateSingleValueDistribution(
   }))
 }
 
-function daysSince(dateStr?: string): number | null {
-  if (!dateStr) return null
-  const date = new Date(dateStr)
-  const today = new Date()
-  const diffTime = today.getTime() - date.getTime()
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24))
-}
-
 export default function InsightsPage() {
   const { watches: storedWatches } = useWatchStore()
+  const preferences = usePreferencesStore((s) => s.preferences)
+  const goal: CollectionGoal = preferences.collectionGoal ?? 'balanced'
   const hydrated = useIsHydrated()
   const watches = hydrated ? storedWatches : []
 
@@ -172,6 +189,25 @@ export default function InsightsPage() {
         <p className="text-muted-foreground mt-2">
           Understand your collection composition and identify gaps or biases.
         </p>
+      </div>
+
+      {/* Actionable Sections */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <GoodDealsSection watches={watches} />
+        <SleepingBeautiesSection watches={watches} />
+      </div>
+
+      {/* Goal-aware Observations */}
+      <div className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Observations</CardTitle>
+            <CardDescription>Goal: {goal.replace(/-/g, ' ')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{observationCopy(goal, ownedWatches)}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Summary Stats */}
