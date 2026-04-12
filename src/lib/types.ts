@@ -8,7 +8,11 @@ export type CrystalType = 'sapphire' | 'mineral' | 'acrylic' | 'hesalite' | 'har
 
 export type OverlapTolerance = 'low' | 'medium' | 'high'
 
-export type CollectionGoal = 'balanced' | 'specialist' | 'variety-within-theme'
+export type CollectionGoal =
+  | 'balanced'
+  | 'specialist'
+  | 'variety-within-theme'
+  | 'brand-loyalist'
 
 export interface Watch {
   id: string
@@ -41,6 +45,9 @@ export interface Watch {
 
   acquisitionDate?: string
   lastWornDate?: string
+
+  productionYear?: number   // 4-digit year, optional; manual entry only in Phase 2
+  isFlaggedDeal?: boolean   // Wishlist-only manual "good deal" override (FEAT-04)
 
   notes?: string
   imageUrl?: string
