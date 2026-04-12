@@ -7,7 +7,9 @@ import Image from 'next/image'
 import { Watch as WatchIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { getSafeImageUrl } from '@/lib/images'
 import {
   Dialog,
@@ -19,7 +21,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useWatchStore } from '@/store/watchStore'
+import { usePreferencesStore } from '@/store/preferencesStore'
 import { SimilarityBadge } from '@/components/insights/SimilarityBadge'
+import { computeGapFill } from '@/lib/gapFill'
+import { daysSince } from '@/lib/wear'
 import type { Watch } from '@/lib/types'
 
 interface WatchDetailProps {
@@ -36,14 +41,6 @@ function formatDate(dateStr?: string): string {
   })
 }
 
-function daysSince(dateStr?: string): number | null {
-  if (!dateStr) return null
-  const date = new Date(dateStr)
-  const today = new Date()
-  const diffTime = today.getTime() - date.getTime()
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24))
-}
-
 function formatCurrency(amount?: number): string {
   if (amount === undefined) return '-'
   return new Intl.NumberFormat('en-US', {
@@ -56,7 +53,15 @@ function formatCurrency(amount?: number): string {
 export function WatchDetail({ watch }: WatchDetailProps) {
   const router = useRouter()
   const { deleteWatch, markAsWorn } = useWatchStore()
+  const updateWatch = useWatchStore((s) => s.updateWatch)
+  const preferences = usePreferencesStore((s) => s.preferences)
+  const collection = useWatchStore((s) => s.watches)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
+  const gapFill = isWishlistLike
+    ? computeGapFill(watch, collection, preferences)
+    : null
 
   const handleDelete = () => {
     deleteWatch(watch.id)
@@ -105,6 +110,40 @@ export function WatchDetail({ watch }: WatchDetailProps) {
               <p className="text-sm text-muted-foreground mt-1">Ref. {watch.reference}</p>
             )}
           </div>
+
+          {/* Last worn line (owned/grail only) */}
+          {(watch.status === 'owned' || watch.status === 'grail') && (
+            <div className="flex items-baseline gap-2 text-sm">
+              <span className="text-muted-foreground">Last worn:</span>
+              {watch.lastWornDate ? (
+                <span>
+                  {new Date(watch.lastWornDate).toLocaleDateString()}
+                  <span className="text-muted-foreground">
+                    {' '}
+                    ({daysSince(watch.lastWornDate)} days ago)
+                  </span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Not worn yet</span>
+              )}
+            </div>
+          )}
+
+          {/* Flag as good deal (wishlist/grail only) */}
+          {isWishlistLike && (
+            <div className="flex items-center gap-3 py-2 min-h-[44px]">
+              <Checkbox
+                id="flagged-deal"
+                checked={watch.isFlaggedDeal === true}
+                onCheckedChange={(checked) =>
+                  updateWatch(watch.id, { isFlaggedDeal: checked === true })
+                }
+              />
+              <Label htmlFor="flagged-deal" className="cursor-pointer">
+                Flag as a good deal
+              </Label>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
@@ -191,6 +230,12 @@ export function WatchDetail({ watch }: WatchDetailProps) {
                 <div>
                   <dt className="text-muted-foreground">Dial Color</dt>
                   <dd className="font-semibold capitalize">{watch.dialColor}</dd>
+                </div>
+              )}
+              {watch.productionYear !== undefined && (
+                <div>
+                  <dt className="text-muted-foreground">Production year</dt>
+                  <dd className="font-semibold">{watch.productionYear}</dd>
                 </div>
               )}
             </dl>
@@ -306,6 +351,36 @@ export function WatchDetail({ watch }: WatchDetailProps) {
         </Card>
         </div>
       </div>
+
+      {/* Gap-fill callout (wishlist/grail only) */}
+      {gapFill && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Gap-fill</CardTitle>
+            <CardDescription>
+              {gapFill.kind === 'numeric' &&
+                `Fills ${gapFill.newTuples.length} new combo${gapFill.newTuples.length === 1 ? '' : 's'} in your ${gapFill.goalUsed} universe (score ${gapFill.score})`}
+              {gapFill.kind === 'first-watch' &&
+                'First watch in your collection — no comparison yet.'}
+              {gapFill.kind === 'outside-specialty' &&
+                'Outside your current specialty.'}
+              {gapFill.kind === 'off-brand' &&
+                'Off-brand — breaks your loyal-brand pattern.'}
+              {gapFill.kind === 'breaks-theme' &&
+                'Breaks the dominant theme of your collection.'}
+            </CardDescription>
+          </CardHeader>
+          {gapFill.kind === 'numeric' && gapFill.newTuples.length > 0 && (
+            <CardContent>
+              <ul className="list-disc pl-5 space-y-1 text-sm">
+                {gapFill.newTuples.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Collection Fit Analysis */}
       <SimilarityBadge watch={watch} />
