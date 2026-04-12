@@ -164,6 +164,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
       dialColor: data.dialColor || prev.dialColor,
       styleTags: data.styleTags?.length ? data.styleTags : prev.styleTags,
       designTraits: data.designTraits?.length ? data.designTraits : prev.designTraits,
+      isChronometer: data.isChronometer ?? prev.isChronometer,
       marketPrice: data.marketPrice ?? prev.marketPrice,
       imageUrl: data.imageUrl || prev.imageUrl,
     }))

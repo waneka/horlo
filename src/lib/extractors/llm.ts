@@ -5,7 +5,6 @@ import type { MovementType, StrapType, CrystalType } from '@/lib/types'
 import {
   STYLE_TAGS,
   DESIGN_TRAITS,
-  ROLE_TAGS,
   COMPLICATIONS,
   DIAL_COLORS,
   MOVEMENT_TYPES,
@@ -13,7 +12,7 @@ import {
   CRYSTAL_TYPES,
 } from '@/lib/constants'
 
-const EXTRACTION_PROMPT = `You are extracting watch specifications from a product page. Extract as much information as possible from the provided text.
+const EXTRACTION_PROMPT = `You are extracting watch specifications from a product page. You will receive the page text and optionally structured data (JSON-LD) found on the page. Cross-reference both sources to produce accurate specs.
 
 Return a JSON object with these fields (omit fields if not found):
 {
@@ -22,6 +21,7 @@ Return a JSON object with these fields (omit fields if not found):
   "reference": "string - reference number",
   "movement": "automatic|manual|quartz|spring-drive|other",
   "complications": ["array of: ${COMPLICATIONS.join(', ')}"],
+  "isChronometer": boolean (true ONLY if COSC-certified or explicitly stated as chronometer),
   "caseSizeMm": number (just the number, e.g., 42),
   "lugToLugMm": number,
   "waterResistanceM": number (in meters),
@@ -33,33 +33,44 @@ Return a JSON object with these fields (omit fields if not found):
   "marketPrice": number (USD, no currency symbol)
 }
 
-Important:
+CRITICAL — complications accuracy:
+- "chrono" means a CHRONOGRAPH: a watch with START/STOP/RESET pushers and timing subdials for measuring elapsed time. Look for physical pushers on the case side and subdials on the face.
+- "chronometer" is NOT a complication — it is a COSC accuracy certification. Set "isChronometer": true instead. Do NOT confuse "chronometer-certified" with "chronograph".
+- "moon-phase" means a moon phase DISPLAY on the dial — a small aperture showing the lunar cycle. Do NOT infer moon-phase from words like "lunar" in a model name or marketing copy unless there is a visible moon phase indicator on the dial.
+- "power-reserve" means a power reserve INDICATOR on the dial, NOT just "50hr power reserve" as a movement spec.
+- "date" means a date window/aperture on the dial.
+- Only include complications you can confirm from specs or dial description — when in doubt, leave it out.
+
+Other guidance:
 - Only include fields you're confident about
 - styleTags should describe what TYPE of watch it is (diver, dress, field, etc.)
 - designTraits should describe visual/aesthetic characteristics
-- For complications, only include features VISIBLE on the dial:
-  - "power-reserve" means a power reserve INDICATOR on the dial, NOT just "50hr power reserve" as a movement spec
-  - "date" means a date window/aperture on the dial
-  - "chrono" means chronograph pushers and subdials
-- Return ONLY valid JSON, no explanation
+- Return ONLY valid JSON, no explanation`
 
-Page content:
-`
-
-export async function extractWithLlm(html: string): Promise<ExtractedWatchData> {
+export async function extractWithLlm(
+  html: string,
+  structuredContext?: string
+): Promise<ExtractedWatchData> {
   const apiKey = process.env.ANTHROPIC_API_KEY
 
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY not configured')
   }
 
-  // Extract readable text from HTML
   const pageText = extractReadableText(html)
 
-  // Truncate if too long (keep first ~8k chars to stay within token limits)
   const truncatedText = pageText.length > 8000
     ? pageText.substring(0, 8000) + '...[truncated]'
     : pageText
+
+  let content = EXTRACTION_PROMPT + '\n\n'
+  if (structuredContext) {
+    const truncatedStructured = structuredContext.length > 2000
+      ? structuredContext.substring(0, 2000) + '...[truncated]'
+      : structuredContext
+    content += truncatedStructured + '\n\n'
+  }
+  content += 'Page content:\n' + truncatedText
 
   const client = new Anthropic({ apiKey })
 
@@ -69,18 +80,16 @@ export async function extractWithLlm(html: string): Promise<ExtractedWatchData> 
     messages: [
       {
         role: 'user',
-        content: EXTRACTION_PROMPT + truncatedText,
+        content,
       },
     ],
   })
 
-  // Extract text from response
   const textContent = response.content.find((c) => c.type === 'text')
   if (!textContent || textContent.type !== 'text') {
     throw new Error('No text response from LLM')
   }
 
-  // Parse JSON from response
   const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
     throw new Error('No JSON found in LLM response')
@@ -93,21 +102,16 @@ export async function extractWithLlm(html: string): Promise<ExtractedWatchData> 
 function extractReadableText(html: string): string {
   const $ = cheerio.load(html)
 
-  // Remove non-content elements
   $('script, style, nav, footer, header, aside, .menu, .navigation, .sidebar, .ad, .advertisement').remove()
 
-  // Get title
   const title = $('title').text().trim()
 
-  // Get main content text
   const mainContent = $('main, article, [role="main"], .product, .content, #content')
     .first()
     .text()
 
-  // If no main content found, get body text
   const bodyText = mainContent || $('body').text()
 
-  // Clean up whitespace
   const cleanText = bodyText
     .replace(/\s+/g, ' ')
     .replace(/\n+/g, '\n')
@@ -142,6 +146,10 @@ function validateAndCleanData(data: Record<string, unknown>): ExtractedWatchData
     if (validComps.length > 0) {
       cleaned.complications = validComps
     }
+  }
+
+  if (typeof data.isChronometer === 'boolean') {
+    cleaned.isChronometer = data.isChronometer
   }
 
   if (typeof data.caseSizeMm === 'number' && data.caseSizeMm >= 20 && data.caseSizeMm <= 55) {

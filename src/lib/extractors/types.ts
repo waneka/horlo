@@ -14,6 +14,7 @@ export interface ExtractedWatchData {
   dialColor?: string
   styleTags?: string[]
   designTraits?: string[]
+  isChronometer?: boolean
   pricePaid?: number
   marketPrice?: number
   imageUrl?: string
@@ -42,6 +43,7 @@ export function countPopulatedFields(data: ExtractedWatchData): number {
   if (data.dialColor) count++
   if (data.styleTags?.length) count++
   if (data.designTraits?.length) count++
+  if (data.isChronometer != null) count++
   if (data.marketPrice) count++
   if (data.imageUrl) count++
   return count
@@ -73,6 +75,7 @@ export function mergeExtractedData(
     dialColor: primary.dialColor || secondary.dialColor,
     styleTags: primary.styleTags?.length ? primary.styleTags : secondary.styleTags,
     designTraits: primary.designTraits?.length ? primary.designTraits : secondary.designTraits,
+    isChronometer: primary.isChronometer ?? secondary.isChronometer,
     marketPrice: primary.marketPrice || secondary.marketPrice,
     imageUrl: primary.imageUrl || secondary.imageUrl,
     notes: primary.notes || secondary.notes,

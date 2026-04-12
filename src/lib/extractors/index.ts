@@ -1,67 +1,52 @@
-import { extractStructuredData } from './structured'
+import { extractStructuredData, extractRawJsonLd } from './structured'
 import { extractFromHtml } from './html'
 import { extractWithLlm } from './llm'
 import { safeFetch } from '@/lib/ssrf'
 import {
   type ExtractedWatchData,
   type ExtractionResult,
-  isDataComplete,
   mergeExtractedData,
   countPopulatedFields,
 } from './types'
 
 export type { ExtractedWatchData, ExtractionResult }
 
-export interface ExtractionOptions {
-  useLlmFallback?: boolean
-  forceLlm?: boolean
-}
+const NON_AMBIGUOUS_FIELDS: (keyof ExtractedWatchData)[] = [
+  'brand', 'model', 'reference', 'imageUrl', 'marketPrice',
+  'caseSizeMm', 'lugToLugMm', 'waterResistanceM',
+]
 
-export async function extractWatchData(
-  html: string,
-  options: ExtractionOptions = {}
-): Promise<ExtractionResult> {
-  const { useLlmFallback = true, forceLlm = false } = options
-
-  // Step 1: Try structured data extraction
+export async function extractWatchData(html: string): Promise<ExtractionResult> {
+  // Step 1: Extract non-ambiguous fields from structured data + HTML
   const structuredData = extractStructuredData(html)
-  const structuredFields = Object.keys(structuredData).filter(
-    (k) => structuredData[k as keyof ExtractedWatchData] !== undefined
-  )
-
-  // Step 2: Try HTML pattern extraction
   const htmlData = extractFromHtml(html)
-  const htmlFields = Object.keys(htmlData).filter(
-    (k) => htmlData[k as keyof ExtractedWatchData] !== undefined
-  )
+  const staticData = mergeExtractedData(structuredData, htmlData)
 
-  // Merge structured + HTML (structured takes precedence)
-  let mergedData = mergeExtractedData(structuredData, htmlData)
-  let allFields = [...new Set([...structuredFields, ...htmlFields])]
+  // Step 2: Get raw JSON-LD for LLM context
+  const rawJsonLd = extractRawJsonLd(html)
 
-  // Step 3: Check if we need LLM
-  const needsLlm = forceLlm || (useLlmFallback && !isDataComplete(mergedData))
-  let llmUsed = false
+  // Step 3: Always run LLM — it handles ambiguous fields and gets
+  // structured data as context to cross-reference
+  const llmData = await extractWithLlm(html, rawJsonLd || undefined)
 
-  if (needsLlm) {
-    try {
-      const llmData = await extractWithLlm(html)
-      const llmFields = Object.keys(llmData).filter(
-        (k) => llmData[k as keyof ExtractedWatchData] !== undefined
-      )
-
-      // Merge: existing data takes precedence, LLM fills gaps
-      mergedData = mergeExtractedData(mergedData, llmData)
-      allFields = [...new Set([...allFields, ...llmFields])]
-      llmUsed = true
-    } catch (error) {
-      // LLM failed, continue with what we have
-      console.error('LLM extraction failed:', error)
+  // Step 4: Merge — non-ambiguous fields prefer static extraction,
+  // ambiguous fields prefer LLM
+  const merged: ExtractedWatchData = { ...llmData }
+  for (const field of NON_AMBIGUOUS_FIELDS) {
+    const staticValue = staticData[field]
+    if (staticValue !== undefined) {
+      ;(merged as Record<string, unknown>)[field] = staticValue
     }
   }
 
-  // Determine confidence
-  const fieldCount = countPopulatedFields(mergedData)
+  const allFields = [
+    ...new Set([
+      ...Object.keys(staticData).filter(k => staticData[k as keyof ExtractedWatchData] !== undefined),
+      ...Object.keys(llmData).filter(k => llmData[k as keyof ExtractedWatchData] !== undefined),
+    ]),
+  ]
+
+  const fieldCount = countPopulatedFields(merged)
   let confidence: 'high' | 'medium' | 'low' = 'low'
   if (fieldCount >= 8) {
     confidence = 'high'
@@ -70,19 +55,15 @@ export async function extractWatchData(
   }
 
   return {
-    data: mergedData,
+    data: merged,
     source: 'merged',
     confidence,
     fieldsExtracted: allFields,
-    llmUsed,
+    llmUsed: true,
   }
 }
 
-export async function fetchAndExtract(
-  url: string,
-  options: ExtractionOptions = {}
-): Promise<ExtractionResult> {
-  // Fetch the page through the SSRF-safe wrapper (DNS pinning + manual redirect validation)
+export async function fetchAndExtract(url: string): Promise<ExtractionResult> {
   const response = await safeFetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; WatchCollectionBot/1.0)',
@@ -95,5 +76,5 @@ export async function fetchAndExtract(
   }
 
   const html = await response.text()
-  return extractWatchData(html, options)
+  return extractWatchData(html)
 }

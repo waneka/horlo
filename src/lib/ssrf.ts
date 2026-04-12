@@ -90,13 +90,21 @@ export function createSsrfSafeDispatcher(): Agent {
     connect: {
       lookup: (
         hostname: string,
-        _opts: unknown,
-        cb: (err: Error | null, address: string, family: number) => void
+        opts: { all?: boolean },
+        cb: (
+          err: Error | null,
+          addressOrArray: string | Array<{ address: string; family: number }>,
+          family?: number
+        ) => void
       ) => {
         resolveAndValidate(hostname)
           .then((ip) => {
             const family = net.isIPv4(ip) ? 4 : net.isIPv6(ip) ? 6 : 0
-            cb(null, ip, family)
+            if (opts?.all) {
+              cb(null, [{ address: ip, family }])
+            } else {
+              cb(null, ip, family)
+            }
           })
           .catch((err) => {
             cb(err instanceof Error ? err : new Error(String(err)), '', 0)

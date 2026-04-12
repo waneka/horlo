@@ -48,6 +48,7 @@ export interface Watch {
 
   productionYear?: number   // 4-digit year, optional; manual entry only in Phase 2
   isFlaggedDeal?: boolean   // Wishlist-only manual "good deal" override (FEAT-04)
+  isChronometer?: boolean   // COSC or equivalent chronometer certification
 
   notes?: string
   imageUrl?: string

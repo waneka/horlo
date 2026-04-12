@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { extractWatchData } from '@/lib/extractors'
+import { extractStructuredData, extractRawJsonLd } from '@/lib/extractors/structured'
+import { extractFromHtml } from '@/lib/extractors/html'
+import { mergeExtractedData } from '@/lib/extractors/types'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -10,29 +12,41 @@ function loadFixture(name: string): string {
   return readFileSync(resolve(__dirname, '../fixtures/pages', name), 'utf-8')
 }
 
-describe('extractWatchData merge precedence', () => {
-  it('prefers structured data over HTML fallback when both present', async () => {
+describe('offline extraction (structured + HTML merge)', () => {
+  it('prefers structured data over HTML fallback when both present', () => {
     const html = loadFixture('partial.html')
-    const result = await extractWatchData(html, { useLlmFallback: false })
-    // Structured JSON-LD says brand=Omega; HTML div says "WRONG BRAND FROM HTML"
-    expect(result.data.brand).toBe('Omega')
-    expect(result.data.brand).not.toMatch(/WRONG/i)
+    const structured = extractStructuredData(html)
+    const htmlData = extractFromHtml(html)
+    const merged = mergeExtractedData(structured, htmlData)
+    expect(merged.brand).toBe('Omega')
+    expect(merged.brand).not.toMatch(/WRONG/i)
   })
 
-  it('returns a result object with data and metadata for a structured fixture', async () => {
+  it('extracts brand and fields from structured JSON-LD fixture', () => {
     const html = loadFixture('structured-jsonld.html')
-    const result = await extractWatchData(html, { useLlmFallback: false })
-    expect(result).toHaveProperty('data')
-    expect(result.data.brand).toBe('Rolex')
-    expect(result.llmUsed).toBe(false)
-    expect(result.fieldsExtracted.length).toBeGreaterThanOrEqual(1)
+    const structured = extractStructuredData(html)
+    expect(structured.brand).toBe('Rolex')
+    expect(structured.marketPrice).toBeDefined()
+    expect(structured.imageUrl).toBeDefined()
   })
 
-  it('does not call LLM when useLlmFallback is false', async () => {
-    // No network is hit; the call completes without ANTHROPIC_API_KEY.
+  it('extracts fields from HTML-only fixture', () => {
     const html = loadFixture('html-only.html')
-    const result = await extractWatchData(html, { useLlmFallback: false })
-    expect(result).toBeDefined()
-    expect(result.llmUsed).toBe(false)
+    const htmlData = extractFromHtml(html)
+    expect(htmlData).toBeDefined()
+    expect(Object.keys(htmlData).length).toBeGreaterThan(0)
+  })
+
+  it('extractRawJsonLd returns raw JSON-LD text for LLM context', () => {
+    const html = loadFixture('structured-jsonld.html')
+    const raw = extractRawJsonLd(html)
+    expect(raw).toContain('Rolex')
+    expect(raw).toContain('JSON-LD')
+  })
+
+  it('extractRawJsonLd returns empty string when no JSON-LD present', () => {
+    const html = loadFixture('html-only.html')
+    const raw = extractRawJsonLd(html)
+    expect(raw).toBe('')
   })
 })

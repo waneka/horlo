@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate URL
     let parsedUrl: URL
     try {
       parsedUrl = new URL(url)
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Only allow http/https
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
       return NextResponse.json(
         { error: 'Only HTTP/HTTPS URLs are supported' },
@@ -33,18 +31,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if LLM is available
-    const hasLlmKey = !!process.env.ANTHROPIC_API_KEY
-
-    // Extract data
-    const result = await fetchAndExtract(url, {
-      useLlmFallback: hasLlmKey,
-    })
+    const result = await fetchAndExtract(url)
 
     return NextResponse.json({
       success: true,
       ...result,
-      llmAvailable: hasLlmKey,
     })
   } catch (error) {
     console.error('Extraction error:', error)
@@ -56,9 +47,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Return a generic error to avoid leaking library internals or
-    // provider error shapes to the client. Full details are logged
-    // above for server-side debugging.
     return NextResponse.json(
       { error: 'Failed to extract watch data from URL.' },
       { status: 500 }
