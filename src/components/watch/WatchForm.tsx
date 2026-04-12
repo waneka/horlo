@@ -59,6 +59,8 @@ const initialFormData: FormData = {
   roleTags: [],
   acquisitionDate: undefined,
   lastWornDate: undefined,
+  productionYear: undefined,
+  isFlaggedDeal: undefined,
   notes: '',
   imageUrl: '',
 }
@@ -90,6 +92,8 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
           roleTags: watch.roleTags,
           acquisitionDate: watch.acquisitionDate,
           lastWornDate: watch.lastWornDate,
+          productionYear: watch.productionYear,
+          isFlaggedDeal: watch.isFlaggedDeal,
           notes: watch.notes ?? '',
           imageUrl: watch.imageUrl ?? '',
         }
@@ -323,6 +327,26 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
                 }))
               }
               placeholder="e.g., 48"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="productionYear">Production year</Label>
+            <Input
+              id="productionYear"
+              type="number"
+              min={1900}
+              max={2100}
+              step={1}
+              value={formData.productionYear ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                setFormData((prev) => ({
+                  ...prev,
+                  productionYear: v === '' ? undefined : Number(v),
+                }))
+              }}
+              placeholder="e.g. 2022"
             />
           </div>
 

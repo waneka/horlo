@@ -2,6 +2,7 @@
 
 import { Watch as WatchIcon } from 'lucide-react'
 import { WatchCard } from './WatchCard'
+import { useWatchStore } from '@/store/watchStore'
 import type { Watch } from '@/lib/types'
 
 interface WatchGridProps {
@@ -9,6 +10,25 @@ interface WatchGridProps {
 }
 
 export function WatchGrid({ watches }: WatchGridProps) {
+  const statusFilter = useWatchStore((s) => s.filters.status)
+
+  const ordered =
+    statusFilter === 'wishlist'
+      ? [...watches].sort((a, b) => {
+          const dealA =
+            a.isFlaggedDeal === true ||
+            (a.marketPrice != null &&
+              a.targetPrice != null &&
+              a.marketPrice <= a.targetPrice)
+          const dealB =
+            b.isFlaggedDeal === true ||
+            (b.marketPrice != null &&
+              b.targetPrice != null &&
+              b.marketPrice <= b.targetPrice)
+          return Number(dealB) - Number(dealA)
+        })
+      : watches
+
   if (watches.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -25,7 +45,7 @@ export function WatchGrid({ watches }: WatchGridProps) {
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
-      {watches.map((watch) => (
+      {ordered.map((watch) => (
         <WatchCard key={watch.id} watch={watch} />
       ))}
     </div>

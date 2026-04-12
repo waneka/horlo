@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Watch as WatchIcon } from 'lucide-react'
+import { Watch as WatchIcon, Sparkles, Tag } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getSafeImageUrl } from '@/lib/images'
+import { computeGapFill } from '@/lib/gapFill'
+import { usePreferencesStore } from '@/store/preferencesStore'
+import { useWatchStore } from '@/store/watchStore'
 import type { Watch } from '@/lib/types'
 
 interface WatchCardProps {
@@ -14,6 +17,19 @@ interface WatchCardProps {
 
 export function WatchCard({ watch }: WatchCardProps) {
   const safeUrl = getSafeImageUrl(watch.imageUrl)
+  const preferences = usePreferencesStore((s) => s.preferences)
+  const collection = useWatchStore((s) => s.watches)
+
+  const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
+  const gapFill = isWishlistLike
+    ? computeGapFill(watch, collection, preferences)
+    : null
+
+  const autoDeal =
+    watch.marketPrice != null &&
+    watch.targetPrice != null &&
+    watch.marketPrice <= watch.targetPrice
+  const isDeal = isWishlistLike && (watch.isFlaggedDeal === true || autoDeal)
 
   return (
     <Link href={`/watch/${watch.id}`}>
@@ -32,9 +48,29 @@ export function WatchCard({ watch }: WatchCardProps) {
               <WatchIcon className="h-10 w-10 text-muted-foreground/40" />
             </div>
           )}
-          <Badge className="absolute top-2 right-2" variant="outline">
-            {watch.status}
-          </Badge>
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+            <Badge variant="outline">{watch.status}</Badge>
+            {isDeal && (
+              <Badge variant="secondary" className="gap-1">
+                <Sparkles className="h-3 w-3" aria-hidden />
+                Deal
+              </Badge>
+            )}
+            {gapFill && (
+              <Badge
+                variant="outline"
+                className="gap-1"
+                aria-label={`Gap-fill ${gapFill.kind}`}
+              >
+                <Tag className="h-3 w-3" aria-hidden />
+                {gapFill.kind === 'numeric' && `Gap ${gapFill.score}`}
+                {gapFill.kind === 'first-watch' && 'First watch'}
+                {gapFill.kind === 'outside-specialty' && 'Outside specialty'}
+                {gapFill.kind === 'off-brand' && 'Off-brand'}
+                {gapFill.kind === 'breaks-theme' && 'Breaks theme'}
+              </Badge>
+            )}
+          </div>
         </div>
         <CardContent className="p-4">
           <h3 className="font-semibold text-card-foreground group-hover:text-accent">
