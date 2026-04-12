@@ -53,7 +53,13 @@ Plans:
   6. User sees "days since last worn" on the watch detail view and a "Sleeping Beauties" section on insights listing neglected watches
   7. Newly created watches get `crypto.randomUUID()` IDs; no code path uses `Date.now()` for ID generation
   8. Running `npm test` executes Vitest with RTL and MSW configured, and green tests exist for `similarity.ts` (all six labels incl. preference-aware paths) and the three extractor stages
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 02-01-PLAN.md — Wave 1: Schema extensions — Watch.productionYear, Watch.isFlaggedDeal, CollectionGoal += brand-loyalist, generateId → crypto.randomUUID (FEAT-06)
+- [ ] 02-02-PLAN.md — Wave 2: Similarity engine rewire — complicationExceptions filter, goal-aware thresholds + reasoning, brand-loyalist routing, new gapFill.ts (FEAT-01, FEAT-02, FEAT-05)
+- [ ] 02-03-PLAN.md — Wave 3: Wishlist UX — productionYear input, Deal + gap-fill badges, last-worn line, flagged-deal toggle, gap-fill callout, wishlist sort (VIS-05, FEAT-03, FEAT-04, FEAT-05)
+- [ ] 02-04-PLAN.md — Wave 3: Insights additions — GoodDealsSection + SleepingBeautiesSection + goal-aware observation copy (VIS-05, FEAT-02, FEAT-04)
+- [ ] 02-05-PLAN.md — Wave 3: Test foundation — MSW devDep install, similarity.ts + gapFill.ts test suites, 3-stage extractor pipeline fixture tests (TEST-01, TEST-02, TEST-03)
 **UI hint**: yes
 
 ### Phase 3: Data Layer Foundation
@@ -111,7 +117,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Visual Polish & Security Hardening | 0/6 | Not started | - |
-| 2. Feature Completeness & Test Foundation | 0/TBD | Not started | - |
+| 2. Feature Completeness & Test Foundation | 0/5 | Not started | - |
 | 3. Data Layer Foundation | 0/TBD | Not started | - |
 | 4. Authentication | 0/TBD | Not started | - |
 | 5. Migration, Zustand Cleanup & Similarity Rewire | 0/TBD | Not started | - |
