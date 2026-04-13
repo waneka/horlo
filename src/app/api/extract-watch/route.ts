@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchAndExtract } from '@/lib/extractors'
 import { SsrfError } from '@/lib/ssrf'
+import { UnauthorizedError, getCurrentUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
+  // AUTH-04 / D-14: auth gate runs FIRST, before URL parsing or SSRF check.
+  // Proxy is an optimistic outer gate; this is the per-route-handler inner gate.
+  try {
+    await getCurrentUser()
+  } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    throw err
+  }
+
   try {
     const body = await request.json()
     const { url } = body
