@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -37,20 +38,22 @@ export function UserMenu({
         }
       />
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="text-xs text-muted-foreground">Signed in as</div>
-          <div className="truncate text-sm">{user.email}</div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          render={
-            <form action={logout} className="w-full">
-              <button type="submit" className="w-full text-left">
-                Log out
-              </button>
-            </form>
-          }
-        />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="text-xs text-muted-foreground">Signed in as</div>
+            <div className="truncate text-sm">{user.email}</div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            render={
+              <form action={logout} className="w-full">
+                <button type="submit" className="w-full text-left">
+                  Log out
+                </button>
+              </form>
+            }
+          />
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
