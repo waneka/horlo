@@ -13,6 +13,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // `server-only` is a Next.js build-time guard; in vitest it resolves to a
+      // throwing module. Alias to an empty shim so server-only files can be
+      // unit-tested under jsdom.
+      'server-only': fileURLToPath(new URL('./tests/shims/server-only.ts', import.meta.url)),
     },
   },
 })
