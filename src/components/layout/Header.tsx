@@ -1,20 +1,19 @@
-'use client'
-
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { MobileNav } from '@/components/layout/MobileNav'
-import { cn } from '@/lib/utils'
+import { HeaderNav } from '@/components/layout/HeaderNav'
+import { UserMenu } from '@/components/layout/UserMenu'
+import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 
-const navItems = [
-  { href: '/', label: 'Collection' },
-  { href: '/insights', label: 'Insights' },
-  { href: '/preferences', label: 'Preferences' },
-]
-
-export function Header() {
-  const pathname = usePathname()
+export async function Header() {
+  let user: { id: string; email: string } | null = null
+  try {
+    user = await getCurrentUser()
+  } catch (err) {
+    if (!(err instanceof UnauthorizedError)) throw err
+    // unauth is the expected case on /login, /signup, etc.
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur">
@@ -24,28 +23,16 @@ export function Header() {
           <Link href="/" className="flex items-center gap-2">
             <span className="font-serif text-xl">Horlo</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'text-sm font-semibold transition-colors hover:text-foreground',
-                  pathname === item.href
-                    ? 'text-foreground'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <HeaderNav />
         </div>
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Link href="/watch/new">
-            <Button>Add Watch</Button>
-          </Link>
+          {user && (
+            <Link href="/watch/new">
+              <Button>Add Watch</Button>
+            </Link>
+          )}
+          <UserMenu user={user} />
         </div>
       </div>
     </header>
