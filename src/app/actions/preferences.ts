@@ -1,10 +1,9 @@
 'use server'
 
-// TODO(Phase 4): Replace userId parameter with session-derived userId
-
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import * as preferencesDAL from '@/data/preferences'
+import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { UserPreferences } from '@/lib/types'
 
@@ -33,14 +32,15 @@ const preferencesSchema = z.object({
 })
 
 /**
- * Save (upsert) preferences for a user.
+ * Save (upsert) preferences for the current session user.
+ * Reads userId from session — callers do not pass userId (D-02).
  * Validates partial input, delegates to DAL, revalidates the preferences path on success.
- * Returns ActionResult — never throws across the boundary (D-12).
+ * Returns ActionResult — never throws across the boundary (D-12, D-15).
  */
-export async function savePreferences(
-  userId: string,
-  data: unknown,
-): Promise<ActionResult<UserPreferences>> {
+export async function savePreferences(data: unknown): Promise<ActionResult<UserPreferences>> {
+  let user
+  try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
+
   const parsed = preferencesSchema.safeParse(data)
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors
@@ -51,7 +51,7 @@ export async function savePreferences(
   }
 
   try {
-    const prefs = await preferencesDAL.upsertPreferences(userId, parsed.data)
+    const prefs = await preferencesDAL.upsertPreferences(user.id, parsed.data)
     revalidatePath('/preferences')
     return { success: true, data: prefs }
   } catch (err) {
