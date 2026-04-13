@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/proxy', () => ({
   updateSession: vi.fn(),
 }))
 
-import proxy from '../proxy'
+import proxy from '@/proxy'
 import { updateSession } from '@/lib/supabase/proxy'
 
 function mkRequest(pathname: string, search = '') {
@@ -61,7 +61,7 @@ describe('proxy.ts — AUTH-02', () => {
   })
 
   it('config.matcher uses negative-lookahead excluding static assets', async () => {
-    const { config } = await import('../proxy')
+    const { config } = await import('@/proxy')
     expect(config.matcher[0]).toContain('_next/static')
     expect(config.matcher[0]).toContain('favicon.ico')
   })
