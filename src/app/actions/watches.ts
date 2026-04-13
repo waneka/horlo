@@ -1,10 +1,9 @@
 'use server'
 
-// TODO(Phase 4): Replace userId parameter with session-derived userId
-
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import * as watchDAL from '@/data/watches'
+import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { Watch } from '@/lib/types'
 
@@ -43,10 +42,14 @@ const updateWatchSchema = insertWatchSchema.partial()
 
 /**
  * Add a new watch to the collection.
+ * Reads userId from session — callers do not pass userId (D-02).
  * Validates input, delegates to DAL, revalidates the home path on success.
- * Returns ActionResult — never throws across the boundary (D-12).
+ * Returns ActionResult — never throws across the boundary (D-12, D-15).
  */
-export async function addWatch(userId: string, data: unknown): Promise<ActionResult<Watch>> {
+export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
+  let user
+  try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
+
   const parsed = insertWatchSchema.safeParse(data)
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors
@@ -57,25 +60,28 @@ export async function addWatch(userId: string, data: unknown): Promise<ActionRes
   }
 
   try {
-    const watch = await watchDAL.createWatch(userId, parsed.data)
+    const watch = await watchDAL.createWatch(user.id, parsed.data)
     revalidatePath('/')
     return { success: true, data: watch }
   } catch (err) {
     console.error('[addWatch] unexpected error:', err)
+    if (err instanceof Error && err.message.includes('not found or access denied')) {
+      return { success: false, error: 'Not found' }
+    }
     return { success: false, error: 'Failed to create watch' }
   }
 }
 
 /**
  * Update an existing watch.
+ * Reads userId from session — callers do not pass userId (D-02).
  * Validates partial input, delegates to DAL, revalidates the home path on success.
- * Returns ActionResult — never throws across the boundary (D-12).
+ * Returns ActionResult — never throws across the boundary (D-12, D-15).
  */
-export async function editWatch(
-  userId: string,
-  watchId: string,
-  data: unknown,
-): Promise<ActionResult<Watch>> {
+export async function editWatch(watchId: string, data: unknown): Promise<ActionResult<Watch>> {
+  let user
+  try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
+
   const parsed = updateWatchSchema.safeParse(data)
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors
@@ -86,27 +92,37 @@ export async function editWatch(
   }
 
   try {
-    const watch = await watchDAL.updateWatch(userId, watchId, parsed.data)
+    const watch = await watchDAL.updateWatch(user.id, watchId, parsed.data)
     revalidatePath('/')
     return { success: true, data: watch }
   } catch (err) {
     console.error('[editWatch] unexpected error:', err)
+    if (err instanceof Error && err.message.includes('not found or access denied')) {
+      return { success: false, error: 'Not found' }
+    }
     return { success: false, error: 'Failed to update watch' }
   }
 }
 
 /**
  * Remove a watch from the collection.
+ * Reads userId from session — callers do not pass userId (D-02).
  * Delegates to DAL, revalidates the home path on success.
- * Returns ActionResult — never throws across the boundary (D-12).
+ * Returns ActionResult — never throws across the boundary (D-12, D-15).
  */
-export async function removeWatch(userId: string, watchId: string): Promise<ActionResult<void>> {
+export async function removeWatch(watchId: string): Promise<ActionResult<void>> {
+  let user
+  try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
+
   try {
-    await watchDAL.deleteWatch(userId, watchId)
+    await watchDAL.deleteWatch(user.id, watchId)
     revalidatePath('/')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[removeWatch] unexpected error:', err)
+    if (err instanceof Error && err.message.includes('not found or access denied')) {
+      return { success: false, error: 'Not found' }
+    }
     return { success: false, error: 'Failed to delete watch' }
   }
 }
