@@ -87,7 +87,15 @@ Plans:
   3. Every Server Action and DAL function re-verifies the session via `getCurrentUser()` before touching data; a request with a tampered cookie returns 401 even if the proxy is bypassed
   4. A user cannot read, update, or delete another user's watches or preferences regardless of the ID supplied by the client (IDOR-safe)
   5. `POST /api/extract-watch` rejects unauthenticated requests with 401 in addition to the Phase 1 SSRF protections
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [x] 04-01-PLAN.md — Wave 1: Bootstrap — install @supabase/ssr + @supabase/supabase-js, shadcn DropdownMenu, supabase init/start, shadow-user trigger migration, .env.example, test stubs + multi-user fixture (AUTH-01..04)
+- [x] 04-02-PLAN.md — Wave 2: Auth library — src/lib/supabase/{server,client,proxy}.ts + src/lib/auth.ts (getCurrentUser + UnauthorizedError) + logout Server Action (AUTH-01, AUTH-02)
+- [x] 04-03-PLAN.md — Wave 3: proxy.ts deny-by-default matcher + /api/extract-watch 401 gate layered on Phase 1 SSRF (AUTH-02, AUTH-04)
+- [x] 04-04-PLAN.md — Wave 3: Server Action refactor — drop userId param from watches/preferences actions, add getCurrentUser prologue, real IDOR integration test against local Postgres (AUTH-02, AUTH-03)
+- [x] 04-05-PLAN.md — Wave 3: Auth pages — /login, /signup, /forgot-password, /reset-password, /auth/callback (verifyOtp recovery flow) (AUTH-01)
+- [x] 04-06-PLAN.md — Wave 4: Header refactor to Server Component + UserMenu dropdown + logout form + UAT checkpoint (AUTH-01)
+**UI hint**: yes
 
 ### Phase 5: Migration, Zustand Cleanup & Similarity Rewire
 **Goal**: Existing local collections are self-service imported into the cloud, Zustand is demoted to filter-only state, and the similarity engine reads from props.

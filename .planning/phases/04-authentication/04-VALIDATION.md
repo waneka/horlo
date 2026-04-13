@@ -2,8 +2,8 @@
 phase: 4
 slug: authentication
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-12
 ---
 
@@ -42,7 +42,21 @@ created: 2026-04-12
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| *TBD by planner* | | | | | | | | | ⬜ pending |
+| 04-01-T1 | 01 | 1 | AUTH-01..04 | infra | deps installed | smoke | `node -e "require('./package.json').dependencies['@supabase/ssr']"` | ✓ | ⬜ pending |
+| 04-01-T2 | 01 | 1 | AUTH-01..04 | infra | local supabase running | smoke | `npx supabase status` | ✓ | ⬜ pending |
+| 04-01-T3 | 01 | 1 | AUTH-01..04 | infra | test stubs exist | unit | `npx vitest run tests/auth.test.ts tests/proxy.test.ts` | ✓ | ⬜ pending |
+| 04-02-T1 | 02 | 2 | AUTH-01, AUTH-02 | T-4-02 | supabase helper correct | unit | `npx vitest run tests/auth.test.ts` | ✓ | ⬜ pending |
+| 04-02-T2 | 02 | 2 | AUTH-01, AUTH-02 | T-4-02 | getCurrentUser uses getUser() | unit | `npx vitest run tests/auth.test.ts` | ✓ | ⬜ pending |
+| 04-02-T3 | 02 | 2 | AUTH-01 | T-4-07 | logout signOut + redirect | unit | `npx vitest run tests/actions/auth.test.ts` | ✓ | ⬜ pending |
+| 04-03-T1 | 03 | 3 | AUTH-02 | T-4-01 | proxy deny-by-default redirects | unit | `npx vitest run tests/proxy.test.ts` | ✓ | ⬜ pending |
+| 04-03-T2 | 03 | 3 | AUTH-04 | T-4-07 | /api/extract-watch 401 gate | unit | `npx vitest run tests/api/extract-watch-auth.test.ts` | ✓ | ⬜ pending |
+| 04-04-T1 | 04 | 3 | AUTH-02, AUTH-03 | T-4-03 | watches actions auth-gate + session id | unit | `npx vitest run tests/actions/watches.test.ts` | ✓ | ⬜ pending |
+| 04-04-T2 | 04 | 3 | AUTH-02, AUTH-03 | T-4-03 | preferences action auth-gate | unit | `npx vitest run tests/actions/preferences.test.ts` | ✓ | ⬜ pending |
+| 04-04-T3 | 04 | 3 | AUTH-03 | T-4-03 | IDOR cross-user denial | integration | `npx vitest run tests/data/isolation.test.ts` | ✓ | ⬜ pending |
+| 04-05-T1 | 05 | 3 | AUTH-01 | T-4-05 | login/signup pages compile | typecheck+build | `npx tsc --noEmit && npm run build` | n/a | ⬜ pending |
+| 04-05-T2 | 05 | 3 | AUTH-01 | T-4-06 | forgot/reset/callback compile | typecheck+build | `npx tsc --noEmit && npm run build` | n/a | ⬜ pending |
+| 04-06-T1 | 06 | 4 | AUTH-01 | T-4-04 | Header server component + UserMenu | typecheck+build | `npx tsc --noEmit && npm run build && npm test` | n/a | ⬜ pending |
+| 04-06-T2 | 06 | 4 | AUTH-01..04 | all | full UAT | manual | see 04-06 how-to-verify | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
