@@ -2,20 +2,17 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useWatchStore } from '@/store/watchStore'
-import { usePreferencesStore } from '@/store/preferencesStore'
 import { analyzeSimilarity, getSimilarityLabelDisplay } from '@/lib/similarity'
-import type { Watch } from '@/lib/types'
+import type { Watch, UserPreferences } from '@/lib/types'
 
 interface SimilarityBadgeProps {
   watch: Watch
+  collection: Watch[]
+  preferences: UserPreferences
 }
 
-export function SimilarityBadge({ watch }: SimilarityBadgeProps) {
-  const { watches } = useWatchStore()
-  const { preferences } = usePreferencesStore()
-
-  const result = analyzeSimilarity(watch, watches, preferences)
+export function SimilarityBadge({ watch, collection, preferences }: SimilarityBadgeProps) {
+  const result = analyzeSimilarity(watch, collection, preferences)
   const labelDisplay = getSimilarityLabelDisplay(result.label)
 
   return (

@@ -25,10 +25,14 @@ import { usePreferencesStore } from '@/store/preferencesStore'
 import { SimilarityBadge } from '@/components/insights/SimilarityBadge'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
-import type { Watch } from '@/lib/types'
+import type { Watch, UserPreferences } from '@/lib/types'
 
 interface WatchDetailProps {
   watch: Watch
+  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
+  collection?: Watch[]
+  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
+  preferences?: UserPreferences
 }
 
 function formatDate(dateStr?: string): string {
@@ -50,17 +54,21 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences }: WatchDetailProps) {
   const router = useRouter()
   const { deleteWatch, markAsWorn } = useWatchStore()
   const updateWatch = useWatchStore((s) => s.updateWatch)
-  const preferences = usePreferencesStore((s) => s.preferences)
-  const collection = useWatchStore((s) => s.watches)
+  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
+  const storePrefs = usePreferencesStore((s) => s.preferences)
+  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
+  const storeWatches = useWatchStore((s) => s.watches)
+  const effectiveCollection = collection ?? storeWatches
+  const effectivePreferences = preferences ?? storePrefs
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
   const gapFill = isWishlistLike
-    ? computeGapFill(watch, collection, preferences)
+    ? computeGapFill(watch, effectiveCollection, effectivePreferences)
     : null
 
   const handleDelete = () => {
@@ -383,7 +391,11 @@ export function WatchDetail({ watch }: WatchDetailProps) {
       )}
 
       {/* Collection Fit Analysis */}
-      <SimilarityBadge watch={watch} />
+      <SimilarityBadge
+        watch={watch}
+        collection={effectiveCollection}
+        preferences={effectivePreferences}
+      />
 
       {/* Notes */}
       {watch.notes && (
