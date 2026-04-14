@@ -7,31 +7,21 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getSafeImageUrl } from '@/lib/images'
 import { computeGapFill } from '@/lib/gapFill'
-import { usePreferencesStore } from '@/store/preferencesStore'
-import { useWatchStore } from '@/store/watchStore'
 import type { Watch, UserPreferences } from '@/lib/types'
 
 interface WatchCardProps {
   watch: Watch
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  collection?: Watch[]
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  preferences?: UserPreferences
+  collection: Watch[]
+  preferences: UserPreferences
 }
 
 export function WatchCard({ watch, collection, preferences }: WatchCardProps) {
   const safeUrl = getSafeImageUrl(watch.imageUrl)
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  const storePrefs = usePreferencesStore((s) => s.preferences)
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  const storeWatches = useWatchStore((s) => s.watches)
-  const effectiveCollection = collection ?? storeWatches
-  const effectivePreferences = preferences ?? storePrefs
 
   const isOwned = watch.status === 'owned'
   const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
   const gapFill = isWishlistLike
-    ? computeGapFill(watch, effectiveCollection, effectivePreferences)
+    ? computeGapFill(watch, collection, preferences)
     : null
 
   const autoDeal =

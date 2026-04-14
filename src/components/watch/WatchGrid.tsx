@@ -3,13 +3,17 @@
 import { Watch as WatchIcon } from 'lucide-react'
 import { WatchCard } from './WatchCard'
 import { useWatchStore } from '@/store/watchStore'
-import type { Watch } from '@/lib/types'
+import type { Watch, UserPreferences } from '@/lib/types'
 
 interface WatchGridProps {
   watches: Watch[]
+  collection: Watch[]
+  preferences: UserPreferences
 }
 
-export function WatchGrid({ watches }: WatchGridProps) {
+export function WatchGrid({ watches, collection, preferences }: WatchGridProps) {
+  // Read only the status filter — still lives in the ephemeral watchStore so
+  // the grid knows when to surface deal-sorted wishlist views.
   const statusFilter = useWatchStore((s) => s.filters.status)
 
   const ordered =
@@ -46,7 +50,12 @@ export function WatchGrid({ watches }: WatchGridProps) {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
       {ordered.map((watch) => (
-        <WatchCard key={watch.id} watch={watch} />
+        <WatchCard
+          key={watch.id}
+          watch={watch}
+          collection={collection}
+          preferences={preferences}
+        />
       ))}
     </div>
   )

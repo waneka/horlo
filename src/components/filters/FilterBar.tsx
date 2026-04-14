@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -46,20 +46,20 @@ function CollapsibleSection({
   )
 }
 
-export function FilterBar() {
-  const { watches, filters, setFilter, resetFilters } = useWatchStore()
+interface FilterBarProps {
+  maxPrice: number
+}
+
+export function FilterBar({ maxPrice }: FilterBarProps) {
+  const filters = useWatchStore((s) => s.filters)
+  const setFilter = useWatchStore((s) => s.setFilter)
+  const resetFilters = useWatchStore((s) => s.resetFilters)
 
   // Dynamic upper bound: highest marketPrice in the collection, rounded up to
   // the next 1k increment, with a floor so the slider is usable for an empty
   // or all-free collection.
-  const priceCap = useMemo(() => {
-    const highest = watches.reduce(
-      (acc, w) => (w.marketPrice != null && w.marketPrice > acc ? w.marketPrice : acc),
-      0,
-    )
-    const bumped = Math.max(highest, PRICE_MAX_FLOOR)
-    return Math.ceil(bumped / 1000) * 1000
-  }, [watches])
+  const bumped = Math.max(maxPrice, PRICE_MAX_FLOOR)
+  const priceCap = Math.ceil(bumped / 1000) * 1000
 
   // Slider handle positions during a drag. Committed values live in the store
   // under filters.priceRange. Falls back to [PRICE_MIN, priceCap] meaning "all".
