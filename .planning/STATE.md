@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-04-14T05:32:48.890Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-04-14T05:38:59.123Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 22
-  percent: 85
+  completed_plans: 23
+  percent: 88
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 ## Current Position
 
 Phase: 05 (migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 05 P01 | 0.5h | 2 tasks | 4 files |
 | Phase 05 P02 | 5min | 1 tasks | 1 files |
+| Phase 05 P03 | 15min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - Test infrastructure starts in Phase 2 (not deferred to the end) so similarity fixes land with regression coverage
 - [Phase 05]: SimilarityBadge takes collection + preferences as required props (DATA-05 contract)
 - [Phase 05]: drizzle-kit migrate uses direct Supabase connection (port 5432, db. subdomain); Vercel runtime uses session-mode pooler — documented in OPS-01 runbook
+- [Phase 05]: [Phase 05]: CollectionView + PreferencesClient are the Server-Component→client handoffs; WatchGrid keeps a single filters.status selector for wishlist deal-sort (smallest diff)
 
 ### Pending Todos
 
@@ -84,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T05:32:43.645Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-04-14T05:38:59.120Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None

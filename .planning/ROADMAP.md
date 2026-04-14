@@ -110,7 +110,7 @@ Plans:
 Plans:
 - [x] 05-01-PLAN.md — Wave 1: filterWatches pure helper + SimilarityBadge prop rewire (DATA-05 contract)
 - [x] 05-02-PLAN.md — Wave 1: docs/deploy-db-setup.md runbook — supabase link + drizzle migrate + vercel env add (OPS-01)
-- [ ] 05-03-PLAN.md — Wave 2: Convert home/insights/preferences pages to Server Components + CollectionView client wrapper (DATA-05)
+- [x] 05-03-PLAN.md — Wave 2: Convert home/insights/preferences pages to Server Components + CollectionView client wrapper (DATA-05)
 - [ ] 05-04-PLAN.md — Wave 3: Convert watch/[id] + edit pages to Server Components + WatchForm/WatchDetail Server Action rewire (DATA-05)
 - [ ] 05-05-PLAN.md — Wave 4: Strip watchStore to filter-only, delete preferencesStore + useIsHydrated, verify all grep gates (DATA-05)
 - [ ] 05-06-PLAN.md — Wave 5: Operator executes runbook against prod + cross-browser parity test (OPS-01 checkpoint)
