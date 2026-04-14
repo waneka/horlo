@@ -52,7 +52,7 @@ Brownfield project. The MVP (CRUD, grid, filters, tagging, preferences, similari
 
 ## Operations
 
-- [ ] **OPS-01**: `docs/deploy-db-setup.md` runbook exists with verified, step-by-step commands for a solo operator to link the existing prod Supabase project, apply all migrations (including the Phase 4 shadow-user trigger), push the Drizzle schema, set Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
+- [x] **OPS-01**: `docs/deploy-db-setup.md` runbook exists with verified, step-by-step commands for a solo operator to link the existing prod Supabase project, apply all migrations (including the Phase 4 shadow-user trigger), push the Drizzle schema, set Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
 
 ---
 
