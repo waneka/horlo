@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -69,14 +69,23 @@ export function FilterBar() {
   ])
 
   // Invariant: a newly-added watch must never be filtered out of view.
-  // When the cap grows (a pricier watch was added), bump both the local handle
-  // and the committed store filter up to the new cap if they were sitting at
-  // or below the old cap. Also rewrite priceRange.max to null when it now
-  // equals the cap, so "all" stays "all" without a stale numeric ceiling.
+  // Only act when priceCap *grows* vs the previous render — that's the exact
+  // signal that a new watch was added at a price above the old cap. Acting on
+  // every render instead would snap the max thumb back to the cap immediately
+  // after the user deliberately committed a lower max.
+  const prevCapRef = useRef(priceCap)
   useEffect(() => {
-    setLocal((prev) => (prev[1] < priceCap ? [prev[0], priceCap] : prev))
-    if (filters.priceRange.max != null && filters.priceRange.max < priceCap) {
-      setFilter('priceRange', { ...filters.priceRange, max: null })
+    const prev = prevCapRef.current
+    if (priceCap !== prev) {
+      prevCapRef.current = priceCap
+      if (priceCap > prev) {
+        // Cap grew — clear any stale max and snap the local handle up so the
+        // newly-added pricier watch is visible regardless of prior filter.
+        setLocal((cur) => [cur[0], priceCap])
+        if (filters.priceRange.max != null) {
+          setFilter('priceRange', { min: filters.priceRange.min, max: null })
+        }
+      }
     }
   }, [priceCap, filters.priceRange, setFilter])
 
