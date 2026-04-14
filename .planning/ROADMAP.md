@@ -106,7 +106,14 @@ Plans:
   2. The insights page is a Server Component; `SimilarityBadge` and `BalanceChart` receive collection + preferences as props and no longer call `useWatchStore()` or `usePreferencesStore()`
   3. A logged-in user on two different browsers sees the same collection, and changes in one browser appear in the other after refresh
   4. `docs/deploy-db-setup.md` exists with verified step-by-step commands for a solo operator to link the existing prod Supabase project (project ref `wdntzsckjaoqodsyscns`), apply every migration including Phase 4's shadow-user trigger, push the Drizzle schema, set the three required Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 05-01-PLAN.md — Wave 1: filterWatches pure helper + SimilarityBadge prop rewire (DATA-05 contract)
+- [ ] 05-02-PLAN.md — Wave 1: docs/deploy-db-setup.md runbook — supabase link + drizzle migrate + vercel env add (OPS-01)
+- [ ] 05-03-PLAN.md — Wave 2: Convert home/insights/preferences pages to Server Components + CollectionView client wrapper (DATA-05)
+- [ ] 05-04-PLAN.md — Wave 3: Convert watch/[id] + edit pages to Server Components + WatchForm/WatchDetail Server Action rewire (DATA-05)
+- [ ] 05-05-PLAN.md — Wave 4: Strip watchStore to filter-only, delete preferencesStore + useIsHydrated, verify all grep gates (DATA-05)
+- [ ] 05-06-PLAN.md — Wave 5: Operator executes runbook against prod + cross-browser parity test (OPS-01 checkpoint)
 
 ### Phase 6: Test Suite Completion
 **Goal**: The stabilized cloud-backed codebase has the test coverage called for in v1, including the route handler and key UI components.
