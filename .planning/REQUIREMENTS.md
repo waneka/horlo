@@ -32,7 +32,7 @@ Brownfield project. The MVP (CRUD, grid, filters, tagging, preferences, similari
 - [ ] **DATA-02**: Data Access Layer in `src/data/` marked `server-only`; every query scoped to the authenticated `userId`
 - [ ] **DATA-03**: Watch CRUD and preference mutations move to Server Actions in `src/app/actions/`
 - [ ] **DATA-04**: Existing pages fetch data via Server Components calling the DAL; Zustand `watchStore` narrows to filter-only ephemeral state (no more `persist` middleware)
-- [ ] **DATA-05**: Similarity engine remains client-side and receives collection + preferences as props instead of reading from Zustand
+- [x] **DATA-05**: Similarity engine remains client-side and receives collection + preferences as props instead of reading from Zustand
 
 ## Auth
 
@@ -103,7 +103,7 @@ REQ-ID → Phase mapping (populated by roadmapper 2026-04-11):
 | DATA-02 | Phase 3 | Pending |
 | DATA-03 | Phase 3 | Pending |
 | DATA-04 | Phase 3 | Pending |
-| DATA-05 | Phase 5 | Pending |
+| DATA-05 | Phase 5 | Complete |
 | AUTH-01 | Phase 4 | Pending |
 | AUTH-02 | Phase 4 | Pending |
 | AUTH-03 | Phase 4 | Pending |

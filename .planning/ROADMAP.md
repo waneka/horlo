@@ -108,7 +108,7 @@ Plans:
   4. `docs/deploy-db-setup.md` exists with verified step-by-step commands for a solo operator to link the existing prod Supabase project (project ref `wdntzsckjaoqodsyscns`), apply every migration including Phase 4's shadow-user trigger, push the Drizzle schema, set the three required Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
 **Plans**: 6 plans
 Plans:
-- [ ] 05-01-PLAN.md — Wave 1: filterWatches pure helper + SimilarityBadge prop rewire (DATA-05 contract)
+- [x] 05-01-PLAN.md — Wave 1: filterWatches pure helper + SimilarityBadge prop rewire (DATA-05 contract)
 - [ ] 05-02-PLAN.md — Wave 1: docs/deploy-db-setup.md runbook — supabase link + drizzle migrate + vercel env add (OPS-01)
 - [ ] 05-03-PLAN.md — Wave 2: Convert home/insights/preferences pages to Server Components + CollectionView client wrapper (DATA-05)
 - [ ] 05-04-PLAN.md — Wave 3: Convert watch/[id] + edit pages to Server Components + WatchForm/WatchDetail Server Action rewire (DATA-05)
