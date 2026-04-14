@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UrlImport } from './UrlImport'
-import { useWatchStore } from '@/store/watchStore'
+import { addWatch, editWatch } from '@/app/actions/watches'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import {
   STYLE_TAGS,
@@ -67,7 +67,8 @@ const initialFormData: FormData = {
 
 export function WatchForm({ watch, mode }: WatchFormProps) {
   const router = useRouter()
-  const { addWatch, updateWatch } = useWatchStore()
+  const [isPending, startTransition] = useTransition()
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<FormData>(
     watch
@@ -127,13 +128,19 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
 
     if (!validate()) return
 
-    if (mode === 'create') {
-      addWatch(formData)
-    } else if (watch) {
-      updateWatch(watch.id, formData)
-    }
+    setSubmitError(null)
+    startTransition(async () => {
+      const result =
+        mode === 'edit' && watch
+          ? await editWatch(watch.id, formData)
+          : await addWatch(formData)
 
-    router.push('/')
+      if (result.success) {
+        router.push('/')
+      } else {
+        setSubmitError(result.error)
+      }
+    })
   }
 
   const toggleArrayItem = (
@@ -605,12 +612,26 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
       </Card>
 
       {/* Actions */}
+      {submitError && (
+        <p className="text-sm text-destructive text-right">{submitError}</p>
+      )}
       <div className="flex justify-end gap-4">
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={isPending}
+        >
           Cancel
         </Button>
-        <Button type="submit">
-          {mode === 'create' ? 'Add Watch' : 'Save Changes'}
+        <Button type="submit" disabled={isPending}>
+          {isPending
+            ? mode === 'create'
+              ? 'Adding...'
+              : 'Saving...'
+            : mode === 'create'
+              ? 'Add Watch'
+              : 'Save Changes'}
         </Button>
       </div>
     </form>
