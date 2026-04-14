@@ -142,6 +142,9 @@ export const useWatchStore = create<WatchStore>()(
       // Only persist watches. Filters are ephemeral UI state per architecture;
       // persisting them means any filter schema change breaks existing users.
       partialize: (state) => ({ watches: state.watches }),
+      // v1 persisted filters alongside watches; v2 drops them. Discard v1
+      // state entirely — user opted for clean slate (option A).
+      migrate: () => ({ watches: [] }),
     }
   )
 )
