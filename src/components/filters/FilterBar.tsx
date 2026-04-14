@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import { useWatchStore } from '@/store/watchStore'
 import { STYLE_TAGS, ROLE_TAGS, DIAL_COLORS } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const PRICE_MIN = 0
-const PRICE_MAX = 100000
 const PRICE_STEP = 100
+// Floor for an empty/free collection so the slider isn't degenerate.
+const PRICE_MAX_FLOOR = 1000
 
 function CollapsibleSection({
   title,
@@ -45,10 +47,41 @@ function CollapsibleSection({
 }
 
 export function FilterBar() {
-  const { filters, setFilter, resetFilters } = useWatchStore()
+  const { watches, filters, setFilter, resetFilters } = useWatchStore()
 
-  const [localMin, setLocalMin] = useState<number>(filters.priceRange.min ?? PRICE_MIN)
-  const [localMax, setLocalMax] = useState<number>(filters.priceRange.max ?? PRICE_MAX)
+  // Dynamic upper bound: highest marketPrice in the collection, rounded up to
+  // the next 1k increment, with a floor so the slider is usable for an empty
+  // or all-free collection.
+  const priceCap = useMemo(() => {
+    const highest = watches.reduce(
+      (acc, w) => (w.marketPrice != null && w.marketPrice > acc ? w.marketPrice : acc),
+      0,
+    )
+    const bumped = Math.max(highest, PRICE_MAX_FLOOR)
+    return Math.ceil(bumped / 1000) * 1000
+  }, [watches])
+
+  // Slider handle positions during a drag. Committed values live in the store
+  // under filters.priceRange. Falls back to [PRICE_MIN, priceCap] meaning "all".
+  const [local, setLocal] = useState<readonly number[]>(() => [
+    filters.priceRange.min ?? PRICE_MIN,
+    filters.priceRange.max ?? priceCap,
+  ])
+
+  // Invariant: a newly-added watch must never be filtered out of view.
+  // When the cap grows (a pricier watch was added), bump both the local handle
+  // and the committed store filter up to the new cap if they were sitting at
+  // or below the old cap. Also rewrite priceRange.max to null when it now
+  // equals the cap, so "all" stays "all" without a stale numeric ceiling.
+  useEffect(() => {
+    setLocal((prev) => (prev[1] < priceCap ? [prev[0], priceCap] : prev))
+    if (filters.priceRange.max != null && filters.priceRange.max < priceCap) {
+      setFilter('priceRange', { ...filters.priceRange, max: null })
+    }
+  }, [priceCap, filters.priceRange, setFilter])
+
+  const localMin = local[0]
+  const localMax = Math.min(local[1], priceCap)
 
   const hasActiveFilters =
     filters.styleTags.length > 0 ||
@@ -78,16 +111,16 @@ export function FilterBar() {
     setFilter('dialColors', newColors)
   }
 
-  const commitPriceRange = (min: number, max: number) => {
+  const commitPriceRange = (next: readonly number[]) => {
+    const [min, max] = next
     setFilter('priceRange', {
       min: min === PRICE_MIN ? null : min,
-      max: max === PRICE_MAX ? null : max,
+      max: max === priceCap ? null : max,
     })
   }
 
   const resetPriceRange = () => {
-    setLocalMin(PRICE_MIN)
-    setLocalMax(PRICE_MAX)
+    setLocal([PRICE_MIN, priceCap])
     setFilter('priceRange', { min: null, max: null })
   }
 
@@ -173,42 +206,14 @@ export function FilterBar() {
               </button>
             )}
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-6">Min</span>
-              <input
-                type="range"
-                min={PRICE_MIN}
-                max={PRICE_MAX}
-                step={PRICE_STEP}
-                value={localMin}
-                onChange={(e) => {
-                  const v = Number(e.target.value)
-                  const clamped = Math.min(v, localMax)
-                  setLocalMin(clamped)
-                }}
-                onPointerUp={() => commitPriceRange(localMin, localMax)}
-                className="w-full accent-foreground"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-6">Max</span>
-              <input
-                type="range"
-                min={PRICE_MIN}
-                max={PRICE_MAX}
-                step={PRICE_STEP}
-                value={localMax}
-                onChange={(e) => {
-                  const v = Number(e.target.value)
-                  const clamped = Math.max(v, localMin)
-                  setLocalMax(clamped)
-                }}
-                onPointerUp={() => commitPriceRange(localMin, localMax)}
-                className="w-full accent-foreground"
-              />
-            </div>
-          </div>
+          <Slider
+            min={PRICE_MIN}
+            max={priceCap}
+            step={PRICE_STEP}
+            value={[localMin, localMax]}
+            onValueChange={(next) => setLocal(next)}
+            onValueCommitted={(next) => commitPriceRange(next)}
+          />
         </div>
       </CollapsibleSection>
 
