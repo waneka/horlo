@@ -41,11 +41,6 @@ Brownfield project. The MVP (CRUD, grid, filters, tagging, preferences, similari
 - [ ] **AUTH-03**: Per-user data isolation enforced at the DAL query level — every read and write scoped by `userId`; client-supplied IDs are never trusted for authorization
 - [ ] **AUTH-04**: `POST /api/extract-watch` requires an authenticated session (complementary to the Phase 1 IP validation)
 
-## Migration
-
-- [ ] **MIG-01**: On first login, user sees a one-time dismissable banner offering to import their existing localStorage collection via a self-service flow (no auto-delete, no dual-write)
-- [ ] **MIG-02**: localStorage import validates incoming data with Zod, regenerates any non-UUID IDs, and bulk-inserts via a Server Action
-
 ## Testing
 
 - [ ] **TEST-01**: Vitest + React Testing Library + MSW configured for the Next.js 16 App Router project
@@ -71,6 +66,7 @@ Brownfield project. The MVP (CRUD, grid, filters, tagging, preferences, similari
 - **Collection 2D visualization map** (dressy↔sporty × affordable↔expensive) — future milestone
 - **Barcode / case-back scanning** — URL import is the right mechanism for mechanical watches
 - **Rotation profile labels** ("The Faithful" etc.) — needs weeks of persisted wear data; revisit post-migration
+- **Self-service localStorage import flow** (former MIG-01 / MIG-02) — dropped 2026-04-13. The app has a single user (the developer) with no legacy localStorage data worth migrating; a polished banner-driven import flow has no audience. Phase 5 starts the cloud collection from scratch instead.
 
 ---
 
@@ -112,8 +108,6 @@ REQ-ID → Phase mapping (populated by roadmapper 2026-04-11):
 | AUTH-02 | Phase 4 | Pending |
 | AUTH-03 | Phase 4 | Pending |
 | AUTH-04 | Phase 4 | Pending |
-| MIG-01 | Phase 5 | Pending |
-| MIG-02 | Phase 5 | Pending |
 | TEST-01 | Phase 2 | Pending |
 | TEST-02 | Phase 2 | Pending |
 | TEST-03 | Phase 2 | Pending |
@@ -121,10 +115,11 @@ REQ-ID → Phase mapping (populated by roadmapper 2026-04-11):
 | TEST-05 | Phase 6 | Pending |
 | TEST-06 | Phase 6 | Pending |
 
-**Coverage:** 31/31 v1 requirements mapped. No orphans. No duplicates.
+**Coverage:** 29/29 v1 requirements mapped. No orphans. No duplicates.
 
 **Sequencing notes:**
 - VIS-05 moved to Phase 2 (not Phase 1) because the "Sleeping Beauties" framing is an insight feature that pairs naturally with the collection-goal / complicationException rewiring, not the visual polish pass.
 - TEST-01/02/03 pulled into Phase 2 (not deferred to end) per research open question #4: pure-function tests catch regressions from the similarity engine rewiring in the same phase.
-- DATA-05 (similarity engine props rewire) lives in Phase 5 alongside Zustand cleanup — it is the same operation (demoting Zustand) and strictly requires MIG-01/02 to land first.
+- DATA-05 (similarity engine props rewire) lives in Phase 5 alongside the Zustand demotion — it is the same operation (demoting Zustand from collection store to filter-only).
+- MIG-01 / MIG-02 dropped 2026-04-13 — single-developer project with no legacy localStorage data to migrate; see "Out of Scope for v1".
 - TEST-04/05/06 stay in the final phase because they test stabilized code (store reducers post-demotion, route handler post-auth, components post-redesign).

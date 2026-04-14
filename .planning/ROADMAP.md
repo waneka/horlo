@@ -2,7 +2,7 @@
 
 ## Overview
 
-Horlo's MVP (CRUD, grid, filters, tagging, preferences, similarity engine, URL import, wear tracking) is already shipped. v1 hardens the experience and moves the app off localStorage onto a real multi-user foundation. The journey: close visible security holes and polish the UI (Phase 1), wire up the dead preference fields and wishlist intelligence while standing up the test runner (Phase 2), build a server-side Data Access Layer with Drizzle + Supabase Postgres (Phase 3), bolt on Supabase Auth with `proxy.ts` gating and per-action re-verification (Phase 4), execute the self-service localStorage import and demote Zustand to ephemeral filter state with the similarity engine reading from props (Phase 5), and finish with a full test suite covering the stabilized code (Phase 6).
+Horlo's MVP (CRUD, grid, filters, tagging, preferences, similarity engine, URL import, wear tracking) is already shipped. v1 hardens the experience and moves the app off localStorage onto a real multi-user foundation. The journey: close visible security holes and polish the UI (Phase 1), wire up the dead preference fields and wishlist intelligence while standing up the test runner (Phase 2), build a server-side Data Access Layer with Drizzle + Supabase Postgres (Phase 3), bolt on Supabase Auth with `proxy.ts` gating and per-action re-verification (Phase 4), demote Zustand to ephemeral filter state with the similarity engine reading from props and bring the prod Supabase project online (Phase 5), and finish with a full test suite covering the stabilized code (Phase 6).
 
 ## Phases
 
@@ -14,7 +14,7 @@ Horlo's MVP (CRUD, grid, filters, tagging, preferences, similarity engine, URL i
 - [ ] **Phase 2: Feature Completeness & Test Foundation** - Wire dead preference fields, wishlist intelligence, wear insights, stand up Vitest+RTL+MSW with pure-function tests
 - [ ] **Phase 3: Data Layer Foundation** - Drizzle schema, Supabase Postgres, server-only DAL, Server Actions (no auth yet)
 - [ ] **Phase 4: Authentication** - Supabase Auth via @supabase/ssr, proxy.ts gating, per-Action re-verification, SSRF auth gate
-- [ ] **Phase 5: Migration, Zustand Cleanup & Similarity Rewire** - One-time localStorage import banner, drop persist middleware, similarity engine reads props
+- [ ] **Phase 5: Zustand Cleanup, Similarity Rewire & Prod DB Bootstrap** - Drop persist middleware, similarity engine reads props, prod Supabase + Vercel runbook
 - [ ] **Phase 6: Test Suite Completion** - Zustand reducer tests, component tests, extract-watch route handler integration test
 
 ## Phase Details
@@ -97,17 +97,15 @@ Plans:
 - [x] 04-06-PLAN.md — Wave 4: Header refactor to Server Component + UserMenu dropdown + logout form + UAT checkpoint (AUTH-01)
 **UI hint**: yes
 
-### Phase 5: Migration, Zustand Cleanup, Similarity Rewire & Prod DB Bootstrap
-**Goal**: Existing local collections are self-service imported into the cloud, Zustand is demoted to filter-only state, the similarity engine reads from props, and a verified runbook exists for bringing the prod Supabase project up to parity with horlo.app on Vercel.
+### Phase 5: Zustand Cleanup, Similarity Rewire & Prod DB Bootstrap
+**Goal**: Zustand is demoted to filter-only state, the insights page becomes a Server Component with the similarity engine reading from props, and a verified runbook exists for bringing the prod Supabase project up to parity with horlo.app on Vercel.
 **Depends on**: Phase 4
-**Requirements**: MIG-01, MIG-02, DATA-05, OPS-01
+**Requirements**: DATA-05, OPS-01
 **Success Criteria** (what must be TRUE):
-  1. First-time signed-in user with existing localStorage data sees a one-time dismissable banner offering to import their local collection; dismissing or importing sets a flag so the banner does not return
-  2. The import flow validates localStorage payloads with Zod, regenerates any non-UUID IDs to `crypto.randomUUID()`, and bulk-inserts via a Server Action with clear success/failure feedback; localStorage is never auto-deleted
-  3. `watchStore` no longer uses the `persist` middleware and exposes only ephemeral filter state (status, tags, dial colors); it contains no CRUD methods and no collection data
-  4. The insights page is a Server Component; `SimilarityBadge` and `BalanceChart` receive collection + preferences as props and no longer call `useWatchStore()` or `usePreferencesStore()`
-  5. A logged-in user on two different browsers sees the same collection, and changes in one browser appear in the other after refresh
-  6. `docs/deploy-db-setup.md` exists with verified step-by-step commands for a solo operator to link the existing prod Supabase project (project ref `wdntzsckjaoqodsyscns`), apply every migration including Phase 4's shadow-user trigger, push the Drizzle schema, set the three required Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
+  1. `watchStore` no longer uses the `persist` middleware and exposes only ephemeral filter state (status, tags, dial colors); it contains no CRUD methods and no collection data
+  2. The insights page is a Server Component; `SimilarityBadge` and `BalanceChart` receive collection + preferences as props and no longer call `useWatchStore()` or `usePreferencesStore()`
+  3. A logged-in user on two different browsers sees the same collection, and changes in one browser appear in the other after refresh
+  4. `docs/deploy-db-setup.md` exists with verified step-by-step commands for a solo operator to link the existing prod Supabase project (project ref `wdntzsckjaoqodsyscns`), apply every migration including Phase 4's shadow-user trigger, push the Drizzle schema, set the three required Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
 **Plans**: TBD
 
 ### Phase 6: Test Suite Completion
@@ -133,5 +131,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Feature Completeness & Test Foundation | 0/5 | Not started | - |
 | 3. Data Layer Foundation | 0/3 | Not started | - |
 | 4. Authentication | 0/TBD | Not started | - |
-| 5. Migration, Zustand Cleanup & Similarity Rewire | 0/TBD | Not started | - |
+| 5. Zustand Cleanup, Similarity Rewire & Prod DB Bootstrap | 0/TBD | Not started | - |
 | 6. Test Suite Completion | 0/TBD | Not started | - |
