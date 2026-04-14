@@ -55,6 +55,10 @@ Brownfield project. The MVP (CRUD, grid, filters, tagging, preferences, similari
 - [ ] **TEST-05**: Integration test for `POST /api/extract-watch` route handler covering success, invalid URL, SSRF blocklist, and auth denial
 - [ ] **TEST-06**: Component tests for `WatchForm`, `FilterBar`, and `WatchCard` using `@testing-library/user-event`
 
+## Operations
+
+- [ ] **OPS-01**: `docs/deploy-db-setup.md` runbook exists with verified, step-by-step commands for a solo operator to link the existing prod Supabase project, apply all migrations (including the Phase 4 shadow-user trigger), push the Drizzle schema, set Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
+
 ---
 
 ## Out of Scope for v1

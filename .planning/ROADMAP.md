@@ -97,16 +97,17 @@ Plans:
 - [x] 04-06-PLAN.md — Wave 4: Header refactor to Server Component + UserMenu dropdown + logout form + UAT checkpoint (AUTH-01)
 **UI hint**: yes
 
-### Phase 5: Migration, Zustand Cleanup & Similarity Rewire
-**Goal**: Existing local collections are self-service imported into the cloud, Zustand is demoted to filter-only state, and the similarity engine reads from props.
+### Phase 5: Migration, Zustand Cleanup, Similarity Rewire & Prod DB Bootstrap
+**Goal**: Existing local collections are self-service imported into the cloud, Zustand is demoted to filter-only state, the similarity engine reads from props, and a verified runbook exists for bringing the prod Supabase project up to parity with horlo.app on Vercel.
 **Depends on**: Phase 4
-**Requirements**: MIG-01, MIG-02, DATA-05
+**Requirements**: MIG-01, MIG-02, DATA-05, OPS-01
 **Success Criteria** (what must be TRUE):
   1. First-time signed-in user with existing localStorage data sees a one-time dismissable banner offering to import their local collection; dismissing or importing sets a flag so the banner does not return
   2. The import flow validates localStorage payloads with Zod, regenerates any non-UUID IDs to `crypto.randomUUID()`, and bulk-inserts via a Server Action with clear success/failure feedback; localStorage is never auto-deleted
   3. `watchStore` no longer uses the `persist` middleware and exposes only ephemeral filter state (status, tags, dial colors); it contains no CRUD methods and no collection data
   4. The insights page is a Server Component; `SimilarityBadge` and `BalanceChart` receive collection + preferences as props and no longer call `useWatchStore()` or `usePreferencesStore()`
   5. A logged-in user on two different browsers sees the same collection, and changes in one browser appear in the other after refresh
+  6. `docs/deploy-db-setup.md` exists with verified step-by-step commands for a solo operator to link the existing prod Supabase project (project ref `wdntzsckjaoqodsyscns`), apply every migration including Phase 4's shadow-user trigger, push the Drizzle schema, set the three required Vercel env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`), and smoke-test signup + logout against horlo.app — completing the runbook yields a working authenticated prod environment
 **Plans**: TBD
 
 ### Phase 6: Test Suite Completion
