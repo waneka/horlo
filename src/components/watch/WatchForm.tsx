@@ -170,6 +170,8 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
     }))
   }
 
+  const isOwned = formData.status === 'owned'
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* URL Import - only show in create mode */}
@@ -231,15 +233,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
               value={formData.status}
               onValueChange={(value) => {
                 if (!value) return
-                const next = value as WatchStatus
-                setFormData((prev) => ({
-                  ...prev,
-                  status: next,
-                  targetPrice:
-                    next === 'wishlist' || next === 'grail'
-                      ? prev.targetPrice
-                      : undefined,
-                }))
+                setFormData((prev) => ({ ...prev, status: value as WatchStatus }))
               }}
             >
               <SelectTrigger>
@@ -269,7 +263,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="marketPrice">Market Price</Label>
+            <Label htmlFor="marketPrice">Market/Retail</Label>
             <Input
               id="marketPrice"
               type="number"
@@ -284,25 +278,25 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="pricePaid">Price Paid</Label>
-            <Input
-              id="pricePaid"
-              type="number"
-              value={formData.pricePaid ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  pricePaid: e.target.value ? Number(e.target.value) : undefined,
-                }))
-              }
-              placeholder="$"
-            />
-          </div>
-
-          {(formData.status === 'wishlist' || formData.status === 'grail') && (
+          {isOwned ? (
             <div className="space-y-2">
-              <Label htmlFor="targetPrice">Target Price</Label>
+              <Label htmlFor="pricePaid">Paid</Label>
+              <Input
+                id="pricePaid"
+                type="number"
+                value={formData.pricePaid ?? ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    pricePaid: e.target.value ? Number(e.target.value) : undefined,
+                  }))
+                }
+                placeholder="$"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="targetPrice">Target</Label>
               <Input
                 id="targetPrice"
                 type="number"
