@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useWatchStore } from '@/store/watchStore'
@@ -10,6 +11,38 @@ import { cn } from '@/lib/utils'
 const PRICE_MIN = 0
 const PRICE_MAX = 100000
 const PRICE_STEP = 100
+
+function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between text-sm font-semibold text-foreground mb-2"
+        aria-expanded={open}
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 transition-transform',
+            open ? 'rotate-180' : 'rotate-0'
+          )}
+          aria-hidden
+        />
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  )
+}
 
 export function FilterBar() {
   const { filters, setFilter, resetFilters } = useWatchStore()
@@ -61,8 +94,7 @@ export function FilterBar() {
   return (
     <div className="w-full space-y-4">
       {/* Style Tags */}
-      <div>
-        <h4 className="text-sm font-semibold text-foreground mb-2">Style</h4>
+      <CollapsibleSection title="Style">
         <div className="flex flex-wrap gap-2">
           {STYLE_TAGS.map((tag) => (
             <Badge
@@ -80,11 +112,10 @@ export function FilterBar() {
             </Badge>
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Role Tags */}
-      <div>
-        <h4 className="text-sm font-semibold text-foreground mb-2">Role</h4>
+      <CollapsibleSection title="Role">
         <div className="flex flex-wrap gap-2">
           {ROLE_TAGS.map((tag) => (
             <Badge
@@ -102,11 +133,10 @@ export function FilterBar() {
             </Badge>
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Dial Colors */}
-      <div>
-        <h4 className="text-sm font-semibold text-foreground mb-2">Dial Color</h4>
+      <CollapsibleSection title="Dial Color">
         <div className="flex flex-wrap gap-2">
           {DIAL_COLORS.map((color) => (
             <Badge
@@ -124,13 +154,12 @@ export function FilterBar() {
             </Badge>
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Price Range */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold text-foreground">Price</h4>
-          <div className="flex items-center gap-2">
+      <CollapsibleSection title="Price">
+        <div>
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground">
               ${localMin.toLocaleString()} – ${localMax.toLocaleString()}
             </span>
@@ -144,44 +173,44 @@ export function FilterBar() {
               </button>
             )}
           </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-6">Min</span>
-            <input
-              type="range"
-              min={PRICE_MIN}
-              max={PRICE_MAX}
-              step={PRICE_STEP}
-              value={localMin}
-              onChange={(e) => {
-                const v = Number(e.target.value)
-                const clamped = Math.min(v, localMax)
-                setLocalMin(clamped)
-              }}
-              onPointerUp={() => commitPriceRange(localMin, localMax)}
-              className="w-full accent-foreground"
-            />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-6">Min</span>
+              <input
+                type="range"
+                min={PRICE_MIN}
+                max={PRICE_MAX}
+                step={PRICE_STEP}
+                value={localMin}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  const clamped = Math.min(v, localMax)
+                  setLocalMin(clamped)
+                }}
+                onPointerUp={() => commitPriceRange(localMin, localMax)}
+                className="w-full accent-foreground"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-6">Max</span>
+              <input
+                type="range"
+                min={PRICE_MIN}
+                max={PRICE_MAX}
+                step={PRICE_STEP}
+                value={localMax}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  const clamped = Math.max(v, localMin)
+                  setLocalMax(clamped)
+                }}
+                onPointerUp={() => commitPriceRange(localMin, localMax)}
+                className="w-full accent-foreground"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-6">Max</span>
-            <input
-              type="range"
-              min={PRICE_MIN}
-              max={PRICE_MAX}
-              step={PRICE_STEP}
-              value={localMax}
-              onChange={(e) => {
-                const v = Number(e.target.value)
-                const clamped = Math.max(v, localMin)
-                setLocalMax(clamped)
-              }}
-              onPointerUp={() => commitPriceRange(localMin, localMax)}
-              className="w-full accent-foreground"
-            />
-          </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Clear Filters */}
       {hasActiveFilters && (
