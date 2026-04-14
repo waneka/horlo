@@ -1,14 +1,11 @@
-'use client'
-
-import { useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BalanceChart } from '@/components/insights/BalanceChart'
 import { GoodDealsSection } from '@/components/insights/GoodDealsSection'
 import { SleepingBeautiesSection } from '@/components/insights/SleepingBeautiesSection'
-import { useWatchStore } from '@/store/watchStore'
-import { usePreferencesStore } from '@/store/preferencesStore'
-import { useIsHydrated } from '@/lib/hooks/useIsHydrated'
+import { getCurrentUser } from '@/lib/auth'
+import { getWatchesByUser } from '@/data/watches'
+import { getPreferencesByUser } from '@/data/preferences'
 import { detectLoyalBrands } from '@/lib/similarity'
 import { daysSince } from '@/lib/wear'
 import type { CollectionGoal, Watch } from '@/lib/types'
@@ -72,98 +69,85 @@ function calculateSingleValueDistribution(
   }))
 }
 
-export default function InsightsPage() {
-  const { watches: storedWatches } = useWatchStore()
-  const preferences = usePreferencesStore((s) => s.preferences)
+function computeWearInsights(ownedWatches: Watch[]) {
+  const watchesWithWearData = ownedWatches.filter((w) => w.lastWornDate)
+  const unwornWatches = ownedWatches.filter((w) => !w.lastWornDate)
+
+  const notWornIn30Days = watchesWithWearData.filter((w) => {
+    const days = daysSince(w.lastWornDate)
+    return days !== null && days > 30
+  })
+
+  const recentlyWorn = watchesWithWearData.filter((w) => {
+    const days = daysSince(w.lastWornDate)
+    return days !== null && days <= 7
+  })
+
+  return {
+    unwornWatches,
+    notWornIn30Days,
+    recentlyWorn,
+    totalWithWearData: watchesWithWearData.length,
+  }
+}
+
+function computeCollectionValue(ownedWatches: Watch[]) {
+  const totalPaid = ownedWatches.reduce(
+    (sum, w) => sum + (w.pricePaid || 0),
+    0
+  )
+  const totalMarket = ownedWatches.reduce(
+    (sum, w) => sum + (w.marketPrice || 0),
+    0
+  )
+  const watchesWithBothPrices = ownedWatches.filter(
+    (w) => w.pricePaid && w.marketPrice
+  )
+
+  return {
+    totalPaid,
+    totalMarket,
+    watchesWithPriceData: watchesWithBothPrices.length,
+  }
+}
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+  }).format(amount)
+
+export default async function InsightsPage() {
+  const user = await getCurrentUser()
+  const [watches, preferences] = await Promise.all([
+    getWatchesByUser(user.id),
+    getPreferencesByUser(user.id),
+  ])
+
   const goal: CollectionGoal = preferences.collectionGoal ?? 'balanced'
-  const hydrated = useIsHydrated()
-  const watches = hydrated ? storedWatches : []
-
-  const ownedWatches = useMemo(
-    () => watches.filter((w) => w.status === 'owned'),
-    [watches]
+  const ownedWatches = watches.filter((w) => w.status === 'owned')
+  const wishlistWatches = watches.filter(
+    (w) => w.status === 'wishlist' || w.status === 'grail'
   )
 
-  const wishlistWatches = useMemo(
-    () => watches.filter((w) => w.status === 'wishlist' || w.status === 'grail'),
-    [watches]
+  const styleDistribution = calculateDistribution(ownedWatches, (w) => w.styleTags)
+  const roleDistribution = calculateDistribution(ownedWatches, (w) => w.roleTags)
+  const dialColorDistribution = calculateSingleValueDistribution(
+    ownedWatches,
+    (w) => w.dialColor
+  )
+  const movementDistribution = calculateSingleValueDistribution(
+    ownedWatches,
+    (w) => w.movement
+  )
+  const strapDistribution = calculateSingleValueDistribution(
+    ownedWatches,
+    (w) => w.strapType
   )
 
-  const styleDistribution = useMemo(
-    () => calculateDistribution(ownedWatches, (w) => w.styleTags),
-    [ownedWatches]
-  )
-
-  const roleDistribution = useMemo(
-    () => calculateDistribution(ownedWatches, (w) => w.roleTags),
-    [ownedWatches]
-  )
-
-  const dialColorDistribution = useMemo(
-    () => calculateSingleValueDistribution(ownedWatches, (w) => w.dialColor),
-    [ownedWatches]
-  )
-
-  const movementDistribution = useMemo(
-    () => calculateSingleValueDistribution(ownedWatches, (w) => w.movement),
-    [ownedWatches]
-  )
-
-  const strapDistribution = useMemo(
-    () => calculateSingleValueDistribution(ownedWatches, (w) => w.strapType),
-    [ownedWatches]
-  )
-
-  // Calculate wear insights
-  const wearInsights = useMemo(() => {
-    const watchesWithWearData = ownedWatches.filter((w) => w.lastWornDate)
-    const unwornWatches = ownedWatches.filter((w) => !w.lastWornDate)
-
-    const notWornIn30Days = watchesWithWearData.filter((w) => {
-      const days = daysSince(w.lastWornDate)
-      return days !== null && days > 30
-    })
-
-    const recentlyWorn = watchesWithWearData.filter((w) => {
-      const days = daysSince(w.lastWornDate)
-      return days !== null && days <= 7
-    })
-
-    return {
-      unwornWatches,
-      notWornIn30Days,
-      recentlyWorn,
-      totalWithWearData: watchesWithWearData.length,
-    }
-  }, [ownedWatches])
-
-  // Calculate collection value
-  const collectionValue = useMemo(() => {
-    const totalPaid = ownedWatches.reduce(
-      (sum, w) => sum + (w.pricePaid || 0),
-      0
-    )
-    const totalMarket = ownedWatches.reduce(
-      (sum, w) => sum + (w.marketPrice || 0),
-      0
-    )
-    const watchesWithBothPrices = ownedWatches.filter(
-      (w) => w.pricePaid && w.marketPrice
-    )
-
-    return {
-      totalPaid,
-      totalMarket,
-      watchesWithPriceData: watchesWithBothPrices.length,
-    }
-  }, [ownedWatches])
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(amount)
+  const wearInsights = computeWearInsights(ownedWatches)
+  const collectionValue = computeCollectionValue(ownedWatches)
 
   if (watches.length === 0) {
     return (
