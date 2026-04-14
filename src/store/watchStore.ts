@@ -124,7 +124,7 @@ export const useWatchStore = create<WatchStore>()(
           }
 
           // Price range filter
-          const { min, max } = filters.priceRange
+          const { min, max } = filters.priceRange ?? { min: null, max: null }
           if (min != null || max != null) {
             if (watch.marketPrice == null) return false
             if (min != null && watch.marketPrice < min) return false
@@ -137,6 +137,11 @@ export const useWatchStore = create<WatchStore>()(
     }),
     {
       name: 'watch-collection',
+      // Bump whenever persisted shape changes — invalidates stale client state.
+      version: 2,
+      // Only persist watches. Filters are ephemeral UI state per architecture;
+      // persisting them means any filter schema change breaks existing users.
+      partialize: (state) => ({ watches: state.watches }),
     }
   )
 )
