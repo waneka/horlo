@@ -7,6 +7,7 @@ export interface WatchFilters {
   styleTags: string[]
   roleTags: string[]
   dialColors: string[]
+  priceRange: { min: number | null; max: number | null }
 }
 
 interface WatchStore {
@@ -30,6 +31,7 @@ const defaultFilters: WatchFilters = {
   styleTags: [],
   roleTags: [],
   dialColors: [],
+  priceRange: { min: null, max: null },
 }
 
 function generateId(): string {
@@ -119,6 +121,14 @@ export const useWatchStore = create<WatchStore>()(
             !filters.dialColors.includes(watch.dialColor)
           ) {
             return false
+          }
+
+          // Price range filter
+          const { min, max } = filters.priceRange
+          if (min != null || max != null) {
+            if (watch.marketPrice == null) return false
+            if (min != null && watch.marketPrice < min) return false
+            if (max != null && watch.marketPrice > max) return false
           }
 
           return true
