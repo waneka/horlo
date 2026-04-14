@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -20,8 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { useWatchStore } from '@/store/watchStore'
-import { usePreferencesStore } from '@/store/preferencesStore'
+import { editWatch, removeWatch } from '@/app/actions/watches'
 import { SimilarityBadge } from '@/components/insights/SimilarityBadge'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
@@ -29,10 +28,8 @@ import type { Watch, UserPreferences } from '@/lib/types'
 
 interface WatchDetailProps {
   watch: Watch
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  collection?: Watch[]
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  preferences?: UserPreferences
+  collection: Watch[]
+  preferences: UserPreferences
 }
 
 function formatDate(dateStr?: string): string {
@@ -56,28 +53,42 @@ function formatCurrency(amount?: number): string {
 
 export function WatchDetail({ watch, collection, preferences }: WatchDetailProps) {
   const router = useRouter()
-  const { deleteWatch, markAsWorn } = useWatchStore()
-  const updateWatch = useWatchStore((s) => s.updateWatch)
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  const storePrefs = usePreferencesStore((s) => s.preferences)
-  // TEMP Plan 05-01: store fallback removed in Plan 05-03 once WatchGrid passes props
-  const storeWatches = useWatchStore((s) => s.watches)
-  const effectiveCollection = collection ?? storeWatches
-  const effectivePreferences = preferences ?? storePrefs
+  const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
   const gapFill = isWishlistLike
-    ? computeGapFill(watch, effectiveCollection, effectivePreferences)
+    ? computeGapFill(watch, collection, preferences)
     : null
 
   const handleDelete = () => {
-    deleteWatch(watch.id)
-    router.push('/')
+    startTransition(async () => {
+      const result = await removeWatch(watch.id)
+      if (result.success) {
+        router.push('/')
+      }
+    })
   }
 
   const handleMarkAsWorn = () => {
-    markAsWorn(watch.id)
+    startTransition(async () => {
+      const result = await editWatch(watch.id, {
+        lastWornDate: new Date().toISOString(),
+      })
+      if (result.success) {
+        // Inline mutation (no navigation) — explicit refresh re-fetches Server Component data.
+        router.refresh()
+      }
+    })
+  }
+
+  const handleFlagDealChange = (checked: boolean) => {
+    startTransition(async () => {
+      const result = await editWatch(watch.id, { isFlaggedDeal: checked })
+      if (result.success) {
+        router.refresh()
+      }
+    })
   }
 
   const daysSinceWorn = daysSince(watch.lastWornDate)
@@ -143,8 +154,9 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
               <Checkbox
                 id="flagged-deal"
                 checked={watch.isFlaggedDeal === true}
+                disabled={isPending}
                 onCheckedChange={(checked) =>
-                  updateWatch(watch.id, { isFlaggedDeal: checked === true })
+                  handleFlagDealChange(checked === true)
                 }
               />
               <Label htmlFor="flagged-deal" className="cursor-pointer">
@@ -156,7 +168,11 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             {watch.status === 'owned' && (
-              <Button variant="outline" onClick={handleMarkAsWorn}>
+              <Button
+                variant="outline"
+                onClick={handleMarkAsWorn}
+                disabled={isPending}
+              >
                 Mark as Worn
               </Button>
             )}
@@ -179,10 +195,15 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
                   <Button
                     variant="outline"
                     onClick={() => setIsDeleteDialogOpen(false)}
+                    disabled={isPending}
                   >
                     Cancel
                   </Button>
-                  <Button variant="destructive" onClick={handleDelete}>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isPending}
+                  >
                     Delete
                   </Button>
                 </DialogFooter>
@@ -393,8 +414,8 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
       {/* Collection Fit Analysis */}
       <SimilarityBadge
         watch={watch}
-        collection={effectiveCollection}
-        preferences={effectivePreferences}
+        collection={collection}
+        preferences={preferences}
       />
 
       {/* Notes */}
