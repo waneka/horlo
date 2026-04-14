@@ -20,6 +20,7 @@ export function WatchCard({ watch }: WatchCardProps) {
   const preferences = usePreferencesStore((s) => s.preferences)
   const collection = useWatchStore((s) => s.watches)
 
+  const isOwned = watch.status === 'owned'
   const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
   const gapFill = isWishlistLike
     ? computeGapFill(watch, collection, preferences)
@@ -103,6 +104,11 @@ export function WatchCard({ watch }: WatchCardProps) {
                 </Badge>
               )}
             </div>
+          )}
+          {!isOwned && watch.marketPrice != null && (
+            <p className="mt-2 text-sm font-semibold text-card-foreground">
+              ${watch.marketPrice.toLocaleString()}
+            </p>
           )}
         </CardContent>
       </Card>
