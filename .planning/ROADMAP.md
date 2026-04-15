@@ -113,7 +113,7 @@ Plans:
 - [x] 05-03-PLAN.md — Wave 2: Convert home/insights/preferences pages to Server Components + CollectionView client wrapper (DATA-05)
 - [x] 05-04-PLAN.md — Wave 3: Convert watch/[id] + edit pages to Server Components + WatchForm/WatchDetail Server Action rewire (DATA-05)
 - [x] 05-05-PLAN.md — Wave 4: Strip watchStore to filter-only, delete preferencesStore + useIsHydrated, verify all grep gates (DATA-05)
-- [ ] 05-06-PLAN.md — Wave 5: Operator executes runbook against prod + cross-browser parity test (OPS-01 checkpoint)
+- [x] 05-06-PLAN.md — Wave 5: Operator executes runbook against prod + cross-browser parity test (OPS-01 checkpoint)
 
 ### Phase 6: Test Suite Completion
 **Goal**: The stabilized cloud-backed codebase has the test coverage called for in v1, including the route handler and key UI components.

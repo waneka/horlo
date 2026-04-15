@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-04-14T05:47:03.851Z"
-last_activity: 2026-04-14
+status: verifying
+stopped_at: Completed 05-06-PLAN.md — Phase 5 done
+last_updated: "2026-04-15T18:44:42.832Z"
+last_activity: 2026-04-15
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 26
-  completed_plans: 25
-  percent: 96
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-11)
 
 Phase: 05 (migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-04-14
+Status: Phase complete — ready for verification
+Last activity: 2026-04-15
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P03 | 15min | 3 tasks | 8 files |
 | Phase 05 P04 | 15min | 3 tasks | 4 files |
 | Phase 05 P05 | 5min | 2 tasks | 3 files |
+| Phase 05 P06 | manual | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 05]: SimilarityBadge takes collection + preferences as required props (DATA-05 contract)
 - [Phase 05]: drizzle-kit migrate uses direct Supabase connection (port 5432, db. subdomain); Vercel runtime uses session-mode pooler — documented in OPS-01 runbook
 - [Phase 05]: [Phase 05]: CollectionView + PreferencesClient are the Server-Component→client handoffs; WatchGrid keeps a single filters.status selector for wishlist deal-sort (smallest diff)
+- [Phase 05]: Prod Supabase email confirmation kept OFF for personal-MVP posture; custom SMTP deferred until public signup is opened up
+- [Phase 05]: drizzle-kit migrate uses session-mode pooler URL (not direct-connect) — direct-connect host is IPv6-only and unreachable on IPv4 ISPs
 
 ### Pending Todos
 
@@ -88,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-14T05:47:03.848Z
-Stopped at: Completed 05-05-PLAN.md
+Last session: 2026-04-15T18:44:42.829Z
+Stopped at: Completed 05-06-PLAN.md — Phase 5 done
 Resume file: None
