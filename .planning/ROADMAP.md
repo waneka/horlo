@@ -127,6 +127,32 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+## Backlog
+
+### Phase 999.1: Phase 5 Code Review Follow-ups — RLS & Error Handling (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Captured from `05-REVIEW.md` after Phase 5 closeout. Three MEDIUM + four LOW findings the operator chose to defer rather than block phase completion.
+
+**MEDIUM:**
+- **MR-01** — `PreferencesClient` swallows `savePreferences` failures silently (`src/components/preferences/PreferencesClient.tsx:47-56`). Surface an error toast on failure.
+- **MR-02** — `UnauthorizedError` imported but unused in `src/app/actions/watches.ts` and `src/app/actions/preferences.ts`. Either wire it into the catch branches or remove the import so the catch-all stops masking infra failures as auth errors.
+- **MR-03** — No RLS on `public.users` / `public.watches` / `public.user_preferences`. DAL-as-boundary works today but is one stray client query away from a data leak. Add RLS policies as defense-in-depth.
+
+**LOW:**
+- `WatchDetail` ignores `result.error` after Server Action calls
+- `FilterBar` `useEffect` over-depends on `filters.priceRange`
+- `WatchForm` edit initializer silently omits `isChronometer`
+- `WatchGrid` empty-state copy doesn't distinguish "no watches" from "filters hide everything"
+
+See `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` for full context.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ## Progress
 
 **Execution Order:**
