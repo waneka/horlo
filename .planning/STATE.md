@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 05-06-PLAN.md — Phase 5 done
+status: idle
+stopped_at: Phase 5 verified — ready to start Phase 6
 last_updated: "2026-04-15T18:44:42.832Z"
 last_activity: 2026-04-15
 progress:
@@ -21,16 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 05 — migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap
+**Current focus:** Phase 5 complete and verified — next up is Phase 6 (Test Suite Completion)
 
 ## Current Position
 
-Phase: 05 (migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 05 — VERIFIED (6/6 plans, 05-VERIFICATION.md: PASS)
+Next: Phase 06 — Test Suite Completion
 Last activity: 2026-04-15
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100% (Phase 5)
 
 ## Performance Metrics
 
