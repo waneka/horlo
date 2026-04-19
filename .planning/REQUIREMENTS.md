@@ -113,13 +113,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | — |
+| DATA-01 | Phase 6 | Pending |
+| DATA-07 | Phase 6 | Pending |
+| DATA-02 | Phase 7 | Pending |
+| DATA-03 | Phase 7 | Pending |
+| DATA-04 | Phase 7 | Pending |
+| DATA-05 | Phase 7 | Pending |
+| DATA-06 | Phase 7 | Pending |
+| PROF-01 | Phase 8 | Pending |
+| PROF-02 | Phase 8 | Pending |
+| PROF-03 | Phase 8 | Pending |
+| PROF-04 | Phase 8 | Pending |
+| PROF-05 | Phase 8 | Pending |
+| PROF-06 | Phase 8 | Pending |
+| PROF-07 | Phase 8 | Pending |
+| PROF-10 | Phase 8 | Pending |
+| PRIV-01 | Phase 8 | Pending |
+| PRIV-02 | Phase 8 | Pending |
+| PRIV-03 | Phase 8 | Pending |
+| PRIV-04 | Phase 8 | Pending |
+| PRIV-05 | Phase 8 | Pending |
+| PRIV-06 | Phase 8 | Pending |
+| FOLL-01 | Phase 9 | Pending |
+| FOLL-02 | Phase 9 | Pending |
+| FOLL-03 | Phase 9 | Pending |
+| FOLL-04 | Phase 9 | Pending |
+| PROF-08 | Phase 9 | Pending |
+| PROF-09 | Phase 9 | Pending |
+| FEED-01 | Phase 10 | Pending |
+| FEED-02 | Phase 10 | Pending |
+| FEED-03 | Phase 10 | Pending |
+| FEED-04 | Phase 10 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 ⚠️
+- v2.0 requirements: 31 total
+- Mapped to phases: 31
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-19*
-*Last updated: 2026-04-19 after initial definition*
+*Last updated: 2026-04-19 — traceability populated after roadmap creation*
