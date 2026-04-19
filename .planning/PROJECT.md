@@ -2,13 +2,13 @@
 
 ## What This Is
 
-A taste-aware watch collection intelligence system for personal collectors. Users manage their collection and wishlist, understand how their watches relate to each other, and make more intentional buying decisions. The core insight engine evaluates any watch against the user's collection and preferences to produce a semantic label (Core Fit, Role Duplicate, Hard Mismatch, etc.) rather than a raw score.
+A taste network for watch collectors where collections are identity, people drive discovery, and behavior (owning, wanting, wearing) defines taste. Users explore watches through other collectors — replacing fragmented discovery across YouTube, forums, and marketplaces with a single collection-first, behavior-driven system.
 
 Shipped as a cloud-backed, authenticated web app at [horlo.app](https://horlo.app) — data persists across devices and browsers via Supabase Postgres.
 
 ## Core Value
 
-A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
+Collectors discover watches through other people's collections and taste — not algorithms, catalogs, or content feeds.
 
 ## Requirements
 
@@ -45,20 +45,44 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 ### Active
 
-- [ ] Zustand watchStore filter reducer unit tests with beforeEach reset — carried from v1.0 (TEST-04)
-- [ ] Integration test for POST /api/extract-watch route handler — carried from v1.0 (TEST-05)
-- [ ] Component tests for WatchForm, FilterBar, WatchCard — carried from v1.0 (TEST-06)
-- [ ] RLS on public tables (users, watches, user_preferences) — defense-in-depth, deferred from v1.0 code review (MR-03)
-- [ ] PreferencesClient error handling — surface save failures to user (MR-01)
-- [ ] Custom SMTP for email confirmation — currently OFF for personal-MVP posture
+- [ ] RLS on all public tables — defense-in-depth, critical for multi-user visibility (carried from v1.0 MR-03)
+- [ ] Multi-user data model — follows table, activity tracking, profile/privacy settings
+- [ ] Public profiles (self) — profile page with collection, wishlist, worn, notes, stats tabs
+- [ ] Collector profiles (other user) — read-only view, follow/unfollow, Common Ground taste overlap
+- [ ] Follow system — follow/unfollow users, follower/following counts
+- [ ] Home page — network activity feed showing followed users' adds, wishlist changes, wear events
+- [ ] Settings — privacy controls for profile, collection, wishlist, wear visibility
 
 ### Out of Scope
 
-- Social / community features (public collections, follow users, activity feed) — future milestone, app is personal-first
-- Automated price tracking / market integrations / deal alerts — future milestone, significant infrastructure
-- AI recommendation engine (best gap filler, most versatile addition) — future milestone after auth/data layer is solid
-- Collection visualization map (2D dressy↔sporty × affordable↔expensive plot) — future milestone
-- Sharing / export to others — future milestone once multi-user is established
+- Watch linking / canonical watch DB — v2.0 uses independent per-user entries, normalization deferred (Phase 2 of data strategy)
+- Image uploads / wrist shots — URL-only for now, Supabase Storage deferred
+- WYWT enhancements — keep current wear tracking as-is, enhance in future milestone
+- Recommendations / suggested collectors — requires recommendation engine, deferred
+- Explore page — structured discovery surface, deferred
+- Search across users/watches — deferred
+- Notifications — deferred
+- Automated price tracking / market integrations / deal alerts — significant infrastructure
+- AI recommendation engine — deferred until social foundation is solid
+- Collection visualization map — deferred
+- Likes, comments, engagement mechanics — explicitly excluded per product vision (Rdio model: discovery, not engagement)
+- Zustand watchStore filter tests — carried from v1.0, parked (TEST-04)
+- Extract-watch integration test — carried from v1.0, parked (TEST-05)
+- Component tests for WatchForm, FilterBar, WatchCard — carried from v1.0, parked (TEST-06)
+- PreferencesClient error handling — carried from v1.0, parked (MR-01)
+- Custom SMTP for email confirmation — revisit when opening to more users
+
+## Current Milestone: v2.0 Taste Network Foundation
+
+**Goal:** Transform Horlo from a personal collection tool into a multi-user taste network where collectors discover watches through other people's collections and behavior.
+
+**Target features:**
+- Multi-user data model with RLS, follows, activity tracking
+- Public profiles (self) with 5 tabs: collection, wishlist, worn, notes, stats
+- Collector profiles (other user) with Common Ground taste overlap
+- Follow system with follower/following counts
+- Home page with network activity feed
+- Privacy controls for profile, collection, wishlist, wear visibility
 
 ## Context
 
@@ -72,7 +96,8 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 - **Tech stack**: Next.js 16 App Router — continue with existing framework, no rewrites
 - **Data model**: Watch and UserPreferences types are established — extend, don't break existing structure
-- **Personal first**: Single-user experience and data isolation must remain correct even after multi-user auth is added
+- **Discovery, not engagement**: Rdio-inspired model — social-driven without being a social network. No likes, comments, or engagement mechanics
+- **Per-user data isolation**: RLS enforced, privacy controls respected. Multi-user visibility is additive, not a replacement for data safety
 - **Performance**: Target <500 watches per user; no need for complex pagination or infinite scroll in MVP
 
 ## Key Decisions
@@ -89,6 +114,9 @@ A collector can evaluate any watch against their collection and get a meaningful
 | proxy.ts + double-verified auth | Defense in depth: proxy.ts for redirects, DAL/SA for data access | ✓ Good — tested via Phase 4 UAT |
 | Email confirmation OFF | Personal-MVP posture; free-tier SMTP limited to 2/hour | — Pending — revisit when opening to other users, configure custom SMTP |
 | Session-mode pooler for migrations | Direct-connect host is IPv6-only, unreachable on most home ISPs | ✓ Good — documented in runbook |
+| Rdio-inspired discovery model | Discovery through people's taste, not algorithms or content feeds. No engagement mechanics (likes/comments). | — Pending |
+| No watch linking in v2.0 | Each user's watch entries are independent. Canonical DB / normalization deferred to future data strategy phase. | — Pending |
+| URL-only images for v2.0 | Defer Supabase Storage and photo uploads. Keeps scope manageable. | — Pending |
 
 ## Evolution
 
@@ -108,4 +136,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 after v1.0 milestone completion — 5 phases shipped, horlo.app live, Phase 6 (Test Suite Completion) deferred to v1.1*
+*Last updated: 2026-04-19 after v2.0 milestone start — taste network foundation, multi-user profiles + follows + activity feed*
