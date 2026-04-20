@@ -58,9 +58,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Add 5 social tables to Drizzle schema, write RLS + trigger migrations, push to production
-- [ ] 07-02-PLAN.md — Replace lastWornDate with wear_events table across all app code
-- [ ] 07-03-PLAN.md — Create activity logging DAL, integrate into Server Actions, apply column-drop migration
+- [x] 07-01-PLAN.md — Add 5 social tables to Drizzle schema, write RLS + trigger migrations, push to production
+- [x] 07-02-PLAN.md — Replace lastWornDate with wear_events table across all app code
+- [x] 07-03-PLAN.md — Create activity logging DAL, integrate into Server Actions, apply column-drop migration
 
 ### Phase 8: Self Profile & Privacy Controls
 **Goal**: A collector can view and edit their own full profile page and control exactly what other users can see.
