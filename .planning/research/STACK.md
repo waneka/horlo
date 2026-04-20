@@ -1,161 +1,255 @@
 ---
 dimension: stack
-generated: 2026-04-11
+generated: 2026-04-19
+milestone: v2.0 Taste Network Foundation
 ---
-# Stack Research
+# Stack Research — v2.0 Social Features
+
+**Domain:** Multi-user taste network (profiles, follows, activity feed, Common Ground overlap, privacy controls)
+**Researched:** 2026-04-19
+**Confidence:** HIGH (core patterns), MEDIUM (Realtime strategy)
+
+> This document covers ONLY what is new or changed for v2.0. The v1.0 foundation (Next.js 16, React 19, Supabase Auth + Postgres, Drizzle ORM, Tailwind 4, Vitest) is validated and not re-researched here.
+
+---
 
 ## Summary
 
-Horlo needs four technology additions to its existing Next.js 16 / React 19 / Tailwind CSS 4 base: class-based dark mode via `@custom-variant` + `next-themes`, server-side auth via Supabase Auth (which bundles well with the database choice), a Postgres database on Neon with Drizzle ORM, and a Vitest + React Testing Library unit test setup. Each choice favors minimal vendor surface area, strong App Router support, and a free tier that fits a personal-use app with fewer than 500 records per user.
+The v2.0 social milestone requires three distinct capability additions to the existing stack:
+
+1. **RLS policies** on all public tables, defined in Drizzle schema using `pgPolicy` + Supabase helpers — enforces per-user data isolation and controlled public visibility without a separate auth layer
+2. **New Drizzle schema tables** for follows, activity events, and user profile/privacy settings — no new ORM or database needed
+3. **A deliberate non-decision on Supabase Realtime** — for an MVP with <200 users on the free tier, server-rendered page loads + router refresh is sufficient; Realtime WebSocket subscriptions are deferred unless UX testing shows users expect live feed updates
+
+No new npm packages are required for the core social data model. One optional package (`swr`) is listed if polling-based feed freshness is needed post-launch. The Common Ground taste overlap feature runs entirely in the existing similarity engine — no new library needed.
 
 ---
 
-## Dark Mode (Tailwind CSS 4)
+## Recommended Stack Additions
 
-### How Tailwind CSS 4 dark mode works
+### RLS Layer (Drizzle + Supabase)
 
-Tailwind CSS 4 removed `tailwind.config.js` entirely. The `darkMode: 'class'` config key no longer exists. Instead, dark mode variant behavior is defined in CSS using the `@custom-variant` directive.
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| `drizzle-orm/supabase` | Already installed (^0.45.2) | `pgPolicy`, `authenticatedRole`, `authUid()` helpers | Defines RLS policies in TypeScript alongside table definitions; colocated with schema, tracked in migrations — no raw SQL files to maintain separately |
+| `drizzle-orm/pg-core` `pgPolicy` | Already installed | Per-table RLS policies | Drizzle now has first-class RLS API; policies compile to Postgres `CREATE POLICY` statements on `drizzle-kit migrate` |
 
-**Default behavior (no config):** `dark:` utilities respond to the OS `prefers-color-scheme` media query automatically. No CSS change needed.
+**Pattern:** All new tables get `pgPolicy` definitions in `schema.ts`. The existing `users`, `watches`, and `userPreferences` tables need RLS added in a migration — they currently have no policies (carried from v1.0 backlog item MR-03).
 
-**Class-based override (required for a toggle button):** Add one line to `src/app/globals.css`:
+```typescript
+// Example: follows table with correct RLS
+import { pgPolicy, pgTable, uuid, timestamp, index } from 'drizzle-orm/pg-core'
+import { authenticatedRole, authUid } from 'drizzle-orm/supabase'
+import { sql } from 'drizzle-orm'
+import { users } from './users'
 
-```css
-@custom-variant dark (&:where(.dark, .dark *));
+export const follows = pgTable(
+  'follows',
+  {
+    followerId: uuid('follower_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    followingId: uuid('following_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('follows_follower_idx').on(table.followerId),
+    index('follows_following_idx').on(table.followingId),
+    // Any authenticated user can see follows (needed for follower counts on public profiles)
+    pgPolicy('follows_select', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`true`,
+    }),
+    // You can only insert a follow where you are the follower
+    pgPolicy('follows_insert', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${authUid(table.followerId)}`,
+    }),
+    // You can only delete your own follows
+    pgPolicy('follows_delete', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${authUid(table.followerId)}`,
+    }),
+  ]
+)
 ```
 
-This makes `dark:` utilities activate when any ancestor element carries the `.dark` class, which is the pattern `next-themes` writes to `<html>`.
-
-### Recommended approach
-
-Use **`next-themes`** to manage the `dark` class on `<html>`.
-
-- Wraps `children` in a `ThemeProvider` in the root layout (client boundary).
-- Persists preference to `localStorage`.
-- Reads system preference on first visit.
-- Eliminates flash-of-wrong-theme on hydration when using `suppressHydrationWarning` on `<html>`.
-- Battle-tested with Next.js App Router; the Zustand team member who wrote the library (pacocoursey) maintains it actively.
-
-**Note:** Theme toggle UI components must be wrapped in a `mounted` check or `dynamic(() => import(...), { ssr: false })` to avoid hydration mismatches, because the server cannot know the user's preference at render time.
-
-**Confidence:** HIGH — Tailwind official docs confirm `@custom-variant` is the v4 API. `next-themes` is the dominant community solution for Next.js App Router dark mode (multiple independent sources confirm the combination works as described).
+**Confidence:** HIGH — Drizzle RLS docs confirm `pgPolicy` + `authUid()` API. Supabase confirms RLS is enforced on all Postgres queries including those via Drizzle's `postgres` driver. The `(select auth.uid())` subquery pattern (what `authUid()` generates) is recommended over bare `auth.uid()` for performance — Postgres caches the subquery result within a statement, avoiding repeated function calls when a policy is evaluated across many rows.
 
 ---
 
-## Auth Provider
+### New Schema Tables (Drizzle, no new packages)
 
-### Comparison
+All implemented in `src/db/schema.ts` using existing Drizzle + postgres imports.
 
-| Criterion | Better Auth | Clerk | Supabase Auth | Auth.js v5 |
-|-----------|-------------|-------|---------------|------------|
-| App Router support | Native, first-class | Native, first-class | Via `@supabase/ssr` + middleware | Via `auth()` universal helper |
-| Setup complexity | Low — TypeScript-first, good DX | Very low — prebuilt UI components | Medium — requires two client types (server + browser) + middleware | Medium — credential flows are notoriously fiddly |
-| Built-in UI | No (bring your own) | Yes (hosted or embedded) | No | No |
-| OAuth providers | Yes | Yes (Google, GitHub, etc.) | Yes | Yes |
-| Email/password | Yes | Yes | Yes | Yes |
-| MFA / passkeys | Plugin system | Built-in | Basic | Manual |
-| Free tier | Self-hosted = free | 50,000 MRU/month | 50,000 MAU/month | Self-hosted = free |
-| Vendor lock-in | None (self-hosted) | High — Clerk manages user data | Medium — Supabase-hosted | None |
-| Ecosystem momentum | Rising fast; Auth.js team joined project Sept 2025 | Established, strong Next.js presence | Established, tied to Supabase platform | Declining — team moved to Better Auth |
-| Data ownership | Full | None | Full (your Supabase project) | Full |
+**`follows`** — collector-to-collector follow graph
+- `follower_id` (FK → users.id), `following_id` (FK → users.id), `created_at`
+- Composite unique on `(follower_id, following_id)` to prevent duplicate follows
+- Indexes on both FKs for follower/following count queries
 
-### Recommendation
+**`user_profiles`** — public display name, bio, avatar URL; separate from `users` shadow table
+- `user_id` (FK → users.id, unique), `display_name`, `bio`, `avatar_url`, `created_at`, `updated_at`
+- RLS: select = authenticated users can see all profiles; insert/update = owner only
 
-**Supabase Auth** — because Horlo is already moving to a database, and Supabase Auth + Supabase Postgres is a single-vendor bundle with a unified free tier. Row Level Security (RLS) handles per-user data isolation at the database layer, which means authorization is not a separate implementation concern. `@supabase/ssr` has first-class Next.js App Router support with documented patterns for server components, server actions, and middleware session refresh.
+**`user_privacy_settings`** — controls what each user exposes publicly
+- `user_id` (FK → users.id, unique), `profile_public` (bool), `collection_public` (bool), `wishlist_public` (bool), `wear_public` (bool), `created_at`, `updated_at`
+- RLS: select = owner OR querying user has `service_role` (or policies join-check); insert/update = owner only
+- Default: all public (opt-out model matches Rdio-style discovery vision)
 
-**Do not use Clerk.** Clerk is the fastest path to auth UI, but it means Clerk controls your user identities. For a personal tool being migrated to multi-user, that trade-off is not worth it — especially since Horlo's auth UI surface is small (login, signup, logout).
+**`activity_events`** — append-only event log for network feed
+- `id` (uuid), `user_id` (FK), `event_type` (enum: `watch_added`, `watch_sold`, `wishlist_added`, `worn_today`, `notes_updated`), `watch_id` (FK, nullable), `metadata` (jsonb for extra context), `created_at`
+- No updates, no deletes — append-only. Soft-hide via `visibility` column if needed.
+- RLS select policy: `user_id = auth.uid()` OR `user_id IN (SELECT following_id FROM follows WHERE follower_id = auth.uid())`
+- Index on `(user_id, created_at DESC)` for feed queries
 
-**Do not use Auth.js v5 / NextAuth v5.** The Auth.js maintainer team formally moved to Better Auth in September 2025. Auth.js will receive security patches but is not the forward path. It also has a known poor DX for credential-based auth flows.
-
-**Better Auth** is the strongest self-hosted alternative if you want to use a different database later. It is TypeScript-first, has better DX than Auth.js, and is now the community-endorsed successor. However, it does not bundle with a database, so you would configure it alongside Neon separately. If the team later wants to move off Supabase, Better Auth + Neon is the cleanest upgrade path.
-
-**Confidence:** MEDIUM — Supabase Auth + Next.js App Router is well-documented and widely used. The "Auth.js team joined Better Auth" claim is from multiple secondary sources (September 2025); the official announcement was not directly verified against primary sources, but the community signal is consistent.
+**Note on feed RLS performance:** The "current user can see events from people they follow" RLS policy joins the `follows` table on every row authorization check. At MVP scale (<200 users, <500 events/user), this is fine. At scale this pattern requires either a denormalized `allowed_user_ids` array on each event row, a Postgres function with `SECURITY DEFINER` to cache the following set, or moving to application-layer feed assembly. Flag this for review if the user base grows beyond 1,000.
 
 ---
 
-## Database / Persistence
+### Common Ground Taste Overlap (No New Library)
 
-### Comparison
+The existing `analyzeSimilarity()` function in `src/lib/similarity.ts` already computes weighted overlap across style tags, role tags, design traits, complications, and dial color. Common Ground is a projection of this engine onto two users' collections instead of one watch vs. a collection.
 
-| Criterion | Supabase (Postgres) | Neon (Postgres) | Turso (SQLite/libSQL) | PlanetScale (MySQL) |
-|-----------|--------------------|-----------------|-----------------------|---------------------|
-| Engine | Postgres | Postgres | SQLite (libSQL) | MySQL (Vitess) |
-| Free tier storage | 500 MB + 1 GB file | 0.5 GB / branch, 5 GB total | 5 GB shared | Free tier discontinued 2024 |
-| Free tier projects | 2 per org | 20 | 100 databases | N/A |
-| Cold start | ~10-30s pause on free (no pause on paid) | ~500ms (scale-to-zero) | None (scale-to-zero deprecated Jan 2026) | N/A |
-| ORM support | Drizzle, Prisma | Drizzle, Prisma | Drizzle, Prisma | Drizzle, Prisma |
-| Branching for preview deploys | No | Yes — first-class | No | No |
-| Auth bundling | Yes (Supabase Auth) | No (bring your own) | No | No |
-| DX with Next.js | Good — official guides | Good — `@neondatabase/serverless` driver | Good — `@libsql/client` | N/A |
-| Pricing at scale | $25/mo (Pro) | Pay-as-you-go | Pay-as-you-go | N/A |
+**Implementation approach:** Write a new pure function `computeCommonGround(collectionA: Watch[], collectionB: Watch[], preferences: UserPreferences): CommonGroundResult` that:
+1. Runs `analyzeSimilarity` for each watch in B against collection A
+2. Aggregates `SimilarityLabel` distribution
+3. Returns: shared brands, shared style tags, shared role tags, percentage overlap by dimension, top matching watch pairs
 
-**Do not use PlanetScale.** Its free tier was discontinued in 2024.
+No new library needed. This is client-safe computation (same pattern as the existing engine). The function receives data as props — no store reads.
 
-**Do not use Turso.** SQLite is the right fit for edge/read-heavy/embedded scenarios. Horlo is a standard web app reading and writing from a single region. Postgres is the correct choice; SQLite adds operational complexity without a meaningful benefit at this scale.
-
-### Recommendation
-
-**Neon (Postgres) + Drizzle ORM** — unless going all-in on Supabase for auth too.
-
-If Supabase Auth is chosen: use **Supabase Postgres** directly. Running auth and data in the same Supabase project means a single dashboard, single connection string, and RLS policies that span both. The combined free tier (50K MAU + 500 MB storage) is more than sufficient for a personal watch collection.
-
-If the team wants flexibility to swap auth later: use **Neon**. Neon has the better pure-database free tier (20 projects, database branching for preview environments), faster cold starts (~500ms vs Supabase's 10-30s on free), and is purpose-built for serverless Postgres. It pairs naturally with Better Auth.
-
-**ORM: Drizzle** over Prisma for this project because:
-- Bundle size: ~7.4 KB (gzip) vs Prisma's ~1.6 MB. Matters for edge functions and cold starts.
-- Code-first: schema defined in TypeScript, no separate `.prisma` DSL to learn.
-- Drizzle is now the default ORM choice in new t3-app projects (early 2026).
-- For <500 rows per user, Drizzle's migration tooling (`drizzle-kit`) is sufficient; Prisma's automated migrations are only a meaningful advantage on larger teams with complex schema churn.
-
-**Confidence:** HIGH for Neon/Supabase choice — both are well-documented and widely used with Next.js. HIGH for Drizzle over Prisma — bundle size and ecosystem momentum are documented facts. MEDIUM for Supabase Auth + Supabase Postgres bundling benefit — well-supported in docs but assumes the team will not need to swap auth providers later.
+**Confidence:** HIGH — the existing engine is structurally capable of this. The design question (what to surface in the UI) is a product decision, not a technical one.
 
 ---
 
-## Testing Stack
+### Activity Feed Delivery Strategy
 
-### Recommendation: Vitest + React Testing Library + MSW
-
-**Test runner: Vitest** — not Jest.
+**Recommendation: Server-rendered + Next.js `router.refresh()` for MVP. Do NOT add Supabase Realtime subscriptions in v2.0.**
 
 Rationale:
-- Next.js 16 App Router officially documents Vitest as the unit testing path (confirmed in `node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md`).
-- The project uses ESM throughout (TypeScript, Tailwind 4, Next.js 16). Vitest handles ESM natively; Jest requires `babel-jest` or `ts-jest` configuration that adds friction.
-- Vitest's API (`describe`, `it`, `expect`, `beforeEach`) is Jest-compatible — migration cost is near-zero if tests already existed.
-- Vitest runs 4-5x faster than Jest in benchmarks on comparable suites.
 
-**Component testing: `@testing-library/react`** — the standard; no alternative needed.
+1. **Free tier limit:** Supabase free tier supports 200 concurrent Realtime WebSocket connections. If every visitor to a profile page opens a subscription, that ceiling is hit with ~100 simultaneous users. For a personal app opening to a small collector community, this is an acceptable risk — but it makes Realtime a cost driver earlier than expected.
 
-**Network mocking: MSW (Mock Service Worker)** — for testing Route Handlers and components that call `/api/extract-watch`. MSW intercepts at the network level, so application code does not need to change between test and production environments.
+2. **Realtime Postgres Changes has a known scaling bottleneck:** Every row change triggers an authorization check against RLS for every subscribed client. 100 subscribers to one table = 100 auth reads per insert. Supabase's own docs flag this as a single-thread process where "compute upgrades don't have a large effect on performance."
 
-**What Vitest does NOT cover:**
-- `async` Server Components — Vitest cannot render them. This is a documented React ecosystem limitation. Test async server components with Playwright E2E tests, or restructure them to extract logic into pure functions that can be unit tested separately.
-- Route Handlers — can be tested by calling the handler function directly (import and invoke), or via Playwright. MSW is not needed for direct invocation.
+3. **Activity feeds are not latency-sensitive in this product.** The Rdio-inspired model is discovery-driven, not notification-driven. A feed that refreshes on page visit (or on a 30-60s interval) delivers the same experience as a live-updating feed for this use case.
 
-### Package install
+4. **Simpler implementation:** Server Component fetch on every route visit means no client-side subscription lifecycle, no `useEffect` cleanup, no auth token refresh in the WebSocket layer, and no delta-merge logic in the client.
+
+**If polling freshness is needed post-launch** (i.e., users expect the feed to update while they're on the page), add `swr` with `refreshInterval`:
 
 ```bash
-npm install -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths @testing-library/user-event msw
+npm install swr
 ```
 
-### Zustand store testing pattern
+Use `useSWR` with a `refreshInterval: 30000` in a client component wrapper around the feed. This keeps the feed fresh without WebSocket complexity and works fine on Vercel's serverless functions.
 
-Zustand 5 stores can be tested by importing and calling store actions directly (no React render needed for pure logic). The official Zustand docs recommend creating a `__mocks__/zustand.ts` that resets store state between tests. For component tests that depend on store state, wrap with a real store instance rather than mocking — this tests the integration more honestly.
+**Defer Supabase Realtime to v3.0** if user research shows that live updates are expected. At that point, the correct pattern is: use Broadcast (not Postgres Changes) — the application writes to the activity_events table AND broadcasts to a named channel. Subscribers receive Broadcast messages (which bypass per-row RLS auth overhead) and refresh their local state. This decouples delivery from authorization cost.
 
-**Confidence:** HIGH — testing stack is directly documented in Next.js 16 source docs. Vitest setup is the officially recommended path. Zustand testing pattern is from official Zustand docs.
+**Confidence:** MEDIUM — the polling/refresh recommendation is based on sound analysis of the free tier limits and Supabase Realtime's known scaling constraints (both documented in official Supabase docs). Whether users will tolerate a non-live feed is a product assumption that should be validated.
 
 ---
 
-## Confidence
+## What NOT to Add
 
-| Area | Level | Reason |
-|------|-------|--------|
-| Dark mode (Tailwind 4 + next-themes) | HIGH | Tailwind official docs confirm `@custom-variant` API; next-themes pattern confirmed across multiple independent sources |
-| Auth (Supabase Auth recommendation) | MEDIUM | Auth.js → Better Auth transition confirmed across multiple sources but not from a primary Vercel/Auth.js official announcement; Supabase Auth + Next.js integration well-documented |
-| Database (Neon + Drizzle) | HIGH | Free tier limits confirmed from Neon docs; Drizzle bundle size and ecosystem momentum confirmed from multiple sources |
-| Testing (Vitest + RTL) | HIGH | Directly documented in Next.js 16 bundled docs (`node_modules/next/dist/docs/`) |
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Supabase Realtime (Postgres Changes) in v2.0 | Free tier ceiling at 200 concurrent connections; per-row RLS auth check on every event is a single-thread bottleneck; activity feeds are not latency-sensitive for this product | Server Component renders + `router.refresh()` on mutation; `swr` polling if needed |
+| A dedicated graph database (Neo4j, etc.) | Overkill for a follow graph with <10,000 users; Postgres handles social graphs up to millions of edges with proper indexing | Postgres `follows` table with indexed FKs |
+| Redis for feed caching | Unnecessary at MVP scale (<500 watches/user, <200 users); premature infrastructure | Application-layer assembly from `activity_events` on each page load |
+| Fan-out-on-write feed materialization | Fan-out requires background workers; adds infrastructure; only necessary above ~10K follower counts | Fan-out-on-read: query `activity_events WHERE user_id IN (following list)` at read time |
+| TanStack Query / React Query | No existing usage in codebase; adds bundle weight; the existing Server Component + Server Action pattern is sufficient for all data operations | Stick with Server Components for reads, Server Actions for mutations; add `swr` only if polling freshness is needed |
+| Socket.io or custom WebSocket server | Supabase Realtime already provides this if/when needed; a custom WebSocket layer adds significant ops complexity | Supabase Realtime Broadcast when real-time delivery is required |
+| `@supabase/realtime-js` direct import | Already included transitively via `@supabase/supabase-js`; importing directly bypasses the auth-aware client setup | Use `supabase.channel()` via the existing `@supabase/supabase-js` client |
+| Separate profile microservice | No separation of concerns problem at this scale; profiles are just another Postgres table | `user_profiles` table in existing Supabase project |
 
-### Caveats
+---
 
-- **Auth.js team joining Better Auth (Sept 2025):** This claim appears in multiple community sources but was not verified against a primary Vercel or Auth.js announcement. Treat Better Auth as the rising choice, but do a quick verification before committing to the recommendation in the roadmap.
-- **Supabase free tier cold starts:** The 10-30s pause on the free plan is a known limitation but Supabase may have improved it. Verify before recommending for production use if Supabase is chosen.
-- **Turso scale-to-zero deprecation (Jan 2026):** Cited in search results but not verified against Turso official docs. Turso is not the recommendation regardless, so this is low impact.
+## RLS Policy Patterns for Social Visibility
+
+The following table covers each data type and the correct RLS policy shape. All policies use `(select auth.uid())` subquery form for performance.
+
+| Table | Who Can SELECT | Who Can INSERT | Who Can UPDATE | Who Can DELETE |
+|-------|---------------|----------------|----------------|----------------|
+| `users` | Owner only | System (on signup trigger) | Owner only | None (Supabase Auth owns deletion) |
+| `watches` | Owner only OR owner's `collection_public = true` AND requester is authenticated | Owner only | Owner only | Owner only |
+| `user_preferences` | Owner only | Owner only | Owner only | None |
+| `user_profiles` | Any authenticated user | Owner only (one row per user) | Owner only | Owner only |
+| `user_privacy_settings` | Owner only | Owner only | Owner only | None |
+| `follows` | Any authenticated user (needed for follow counts) | Owner (follower_id = auth.uid()) | None (delete + re-insert for changes) | Owner (follower_id = auth.uid()) |
+| `activity_events` | Owner OR following the owner | Owner only (system-written via Server Action) | None (append-only) | Owner only |
+
+**Implementation note:** The `watches` visibility policy requires a join to `user_privacy_settings`. Write this as a `SECURITY DEFINER` function to avoid RLS recursion and performance issues from joining inside a policy expression:
+
+```sql
+-- Create helper function (in a Drizzle raw SQL migration)
+CREATE OR REPLACE FUNCTION user_collection_is_public(owner_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+  SELECT coalesce(collection_public, true) -- default public
+  FROM user_privacy_settings
+  WHERE user_id = owner_id
+$$;
+
+-- Then reference in pgPolicy using sql`` template
+pgPolicy('watches_select', {
+  for: 'select',
+  to: authenticatedRole,
+  using: sql`user_id = (select auth.uid()) OR user_collection_is_public(user_id)`,
+})
+```
+
+**Confidence:** HIGH — the SECURITY DEFINER function pattern for cross-table RLS is documented in Supabase official docs as the recommended approach for policies that depend on other tables.
+
+---
+
+## Integration with Existing DAL + Server Actions
+
+No architectural change needed. The existing pattern holds:
+
+- **DAL functions** (`src/data/*.ts`) add new query functions for follows, profiles, activity events
+- **Server Actions** write to `follows` and `activity_events` tables and call `router.refresh()` after mutations — no Realtime push needed
+- **Server Components** fetch profile + collection data in parallel using `Promise.all()` — this is where Common Ground computation happens (server-side, data passed as props to client components)
+- **`proxy.ts`** — no changes needed; all new routes use the same auth enforcement pattern
+
+The one new integration point: **activity event logging**. Every Server Action that mutates watch state (add, status change, mark worn) should also `INSERT` into `activity_events`. This is an additive side-effect — no existing action signatures change.
+
+---
+
+## Installation
+
+```bash
+# No new runtime packages required for core social features.
+# RLS, schema tables, and Common Ground use existing installed packages.
+
+# Optional: add only if polling-based feed freshness is needed post-launch
+npm install swr
+```
+
+---
+
+## Version Compatibility
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| `drizzle-orm` | ^0.45.2 (installed) | `pgPolicy` + `authUid()` from `drizzle-orm/supabase` available since ~0.38; confirmed in 0.45.x |
+| `drizzle-kit` | ^0.31.10 (installed) | Generates `CREATE POLICY` SQL from `pgPolicy` definitions on migrate; verified working in 0.31.x |
+| `@supabase/supabase-js` | ^2.103.0 (installed) | Realtime client bundled; no separate install needed if Realtime is added later |
+| `@supabase/ssr` | ^0.10.2 (installed) | No change needed; auth-aware client pattern unchanged for social routes |
+| `swr` | ^2.3.x (not installed) | Add only if polling is needed; compatible with React 19 and Next.js 16 App Router |
+
+---
+
+## Sources
+
+- Drizzle ORM RLS docs — `pgPolicy`, `authUid()`, `authenticatedRole` API confirmed: https://orm.drizzle.team/docs/rls
+- Supabase Realtime Postgres Changes docs — RLS interaction, scaling limitations, concurrent connection limits: https://supabase.com/docs/guides/realtime/postgres-changes
+- Supabase free tier: 200 concurrent Realtime connections confirmed: https://supabase.com/docs/guides/realtime/limits
+- Supabase RLS docs — SECURITY DEFINER function pattern for cross-table policies: https://supabase.com/docs/guides/database/postgres/row-level-security
+- Neon blog — Drizzle + social network RLS modeling (MEDIUM confidence — Neon-specific framing but pattern is Postgres-standard): https://neon.com/blog/modelling-authorization-for-a-social-network-with-postgres-rls-and-drizzle-orm
+- MakerKit real-time notifications guide — initial data + subscription merge pattern: https://makerkit.dev/blog/tutorials/real-time-notifications-supabase-nextjs
+
+---
+*Stack research for: Horlo v2.0 Taste Network Foundation — social features only*
+*Researched: 2026-04-19*
