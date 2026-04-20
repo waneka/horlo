@@ -55,7 +55,12 @@ Plans:
   3. A new user who completes signup finds a profile row already present without any manual step (auto-created via DB trigger or Auth webhook)
   4. Each new table has its RLS policies defined and verified: owners can read and write their own rows; other authenticated users are blocked at the DB level
   5. Required indexes on `follows(follower_id)`, `follows(following_id)`, `activities(user_id, created_at)`, and `wear_events(watch_id, worn_at)` are present in the migration
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Add 5 social tables to Drizzle schema, write RLS + trigger migrations, push to production
+- [ ] 07-02-PLAN.md — Replace lastWornDate with wear_events table across all app code
+- [ ] 07-03-PLAN.md — Create activity logging DAL, integrate into Server Actions, apply column-drop migration
 
 ### Phase 8: Self Profile & Privacy Controls
 **Goal**: A collector can view and edit their own full profile page and control exactly what other users can see.
@@ -117,7 +122,7 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 6. RLS Foundation | 0/1 | Not started | - |
-| 7. Social Schema & Profile Auto-Creation | 0/TBD | Not started | - |
+| 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/TBD | Not started | - |
 | 9. Follow System & Collector Profiles | 0/TBD | Not started | - |
 | 10. Activity Feed | 0/TBD | Not started | - |
