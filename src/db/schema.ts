@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   index,
+  unique,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -121,4 +122,76 @@ export const userPreferences = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index('user_preferences_user_id_idx').on(table.userId)],
+)
+
+// --- Social tables (Phase 7) ---
+
+export const profiles = pgTable(
+  'profiles',
+  {
+    id: uuid('id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    username: text('username').notNull().unique(),
+    displayName: text('display_name'),
+    bio: text('bio'),
+    avatarUrl: text('avatar_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('profiles_username_idx').on(table.username)]
+)
+
+export const follows = pgTable(
+  'follows',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    followerId: uuid('follower_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    followingId: uuid('following_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('follows_follower_idx').on(table.followerId),
+    index('follows_following_idx').on(table.followingId),
+    unique('follows_unique_pair').on(table.followerId, table.followingId),
+  ]
+)
+
+export const profileSettings = pgTable('profile_settings', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  profilePublic: boolean('profile_public').notNull().default(true),
+  collectionPublic: boolean('collection_public').notNull().default(true),
+  wishlistPublic: boolean('wishlist_public').notNull().default(true),
+  wornPublic: boolean('worn_public').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+export const activities = pgTable(
+  'activities',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(), // 'watch_added' | 'wishlist_added' | 'watch_worn'
+    watchId: uuid('watch_id').references(() => watches.id, { onDelete: 'set null' }),
+    metadata: jsonb('metadata'), // { brand, model, imageUrl }
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('activities_user_id_idx').on(table.userId),
+    index('activities_user_created_at_idx').on(table.userId, table.createdAt),
+  ]
+)
+
+export const wearEvents = pgTable(
+  'wear_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    watchId: uuid('watch_id').notNull().references(() => watches.id, { onDelete: 'cascade' }),
+    wornDate: text('worn_date').notNull(), // ISO date string, e.g. '2026-04-19'
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('wear_events_watch_worn_at_idx').on(table.watchId, table.wornDate),
+    unique('wear_events_unique_day').on(table.userId, table.watchId, table.wornDate),
+  ]
 )
