@@ -40,7 +40,10 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
   2. A user can read and write their own data without any change in behavior from before RLS was enabled
   3. Every UPDATE policy has both a USING clause and a WITH CHECK clause using the `(SELECT auth.uid())` subquery pattern — no bare `auth.uid()` calls that would cause per-row re-evaluation
   4. RLS is enabled on `public.users`, `public.watches`, and `public.user_preferences` — confirmed via Supabase dashboard or `SELECT relrowsecurity FROM pg_class WHERE relname = 'watches'`
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 06-01-PLAN.md — Write RLS migration (enable + 12 policies) and push to Supabase
 
 ### Phase 7: Social Schema & Profile Auto-Creation
 **Goal**: The five new social tables exist in Postgres with full RLS policies and correct indexes, and every user (new and existing) has a profile row.
@@ -113,7 +116,7 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 6. RLS Foundation | 0/TBD | Not started | - |
+| 6. RLS Foundation | 0/1 | Not started | - |
 | 7. Social Schema & Profile Auto-Creation | 0/TBD | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/TBD | Not started | - |
 | 9. Follow System & Collector Profiles | 0/TBD | Not started | - |
