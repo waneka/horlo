@@ -1,161 +1,142 @@
 ---
 dimension: features
-generated: 2026-04-19
-milestone: v2.0 Taste Network Foundation
+generated: 2026-04-11
 ---
-# Feature Landscape — Social Watch Collection Discovery
+# Features Research
 
 ## Summary
 
-This research covers social collection platforms (Letterboxd, Goodreads, Discogs, Rdio) to map what is table stakes vs. differentiating for public profiles, follow systems, activity feeds, taste overlap, and privacy controls. The goal is to inform the v2.0 milestone which adds multi-user taste network features to an existing single-user collection tool.
-
-**Key finding:** Horlo has a structural advantage most social collection platforms lack — a semantic similarity engine already built. The Common Ground taste overlap feature (comparing two users' collections via `analyzeSimilarity`) is a genuine differentiator because competitors either skip it entirely (Discogs, Goodreads) or farm it out to third-party tools built by users (Letterboxd). Table stakes for this milestone are simpler than they appear: public profile + follow + basic activity feed. Everything else is a differentiator or should be deferred.
-
-**Complexity note throughout:** "Low" = 1-2 days. "Medium" = 3-5 days. "High" = 1+ week. These estimates assume the existing DAL + Server Actions + Drizzle pattern already in place.
+Personal watch collection apps that succeed (Klokker, Watchee, Chrono24's collection tool, iCollect Everything) share a core loop: catalog → wear → reflect → decide. The market has converged on cost-per-wear and rotation neglect alerts as the most-cited differentiators in wear tracking, while wishlist intelligence is largely underdeveloped — most apps stop at "save for later" without opinion. Horlo's taste-aware scoring engine puts it in a strong position to offer wishlist intelligence that competitors cannot: not just "what is this watch worth" but "does this watch fit your taste."
 
 ---
 
 ## Table Stakes
 
-Features users expect from any social collection platform. Missing = the social layer feels broken or incomplete.
+Features users expect from any personal collection app. Missing = product feels incomplete or untrustworthy.
 
-| Feature | Why Expected | Complexity | Dependencies |
-|---------|--------------|------------|--------------|
-| Public profile page with username and collection | Every social collection platform (Letterboxd, Discogs, Goodreads) makes your collection the identity. A URL like `/u/[username]` that shows owned watches is the minimum viable social surface. | Medium | Username field on user record; public/private flag; RLS must be in place first |
-| Follow / unfollow action | Without follow, there is no network — no feed, no taste graph, no discovery. The follow table is the prerequisite for everything else in this milestone. | Low | `follows` table; follower/following counts on profile |
-| Follower / following count display on profile | Goodreads, Letterboxd, Discogs all surface these prominently. Missing = profile feels like a dead end. | Low | Depends on follow system |
-| Activity feed showing followed users' events | Letterboxd's core loop: follow someone, see their logs in your feed. Goodreads does the same. Without a feed, follows have no payoff. | High | `activities` table; event types: watch_added, wishlist_added, watch_worn, watch_sold |
-| Privacy control: public vs. private profile | Letterboxd makes profiles public by default (collectors expect discoverability) but requires opt-in private mode for users who want it. Goodreads does the same. | Low | `profile_visibility` enum on user settings |
-| Read-only view of another user's collection | When you visit someone's profile, you see their collection grid. Editable controls (edit, delete, add) are hidden. This is the minimum for the platform to feel social. | Low | Existing collection grid; conditional rendering based on `isOwner` |
-| RLS on all tables | Required before any multi-user visibility lands. Users must not see each other's private data. This is a carry-forward from v1.0 and must be resolved first. | Medium | Supabase RLS policies; all existing tables |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Collection CRUD with image | Every competitor has it; bare minimum of a "catalog" | Low | Already built |
+| Status model (owned / wishlist / sold) | Mental model collectors use; maps to physical reality | Low | Already built |
+| Filter by status / style / role | Navigation without it is unusable past ~10 items | Low | Already built |
+| Watch detail view with key specs | Users must be able to see what they entered | Low | Already built |
+| Wear logging ("wore today") | Any rotation-aware app must record this | Low | Already built; needs surfacing |
+| "Last worn X days ago" in detail view | Collectors want to know if a watch is being neglected; wardrobe apps (Stylebook, Whering) all surface this | Low | Not yet surfaced in UI |
+| Mobile-responsive layout | Most watch browsing happens on phone; not having it is a dealbreaker for daily use | Med | Active work item |
+| Dark mode | Standard expectation for any enthusiast/hobby app; Watchicity, Clockwork both have it | Low | Active work item |
+| Data persistence across devices | Users panic when data is browser-local; Klokker's "secure online backup" is a selling point | High | Requires auth + cloud milestone |
+| Per-user data isolation | Required once multi-user auth exists; users must not see each other's collections | Med | Architectural — part of auth milestone |
 
 ---
 
 ## Differentiators
 
-Features that set Horlo apart. Not universally expected in social collection tools, but high value when present — especially given the existing similarity engine.
+Features that set Horlo apart. Not universally expected, but high value when present.
 
-| Feature | Value Proposition | Complexity | Dependencies |
-|---------|-------------------|------------|--------------|
-| Common Ground taste overlap on collector profile | No major social collection platform (Letterboxd, Goodreads, Discogs) has a built-in taste comparison feature between two users. Letterboxd's "besties" tool and profile compare tools are third-party apps — evidence the demand exists but the platform never shipped it natively. Horlo can ship this natively because `analyzeSimilarity()` already computes semantic overlap. Display on the other user's profile: shared watches, shared wishlist brands, overlap score as a label (not a raw number). | Medium | Existing `analyzeSimilarity()`; both users' collections must be readable; RLS |
-| Tabs on public profile: Collection / Wishlist / Worn | Letterboxd has Films / Reviews / Diary / Lists / Stats. Goodreads has Read / Currently Reading / Want to Read. Tab-scoped collection views are the standard profile UX for collection-first platforms. Wishlist and Worn tabs on a public profile are differentiators — competitors don't expose intent (wishlist) or behavior (worn) this way. | Medium | Privacy controls per tab; wishlist/worn visibility settings |
-| Privacy per tab (collection/wishlist/worn independently controllable) | Instagram and Letterboxd allow content-level privacy. Goodreads allows shelf-level visibility. Collectors have different comfort levels: happy to share owned watches, but want to keep their wishlist private (negotiating intention). Separate toggles for collection, wishlist, and wear visibility give meaningful control without overwhelming the settings page. | Low | `settings` table with `collection_public`, `wishlist_public`, `wear_public` booleans |
-| Activity feed with event filtering | Letterboxd Pro lets users filter their feed by event type. At Horlo's scale this is a small feature but maps to the product principle that wear events and collection events have different signal strength for different users. Minimum: filter between "collection changes" and "wear events". | Low | Feed infrastructure; toggle stored in user preferences |
-| Shared watches highlight on collector profile | When viewing another collector's profile, Horlo can surface "You both own: X, Y, Z" — a lightweight hook that makes the social layer feel intelligent. Requires comparing viewer's collection against profile owner's collection. Simpler than full Common Ground: no similarity engine, just a set intersection. | Low | Both users' watch lists readable; simple brand/reference intersection |
-| "Collectors who own this watch" on watch detail | Discogs shows how many users have a record in their collection/wishlist. This creates social proof and discovery hooks: "7 collectors own this." Clicking into owners creates paths between profiles. | Medium | Watch detail page; requires loose normalization (no canonical watch DB yet — can match on brand+model text, imprecise but useful) |
-| Activity feed: wear events from followed users | The WYWT (What You're Wearing Today) rail described in PRODUCT-BRIEF.md — showing what followed collectors wore today. This is the strongest daily retention hook in the product: it surfaces behavior, not just acquisition. Rdio's "listen along" / "what friends are listening to now" was this pattern for music. | Medium | Feed infrastructure + wear event type; `activities` for wear_worn |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Taste-aware similarity scoring with semantic labels | No competitor goes beyond raw specs; "Core Fit vs Role Duplicate" is meaningful collector language | High | Already built; `complicationExceptions` and `collectionGoal` are dead weight until wired up |
+| Fix `complicationExceptions` in scoring | Turns a stored preference into an actual opinion; without this, the engine ignores user-declared exceptions | Low | Fix: apply exceptions before penalty is calculated in `similarity.ts` |
+| Fix `collectionGoal` in scoring + insights | "Balanced collector" vs "specialist" should change how the engine penalizes overlap; currently ignored | Med | Fix: branch scoring thresholds on `collectionGoal` value |
+| Wishlist "good deal" flag (manual) | Lets user mark a wishlist item as actionable / deal-tier; Chrono24's renamed Notepad→Wishlist shows demand for this | Low | Simple boolean field + visual treatment in wishlist card |
+| Target price workflow | User sets a price they'd pay; displayed next to wishlist item as a decision anchor; Whisprice-style model applied to non-automated context | Low | Add `targetPrice` field to `Watch`; display vs market price |
+| Wishlist gap-fill score | Use existing similarity engine to rank wishlist items by how much they'd add to the collection — differentiates from generic wishlisting | Med | Reuse `analyzeSimilarity()` on wishlist items against owned collection |
+| Wear rotation insights ("Neglected" flag) | Klokker's "Sleeping Beauties" / "Neglect Alerts" are the most-cited feature in collector forums; surface watches not worn in configurable threshold | Low | Calculate `daysSinceWorn` from `lastWornDate`; flag at 30/60/90 days |
+| Cost-per-wear display | Klokker and Watchee both show this; divides purchase price by wear count; changes how collectors think about value | Low | `purchasePrice / wearCount`; requires `purchasePrice` and `wearCount` fields |
+| Collection balance visualization | Breakdown of owned collection by style, role, dial color already computed; displaying it as charts (donut/bar) makes it scannable | Med | Existing balance data in insights; needs chart components (e.g. Recharts) |
+| Preference-aware gap analysis | "You own 4 dress watches and 0 field watches — your stated preference includes field" — only possible because preferences are explicit | Med | Derived from balance data + `UserPreferences`; no competitor has this |
+| Collection goal influence on insights | If `collectionGoal === 'specialist'`, surface different insights than `'balanced'` | Low | Depends on `collectionGoal` fix |
 
 ---
 
 ## Anti-Features
 
-Things to explicitly NOT build in the v2.0 milestone.
+Things to explicitly not build in the current roadmap phase.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Likes / reactions on activity events | PRODUCT-BRIEF.md explicitly rules this out: "discovery, not engagement." Letterboxd has likes and the result is an engagement incentive loop that distorts what people share. Horlo's model is Rdio — taste signal through behavior, not approval mechanics. | Show event counts (N collectors own this) as social proof without requiring interaction |
-| Comments on watches or profiles | Adds moderation complexity, community management burden, and notification infrastructure none of which exist yet. Goodreads comments are widely cited as a design mistake (the feed becomes noise). | Collector notes (per-watch, personal) already exist — keep them personal-only for now |
-| Notifications system | Depends on email/push infrastructure not yet built. "Tyler followed you" emails require custom SMTP (currently disabled). Building notifications correctly is a separate milestone. | Surface follow count changes in settings/profile; defer push/email |
-| Suggested collectors / recommendations | Requires a recommendation engine or at minimum follower-of-follower graph traversal. Needs critical mass of users and follow connections to produce good results. With small user count, suggestions are meaningless. | Defer to post-network-effect milestone |
-| Explore page | Structured discovery surface requiring trending logic, curator archetypes, featured collections. All deferred per PROJECT.md. | Discovery happens through profile-to-profile navigation in v2.0 |
-| Search across users | Cross-user search requires indexing all public collection data. Infrastructure and privacy complexity that exceeds v2.0 scope. | Profile URLs are the discovery surface for now |
-| Mutual follow requirement ("friendship" model) | Goodreads defaults to mutual friendship — the research shows this creates friction and reduces social graph density. Letterboxd's asymmetric follow model (follow without approval) is the correct pattern for a discovery-first product. | Asymmetric follow: you follow someone, you see their feed. No approval needed. |
-| "Request to follow" for private profiles | Private mode exists but a pending-follow-request workflow adds state management complexity (pending/approved/denied). | Private profile simply hides content from non-followers; no request queue needed in v2.0 |
-| Watch image uploads / wrist shots on profile | Supabase Storage integration out of scope per PROJECT.md. URL-only images for v2.0. | Keep existing URL-based image handling |
-| Activity pagination / infinite scroll | <500 watches per user means feed volume stays manageable. Cursor-based pagination can be added when needed. | Simple reverse-chronological list; limit to last 50 events |
+| Automated price tracking / market data pull | Requires external API (Chrono24 scraping is ToS-hostile; WatchCharts API is paid and adds significant infra); not core to taste-aware positioning | Manual "target price" field is sufficient for now; note as future milestone |
+| Price alert push notifications | Requires automated price tracking (above) + notification infrastructure (email/push); two large dependencies for an unvalidated need | Re-evaluate after cloud persistence and auth are stable |
+| Social / public collections | PROJECT.md explicitly out of scope; adds moderation complexity and dilutes personal-first value | Stay personal-first; sharing as future milestone post auth |
+| AI recommendation ("best next watch") | Tempting but requires a larger training context than Horlo currently has per user; would produce mediocre output with small collections | Existing similarity engine + gap analysis gives directional guidance without overpromising |
+| Community forums / comments | Zero infrastructure for this; adds moderation and community management burden; not the product | None needed in this roadmap |
+| Barcode / case-back scanning | iCollect Everything has it; adds camera permissions, OCR infra; marginal value for mechanical watch collectors who know their references | URL import pipeline is the correct answer for Horlo |
+| Per-notification granularity settings | Full notification preference center is over-engineered at this stage; Horlo has no notifications yet | Simple global toggle when notifications are added; expand later |
+| Collection sharing / export to others | Out of scope per PROJECT.md until multi-user is established | Defer |
 
 ---
 
-## UX Patterns Worth Adopting
+## UX Patterns Worth Stealing
 
-### From Letterboxd
-- **Asymmetric follow model** — follow without approval. No friendship handshake. The follower immediately sees the followee's activity. Simpler state machine, higher graph density.
-- **Activity types that generate minimal noise** — Letterboxd learned from Goodreads: don't put every micro-event in the feed. "Added to diary" yes; "liked a list" only with event filtering. For Horlo: watch_added and watch_worn are high-signal. wishlist_added is medium signal. watch_edited is low signal — omit from feed.
-- **Profile tabs as collection structure** — Films / Diary / Lists / Stats maps cleanly to Collection / Wishlist / Worn / Stats. Tabs reduce cognitive load vs. a single scrolling profile.
-- **Feed event rate limiting** — Letterboxd surfaces a maximum of one item per hour for bulk historical logs, preventing feed saturation from single users. Important for v2.0: if a user imports 40 watches at once, don't generate 40 feed events.
+Specific patterns from comparable apps that are well-regarded and applicable to Horlo.
 
-### From Goodreads
-- **Two-level privacy: profile-level + shelf-level** — Profile can be public while wishlist is private. The equivalent for Horlo: `profile_visibility` (public/private) + `wishlist_public` / `wear_public` booleans. Don't conflate these.
-- **Social proof on items** — "127 people have read this" → "14 collectors own this" creates discovery context on the watch detail without requiring social interaction.
+### From Klokker
+- **"Sleeping Beauties" neglect framing** — Don't say "hasn't been worn in 60 days." Say "Sleeping Beauty" or "Neglected." Collector language that creates gentle urgency without being accusatory. Easy to implement as a label variant alongside the days count.
+- **Rotation profile label** — "The Faithful" (wears same watches repeatedly) vs "Active Enthusiast" (rotates broadly). A single derived label from wear data that feels like a personality insight rather than a stat. Low complexity, high delight.
+- **Mixed carousel of favorites + pillars + unworn** — Home screen surfaces the right watch at the right moment rather than dumping the full grid. Horlo's insights panel could adopt this pattern.
 
-### From Discogs
-- **Collection as identity signal** — On Discogs, your collection and wantlist are your public face. No bio, no posts — just the catalog. Horlo's collection-centric profile (no bio required, collection grid is the hero) matches this correctly.
-- **Wantlist as a discovery surface** — Discogs makes wishlists (wantlists) browsable for other users. Collectors discover records through other people's wants. Horlo's wishlist tab on public profiles does the same — "this collector wants an IWC Portugieser" is discovery signal.
+### From Watchee
+- **"Wear Today" tap → immediate feedback** — The wear action is on the detail view, one tap, with immediate cost-per-wear update. Makes the act of logging feel rewarding rather than administrative.
+- **Cost-per-wear as a sell signal** — When cost-per-wear is high (expensive watch, rarely worn), Watchee surfaces "consider selling." Actionable insight rather than raw data. Horlo could do the same from the wear insight panel.
 
-### From Rdio (the explicit model for Horlo)
-- **Behavior-driven social graph** — Rdio's social signal was what people listened to, not what they posted. For Horlo, the wear event is the behavior signal: it tells you which watches a collector actually reaches for, not just owns. Surfaces authenticity that a static collection list cannot.
-- **Taste-first follow prompts** — On collector profiles, Common Ground ("you both have X, Y in common") should precede the follow button contextually. This is the hook Rdio used: "people who like what you like" as the follow CTA. Horlo can do this natively because `analyzeSimilarity()` runs in the browser.
+### From Chrono24's collection tool
+- **Wishlist renamed from "Notepad" → "Wishlist"** — The naming change alone signals intent. Horlo's wishlist view should use decisive language: "Watching" → "On My Radar" or "Wishlist" is fine; avoid vague terms.
+- **Market value shown inline on wishlist** — Even without automated tracking, displaying the user's manually-entered `targetPrice` next to the watch on the wishlist card creates a decision context at a glance.
+
+### From wardrobe apps (Stylebook, Whering, Klokker)
+- **Cost-per-wear encourages reflection, not just cataloging** — Every app that adds this metric reports that users start making different decisions (more wear, reconsider purchases, surface sells). It turns a catalog into a tool.
+- **"Haven't worn in X days" as primary surface, not buried stat** — Wardrobe apps put this prominently in the item detail header, not in an analytics tab. Horlo should surface `daysSinceWorn` in the watch detail view header, not just the insights panel.
+
+### From universal wishlist apps (Whisprice, Moonsift)
+- **Target price as an anchor, not a tracker** — Users set a price they'd pay; the app holds them to it. No automation needed. The discipline is in having stated the number. Horlo can implement this as a simple field with display treatment ("Your target: $2,400") — it reframes the wishlist from aspiration to decision.
+
+### General collection management UX
+- **Treemap or donut for collection balance** — More scannable than a table of numbers. A donut chart for "Style breakdown" (Dress 40%, Sport 30%, Casual 30%) communicates the distribution in one glance. Recharts or Nivo are the standard React choices.
+- **Empty states that teach** — When a filter returns zero results, or the wishlist is empty, the empty state should explain what the section is for. First-time users abandon apps that return blank screens.
 
 ---
 
 ## Feature Dependencies
 
 ```
-RLS on all public tables (carry-forward from v1.0)
-  ← blocks: ALL v2.0 social features. Must ship first.
+Auth + cloud persistence
+  ← required by: per-user preferences, data isolation, cross-device sync
 
-follows table (follower_id, following_id, created_at)
-  ← enables: follow/unfollow action, follower/following counts, activity feed filtering
+complicationExceptions fix
+  ← blocks: similarity engine returning accurate results for users with exceptions set
 
-activities table (actor_id, event_type, payload, created_at)
-  ← enables: home activity feed, collector profile activity view
-  ← event types needed: watch_added, wishlist_added, watch_worn, watch_sold
-  ← populated by: existing Server Actions (addWatch, updateWatch, logWear) + new follow action
+collectionGoal fix
+  ← blocks: collection goal influence on insights, preference-aware gap analysis
 
-user profile settings (profile_visibility, wishlist_public, wear_public)
-  ← enables: privacy controls, conditional rendering on public profiles
-  ← stored in: existing user settings table or new profile_settings table
+wear logging (already built)
+  ← enables: "last worn X days ago", neglect flag, cost-per-wear, rotation profile label
 
-public profile page (/u/[username])
-  ← enables: all social surface area; prerequisite for follow, Common Ground, activity feed
+purchasePrice field (add to Watch type)
+  ← enables: cost-per-wear calculation
 
-existing analyzeSimilarity() engine
-  ← enables: Common Ground taste overlap on collector profiles (zero additional engine work)
-  ← already runs client-side from props, not Zustand
+targetPrice field (add to Watch type)
+  ← enables: target price workflow on wishlist cards
 
-existing collection data (watches, wear events, wishlist)
-  ← enables: tab-scoped profile views (Collection, Wishlist, Worn)
-  ← privacy controls gate which tabs are visible to visitors
+collection balance data (already computed)
+  ← enables: collection balance visualization (charts)
+
+similarity engine (already built)
+  ← enables: wishlist gap-fill score (reuse on wishlist vs owned)
 ```
 
 ---
 
 ## MVP Recommendation for Active Roadmap
 
-Phases in dependency order:
+**Prioritize in this order:**
 
-1. **RLS on all tables** — Non-negotiable prerequisite. No social features can land safely before this. Medium complexity but critical. (Carried from v1.0.)
-
-2. **Data model: follows + activities tables** — Two new tables. Simple schema. Enables the rest of the milestone. Low complexity for the tables; medium for wiring activity writes into existing Server Actions.
-
-3. **Public profile page (`/u/[username]`)** — Collection tab first, read-only. Reveals privacy gaps early. Medium complexity.
-
-4. **Privacy settings** — `profile_visibility`, `wishlist_public`, `wear_public` toggles in Settings. Low complexity, high trust value.
-
-5. **Follow / unfollow** — Button on collector profile, counts on both profiles. Low complexity.
-
-6. **Home activity feed** — Reverse-chronological list of followed users' events. Limit to `watch_added`, `watch_worn`, `wishlist_added`. Omit `watch_edited`. High complexity (feed query, event rendering, empty state).
-
-7. **Common Ground on collector profile** — Reuse `analyzeSimilarity()` to show shared watches and overlap framing. Medium complexity. This is the signature differentiator; don't defer it.
+1. Fix `complicationExceptions` and `collectionGoal` — low effort, eliminates dead code, makes the scoring engine actually respect user preferences. Users who set these fields are the most engaged users.
+2. Wear tracking insights — surface `daysSinceWorn` in detail view and insights panel. Add neglect flag at 60-day threshold. Low complexity, high daily engagement value.
+3. Wishlist intelligence — add `targetPrice` field, "good deal" boolean, and display both on wishlist cards. Reuse similarity engine to show gap-fill score on wishlist items.
+4. Collection balance visualization — add a donut/bar chart to the insights panel for style and role distribution. Recharts is already a common dep in the ecosystem; low integration cost.
+5. Auth + cloud persistence — highest complexity; blocks cross-device use and multi-user. Sequence after the feature completeness work so the data model is stable before migrating.
 
 **Defer with rationale:**
-- Wishlist and Worn tabs on public profile: Lower priority than getting the Collection tab and feed right. Add in a second pass.
-- "Collectors who own this watch": Requires imprecise brand+model matching (no canonical DB yet). Useful but noisy. Defer until canonical watch strategy exists.
-- Activity feed event filtering: Nice-to-have once the feed has volume. At launch, default to all event types.
-- WYWT wear rail on home page: High-value retention hook but depends on feed infrastructure being solid first. Can be a fast follow after feed ships.
-
----
-
-## Sources
-
-- Letterboxd FAQ and activity feed documentation: https://letterboxd.com/about/faq/
-- Letterboxd activity feed privacy tweet: https://x.com/letterboxd/status/1295446440643158016
-- Letterboxd Wikipedia overview: https://en.wikipedia.org/wiki/Letterboxd
-- Goodreads social network site research: https://www.researchgate.net/publication/293768221_Goodreads_A_Social_Network_Site_for_Book_Readers
-- Goodreads activity feed and shelves guide: https://bookwiseapp.com/blog/the-goodreads-app-a-complete-guide-to-features-how-it-works
-- Activity feed design patterns: https://getstream.io/blog/activity-feed-design/
-- Scalable activity feed architecture: https://getstream.io/blog/scalable-activity-feed-architecture/
-- PostgreSQL follower/following schema design: https://www.geeksforgeeks.org/dbms/design-database-for-followers-following-systems-in-social-media-apps/
-- Letterboxd third-party taste comparison tools (evidence of unmet native demand): https://github.com/jsalvasoler/letterboxd_user_comparison
-- Rdio social discovery overview: https://en.wikipedia.org/wiki/Rdio
-- Discogs collection tool overview: https://support.discogs.com/hc/en-us/articles/360007331534-How-Does-The-Collection-Feature-Work
+- Cost-per-wear: Requires `purchasePrice` and `wearCount` fields not yet in the Watch type. Good candidate for the milestone after auth is complete.
+- Rotation profile label ("The Faithful" etc.): Delightful but needs several weeks of wear data to be meaningful. Better in a post-auth milestone when data persists.
+- Automated price tracking: Out of scope per PROJECT.md. Do not build.

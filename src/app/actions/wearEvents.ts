@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth'
 import * as wearEventDAL from '@/data/wearEvents'
+import * as watchDAL from '@/data/watches'
+import { logActivity } from '@/data/activities'
 import type { ActionResult } from '@/lib/actionTypes'
 
 export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
@@ -13,6 +15,19 @@ export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
 
   try {
     await wearEventDAL.logWearEvent(user.id, watchId, today)
+    // Activity logging (D-05) — fire and forget
+    try {
+      const watch = await watchDAL.getWatchById(user.id, watchId)
+      if (watch) {
+        await logActivity(user.id, 'watch_worn', watchId, {
+          brand: watch.brand,
+          model: watch.model,
+          imageUrl: watch.imageUrl ?? null,
+        })
+      }
+    } catch (err) {
+      console.error('[markAsWorn] activity log failed (non-fatal):', err)
+    }
     revalidatePath('/')
     return { success: true, data: undefined }
   } catch (err) {

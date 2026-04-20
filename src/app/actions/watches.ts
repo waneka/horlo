@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import * as watchDAL from '@/data/watches'
+import { logActivity } from '@/data/activities'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { Watch } from '@/lib/types'
@@ -60,6 +61,19 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
 
   try {
     const watch = await watchDAL.createWatch(user.id, parsed.data)
+    // Activity logging (D-05) — fire and forget, failure does not block mutation
+    try {
+      const activityType = watch.status === 'wishlist' || watch.status === 'grail'
+        ? 'wishlist_added' as const
+        : 'watch_added' as const
+      await logActivity(user.id, activityType, watch.id, {
+        brand: watch.brand,
+        model: watch.model,
+        imageUrl: watch.imageUrl ?? null,
+      })
+    } catch (err) {
+      console.error('[addWatch] activity log failed (non-fatal):', err)
+    }
     revalidatePath('/')
     return { success: true, data: watch }
   } catch (err) {
