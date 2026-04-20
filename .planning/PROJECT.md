@@ -45,7 +45,7 @@ Collectors discover watches through other people's collections and taste — not
 
 ### Active
 
-- [ ] RLS on all public tables — defense-in-depth, critical for multi-user visibility (carried from v1.0 MR-03)
+- ✓ RLS on all public tables — defense-in-depth on users, watches, user_preferences with 12 owner-scoped policies — v2.0 Phase 6 (DATA-01, DATA-07)
 - [ ] Multi-user data model — follows table, activity tracking, profile/privacy settings
 - [ ] Public profiles (self) — profile page with collection, wishlist, worn, notes, stats tabs
 - [ ] Collector profiles (other user) — read-only view, follow/unfollow, Common Ground taste overlap
@@ -136,4 +136,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 after v2.0 milestone start — taste network foundation, multi-user profiles + follows + activity feed*
+*Last updated: 2026-04-19 after Phase 6 complete — RLS enabled on all existing tables, defense-in-depth for multi-user*
