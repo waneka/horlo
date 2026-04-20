@@ -43,7 +43,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01-PLAN.md — Write RLS migration (enable + 12 policies) and push to Supabase
+- [x] 06-01-PLAN.md — Write RLS migration (enable + 12 policies) and push to Supabase
 
 ### Phase 7: Social Schema & Profile Auto-Creation
 **Goal**: The five new social tables exist in Postgres with full RLS policies and correct indexes, and every user (new and existing) has a profile row.
