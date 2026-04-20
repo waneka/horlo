@@ -594,17 +594,16 @@ No test infrastructure exists in this project. Wave 0 must establish the framewo
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Phase 6 applied to production?**
+1. **Phase 6 applied to production?** (RESOLVED)
    - What we know: Phase 6 RLS migration (`20260420000000_rls_existing_tables.sql`) was created and exists in `supabase/migrations/`
    - What's unclear: Whether it has been pushed to the production Supabase project yet (STATE.md shows Phase 6 as "not started" — but git shows the migration file exists from a completed execution)
-   - Recommendation: Planner should add a verification step: `supabase db push --linked` is idempotent (uses `CREATE POLICY IF NOT EXISTS` semantics), so it is safe to re-push. If Phase 6 migration was not applied, it will apply now. If it was, no-op.
+   - Resolution: Plan 01 Task 3 checkpoint includes `supabase db push --linked` which is idempotent. If Phase 6 migration was not applied, it will apply alongside Phase 7 migrations. If it was already applied, it is a no-op. No separate verification step needed.
 
-2. **Migration file numbering for Phase 7**
+2. **Migration file numbering for Phase 7** (RESOLVED)
    - What we know: Supabase migrations use `YYYYMMDD` timestamps; the last one is `20260420000000`
-   - What's unclear: Whether the planner should pick a specific timestamp or use today's date
-   - Recommendation: Use `20260419000001_social_tables.sql` for the schema/RLS migration and `20260419000002_profile_trigger.sql` for the trigger, following the existing timestamp convention.
+   - Resolution: Plans use timestamps `20260420000001` for the RLS migration and `20260420000002` for the profile trigger. These filenames are specified in Plan 01 Task 2 file paths: `supabase/migrations/20260420000001_social_tables_rls.sql` and `supabase/migrations/20260420000002_profile_trigger.sql`.
 
 ---
 
