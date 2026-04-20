@@ -29,7 +29,6 @@ const insertWatchSchema = z.object({
   designTraits: z.array(z.string()).default([]),
   roleTags: z.array(z.string()).default([]),
   acquisitionDate: z.string().optional(),
-  lastWornDate: z.string().optional(),
   productionYear: z.number().int().optional(),
   isFlaggedDeal: z.boolean().optional(),
   isChronometer: z.boolean().optional(),

@@ -6,9 +6,10 @@ import { SleepingBeautiesSection } from '@/components/insights/SleepingBeautiesS
 import { getCurrentUser } from '@/lib/auth'
 import { getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
+import { getMostRecentWearDates } from '@/data/wearEvents'
 import { detectLoyalBrands } from '@/lib/similarity'
 import { daysSince } from '@/lib/wear'
-import type { CollectionGoal, Watch } from '@/lib/types'
+import type { CollectionGoal, Watch, WatchWithWear } from '@/lib/types'
 
 function observationCopy(goal: CollectionGoal, ownedWatches: Watch[]): string {
   switch (goal) {
@@ -69,7 +70,7 @@ function calculateSingleValueDistribution(
   }))
 }
 
-function computeWearInsights(ownedWatches: Watch[]) {
+function computeWearInsights(ownedWatches: WatchWithWear[]) {
   const watchesWithWearData = ownedWatches.filter((w) => w.lastWornDate)
   const unwornWatches = ownedWatches.filter((w) => !w.lastWornDate)
 
@@ -131,6 +132,14 @@ export default async function InsightsPage() {
     (w) => w.status === 'wishlist' || w.status === 'grail'
   )
 
+  // Batch-query most recent wear dates from wear_events for all owned watches
+  const watchIds = ownedWatches.map((w) => w.id)
+  const wearDateMap = await getMostRecentWearDates(user.id, watchIds)
+  const ownedWithWear: WatchWithWear[] = ownedWatches.map((w) => ({
+    ...w,
+    lastWornDate: wearDateMap.get(w.id) ?? undefined,
+  }))
+
   const styleDistribution = calculateDistribution(ownedWatches, (w) => w.styleTags)
   const roleDistribution = calculateDistribution(ownedWatches, (w) => w.roleTags)
   const dialColorDistribution = calculateSingleValueDistribution(
@@ -146,7 +155,7 @@ export default async function InsightsPage() {
     (w) => w.strapType
   )
 
-  const wearInsights = computeWearInsights(ownedWatches)
+  const wearInsights = computeWearInsights(ownedWithWear)
   const collectionValue = computeCollectionValue(ownedWatches)
 
   if (watches.length === 0) {
@@ -178,7 +187,7 @@ export default async function InsightsPage() {
       {/* Actionable Sections */}
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <GoodDealsSection watches={watches} />
-        <SleepingBeautiesSection watches={watches} />
+        <SleepingBeautiesSection watches={ownedWithWear} />
       </div>
 
       {/* Goal-aware Observations */}

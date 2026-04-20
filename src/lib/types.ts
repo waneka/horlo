@@ -44,7 +44,6 @@ export interface Watch {
   roleTags: string[]
 
   acquisitionDate?: string
-  lastWornDate?: string
 
   productionYear?: number   // 4-digit year, optional; manual entry only in Phase 2
   isFlaggedDeal?: boolean   // Wishlist-only manual "good deal" override (FEAT-04)
@@ -52,6 +51,11 @@ export interface Watch {
 
   notes?: string
   imageUrl?: string
+}
+
+/** Watch with computed wear data from wear_events table */
+export interface WatchWithWear extends Watch {
+  lastWornDate?: string  // computed from most recent wear_events row
 }
 
 export interface UserPreferences {

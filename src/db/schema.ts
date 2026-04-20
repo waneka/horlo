@@ -63,7 +63,6 @@ export const watches = pgTable(
     roleTags: text('role_tags').array().notNull().default(sql`'{}'::text[]`),
 
     acquisitionDate: text('acquisition_date'),
-    lastWornDate: text('last_worn_date'),
 
     // Phase 2 additions (D-05)
     productionYear: integer('production_year'),

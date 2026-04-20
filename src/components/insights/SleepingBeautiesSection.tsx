@@ -3,18 +3,18 @@
 import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Moon } from 'lucide-react'
-import type { Watch } from '@/lib/types'
+import type { WatchWithWear } from '@/lib/types'
 import { daysSince, SLEEPING_BEAUTY_DAYS } from '@/lib/wear'
 
 export interface SleepingBeautiesSectionProps {
-  watches: Watch[]
+  watches: WatchWithWear[]
 }
 
 export function SleepingBeautiesSection({ watches }: SleepingBeautiesSectionProps) {
   const owned = watches.filter((w) => w.status === 'owned' || w.status === 'grail')
   const sleeping = owned
     .map((w) => ({ watch: w, days: daysSince(w.lastWornDate) }))
-    .filter((entry): entry is { watch: Watch; days: number } =>
+    .filter((entry): entry is { watch: WatchWithWear; days: number } =>
       entry.days !== null && entry.days >= SLEEPING_BEAUTY_DAYS
     )
     .sort((a, b) => b.days - a.days)

@@ -36,7 +36,6 @@ function mapRowToWatch(row: WatchRow): Watch {
     designTraits: row.designTraits,
     roleTags: row.roleTags,
     acquisitionDate: row.acquisitionDate ?? undefined,
-    lastWornDate: row.lastWornDate ?? undefined,
     productionYear: row.productionYear ?? undefined,
     isFlaggedDeal: row.isFlaggedDeal ?? undefined,
     isChronometer: row.isChronometer ?? undefined,
@@ -70,7 +69,6 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   if (data.designTraits !== undefined) row.designTraits = data.designTraits
   if (data.roleTags !== undefined) row.roleTags = data.roleTags
   if ('acquisitionDate' in data) row.acquisitionDate = data.acquisitionDate ?? null
-  if ('lastWornDate' in data) row.lastWornDate = data.lastWornDate ?? null
   if ('productionYear' in data) row.productionYear = data.productionYear ?? null
   if ('isFlaggedDeal' in data) row.isFlaggedDeal = data.isFlaggedDeal ?? null
   if ('isChronometer' in data) row.isChronometer = data.isChronometer ?? null
