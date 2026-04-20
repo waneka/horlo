@@ -21,6 +21,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { editWatch, removeWatch } from '@/app/actions/watches'
+import { markAsWorn } from '@/app/actions/wearEvents'
 import { SimilarityBadge } from '@/components/insights/SimilarityBadge'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
@@ -30,6 +31,7 @@ interface WatchDetailProps {
   watch: Watch
   collection: Watch[]
   preferences: UserPreferences
+  lastWornDate?: string | null  // sourced from wear_events by server page
 }
 
 function formatDate(dateStr?: string): string {
@@ -51,7 +53,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -72,9 +74,7 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
 
   const handleMarkAsWorn = () => {
     startTransition(async () => {
-      const result = await editWatch(watch.id, {
-        lastWornDate: new Date().toISOString(),
-      })
+      const result = await markAsWorn(watch.id)
       if (result.success) {
         // Inline mutation (no navigation) — explicit refresh re-fetches Server Component data.
         router.refresh()
@@ -91,7 +91,7 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
     })
   }
 
-  const daysSinceWorn = daysSince(watch.lastWornDate)
+  const daysSinceWorn = daysSince(lastWornDate ?? undefined)
   const safeUrl = getSafeImageUrl(watch.imageUrl)
 
   return (
@@ -134,12 +134,12 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
           {(watch.status === 'owned' || watch.status === 'grail') && (
             <div className="flex items-baseline gap-2 text-sm">
               <span className="text-muted-foreground">Last worn:</span>
-              {watch.lastWornDate ? (
+              {lastWornDate ? (
                 <span>
-                  {new Date(watch.lastWornDate).toLocaleDateString()}
+                  {new Date(lastWornDate).toLocaleDateString()}
                   <span className="text-muted-foreground">
                     {' '}
-                    ({daysSince(watch.lastWornDate)} days ago)
+                    ({daysSince(lastWornDate)} days ago)
                   </span>
                 </span>
               ) : (
@@ -367,7 +367,7 @@ export function WatchDetail({ watch, collection, preferences }: WatchDetailProps
               <div>
                 <dt className="text-muted-foreground">Last Worn</dt>
                 <dd className="font-semibold">
-                  {formatDate(watch.lastWornDate)}
+                  {formatDate(lastWornDate ?? undefined)}
                   {daysSinceWorn !== null && daysSinceWorn > 0 && (
                     <span className="text-muted-foreground/70 ml-1">
                       ({daysSinceWorn} days ago)

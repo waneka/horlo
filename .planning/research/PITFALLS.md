@@ -1,432 +1,350 @@
+---
+dimension: pitfalls
+generated: 2026-04-11
+---
 # Pitfalls Research
 
-**Domain:** Adding multi-user social features (profiles, follows, activity feed, taste overlap) to an existing single-user Supabase app
-**Researched:** 2026-04-19
-**Confidence:** HIGH (RLS, N+1 patterns), MEDIUM (privacy enforcement patterns, feed scaling), HIGH (Drizzle-specific)
+## Summary
+
+The highest-risk areas for Horlo's planned upgrades are: (1) SSRF fix correctness — the most common "fix" (blocklisting by hostname string) is bypassed by DNS rebinding and alternate IP notations, requiring post-resolution validation; (2) auth middleware misplacement — Next.js 16 renamed `middleware.ts` to `proxy.ts` and the design intent is explicit: do coarse routing only, never trust it as the sole auth gate; (3) localStorage-to-cloud migration data loss — the watch IDs are currently generated with `Date.now() + random`, which will collide if a user imports existing data after the cloud schema is live. Dark mode and testing pitfalls are real but lower risk given the groundwork already in place.
 
 ---
 
-## Critical Pitfalls
+## Dark Mode Pitfalls
 
-### Pitfall 1: Enabling RLS Without Writing All Required Policies — Existing Data Becomes Invisible
+### 1. The variant is already class-based — don't break it
+**What goes wrong:** `globals.css` correctly declares `@custom-variant dark (&:is(.dark *))`, which makes `dark:` utilities respond to the `.dark` class on any ancestor. The pitfall is accidentally adding a second, conflicting dark configuration — for example by installing a component library or `next-themes` preset that also declares a `@custom-variant dark` or sets `darkMode: 'selector'` in a Tailwind plugin. Two competing variant declarations silently shadow one another; the last one wins but without a compile error.
 
-**What goes wrong:**
-RLS is disabled by default on Supabase tables. When you enable it on `watches`, `user_preferences`, or any table that has existing rows, Postgres immediately enforces "deny all by default." Any read that doesn't match a policy returns zero rows — silently. The user logs in, their collection appears empty, and there is no error in the console or server logs. This is the most common "my data disappeared" report when adding RLS to a running app.
+**Warning signs:** Some `dark:` utilities stop responding even though `.dark` is on `<html>`. Usually noticed on newly added third-party components.
 
-**Why it happens:**
-Developers enable RLS on all tables at once (a correct security step) but write policies incrementally. During the gap between enabling and finishing all policies, production queries fail. A developer testing in the Supabase SQL Editor also won't catch this because the SQL Editor runs as the `postgres` superuser, which bypasses RLS entirely.
+**Prevention:** Audit any new Tailwind plugin or shadcn component for its own dark variant declaration before installing. Keep the single source of truth in `globals.css`.
 
-**How to avoid:**
-- Write all policies for a table before enabling RLS on it in production.
-- Test policies using the **User Impersonation** feature in the Supabase Dashboard (select a real user, browse the data, confirm what they see matches expectations).
-- Never test RLS correctness from the SQL Editor alone.
-- Use a migration that does `ALTER TABLE watches ENABLE ROW LEVEL SECURITY` and `CREATE POLICY ...` in the same transaction.
-- Minimum required policies for each existing table: SELECT policy scoped to `auth.uid() = user_id`, INSERT policy with `WITH CHECK (auth.uid() = user_id)`, UPDATE policy with both USING and WITH CHECK, DELETE policy scoped to owner.
-
-**Warning signs:**
-- Collection appears empty after login but data exists in the DB.
-- Supabase Dashboard "Security Advisors" lint shows tables with RLS disabled that are exposed to the Data API.
-- Daily Supabase email warning about tables without RLS policies.
-
-**Phase to address:** Phase 1 (RLS foundation) — must complete before any multi-user visibility work begins. Carries from v1.0 MR-03.
+**Phase:** Visual milestone (dark mode phase).
 
 ---
 
-### Pitfall 2: `auth.uid()` Called Per-Row Without `SELECT` Wrapper — Policy Blows Up Query Plans
+### 2. Flash of incorrect theme on first load (FOUC)
+**What goes wrong:** Next.js server-renders the HTML without knowing the user's stored preference. The page lands in light mode; the client reads `localStorage` and adds `.dark` to `<html>` during React hydration. The user sees a white flash even if they toggled dark the previous session.
 
-**What goes wrong:**
-An RLS policy written as `user_id = auth.uid()` calls the `auth.uid()` function once per row evaluated. Postgres cannot hoist this into an `initPlan` (a once-per-query cached value) unless you wrap it: `user_id = (SELECT auth.uid())`. Without the wrapper, on a table with 10,000 rows and a policy on every read, the function is called 10,000 times per query. This compounds badly on tables scanned for joins (e.g., the activity feed joining `watches`, `follows`, and `activities`).
+**Warning signs:** A brief white flash on page load in dark mode, especially on slow connections or CPU-throttled devices.
 
-**Why it happens:**
-The natural syntax is `auth.uid()` without wrapping. Official Supabase docs show both forms, but the performance difference is not prominent in beginner documentation. The problem is invisible at small scale — it manifests at hundreds of rows.
+**Prevention:** Inject a blocking inline `<script>` in the `<head>` (via `layout.tsx` or a custom `_document`) that reads `localStorage` and sets the class synchronously before the first paint. This script must run before React hydrates. `next-themes` handles this automatically if used; if rolling a custom toggle, the script placement is critical. Do not use a React `useEffect` — it always runs after paint.
 
-**How to avoid:**
-Write all RLS policies using the `SELECT` wrapper form:
-```sql
--- Correct (auth.uid() evaluated once per statement)
-CREATE POLICY "owner_read" ON watches
-  FOR SELECT USING (user_id = (SELECT auth.uid()));
-
--- Incorrect (auth.uid() evaluated per row)
-CREATE POLICY "owner_read" ON watches
-  FOR SELECT USING (user_id = auth.uid());
-```
-Apply the same pattern to `auth.jwt()` and any `security definer` function calls in policies.
-
-**Warning signs:**
-- `EXPLAIN ANALYZE` shows `InitPlan` absent on policy-filtered queries; function appears in Filter node.
-- Supabase Performance Advisor flags `auth_rls_initplan` lint (lint `0003_auth_rls_initplan`).
-- Collection load times increase linearly as the user adds more watches.
-
-**Phase to address:** Phase 1 (RLS foundation) — establish the correct pattern before any policies are written.
-
----
-
-### Pitfall 3: Public Profile Policy Bypasses Privacy Settings — RLS Grants Access, App Logic Filters It Too Late
-
-**What goes wrong:**
-A common implementation mistake: add an RLS policy that allows any authenticated user to read another user's `watches` rows, then rely on application code to check `profile.visibility_setting` before rendering. The data is fetched first (privacy setting checked second). This means:
-- The data has already left the database by the time the app decides not to show it.
-- A direct Supabase client call (or `curl` with an anon key) bypasses the app entirely and sees private data.
-- Any Server Action that reuses the DAL without threading the viewer context gets the unfiltered result.
-
-**Why it happens:**
-Privacy settings feel like a UI concern ("don't show this tab"), not a data concern. Developers add the RLS policy to allow cross-user reads, then add an `if (profile.is_private) return null` in the component. The policy and the app check diverge as the codebase grows.
-
-**How to avoid:**
-Two-layer enforcement — both must be present:
-
-Layer 1 (RLS): Policy allows read only when the profile is public OR the viewer follows the owner:
-```sql
-CREATE POLICY "collection_public_or_followed" ON watches
-  FOR SELECT USING (
-    user_id = (SELECT auth.uid())  -- own data always readable
-    OR EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = watches.user_id
-        AND profiles.collection_visibility = 'public'
-    )
-    OR EXISTS (
-      SELECT 1 FROM follows
-      WHERE follows.follower_id = (SELECT auth.uid())
-        AND follows.following_id = watches.user_id
-    )
-  );
+**Example layout pattern:**
+```tsx
+// app/layout.tsx
+<html suppressHydrationWarning>
+  <head>
+    <script dangerouslySetInnerHTML={{ __html: `
+      (function() {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    `}} />
+  </head>
 ```
 
-Layer 2 (DAL): Every cross-user query in the DAL also checks visibility settings as a WHERE clause, not a post-fetch filter.
+`suppressHydrationWarning` on `<html>` is required because the server renders no class but the client may add `dark` — React would otherwise warn about a hydration mismatch.
 
-Privacy settings changes must trigger a policy re-evaluation — do not cache the visibility state on the client.
-
-**Warning signs:**
-- Visiting `/users/[username]/collection` while logged out (using the anon key) returns watches when the profile is set to private.
-- The DAL has `if (profile.isPublic)` checks after `await db.select()` calls rather than in the WHERE clause.
-- Privacy setting changes take effect immediately in the UI but a direct API call still returns stale data.
-
-**Phase to address:** Phase 2 (public profiles + privacy controls) — design both layers simultaneously. Never add the RLS policy without the DAL enforcement.
+**Phase:** Visual milestone (dark mode phase).
 
 ---
 
-### Pitfall 4: `UPDATE` Policy Missing `WITH CHECK` — Users Can Steal Ownership of Rows
+### 3. System preference and manual toggle getting out of sync
+**What goes wrong:** A toggle that writes to `localStorage` but doesn't also listen to `prefers-color-scheme` changes will diverge: system switches to light, app stays dark (or vice versa) because the stored value wins unconditionally. Conversely, a toggle that only wraps `prefers-color-scheme` ignores the user's explicit choice.
 
-**What goes wrong:**
-An UPDATE policy written with only `USING` (the filter for which rows can be updated) but without `WITH CHECK` (the constraint on the new row state) lets an authenticated user change the `user_id` column of a row they own to someone else's user ID. They have effectively donated a watch to another user's collection, or planted data in another user's account. With a follows table, a missing `WITH CHECK` lets a user create follow records claiming to be someone else.
+**Warning signs:** "I switched to dark but after the OS changed, the app changed too without asking."
 
-**Why it happens:**
-Many RLS examples online show `USING` only and omit `WITH CHECK`. The distinction is not obvious: `USING` filters what you can touch; `WITH CHECK` validates what the result looks like after the change.
+**Prevention:** Implement a three-state model: `'light'` | `'dark'` | `'system'`. When state is `'system'`, apply the media query result and listen for changes. When state is `'light'` or `'dark'`, stored preference wins and media query changes are ignored. `next-themes` implements this model correctly out of the box.
 
-**How to avoid:**
-For any table with a `user_id` or ownership column, write UPDATE policies with both clauses and make both check ownership:
-```sql
-CREATE POLICY "owner_update" ON watches
-  FOR UPDATE
-  USING (user_id = (SELECT auth.uid()))
-  WITH CHECK (user_id = (SELECT auth.uid()));
+**Phase:** Visual milestone (dark mode phase).
+
+---
+
+### 4. Hardcoded color values bypassing the CSS variable system
+**What goes wrong:** A developer writes `bg-gray-900` instead of `bg-background` or `bg-card`. The hardcoded utility does not flip with the theme because it is not a CSS variable reference. This is especially common when copying code snippets from documentation that predates the project's token system.
+
+**Warning signs:** A component looks fine in light mode but stays dark-gray in light mode (or stays white in dark mode).
+
+**Prevention:** Enforce the semantic token system: always use `bg-background`, `text-foreground`, `bg-card`, `border-border`, etc., rather than raw palette utilities. Lint rule or PR review checklist. The existing `globals.css` defines the full token set in both `:root` and `.dark`.
+
+**Phase:** Visual milestone (dark mode phase).
+
+---
+
+## Auth Integration Pitfalls
+
+### 1. Next.js 16: `middleware.ts` is now `proxy.ts`
+**What goes wrong:** Next.js 16 renamed the middleware entry point from `middleware.ts` to `proxy.ts` with a corresponding rename of the exported function from `middleware` to `proxy`. Auth guides written for Next.js 14/15 (including the current Auth.js docs) still reference `middleware.ts`. Using the old filename means the file is silently ignored — no error, no protection. Vercel ships a codemod: `npx @next/codemod@canary middleware-to-proxy`.
+
+**Warning signs:** Protected routes are accessible without a session; no redirect occurs. `middleware.ts` exists but no execution evidence in logs.
+
+**Prevention:** When scaffolding auth, create `proxy.ts` in `src/` (not `middleware.ts`). Run the Vercel codemod immediately after any upgrade from 15 → 16. Confirm the file is being executed with a test log before relying on it for auth.
+
+**Phase:** Authentication milestone.
+
+---
+
+### 2. Proxy/middleware is not a sufficient auth gate — every server action and API route must re-verify
+**What goes wrong:** CVE-2025-29927 (CVSS 9.1, patched in Next.js 15.2.3) demonstrated that an attacker who sends the `x-middleware-subrequest` header can bypass all middleware/proxy logic entirely. Even on patched versions, the architectural lesson stands: proxy/middleware runs at the edge and should only do coarse routing. Any API route, server action, or server component that handles real data must call `auth()` / `getServerSession()` independently. An app that relies solely on middleware redirection for protection will have unprotected Server Actions even after the SSRF fix and post-migration.
+
+**Warning signs:** Server actions that mutate data (add/delete watches, update preferences) do not call `getServerSession()` internally.
+
+**Prevention:** Rule: every server action and every API route that reads or writes user data calls the session helper and returns 401/403 before touching data. Middleware/proxy handles only the redirect UX for unauthenticated page visits.
+
+**Phase:** Authentication milestone.
+
+---
+
+### 3. JWT vs database session strategy mismatch with Supabase or Prisma adapters
+**What goes wrong:** Auth.js v5 database adapters (Supabase, Prisma, Drizzle) are incompatible with the Edge runtime. If `proxy.ts` calls the session function and the adapter tries to make a database connection, it throws at runtime. The common workaround — splitting the Auth.js config into two files — is not obvious and is poorly documented.
+
+**Warning signs:** `TypeError: Cannot read properties of undefined` or edge runtime errors at startup when an adapter is configured.
+
+**Prevention:** Use the split-config pattern: one `auth.config.ts` without adapter (edge-safe, used in `proxy.ts`) and one `auth.ts` with adapter (Node.js only, used in server components and actions). Force JWT strategy in the edge config.
+
+```ts
+// auth.config.ts (edge-safe, no adapter)
+export const authConfig = { providers: [...], callbacks: { ... } }
+
+// auth.ts (Node.js, has adapter)
+import NextAuth from 'next-auth'
+import { authConfig } from './auth.config'
+import { SupabaseAdapter } from '@auth/supabase-adapter'
+export const { auth, signIn, signOut } = NextAuth({ ...authConfig, adapter: SupabaseAdapter(...) })
 ```
-The `WITH CHECK` clause prevents the user from changing `user_id` to anything other than their own ID, even if they pass the `USING` filter.
 
-**Warning signs:**
-- UPDATE policies that have `USING` but no `WITH CHECK`.
-- A user can set `user_id` to a null or arbitrary UUID via a direct API call without getting a policy violation error.
-
-**Phase to address:** Phase 1 (RLS foundation) — applies to all tables including the existing `watches` and `user_preferences` tables.
+**Phase:** Authentication milestone.
 
 ---
 
-### Pitfall 5: Activity Feed Built With Per-Item Queries — N+1 Kills Performance
+### 4. Missing `NEXTAUTH_SECRET` in production causes sessions to silently fail
+**What goes wrong:** Without a valid `NEXTAUTH_SECRET` (32-byte random string), Auth.js falls back to an insecure or missing secret in development but throws or drops sessions in production. The failure mode is silent: logins appear to succeed but the session cookie is not set or is immediately invalid.
 
-**What goes wrong:**
-The natural implementation of an activity feed:
-1. Query `activities` WHERE follower's `following_id` IN (...) → returns N activity rows.
-2. For each activity row, query `watches` to get watch details.
-3. For each activity row, query `profiles` to get actor username/avatar.
+**Warning signs:** Login redirect succeeds but the user is immediately unauthenticated on the next request; `useSession()` returns `null` after sign-in.
 
-This produces N+1 queries (1 for the feed, N for watches, N for profiles). With 20 feed items, that's 41 database round-trips. With 50 feed items across 10 followed users, the home page makes 100+ queries. At Horlo's target scale (tens of collectors, each with <500 watches) this is survivable but still slow; it also scales poorly.
+**Prevention:** Generate the secret with `openssl rand -base64 32` before any deployment. Set it in `.env.local` and all deployment environment configs. Treat its absence as a startup-blocking error.
 
-**Why it happens:**
-Fetching related data lazily is the natural pattern when iterating over result rows. Drizzle's relational query API can mask this — `db.query.activities.findMany({ with: { watch: true, actor: true } })` looks like a single call but may translate to subqueries that behave poorly depending on the nesting depth.
+**Phase:** Authentication milestone.
 
-**How to avoid:**
-Fetch the feed in a single JOIN query or at most two queries (feed rows + batch-loaded related entities):
-```sql
-SELECT
-  a.id, a.activity_type, a.created_at,
-  w.id as watch_id, w.brand, w.model, w.image_url,
-  p.username, p.avatar_url
-FROM activities a
-JOIN watches w ON w.id = a.watch_id
-JOIN profiles p ON p.user_id = a.actor_user_id
-WHERE a.actor_user_id IN (
-  SELECT following_id FROM follows WHERE follower_id = $userId
-)
-ORDER BY a.created_at DESC
-LIMIT 20;
+---
+
+### 5. Per-user data isolation must be enforced at query time, not inferred from session
+**What goes wrong:** After migrating to multi-user, a naive implementation fetches the current user's watches by doing `WHERE userId = session.user.id` only in the frontend store. If a server action or API route accepts a watch ID from the client without verifying ownership, user A can mutate or read user B's watches by guessing or brute-forcing watch IDs. The current `generateId()` (timestamp + random) is not a security guarantee.
+
+**Warning signs:** A server action like `deleteWatch(id)` accepts an `id` parameter and deletes without checking that the watch belongs to the session user.
+
+**Prevention:** Every server-side data access must be scoped: `WHERE id = ? AND userId = auth().user.id`. Never trust client-supplied IDs as sufficient authorization.
+
+**Phase:** Authentication milestone + Cloud persistence milestone.
+
+---
+
+## localStorage → Cloud Migration Pitfalls
+
+### 1. Watch IDs generated with `Date.now()` will collide on import
+**What goes wrong:** The current `generateId()` function produces `${Date.now()}-${random}`. When a user's localStorage data is exported and re-imported into the database (the migration path), multiple users doing this simultaneously or in rapid succession will produce different IDs that happen to share the timestamp prefix. More critically, if the migration script runs batch inserts, the IDs may collide in the database primary key column.
+
+**Warning signs:** Insert errors on `UNIQUE constraint` during batch migration; two watches with identical IDs after import.
+
+**Prevention:** Switch to `crypto.randomUUID()` (available in Node.js 14.17+ and modern browsers without a polyfill) for all new watch ID generation before or during the cloud migration. During the migration script, re-generate IDs for any record whose ID does not conform to UUID format.
+
+**Phase:** Cloud persistence milestone.
+
+---
+
+### 2. No schema version on localStorage records means silent field corruption during migration
+**What goes wrong:** The Zustand stores have no `version` field. If a new required field is added to the `Watch` type between when a user last synced and when migration runs, rehydrated records will have `undefined` for that field. The migration script will insert partially invalid records, which the app reads and crashes on later.
+
+**Warning signs:** Zustand stores rehydrate but some watches are missing fields that the UI expects; runtime errors like `Cannot read properties of undefined` on field access.
+
+**Prevention:** Add a store `version` field to both stores before any schema change. Write a migration function in the Zustand `persist` `onRehydrateStorage` callback that fills in missing fields with defaults. Confirm all records pass a Zod schema check before inserting into the database.
+
+**Phase:** Cloud persistence milestone (must happen before any type changes).
+
+---
+
+### 3. The migration window creates a split-brain state
+**What goes wrong:** The migration from localStorage to cloud is not atomic from the user's perspective. During the cutover (deploying the new cloud-backed build), existing users still have their collection only in localStorage. If the cloud schema is live but the migration hasn't run for their data, they log in and see an empty collection. If the migration fails halfway, some watches are in the DB and some remain only in localStorage.
+
+**Warning signs:** Users report "lost my collection" after logging in; re-logging in doesn't help because the DB is empty or partial.
+
+**Prevention:** (a) Build a self-service import flow — let users export their localStorage collection as JSON and import it into the cloud-backed account. Do not rely on an automated migration that runs once at deploy time. (b) Keep localStorage reads as a fallback for 30-60 days post-launch; if the cloud collection is empty on first login, prompt the user to import. (c) Never delete localStorage data automatically.
+
+**Phase:** Cloud persistence milestone.
+
+---
+
+### 4. Zustand `persist` middleware and server-side rendering hydration mismatch
+**What goes wrong:** Zustand's `persist` middleware reads from `localStorage` only on the client. With App Router server components, the server renders with the empty initial state, the client then hydrates with localStorage data. Any component that renders watch data on the server will show a flash of empty state. If components are not properly guarded with `useEffect` or `suppressHydrationWarning`, React will throw a hydration mismatch error.
+
+**Warning signs:** Hydration error in the console: "Hydration failed because the server rendered HTML didn't match the client"; or a brief empty-state flash on load.
+
+**Prevention:** Mark watch-data-rendering components as Client Components (`'use client'`). Use Zustand's built-in `useStore` hydration guard pattern, or check `typeof window !== 'undefined'` before rendering data-dependent UI. After the cloud migration, server components can fetch directly and this becomes a non-issue.
+
+**Phase:** Cloud persistence milestone, but also relevant to any server-rendering work in the visual milestone.
+
+---
+
+### 5. Race condition between localStorage write and cloud write during transition period
+**What goes wrong:** If a transition period runs where both localStorage and cloud are written (dual-write for safety), a network failure during the cloud write leaves the two stores diverged. On next load, the app reads cloud (the canonical source) and misses the latest change.
+
+**Warning signs:** A watch the user just edited reverts to its previous state after a page reload.
+
+**Prevention:** Designate a single source of truth from day one of the cloud rollout. Do not run dual-write in production. Instead, use the export/import flow (pitfall 3) for migration, then switch entirely to cloud. If dual-write is required for a rollback safety net, use a write-through pattern where cloud is written first and localStorage is updated only on success.
+
+**Phase:** Cloud persistence milestone.
+
+---
+
+## Testing Next.js App Router Pitfalls
+
+### 1. Async React Server Components cannot be unit-tested with Vitest + RTL
+**What goes wrong:** Vitest and React Testing Library do not support rendering async Server Components (components that use `async/await` at the top level). Attempting to render them throws an error about async rendering not being supported in the test environment. This affects any component that fetches data directly (which will be common post-cloud migration).
+
+**Warning signs:** `Error: Objects are not valid as a React child (found: [object Promise])` when rendering a Server Component in RTL.
+
+**Prevention:** Unit-test Server Components by testing their data-fetching logic (the fetch/query function) and their rendering logic separately. Use Playwright or Cypress for E2E tests that verify the integrated server-rendered output. For Horlo specifically, the similarity engine, extractor pipeline, and Zustand store reducers are all pure functions — test those directly without rendering.
+
+**Phase:** Quality milestone.
+
+---
+
+### 2. `next/navigation` hooks require explicit mocking — `next/router` does not work
+**What goes wrong:** App Router components use `useRouter`, `usePathname`, and `useSearchParams` from `next/navigation`. In tests, these throw if the Next.js router context is not provided. Using `next-router-mock` (which mocks `next/router`) does not solve this; it mocks the wrong module.
+
+**Warning signs:** `Error: invariant expected app router to be mounted` when rendering a component that calls `useRouter()`.
+
+**Prevention:** Mock `next/navigation` using `vi.mock`:
+```ts
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
 ```
-Write the DAL query as an explicit join, not as nested relational queries. Verify with `EXPLAIN ANALYZE` before shipping.
+Use `vi.hoisted()` if the mock must be initialized before imports are resolved. The `next-router-mock` library supports `next/navigation` as of recent versions — verify the version before relying on it.
 
-**Warning signs:**
-- Supabase logs show 20+ queries per home page load.
-- Home page response time scales linearly with number of followed users.
-- Drizzle query is `findMany` with nested `with` clauses three levels deep.
-
-**Phase to address:** Phase 3 (activity feed) — design the schema and DAL query together; don't add the JOIN after the fact.
+**Phase:** Quality milestone.
 
 ---
 
-### Pitfall 6: Offset Pagination on the Activity Feed Degrades at Depth
+### 3. Testing Zustand stores without resetting state between tests causes pollution
+**What goes wrong:** Zustand stores are module-level singletons. If one test adds a watch to the store and doesn't reset it, the next test starts with that watch already present. Test order matters and tests become interdependent, producing false passes and false failures.
 
-**What goes wrong:**
-`LIMIT 20 OFFSET 60` causes Postgres to scan and discard 60 rows before returning the next 20. On an activity feed ordered by `created_at DESC`, as users scroll deeper into history, query time grows linearly with offset. At offset 500 the query may take 10x longer than at offset 0, and Postgres explicitly documents this behavior as a known inefficiency.
+**Warning signs:** Tests pass individually but fail when run together; a test that asserts an empty collection fails randomly.
 
-Additionally, offset pagination on a live feed has a correctness problem: if new activities are inserted while the user is paginating, rows shift and the user sees duplicates or misses entries.
-
-**Why it happens:**
-`OFFSET` is the default pagination pattern in most query builders and tutorials. Keyset pagination requires composing a WHERE clause from the last-seen row's values, which is less obvious.
-
-**How to avoid:**
-Use keyset (cursor) pagination from the start. For the activity feed ordered by `created_at`:
-```sql
-WHERE a.created_at < $lastSeenTimestamp
-  AND a.id < $lastSeenId  -- tiebreaker for same-timestamp rows
-ORDER BY a.created_at DESC, a.id DESC
-LIMIT 20;
+**Prevention:** Reset the store before each test:
+```ts
+beforeEach(() => {
+  useWatchStore.setState({ watches: [], filters: defaultFilters })
+})
 ```
-Pass `(lastSeenTimestamp, lastSeenId)` as the cursor to the next page fetch. This is stable under inserts and O(1) regardless of page depth.
+Alternatively, use Zustand's `create` with a factory pattern so each test gets a fresh store instance. Add a `resetStore()` action to both stores for convenience in tests.
 
-**Warning signs:**
-- Feed pagination uses `OFFSET` in Drizzle queries.
-- Loading older feed items becomes noticeably slower than loading recent ones.
-
-**Phase to address:** Phase 3 (activity feed) — implement keyset pagination from the initial build.
+**Phase:** Quality milestone.
 
 ---
 
-### Pitfall 7: Follows Table RLS Allows Any User to Follow Anyone — No Opt-Out, No Block
+### 4. Testing the LLM extractor pipeline with real API calls is slow, flaky, and expensive
+**What goes wrong:** `fetchAndExtract` makes real HTTP requests and optionally calls the Anthropic API. If tests call this without mocking, they are slow (network-dependent), flaky (LLM responses are non-deterministic), and expensive (paid API calls on every test run).
 
-**What goes wrong:**
-The initial follows table implementation grants any authenticated user the ability to INSERT a follow for any target `following_id`. This is correct for the open-follow model, but it means a user can be followed without consent and without any way to remove a follower. When privacy controls are added later (Phase 2+), the existing follows records conflict with the new visibility rules: a user set their profile to private but still has followers from before the setting existed.
+**Warning signs:** Test suite takes 30+ seconds; occasional timeouts on CI; Anthropic billing surprises.
 
-**Why it happens:**
-The follow model is designed as open (like Rdio / Twitter unconfirmed follows). Blocking is treated as out of scope. But without a basic "remove a follower" or "block" escape hatch, the system has no remedy for harassment or unwanted visibility.
+**Prevention:** Mock at the network boundary. Use `vi.mock('@/lib/extractors')` with fixture responses that represent each extractor stage. Test the three stages (structured data, HTML selectors, LLM fallback) independently with canned inputs. The integration test for the full pipeline should run in a separate, clearly labelled suite that is gated by an environment variable and never runs on every commit.
 
-**How to avoid:**
-- Even if blocking is out of scope for v2.0, design the follows table to support `status` (active / blocked) from the start. Adding a column later requires a migration and policy rewrites.
-- RLS on follows: only the follower can INSERT their own follows (`follower_id = (SELECT auth.uid())`); only the followed user can DELETE follows targeting them (`following_id = (SELECT auth.uid())`).
-- When privacy is set to private, exclude that user's data from reads regardless of follow status.
-
-**Warning signs:**
-- `follows` INSERT policy does not check `follower_id = (SELECT auth.uid())`.
-- No DELETE policy that lets the followed user remove their own followers.
-- Privacy setting has no effect on already-following users' feed access.
-
-**Phase to address:** Phase 1 schema design — the schema decision (add `status` column) must happen before the table is created in production.
+**Phase:** Quality milestone.
 
 ---
 
-### Pitfall 8: Existing Single-User DAL Functions Break When Given a Foreign User ID
+### 5. Snapshot tests on complex components generate noise and erode trust
+**What goes wrong:** Snapshot tests on `WatchCard`, `WatchDetail`, or the filter bar will fail on every intentional UI change (spacing, icon swap, wording). Developers begin running `vitest --update-snapshots` reflexively without reviewing the diff, making the snapshots meaningless security theater.
 
-**What goes wrong:**
-Current DAL functions like `getWatches(userId)` and `getPreferences(userId)` were written with the assumption that `userId` always equals the authenticated user's ID. When profiles for other users are added, those same functions get called with a foreign `userId` to render their public collection. But the DAL functions may include write-guards or preference-specific joins that make no sense for read-only cross-user access. Worse, if the function is reused without modification, it may fail the RLS check because the query is written as `WHERE user_id = auth.uid()` — which won't match the foreign user.
+**Warning signs:** Snapshot update PRs with no description; snapshots updated in the same commit as UI changes.
 
-**Why it happens:**
-The single-user functions conflate "whose data" with "is this the current user." When reused for foreign profiles, both assumptions break.
+**Prevention:** Do not snapshot complex, frequently-changing components. Reserve snapshot tests for stable, primitive components (e.g., a static badge or icon). For UI components, test behavior: does clicking the status toggle call `updateWatch`? Does the filter bar render the correct count? Use RTL queries (`getByRole`, `getByText`) over snapshots.
 
-**How to avoid:**
-- Introduce two explicit DAL function categories: `getMyWatches()` (current user, read-write, full data) and `getUserCollection(targetUserId)` (cross-user, read-only, visibility-filtered).
-- Never reuse write-capable DAL functions for cross-user reads.
-- RLS policies and DAL functions must independently enforce visibility — the DAL function cannot assume RLS is sufficient, and RLS cannot assume the DAL function checks visibility.
-
-**Warning signs:**
-- A DAL function accepts a `userId` parameter but also calls `auth.uid()` inside in a way that conflicts when the two differ.
-- The same function is used for both "my collection" and "their collection" with only a flag to switch behavior.
-- `getUserCollection` returns 0 rows for a public profile when viewed while logged in as a different user.
-
-**Phase to address:** Phase 2 (public profiles) — identify all affected DAL functions before building any cross-user read path.
+**Phase:** Quality milestone.
 
 ---
 
-### Pitfall 9: Taste Overlap (Common Ground) Computed in the Browser With Fetched Foreign Data
+## SSRF Fix Pitfalls
 
-**What goes wrong:**
-The existing similarity engine runs entirely client-side in the browser. When Common Ground (taste overlap with another collector) is added, the naive implementation fetches the other user's full collection to the browser, then runs the similarity engine locally. Problems:
-- The other user's full collection (up to 500 watches, all fields) is sent over the wire even if only 5 fields are needed for overlap calculation.
-- The browser must hold two full collections in memory simultaneously.
-- The network payload is large and the page load is slow.
-- If the other user's collection is private or partially private (wishlist hidden), the entire collection cannot be fetched client-side — the calculation breaks.
+### 1. Hostname blocklist matching is bypassed by alternate IP notations
+**What goes wrong:** The most common "fix" is a string check: reject URLs where the hostname is `localhost`, `127.0.0.1`, or `::1`. Attackers bypass this trivially with:
+- Decimal integer notation: `http://2130706433/` (= `127.0.0.1`)
+- Hex notation: `http://0x7f000001/`
+- Octal: `http://0177.0.0.1/`
+- IPv6-mapped: `http://[::ffff:127.0.0.1]/`
+- URL-encoded or padded variants
 
-**Why it happens:**
-The similarity engine is a pure function that's already written. Reusing it on the client with fetched data is the path of least resistance.
+**Warning signs:** The fix only checks `parsedUrl.hostname` as a string without resolving it to a canonical IP.
 
-**How to avoid:**
-Compute Common Ground server-side in a Server Component or Server Action. Pass only the overlap result (the labels and top matches) to the client — not the raw collections. This also means visibility rules can be applied at the query level before the data is used in computation.
+**Prevention:** After parsing the URL, resolve the hostname to an IP address (DNS lookup), then validate the resolved IP is not in a private/reserved range. Use a library like `is-ip` + RFC 1918/5735 range checks, or use the `ssrf-req-filter` npm package which handles normalization. Validate the IP after resolution, not the hostname string.
 
-If any part of the overlap calculation must be client-side for interactive features, pass pre-filtered, pre-aggregated data (e.g., tags and role distributions, not full watch records).
-
-**Warning signs:**
-- A collector profile page fetches `/api/users/[id]/watches` and passes the result directly to `analyzeSimilarity()` in a Client Component.
-- The network tab shows a response with all watch fields for the foreign user's full collection.
-- Collector profile load time scales with the size of the other user's collection.
-
-**Phase to address:** Phase 2 (collector profiles) — design the Common Ground computation path before building the UI.
+**Phase:** This is an active security issue; fix before auth ships. The SSRF endpoint is currently unauthenticated, so it is public.
 
 ---
 
-### Pitfall 10: Privacy Setting Change Doesn't Invalidate Existing Cached Data
+### 2. DNS rebinding bypasses pre-flight IP validation
+**What goes wrong:** The code resolves the hostname to validate the IP, then makes the actual HTTP request. Between those two events, a malicious DNS record (with a very short TTL) can return a private IP for the second lookup, routing the request to an internal resource even though the validation passed.
 
-**What goes wrong:**
-A user changes their profile from public to private. The change updates the `profiles` table. But:
-- Next.js Server Components may have the old profile cached (via `fetch` cache or React cache).
-- Any follower who has the public profile open in their browser sees stale data until they refresh.
-- The activity feed may still show recent activities from this user's collection even after they went private.
+**Warning signs:** Validation resolves to a public IP, but the actual `fetch()` call uses the OS DNS cache which has been poisoned.
 
-This is not a security hole (RLS blocks new queries), but it creates a visible inconsistency: the user set their profile private and it still appears public for several minutes.
+**Prevention:** Resolve the hostname once, validate the resulting IP, then force the HTTP request to use that resolved IP directly (not the hostname). In Node.js, this means using a custom DNS resolver in the `fetch` call or using the `got` library with `dnsCache: false` and a `beforeRequest` hook that pins the resolved address. Alternatively, use a dedicated library (`ssrf-req-filter`, `safe-ssrf`) that handles this correctly.
 
-**Why it happens:**
-Next.js App Router caches Server Component fetches aggressively. The default behavior for data fetched in a Server Component is to cache for the lifetime of the request or longer if `fetch()` is used with `cache: 'force-cache'`.
-
-**How to avoid:**
-- Tag all cross-user data fetches with `revalidatePath` or `revalidateTag` on privacy setting mutation.
-- Use `cache: 'no-store'` for profile visibility checks — privacy state must always be fresh.
-- In the Server Action that updates privacy settings, call `revalidatePath('/users/[username]')` and `revalidatePath('/')` (for the feed) immediately after the DB write.
-- Activity feed queries must re-check visibility at read time, not only at write time.
-
-**Warning signs:**
-- A user sets profile to private; visiting `/users/[username]` while logged out still shows the collection for 30–60 seconds.
-- Server Actions that update privacy settings do not call any `revalidatePath` or `revalidateTag`.
-
-**Phase to address:** Phase 2 (privacy controls) — every privacy mutation must include cache invalidation as part of its implementation contract.
+**Phase:** Same as above — fix before auth ships.
 
 ---
 
-## Technical Debt Patterns
+### 3. HTTP redirects can route a validated request to an internal address
+**What goes wrong:** The server validates that `https://example.com/watch` is a safe URL, fetches it, and the server at `example.com` responds with a 301 redirect to `http://192.168.1.1/admin`. The follow-redirect behavior of `fetch` (or Node's `https`) will follow the redirect to the internal address without re-validating.
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Enable RLS on new tables only, skip existing | Faster initial launch | Existing tables exposed until a later migration; creates a false sense of security | Never — enable RLS on all tables in the same migration |
-| Check privacy in the component, not the DAL | Simple to implement | Data leaks via direct API calls; policy and UI logic diverge | Never for cross-user data |
-| Use OFFSET pagination for the activity feed | One line of code | Feed queries degrade at depth; duplicates/misses on live inserts | Only if feed has <5 pages total and users never scroll to history |
-| Run Common Ground calculation client-side with full collection fetch | Reuses existing similarity engine | Large payloads, breaks on partial-private collections, slow page loads | Only for prototype/demo — not for production |
-| Skip `WITH CHECK` on UPDATE policies | Fewer lines of SQL | Users can change `user_id` on rows they own | Never |
-| Single DAL function for own and foreign user reads | Less code | Auth context ambiguity; breaks when visibility rules differ | Never for cross-user reads |
-| Inline `auth.uid()` directly in RLS policies (no SELECT wrapper) | Natural syntax | Per-row function calls; query plans degrade at scale | Only on tables with <100 rows permanently |
+**Warning signs:** The fetch utility uses `redirect: 'follow'` (the default) without checking intermediate or final URLs.
+
+**Prevention:** Intercept redirects and validate each destination URL before following. Use `redirect: 'manual'` in `fetch`, inspect the `Location` header, validate it against the same blocklist, then decide whether to follow. Or use a library that handles this (`ssrf-req-filter` validates the entire redirect chain).
+
+**Phase:** Same as above — fix before auth ships.
 
 ---
 
-## Integration Gotchas
+### 4. Adding auth to the extract route is necessary but not sufficient
+**What goes wrong:** When auth is added, a team marks the SSRF issue "resolved" because only authenticated users can call the endpoint. But authenticated users can still use the endpoint to probe internal infrastructure on the server's network — cloud metadata endpoints (`169.254.169.254` — AWS/GCP instance metadata), internal database hosts, or adjacent services. The vulnerability shifts from external to internal threat actor.
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Supabase RLS on `follows` table | INSERT policy only checks that the row can be inserted, not that `follower_id` matches the caller | Policy: `WITH CHECK (follower_id = (SELECT auth.uid()))` |
-| Supabase RLS on `activities` table | SELECT policy allows all authenticated users to read all activities | Policy: allow only own activities OR activities from followed users |
-| Drizzle ORM relational queries | Deep `with: { actor: true, watch: true }` nesting generates subqueries not joins | Write explicit `.select().from().leftJoin()` for feed queries; verify with EXPLAIN ANALYZE |
-| Next.js Server Components + cache | Privacy setting update not reflected because Server Component cached the previous profile | Tag the profile fetch with a cache tag; invalidate on privacy mutation |
-| Drizzle migrations + existing RLS | Running a migration that adds a column doesn't automatically update RLS policies that reference that column | Review all affected policies after schema changes |
-| Supabase anon key in client code | Anon key is safe for RLS-protected tables but exposes schema via PostgREST introspection | Restrict the Data API or disable PostgREST introspection in production |
+**Warning signs:** PR description says "fixed SSRF by adding auth gate." No IP blocklist or redirect-chain validation is present.
+
+**Prevention:** Auth reduces the attack surface but does not eliminate the SSRF risk. IP validation (pitfalls 1-3) is still required even after auth is added. The two fixes are complementary, not alternatives.
+
+**Phase:** Authentication milestone should not mark SSRF as closed. Treat them as separate tracks.
 
 ---
 
-## Performance Traps
+### 5. Unvalidated image URLs are a separate, ongoing injection vector
+**What goes wrong:** `watch.imageUrl` is rendered as a raw `<img src>` in `WatchCard.tsx` and `WatchDetail.tsx`. This enables tracking pixels (any domain can log when the image is loaded), potential CSRF via credentialed image requests, and arbitrary content from untrusted origins. The SSRF fix on the API route does not address this.
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| N+1 queries in activity feed | Home page makes 20–100+ DB round-trips | Single JOIN query for feed with related entities | Any feed with >5 items |
-| `auth.uid()` without `SELECT` wrapper in RLS policies | Query plan shows per-row function calls; slow collection load | `(SELECT auth.uid())` in all policies | Tables with >500 rows |
-| OFFSET pagination on activity feed | Older pages load slower; duplicates appear on live updates | Keyset pagination using `(created_at, id)` cursor | Feeds with >50 total items |
-| Missing index on `follows(follower_id)` | Feed query scans entire follows table | Add composite index `(follower_id, following_id)` and `(following_id)` | Any user with >10 follows |
-| Missing index on `activities(actor_user_id, created_at)` | Feed query scans all activities | Composite index `(actor_user_id, created_at DESC)` | Any user with >100 activity events |
-| Common Ground computed with full foreign collection fetch | Collector profile page sends 500-watch payload to browser | Server-side computation; send only the result | Any collector with >20 watches |
-| RLS subquery on follows without index | EXISTS subquery in watch policy does full follows table scan | Index `follows(following_id)` for the follow-check subquery | Follows table with >100 rows |
+**Warning signs:** `<img src={watch.imageUrl}>` without a domain allowlist or `next/image` wrapper.
+
+**Prevention:** Replace raw `<img>` with Next.js `<Image>` component. Configure `remotePatterns` in `next.config.ts` to allowlist domains (e.g., `*.watchuseek.com`, `*.hodinkee.com`). For URLs outside the allowlist, render a placeholder instead of the user-supplied URL. Additionally, validate and sanitize `imageUrl` before persisting it (at the point of extraction or user input).
+
+**Phase:** Visual milestone (can do it alongside the image/card polish) — but treat as a security fix, not a style fix.
 
 ---
 
-## Security Mistakes
+## Phase-Specific Warnings Summary
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| RLS enabled but no policies written | All reads return empty rows (not a data leak, but a reliability failure that prompts developers to disable RLS) | Write policies before enabling RLS; test with user impersonation |
-| Privacy check only in UI component | Private data accessible via direct Supabase/API call | Enforce visibility in RLS policy AND DAL WHERE clause |
-| `WITH CHECK` omitted from UPDATE policies | Users can change `user_id` on owned rows — data injection into other accounts | Always include `WITH CHECK (user_id = (SELECT auth.uid()))` on all UPDATE policies |
-| `service_role` key used in any client-accessible code path | Bypasses all RLS; full DB access for anyone who extracts the key | Service role key must never leave the server; use only in server-only migrations or admin scripts |
-| Follows INSERT policy allows arbitrary `follower_id` | User A can create a follow record claiming to be User B, inflating follower counts or accessing B's follower-gated content | `WITH CHECK (follower_id = (SELECT auth.uid()))` on INSERT |
-| Activity events generated server-side with user-supplied `actor_user_id` | User can log activity as another user | Server Action sets `actor_user_id` from `auth.uid()` in session — never from client input |
-| Profile page reveals private user ID in URL that can be brute-forced | Enumeration of user accounts | Use username slugs, not internal UUIDs, in public URLs |
-
----
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Privacy setting change has no confirmation of what becomes hidden | User toggles "private" and doesn't know if their existing followers still see their data | Show explicit "Your collection is now hidden from all visitors" confirmation after change |
-| Follow/unfollow state optimistically updated but not rolled back on error | User sees wrong follower count; network retry creates duplicate follows | Optimistic update + revert on error; deduplicate follow records with UNIQUE constraint |
-| "Common Ground" section appears for users with <5 watches in common | Shows meaningless overlap percentages | Only render Common Ground when there are ≥5 shared watches or tags |
-| Activity feed shows the viewer's own activity mixed with followed users | Makes the feed feel like a personal log rather than a discovery surface | Filter own activities out of the main feed; show them in the profile's "Stats" tab |
-| Collector profile shows full collection before follow-wall is explained | Confuses user about what is public vs. follow-gated | Clear header label indicating visibility status of what they're viewing |
-
----
-
-## "Looks Done But Isn't" Checklist
-
-- [ ] **RLS on all tables:** Enable RLS and write policies for `follows`, `activities`, `profiles` AND the existing `watches`, `user_preferences`. Verify with User Impersonation — not the SQL Editor.
-- [ ] **`WITH CHECK` on all UPDATE policies:** Check every UPDATE policy in the migration files has both `USING` and `WITH CHECK`.
-- [ ] **Privacy settings enforce at DB layer:** Attempt to read a private user's collection via a direct `fetch` with the anon key — confirm it returns 0 rows, not filtered-in-app rows.
-- [ ] **Activity feed uses JOIN query:** Run `EXPLAIN ANALYZE` on the home page feed query — confirm it's 1–2 queries, not N+1.
-- [ ] **Keyset pagination on feed:** Confirm feed pagination uses `(created_at, id)` cursor, not `OFFSET`.
-- [ ] **Follow INSERT policy:** Attempt to insert a follow with a spoofed `follower_id` (different from session user) — confirm it returns a policy violation.
-- [ ] **Privacy change invalidates cache:** Change a profile from public to private; reload the profile URL in an incognito tab within 5 seconds — confirm the collection is no longer visible.
-- [ ] **Common Ground computed server-side:** Check the network tab on a collector profile page — confirm no response containing the full foreign watch collection is sent to the client.
-- [ ] **`auth.uid()` wrapped in SELECT in all policies:** Review every policy in migrations for bare `auth.uid()` calls (use grep).
-- [ ] **Indexes on policy columns:** Confirm `follows(follower_id)`, `follows(following_id)`, `activities(actor_user_id, created_at)`, and `watches(user_id)` all have indexes.
-
----
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| RLS enabled with no policies — users see empty collection | LOW (if caught quickly) | Write policies immediately; no data is lost, only access is blocked; users see data again once policies are in place |
-| Privacy check skipped — private profiles exposed | HIGH | Audit all cross-user queries; add DAL WHERE clause enforcement; notify affected users; rotate any sensitive data if needed |
-| N+1 feed queries shipped to production | MEDIUM | Rewrite DAL query to use JOIN; deploy; feed performance improves immediately with no data migration |
-| OFFSET pagination shipped — performance degrades over time | MEDIUM | Migrate to keyset pagination; requires updating the DAL function and the client-side "load more" handler; no data migration |
-| `WITH CHECK` missing — malicious user_id injection occurred | HIGH | Audit affected rows; reset ownership based on creation logs or activity history; add policy; assess scope of damage |
-| Common Ground computed client-side with full collection leak | MEDIUM | Move computation to Server Component; no data migration; deploy fix |
-
----
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| RLS not on existing tables | Phase 1 — RLS foundation | User Impersonation in Supabase Dashboard; anon key request returns 0 rows for other users' data |
-| `auth.uid()` without SELECT wrapper | Phase 1 — RLS foundation | Grep all migration files for bare `auth.uid()`; run EXPLAIN ANALYZE on watch queries |
-| `WITH CHECK` missing on UPDATE | Phase 1 — RLS foundation | Attempt to change `user_id` via direct API call; confirm policy violation |
-| Privacy setting enforced UI-only | Phase 2 — public profiles + privacy controls | Direct anon-key fetch of private profile returns 0 rows |
-| Follows INSERT policy incomplete | Phase 1 schema design / Phase 2 follows feature | Attempt spoofed follower_id insert; confirm rejection |
-| No cache invalidation on privacy change | Phase 2 — privacy controls | Privacy toggle test with 5-second incognito reload |
-| Existing DAL functions reused for cross-user reads | Phase 2 — collector profiles | Code review gate: no shared DAL function handles both own and foreign reads |
-| N+1 activity feed queries | Phase 3 — activity feed | EXPLAIN ANALYZE confirms ≤2 queries per feed load |
-| OFFSET pagination on feed | Phase 3 — activity feed | Code review: no OFFSET in feed DAL query |
-| Common Ground client-side with full data | Phase 2 — collector profiles | Network tab: no full foreign collection in response payload |
-| Missing DB indexes on follow/activity columns | Phase 1 (schema) + Phase 3 (feed) | `\d follows` and `\d activities` in psql; EXPLAIN ANALYZE confirms index scans |
-| Privacy change not invalidating Next.js cache | Phase 2 — privacy controls | Integration test: privacy toggle then immediate re-fetch returns updated state |
-
----
-
-## Sources
-
-- [Supabase Row Level Security Docs](https://supabase.com/docs/guides/database/postgres/row-level-security) — HIGH confidence
-- [Supabase RLS Performance Advisors](https://supabase.com/docs/guides/database/database-advisors?lint=0003_auth_rls_initplan) — HIGH confidence (lint `0003_auth_rls_initplan`)
-- [Supabase RLS Best Practices — Makerkit](https://makerkit.dev/blog/tutorials/supabase-rls-best-practices) — MEDIUM confidence
-- [Fixing RLS Misconfigurations — ProsperaSoft](https://prosperasoft.com/blog/database/supabase/supabase-rls-issues/) — MEDIUM confidence
-- [Enforcing RLS in Multi-Tenant Apps — DEV Community](https://dev.to/blackie360/-enforcing-row-level-security-in-supabase-a-deep-dive-into-lockins-multi-tenant-architecture-4hd2) — MEDIUM confidence
-- [Scalable Activity Feed Architecture — GetStream](https://getstream.io/blog/scalable-activity-feed-architecture/) — HIGH confidence
-- [Keyset Cursors vs Offsets for Postgres — Sequin](https://blog.sequinstream.com/keyset-cursors-not-offsets-for-postgres-pagination/) — HIGH confidence
-- [PostgreSQL Keyset Pagination Guide — Stacksync](https://www.stacksync.com/blog/keyset-cursors-postgres-pagination-fast-accurate-scalable) — HIGH confidence
-- [Next.js Data Security Guide](https://nextjs.org/docs/app/guides/data-security) — HIGH confidence
-- [Drizzle ORM Joins](https://orm.drizzle.team/docs/joins) — HIGH confidence
-- [RLS Performance and Best Practices — Supabase GitHub Discussion #14576](https://github.com/orgs/supabase/discussions/14576) — HIGH confidence
-- [N+1 Query Problem — Medium](https://medium.com/@saad.minhas.codes/n-1-query-problem-the-database-killer-youre-creating-f68104b99a2d) — MEDIUM confidence
-
----
-*Pitfalls research for: adding multi-user social features to existing single-user Supabase/Next.js app (Horlo v2.0 Taste Network)*
-*Researched: 2026-04-19*
+| Phase | Topic | Highest-Risk Pitfall | Mitigation |
+|-------|-------|---------------------|------------|
+| Visual milestone | Dark mode | FOUC on SSR page load | Blocking inline script in `<head>` before hydration |
+| Visual milestone | Image rendering | Unvalidated `imageUrl` as `<img src>` | Switch to `next/image` with `remotePatterns` allowlist |
+| Auth milestone | Proxy setup | `middleware.ts` silently ignored in Next.js 16 | File must be named `proxy.ts`; run the Vercel codemod |
+| Auth milestone | Auth gate | Proxy bypass via CVE-2025-29927 pattern | Every server action re-verifies session independently |
+| Auth milestone | Data isolation | Watch ownership not enforced server-side | Scope all queries to `userId = auth().user.id` |
+| Cloud persistence | Migration | Split-brain / lost collection at cutover | Self-service export/import; never auto-delete localStorage |
+| Cloud persistence | ID collisions | `Date.now()` IDs collide on batch import | Switch to `crypto.randomUUID()` before migration |
+| Cloud persistence | Schema gaps | No version field; `undefined` fields on rehydration | Zustand `onRehydrateStorage` migration + Zod validation |
+| Quality milestone | RSC testing | Async Server Components unrenderable in RTL | Test logic in isolation; use E2E for integrated RSC output |
+| Quality milestone | Store pollution | Zustand singletons retain state between tests | `beforeEach` store reset |
+| SSRF fix | URL validation | String-match blocklist bypassed by IP notation variants | Resolve hostname, validate resolved IP, pin for request |
+| SSRF fix | Redirect chain | HTTP 3xx redirects route validated request to internal IP | `redirect: 'manual'`; validate each hop |
