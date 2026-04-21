@@ -70,6 +70,8 @@ export const watches = pgTable(
     isChronometer: boolean('is_chronometer').default(false),
 
     notes: text('notes'),
+    notesPublic: boolean('notes_public').notNull().default(true),
+    notesUpdatedAt: timestamp('notes_updated_at', { withTimezone: true }),
     imageUrl: text('image_url'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

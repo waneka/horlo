@@ -40,6 +40,8 @@ function mapRowToWatch(row: WatchRow): Watch {
     isFlaggedDeal: row.isFlaggedDeal ?? undefined,
     isChronometer: row.isChronometer ?? undefined,
     notes: row.notes ?? undefined,
+    notesPublic: row.notesPublic ?? true,
+    notesUpdatedAt: row.notesUpdatedAt?.toISOString() ?? undefined,
     imageUrl: row.imageUrl ?? undefined,
   }
 }
@@ -73,6 +75,9 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   if ('isFlaggedDeal' in data) row.isFlaggedDeal = data.isFlaggedDeal ?? null
   if ('isChronometer' in data) row.isChronometer = data.isChronometer ?? null
   if ('notes' in data) row.notes = data.notes ?? null
+  // notesPublic is mappable from the domain layer (set when toggling per-note visibility).
+  // notesUpdatedAt is NOT mapped here — Server Actions set it explicitly when notes change.
+  if ('notesPublic' in data && data.notesPublic !== undefined) row.notesPublic = data.notesPublic
   if ('imageUrl' in data) row.imageUrl = data.imageUrl ?? null
 
   return row

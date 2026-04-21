@@ -50,6 +50,8 @@ export interface Watch {
   isChronometer?: boolean   // COSC or equivalent chronometer certification
 
   notes?: string
+  notesPublic?: boolean       // Per-note visibility (D-13). Defaults to true server-side.
+  notesUpdatedAt?: string     // ISO timestamp string for the most recent notes change.
   imageUrl?: string
 }
 
