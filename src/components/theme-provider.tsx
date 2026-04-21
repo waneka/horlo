@@ -21,11 +21,22 @@ function getSystemTheme(): ResolvedTheme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+function readThemeCookie(): Theme {
+  if (typeof document === 'undefined') return 'system'
+  const match = document.cookie.match(/(?:^|;\s*)horlo-theme=(light|dark)(?:;|$)/)
+  return match ? (match[1] as Theme) : 'system'
+}
+
+function readResolvedFromDom(): ResolvedTheme {
+  if (typeof document === 'undefined') return 'light'
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+}
+
 function applyTheme(resolved: ResolvedTheme) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  root.classList.remove('light', 'dark')
-  root.classList.add(resolved)
+  if (resolved === 'dark') root.classList.add('dark')
+  else root.classList.remove('dark')
   root.style.colorScheme = resolved
 }
 
@@ -40,24 +51,29 @@ function writeCookie(value: Theme) {
 
 export function ThemeProvider({
   children,
-  initialTheme = 'system',
 }: {
   children: React.ReactNode
-  initialTheme?: Theme
 }) {
-  const [theme, setThemeState] = React.useState<Theme>(initialTheme)
-  const [resolvedTheme, setResolvedTheme] = React.useState<ResolvedTheme>(
-    initialTheme === 'dark' ? 'dark' : 'light',
-  )
+  // SSR-safe initial state: theme + resolvedTheme default to neutral values
+  // that match the server render, then reconcile from the DOM on mount. The
+  // blocking inline <script> in layout.tsx has already set the correct
+  // `dark` class on <html> before hydration, so readResolvedFromDom() in
+  // the mount effect is authoritative.
+  const [theme, setThemeState] = React.useState<Theme>('system')
+  const [resolvedTheme, setResolvedTheme] = React.useState<ResolvedTheme>('light')
 
+  // Mount: sync React state to whatever the inline script / cookie / system
+  // already decided. No double-apply — applyTheme is called only if the DOM
+  // somehow disagrees with the cookie (defensive).
   React.useEffect(() => {
-    if (initialTheme === 'system') {
-      const resolved = getSystemTheme()
-      setResolvedTheme(resolved)
-      applyTheme(resolved)
-    }
-  }, [initialTheme])
+    const stored = readThemeCookie()
+    setThemeState(stored)
+    const resolved = stored === 'system' ? getSystemTheme() : stored
+    setResolvedTheme(resolved)
+    if (readResolvedFromDom() !== resolved) applyTheme(resolved)
+  }, [])
 
+  // When theme === 'system', follow OS-level prefers-color-scheme changes.
   React.useEffect(() => {
     if (theme !== 'system') return
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
