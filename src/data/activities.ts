@@ -3,7 +3,19 @@ import 'server-only'
 import { db } from '@/db'
 import { activities, profiles, profileSettings, follows } from '@/db/schema'
 import { and, desc, eq, not, sql } from 'drizzle-orm'
-import type { FeedCursor, FeedPage, RawFeedRow } from '@/lib/feedTypes'
+import type { FeedCursor, RawFeedRow } from '@/lib/feedTypes'
+
+/**
+ * Result shape returned by `getFeedForUser`. Carries raw (un-aggregated)
+ * rows. The public `FeedPage` in @/lib/feedTypes is the POST-aggregation
+ * shape with `FeedRow[]` (raw | aggregated); keep them distinct so callers
+ * that want to aggregate (Server Action) and callers that want the raw
+ * stream (SSR initial render) both get accurate types.
+ */
+export interface RawFeedPage {
+  rows: RawFeedRow[]
+  nextCursor: FeedCursor | null
+}
 
 export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn'
 
@@ -42,7 +54,7 @@ export async function getFeedForUser(
   viewerId: string,
   cursor: FeedCursor | null,
   limit = 20,
-): Promise<FeedPage> {
+): Promise<RawFeedPage> {
   const cursorClause = cursor
     ? sql`(${activities.createdAt}, ${activities.id}) < (${new Date(cursor.createdAt)}, ${cursor.id})`
     : sql`TRUE`

@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
+import type { FeedRow } from '@/lib/feedTypes'
+
+// Test helpers — both parts use these.
+function rowCreatedAt(row: FeedRow): string {
+  return row.kind === 'raw' ? row.createdAt : row.firstCreatedAt
+}
+function rowId(row: FeedRow): string | null {
+  return row.kind === 'raw' ? row.id : null
+}
 
 // ---------------------------------------------------------------------------
 // PART A — Unit tests (always run): mock Drizzle to assert the SQL shape
@@ -257,7 +266,7 @@ maybe('getFeedForUser — integration', () => {
     if (!cleanup) return
     // Clean out any activities / follows we seeded before nuking users.
     try {
-      const { eq, inArray } = await import('drizzle-orm')
+      const { inArray } = await import('drizzle-orm')
       await dbModule.db
         .delete(schema.activities)
         .where(inArray(schema.activities.userId, [viewer.id, alice.id, bob.id]))
@@ -265,7 +274,9 @@ maybe('getFeedForUser — integration', () => {
         .delete(schema.follows)
         .where(inArray(schema.follows.followerId, [viewer.id, alice.id, bob.id]))
       // profileSettings / profiles cascade on user delete.
-    } catch {}
+    } catch {
+      // best-effort cleanup — swallow errors so afterAll always deletes users
+    }
     await cleanup()
   }, 30_000)
 
@@ -292,8 +303,8 @@ maybe('getFeedForUser — integration', () => {
     expect(page.nextCursor).toBeNull()
     // DESC ordering: createdAt strictly non-increasing
     for (let i = 1; i < page.rows.length; i++) {
-      const prev = new Date(page.rows[i - 1].kind === 'raw' ? (page.rows[i - 1] as any).createdAt : (page.rows[i - 1] as any).firstCreatedAt)
-      const cur = new Date(page.rows[i].kind === 'raw' ? (page.rows[i] as any).createdAt : (page.rows[i] as any).firstCreatedAt)
+      const prev = new Date(rowCreatedAt(page.rows[i - 1]))
+      const cur = new Date(rowCreatedAt(page.rows[i]))
       expect(prev.getTime()).toBeGreaterThanOrEqual(cur.getTime())
     }
   })
@@ -426,7 +437,7 @@ maybe('getFeedForUser — integration', () => {
       )
       expect(strangerRows).toHaveLength(0)
       // cleanup
-      const { eq: eqFn, inArray: inArrayFn } = await import('drizzle-orm')
+      const { eq: eqFn } = await import('drizzle-orm')
       await dbModule.db.delete(schema.activities).where(eqFn(schema.activities.userId, sid))
       await admin.auth.admin.deleteUser(sid)
     } catch (e) {
@@ -453,8 +464,16 @@ maybe('getFeedForUser — integration', () => {
     expect(p1.rows).toHaveLength(20)
     expect(p1.nextCursor).not.toBeNull()
     const p2 = await dal.getFeedForUser(viewer.id, p1.nextCursor, 20)
-    const ids1 = new Set(p1.rows.filter((r) => r.kind === 'raw').map((r) => (r as any).id))
-    const ids2 = new Set(p2.rows.filter((r) => r.kind === 'raw').map((r) => (r as any).id))
+    const collectIds = (rows: FeedRow[]): Set<string> => {
+      const s = new Set<string>()
+      for (const r of rows) {
+        const id = rowId(r)
+        if (id) s.add(id)
+      }
+      return s
+    }
+    const ids1 = collectIds(p1.rows)
+    const ids2 = collectIds(p2.rows)
     // No row appears twice
     for (const id of ids2) expect(ids1.has(id)).toBe(false)
     // Total ids seen >= 25
@@ -484,7 +503,11 @@ maybe('getFeedForUser — integration', () => {
     }
     // The page-2 cursor from BEFORE the insert still returns the remaining rows
     const p2 = await dal.getFeedForUser(viewer.id, cursorBeforeInsert, 20)
-    const idsP2 = new Set(p2.rows.filter((r) => r.kind === 'raw').map((r) => (r as any).id))
+    const idsP2 = new Set<string>()
+    for (const r of p2.rows) {
+      const id = rowId(r)
+      if (id) idsP2.add(id)
+    }
     // The newly-inserted row must NOT appear in page 2 — it sits above the cursor.
     expect(idsP2.has(inserted.id)).toBe(false)
   })
@@ -506,12 +529,13 @@ maybe('getFeedForUser — integration', () => {
     const page1 = await dal.getFeedForUser(viewer.id, null, 1)
     expect(page1.rows).toHaveLength(1)
     expect(page1.nextCursor).not.toBeNull()
-    const firstId = (page1.rows[0] as any).id
-    expect([r1.id, r2.id]).toContain(firstId)
+    const firstId = rowId(page1.rows[0])
+    expect(firstId).not.toBeNull()
+    expect([r1.id, r2.id]).toContain(firstId!)
     const page2 = await dal.getFeedForUser(viewer.id, page1.nextCursor, 1)
     expect(page2.rows.length).toBeGreaterThanOrEqual(1)
-    const secondId = (page2.rows[0] as any).id
+    const secondId = rowId(page2.rows[0])
     expect(secondId).not.toBe(firstId)
-    expect([r1.id, r2.id]).toContain(secondId)
+    expect([r1.id, r2.id]).toContain(secondId!)
   })
 })
