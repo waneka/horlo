@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { wearEvents } from '@/db/schema'
+import { wearEvents, profileSettings } from '@/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
 export async function logWearEvent(
@@ -58,4 +58,42 @@ export async function getMostRecentWearDates(
     }
   }
   return map
+}
+
+/**
+ * Returns ALL wear events for a userId, ordered by wornDate desc.
+ * No pagination — D-09 worn tab needs the full set for both Timeline and
+ * Calendar views; PROJECT.md caps users at <500 watches so this is bounded.
+ */
+export async function getAllWearEventsByUser(userId: string) {
+  return db
+    .select()
+    .from(wearEvents)
+    .where(eq(wearEvents.userId, userId))
+    .orderBy(desc(wearEvents.wornDate))
+}
+
+/**
+ * DAL visibility gate (D-15, PRIV-05). Two-layer enforcement:
+ *   - RLS on wear_events (Phase 7) is owner-only at the DB level — direct
+ *     anon-key clients cannot read another user's events.
+ *   - This DAL gate guards the postgres-role connection used by server-rendered
+ *     pages: when viewer != owner AND owner.wornPublic is false, returns [].
+ * Owner always sees their own events.
+ */
+export async function getPublicWearEventsForViewer(
+  viewerUserId: string | null,
+  profileUserId: string
+) {
+  if (viewerUserId !== profileUserId) {
+    const settings = await db
+      .select({ wornPublic: profileSettings.wornPublic })
+      .from(profileSettings)
+      .where(eq(profileSettings.userId, profileUserId))
+      .limit(1)
+    // Missing settings row → defaults to public (matches getProfileSettings default)
+    const wornPublic = settings[0]?.wornPublic ?? true
+    if (!wornPublic) return []
+  }
+  return getAllWearEventsByUser(profileUserId)
 }
