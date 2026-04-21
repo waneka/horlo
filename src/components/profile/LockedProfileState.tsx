@@ -1,6 +1,6 @@
 import { Lock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { AvatarDisplay } from './AvatarDisplay'
+import { FollowButton } from './FollowButton'
 
 interface LockedProfileStateProps {
   username: string
@@ -9,6 +9,11 @@ interface LockedProfileStateProps {
   avatarUrl: string | null
   followerCount: number
   followingCount: number
+  // Phase 9 — viewer context for the now-live FollowButton (D-08 auto-accept:
+  // click writes a follow row even though content stays locked).
+  viewerId: string | null
+  targetUserId: string
+  initialIsFollowing: boolean
 }
 
 export function LockedProfileState(props: LockedProfileStateProps) {
@@ -40,9 +45,15 @@ export function LockedProfileState(props: LockedProfileStateProps) {
         <p className="mt-3 text-sm text-muted-foreground">
           This profile is private.
         </p>
-        <Button disabled className="mt-4" aria-label="Follow (coming soon)">
-          Follow
-        </Button>
+        <div className="mt-4">
+          <FollowButton
+            viewerId={props.viewerId}
+            targetUserId={props.targetUserId}
+            targetDisplayName={props.displayName ?? `@${props.username}`}
+            initialIsFollowing={props.initialIsFollowing}
+            variant="locked"
+          />
+        </div>
       </section>
     </>
   )

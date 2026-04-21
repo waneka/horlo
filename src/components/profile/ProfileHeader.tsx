@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { AvatarDisplay } from './AvatarDisplay'
 import { TasteTagPill } from './TasteTagPill'
 import { ProfileEditForm } from './ProfileEditForm'
+import { FollowButton } from './FollowButton'
 
 interface ProfileHeaderProps {
   username: string
@@ -17,6 +18,12 @@ interface ProfileHeaderProps {
   watchCount: number
   wishlistCount: number
   tasteTags: string[]
+  // Phase 9 — viewer context for the FollowButton slot (required even for
+  // owner renders; owner path short-circuits before rendering FollowButton).
+  viewerId: string | null
+  targetUserId: string
+  initialIsFollowing: boolean
+  targetDisplayName: string
 }
 
 export function ProfileHeader(props: ProfileHeaderProps) {
@@ -74,7 +81,7 @@ export function ProfileHeader(props: ProfileHeaderProps) {
           )}
         </div>
       </div>
-      {props.isOwner && (
+      {props.isOwner ? (
         <Button
           variant="outline"
           size="sm"
@@ -83,6 +90,16 @@ export function ProfileHeader(props: ProfileHeaderProps) {
         >
           Edit Profile
         </Button>
+      ) : (
+        <div className="self-center sm:self-start">
+          <FollowButton
+            viewerId={props.viewerId}
+            targetUserId={props.targetUserId}
+            targetDisplayName={props.targetDisplayName}
+            initialIsFollowing={props.initialIsFollowing}
+            variant="primary"
+          />
+        </div>
       )}
     </header>
   )

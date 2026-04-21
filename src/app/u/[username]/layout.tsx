@@ -5,6 +5,7 @@ import {
   getProfileSettings,
   getFollowerCounts,
 } from '@/data/profiles'
+import { isFollowing } from '@/data/follows'
 import { getWatchesByUser } from '@/data/watches'
 import { getAllWearEventsByUser } from '@/data/wearEvents'
 import { computeTasteTags } from '@/lib/tasteTags'
@@ -34,6 +35,13 @@ export default async function ProfileLayout({
   const isOwner = viewerId === profile.id
   const settings = await getProfileSettings(profile.id)
 
+  // FOLL-03: hydrate "is this viewer already following the owner?" so the
+  // FollowButton renders in its correct initial state on the server. Skipped
+  // for owner (button is hidden entirely) and unauth viewers (click bounces
+  // to /login regardless of follow state).
+  const initialIsFollowing =
+    viewerId && !isOwner ? await isFollowing(viewerId, profile.id) : false
+
   if (!isOwner && !settings.profilePublic) {
     const counts = await getFollowerCounts(profile.id)
     return (
@@ -45,6 +53,9 @@ export default async function ProfileLayout({
           avatarUrl={profile.avatarUrl ?? null}
           followerCount={counts.followers}
           followingCount={counts.following}
+          viewerId={viewerId}
+          targetUserId={profile.id}
+          initialIsFollowing={initialIsFollowing}
         />
       </main>
     )
@@ -98,6 +109,10 @@ export default async function ProfileLayout({
         watchCount={ownedCount}
         wishlistCount={wishlistCount}
         tasteTags={tasteTags}
+        viewerId={viewerId}
+        targetUserId={profile.id}
+        initialIsFollowing={initialIsFollowing}
+        targetDisplayName={profile.displayName ?? `@${profile.username}`}
       />
       <div className="mt-6">
         <ProfileTabs username={username} />
