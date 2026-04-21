@@ -1,43 +1,11 @@
 ---
 phase: 08-self-profile-privacy-controls
 verified: 2026-04-20T01:05:30Z
-status: human_needed
-score: 33/33 must-haves verified (automated)
+human_uat_completed: 2026-04-20T08:15:00Z
+status: complete
+score: 33/33 must-haves verified (automated); 11/11 human UAT items passed
 overrides_applied: 0
-human_verification:
-  - test: "Profile navigation — owner view"
-    expected: "Signed-in user clicks Profile in HeaderNav, lands on /u/[me]/collection; URL reflects the redirect from /u/[me]"
-    why_human: "Requires running Next.js dev server and authenticated browser session; redirect() and ProfileHeader rendering can't be verified from static code alone"
-  - test: "Tab switching — URL-driven active state"
-    expected: "Clicking Wishlist / Worn / Notes / Stats tabs updates URL and highlights the active tab via usePathname; browser back/forward works"
-    why_human: "usePathname active-state behavior requires client-side routing to observe"
-  - test: "Private profile — non-owner flow"
-    expected: "Owner toggles Profile Visibility off in Settings; a second browser session (different user) visiting /u/[me] sees LockedProfileState (avatar, bio, counts, disabled Follow button, 'This profile is private.' copy) with NO tab content"
-    why_human: "Requires two authenticated sessions and end-to-end privacy gate verification"
-  - test: "Settings — optimistic privacy toggles"
-    expected: "Clicking any of the 4 PRIV toggles (Profile/Collection/Wishlist/Worn) flips the switch INSTANTLY without page reload; value persists across reload; failed saves snap back to server truth"
-    why_human: "useOptimistic instant-feedback timing + revalidatePath reconciliation behavior requires browser observation"
-  - test: "Note visibility pill — optimistic toggle"
-    expected: "On /u/[me]/notes, clicking the Public/Private pill on any note row flips instantly; refreshes show the persisted value; non-owner sees the pill disabled (read-only)"
-    why_human: "useOptimistic flow + Server Action revalidation for per-note visibility requires browser interaction"
-  - test: "Log Today's Wear flow"
-    expected: "On /u/[me]/worn, clicking '+ Log Today's Wear' opens a Dialog with watch Select; selecting a watch and confirming logs the wear (new event appears in timeline); owner-only — non-owner does not see the CTA"
-    why_human: "Dialog interaction, Select behavior, and markAsWorn Server Action flow require browser testing"
-  - test: "Calendar month navigation"
-    expected: "On /u/[me]/worn Calendar view, prev/next chevrons (aria-labeled 'Previous month' / 'Next month') navigate months; today's cell has accent ring; worn days show watch thumbnails; +N badge appears for days with multiple events"
-    why_human: "Native-Date grid rendering across month boundaries and today ring visual state need browser verification"
-  - test: "Stats cards + observations rendering"
-    expected: "On /u/[me]/stats with ≥3 owned watches: 4 cards render (Most Worn, Least Worn, Style Distribution, Role Distribution) with div-based horizontal bars, plus Collection Observations panel with sentence-level insights; with <3 owned watches, insufficient-data empty state shows instead"
-    why_human: "Layout, bar-width calculation accuracy, and observation sentence construction require visual inspection"
-  - test: "Profile edit inline flow"
-    expected: "Owner clicks 'Edit Profile' on header; header swaps to ProfileEditForm (displayName / avatarUrl / bio inputs); Save persists via updateProfile and returns to view mode with new values visible; Discard returns without saving"
-    why_human: "Inline state swap and form submission feedback require browser testing"
-  - test: "Remove Note confirmation flow"
-    expected: "On /u/[me]/notes, clicking 3-dot menu on a note row shows ONLY 'Edit Note' + 'Remove Note' (no 'Make Public/Private'); clicking Remove Note opens Dialog with 'Remove this note?' + 'Keep Note' / 'Remove Note' buttons; confirming clears the note (row disappears); dropdown is hidden for non-owners"
-    why_human: "DropdownMenu + Dialog composition and revalidation after removeNote require browser interaction"
-  - test: "New Note Visibility default persistence"
-    expected: "In /settings, change 'New Note Visibility' dropdown to 'Private', reload page, confirm dropdown still reads 'Private' (localStorage hydration via useEffect). Note: WR-02 flagged this is currently non-functional beyond UI state (not wired to watch-creation path) — verify at least the dropdown state persists."
-    why_human: "localStorage hydration on client after SSR requires browser reload observation"
+human_uat_record: .planning/phases/08-self-profile-privacy-controls/08-HUMAN-UAT.md
 ---
 
 # Phase 8: Self Profile & Privacy Controls Verification Report
@@ -228,23 +196,23 @@ Plus 8 info-severity findings (IN-01..IN-08) worth a lightweight follow-up pass.
 
 - `tests/balance-chart.test.tsx` TS2578 — unused `@ts-expect-error` directive. Documented in all four Phase 8 plan SUMMARYs as a pre-existing issue not caused by this phase.
 
-### Human Verification Required
+### Human Verification — COMPLETE (2026-04-20)
 
-Automated checks pass (33/33 truths verifiable from code; 22/22 tests passing; all artifacts substantive + wired; full requirements coverage). The following UI-level behaviors cannot be confirmed without running the app in a browser.
+Automated checks passed (33/33 truths verifiable from code; 22/22 tests passing; all artifacts substantive + wired; full requirements coverage). The 11 UI-level behaviors requiring browser observation were verified interactively and all passed. Full record: `.planning/phases/08-self-profile-privacy-controls/08-HUMAN-UAT.md` (status: `resolved`, 11/11 passed, one issue found and fixed — `nativeButton={false}` added to ProfileTabs TabsTrigger).
 
-See `human_verification` frontmatter for the full list of 11 items the user should verify interactively:
-
-1. **Profile navigation — owner view** — HeaderNav Profile link redirects correctly
-2. **Tab switching — URL-driven active state** — all 5 tabs reflect in URL + highlighted correctly
-3. **Private profile — non-owner flow** — LockedProfileState renders end-to-end with visibility off
-4. **Settings — optimistic privacy toggles** — all 4 switches flip instantly + persist
-5. **Note visibility pill — optimistic toggle** — pill toggles instantly + persists
-6. **Log Today's Wear flow** — owner-only CTA, dialog + Select + markAsWorn + event appears
-7. **Calendar month navigation** — chevrons + today ring + thumbnails + +N badges
-8. **Stats cards + observations rendering** — 4 cards with div bars, observations, insufficient-data state
-9. **Profile edit inline flow** — inline swap, Save + Discard behaviors
-10. **Remove Note confirmation flow** — menu + dialog + revalidation, owner/non-owner gating
-11. **New Note Visibility default persistence** — dropdown state hydrates from localStorage after reload (note: WR-02 flagged this is currently UI-state only, not wired to watch creation)
+| # | Test | Result |
+|---|------|--------|
+| 1 | Profile navigation — owner view | PASSED |
+| 2 | Tab switching — URL-driven active state | PASSED |
+| 3 | Private profile — non-owner flow | PASSED |
+| 4 | Settings — optimistic privacy toggles | PASSED |
+| 5 | Note visibility pill — optimistic toggle | PASSED |
+| 6 | Log Today's Wear flow | PASSED |
+| 7 | Calendar month navigation | PASSED |
+| 8 | Stats cards + observations rendering | PASSED |
+| 9 | Profile edit inline flow | PASSED |
+| 10 | Remove Note confirmation flow | PASSED |
+| 11 | New Note Visibility default persistence | PASSED |
 
 ### Gaps Summary
 
