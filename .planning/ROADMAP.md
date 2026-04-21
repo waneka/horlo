@@ -116,7 +116,7 @@ Plans:
 Plans:
 - [x] 10-01-PLAN.md — Wave 0: RLS migration + cacheComponents flag + shared feed types + timeAgo helper
 - [x] 10-02-PLAN.md — Feed DAL (getFeedForUser) + aggregateFeed + loadMoreFeed Server Action
-- [ ] 10-03-PLAN.md — WYWT DAL (getWearRailForViewer) + addToWishlistFromWearEvent Server Action
+- [x] 10-03-PLAN.md — WYWT DAL (getWearRailForViewer) + addToWishlistFromWearEvent Server Action
 - [ ] 10-04-PLAN.md — wishlistGap + recommendations + suggestions DALs
 - [ ] 10-05-PLAN.md — Network Activity UI (section + rows + Load More)
 - [ ] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
@@ -130,7 +130,7 @@ Plans:
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 2/9 plans executed
+**Plans:** 3/9 plans executed
 
 See `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` for full context.
 
@@ -148,4 +148,4 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Activity Feed | 2/9 | In Progress|  |
+| 10. Activity Feed | 3/9 | In Progress|  |

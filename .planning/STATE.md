@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
-stopped_at: Completed 10-02-PLAN.md (feed DAL + aggregator + loadMoreFeed)
-last_updated: "2026-04-21T23:32:12.013Z"
+stopped_at: Completed 10-03-PLAN.md (WYWT DAL + addToWishlistFromWearEvent Server Action)
+last_updated: "2026-04-21T23:42:37.727Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 14
-  percent: 67
+  completed_plans: 15
+  percent: 71
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 ## Current Position
 
 Phase: 10 (activity-feed) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-04-21
 
@@ -51,6 +51,7 @@ Phase 10 [          ] Not started
 | Requirements mapped | 31/31 |
 | Phase 10 P01 | 18min | 3 tasks | 10 files |
 | Phase 10 P02 | 10min | 3 tasks | 6 files |
+| Phase 10 P03 | 5min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Phase 10 [          ] Not started
 | Phase 10 activities RLS widened to own-or-followed | Outer gate admits rows from followed users using `(SELECT auth.uid())` subquery pattern; per-event privacy (`collection_public` / `wishlist_public` / `worn_public`) stays at the DAL layer per F-06. Widens the outer gate, preserves the two-layer model. |
 | Phase 10 feed DAL returns `RawFeedPage`, not `FeedPage` | DAL emits `RawFeedRow[]`; aggregation happens in `aggregateFeed`. Splitting the types prevents the wider post-aggregation union from leaking into the DAL contract and lets SSR callers pick raw or aggregated rendering at their boundary. |
 | Phase 10 feed integration tests gate on local Supabase env vars | 11 privacy/keyset integration cases live in `tests/data/getFeedForUser.test.ts` but only activate when `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are set; mirrors `tests/data/isolation.test.ts` so the default suite stays green in CI. |
+| Phase 10 WYWT DAL — dropped `as never` cast on createWatch | Providing all required Watch fields explicitly (brand/model/status/movement/complications/styleTags/designTraits/roleTags + optional imageUrl) satisfies `Omit<Watch, 'id'>` without an escape hatch; only a narrow `row.movement as MovementType` remains because Drizzle's inferred enum type isn't the domain alias. |
+| Phase 10 WYWT Server Action — duplicate wishlist rows tolerated by design | CONTEXT.md `<specifics>` says one-tap-no-friction conversion; per-user-independent-entries model already expects duplicates. No server-side dedupe. UI (Plan 06) may add a success toast with undo, but never a pre-confirm dialog. |
+| Phase 10 WYWT privacy gate — identical 'Wear event not found' on missing vs private | Both absent-row and actor-not-viewer-with-worn_public=false return the same error string (T-10-03-03). Avoids leaking existence of private wear events to callers who can't read them. Mirrors Phase 8 notes-IDOR mitigation precedent. |
 
 ### Critical Pitfalls (from research)
 
@@ -93,7 +97,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-21T23:32:12.009Z
-Stopped at: Completed 10-02-PLAN.md (feed DAL + aggregator + loadMoreFeed)
+Last session: 2026-04-21T23:42:37.723Z
+Stopped at: Completed 10-03-PLAN.md (WYWT DAL + addToWishlistFromWearEvent Server Action)
 Resume file: None
 Next action: `/gsd-plan-phase 6`

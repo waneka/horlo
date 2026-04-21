@@ -144,10 +144,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FEED-02 | Phase 10 | Complete |
 | FEED-03 | Phase 10 | Complete |
 | FEED-04 | Phase 10 | Complete |
+| WYWT-03 | Phase 10 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 31 total
-- Mapped to phases: 31
+- Mapped to phases: 31 (WYWT-03 expanded into Phase 10 per 10-CONTEXT.md)
 - Unmapped: 0 ✓
 
 ---
