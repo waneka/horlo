@@ -73,8 +73,14 @@ Plans:
   4. When a user sets their profile to private, any visitor who is not the owner sees a locked profile state with a follow button visible but no collection content (Letterboxd pattern)
   5. Privacy enforcement operates at both the RLS layer and the DAL WHERE clause — a direct database query with a foreign user's token cannot read private rows
   6. User can edit display name, avatar URL, and bio from their profile page and see the changes reflected immediately
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 08-01-PLAN.md — Schema migration (notes_public/notes_updated_at), profile DAL + Server Actions, taste tag computation lib, cross-user wear-event DAL gate
+- [ ] 08-02-PLAN.md — Profile route shell (/u/[username]/[tab]), ProfileHeader with edit mode, LockedProfileState, /settings page with optimistic privacy toggles
+- [ ] 08-03-PLAN.md — Collection / Wishlist / Notes tab content with ProfileWatchCard, dynamic FilterChips, NoteRow + per-note visibility pill + remove dialog
+- [ ] 08-04-PLAN.md — Worn tab (Timeline + Calendar toggle, Log Today's Wear), Stats tab (Most/Least Worn, distributions, observations); reusable stats lib
 
 ### Phase 9: Follow System & Collector Profiles
 **Goal**: Collectors can follow each other, the social graph exists, and visiting another collector's profile shows their public collection alongside a Common Ground taste overlap.
@@ -123,6 +129,6 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 |-------|----------------|--------|-----------|
 | 6. RLS Foundation | 0/1 | Not started | - |
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
-| 8. Self Profile & Privacy Controls | 0/TBD | Not started | - |
+| 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/TBD | Not started | - |
 | 10. Activity Feed | 0/TBD | Not started | - |
