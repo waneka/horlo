@@ -10,7 +10,7 @@ import { getAllWearEventsByUser } from '@/data/wearEvents'
 import { computeTasteTags } from '@/lib/tasteTags'
 import { ProfileTabs } from '@/components/profile/ProfileTabs'
 import { LockedProfileState } from '@/components/profile/LockedProfileState'
-// ProfileHeader wired in Task 2.
+import { ProfileHeader } from '@/components/profile/ProfileHeader'
 
 export default async function ProfileLayout({
   children,
@@ -90,22 +90,18 @@ export default async function ProfileLayout({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 lg:px-8 lg:py-12">
-      <div
-        data-slot="profile-header"
-        data-username={username}
-        data-is-owner={isOwner}
-      >
-        {/* TODO Task 2: replace with <ProfileHeader ... /> */}
-        <div className="text-2xl font-semibold">@{username}</div>
-        <div className="mt-2 text-sm text-muted-foreground">
-          {counts.followers} followers · {counts.following} following ·{' '}
-          {ownedCount} watches · {wishlistCount} wishlist
-        </div>
-        <div className="mt-2 text-xs text-muted-foreground">
-          Taste:{' '}
-          {tasteTags.length ? tasteTags.join(' · ') : '(no tags yet)'}
-        </div>
-      </div>
+      <ProfileHeader
+        username={username}
+        displayName={profile.displayName ?? null}
+        bio={profile.bio ?? null}
+        avatarUrl={profile.avatarUrl ?? null}
+        isOwner={isOwner}
+        followerCount={counts.followers}
+        followingCount={counts.following}
+        watchCount={ownedCount}
+        wishlistCount={wishlistCount}
+        tasteTags={tasteTags}
+      />
       <div className="mt-6">
         <ProfileTabs username={username} />
       </div>
