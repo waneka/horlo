@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
 stopped_at: Phase 9 UI-SPEC approved
-last_updated: "2026-04-21T18:01:08.670Z"
-last_activity: 2026-04-21 -- Phase 9 planning complete
+last_updated: "2026-04-21T18:08:09.719Z"
+last_activity: 2026-04-21 -- Phase 09 execution started
 progress:
   total_phases: 6
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Collectors discover watches through other people's collections and taste — not algorithms, catalogs, or content feeds.
-**Current focus:** Phase 08 — self-profile-privacy-controls
+**Current focus:** Phase 09 — follow-system-collector-profiles
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-21 -- Phase 9 planning complete
+Phase: 09 (follow-system-collector-profiles) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 09
+Last activity: 2026-04-21 -- Phase 09 execution started
 
 ## Progress Bar
 

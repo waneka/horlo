@@ -96,10 +96,10 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 09-01-data-actions-taste-overlap-PLAN.md — follows DAL, Server Actions, tasteOverlap library + Wave 0 tests
-- [ ] 09-02-follow-button-and-header-wiring-PLAN.md — FollowButton component, ProfileHeader/LockedProfileState wiring, layout isFollowing hydration
-- [ ] 09-03-follower-following-list-routes-PLAN.md — follower/following list routes + FollowerListCard + AvatarDisplay size=40
-- [ ] 09-04-common-ground-hero-tab-locked-state-PLAN.md — Common Ground hero band, 6th tab, LockedTabCard + layout/tab router wiring
+- [x] 09-01-data-actions-taste-overlap-PLAN.md — follows DAL, Server Actions, tasteOverlap library + Wave 0 tests
+- [x] 09-02-follow-button-and-header-wiring-PLAN.md — FollowButton component, ProfileHeader/LockedProfileState wiring, layout isFollowing hydration
+- [x] 09-03-follower-following-list-routes-PLAN.md — follower/following list routes + FollowerListCard + AvatarDisplay size=40
+- [x] 09-04-common-ground-hero-tab-locked-state-PLAN.md — Common Ground hero band, 6th tab, LockedTabCard + layout/tab router wiring
 
 ### Phase 10: Activity Feed
 **Goal**: The home page shows a live-ish feed of what followed collectors are doing with their collections, making the network feel active.
