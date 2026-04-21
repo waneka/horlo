@@ -121,8 +121,10 @@ describe('computeTasteOverlap', () => {
   })
 
   it(`overlapLabel === 'Some overlap' when average similarity is in [${GOAL_THRESHOLDS.balanced.familiarTerritory}, ${GOAL_THRESHOLDS.balanced.coreFit})`, () => {
-    // Partial overlap: share some style/role tags but not all. This tuning aims
-    // for roughly 0.45-0.65 average similarity.
+    // Partial overlap: fully share styleTags + roleTags + caseSize band +
+    // water-resistance band. Diverge on design traits, dial, strap,
+    // complications. This fixture targets ~0.55 avg similarity so the label
+    // lands cleanly in 'Some overlap' range ([0.45, 0.65)).
     const viewer = {
       watches: [
         w({
@@ -131,7 +133,7 @@ describe('computeTasteOverlap', () => {
           styleTags: ['sport'],
           roleTags: ['dive'],
           designTraits: ['rotating-bezel'],
-          complications: [],
+          complications: ['date'],
           dialColor: 'black',
           strapType: 'bracelet',
           caseSizeMm: 40,
@@ -146,14 +148,14 @@ describe('computeTasteOverlap', () => {
         w({
           brand: 'Seiko',
           model: 'Turtle',
-          styleTags: ['sport'],
-          roleTags: ['dive'],
-          designTraits: ['rotating-bezel'],
-          complications: [],
+          styleTags: ['sport'], // fully shared
+          roleTags: ['dive'], // fully shared
+          designTraits: ['resin-case'], // disjoint
+          complications: ['chronograph'], // disjoint
           dialColor: 'blue', // differs
           strapType: 'rubber', // differs
-          caseSizeMm: 45, // diff = 5 → mid similarity
-          waterResistanceM: 200,
+          caseSizeMm: 40, // exact match → full caseSize weight
+          waterResistanceM: 300, // same band → full WR weight
         }),
       ],
       preferences: prefs,
