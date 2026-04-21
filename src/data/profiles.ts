@@ -26,10 +26,15 @@ const DEFAULT_SETTINGS: Omit<ProfileSettings, 'userId'> = {
 }
 
 export async function getProfileByUsername(username: string) {
+  // WR-05: lookup is case-insensitive so /u/Tyler and /u/tyler resolve to the
+  // same profile. The signup trigger already lowercases usernames at insert
+  // (see supabase/migrations/20260420000002_profile_trigger.sql), and a
+  // companion migration adds a unique index on lower(username) as belt-and-
+  // suspenders against mixed-case insertions going forward.
   const rows = await db
     .select()
     .from(profiles)
-    .where(eq(profiles.username, username))
+    .where(sql`lower(${profiles.username}) = lower(${username})`)
     .limit(1)
   return rows[0] ?? null
 }
