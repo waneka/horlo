@@ -35,11 +35,13 @@ export async function updateNoteVisibility(data: unknown): Promise<ActionResult<
   }
 
   try {
+    // WR-03: visibility-only change — do NOT bump notesUpdatedAt. The timeline
+    // label ("Today / N days ago") renders from notesUpdatedAt and should reflect
+    // when the note CONTENT last changed, not when the owner toggled its pill.
     const result = await db
       .update(watches)
       .set({
         notesPublic: parsed.data.isPublic,
-        notesUpdatedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(and(eq(watches.id, parsed.data.watchId), eq(watches.userId, user.id)))
