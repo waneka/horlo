@@ -42,6 +42,11 @@ A collector can evaluate any watch against their collection and get a meaningful
 - ✓ Test foundation — Vitest + React Testing Library + MSW configured — v1.0 (TEST-01)
 - ✓ Similarity tests — all six SimilarityLabel outputs covered including preference-aware paths — v1.0 (TEST-02)
 - ✓ Extractor pipeline tests — structured, HTML, merge logic with fixture HTML — v1.0 (TEST-03)
+- ✓ Follow / unfollow (social graph) — v2.0 Phase 9 (FOLL-01, FOLL-02)
+- ✓ Follower counts — v2.0 Phase 9 (FOLL-03)
+- ✓ Follower / following list routes — v2.0 Phase 9 (FOLL-04)
+- ✓ Read-only public collection at `/u/[username]` with per-tab privacy gating — v2.0 Phase 9 (PROF-08)
+- ✓ Common Ground taste overlap (server-computed; result-only to client) — v2.0 Phase 9 (PROF-09)
 
 ### Active
 
@@ -54,7 +59,7 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 ### Out of Scope
 
-- Social / community features (public collections, follow users, activity feed) — future milestone, app is personal-first
+- Social / community features — partial: v2.0 Phase 7-9 shipped public profiles, follow graph, and Common Ground overlap; activity feed is Phase 10
 - Automated price tracking / market integrations / deal alerts — future milestone, significant infrastructure
 - AI recommendation engine (best gap filler, most versatile addition) — future milestone after auth/data layer is solid
 - Collection visualization map (2D dressy↔sporty × affordable↔expensive plot) — future milestone
@@ -108,4 +113,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 after v1.0 milestone completion — 5 phases shipped, horlo.app live, Phase 6 (Test Suite Completion) deferred to v1.1*
+*Last updated: 2026-04-21 after v2.0 Phase 9 (Follow System & Collector Profiles) — follow graph, follower/following lists, Common Ground overlap shipped; Phase 10 (Activity Feed) next*
