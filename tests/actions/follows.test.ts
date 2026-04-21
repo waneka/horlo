@@ -27,8 +27,9 @@ import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import * as followsDAL from '@/data/follows'
 import { revalidatePath } from 'next/cache'
 
-const viewerUserId = '00000000-0000-0000-0000-0000000000aa'
-const targetUserId = '00000000-0000-0000-0000-000000000001'
+// Valid v4 UUID literals (M=4, N∈{8,9,a,b}) so z.string().uuid() accepts them.
+const viewerUserId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+const targetUserId = '11111111-2222-4333-8444-555555555555'
 
 describe('followUser Server Action', () => {
   beforeEach(() => {
