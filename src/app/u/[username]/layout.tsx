@@ -12,6 +12,8 @@ import { computeTasteTags } from '@/lib/tasteTags'
 import { ProfileTabs } from '@/components/profile/ProfileTabs'
 import { LockedProfileState } from '@/components/profile/LockedProfileState'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
+import { CommonGroundHeroBand } from '@/components/profile/CommonGroundHeroBand'
+import { resolveCommonGround } from './common-ground-gate'
 
 export default async function ProfileLayout({
   children,
@@ -96,6 +98,17 @@ export default async function ProfileLayout({
     (w) => w.status === 'wishlist' || w.status === 'grail',
   ).length
 
+  // Common Ground gate — pure gate+payload-shape extraction lives in
+  // ./common-ground-gate (pinned by tests/app/layout-common-ground-gate.test.ts).
+  // Owner path short-circuits here; private-collection path also returns null.
+  // Never calls getTasteOverlapData unless all three gate conditions pass.
+  const overlap = await resolveCommonGround({
+    viewerId,
+    ownerId: profile.id,
+    isOwner,
+    collectionPublic: settings.collectionPublic,
+  })
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 lg:px-8 lg:py-12">
       <ProfileHeader
@@ -114,8 +127,17 @@ export default async function ProfileLayout({
         initialIsFollowing={initialIsFollowing}
         targetDisplayName={profile.displayName ?? `@${profile.username}`}
       />
+      {overlap && (
+        <CommonGroundHeroBand
+          overlap={overlap}
+          ownerUsername={username}
+        />
+      )}
       <div className="mt-6">
-        <ProfileTabs username={username} />
+        <ProfileTabs
+          username={username}
+          showCommonGround={overlap?.hasAny ?? false}
+        />
       </div>
       <div className="mt-6">{children}</div>
     </main>

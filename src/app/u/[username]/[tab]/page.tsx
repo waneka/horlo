@@ -16,6 +16,9 @@ import { WishlistTabContent } from '@/components/profile/WishlistTabContent'
 import { NotesTabContent } from '@/components/profile/NotesTabContent'
 import { WornTabContent } from '@/components/profile/WornTabContent'
 import { StatsTabContent } from '@/components/profile/StatsTabContent'
+import { LockedTabCard } from '@/components/profile/LockedTabCard'
+import { CommonGroundTabContent } from '@/components/profile/CommonGroundTabContent'
+import { resolveCommonGround } from '../common-ground-gate'
 import {
   styleDistribution,
   roleDistribution,
@@ -27,7 +30,14 @@ import {
 } from '@/lib/stats'
 import type { WatchWithWear } from '@/lib/types'
 
-const VALID_TABS = ['collection', 'wishlist', 'worn', 'notes', 'stats'] as const
+const VALID_TABS = [
+  'collection',
+  'wishlist',
+  'worn',
+  'notes',
+  'stats',
+  'common-ground',
+] as const
 type Tab = (typeof VALID_TABS)[number]
 
 export default async function ProfileTabPage({
@@ -50,24 +60,71 @@ export default async function ProfileTabPage({
   }
   const isOwner = viewerId === profile.id
   const settings = await getProfileSettings(profile.id)
+  const displayName = profile.displayName ?? null
+  const ownerDisplayLabel = profile.displayName ?? `@${profile.username}`
+
+  // Common Ground tab — handled first, same gate as the layout's hero band
+  // (single-sourced in common-ground-gate.ts). On any gate failure or empty
+  // overlap, emit a 404 per D-02 / D-17 — the tab is never "locked", only
+  // absent or present. React cache() on getTasteOverlapData means this is a
+  // free call when the layout already computed it.
+  if (tab === 'common-ground') {
+    const overlap = await resolveCommonGround({
+      viewerId,
+      ownerId: profile.id,
+      isOwner,
+      collectionPublic: settings.collectionPublic,
+    })
+    if (!overlap || !overlap.hasAny) notFound()
+    return (
+      <CommonGroundTabContent
+        overlap={overlap}
+        ownerDisplayLabel={ownerDisplayLabel}
+      />
+    )
+  }
 
   // The shared layout already short-circuits when profile_public=false && !isOwner.
   // Per-tab visibility (PRIV-02 / PRIV-03 / PRIV-04):
   if (tab === 'collection' && !isOwner && !settings.collectionPublic) {
-    return <PrivateTabState tab="collection" />
+    return (
+      <LockedTabCard
+        tab="collection"
+        displayName={displayName}
+        username={profile.username}
+      />
+    )
   }
   if (tab === 'wishlist' && !isOwner && !settings.wishlistPublic) {
-    return <PrivateTabState tab="wishlist" />
+    return (
+      <LockedTabCard
+        tab="wishlist"
+        displayName={displayName}
+        username={profile.username}
+      />
+    )
   }
   if (tab === 'worn' && !isOwner && !settings.wornPublic) {
-    return <PrivateTabState tab="worn" />
+    return (
+      <LockedTabCard
+        tab="worn"
+        displayName={displayName}
+        username={profile.username}
+      />
+    )
   }
   // WR-01: Notes surface the underlying watch (brand/model/image + link),
   // so gating only on per-note notesPublic leaks the collection through a
   // side channel whenever the owner has hidden their collection. Mirror the
   // Stats gate (line ~136) and require collection_public for non-owners.
   if (tab === 'notes' && !isOwner && !settings.collectionPublic) {
-    return <PrivateTabState tab="notes" />
+    return (
+      <LockedTabCard
+        tab="notes"
+        displayName={displayName}
+        username={profile.username}
+      />
+    )
   }
 
   // Collection / Wishlist / Notes share the watches+wear data fetch.
@@ -141,7 +198,13 @@ export default async function ProfileTabPage({
   // Wear data is gated separately via getPublicWearEventsForViewer (returns [] when
   // worn_public=false for non-owner) — stats render with 0 wear counts in that case.
   if (!isOwner && !settings.collectionPublic) {
-    return <PrivateTabState tab="stats" />
+    return (
+      <LockedTabCard
+        tab="stats"
+        displayName={displayName}
+        username={profile.username}
+      />
+    )
   }
   const watches = await getWatchesByUser(profile.id)
   const ownedAll = watches.filter((w) => w.status === 'owned')
@@ -169,13 +232,5 @@ export default async function ProfileTabPage({
       leastWorn={topLeastWorn(ownedAll, wearCount, 3)}
       observations={observations}
     />
-  )
-}
-
-function PrivateTabState({ tab }: { tab: Tab }) {
-  return (
-    <section className="flex flex-col items-center justify-center rounded-xl border bg-card py-16 text-center">
-      <p className="text-sm text-muted-foreground">This {tab} is private.</p>
-    </section>
   )
 }
