@@ -55,3 +55,53 @@ export async function updateNoteVisibility(data: unknown): Promise<ActionResult<
     return { success: false, error: "Couldn't update note visibility. Try again." }
   }
 }
+
+const removeNoteSchema = z
+  .object({
+    watchId: z.string().uuid(),
+  })
+  .strict()
+
+/**
+ * Clear the notes field on a watch the caller owns. Per D-10 the watch row
+ * is preserved — only `notes` is set to null. notes_updated_at is bumped so
+ * the timeline reflects the change.
+ *
+ * IDOR mitigation (T-08-19): UPDATE WHERE user_id = current user — a foreign
+ * watchId silently affects 0 rows, surfaced as a generic 'Watch not found'
+ * error so existence is not leaked.
+ */
+export async function removeNote(data: unknown): Promise<ActionResult<void>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = removeNoteSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  try {
+    const result = await db
+      .update(watches)
+      .set({
+        notes: null,
+        notesUpdatedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(watches.id, parsed.data.watchId), eq(watches.userId, user.id)))
+      .returning({ id: watches.id })
+
+    if (result.length === 0) {
+      return { success: false, error: 'Watch not found' }
+    }
+    revalidatePath('/u/[username]/notes', 'page')
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[removeNote] unexpected error:', err)
+    return { success: false, error: "Couldn't remove the note. Try again." }
+  }
+}
