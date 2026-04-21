@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: base-nova (components.json, Tailwind 4, neutral base)
 created: 2026-04-21
+revised: 2026-04-21
 ---
 
 # Phase 10 — UI Design Contract
@@ -31,6 +32,8 @@ created: 2026-04-21
 | Theme modes | Light + dark (auto via cookie + system), both already wired in `globals.css` | `src/app/layout.tsx:26–30` |
 | Carousel / swipe | `embla-carousel-react` 8.6.0 — used ONLY for WYWT overlay swipe navigation; rail uses native CSS `scroll-snap-type` | RESEARCH.md § Don't Hand-Roll |
 
+**Focal point (home page, first paint):** The **WYWT rail** is the primary visual anchor at the top of the home — it carries the brightest accent (unviewed ring-2 in `ring-ring` gold-brown) and is always the first interactive element below the nav. The **Network Activity feed** is the secondary scan target: it occupies the largest vertical area below the fold and drives return-visit engagement. All other sections (Collectors Like You, Personal Insights, Suggested Collectors) are tertiary and must not compete with these two for attention (no accent fills, no oversized type, no motion).
+
 **Binding rule:** Every color value in Phase 10 components must be a Tailwind utility that resolves to a token declared in `globals.css` (`bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `ring-ring`, `border-border`, `bg-accent`, `text-accent-foreground`, `bg-destructive`, `text-destructive-foreground`, etc.). **No raw hex. No inline `style` colors.** If a value is needed that does not map to an existing token, flag it as `NEEDS TOKEN` in the plan for the executor to add.
 
 ---
@@ -41,7 +44,7 @@ Tailwind 4 default (1 unit = 0.25rem = 4px). All Phase 10 components use multipl
 
 | Token | Tailwind | Pixel | Usage in Phase 10 |
 |-------|----------|-------|-------------------|
-| xs | `p-1` / `gap-1` | 4px | Icon-to-label inline gap (e.g., `+ Wear` icon + label) |
+| xs | `p-1` / `gap-1` | 4px | Icon-to-label inline gap (e.g., `+ Wear` icon + label); feed-row line gap between line 1 and line 2 |
 | sm | `p-2` / `gap-2` | 8px | Rec card internal padding; ring width × 2 gap between tile and ring glow |
 | md | `p-4` / `gap-4` | 16px | Default component padding (cards, rows, dialog body) |
 | lg | `p-6` / `gap-6` | 24px | Section internal padding; gap between cards in a section grid |
@@ -76,18 +79,18 @@ Tailwind 4 default (1 unit = 0.25rem = 4px). All Phase 10 components use multipl
 
 ## Typography
 
-Four size tiers, two weights. All bound to `--font-sans` (Geist) except section headings that explicitly opt into `--font-serif` (Instrument Serif) per the brand voice already set by the Horlo wordmark.
+Four size tiers, **two weights** (400, 600). All bound to `--font-sans` (Geist) except the Display tier, which opts into `--font-serif` (Instrument Serif) per the brand voice already set by the Horlo wordmark.
 
 | Role | Size (Tailwind / px) | Weight | Line Height | Family | Used For |
 |------|----------------------|--------|-------------|--------|----------|
 | Body | `text-base` / 16px | `font-normal` (400) | `leading-relaxed` (1.625) | sans | Activity row verb line, overlay caption, empty-state body, dialog body |
-| Label | `text-sm` / 14px | `font-medium` (500) | `leading-snug` (1.375) | sans | Tile username + time, rec rationale, insight card body, follow count strings, copywriting micro-labels |
+| Label | `text-sm` / 14px | `font-normal` (400) | `leading-snug` (1.375) | sans | Tile username + time, rec rationale, insight card body, follow count strings, copywriting micro-labels |
 | Heading | `text-xl` / 20px | `font-semibold` (600) | `leading-tight` (1.25) | sans | Section headings ("Collectors Like You", "Network Activity"), insight card titles, dialog titles |
 | Display | `text-3xl` / 30px | `font-normal` (400) | `leading-tight` (1.25) | serif (`font-serif`) | Empty-state heading of home-level "nothing here yet" states; overlay watch name (e.g., "Submariner 14060M") |
 
 Rationale:
-- Four tiers cover every text style needed for the 5 sections. No 18px or 24px step; density wins at feed scale.
-- Two weights (400, 600) plus one accent weight (500 for labels) — kept under the checker's "max 2 weights" discipline by reserving 500 for labels that need slightly more presence than body but less than heading (a common shadcn pattern). If the checker is strict on 2-weight-max, collapse Label to `font-normal`.
+- Four size tiers cover every text style needed for the 5 sections. No 18px or 24px step; density wins at feed scale.
+- **Exactly two weights:** `font-normal` (400) for all body / label / display copy, and `font-semibold` (600) reserved for headings AND for inline `{username}` emphasis within feed rows. This keeps the page rhythm consistent: bold = "person or section name," everything else = information.
 - Serif `Display` is used sparingly (≤ 2 instances per page) to echo the Horlo wordmark in high-emotion copy (overlay watch name, primary empty state heading). Keeps the home feeling editorial without overpowering scannability.
 
 **Feed-row specifics (F-01 composition):**
@@ -95,11 +98,11 @@ Rationale:
 [avatar 40×40] [username · verb · watchName]      [watch thumb 48–56×48–56]
                [{time ago}                    ]
 ```
-- Line 1: `text-base font-normal` with `font-semibold` on `{username}` only and `font-medium` on `{watchName}` (makes the link target scannable).
-- Line 2: `text-sm text-muted-foreground`.
-- Line gap: `space-y-0.5` (2px).
+- Line 1: `text-base font-normal` with `font-semibold` on `{username}` only. `{watchName}` stays `font-normal` and is distinguished by being an underlined link on hover/focus (not by weight).
+- Line 2: `text-sm text-muted-foreground font-normal`.
+- Line gap: `space-y-1` (4px).
 
-**Aggregated row (F-08):** Line 1 template `{username} added {N} watches` with `{N}` in `font-semibold`; line 2 identical time-ago. Representative watch thumbnail on the right (from the first of the collapsed group).
+**Aggregated row (F-08):** Line 1 template `{username} added {N} watches` with `{username}` in `font-semibold` and `{N}` also in `font-semibold` for numeric emphasis; line 2 identical time-ago in `text-sm text-muted-foreground`. Representative watch thumbnail on the right (from the first of the collapsed group).
 
 **Responsive:** All sizes scale with the system; no responsive size variants needed. Readability at both mobile (16px base) and desktop (16px base) is adequate because the layout density (not type size) changes between breakpoints.
 
@@ -154,7 +157,7 @@ Copy is prescriptive and locked. The planner and executor should use these exact
 | Insights — Sleeping Beauty click target | Card is clickable; no separate button. Accessible name: `View {brand} {model}` |
 | Insights — Common Ground click target | Card is clickable; accessible name: `See Common Ground with {name}` |
 | WatchPickerDialog — submit | `Log wear` (when invoked from `+ Wear` / self-tile) |
-| WatchPickerDialog — cancel | `Cancel` |
+| WatchPickerDialog — dismiss | `Keep browsing` (closes the picker without logging a wear; the copy reflects that the user is staying on the home, not leaving a destructive flow) |
 
 ### Section Headings
 
