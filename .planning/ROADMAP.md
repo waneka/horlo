@@ -79,7 +79,7 @@ Plans:
 Plans:
 - [x] 08-01-PLAN.md — Schema migration (notes_public/notes_updated_at), profile DAL + Server Actions, taste tag computation lib, cross-user wear-event DAL gate
 - [x] 08-02-PLAN.md — Profile route shell (/u/[username]/[tab]), ProfileHeader with edit mode, LockedProfileState, /settings page with optimistic privacy toggles
-- [ ] 08-03-PLAN.md — Collection / Wishlist / Notes tab content with ProfileWatchCard, dynamic FilterChips, NoteRow + per-note visibility pill + remove dialog
+- [x] 08-03-PLAN.md — Collection / Wishlist / Notes tab content with ProfileWatchCard, dynamic FilterChips, NoteRow + per-note visibility pill + remove dialog
 - [ ] 08-04-PLAN.md — Worn tab (Timeline + Calendar toggle, Log Today's Wear), Stats tab (Most/Least Worn, distributions, observations); reusable stats lib
 
 ### Phase 9: Follow System & Collector Profiles
