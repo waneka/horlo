@@ -111,10 +111,10 @@ describe('FollowerListCard — row rendering', () => {
 
   it('renders stat strip "N watches · M wishlist"', () => {
     renderCard({ entry: makeEntry({ watchCount: 7, wishlistCount: 2 }) })
-    // Look for the composite string — implementation may split into nodes, so match flexibly.
+    // Match the leaf <p> containing the stat strip (avoid matching wrapper divs).
     expect(
-      screen.getByText((content, element) => {
-        if (!element) return false
+      screen.getByText((_, element) => {
+        if (!element || element.tagName !== 'P') return false
         const text = element.textContent ?? ''
         return /7 watches\s*·\s*2 wishlist/.test(text)
       }),
@@ -160,19 +160,25 @@ describe('FollowerListCard — inline FollowButton', () => {
   })
 
   it('clicking FollowButton does NOT bubble up (stopPropagation per D-14)', () => {
+    // Wrap the card in a React parent with its own onClick. React's synthetic
+    // event system honors stopPropagation() synchronously for React handlers
+    // attached higher up the tree — this is exactly the surface D-14 protects
+    // (the row Link's click handler must not fire when the Follow button is
+    // clicked).
     const parentOnClick = vi.fn()
-    const { container } = renderCard({
-      entry: makeEntry({ userId: TARGET_ID }),
-      viewerId: VIEWER_ID,
-      isOwnRow: false,
-    })
-    // Attach a spy to a wrapping div around the card's rendered subtree.
-    // container.firstChild is the card's outer element; its own click parent
-    // is the DOM container — attach the spy to container and bubble through.
-    container.addEventListener('click', parentOnClick)
+    render(
+      <div onClick={parentOnClick}>
+        <FollowerListCard
+          entry={makeEntry({ userId: TARGET_ID })}
+          viewerId={VIEWER_ID}
+          viewerIsFollowing={false}
+          isOwnRow={false}
+          showFollowedAt={false}
+        />
+      </div>,
+    )
     const btn = screen.getByRole('button', { name: /Follow|Unfollow/ })
     fireEvent.click(btn)
-    // stopPropagation prevents the click from bubbling to the container.
     expect(parentOnClick).not.toHaveBeenCalled()
   })
 })
@@ -225,9 +231,10 @@ describe('FollowerListCard — relative time', () => {
       entry: makeEntry({ followedAt: threeDaysAgo }),
       showFollowedAt: true,
     })
+    // Match the leaf <p> containing the stat strip + days-ago fragment.
     expect(
       screen.getByText((_, element) => {
-        if (!element) return false
+        if (!element || element.tagName !== 'P') return false
         return /3 days ago/.test(element.textContent ?? '')
       }),
     ).toBeTruthy()
