@@ -28,6 +28,7 @@ export function ProfileTabs({ username }: { username: string }) {
           <TabsTrigger
             key={tab.id}
             value={tab.id}
+            nativeButton={false}
             render={<Link href={`/u/${username}/${tab.id}`} />}
           >
             {tab.label}
