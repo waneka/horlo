@@ -92,8 +92,14 @@ Plans:
   3. User can open the followers or following list on any profile and see the accounts represented as clickable collector cards
   4. The Common Ground section on another collector's profile shows watches both collectors own (set intersection on brand+model) and a taste-overlap summary derived from the similarity engine — computed server-side, only the result is sent to the client
   5. Following counts are accurate on both the follower's and the followed collector's profile without a full page refresh after the follow action
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 09-01-data-actions-taste-overlap-PLAN.md — follows DAL, Server Actions, tasteOverlap library + Wave 0 tests
+- [ ] 09-02-follow-button-and-header-wiring-PLAN.md — FollowButton component, ProfileHeader/LockedProfileState wiring, layout isFollowing hydration
+- [ ] 09-03-follower-following-list-routes-PLAN.md — follower/following list routes + FollowerListCard + AvatarDisplay size=40
+- [ ] 09-04-common-ground-hero-tab-locked-state-PLAN.md — Common Ground hero band, 6th tab, LockedTabCard + layout/tab router wiring
 
 ### Phase 10: Activity Feed
 **Goal**: The home page shows a live-ish feed of what followed collectors are doing with their collections, making the network feel active.
@@ -130,5 +136,5 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 6. RLS Foundation | 0/1 | Not started | - |
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
-| 9. Follow System & Collector Profiles | 0/TBD | Not started | - |
+| 9. Follow System & Collector Profiles | 0/4 | Not started | - |
 | 10. Activity Feed | 0/TBD | Not started | - |
