@@ -36,15 +36,21 @@ const NOTE_DEFAULT_KEY = 'horlo:noteVisibilityDefault'
 type NoteDefault = 'public' | 'private'
 
 export function SettingsClient({ settings }: SettingsClientProps) {
-  // D-13: per-user default visibility for new notes. Server-side persistence
-  // (a per-user column) is out of phase scope; localStorage gives the user the
-  // sticky-dropdown behavior the decision requires.
+  // WR-02: The New Note Visibility dropdown previously persisted to localStorage
+  // under NOTE_DEFAULT_KEY, but no write path (addWatch / editWatch /
+  // insertWatchSchema) consumed the stored value, so flipping to "private" still
+  // produced public notes — a privacy footgun. Until the default is wired
+  // through the watch-creation flow, the control is disabled with a
+  // "Coming soon" badge so users are not misled. The state + handler are
+  // preserved so re-enabling just means removing `disabled` and wiring the
+  // default into `insertWatchSchema` + the new-watch / edit-watch forms.
   // SSR safety: initial state is the static default 'public' so server-rendered
   // markup matches first client render. Hydrate from localStorage in useEffect.
   const [noteDefault, setNoteDefault] = useState<NoteDefault>('public')
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  // Hydrate the dropdown from localStorage on mount.
+  // Hydrate the dropdown from localStorage on mount so the value is visible
+  // when the control is re-enabled.
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(NOTE_DEFAULT_KEY)
@@ -104,18 +110,24 @@ export function SettingsClient({ settings }: SettingsClientProps) {
                 Default visibility applied to new notes you write.
               </p>
             </div>
-            <Select
-              value={noteDefault}
-              onValueChange={handleNoteDefaultChange}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="public">Public</SelectItem>
-                <SelectItem value="private">Private</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* WR-02: control is disabled until the default is wired through
+                insertWatchSchema and the new-watch / edit-watch forms. */}
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Coming soon</Badge>
+              <Select
+                value={noteDefault}
+                onValueChange={handleNoteDefaultChange}
+                disabled
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </SettingsSection>
