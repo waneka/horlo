@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
-stopped_at: Phase 10 context gathered
-last_updated: "2026-04-21T20:58:26.261Z"
+stopped_at: Completed 10-01-PLAN.md (Wave 0 prerequisites)
+last_updated: "2026-04-21T23:18:18.847Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 21
+  completed_plans: 13
+  percent: 62
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Collectors discover watches through other people's collections and taste — not algorithms, catalogs, or content feeds.
-**Current focus:** Phase 09 — follow-system-collector-profiles
+**Current focus:** Phase 10 — activity-feed
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Executing Phase 09
+Phase: 10 (activity-feed) — EXECUTING
+Plan: 2 of 9
+Status: Ready to execute
 Last activity: 2026-04-21
 
 ## Progress Bar
@@ -49,6 +49,7 @@ Phase 10 [          ] Not started
 | Plans total | TBD |
 | Plans complete | 0 |
 | Requirements mapped | 31/31 |
+| Phase 10 P01 | 18min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Phase 10 [          ] Not started
 | No Supabase Realtime | Free tier: 200 concurrent WS limit; server-rendered + `router.refresh()` is sufficient at MVP scale |
 | No watch linking | Per-user independent entries; canonical DB deferred to future data strategy phase |
 | Two-layer privacy enforcement | RLS at DB level AND DAL WHERE clause — direct anon-key fetches must be blocked at both layers |
+| Phase 10 root layout uses inline theme script | Next 16 Cache Components (`cacheComponents: true`) forbids `cookies()` in the layout body; canonical shadcn/next-themes inline `<script>` in `<head>` is the zero-FOUC escape hatch. `<Header />` and `<main>` wrapped in `<Suspense>` so per-page DAL reads stream correctly. |
+| Phase 10 activities RLS widened to own-or-followed | Outer gate admits rows from followed users using `(SELECT auth.uid())` subquery pattern; per-event privacy (`collection_public` / `wishlist_public` / `worn_public`) stays at the DAL layer per F-06. Widens the outer gate, preserves the two-layer model. |
 
 ### Critical Pitfalls (from research)
 
@@ -87,7 +90,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-21T20:58:26.251Z
-Stopped at: Phase 10 context gathered
-Resume file: .planning/phases/10-activity-feed/10-CONTEXT.md
+Last session: 2026-04-21T23:18:18.843Z
+Stopped at: Completed 10-01-PLAN.md (Wave 0 prerequisites)
+Resume file: None
 Next action: `/gsd-plan-phase 6`
