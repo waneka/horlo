@@ -6,7 +6,8 @@ interface AvatarDisplayProps {
   avatarUrl: string | null
   displayName: string | null
   username: string
-  size?: 64 | 96 // Tailwind size-16 (64px) per UI-SPEC; 96 for header large variant
+  // Tailwind: size-10 (40px for list rows), size-16 (64px default), size-24 (96px header)
+  size?: 40 | 64 | 96
   className?: string
 }
 
@@ -20,7 +21,8 @@ export function AvatarDisplay({
   const safe = avatarUrl ? getSafeImageUrl(avatarUrl) : null
   const initial =
     (displayName ?? username).trim().charAt(0).toUpperCase() || '?'
-  const dimensionClass = size === 96 ? 'size-24' : 'size-16'
+  const dimensionClass =
+    size === 96 ? 'size-24' : size === 40 ? 'size-10' : 'size-16'
 
   if (safe) {
     return (
@@ -47,7 +49,7 @@ export function AvatarDisplay({
       className={cn(
         'flex items-center justify-center rounded-full bg-accent text-accent-foreground font-semibold',
         dimensionClass,
-        size === 96 ? 'text-3xl' : 'text-xl',
+        size === 96 ? 'text-3xl' : size === 40 ? 'text-sm' : 'text-xl',
         className,
       )}
       aria-label={`${displayName ?? username} avatar`}
