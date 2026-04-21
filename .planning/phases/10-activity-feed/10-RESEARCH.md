@@ -877,27 +877,22 @@ export function useWywtViewedSet() {
 | A8 | No existing `timeAgo` / `formatRelative` helper in `src/lib` | Don't Hand-Roll | LOW — planner can grep; if one exists, use it; if not, a 10-line inline helper is sufficient |
 | A9 | `watches.id` is safe as the click target for feed rows even when `ON DELETE SET NULL` triggers (i.e., watch was deleted) | F-03 | LOW — the row still renders from metadata snapshot; click target 404s gracefully |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All four questions resolved during planning revision on 2026-04-21. Decisions are reflected in the corresponding plans.
 
 1. **Should `/watch/[id]` be created in Phase 10 or does it already exist?**
-   - What we know: Phase 8 notes "watch detail route" but I did not find `src/app/watch/[id]/page.tsx` in the tree (only `src/app/watch/` was listed — need to verify).
-   - What's unclear: is there already a detail page or must the planner create one?
-   - Recommendation: Planner greps `src/app/watch/` first; if missing, scope a minimal detail page into Phase 10 (CONTEXT.md C-05, F-03 both click through to watch detail).
+   - **RESOLVED:** The route already exists at `src/app/watch/[id]/page.tsx` (verified via `ls src/app/watch/[id]/page.tsx` during revision). The file resolves `getWatchById(user.id, id)` + collection + preferences + most-recent wear and renders `<WatchDetail>`. Phase 10's feed / recs / suggestions all link to `/watch/{id}` safely — no new scope needed.
+   - Verified output: `src/app/watch/[id]/page.tsx` present (1006 bytes, last modified 2026-04-19).
 
 2. **App-layer aggregation vs SQL window-function aggregation — which is Phase 10 go-live?**
-   - What we know: App-layer is simpler to reason about and test as a pure fn. SQL approach is more robust across page boundaries but harder to debug in a Drizzle codebase where raw SQL fragments mix with the query builder.
-   - What's unclear: does the product accept the edge-case "split aggregation" behavior?
-   - Recommendation: App-layer for Phase 10; promote to SQL if EXPLAIN ANALYZE shows the feed SELECT is a hot path, OR if QA reports the split behavior is unacceptable.
+   - **RESOLVED: App-layer aggregation.** Plan 02 Task 1 implements `aggregateFeed` as a pure function over the `RawFeedRow[]` returned by `getFeedForUser`. Rationale: simpler to unit-test (no DB required), easier to debug, and the "split-at-page-boundary" edge case is documented in Assumption A2 as user-visible quirk only. Promotion to SQL window functions is deferred; revisit only if EXPLAIN ANALYZE flags the feed SELECT as hot or QA reports split-aggregation confusion.
 
 3. **Is `cacheTag` worth the invalidation complexity on follow/unfollow?**
-   - What we know: `cacheLife('minutes')` gives 5-min staleness; recs are not time-critical.
-   - What's unclear: does the product want "follow → immediately see them excluded from recs"?
-   - Recommendation: Default to no `cacheTag` invalidation. Document the staleness tradeoff in the plan.
+   - **RESOLVED: No `cacheTag` in Phase 10.** Plan 07 Task 1 uses `cacheLife('minutes')` alone (5-min stale / 1-min revalidate / 1-hr expire). Accepted staleness window: a viewer who follows/unfollows someone may continue to see their recs for up to ~5 minutes. This is documented as acceptable given recs are not time-critical and the invalidation plumbing (tag a viewer-specific key from inside `followUser` / `unfollowUser`) adds cross-plan coupling with small UX payoff. Revisit if users complain about rec staleness post-follow.
 
 4. **Cursor encoding: plain JSON or opaque base64?**
-   - What we know: DAL re-enforces privacy, so cursor fabrication can't leak private data.
-   - What's unclear: does the team prefer API-style hygiene of opaque cursors?
-   - Recommendation: Plain JSON (simpler; matches the project's existing conventions of passing structured data to Server Actions).
+   - **RESOLVED: Plain JSON.** Plan 02 encodes `FeedCursor = { createdAt: string; id: string }` as a structured object passed directly to the `loadMoreFeed` Server Action (Zod validates `.uuid()` + `.datetime()`). Plan 04/07 apply the same pattern to the `SuggestionCursor` introduced in the revision. Rationale: the DAL re-enforces privacy (fabricated cursors cannot leak private rows — see T-10-02-04), so opaque encoding provides no additional security benefit; plain JSON matches the project's existing Server Action conventions.
 
 ## Sources
 
