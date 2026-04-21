@@ -5,11 +5,15 @@ import {
   getProfileSettings,
 } from '@/data/profiles'
 import { getWatchesByUser } from '@/data/watches'
-import { getMostRecentWearDates } from '@/data/wearEvents'
+import {
+  getMostRecentWearDates,
+  getPublicWearEventsForViewer,
+} from '@/data/wearEvents'
 import { CollectionTabContent } from '@/components/profile/CollectionTabContent'
 import { WishlistTabContent } from '@/components/profile/WishlistTabContent'
 import { NotesTabContent } from '@/components/profile/NotesTabContent'
-// Worn + Stats tab content arrives in Plan 04.
+import { WornTabContent } from '@/components/profile/WornTabContent'
+// Stats tab content arrives in Plan 04 Task 2.
 
 const VALID_TABS = ['collection', 'wishlist', 'worn', 'notes', 'stats'] as const
 type Tab = (typeof VALID_TABS)[number]
@@ -84,7 +88,37 @@ export default async function ProfileTabPage({
     return <NotesTabContent watches={notedWatches} isOwner={isOwner} />
   }
 
-  // tab === 'worn' or 'stats' — Plan 04 fills these in.
+  if (tab === 'worn') {
+    // DAL visibility gate (PRIV-05): even when wornPublic=true, going through
+    // this DAL ensures the application layer always rechecks before returning rows.
+    const events = await getPublicWearEventsForViewer(viewerId, profile.id)
+    const watches = await getWatchesByUser(profile.id)
+    const watchMap = Object.fromEntries(
+      watches.map((w) => [
+        w.id,
+        {
+          id: w.id,
+          brand: w.brand,
+          model: w.model,
+          imageUrl: w.imageUrl ?? null,
+        },
+      ]),
+    )
+    return (
+      <WornTabContent
+        events={events.map((e) => ({
+          id: e.id,
+          watchId: e.watchId,
+          wornDate: e.wornDate,
+          note: e.note ?? null,
+        }))}
+        watchMap={watchMap}
+        isOwner={isOwner}
+      />
+    )
+  }
+
+  // tab === 'stats' — Plan 04 Task 2 fills this in.
   return (
     <section
       data-slot="tab-placeholder"
@@ -92,7 +126,7 @@ export default async function ProfileTabPage({
     >
       <p className="text-sm font-semibold capitalize">{tab} tab</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Content lands in Plan 04 (Worn / Stats).
+        Content lands in Plan 04 Task 2 (Stats).
       </p>
     </section>
   )
