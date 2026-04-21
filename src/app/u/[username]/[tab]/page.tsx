@@ -8,12 +8,24 @@ import { getWatchesByUser } from '@/data/watches'
 import {
   getMostRecentWearDates,
   getPublicWearEventsForViewer,
+  getAllWearEventsByUser,
 } from '@/data/wearEvents'
+import { getPreferencesByUser } from '@/data/preferences'
 import { CollectionTabContent } from '@/components/profile/CollectionTabContent'
 import { WishlistTabContent } from '@/components/profile/WishlistTabContent'
 import { NotesTabContent } from '@/components/profile/NotesTabContent'
 import { WornTabContent } from '@/components/profile/WornTabContent'
-// Stats tab content arrives in Plan 04 Task 2.
+import { StatsTabContent } from '@/components/profile/StatsTabContent'
+import {
+  styleDistribution,
+  roleDistribution,
+  topMostWorn,
+  topLeastWorn,
+  buildObservations,
+  bucketWearsByWeekday,
+  wearCountByWatchMap,
+} from '@/lib/stats'
+import type { WatchWithWear } from '@/lib/types'
 
 const VALID_TABS = ['collection', 'wishlist', 'worn', 'notes', 'stats'] as const
 type Tab = (typeof VALID_TABS)[number]
@@ -118,17 +130,38 @@ export default async function ProfileTabPage({
     )
   }
 
-  // tab === 'stats' — Plan 04 Task 2 fills this in.
+  // tab === 'stats' — collection-derived, so it follows collection_public for non-owners.
+  // Wear data is gated separately via getPublicWearEventsForViewer (returns [] when
+  // worn_public=false for non-owner) — stats render with 0 wear counts in that case.
+  if (!isOwner && !settings.collectionPublic) {
+    return <PrivateTabState tab="stats" />
+  }
+  const watches = await getWatchesByUser(profile.id)
+  const ownedAll = watches.filter((w) => w.status === 'owned')
+  const events = isOwner
+    ? await getAllWearEventsByUser(profile.id)
+    : await getPublicWearEventsForViewer(viewerId, profile.id)
+  const wearCount = wearCountByWatchMap(events)
+  // Build WatchWithWear list — populate lastWornDate from the first (most-recent) event per watch.
+  const ownedWithWear: WatchWithWear[] = ownedAll.map((w) => {
+    const first = events.find((e) => e.watchId === w.id)
+    return { ...w, lastWornDate: first?.wornDate ?? undefined }
+  })
+  const prefs = await getPreferencesByUser(profile.id).catch(() => null)
+  const observations = buildObservations({
+    ownedWatches: ownedWithWear,
+    goal: prefs?.collectionGoal ?? null,
+    weekdayCounts: bucketWearsByWeekday(events),
+  })
   return (
-    <section
-      data-slot="tab-placeholder"
-      className="rounded-xl border bg-card p-8 text-center"
-    >
-      <p className="text-sm font-semibold capitalize">{tab} tab</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Content lands in Plan 04 Task 2 (Stats).
-      </p>
-    </section>
+    <StatsTabContent
+      ownedWatches={ownedAll}
+      styleRows={styleDistribution(ownedAll)}
+      roleRows={roleDistribution(ownedAll)}
+      mostWorn={topMostWorn(ownedAll, wearCount, 3)}
+      leastWorn={topLeastWorn(ownedAll, wearCount, 3)}
+      observations={observations}
+    />
   )
 }
 
