@@ -5,6 +5,7 @@ import { MobileNav } from '@/components/layout/MobileNav'
 import { HeaderNav } from '@/components/layout/HeaderNav'
 import { UserMenu } from '@/components/layout/UserMenu'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import { getProfileById } from '@/data/profiles'
 
 export async function Header() {
   let user: { id: string; email: string } | null = null
@@ -15,6 +16,19 @@ export async function Header() {
     // unauth is the expected case on /login, /signup, etc.
   }
 
+  // Look up the viewer's username so HeaderNav can render the Profile link.
+  // Falls back to null on any error (auth row missing, transient DB) so the
+  // header still renders with the rest of the nav.
+  let username: string | null = null
+  if (user) {
+    try {
+      const profile = await getProfileById(user.id)
+      username = profile?.username ?? null
+    } catch {
+      username = null
+    }
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -23,7 +37,7 @@ export async function Header() {
           <Link href="/" className="flex items-center gap-2">
             <span className="font-serif text-xl">Horlo</span>
           </Link>
-          <HeaderNav />
+          <HeaderNav username={username} />
         </div>
         <div className="flex items-center gap-4">
           <ThemeToggle />
