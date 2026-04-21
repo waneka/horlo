@@ -39,10 +39,10 @@ Requirements for Taste Network Foundation milestone. Each maps to roadmap phases
 
 ### Activity Feed
 
-- [ ] **FEED-01**: User can view a home feed of network activity from followed collectors
-- [ ] **FEED-02**: Activity feed shows watch_added, wishlist_added, and watch_worn events
-- [ ] **FEED-03**: Activity feed uses keyset pagination for efficient loading
-- [ ] **FEED-04**: Bulk imports generate a single aggregated activity event (not one per watch)
+- [x] **FEED-01**: User can view a home feed of network activity from followed collectors
+- [x] **FEED-02**: Activity feed shows watch_added, wishlist_added, and watch_worn events
+- [x] **FEED-03**: Activity feed uses keyset pagination for efficient loading
+- [x] **FEED-04**: Bulk imports generate a single aggregated activity event (not one per watch)
 
 ### Privacy & Settings
 
@@ -140,10 +140,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOLL-04 | Phase 9 | Pending |
 | PROF-08 | Phase 9 | Pending |
 | PROF-09 | Phase 9 | Pending |
-| FEED-01 | Phase 10 | Pending |
-| FEED-02 | Phase 10 | Pending |
-| FEED-03 | Phase 10 | Pending |
-| FEED-04 | Phase 10 | Pending |
+| FEED-01 | Phase 10 | Complete |
+| FEED-02 | Phase 10 | Complete |
+| FEED-03 | Phase 10 | Complete |
+| FEED-04 | Phase 10 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 31 total
