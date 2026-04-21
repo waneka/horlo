@@ -15,10 +15,7 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader'
 export default async function ProfileLayout({
   children,
   params,
-}: {
-  children: React.ReactNode
-  params: Promise<{ username: string }>
-}) {
+}: LayoutProps<'/u/[username]'>) {
   const { username } = await params
 
   // Resolve viewer FIRST so we know if owner == viewer.
