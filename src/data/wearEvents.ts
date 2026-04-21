@@ -2,7 +2,7 @@ import 'server-only'
 
 import { db } from '@/db'
 import { wearEvents, profileSettings } from '@/db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, inArray } from 'drizzle-orm'
 
 export async function logWearEvent(
   userId: string,
@@ -44,8 +44,10 @@ export async function getMostRecentWearDates(
   userId: string,
   watchIds: string[]
 ): Promise<Map<string, string>> {
+  // WR-06: inArray is imported statically at the top — the prior dynamic
+  // import defeated tree-shaking and added a microtask per call on a hot path
+  // hit by every Collection / Wishlist / Notes render.
   if (watchIds.length === 0) return new Map()
-  const { inArray } = await import('drizzle-orm')
   const rows = await db
     .select({ watchId: wearEvents.watchId, wornDate: wearEvents.wornDate })
     .from(wearEvents)
