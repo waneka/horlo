@@ -1,10 +1,11 @@
 ---
 phase: 09
 slug: follow-system-collector-profiles
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-21
+reviewed_at: 2026-04-21
 ---
 
 # Phase 09 — UI Design Contract
