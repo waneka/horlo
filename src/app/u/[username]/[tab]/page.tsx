@@ -62,6 +62,13 @@ export default async function ProfileTabPage({
   if (tab === 'worn' && !isOwner && !settings.wornPublic) {
     return <PrivateTabState tab="worn" />
   }
+  // WR-01: Notes surface the underlying watch (brand/model/image + link),
+  // so gating only on per-note notesPublic leaks the collection through a
+  // side channel whenever the owner has hidden their collection. Mirror the
+  // Stats gate (line ~136) and require collection_public for non-owners.
+  if (tab === 'notes' && !isOwner && !settings.collectionPublic) {
+    return <PrivateTabState tab="notes" />
+  }
 
   // Collection / Wishlist / Notes share the watches+wear data fetch.
   if (tab === 'collection' || tab === 'wishlist' || tab === 'notes') {
