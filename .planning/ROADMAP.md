@@ -111,7 +111,18 @@ Plans:
   3. The feed loads the most recent events first and shows a "load more" control that fetches the next page using keyset pagination (no OFFSET) — the same watches do not appear twice when new events arrive between page loads
   4. A user with no follows sees an empty-state prompt directing them to find collectors to follow rather than a blank page
   5. Activity feed data for private collectors or private collection tabs is not surfaced to non-followers — privacy settings from Phase 8 are respected in the feed DAL query
-**Plans**: TBD
+**Plans**: 9 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Wave 0: RLS migration + cacheComponents flag + shared feed types + timeAgo helper
+- [ ] 10-02-PLAN.md — Feed DAL (getFeedForUser) + aggregateFeed + loadMoreFeed Server Action
+- [ ] 10-03-PLAN.md — WYWT DAL (getWearRailForViewer) + addToWishlistFromWearEvent Server Action
+- [ ] 10-04-PLAN.md — wishlistGap + recommendations + suggestions DALs
+- [ ] 10-05-PLAN.md — Network Activity UI (section + rows + Load More)
+- [ ] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
+- [ ] 10-07-PLAN.md — Collectors Like You + Personal Insights + Suggested Collectors UI
+- [ ] 10-08-PLAN.md — 5-section home page composition + nav + Wear button
+- [ ] 10-09-PLAN.md — REQUIREMENTS/ROADMAP scope update + privacy E2E verification
 
 ## Backlog
 
@@ -137,4 +148,4 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Activity Feed | 0/TBD | Not started | - |
+| 10. Activity Feed | 0/9 | Not started | - |
