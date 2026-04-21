@@ -50,7 +50,12 @@ export async function updateNoteVisibility(data: unknown): Promise<ActionResult<
     if (result.length === 0) {
       return { success: false, error: 'Watch not found' }
     }
-    revalidatePath('/u/[username]/notes', 'page')
+    // WR-07: the actual route template is `/u/[username]/[tab]` (the tab
+    // segment is dynamic). Revalidating `/u/[username]/notes` with a 'page'
+    // selector silently no-ops because it does not match a compiled route
+    // entry. Revalidate the layout so sibling tabs (Stats, Collection) also
+    // reflect the mutation without a hard navigation.
+    revalidatePath('/u/[username]', 'layout')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[updateNoteVisibility] unexpected error:', err)
@@ -100,7 +105,12 @@ export async function removeNote(data: unknown): Promise<ActionResult<void>> {
     if (result.length === 0) {
       return { success: false, error: 'Watch not found' }
     }
-    revalidatePath('/u/[username]/notes', 'page')
+    // WR-07: the actual route template is `/u/[username]/[tab]` (the tab
+    // segment is dynamic). Revalidating `/u/[username]/notes` with a 'page'
+    // selector silently no-ops because it does not match a compiled route
+    // entry. Revalidate the layout so sibling tabs (Stats, Collection) also
+    // reflect the mutation without a hard navigation.
+    revalidatePath('/u/[username]', 'layout')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[removeNote] unexpected error:', err)
