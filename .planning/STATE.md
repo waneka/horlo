@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
-stopped_at: Completed 10-03-PLAN.md (WYWT DAL + addToWishlistFromWearEvent Server Action)
-last_updated: "2026-04-21T23:42:37.727Z"
+stopped_at: Completed 10-04-PLAN.md (wishlistGap + Collectors Like You DAL + Suggested Collectors DAL + loadMoreSuggestions Server Action)
+last_updated: "2026-04-21T23:56:31.324Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 15
-  percent: 71
+  completed_plans: 16
+  percent: 76
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 ## Current Position
 
 Phase: 10 (activity-feed) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-04-21
 
@@ -52,6 +52,7 @@ Phase 10 [          ] Not started
 | Phase 10 P01 | 18min | 3 tasks | 10 files |
 | Phase 10 P02 | 10min | 3 tasks | 6 files |
 | Phase 10 P03 | 5min | 2 tasks | 5 files |
+| Phase 10 P10-04 | ~9 min | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Phase 10 [          ] Not started
 | Phase 10 WYWT DAL — dropped `as never` cast on createWatch | Providing all required Watch fields explicitly (brand/model/status/movement/complications/styleTags/designTraits/roleTags + optional imageUrl) satisfies `Omit<Watch, 'id'>` without an escape hatch; only a narrow `row.movement as MovementType` remains because Drizzle's inferred enum type isn't the domain alias. |
 | Phase 10 WYWT Server Action — duplicate wishlist rows tolerated by design | CONTEXT.md `<specifics>` says one-tap-no-friction conversion; per-user-independent-entries model already expects duplicates. No server-side dedupe. UI (Plan 06) may add a success toast with undo, but never a pre-confirm dialog. |
 | Phase 10 WYWT privacy gate — identical 'Wear event not found' on missing vs private | Both absent-row and actor-not-viewer-with-worn_public=false return the same error string (T-10-03-03). Avoids leaking existence of private wear events to callers who can't read them. Mirrors Phase 8 notes-IDOR mitigation precedent. |
+| Phase 10 Plan 04 wishlistGap — CANONICAL_ROLES defined locally | `CANONICAL_ROLES = [dive, dress, sport, field, pilot, chronograph, travel, formal, casual]` lives in `src/lib/wishlistGap.ts`, not `src/lib/constants.ts`. The existing `ROLE_TAGS` constant is a DIFFERENT vocabulary (use-case roles: daily, gada, travel, weekend, formal, beater...) and cannot be reused. `GAP_THRESHOLD = 0.10`. Array-order-first tiebreak on both gap and leansOn for stable output. |
+| Phase 10 Plan 04 rationale templates — deterministic, no LLM | 5 priority-ordered templates (brand-match → popular-role(≥5 owners) → dominant-style(>50%) → top-role-pair → community-fallback); first match wins. Brand-match beats popular-role when both fire (Test 6 pins this). Zero Anthropic dependency per C-03; the home page is always rendereable without an API key. |
+| Phase 10 Plan 04 Suggested Collectors keyset cursor | `SuggestionCursor = { overlap: number, userId: string }` with sort `(overlap DESC, userId ASC)` and strict-after filter `c.overlap < cursor.overlap \|\| (c.overlap === cursor.overlap && c.userId > cursor.userId)`. Guarantees disjoint pages. `overlap` bucket mapping: Strong=0.85, Some=0.55, Different=0.20 — representative midpoints of tasteOverlap's qualitative bands. `viewerId` flows as a function argument (never closure-captured) so Plan 07's `'use cache'` wrapper produces a correct cache key (Pitfall 7 / T-10-04-03). |
 
 ### Critical Pitfalls (from research)
 
@@ -97,7 +101,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-21T23:42:37.723Z
-Stopped at: Completed 10-03-PLAN.md (WYWT DAL + addToWishlistFromWearEvent Server Action)
+Last session: 2026-04-21T23:56:31.320Z
+Stopped at: Completed 10-04-PLAN.md (wishlistGap + Collectors Like You DAL + Suggested Collectors DAL + loadMoreSuggestions Server Action)
 Resume file: None
 Next action: `/gsd-plan-phase 6`
