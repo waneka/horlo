@@ -45,23 +45,25 @@ Declared values (multiples of 4):
 Exceptions:
 - Avatar circle: 64px diameter (16px multiples; touch target safe)
 - Stat card min-height: 120px (Stats tab 2-col grid)
-- Calendar day cell: 44px min-height (touch target minimum per WCAG 2.5.5)
-- Settings toggle row: 44px min-height (touch target minimum)
+- Calendar day cell: 48px min-height (touch target minimum per WCAG 2.5.5; 48 = 4 × 12, exceeds the 44px floor)
+- Settings toggle row: 48px min-height (touch target minimum per WCAG 2.5.5; 48 = 4 × 12)
 
 ---
 
 ## Typography
 
-| Role | Size | Weight | Line Height | Usage |
-|------|------|--------|-------------|-------|
-| Body | 14px | 400 | 1.5 | Note text, descriptions, secondary copy |
-| Label | 14px | 500 | 1.2 | Filter chip labels, badge text, form labels |
-| Heading | 20px | 600 | 1.2 | Profile username, section headings, card titles |
-| Display | 28px | 600 | 1.1 | Stats numbers (e.g. wear count large), page-level headings |
+| Role | Size | Weight | Line Height | Letter Spacing | Usage |
+|------|------|--------|-------------|----------------|-------|
+| Body | 14px | 400 | 1.5 | normal | Note text, descriptions, secondary copy, form labels, bio paragraph |
+| Label | 12px | 400 | 1.2 | tracking-wide | Filter chip labels, badge text, section meta — `text-xs uppercase tracking-wide` |
+| Heading | 20px | 600 | 1.2 | normal | Profile username, section headings, card titles |
+| Display | 28px | 600 | 1.1 | normal | Stats numbers (e.g. wear count large), page-level headings |
 
-All sizes via Tailwind: `text-sm` (14px), `text-base` (16px), `text-xl` (20px), `text-2xl` (24px), `text-3xl` (28px).
+All sizes via Tailwind: `text-xs` (12px), `text-sm` (14px), `text-xl` (20px), `text-3xl` (28px).
 
-**Note:** 16px body is available for primary readable copy (e.g. bio paragraph). Use `text-base font-normal leading-relaxed` for bio. Label and Body share 14px at different weights.
+**Two weights only:** `font-normal` (400) for Body and Label; `font-semibold` (600) for Heading and Display. Label is differentiated from Body via size (12px vs 14px) and `uppercase tracking-wide`, not weight.
+
+**Bio paragraph:** Use `text-sm font-normal leading-relaxed` (14px, weight 400, line-height 1.625).
 
 ---
 
@@ -129,6 +131,8 @@ Components to build new for this phase:
 
 ### Profile Header
 
+**Primary focal point:** the avatar + username block in the ProfileHeader is the dominant visual anchor; all other elements are subordinate.
+
 - Desktop: avatar left, username + bio + stats row + taste tags right
 - Mobile: avatar centered top, username centered, bio left-aligned, stats row below, taste tags below stats
 - Edit mode: clicking "Edit Profile" replaces header content with `ProfileEditForm` inline (no modal)
@@ -167,8 +171,8 @@ Components to build new for this phase:
 
 **Calendar view:**
 - Week header row: Sun Mon Tue Wed Thu Fri Sat, `text-xs text-muted-foreground`
-- Day cells: 44px min-height; if worn: show watch image (24px circle thumbnail) centered; if not worn: empty; if multiple watches: show first image + "+N" overlay
-- Month navigation: `<` `>` chevron buttons, current month label centered, `text-sm font-medium`
+- Day cells: 48px min-height (WCAG 2.5.5 touch target; 48 = 4 × 12); if worn: show watch image (24px circle thumbnail) centered; if not worn: empty; if multiple watches: show first image + "+N" overlay
+- Month navigation: `<` `>` chevron buttons, current month label centered, `text-sm font-medium`; previous-month button must have `aria-label="Previous month"`; next-month button must have `aria-label="Next month"`
 - Current day highlight: `ring-1 ring-accent`
 
 **Timeline view:**
@@ -180,8 +184,10 @@ Components to build new for this phase:
 
 - List layout (not grid); each row full-width
 - Row contents: 48px watch thumbnail left, brand + model heading, full note text (no truncation), per-note visibility pill, "X days ago" right-aligned, 3-dot menu (DropdownMenu)
+- 3-dot menu trigger: icon-only button with `aria-label="Note options"`
 - Visibility pill: `NoteVisibilityPill` — clicking it toggles `notes_public` in DB; "Public" = `bg-accent text-accent-foreground`; "Private" = `bg-muted text-muted-foreground`
 - 3-dot menu items: "Edit Note", "Make Public" / "Make Private" (mirror pill state), separator, "Remove Note" (destructive)
+- Remove Note confirmation: clicking "Remove Note" opens an AlertDialog — title "Remove this note?", body "The note for {Brand} {Model} will be deleted. The watch itself stays in your collection.", buttons "Keep Note" (outline, dismiss) + "Remove Note" (destructive variant, confirm)
 - Empty state: no watches have notes yet
 
 ### Stats Tab
@@ -205,12 +211,12 @@ Components to build new for this phase:
 - Layout: max-width 640px centered on desktop; full-width on mobile; `py-8 px-4` or `py-12 px-8`
 - Section grouping via `SettingsSection` (card with section title heading + rows)
 - Section order: Privacy Controls · Appearance · Notifications · Data Preferences · Account
-- Section title: `text-sm font-medium text-muted-foreground uppercase tracking-wide` above each card
+- Section title: `text-xs font-normal text-muted-foreground uppercase tracking-wide` above each card (Label role — 12px, weight 400, uppercase, tracking-wide)
 
 **Privacy Controls section (functional this phase):**
 - 4 toggle rows: Profile Visibility, Collection, Wishlist, Worn History
 - "New Note Visibility" dropdown (Select component): "Public" | "Private" default
-- Toggle row anatomy: label left (`text-sm font-medium`), description below label (`text-xs text-muted-foreground`), toggle switch right (44px touch target)
+- Toggle row anatomy: label left (`text-sm font-normal`), description below label (`text-xs text-muted-foreground`), toggle switch right (48px touch target; 48 = 4 × 12, exceeds WCAG 2.5.5 minimum)
 - Toggle on-state: `bg-accent`; off-state: `bg-muted`; transition: 150ms
 
 **Other settings sections (non-functional this phase):**
@@ -219,8 +225,8 @@ Components to build new for this phase:
 - Do NOT add tooltip or hover state to "Coming soon" badges — static label only
 
 **Account section — Delete Account:**
-- Red text button: `text-destructive text-sm font-medium`
-- Clicking opens a `Dialog` confirmation: "Delete account?" heading, "This will permanently delete your profile, collection, and all data. This cannot be undone." body, "Cancel" (outline) + "Delete Account" (destructive variant) buttons
+- Red text button: `text-destructive text-sm font-normal`
+- Clicking opens a `Dialog` confirmation: "Delete account?" heading, "This will permanently delete your profile, collection, and all data. This cannot be undone." body, "Keep Account" (outline) + "Delete Account" (destructive variant) buttons
 - This phase: Delete Account dialog is non-functional (button disabled after confirmation, no actual deletion implemented); add "Coming soon" note inside dialog
 
 ---
@@ -232,7 +238,7 @@ Components to build new for this phase:
 | Primary CTA (Worn tab) | "Log Today's Wear" |
 | Profile edit CTA | "Edit Profile" |
 | Save profile CTA | "Save Changes" |
-| Cancel edit | "Cancel" |
+| Cancel edit | "Discard Changes" |
 | Add watch (grid card label) | "Add Watch" |
 | Empty state — Collection tab | Heading: "Nothing here yet." / Body: "Add your first watch to start building your collection." |
 | Empty state — Wishlist tab | Heading: "Your wishlist is empty." / Body: "Track watches you want with target prices and notes." |
@@ -248,11 +254,15 @@ Components to build new for this phase:
 | Note visibility pill — public | "Public" |
 | Note visibility pill — private | "Private" |
 | 3-dot menu — remove note | "Remove Note" |
+| Remove Note dialog heading | "Remove this note?" |
+| Remove Note dialog body | "The note for {Brand} {Model} will be deleted. The watch itself stays in your collection." |
+| Remove Note dialog confirm | "Remove Note" |
+| Remove Note dialog cancel | "Keep Note" |
 | Delete Account button | "Delete Account" |
 | Delete Account dialog heading | "Delete your account?" |
 | Delete Account dialog body | "This permanently deletes your profile, collection, and all data. This cannot be undone." |
 | Delete Account dialog confirm | "Delete Account" |
-| Delete Account dialog cancel | "Cancel" |
+| Delete Account dialog cancel | "Keep Account" |
 | Error state — profile load failure | "Couldn't load this profile. Try refreshing the page." |
 | Error state — privacy save failure | "Couldn't save your privacy settings. Try again." |
 
