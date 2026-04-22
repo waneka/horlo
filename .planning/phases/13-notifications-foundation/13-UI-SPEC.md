@@ -1,10 +1,11 @@
 ---
 phase: 13
 slug: notifications-foundation
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova / neutral / cssVariables
 created: 2026-04-22
+reviewed_at: 2026-04-22
 ---
 
 # Phase 13 — UI Design Contract
@@ -52,18 +53,20 @@ Exceptions:
 
 Inherits all type sizes from the existing design system. Phase 13 introduces no new type roles.
 
+Weights: `font-normal` (400) and `font-semibold` (600) — exactly 2 weights.
+
 | Role | Size | Weight | Line Height | Usage in Phase 13 |
 |------|------|--------|-------------|-------------------|
-| Body | 14px (`text-sm`) | 400 (`font-normal`) | 1.5 | Notification row description text, settings descriptions, relative time stamp |
-| Label | 14px (`text-sm`) | 600 (`font-semibold`) | 1.5 | Actor name in notification row (both read and unread states); unread actor name uses `font-semibold` |
+| Body | 14px (`text-sm`) | 400 (`font-normal`) | 1.5 | Notification row description text, settings descriptions, relative time stamp, read actor name |
+| Label | 14px (`text-sm`) | 600 (`font-semibold`) | 1.5 | Unread actor name in notification row; page heading; settings toggle labels |
 | Heading | 20px (`text-xl`) | 600 (`font-semibold`) | 1.2 | `/notifications` page heading: "Notifications" |
 | Subheader | 12px (`text-xs`) | 400 (`font-normal`) | — | Group subheaders (Today / Yesterday / Earlier) — `uppercase tracking-wide text-muted-foreground`, matching `SettingsSection` title treatment |
 
 Read vs. unread actor name differentiation:
-- Read: `font-medium` (500)
+- Read: `font-normal` (400)
 - Unread: `font-semibold` (600)
 
-Source: CONTEXT.md D-14.
+Source: CONTEXT.md D-14. "Slightly bolder" is satisfied by the binary contrast between `font-normal` and `font-semibold`. `font-medium` (500) is not used in this phase.
 
 ---
 
@@ -148,7 +151,7 @@ border-l-2 border-l-accent
 ```
 
 Actor name span:
-- Read: `font-medium text-foreground`
+- Read: `font-normal text-foreground`
 - Unread: `font-semibold text-foreground`
 
 Relative time:
@@ -271,7 +274,7 @@ No destructive actions exist in this phase. No confirmation dialogs required.
 | State | Visual |
 |-------|--------|
 | Unread | `border-l-2 border-l-accent bg-card` + actor name `font-semibold` |
-| Read | `bg-card` (no left border) + actor name `font-medium` |
+| Read | `bg-card` (no left border) + actor name `font-normal` |
 | Hover (pointer) | `hover:bg-muted/40` |
 | Focus (keyboard) | `focus-within:bg-muted/40` + `focus-visible:ring-2 focus-visible:ring-ring` on full-row link |
 | Pending (optimistic click) | Row immediately switches to read visual; no spinner shown |
@@ -350,6 +353,7 @@ No third-party registries. No new shadcn blocks installed by this phase. All UI 
 | Settings toggle labels and descriptions | Claude's Discretion (CONTEXT.md) |
 | Page heading "Notifications" | Claude's Discretion (CONTEXT.md) |
 | `NotificationRow` file location | Claude's Discretion (CONTEXT.md) — `src/components/notifications/` mirrors existing folder convention |
+| Read actor weight collapsed to `font-normal` | UI checker revision — 2-weight rule; `font-medium` dropped |
 
 ---
 
