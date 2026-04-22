@@ -52,11 +52,14 @@ END $$;
 -- Backfill visibility from profile_settings.worn_public (D-07, WYWT-11).
 -- Mapping: worn_public=true → 'public', worn_public=false → 'private'.
 -- NEVER 'followers' — that would silently widen exposure of previously-private wears (Pitfall G-6).
--- The backfill UPDATE runs unconditionally — even if the column was already created by
--- drizzle-kit push, existing rows will all be 'public' (the column default) and this UPDATE
--- is what moves them to 'private' where warranted. This is a one-shot assertion, not idempotent
--- in the DDL sense — but it is SAFE to re-run: the CASE only writes 'public' or 'private',
--- and re-deriving those values from the same `profile_settings.worn_public` source yields the same result.
+-- The backfill UPDATE runs ONLY for users that have a matching profile_settings row
+-- (INNER JOIN semantics). The Phase 7 profile_settings trigger guarantees every user gets a row
+-- at signup, so in practice every wear_events row is covered — but if an upstream user existed
+-- prior to the Phase 7 trigger and never received settings, their wear_events rows keep the
+-- DEFAULT 'public'. The orphan-coverage assertion in Migration 7
+-- (20260423000007_phase11_backfill_coverage_assertion.sql) verifies no such gap exists.
+-- Safe to re-run: the CASE only writes 'public' or 'private', and re-deriving those values
+-- from the same `profile_settings.worn_public` source yields the same result.
 UPDATE wear_events we
    SET visibility = CASE ps.worn_public
                       WHEN true  THEN 'public'::wear_visibility
