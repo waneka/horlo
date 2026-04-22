@@ -42,16 +42,23 @@ export function PreferencesClient({ preferences: initialPreferences }: Preferenc
   // navigation — this local state only bridges the gap between input change
   // and server confirmation.
   const [preferences, setLocalPreferences] = useState<UserPreferences>(initialPreferences)
-  const [, startTransition] = useTransition()
+  const [isSaving, startTransition] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const updatePreferences = (patch: Partial<UserPreferences>) => {
     const next = { ...preferences, ...patch }
     setLocalPreferences(next)
+    setSaveError(null)
     startTransition(async () => {
-      // Fire-and-forget: errors would surface in dev console. The optimistic
-      // local update already reflects the change; a failed save simply means
-      // the next navigation re-fetches the last persisted state.
-      await savePreferences(patch)
+      // Inspect the returned ActionResult so save failures are not silently swallowed (MR-01).
+      // We do NOT roll back the local optimistic update here — the Server Component's
+      // revalidatePath('/preferences') in savePreferences runs only on success, so the next
+      // navigation naturally reconciles local state with server truth. A visible error banner
+      // is enough to warn the user that their most recent edit did not persist.
+      const result = await savePreferences(patch)
+      if (!result.success) {
+        setSaveError(result.error)
+      }
     })
   }
 
@@ -78,6 +85,16 @@ export function PreferencesClient({ preferences: initialPreferences }: Preferenc
       </div>
 
       <div className="space-y-8">
+        {saveError && (
+          <p role="alert" className="text-sm text-destructive">
+            Couldn&apos;t save preferences: {saveError}
+          </p>
+        )}
+        {isSaving && !saveError && (
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            Saving…
+          </p>
+        )}
         {/* Style Preferences */}
         <Card>
           <CardHeader>
