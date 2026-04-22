@@ -39,7 +39,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 ### v3.0 Production Nav & Daily Wear Loop (Phases 11-16)
 
-- [ ] **Phase 11: Schema + Storage Foundation** — All migrations, bucket, pg_trgm, worn_public backfill, RLS audit
+- [x] **Phase 11: Schema + Storage Foundation** — All migrations, bucket, pg_trgm, worn_public backfill, RLS audit (completed 2026-04-22)
 - [ ] **Phase 12: Visibility Ripple in DAL** — Three-tier wear privacy wired through all existing wear-reading DAL functions
 - [ ] **Phase 13: Notifications Foundation** — notifications DAL + Server Actions + bell + inbox + fire-and-forget wiring
 - [ ] **Phase 14: Nav Shell + Explore Stub** — Bottom nav, desktop top nav, slim mobile nav, MobileNav retired, /explore stub
@@ -59,11 +59,11 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   4. `pg_trgm` extension is enabled in Supabase; GIN trigram indexes exist on `profiles.username` and `profiles.bio`; a query plan for `username ILIKE '%query%'` shows an index scan, not a seq scan
   5. `users`, `watches`, and `user_preferences` tables all have RLS policies using the `(SELECT auth.uid())` InitPlan-optimized pattern; every UPDATE policy has both `USING` and `WITH CHECK` clauses
 **Plans**: 5 plans (Wave 1: Plans 01-03 parallel · Wave 2: Plan 04 · Wave 3: Plan 05)
-  - [ ] 11-01-PLAN.md — Drizzle schema extensions + Migration 1 (wear_visibility enum + wear_events columns + backfill + DO\$\$ verification) [Wave 1]
-  - [ ] 11-02-PLAN.md — Migration 2 (notifications table + notification_type enum + indexes + dedup UNIQUE + self-notif CHECK + recipient-only RLS) [Wave 1]
-  - [ ] 11-03-PLAN.md — Migration 3 (pg_trgm extension + GIN trigram indexes on profiles.username/bio) [Wave 1]
-  - [ ] 11-04-PLAN.md — Migration 4 (wear-photos Storage bucket + three-tier SELECT RLS + folder-enforcement INSERT/UPDATE/DELETE RLS) [Wave 2; depends on Plan 01]
-  - [ ] 11-05-PLAN.md — Migration 5 (DEBT-02 audit — no-op DDL + sanity assertion) + [BLOCKING] local schema push + full Wave 0 test execution [Wave 3; depends on Plans 01-04]
+  - [x] 11-01-PLAN.md — Drizzle schema extensions + Migration 1 (wear_visibility enum + wear_events columns + backfill + DO\$\$ verification) [Wave 1]
+  - [x] 11-02-PLAN.md — Migration 2 (notifications table + notification_type enum + indexes + dedup UNIQUE + self-notif CHECK + recipient-only RLS) [Wave 1]
+  - [x] 11-03-PLAN.md — Migration 3 (pg_trgm extension + GIN trigram indexes on profiles.username/bio) [Wave 1]
+  - [x] 11-04-PLAN.md — Migration 4 (wear-photos Storage bucket + three-tier SELECT RLS + folder-enforcement INSERT/UPDATE/DELETE RLS) [Wave 2; depends on Plan 01]
+  - [x] 11-05-PLAN.md — Migration 5 (DEBT-02 audit — no-op DDL + sanity assertion) + [BLOCKING] local schema push + full Wave 0 test execution [Wave 3; depends on Plans 01-04]
 **Pitfalls to address**: G-6 (backfill direction), F-1 (Storage RLS separate system), F-4 (folder enforcement in storage path), C-1 (pg_trgm must be in migration not dashboard click), B-4 (notifications SELECT recipient-only), B-9 (no-self-notification CHECK), B-3 (unique constraint for dedup), B-7 (ON DELETE CASCADE for orphan cleanup), DEBT-02 (WITH CHECK on all UPDATE policies)
 
 ---
@@ -153,7 +153,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** TBD (promote with /gsd-review-backlog when ready)
+**Plans:** 5/5 plans complete
 
 See `.planning/milestones/v1.0-phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` (or `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` if not yet archived) for full context.
 
@@ -164,7 +164,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 11. Schema + Storage Foundation | 0/5 | Planning complete | - |
+| 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
 | 12. Visibility Ripple in DAL | 0/TBD | Not started | - |
 | 13. Notifications Foundation | 0/TBD | Not started | - |
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
