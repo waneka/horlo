@@ -25,23 +25,76 @@ vi.mock('@/data/activities', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
-// Drizzle JOIN mock — the action does:
-//   db.select({ ... }).from(wearEvents).innerJoin(...).innerJoin(...).where(...).limit(1)
-let mockJoinRows: unknown[] = []
+// Drizzle mock — the action calls db.select() TWICE on followers-tier non-self cases:
+//   1. JOIN (wear_events + watches + profile_settings) → mockJoinRows
+//   2. follows check (wear_events.visibility === 'followers' && !isSelf only) → mockFollowRows
+//
+// Simple contract:
+//   - Each test sets mockJoinRows for the JOIN result and mockFollowRows for the optional follows check.
+//   - Tests that call the action multiple times use mockSelectQueue to enqueue [joinRows] per invocation;
+//     the mock pops from the queue first, then falls back to mockJoinRows.
+//   - selectCallCount counts every db.select() call in the test — used by Tests 9-11 to assert
+//     that the correct number of queries was issued.
+let mockJoinRows: unknown[] = []        // JOIN result for the current/single action invocation
+let mockFollowRows: unknown[] = []      // follows-check result (used only when action issues it)
+let mockSelectQueue: unknown[][] = []   // optional queue for multi-call tests (each entry = one JOIN result)
+let selectCallCount = 0
 
-function makeSelectChain() {
+function makeSelectChain(rowsPromise: Promise<unknown[]>) {
   const chain: Record<string, (...args: unknown[]) => unknown> = {
     from: () => chain,
     innerJoin: () => chain,
     where: () => chain,
-    limit: () => Promise.resolve(mockJoinRows),
+    limit: () => rowsPromise,
   } as never
   return chain
 }
 
+// Per-invocation call index: resets each time a new action invocation starts (i.e., at callIdx=0
+// within the action). We detect "new invocation" by tracking whether the previous call was the
+// last expected call for the prior invocation. Since this is complex for a simple public/private
+// case, we use a simpler heuristic: the mock vi.fn() for db.select is replaced with an
+// implementation that uses a flat response queue populated by helper functions on a per-test basis.
+//
+// For single-invocation tests (most tests): just set mockJoinRows (queue not needed).
+// For multi-invocation tests (Test 7): push multiple entries into mockSelectQueue before the test.
+// For followers-tier tests (Tests 10, 11): set mockJoinRows + mockFollowRows; the action will call
+//   db.select twice and the mock dispatches JOIN first (call #1), follows second (call #2).
+//
+// Dispatch logic: uses a flat _responseQueue that is rebuilt from mockSelectQueue/mockJoinRows at
+// the start of each vi.fn() call.
+let _joinCallCount = 0
+
 vi.mock('@/db', () => ({
   db: {
-    select: () => makeSelectChain(),
+    select: () => {
+      selectCallCount++
+      // Determine which rows to return.
+      // If mockSelectQueue has entries, pop the first as the JOIN result for this invocation.
+      // Otherwise use mockJoinRows.
+      // The follows-check call is the second call after a followers-tier JOIN: we detect it by
+      // checking if mockFollowRows was set AND we have already returned a JOIN row (joinCallCount > 0).
+      // We track "are we in a follows check?" by whether mockFollowRows is non-empty and we've
+      // already dispatched a JOIN for the current logical invocation.
+      //
+      // Simplified: alternate JOIN / follows only when mockFollowRows is non-empty.
+      // Otherwise always return JOIN rows (handles all public/private cases without follows).
+      let rows: unknown[]
+      if (mockSelectQueue.length > 0) {
+        // Multi-invocation test: pop queue entry as JOIN result.
+        rows = mockSelectQueue.shift() ?? []
+        _joinCallCount++
+      } else if (_joinCallCount === 0 || mockFollowRows.length === 0) {
+        // Single-invocation OR no follows needed yet: this is a JOIN call.
+        rows = mockJoinRows
+        _joinCallCount++
+      } else {
+        // Second call after a JOIN when mockFollowRows is populated: follows check.
+        rows = mockFollowRows
+        _joinCallCount = 0  // reset for next invocation within the same test
+      }
+      return makeSelectChain(Promise.resolve(rows))
+    },
   },
 }))
 
@@ -66,7 +119,8 @@ function publicWearJoinRow(overrides: Record<string, unknown> = {}) {
     model: 'Submariner',
     imageUrl: 'https://example.com/sub.jpg',
     movement: 'automatic',
-    wornPublic: true,
+    profilePublic: true,
+    visibility: 'public',
     ...overrides,
   }
 }
@@ -75,6 +129,10 @@ describe('addToWishlistFromWearEvent Server Action', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockJoinRows = []
+    mockSelectQueue = []
+    mockFollowRows = []
+    selectCallCount = 0
+    _joinCallCount = 0
   })
 
   it('Test 1: unauth — returns Not authenticated; no DB work', async () => {
