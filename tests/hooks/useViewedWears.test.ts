@@ -5,25 +5,31 @@ import { useViewedWears } from '@/hooks/useViewedWears'
 
 const STORAGE_KEY = 'horlo:wywt:viewed:v1'
 
+// localStorage is polyfilled in tests/setup.ts for the Node 25 / jsdom combo
+// that strips Storage methods off of window.localStorage.
+
 describe('useViewedWears — SSR-safe localStorage viewed-state hook (W-06 / Pitfall 4)', () => {
   beforeEach(() => {
-    // Full isolation between tests. jsdom provides a real localStorage.
-    localStorage.clear()
+    // Full isolation between tests — only clear the namespaced key this hook
+    // writes so we don't trample any sibling suites that may share storage.
+    try {
+      window.localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // No-op under a mocked storage — each test seeds whatever state it needs.
+    }
     vi.restoreAllMocks()
   })
 
-  it('Test 1 — pre-hydration: first render returns empty viewed Set and hydrated=false', () => {
-    // Seed storage so we can also confirm the first render does NOT yet read it.
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(['id-seed']))
+  it('Test 1 — pre-hydration contract: hook returns viewed Set, markViewed fn, hydrated flag', () => {
+    // Seed storage so we can also confirm the type contract holds with data present.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(['id-seed']))
 
     const { result } = renderHook(() => useViewedWears())
 
-    // Initial render (before useEffect has flushed) must always look empty to
-    // avoid SSR hydration mismatch between server (empty) and client (from LS).
     // React 18+ testing-library may flush useEffect before returning the first
-    // ref — so we assert the public invariant: after hydration, hydrated=true;
-    // BEFORE any tick, hydrated is always either false or just-became-true with
-    // the seeded set loaded. We simply assert the type contract.
+    // ref — so we assert the public type contract. The SSR-safety invariant is
+    // covered by Test 2 (empty storage + hydrated toggles to true) and the
+    // explicit `hydrated === false` initial gate in the hook source.
     expect(result.current).toHaveProperty('viewed')
     expect(result.current).toHaveProperty('markViewed')
     expect(result.current).toHaveProperty('hydrated')
@@ -39,7 +45,7 @@ describe('useViewedWears — SSR-safe localStorage viewed-state hook (W-06 / Pit
   })
 
   it('Test 3 — post-hydration, with data: populates viewed from localStorage', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(['id1', 'id2']))
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(['id1', 'id2']))
     const { result } = renderHook(() => useViewedWears())
     await waitFor(() => expect(result.current.hydrated).toBe(true))
     expect(result.current.viewed.size).toBe(2)
@@ -56,7 +62,7 @@ describe('useViewedWears — SSR-safe localStorage viewed-state hook (W-06 / Pit
     })
 
     expect(result.current.viewed.has('newId')).toBe(true)
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(STORAGE_KEY)
     expect(raw).not.toBeNull()
     const parsed = JSON.parse(raw!) as string[]
     expect(parsed).toContain('newId')
@@ -99,15 +105,18 @@ describe('useViewedWears — SSR-safe localStorage viewed-state hook (W-06 / Pit
   })
 
   it('Test 7 — malformed localStorage JSON: hydrates empty without throwing', async () => {
-    localStorage.setItem(STORAGE_KEY, '{not valid json')
+    window.localStorage.setItem(STORAGE_KEY, '{not valid json')
     const { result } = renderHook(() => useViewedWears())
     await waitFor(() => expect(result.current.hydrated).toBe(true))
     expect(result.current.viewed.size).toBe(0)
   })
 
   it('Test 8 — localStorage.getItem throws: hydrates empty without crashing (Safari private mode)', async () => {
-    const getItemSpy = vi
-      .spyOn(Storage.prototype, 'getItem')
+    // Patch the specific instance (not Storage.prototype — our MemoryStorage
+    // stub defines getItem as an own property, so Storage.prototype spying
+    // would not intercept it).
+    const spy = vi
+      .spyOn(window.localStorage, 'getItem')
       .mockImplementation(() => {
         throw new Error('SecurityError: access denied')
       })
@@ -116,6 +125,8 @@ describe('useViewedWears — SSR-safe localStorage viewed-state hook (W-06 / Pit
     await waitFor(() => expect(result.current.hydrated).toBe(true))
     expect(result.current.viewed.size).toBe(0)
 
-    getItemSpy.mockRestore()
+    spy.mockRestore()
+    // Sanity: restore left storage functional (beforeEach cleared the key).
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })
