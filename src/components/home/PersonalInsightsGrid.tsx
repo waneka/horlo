@@ -3,13 +3,11 @@ import {
   getMostRecentWearDates,
   getAllWearEventsByUser,
 } from '@/data/wearEvents'
-import {
-  getFollowingForProfile,
-  getTasteOverlapData,
-} from '@/data/follows'
-import { computeTasteOverlap } from '@/lib/tasteOverlap'
+import { getFollowingForProfile } from '@/data/follows'
+import { getProfileSettings } from '@/data/profiles'
 import { wishlistGap } from '@/lib/wishlistGap'
 import { daysSince } from '@/lib/wear'
+import { resolveCommonGround } from '@/app/u/[username]/common-ground-gate'
 import { SleepingBeautyCard } from '@/components/home/SleepingBeautyCard'
 import { MostWornThisMonthCard } from '@/components/home/MostWornThisMonthCard'
 import { WishlistGapCard } from '@/components/home/WishlistGapCard'
@@ -112,21 +110,35 @@ export async function PersonalInsightsGrid({
   // Wishlist Gap — pure fn, deterministic.
   const gap = wishlistGap(owned, wishlist)
 
-  // Common Ground — highest-overlap follower. Try/catch per follower so one
-  // failing fetch doesn't hide the whole card.
+  // Common Ground — highest-overlap follower. Privacy gates (WR-02):
+  //   1. Filter followers by `profilePublic=true` BEFORE scoring — a follower
+  //      who toggled `profile_public=false` after the follow relationship was
+  //      created must not have displayName / avatarUrl / username surfaced.
+  //   2. For each candidate, use `resolveCommonGround` which itself enforces
+  //      `collection_public=true` on the owner. This mirrors the gate applied
+  //      to the Common Ground profile tab so `sharedWatches.length` (the
+  //      count) is never disclosed for a private collection either.
+  //   3. Try/catch per follower so one failing fetch doesn't hide the whole
+  //      card.
   let commonGround: {
     username: string
     displayName: string | null
     avatarUrl: string | null
     sharedCount: number
   } | null = null
-  if (following.length > 0) {
+  const publicFollowing = following.filter((f) => f.profilePublic)
+  if (publicFollowing.length > 0) {
     const scored = await Promise.all(
-      following.slice(0, COMMON_GROUND_SCAN_LIMIT).map(async (f) => {
+      publicFollowing.slice(0, COMMON_GROUND_SCAN_LIMIT).map(async (f) => {
         try {
-          const data = await getTasteOverlapData(viewerId, f.userId)
-          const result = computeTasteOverlap(data.viewer, data.owner)
-          return { f, shared: result.sharedWatches.length }
+          const settings = await getProfileSettings(f.userId)
+          const overlap = await resolveCommonGround({
+            viewerId,
+            ownerId: f.userId,
+            isOwner: false, // viewer following a follower is by definition not owner
+            collectionPublic: settings.collectionPublic,
+          })
+          return { f, shared: overlap?.sharedWatches.length ?? 0 }
         } catch {
           return { f, shared: 0 }
         }

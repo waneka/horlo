@@ -13,6 +13,9 @@ vi.mock('@/data/follows', () => ({
   getFollowingForProfile: vi.fn(),
   getTasteOverlapData: vi.fn(),
 }))
+vi.mock('@/data/profiles', () => ({
+  getProfileSettings: vi.fn(),
+}))
 vi.mock('@/lib/tasteOverlap', () => ({
   computeTasteOverlap: vi.fn(),
 }))
@@ -59,6 +62,7 @@ import {
   getFollowingForProfile,
   getTasteOverlapData,
 } from '@/data/follows'
+import { getProfileSettings } from '@/data/profiles'
 import { computeTasteOverlap } from '@/lib/tasteOverlap'
 import type { Watch } from '@/lib/types'
 
@@ -87,6 +91,15 @@ beforeEach(() => {
   vi.mocked(getFollowingForProfile).mockResolvedValue([])
   vi.mocked(getAllWearEventsByUser).mockResolvedValue([])
   vi.mocked(getMostRecentWearDates).mockResolvedValue(new Map())
+  // Default all followers to fully public so existing tests that don't care
+  // about the WR-02 privacy gate still exercise the happy Common-Ground path.
+  vi.mocked(getProfileSettings).mockResolvedValue({
+    userId: 'u-friend',
+    profilePublic: true,
+    collectionPublic: true,
+    wishlistPublic: true,
+    wornPublic: true,
+  })
 })
 
 describe('PersonalInsightsGrid — I-04 hide on empty', () => {
@@ -329,5 +342,150 @@ describe('PersonalInsightsGrid — Common Ground', () => {
     expect(
       container.querySelector('a[href="/u/bob/common-ground"]'),
     ).toBeNull()
+  })
+})
+
+describe('PersonalInsightsGrid — WR-02 Common Ground privacy gates', () => {
+  it('WR-02 Test A — follower with profilePublic=false is excluded: no overlap fetch, no card', async () => {
+    const w = makeWatch({ id: 'w-1', roleTags: ['dive'] })
+    vi.mocked(getWatchesByUser).mockResolvedValue([w])
+    const today = new Date().toISOString().slice(0, 10)
+    vi.mocked(getMostRecentWearDates).mockResolvedValue(
+      new Map([['w-1', today]]),
+    )
+    // Only follower is private-profile → must be filtered out before scoring.
+    vi.mocked(getFollowingForProfile).mockResolvedValue([
+      {
+        userId: 'u-private',
+        username: 'privy',
+        displayName: 'Privy',
+        bio: null,
+        avatarUrl: null,
+        profilePublic: false, // ← privacy flag flipped
+        watchCount: 5,
+        wishlistCount: 0,
+        followedAt: '2026-04-01T00:00:00Z',
+      },
+    ])
+    const { container } = await renderAsync(
+      PersonalInsightsGrid({ viewerId: 'v1' }),
+    )
+    // Card must be omitted — no link to /u/privy/common-ground, no "N shared".
+    expect(container.textContent).not.toMatch(/Privy/)
+    expect(container.textContent).not.toMatch(/\d+ shared/)
+    expect(
+      container.querySelector('a[href="/u/privy/common-ground"]'),
+    ).toBeNull()
+    // And `getTasteOverlapData` must NEVER be called for the private follower.
+    expect(getTasteOverlapData).not.toHaveBeenCalled()
+  })
+
+  it('WR-02 Test B — follower with collectionPublic=false: resolveCommonGround returns null, no card', async () => {
+    const w = makeWatch({ id: 'w-1', roleTags: ['dive'] })
+    vi.mocked(getWatchesByUser).mockResolvedValue([w])
+    const today = new Date().toISOString().slice(0, 10)
+    vi.mocked(getMostRecentWearDates).mockResolvedValue(
+      new Map([['w-1', today]]),
+    )
+    vi.mocked(getFollowingForProfile).mockResolvedValue([
+      {
+        userId: 'u-friend',
+        username: 'bob',
+        displayName: 'Bob',
+        bio: null,
+        avatarUrl: null,
+        profilePublic: true,
+        watchCount: 5,
+        wishlistCount: 0,
+        followedAt: '2026-04-01T00:00:00Z',
+      },
+    ])
+    // Follower's collection is private → gate blocks overlap lookup.
+    vi.mocked(getProfileSettings).mockResolvedValue({
+      userId: 'u-friend',
+      profilePublic: true,
+      collectionPublic: false, // ← collection hidden
+      wishlistPublic: true,
+      wornPublic: true,
+    })
+    const { container } = await renderAsync(
+      PersonalInsightsGrid({ viewerId: 'v1' }),
+    )
+    // Even the shared *count* must not be disclosed → no card, no link.
+    expect(container.textContent).not.toMatch(/\d+ shared/)
+    expect(
+      container.querySelector('a[href="/u/bob/common-ground"]'),
+    ).toBeNull()
+    // resolveCommonGround short-circuits before calling getTasteOverlapData.
+    expect(getTasteOverlapData).not.toHaveBeenCalled()
+  })
+
+  it('WR-02 Test C — mixed followers: private ones skipped, public-with-overlap wins', async () => {
+    const w = makeWatch({ id: 'w-1', roleTags: ['dive'] })
+    vi.mocked(getWatchesByUser).mockResolvedValue([w])
+    const today = new Date().toISOString().slice(0, 10)
+    vi.mocked(getMostRecentWearDates).mockResolvedValue(
+      new Map([['w-1', today]]),
+    )
+    vi.mocked(getFollowingForProfile).mockResolvedValue([
+      {
+        userId: 'u-priv',
+        username: 'priv',
+        displayName: 'Priv',
+        bio: null,
+        avatarUrl: null,
+        profilePublic: false,
+        watchCount: 3,
+        wishlistCount: 0,
+        followedAt: '2026-04-02T00:00:00Z',
+      },
+      {
+        userId: 'u-pub',
+        username: 'pub',
+        displayName: 'Pub',
+        bio: null,
+        avatarUrl: null,
+        profilePublic: true,
+        watchCount: 5,
+        wishlistCount: 0,
+        followedAt: '2026-04-01T00:00:00Z',
+      },
+    ])
+    // Public follower's collection is visible.
+    vi.mocked(getProfileSettings).mockResolvedValue({
+      userId: 'u-pub',
+      profilePublic: true,
+      collectionPublic: true,
+      wishlistPublic: true,
+      wornPublic: true,
+    })
+    vi.mocked(getTasteOverlapData).mockResolvedValue({
+      viewer: { watches: [w], preferences: {} as never, tasteTags: [] },
+      owner: { watches: [w], preferences: {} as never, tasteTags: [] },
+    })
+    vi.mocked(computeTasteOverlap).mockReturnValue({
+      sharedWatches: [
+        { brand: 'Rolex', model: 'Submariner', viewerWatch: w, ownerWatch: w },
+      ],
+      sharedTasteTags: [],
+      overlapLabel: 'Strong overlap',
+      sharedStyleRows: [],
+      sharedRoleRows: [],
+      hasAny: true,
+    })
+    const { container } = await renderAsync(
+      PersonalInsightsGrid({ viewerId: 'v1' }),
+    )
+    // Pub renders; Priv must not leak displayName / link.
+    expect(container.textContent).toMatch(/Pub/)
+    expect(container.textContent).toMatch(/1 shared/)
+    expect(container.textContent).not.toMatch(/Priv/)
+    expect(
+      container.querySelector('a[href="/u/priv/common-ground"]'),
+    ).toBeNull()
+    // The private follower must never have their overlap data fetched.
+    // Pub (public) is called once; Priv is not.
+    expect(getTasteOverlapData).toHaveBeenCalledTimes(1)
+    expect(getTasteOverlapData).toHaveBeenCalledWith('v1', 'u-pub')
   })
 })
