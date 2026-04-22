@@ -71,7 +71,6 @@ A collector can evaluate any watch against their collection and get a meaningful
 - [ ] Component tests for WatchForm, FilterBar, WatchCard — carried from v1.0 (TEST-06)
 - [ ] PreferencesClient error handling — surface save failures to user (MR-01)
 - [ ] Custom SMTP for email confirmation — currently OFF for personal-MVP posture
-- [ ] Incognito 403 verification for private wear photos (Roadmap SC-3, 11-HUMAN-UAT.md #2) — browser check pending
 
 ### Out of Scope
 
@@ -135,4 +134,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 — Phase 11 complete. Schema + storage foundation landed: `wear_visibility` enum with worn_public backfill, `notifications` table with recipient-only RLS + dedup, `pg_trgm` GIN indexes for `/search`, `wear-photos` private Storage bucket with three-tier RLS, DEBT-02 RLS audit. Migration 6 revoked PUBLIC/anon EXECUTE on SECDEF helpers (WR-01 fix). 30/30 Wave 0 tests pass. Incognito 403 browser check for private wear photos remains pending as HUMAN-UAT item. Up next: Phase 12 (Visibility Ripple in DAL) — rippling the new three-tier visibility through every existing wear-reading function for non-owner viewers.*
+*Last updated: 2026-04-22 — Phase 11 fully verified. Schema + storage foundation landed: `wear_visibility` enum with worn_public backfill, `notifications` table with recipient-only RLS + dedup, `pg_trgm` GIN indexes for `/search`, `wear-photos` private Storage bucket with three-tier RLS, DEBT-02 RLS audit. Migration 6 revoked PUBLIC/anon EXECUTE on SECDEF helpers (WR-01 fix). Migration 7 added orphan-count assertion for worn_public backfill (WR-02 fix). Code review fixes landed for WR-02/WR-04/WR-05 (Migration 4 warning header + two dynamic storage RLS tests for unfollow/visibility-tightening). WR-03 deferred to Phase 13 where the notification payload shape contract lives. 14/14 storage RLS tests pass. Both HUMAN-UAT items resolved (WR-01 privilege check + incognito 403 browser check). Up next: Phase 12 (Visibility Ripple in DAL) — rippling the new three-tier visibility through every existing wear-reading function for non-owner viewers.*

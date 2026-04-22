@@ -1,8 +1,9 @@
 ---
 phase: 11-schema-storage-foundation
 verified: 2026-04-22T12:00:00Z
-status: human_needed
-score: 4/5 must-haves verified
+resolved: 2026-04-22T18:45:00Z
+status: passed
+score: 5/5 must-haves verified
 overrides_applied: 0
 deferred:
   - truth: "worn_public column removed from profile_settings after backfill verified"
@@ -12,9 +13,11 @@ human_verification:
   - test: "Confirm SECURITY DEFINER helpers are not probe-accessible to arbitrary callers"
     expected: "Any authenticated user querying get_wear_event_visibility_bypassing_rls(arbitrary_uuid), get_wear_event_owner_bypassing_rls(arbitrary_uuid), or viewer_follows_bypassing_rls(uuid1, uuid2) via Supabase RPC should receive a permission-denied error. If they return data, the WR-01 exposure is live."
     why_human: "Privilege grants on SECURITY DEFINER functions are a live-DB check. The migration file (20260423000004b) contains no REVOKE/GRANT clauses, meaning PUBLIC has EXECUTE by default. A human must run `SELECT has_function_privilege('authenticated', 'public.get_wear_event_visibility_bypassing_rls(uuid)', 'EXECUTE')` and `SELECT has_function_privilege('anon', 'public.get_wear_event_owner_bypassing_rls(uuid)', 'EXECUTE')` on the live local DB, and confirm whether the WR-01 risk is accepted or needs the REVOKE fix recommended in 11-REVIEW.md."
+    result: "resolved — Migration 6 (20260423000006_phase11_secdef_revoke_public.sql, commit 93dec02) revoked EXECUTE from PUBLIC and anon, granted EXECUTE to authenticated. Post-fix has_function_privilege returns false for anon on all three helpers, true for authenticated. 12/12 storage RLS tests still pass."
   - test: "Confirm private wear photo returns 403 for incognito (unauthenticated) access"
     expected: "Direct URL or signed URL from a different authenticated user for a visibility='private' wear photo should return 403 or a RLS-denied error, not a 200."
     why_human: "The integration test (phase11-storage-rls.test.ts) verifies the 9-cell matrix using authenticated clients, but the roadmap SC-3 specifically mentions 'direct URL access in incognito returns 403'. Unauthenticated access is blocked by the TO authenticated grant, but verifying this in an actual browser incognito window requires a human step."
+    result: "resolved — user manually verified in browser incognito window against the local Supabase stack. Direct URL access to a visibility='private' wear photo returned the expected unauthenticated-denied response (not 200 with image bytes)."
 ---
 
 # Phase 11: Schema + Storage Foundation Verification Report

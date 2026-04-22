@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 11-schema-storage-foundation
 source: [11-VERIFICATION.md]
 started: 2026-04-22T00:00:00Z
-updated: 2026-04-22T18:15:00Z
+updated: 2026-04-22T18:45:00Z
 ---
 
 ## Current Test
 
-Test 2 (incognito 403) still pending.
+All tests resolved.
 
 ## Tests
 
@@ -29,14 +29,21 @@ evidence: |
 
 ### 2. Incognito 403 for private wear photo (Roadmap SC-3)
 expected: Browser incognito window requesting a Supabase Storage URL for a `visibility='private'` wear photo returns HTTP 403 (or storage error) — not 200 with photo bytes. Integration tests cover the 9-cell access matrix for authenticated viewers but Roadmap SC-3 explicitly calls out the unauthenticated incognito case.
-result: [pending]
+result: passed
+evidence: |
+  User manually verified in browser incognito window against local Supabase stack —
+  direct URL request to a wear-photos path with visibility='private' on the wear_events
+  row returned the expected unauthenticated-denied response (not 200 with image bytes).
+  The 12/12 authenticated-user access matrix tests in phase11-storage-rls.test.ts
+  (now 14/14 after WR-05 fix) confirm the authenticated side; this UAT confirms the
+  anon side that cannot be covered by vitest without a live HTTP client.
 
 ## Summary
 
 total: 2
-passed: 1
+passed: 2
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
