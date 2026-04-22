@@ -47,6 +47,9 @@ A collector can evaluate any watch against their collection and get a meaningful
 - ✓ Follower / following list routes — v2.0 Phase 9 (FOLL-04)
 - ✓ Read-only public collection at `/u/[username]` with per-tab privacy gating — v2.0 Phase 9 (PROF-08)
 - ✓ Common Ground taste overlap (server-computed; result-only to client) — v2.0 Phase 9 (PROF-09)
+- ✓ 5-section Network Home — WYWT rail + Network Activity feed + Collectors Like You + Personal Insights + Suggested Collectors — v2.0 Phase 10 (FEED-01..05, WYWT-03, DISC-02, DISC-04)
+- ✓ Nav `+ Wear` button wired to shared WatchPickerDialog — v2.0 Phase 10 (WYWT-03)
+- ✓ Cache Components enabled (Next.js 16 `cacheComponents: true`) with canonical Suspense+inline-theme-script layout pattern — v2.0 Phase 10
 
 ### Active
 
@@ -59,7 +62,7 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 ### Out of Scope
 
-- Social / community features — partial: v2.0 Phase 7-9 shipped public profiles, follow graph, and Common Ground overlap; activity feed is Phase 10
+- Social / community features — partial: v2.0 Phase 7-10 shipped public profiles, follow graph, Common Ground overlap, and the 5-section Network Home (activity feed, WYWT, recommendations, insights, suggested collectors)
 - Automated price tracking / market integrations / deal alerts — future milestone, significant infrastructure
 - AI recommendation engine (best gap filler, most versatile addition) — future milestone after auth/data layer is solid
 - Collection visualization map (2D dressy↔sporty × affordable↔expensive plot) — future milestone
@@ -113,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-21 after v2.0 Phase 9 (Follow System & Collector Profiles) — follow graph, follower/following lists, Common Ground overlap shipped; Phase 10 (Activity Feed) next*
+*Last updated: 2026-04-22 after v2.0 Phase 10 (Network Home) — 5-section home page shipped: WYWT rail, Network Activity feed with time-window aggregation, Collectors Like You recommendations (cached), Personal Insights, Suggested Collectors; nav `+ Wear` button uses shared WatchPickerDialog; cacheComponents enabled with inline-theme-script layout pattern*
