@@ -7,6 +7,8 @@
 // No runtime code lives here — this file is purely `export type` / `export
 // interface` declarations, so importing it has zero bundle cost.
 
+import type { WearVisibility } from '@/lib/wearVisibility'
+
 export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn'
 
 /**
@@ -38,7 +40,16 @@ export interface RawFeedRow {
   type: ActivityType
   createdAt: string // ISO 8601
   watchId: string | null
-  metadata: { brand: string; model: string; imageUrl: string | null }
+  // Phase 12 (WYWT-10): visibility is OPTIONAL (only present for
+  // watch_worn rows; legacy rows omit it; non-watch_worn rows never
+  // populate it). Downstream consumers should default to 'public' or
+  // omit display when absent.
+  metadata: {
+    brand: string
+    model: string
+    imageUrl: string | null
+    visibility?: WearVisibility
+  }
   userId: string
   username: string
   displayName: string | null

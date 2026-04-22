@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { activities, profiles, profileSettings, follows } from '@/db/schema'
 import { and, desc, eq, not, sql } from 'drizzle-orm'
 import type { FeedCursor, RawFeedRow } from '@/lib/feedTypes'
+import type { WearVisibility } from '@/lib/wearVisibility'
 
 /**
  * Result shape returned by `getFeedForUser`. Carries raw (un-aggregated)
@@ -19,12 +20,60 @@ export interface RawFeedPage {
 
 export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn'
 
+export type WatchAddedMetadata = {
+  brand: string
+  model: string
+  imageUrl: string | null
+}
+
+export type WishlistAddedMetadata = {
+  brand: string
+  model: string
+  imageUrl: string | null
+}
+
+/**
+ * Phase 12 D-10: widened metadata for watch_worn rows. The `visibility`
+ * field is REQUIRED so the feed DAL can gate per-row without joining back
+ * to wear_events. Pitfall G-7 mitigation: TypeScript flags any caller that
+ * forgets to pass visibility.
+ */
+export type WatchWornMetadata = {
+  brand: string
+  model: string
+  imageUrl: string | null
+  visibility: WearVisibility
+}
+
+export type ActivityMetadata =
+  | WatchAddedMetadata
+  | WishlistAddedMetadata
+  | WatchWornMetadata
+
+export async function logActivity(
+  userId: string,
+  type: 'watch_added',
+  watchId: string | null,
+  metadata: WatchAddedMetadata,
+): Promise<void>
+export async function logActivity(
+  userId: string,
+  type: 'wishlist_added',
+  watchId: string | null,
+  metadata: WishlistAddedMetadata,
+): Promise<void>
+export async function logActivity(
+  userId: string,
+  type: 'watch_worn',
+  watchId: string | null,
+  metadata: WatchWornMetadata,
+): Promise<void>
 export async function logActivity(
   userId: string,
   type: ActivityType,
   watchId: string | null,
-  metadata: { brand: string; model: string; imageUrl: string | null }
-) {
+  metadata: ActivityMetadata,
+): Promise<void> {
   await db.insert(activities).values({
     userId,
     type,
@@ -41,8 +90,9 @@ export async function logActivity(
  *     service-role connection (the tests seed this way, and server
  *     renders may run through the postgres role depending on deployment).
  *   - INNER gate: per-event privacy (profile_public /
- *     collection_public / wishlist_public / worn_public) enforced in the
- *     WHERE clause — follows do NOT bypass privacy (Phase 9 D-08).
+ *     collection_public / wishlist_public) and per-row visibility for
+ *     watch_worn (Phase 12 metadata gate) enforced in the WHERE clause —
+ *     follows do NOT bypass privacy (Phase 9 D-08).
  *
  * F-05 own-filter: `not(eq(activities.userId, viewerId))`.
  * FEED-03 keyset: tuple comparison `(created_at, id) < ($cursorCreatedAt,
@@ -85,11 +135,33 @@ export async function getFeedForUser(
     .where(
       and(
         not(eq(activities.userId, viewerId)), // F-05 own-filter
-        eq(profileSettings.profilePublic, true), // F-06 outer privacy gate
+        eq(profileSettings.profilePublic, true), // F-06 outer privacy gate (G-4)
+        // Phase 12 (WYWT-10) feed-side visibility gate.
+        //
+        // The watch_worn branch reads `activities.metadata->>'visibility'` rather
+        // than JOINing back to wear_events (avoids latency on the hot feed path).
+        // The simplified `IN ('public','followers')` predicate is valid here
+        // because the outer innerJoin on `follows` (above) already restricts the
+        // feed to followed actors only — every admitted row is from a followed
+        // actor by construction, so a `'followers'` row is automatically a
+        // follower-of relationship.
+        //
+        // ASSUMPTION A2 (RESEARCH §"Pattern 2"): if a future plan widens the
+        // follows-JOIN (e.g., admitting "popular" non-followed actors), this
+        // simplification BREAKS and followers wears leak to non-followers. If
+        // you change the JOIN structure, you MUST add a per-row follower check
+        // back to this branch.
+        //
+        // D-09 fail-closed: legacy `watch_worn` activity rows written before
+        // Phase 12 have no `visibility` key in metadata. Postgres `->>` returns
+        // NULL for missing key; `NULL IN ('public','followers')` evaluates to
+        // NULL, which is treated as not-true in WHERE — legacy rows are
+        // excluded without an explicit IS NOT NULL check. The Plan 01 matrix
+        // file's "feed D-09 fail-closed" cell pins this expectation.
         sql`(
           (${activities.type} = 'watch_added'     AND ${profileSettings.collectionPublic} = true)
           OR (${activities.type} = 'wishlist_added' AND ${profileSettings.wishlistPublic} = true)
-          OR (${activities.type} = 'watch_worn'     AND ${profileSettings.wornPublic}     = true)
+          OR (${activities.type} = 'watch_worn'     AND ${activities.metadata}->>'visibility' IN ('public','followers'))
         )`,
         cursorClause,
       ),
@@ -125,10 +197,14 @@ export async function getFeedForUser(
 function normalizeMetadata(raw: unknown): RawFeedRow['metadata'] {
   if (raw && typeof raw === 'object') {
     const m = raw as Record<string, unknown>
+    const v = m.visibility
+    const visibility: WearVisibility | undefined =
+      v === 'public' || v === 'followers' || v === 'private' ? v : undefined
     return {
       brand: typeof m.brand === 'string' ? m.brand : '',
       model: typeof m.model === 'string' ? m.model : '',
       imageUrl: typeof m.imageUrl === 'string' ? m.imageUrl : null,
+      ...(visibility ? { visibility } : {}),
     }
   }
   return { brand: '', model: '', imageUrl: null }

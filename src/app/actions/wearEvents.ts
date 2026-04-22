@@ -40,6 +40,7 @@ export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
         brand: watch.brand,
         model: watch.model,
         imageUrl: watch.imageUrl ?? null,
+        visibility: 'public', // D-07: markAsWorn always writes public; per-wear picker arrives in Phase 15 (WYWT picker)
       })
     } catch (err) {
       console.error('[markAsWorn] activity log failed (non-fatal):', err)

@@ -63,14 +63,21 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     const watch = await watchDAL.createWatch(user.id, parsed.data)
     // Activity logging (D-05) — fire and forget, failure does not block mutation
     try {
-      const activityType = watch.status === 'wishlist' || watch.status === 'grail'
-        ? 'wishlist_added' as const
-        : 'watch_added' as const
-      await logActivity(user.id, activityType, watch.id, {
-        brand: watch.brand,
-        model: watch.model,
-        imageUrl: watch.imageUrl ?? null,
-      })
+      // Split branches so TypeScript can narrow the discriminated-union overload
+      // (a union variable for `type` does not satisfy any single overload signature).
+      if (watch.status === 'wishlist' || watch.status === 'grail') {
+        await logActivity(user.id, 'wishlist_added', watch.id, {
+          brand: watch.brand,
+          model: watch.model,
+          imageUrl: watch.imageUrl ?? null,
+        })
+      } else {
+        await logActivity(user.id, 'watch_added', watch.id, {
+          brand: watch.brand,
+          model: watch.model,
+          imageUrl: watch.imageUrl ?? null,
+        })
+      }
     } catch (err) {
       console.error('[addWatch] activity log failed (non-fatal):', err)
     }
