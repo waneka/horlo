@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
-status: defining_requirements
-stopped_at: Milestone v3.0 started — defining requirements
+status: ready_to_plan
+stopped_at: Phase 11 ready to plan
 last_updated: "2026-04-21T00:00:00.000Z"
 last_activity: 2026-04-21
 progress:
-  total_phases: null
+  total_phases: 6
   completed_phases: 0
   total_plans: null
   completed_plans: 0
@@ -21,30 +21,37 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Milestone v3.0 — Production Nav & Daily Wear Loop (defining requirements)
+**Current focus:** Milestone v3.0 — Production Nav & Daily Wear Loop (Phase 11 ready to plan)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 11 — Schema + Storage Foundation
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-21 — Milestone v3.0 started
+Status: Phase 11 ready to plan
+Last activity: 2026-04-21 — Roadmap created; v3.0 phases 11-16 defined
 
 ## Progress Bar
 
 ```
-Phase numbering will continue from Phase 11 once the roadmap is approved.
+Phase 11 [ ] Schema + Storage Foundation
+Phase 12 [ ] Visibility Ripple in DAL
+Phase 13 [ ] Notifications Foundation
+Phase 14 [ ] Nav Shell + Explore Stub
+Phase 15 [ ] WYWT Photo Post Flow
+Phase 16 [ ] People Search
+
+[░░░░░░░░░░░░░░░░░░░░] 0/6 phases complete
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases total | 5 |
+| Phases total | 6 |
 | Phases complete | 0 |
 | Plans total | TBD |
 | Plans complete | 0 |
-| Requirements mapped | 31/31 |
+| Requirements mapped | 51/51 |
 | Phase 10 P01 | 18min | 3 tasks | 10 files |
 | Phase 10 P02 | 10min | 3 tasks | 6 files |
 | Phase 10 P03 | 5min | 2 tasks | 5 files |
@@ -56,6 +63,24 @@ Phase numbering will continue from Phase 11 once the roadmap is approved.
 | Phase 10 P09 | 14min | 3 tasks | 4 files |
 
 ## Accumulated Context
+
+### Key Decisions (v3.0)
+
+| Decision | Rationale |
+|----------|-----------|
+| Phase numbering continues from 11 | v2.0 ended at Phase 10; sequential numbering maintained across milestones |
+| Default wear visibility: Public | Overrides researcher recommendation of Private default; explicitly chosen by user |
+| D1: Client-direct upload pipeline | Browser → Supabase Storage using user's session; Server Action validates storage key and inserts row; avoids doubling bandwidth and Next.js 4MB body limit |
+| D2: cache()-wrapped ownedWatches | getWatchesByUser wrapped with React cache() so Header and BottomNav share one request-scoped result (same pattern as getTasteOverlapData) |
+| D3: Single private bucket + signed URLs | Single wear-photos bucket, private, signed URLs for all reads; images.unoptimized: true already in next.config.ts so signed URLs work correctly |
+| D4: worn_public deprecated in v3.0 | Migration backfills wear_events.visibility from worn_public (true → 'public', false → 'private'); worn_public column removed from profile_settings after backfill verified |
+| D5: Hybrid wear detail nav | WYWT rail keeps Reels-style overlay (Phase 10 pattern); all other entry points (notifications, feed, search) navigate to /wear/[wearEventId] |
+| One wear per (user, watch, calendar day) preserved | Phase 10 constraint carried forward; user CAN log multiple different watches same day |
+| Phase 12 separate from Phase 11 | Highest-risk phase in milestone; integration tests must be written before any function is touched; privacy-first UAT rule from v2.0 retrospective |
+| Phase 13 can parallelize with 12 | No data dependency between notifications write path and the visibility ripple; both depend only on Phase 11 schema |
+| DEBT-02 in Phase 11 | RLS audit pairs naturally with the schema phase since both are RLS-heavy; resolves MR-03 |
+| DEBT-01 in Phase 14 | PreferencesClient error surfacing is a UI concern that fits the nav overhaul phase |
+| Explore stub in Phase 14 | /explore is a nav dependency; BottomNav Explore tab links to /explore; one file, ships with nav shell |
 
 ### Key Decisions (v2.0)
 
@@ -77,25 +102,19 @@ Phase numbering will continue from Phase 11 once the roadmap is approved.
 | Phase 10 WYWT DAL — dropped `as never` cast on createWatch | Providing all required Watch fields explicitly (brand/model/status/movement/complications/styleTags/designTraits/roleTags + optional imageUrl) satisfies `Omit<Watch, 'id'>` without an escape hatch; only a narrow `row.movement as MovementType` remains because Drizzle's inferred enum type isn't the domain alias. |
 | Phase 10 WYWT Server Action — duplicate wishlist rows tolerated by design | CONTEXT.md `<specifics>` says one-tap-no-friction conversion; per-user-independent-entries model already expects duplicates. No server-side dedupe. UI (Plan 06) may add a success toast with undo, but never a pre-confirm dialog. |
 | Phase 10 WYWT privacy gate — identical 'Wear event not found' on missing vs private | Both absent-row and actor-not-viewer-with-worn_public=false return the same error string (T-10-03-03). Avoids leaking existence of private wear events to callers who can't read them. Mirrors Phase 8 notes-IDOR mitigation precedent. |
-| Phase 10 Plan 04 wishlistGap — CANONICAL_ROLES defined locally | `CANONICAL_ROLES = [dive, dress, sport, field, pilot, chronograph, travel, formal, casual]` lives in `src/lib/wishlistGap.ts`, not `src/lib/constants.ts`. The existing `ROLE_TAGS` constant is a DIFFERENT vocabulary (use-case roles: daily, gada, travel, weekend, formal, beater...) and cannot be reused. `GAP_THRESHOLD = 0.10`. Array-order-first tiebreak on both gap and leansOn for stable output. |
-| Phase 10 Plan 04 rationale templates — deterministic, no LLM | 5 priority-ordered templates (brand-match → popular-role(≥5 owners) → dominant-style(>50%) → top-role-pair → community-fallback); first match wins. Brand-match beats popular-role when both fire (Test 6 pins this). Zero Anthropic dependency per C-03; the home page is always rendereable without an API key. |
-| Phase 10 Plan 04 Suggested Collectors keyset cursor | `SuggestionCursor = { overlap: number, userId: string }` with sort `(overlap DESC, userId ASC)` and strict-after filter `c.overlap < cursor.overlap \|\| (c.overlap === cursor.overlap && c.userId > cursor.userId)`. Guarantees disjoint pages. `overlap` bucket mapping: Strong=0.85, Some=0.55, Different=0.20 — representative midpoints of tasteOverlap's qualitative bands. `viewerId` flows as a function argument (never closure-captured) so Plan 07's `'use cache'` wrapper produces a correct cache key (Pitfall 7 / T-10-04-03). |
-| Phase 10 Plan 05 aggregated-row verb — 'wishlisted {N} watches' for wishlist_added | UI-SPEC only documented the 'added {N} watches' variant. Kept symmetric because `wishlist_added` is a first-class `AggregatedRow` type in `feedTypes.ts` and asymmetric fallback would mislabel activity. Reviewer can flip in one line if the UI-SPEC author prefers the asymmetric form. |
-| Phase 10 Plan 05 feed-row image hardening | All thumbnails routed through `getSafeImageUrl` before `next/image`, matching `ProfileWatchCard` (Phase 8). Activities `metadata.imageUrl` is user-supplied from Phase 7 URL imports; https-upgrade + protocol guard apply at the component level as a Rule 2 correctness addition even though T-10-05-05 was marked 'accept' in the plan's threat register. |
-| Phase 10 Plan 05 F-03 dual link pattern | `absolute inset-0` Link overlay for profile nav + nested `relative z-10` Link for watch-name. Avoids invalid `<a>` inside `<a>` and keeps the row a pure Server Component. This is the canonical pattern for any future feed-row surface. |
-| Phase 10 Plan 06 WywtRail is 'use client' (not a two-layer shell) | Rail receives already-computed `WywtRailData` as a prop from the parent Server Component (Plan 10-08), so there is no server-only data access it needs to do itself. The planner's <behavior> block offered a two-layer Server+Client option; collapsing to a single 'use client' file saves boilerplate with zero SSR loss. |
-| Phase 10 Plan 06 WatchPickerDialog is a SINGLE shared component | Exported from `src/components/home/WatchPickerDialog.tsx` and consumed by BOTH the WYWT self-tile (Plan 06) and the nav `+ Wear` button (Plan 10-08). Pitfall 10 avoided. JSDoc at file top explicitly forbids forking; future call sites add a prop, never duplicate the component. |
-| Phase 10 Plan 06 jsdom polyfills added to tests/setup.ts | Node 25's native `localStorage` global (no method implementations) shadows jsdom's functional storage; jsdom 25.0.1 also lacks IntersectionObserver + ResizeObserver which embla-carousel-react requires. Added MemoryStorage + stub observers to `tests/setup.ts` (same pattern as existing `matchMedia` stub), guarded on "API missing" so future Node/jsdom versions that restore them do not double-install. |
-| Phase 10 Plan 06 WYWT overlay error UX is INLINE, not toast | Add-to-wishlist failure inside the focus-trapped overlay renders an inline `text-destructive` message + Retry button; markAsWorn failure inside the picker dialog renders an inline `role=alert` paragraph. Toasts would fire outside the focus trap and break WCAG focus management. Matches UI-SPEC error-placement intent. |
-| Phase 10 Plan 07 CollectorsLikeYou 'use cache' with viewerId prop | First line of the async function body is `'use cache'`, second line is `cacheLife('minutes')` (5min stale / 1min revalidate / 1hr expire per Next.js docs). viewerId flows as a function argument so Next.js serializes it into the cache key (Pitfall 7 / T-10-07-01 mitigation). Grep-verified absence of `getCurrentUser` in the cached component file. |
-| Phase 10 Plan 07 Sleeping Beauty ordering vs rendering split | `effectiveDays` (`+Infinity` for never-worn watches) is the ORDERING key in PersonalInsightsGrid; `lastWornDate` is the RENDER key passed to SleepingBeautyCard. The card branches on `lastWornDate === null` to render 'Never worn' literal instead of fabricating a day count. Avoids '999 days unworn' leaking into the UI. |
-| Phase 10 Plan 07 LoadMoreSuggestionsButton mirrors Plan 05 LoadMoreButton byte-for-byte | Same state machine (cursor + appendedRows + error + useTransition), same error copy 'Couldn't load more. Tap to retry.', same aria-label cycle. Both Load More controls on the home therefore feel identical to the user. Plan 05's pattern is now the canonical Load More shape for Phase 10. |
-| Phase 10 Plan 07 SuggestedCollectorRow reuses Phase 9 FollowButton without modification | `variant='inline'` + `initialIsFollowing={false}` always (DAL excludes followed users via notInArray, T-10-04-02). No Suggested-specific variant added. Row link + FollowButton click isolation via absolute-inset `<Link>` overlay + button `relative z-10` — same canonical pattern as Plan 05 ActivityRow F-03. |
 | Phase 10 Plan 09 WYWT DAL privacy hardening | Non-self branch of `getWearRailForViewer` now requires BOTH `profile_public=true` AND `worn_public=true` (was `worn_public` only). Caught by the E2E privacy test — an actor with `profile_public=false` + `worn_public=true` (legal via settings UI) would leak wear events to followers. Rule 2 critical correctness fix. Self-include branch unchanged (viewer always sees own wear). |
-| Phase 10 Plan 09 docs scope alignment | REQUIREMENTS.md + ROADMAP.md updated to reflect the 5-section shipped scope: FEED-05 added to Activity Feed; WYWT-03 / DISC-02 / DISC-04 promoted from Future Requirements to a new v2.0 'Network Home' subsection; traceability table extended with 4 Phase 10 rows; coverage 31 → 35; Phase 10 renamed 'Network Home' with 9 Success Criteria covering L-01 / F-05 / F-06 / F-08 / W-01 / C-02 / I-04 / S-01 / N-02. |
-| Phase 10 Plan 09 trigger-aware integration seeding | Phase 7's `on_public_user_created` trigger auto-creates profiles + profile_settings rows on every public.users insert. New integration tests that need deterministic usernames or non-default privacy must UPDATE the trigger-generated rows (not INSERT) to avoid PK collisions. Documented in-file via block comment; canonical pattern for `tests/integration/*`. |
 
-### Critical Pitfalls (from research)
+### Critical Pitfalls (v3.0)
+
+1. Storage RLS is a SEPARATE system from table RLS — write explicit storage.objects policies for wear-photos bucket and test in incognito.
+2. Three-tier visibility ripple must audit ALL 8+ wear-reading DAL functions before migration — missing one leaks followers-only wears publicly.
+3. `'use cache'` without viewerId as explicit argument leaks data across users — grep gate before shipping.
+4. Bottom nav outside Suspense boundary breaks cacheComponents builds — wrap in its own Suspense.
+5. EXIF stripping required on ALL upload paths (camera AND file) — verify with exiftool on a stored file.
+6. Backfill maps worn_public = false to 'private' NOT 'followers' — post-migration count of 'followers' rows must be 0.
+7. Notification generation must be fire-and-forget — failure never rolls back a follow or watch-add.
+
+### Critical Pitfalls (v2.0)
 
 1. RLS enabled without all policies — existing data goes invisible. Enable + write policies in the same migration transaction.
 2. Bare `auth.uid()` in policies — per-row function call blows up query plans. Always use `(SELECT auth.uid())`.
@@ -105,10 +124,9 @@ Phase numbering will continue from Phase 11 once the roadmap is approved.
 
 ### Todos
 
-- [ ] Start Phase 6: `/gsd-plan-phase 6`
-- [ ] Validate RLS migration workflow in staging before applying to prod (research flag)
-- [ ] Confirm profile auto-creation mechanism (webhook vs. DB trigger) against current Supabase docs before Phase 7 planning (research flag)
-- [ ] Define username assignment strategy for existing users before Phase 8 ships (gap from research)
+- [ ] Start Phase 11: `/gsd-plan-phase 11`
+- [ ] Resolve EXIF orientation research flag before Phase 15 planning: does `createImageBitmap` correct EXIF orientation on iOS Safari 15+, or is `exifr` required?
+- [ ] Phase 12 requires integration tests written BEFORE touching any DAL function — privacy-first UAT rule
 
 ### Blockers
 
@@ -123,7 +141,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T02:52:57.524Z
-Stopped at: Completed quick task 260421-rdb (watch detail privacy fix)
+Last session: 2026-04-21
+Stopped at: v3.0 roadmap created — Phases 11-16 defined
 Resume file: None
-Next action: `/gsd-plan-phase 6`
+Next action: `/gsd-plan-phase 11`

@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-19) — [archive](milestones/v1.0-ROADMAP.md)
 - ✅ **v2.0 Taste Network Foundation** — Phases 6-10 (shipped 2026-04-22) — [archive](milestones/v2.0-ROADMAP.md)
-- 📋 **Next milestone** — TBD — run `/gsd-new-milestone` to start
+- 📋 **v3.0 Production Nav & Daily Wear Loop** — Phases 11-16 (in progress)
 
 ## Phases
 
@@ -37,9 +37,110 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 </details>
 
-### 📋 Next Milestone — TBD
+### v3.0 Production Nav & Daily Wear Loop (Phases 11-16)
 
-Run `/gsd-new-milestone` to define goals, requirements, and phases.
+- [ ] **Phase 11: Schema + Storage Foundation** — All migrations, bucket, pg_trgm, worn_public backfill, RLS audit
+- [ ] **Phase 12: Visibility Ripple in DAL** — Three-tier wear privacy wired through all existing wear-reading DAL functions
+- [ ] **Phase 13: Notifications Foundation** — notifications DAL + Server Actions + bell + inbox + fire-and-forget wiring
+- [ ] **Phase 14: Nav Shell + Explore Stub** — Bottom nav, desktop top nav, slim mobile nav, MobileNav retired, /explore stub
+- [ ] **Phase 15: WYWT Photo Post Flow** — Multi-step wear post modal, camera, HEIC upload, visibility selector, Storage upload, Sonner toast, wear detail route
+- [ ] **Phase 16: People Search** — /search page, live debounced ILIKE, taste overlap %, FollowButton inline
+
+## Phase Details
+
+### Phase 11: Schema + Storage Foundation
+**Goal**: All database schemas, migrations, storage infrastructure, and RLS policies are in place so every downstream phase has a stable foundation to build on.
+**Depends on**: Nothing (prerequisite for all other phases)
+**Requirements**: WYWT-09, WYWT-11, WYWT-13, WYWT-14, NOTIF-01, SRCH-08, DEBT-02
+**Success Criteria** (what must be TRUE):
+  1. A `wear_visibility` Postgres enum exists with values `public`, `followers`, `private`; `wear_events` table has `photo_url`, `note`, and `visibility` columns; all existing rows have `visibility` backfilled from `worn_public` with `false → 'private'` and `true → 'public'` (no row has `visibility = 'followers'`)
+  2. The `notifications` table exists with `id`, `user_id`, `type`, `payload`, `read_at`, `created_at`; a partial index on `(user_id) WHERE read_at IS NULL` exists; RLS allows recipients to SELECT/UPDATE only their own rows; no INSERT policy exists for anon key
+  3. The `wear-photos` Supabase Storage bucket exists as private; Storage RLS on `storage.objects` enforces three-tier access: owner always, public-visibility unsigned OK, followers-visibility requires follow relationship, private-visibility owner only; direct URL access to a private wear photo in incognito returns 403
+  4. `pg_trgm` extension is enabled in Supabase; GIN trigram indexes exist on `profiles.username` and `profiles.bio`; a query plan for `username ILIKE '%query%'` shows an index scan, not a seq scan
+  5. `users`, `watches`, and `user_preferences` tables all have RLS policies using the `(SELECT auth.uid())` InitPlan-optimized pattern; every UPDATE policy has both `USING` and `WITH CHECK` clauses
+**Plans**: TBD
+**Pitfalls to address**: G-6 (backfill direction), F-1 (Storage RLS separate system), F-4 (folder enforcement in storage path), C-1 (pg_trgm must be in migration not dashboard click), B-4 (notifications SELECT recipient-only), B-9 (no-self-notification CHECK), B-3 (unique constraint for dedup), B-7 (ON DELETE CASCADE for orphan cleanup), DEBT-02 (WITH CHECK on all UPDATE policies)
+
+---
+
+### Phase 12: Visibility Ripple in DAL
+**Goal**: Every existing function that reads `wear_events` for non-owner viewers correctly enforces the three-tier visibility gate so followers-only wears are never exposed publicly.
+**Depends on**: Phase 11 (visibility column and enum must exist)
+**Requirements**: WYWT-10
+**Success Criteria** (what must be TRUE):
+  1. `getPublicWearEventsForViewer` returns a wear event with `visibility = 'followers'` only when the viewer follows the actor; the same event is invisible to a stranger; `worn_public` boolean is no longer the gate
+  2. `getWearRailForViewer` home rail includes followers-only tiles only for followed actors; a user with `worn_public = true` but `visibility = 'followers'` on a wear event does not expose that event to non-followers
+  3. `getFeedForUser` activity rows for `watch_worn` events respect per-row visibility drawn from activity metadata; no JOIN to `wear_events` is needed on the feed hot path
+  4. The profile worn tab for a non-owner viewer calls a viewer-aware DAL function, not `getAllWearEventsByUser`; a private wear event on that profile does not appear in the viewer's rendered worn tab
+  5. Integration tests cover: (a) public wear visible to all, (b) followers-only wear visible to follower and invisible to stranger, (c) private wear visible only to owner — all three pass before this phase ships
+**Plans**: TBD
+**Pitfalls to address**: G-1 (audit all 8+ DAL functions before touching any), G-3 (wornPublic fallthrough removed), G-4 (profile_public outer gate preserved), G-5 (self-tile bypass unchanged), G-7 (visibility in activity metadata at write time), F-1 (table RLS does not protect Storage — separate), B-6 (no getCurrentUser inside use cache), privacy-first UAT rule from SUMMARY.md
+
+---
+
+### Phase 13: Notifications Foundation
+**Goal**: Collectors receive live notifications for follows and watch overlaps; the nav bell shows an unread count; the notifications inbox lets users mark all read.
+**Depends on**: Phase 11 (notifications table must exist)
+**Requirements**: NOTIF-02, NOTIF-03, NOTIF-04, NOTIF-05, NOTIF-06, NOTIF-07, NOTIF-08, NOTIF-09, NOTIF-10
+**Success Criteria** (what must be TRUE):
+  1. When User A follows User B, User B's notifications bell shows an unread dot on their next page load; the `/notifications` page lists a "User A started following you" row
+  2. When User A adds a watch that User B already owns (brand + model normalized match), User B receives a watch-overlap notification; User A does not receive a self-notification; adding the same watch twice within 30 days does not create a second overlap notification for User B
+  3. The notifications bell renders an unread dot when unread count > 0 and no dot when count = 0; the count is server-rendered per request without client-side polling
+  4. The `/notifications` page lists notifications newest-first with visual differentiation between read and unread rows; "Mark all read" sets all unread rows to read and the bell dot disappears on next render
+  5. Settings page exposes per-type opt-out toggles for "New followers" and "Watch overlaps"; toggling off prevents new notification inserts of that type; the notifications inbox shows "You're all caught up" copy when zero rows exist
+**Plans**: TBD
+**Pitfalls to address**: B-1 (bell count as isolated Suspense leaf), B-2 (fire-and-forget — failure never rolls back follow or addWatch), B-3 (dedup UNIQUE constraint + ON CONFLICT DO NOTHING), B-4 (recipient-only RLS SELECT policy), B-5 (Mark All Read operates on WHERE read_at IS NULL server-side, not a client-supplied list), B-6 (viewerId as explicit argument to any use cache wrapper), B-8 (unknown types render null, not broken card), B-9 (self-notification DB CHECK), B-7 (ON DELETE CASCADE verified in schema), A-1 (NotificationBell in its own Suspense leaf, not blocking page)
+**UI hint**: yes
+
+---
+
+### Phase 14: Nav Shell + Explore Stub
+**Goal**: Every route in the app is reachable from a single-tap navigation frame; the production desktop top nav and mobile bottom nav replace the v2.0 placeholder nav; the Explore stub closes the only broken nav link.
+**Depends on**: Phase 13 (unread count DAL must exist for bell wiring in nav)
+**Requirements**: NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-06, NAV-07, NAV-08, NAV-09, NAV-10, NAV-11, NAV-12, DEBT-01
+**Success Criteria** (what must be TRUE):
+  1. On a mobile viewport (< 768px) a sticky bottom nav with five items (Home, Explore, Wear, Add, Profile) is always visible regardless of scroll position; the centered Wear item has a cradle/notch visual treatment; tapping Wear opens `WatchPickerDialog`
+  2. On iOS (Face ID device), the bottom nav does not overlap the home indicator; content at the bottom of any page is not clipped behind the nav; `viewport-fit=cover` is present in the viewport meta tag
+  3. The bottom nav and slim mobile top nav are absent on `/login`, `/signup`, and any pre-auth route; the desktop top nav contains logo, Explore link, persistent search input, Wear CTA, Add icon, notifications bell, and profile dropdown
+  4. The active route in the bottom nav shows a filled icon in accent color; tapping the Add icon in either the desktop or mobile nav routes to `/watch/new`; the old `MobileNav` hamburger component is removed from the codebase
+  5. `/explore` renders a "coming soon" placeholder page; no nav link produces a 404; the desktop profile dropdown consolidates profile link, settings, theme toggle, and sign out; preference save failures surface a visible error message to the user (DEBT-01)
+**Plans**: TBD
+**Pitfalls to address**: A-1 (BottomNav inside Suspense boundary, not bare body), A-2 (usePathname hydration — client component for active state), A-3 (iOS safe-area-inset on nav and main), A-4 (auth route exclusion), A-5 (inline theme script contract unchanged), I-2 (WatchPickerDialog not forked — extend via props only), B-1 (bell count rendered as isolated Suspense leaf)
+**UI hint**: yes
+
+---
+
+### Phase 15: WYWT Photo Post Flow
+**Goal**: Collectors can log a wear event with a wrist photo, note, and three-tier visibility in a two-step modal; the photo is stored securely in Supabase Storage; a Sonner toast confirms success; wear detail is viewable at a permanent URL.
+**Depends on**: Phase 11 (schema), Phase 12 (visibility ripple in place), Phase 14 (WywtPostDialog orchestration shell and WatchPickerDialog onWatchSelected prop)
+**Requirements**: WYWT-01, WYWT-02, WYWT-03, WYWT-04, WYWT-05, WYWT-06, WYWT-07, WYWT-08, WYWT-12, WYWT-15, WYWT-16, WYWT-17, WYWT-18, WYWT-19
+**Success Criteria** (what must be TRUE):
+  1. Tapping the Wear CTA opens a two-step modal: Step 1 shows the existing `WatchPickerDialog`; selecting a watch advances to Step 2 with a "Change" link returning to Step 1
+  2. Step 2 offers "Take Wrist Shot" (camera with dotted oval overlay) and "Upload Photo" (file picker with HEIC support); both are optional; submitting with no photo is valid; the note textarea shows a live `0/200` character counter
+  3. All captured or uploaded images are resized to a max 1080px dimension and EXIF-stripped via canvas re-encode before upload; a photo uploaded from iOS camera roll with EXIF GPS data has no GPS metadata in the stored file (verified with exiftool)
+  4. The visibility selector shows Private, Followers, and Public with Public as the default; a successful wear post triggers a "Wear logged" Sonner toast; the same (user, watch, calendar day) combination cannot be logged twice — a clear error appears on the second attempt
+  5. `/wear/[wearEventId]` shows the wear detail (image, watch, collector, note, timestamp) gated by three-tier visibility; a stranger gets a uniform 404 for private and followers-only wear events; the WYWT rail tile tap continues to open the Reels-style overlay from Phase 10
+**Plans**: TBD
+**Pitfalls to address**: D-1 (getUserMedia must be first await on iOS gesture — no awaits before it), D-2 (MediaStream cleanup on unmount), D-3 (camera permission denied UX), D-4 (canvas resize before upload — target < 500KB), D-5 (overlay relative units), E-1 (heic2any lazy-loaded in Web Worker — never eager import), E-2 (EXIF orientation before canvas draw — research flag: createImageBitmap vs exifr), E-3 (server-side storage path validation in Server Action), E-4 (EXIF stripped on ALL paths including camera), F-2 (signed URLs generated per-request, never in cached components), F-3 (orphan storage cleanup if row insert fails), F-4 (path convention {userId}/{wearEventId}.jpg enforced), H-1 (Toaster outside Suspense boundaries), H-2 (toast called from Client Component not Server Action), H-3 (Toaster uses custom ThemeProvider wrapper not next-themes scaffold)
+**UI hint**: yes
+
+---
+
+### Phase 16: People Search
+**Goal**: Collectors can search for other collectors by username or bio with live debounced results, taste overlap percentage, and inline follow actions.
+**Depends on**: Phase 11 (pg_trgm indexes must exist)
+**Requirements**: SRCH-01, SRCH-02, SRCH-03, SRCH-04, SRCH-05, SRCH-06, SRCH-07
+**Success Criteria** (what must be TRUE):
+  1. `/search` renders four tabs (All, Watches, People, Collections); Watches and Collections tabs show "coming soon" copy with no query firing; People tab shows suggested collectors before any query is typed
+  2. Typing a query shorter than 2 characters fires no search request; at 2+ characters the input debounces 250ms then executes; results are ordered by taste overlap % descending then username ascending, limited to 20 rows
+  3. Each result row shows username, bio snippet, taste overlap percentage, and an inline FollowButton; tapping Follow/Unfollow updates button state without a full page reload
+  4. Searching for a user whose `profile_public = false` returns 0 results for a non-follower; private profiles do not leak through the search surface
+  5. When the search returns no matches, the "No results" state shows suggested collectors from the Phase 10 `getCollectorsLikeUser` DAL as a discovery surface
+**Plans**: TBD
+**Pitfalls to address**: C-1 (pg_trgm from Phase 11 — verified by EXPLAIN ANALYZE showing index scan), C-2 (2-char minimum enforced server-side in DAL, not only client), C-3 (profile_public WHERE clause in searchProfiles DAL — two-layer), C-4 (batched isFollowing lookup — no N+1, same pattern as v2.0 Suggested Collectors), C-5 (bio search minimum-length guard for bio matches)
+**UI hint**: yes
+
+---
 
 ## Backlog
 
@@ -56,8 +157,17 @@ Plans:
 
 ## Progress
 
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 11. Schema + Storage Foundation | 0/TBD | Not started | - |
+| 12. Visibility Ripple in DAL | 0/TBD | Not started | - |
+| 13. Notifications Foundation | 0/TBD | Not started | - |
+| 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
+| 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
+| 16. People Search | 0/TBD | Not started | - |
+
 | Milestone | Phases | Status | Shipped |
 |-----------|--------|--------|---------|
 | v1.0 MVP | 1-5 | ✅ Complete | 2026-04-19 |
 | v2.0 Taste Network Foundation | 6-10 | ✅ Complete | 2026-04-22 |
-| Next | TBD | 📋 Planning | - |
+| v3.0 Production Nav & Daily Wear Loop | 11-16 | In progress | - |

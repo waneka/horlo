@@ -140,14 +140,64 @@ Which phases cover which requirements. Updated by `gsd-roadmapper` during roadma
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (Populated by roadmapper) | | |
+| NAV-01 | Phase 14 | Pending |
+| NAV-02 | Phase 14 | Pending |
+| NAV-03 | Phase 14 | Pending |
+| NAV-04 | Phase 14 | Pending |
+| NAV-05 | Phase 14 | Pending |
+| NAV-06 | Phase 14 | Pending |
+| NAV-07 | Phase 14 | Pending |
+| NAV-08 | Phase 14 | Pending |
+| NAV-09 | Phase 14 | Pending |
+| NAV-10 | Phase 14 | Pending |
+| NAV-11 | Phase 14 | Pending |
+| NAV-12 | Phase 14 | Pending |
+| NOTIF-01 | Phase 11 | Pending |
+| NOTIF-02 | Phase 13 | Pending |
+| NOTIF-03 | Phase 13 | Pending |
+| NOTIF-04 | Phase 13 | Pending |
+| NOTIF-05 | Phase 13 | Pending |
+| NOTIF-06 | Phase 13 | Pending |
+| NOTIF-07 | Phase 13 | Pending |
+| NOTIF-08 | Phase 13 | Pending |
+| NOTIF-09 | Phase 13 | Pending |
+| NOTIF-10 | Phase 13 | Pending |
+| SRCH-01 | Phase 16 | Pending |
+| SRCH-02 | Phase 16 | Pending |
+| SRCH-03 | Phase 16 | Pending |
+| SRCH-04 | Phase 16 | Pending |
+| SRCH-05 | Phase 16 | Pending |
+| SRCH-06 | Phase 16 | Pending |
+| SRCH-07 | Phase 16 | Pending |
+| SRCH-08 | Phase 11 | Pending |
+| WYWT-01 | Phase 15 | Pending |
+| WYWT-02 | Phase 15 | Pending |
+| WYWT-03 | Phase 15 | Pending |
+| WYWT-04 | Phase 15 | Pending |
+| WYWT-05 | Phase 15 | Pending |
+| WYWT-06 | Phase 15 | Pending |
+| WYWT-07 | Phase 15 | Pending |
+| WYWT-08 | Phase 15 | Pending |
+| WYWT-09 | Phase 11 | Pending |
+| WYWT-10 | Phase 12 | Pending |
+| WYWT-11 | Phase 11 | Pending |
+| WYWT-12 | Phase 15 | Pending |
+| WYWT-13 | Phase 11 | Pending |
+| WYWT-14 | Phase 11 | Pending |
+| WYWT-15 | Phase 15 | Pending |
+| WYWT-16 | Phase 15 | Pending |
+| WYWT-17 | Phase 15 | Pending |
+| WYWT-18 | Phase 15 | Pending |
+| WYWT-19 | Phase 15 | Pending |
+| DEBT-01 | Phase 14 | Pending |
+| DEBT-02 | Phase 11 | Pending |
 
 **Coverage:**
-- v3.0 requirements: 41 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 41 ⚠️
+- v3.0 requirements: 51 total
+- Mapped to phases: 51
+- Unmapped: 0 ✓
 
 ---
 
 *Requirements defined: 2026-04-21*
-*Last updated: 2026-04-21 — initial v3.0 definition (post-research, post-discuss)*
+*Last updated: 2026-04-21 — traceability table populated by gsd-roadmapper; 51/51 requirements mapped across Phases 11-16*
