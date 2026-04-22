@@ -27,7 +27,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
 - [ ] **Phase 7: Social Schema & Profile Auto-Creation** - Five new tables land with full RLS, profile rows auto-created on signup
 - [ ] **Phase 8: Self Profile & Privacy Controls** - Collector's own profile page with all tabs, privacy settings surface
 - [ ] **Phase 9: Follow System & Collector Profiles** - Follow/unfollow, public collector profile view, Common Ground taste overlap
-- [ ] **Phase 10: Network Home** - Five-section authenticated home: WYWT rail (follow-network wear events, last 48h) · From Collectors Like You (rule-based recs) · Network Activity feed · Personal Insights · Suggested Collectors
+- [x] **Phase 10: Network Home** - Five-section authenticated home: WYWT rail (follow-network wear events, last 48h) · From Collectors Like You (rule-based recs) · Network Activity feed · Personal Insights · Suggested Collectors (completed 2026-04-22)
 
 ## Phase Details
 
@@ -134,7 +134,7 @@ Plans:
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 8/9 plans executed
+**Plans:** 9/9 plans complete
 
 See `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` for full context.
 
@@ -152,4 +152,4 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Network Home | 9/9 | Completed | 2026-04-22 |
+| 10. Network Home | 9/9 | Complete   | 2026-04-22 |

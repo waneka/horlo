@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
-status: executing
-stopped_at: Completed 10-08-PLAN.md (5-section home + NavWearButton); ready to execute 10-09-PLAN.md
-last_updated: "2026-04-22T00:56:42.715Z"
+status: verifying
+stopped_at: Completed 10-09-PLAN.md — Phase 10 ready for /gsd-verify-work (prod RLS migration push + UAT)
+last_updated: "2026-04-22T01:08:33.725Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 20
-  percent: 95
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 
 Phase: 10 (activity-feed) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-22
 
 ## Progress Bar
@@ -57,6 +57,7 @@ Phase 10 [          ] Not started
 | Phase 10 P06 | 14min | 4 tasks | 11 files |
 | Phase 10 P07 | ~8 min | 3 tasks | 15 files |
 | Phase 10 P08 | ~5 min | 3 tasks | 4 files |
+| Phase 10 P09 | 14min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Phase 10 [          ] Not started
 | Phase 10 Plan 07 Sleeping Beauty ordering vs rendering split | `effectiveDays` (`+Infinity` for never-worn watches) is the ORDERING key in PersonalInsightsGrid; `lastWornDate` is the RENDER key passed to SleepingBeautyCard. The card branches on `lastWornDate === null` to render 'Never worn' literal instead of fabricating a day count. Avoids '999 days unworn' leaking into the UI. |
 | Phase 10 Plan 07 LoadMoreSuggestionsButton mirrors Plan 05 LoadMoreButton byte-for-byte | Same state machine (cursor + appendedRows + error + useTransition), same error copy 'Couldn't load more. Tap to retry.', same aria-label cycle. Both Load More controls on the home therefore feel identical to the user. Plan 05's pattern is now the canonical Load More shape for Phase 10. |
 | Phase 10 Plan 07 SuggestedCollectorRow reuses Phase 9 FollowButton without modification | `variant='inline'` + `initialIsFollowing={false}` always (DAL excludes followed users via notInArray, T-10-04-02). No Suggested-specific variant added. Row link + FollowButton click isolation via absolute-inset `<Link>` overlay + button `relative z-10` — same canonical pattern as Plan 05 ActivityRow F-03. |
+| Phase 10 Plan 09 WYWT DAL privacy hardening | Non-self branch of `getWearRailForViewer` now requires BOTH `profile_public=true` AND `worn_public=true` (was `worn_public` only). Caught by the E2E privacy test — an actor with `profile_public=false` + `worn_public=true` (legal via settings UI) would leak wear events to followers. Rule 2 critical correctness fix. Self-include branch unchanged (viewer always sees own wear). |
+| Phase 10 Plan 09 docs scope alignment | REQUIREMENTS.md + ROADMAP.md updated to reflect the 5-section shipped scope: FEED-05 added to Activity Feed; WYWT-03 / DISC-02 / DISC-04 promoted from Future Requirements to a new v2.0 'Network Home' subsection; traceability table extended with 4 Phase 10 rows; coverage 31 → 35; Phase 10 renamed 'Network Home' with 9 Success Criteria covering L-01 / F-05 / F-06 / F-08 / W-01 / C-02 / I-04 / S-01 / N-02. |
+| Phase 10 Plan 09 trigger-aware integration seeding | Phase 7's `on_public_user_created` trigger auto-creates profiles + profile_settings rows on every public.users insert. New integration tests that need deterministic usernames or non-default privacy must UPDATE the trigger-generated rows (not INSERT) to avoid PK collisions. Documented in-file via block comment; canonical pattern for `tests/integration/*`. |
 
 ### Critical Pitfalls (from research)
 
@@ -116,7 +120,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T00:56:42.711Z
-Stopped at: Completed 10-08-PLAN.md (5-section home + NavWearButton); ready to execute 10-09-PLAN.md
+Last session: 2026-04-22T01:08:33.721Z
+Stopped at: Completed 10-09-PLAN.md — Phase 10 ready for /gsd-verify-work (prod RLS migration push + UAT)
 Resume file: None
 Next action: `/gsd-plan-phase 6`

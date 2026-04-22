@@ -43,13 +43,13 @@ Requirements for Taste Network Foundation milestone. Each maps to roadmap phases
 - [x] **FEED-02**: Activity feed shows watch_added, wishlist_added, and watch_worn events
 - [x] **FEED-03**: Activity feed uses keyset pagination for efficient loading
 - [x] **FEED-04**: Bulk imports generate a single aggregated activity event (not one per watch)
-- [ ] **FEED-05**: Home page surfaces up to 4 personal insight cards (Sleeping Beauty, Most Worn This Month, Wishlist Gap, Common Ground with a follower)
+- [x] **FEED-05**: Home page surfaces up to 4 personal insight cards (Sleeping Beauty, Most Worn This Month, Wishlist Gap, Common Ground with a follower)
 
 ### Network Home
 
 - [ ] **WYWT-03**: WYWT rail on home page showing followed users' wear events (last 48h, one tile per actor)
-- [ ] **DISC-02**: "From collectors like you" recommendations on home based on rule-based overlap + co-occurrence
-- [ ] **DISC-04**: Suggested collectors on home ordered by taste overlap
+- [x] **DISC-02**: "From collectors like you" recommendations on home based on rule-based overlap + co-occurrence
+- [x] **DISC-04**: Suggested collectors on home ordered by taste overlap
 
 ### Privacy & Settings
 
@@ -144,13 +144,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOLL-04 | Phase 9 | Pending |
 | PROF-08 | Phase 9 | Pending |
 | PROF-09 | Phase 9 | Pending |
-| DISC-02 | Phase 10 | Pending |
-| DISC-04 | Phase 10 | Pending |
+| DISC-02 | Phase 10 | Complete |
+| DISC-04 | Phase 10 | Complete |
 | FEED-01 | Phase 10 | Complete |
 | FEED-02 | Phase 10 | Complete |
 | FEED-03 | Phase 10 | Complete |
 | FEED-04 | Phase 10 | Complete |
-| FEED-05 | Phase 10 | Pending |
+| FEED-05 | Phase 10 | Complete |
 | WYWT-03 | Phase 10 | Complete |
 
 **Coverage:**
