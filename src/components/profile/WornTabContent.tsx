@@ -63,6 +63,21 @@ export function WornTabContent({
     [events, filterWatchId],
   )
 
+  // Phase 12 (WYWT-10): per-row visibility means an empty events array is the
+  // correct empty state for non-owners who can't see any wears. The LockedTabCard
+  // worn branch was removed from the page; this empty state handles zero-visibility
+  // gracefully for both owners with no wear history and non-owners with no visible wears.
+  // Note: this check is placed after hooks to comply with React's Rules of Hooks.
+  if (events.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        {isOwner
+          ? 'No wear events yet — log your first wear from the Collection tab.'
+          : 'No public wear events to show.'}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

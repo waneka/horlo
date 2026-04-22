@@ -104,15 +104,12 @@ export default async function ProfileTabPage({
       />
     )
   }
-  if (tab === 'worn' && !isOwner && !settings.wornPublic) {
-    return (
-      <LockedTabCard
-        tab="worn"
-        displayName={displayName}
-        username={profile.username}
-      />
-    )
-  }
+  // Phase 12 (WYWT-10): worn-tab LockedTabCard branch removed. Per-row
+  // visibility (wear_events.visibility) means non-owner viewers now see a
+  // pre-filtered list — empty array → WornTabContent's empty state. The
+  // tab-level lock is unreachable now that per-row gating runs at the DAL
+  // layer (getWearEventsForViewer in src/data/wearEvents.ts).
+
   // WR-01: Notes surface the underlying watch (brand/model/image + link),
   // so gating only on per-note notesPublic leaks the collection through a
   // side channel whenever the owner has hidden their collection. Mirror the
@@ -195,8 +192,8 @@ export default async function ProfileTabPage({
   }
 
   // tab === 'stats' — collection-derived, so it follows collection_public for non-owners.
-  // Wear data is gated separately via getPublicWearEventsForViewer (returns [] when
-  // worn_public=false for non-owner) — stats render with 0 wear counts in that case.
+  // Wear data is gated separately via getWearEventsForViewer (Phase 12 WYWT-10: returns
+  // only per-row visible events for non-owners) — stats render with visible events only.
   if (!isOwner && !settings.collectionPublic) {
     return (
       <LockedTabCard
