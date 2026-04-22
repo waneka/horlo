@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import * as watchDAL from '@/data/watches'
 import { logActivity } from '@/data/activities'
-import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { Watch } from '@/lib/types'
 

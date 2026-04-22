@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import * as preferencesDAL from '@/data/preferences'
-import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { UserPreferences } from '@/lib/types'
 
