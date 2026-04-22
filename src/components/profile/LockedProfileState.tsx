@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Lock } from 'lucide-react'
 import { AvatarDisplay } from './AvatarDisplay'
 import { FollowButton } from './FollowButton'
@@ -36,7 +37,19 @@ export function LockedProfileState(props: LockedProfileStateProps) {
             </p>
           )}
           <p className="mt-2 text-sm text-muted-foreground">
-            {props.followerCount} followers · {props.followingCount} following
+            <Link
+              href={`/u/${props.username}/followers`}
+              className="hover:underline"
+            >
+              {props.followerCount} followers
+            </Link>
+            {' · '}
+            <Link
+              href={`/u/${props.username}/following`}
+              className="hover:underline"
+            >
+              {props.followingCount} following
+            </Link>
           </p>
         </div>
       </header>

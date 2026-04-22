@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AvatarDisplay } from './AvatarDisplay'
 import { TasteTagPill } from './TasteTagPill'
@@ -67,8 +68,21 @@ export function ProfileHeader(props: ProfileHeaderProps) {
             </p>
           )}
           <p className="mt-3 text-sm text-muted-foreground">
-            {props.followerCount} followers · {props.followingCount} following
-            · {props.watchCount} watches · {props.wishlistCount} wishlist
+            <Link
+              href={`/u/${props.username}/followers`}
+              className="hover:underline"
+            >
+              {props.followerCount} followers
+            </Link>
+            {' · '}
+            <Link
+              href={`/u/${props.username}/following`}
+              className="hover:underline"
+            >
+              {props.followingCount} following
+            </Link>
+            {' · '}
+            {props.watchCount} watches · {props.wishlistCount} wishlist
           </p>
           {props.tasteTags.length > 0 && (
             <ul className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
