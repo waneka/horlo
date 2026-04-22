@@ -37,6 +37,10 @@ function makeWearChain() {
       calls.push({ op: 'wear.innerJoin', args })
       return chain
     },
+    leftJoin: (...args: unknown[]) => {
+      calls.push({ op: 'wear.leftJoin', args })
+      return chain
+    },
     where: (...args: unknown[]) => {
       calls.push({ op: 'wear.where', args })
       return chain
@@ -203,6 +207,70 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
       note: 'heritage day',
       isSelf: false,
     })
+  })
+
+  // Phase 12 — new tests asserting the updated SQL shape after the visibility
+  // ripple lands. These FAIL in current code (which still uses wornPublic and
+  // has no leftJoin) and PASS after Plan 02 rewrites getWearRailForViewer.
+
+  it('Unit 9 (Phase 12): wear query attaches exactly one leftJoin against follows', async () => {
+    await getWearRailForViewer(VIEWER)
+    const leftJoinOps = calls.filter((c) => c.op === 'wear.leftJoin')
+    expect(leftJoinOps).toHaveLength(1)
+  })
+
+  it('Unit 10 (Phase 12): where clause contains no reference to wornPublic', async () => {
+    await getWearRailForViewer(VIEWER)
+    const whereCall = calls.find((c) => c.op === 'wear.where')
+    expect(whereCall).toBeDefined()
+    // Collect all Drizzle column `name` values (the SQL column names) from the
+    // WHERE args to check that worn_public is not referenced. Drizzle column
+    // objects carry their SQL name in `.name`; we walk the args tree skipping
+    // circular refs to collect all `.name` strings.
+    const columnNames = new Set<string>()
+    const seen = new WeakSet()
+    function collectNames(val: unknown): void {
+      if (!val || typeof val !== 'object') return
+      if (seen.has(val as object)) return
+      seen.add(val as object)
+      const obj = val as Record<string, unknown>
+      if (typeof obj.name === 'string' && typeof obj.columnType === 'string') {
+        columnNames.add(obj.name as string)
+      }
+      for (const v of Object.values(obj)) collectNames(v)
+    }
+    collectNames(whereCall!.args)
+    expect(columnNames.has('worn_public')).toBe(false)
+  })
+
+  it('Unit 11 (Phase 12): select projection contains no wornPublic field', async () => {
+    await getWearRailForViewer(VIEWER)
+    // The second select() call is the wear query (first is the follows resolution).
+    const selects = calls.filter((c) => c.op === 'select')
+    const wearSelect = selects[1]
+    expect(wearSelect).toBeDefined()
+    // Collect SQL column names from the select projection args.
+    const columnNames = new Set<string>()
+    const seen = new WeakSet()
+    function collectNames(val: unknown): void {
+      if (!val || typeof val !== 'object') return
+      if (seen.has(val as object)) return
+      seen.add(val as object)
+      const obj = val as Record<string, unknown>
+      if (typeof obj.name === 'string' && typeof obj.columnType === 'string') {
+        columnNames.add(obj.name as string)
+      }
+      for (const v of Object.values(obj)) collectNames(v)
+    }
+    collectNames(wearSelect.args)
+    // The JS key in the select object is 'wornPublic'; the SQL column name is
+    // 'worn_public'. Both are prohibited in the new select projection.
+    // We check the JS projection keys too (from the select arg shape).
+    const projectionKeys = Object.keys(
+      (wearSelect.args[0] as Record<string, unknown>) ?? {},
+    )
+    expect(projectionKeys).not.toContain('wornPublic')
+    expect(columnNames.has('worn_public')).toBe(false)
   })
 })
 
