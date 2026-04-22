@@ -9,7 +9,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  cacheComponents: true, // Phase 10: enables `'use cache'` directive (Pitfall 12). Required by src/components/home/CollectorsLikeYou.tsx.
+  experimental: {
+    cacheComponents: true, // Phase 10: enables `'use cache'` directive (Pitfall 12). Required by src/components/home/CollectorsLikeYou.tsx.
+  },
 }
 
 export default nextConfig

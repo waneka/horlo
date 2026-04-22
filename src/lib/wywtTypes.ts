@@ -3,6 +3,8 @@
 // Type-only module with zero runtime cost. The DAL (src/data/wearEvents.ts
 // getWearRailForViewer) returns WywtRailData; the UI renders each WywtTile.
 
+import type { WearVisibility } from '@/lib/wearVisibility'
+
 /**
  * A single rail tile. Represents the most-recent-per-actor wear event for
  * the viewer or one of the viewer's followings within the 48h rolling
@@ -23,6 +25,8 @@ export interface WywtTile {
   imageUrl: string | null
   wornDate: string // ISO date 'YYYY-MM-DD'
   note: string | null
+  /** Three-tier visibility tier this tile came from (Phase 12 / WYWT-10). */
+  visibility: WearVisibility
   /** True when this tile is the viewer's own (renders as self-tile with edit affordance). */
   isSelf: boolean
 }

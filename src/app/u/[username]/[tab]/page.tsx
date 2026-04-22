@@ -7,7 +7,7 @@ import {
 import { getWatchesByUser } from '@/data/watches'
 import {
   getMostRecentWearDates,
-  getPublicWearEventsForViewer,
+  getWearEventsForViewer,
   getAllWearEventsByUser,
 } from '@/data/wearEvents'
 import { getPreferencesByUser } from '@/data/preferences'
@@ -165,9 +165,9 @@ export default async function ProfileTabPage({
   }
 
   if (tab === 'worn') {
-    // DAL visibility gate (PRIV-05): even when wornPublic=true, going through
-    // this DAL ensures the application layer always rechecks before returning rows.
-    const events = await getPublicWearEventsForViewer(viewerId, profile.id)
+    // DAL visibility gate (PRIV-05 / Phase 12 WYWT-10): three-tier predicate;
+    // owner bypass handled inside getWearEventsForViewer.
+    const events = await getWearEventsForViewer(viewerId, profile.id)
     const watches = await getWatchesByUser(profile.id)
     const watchMap = Object.fromEntries(
       watches.map((w) => [
@@ -210,7 +210,7 @@ export default async function ProfileTabPage({
   const ownedAll = watches.filter((w) => w.status === 'owned')
   const events = isOwner
     ? await getAllWearEventsByUser(profile.id)
-    : await getPublicWearEventsForViewer(viewerId, profile.id)
+    : await getWearEventsForViewer(viewerId, profile.id)
   const wearCount = wearCountByWatchMap(events)
   // Build WatchWithWear list — populate lastWornDate from the first (most-recent) event per watch.
   const ownedWithWear: WatchWithWear[] = ownedAll.map((w) => {

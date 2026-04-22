@@ -2,8 +2,9 @@ import 'server-only'
 
 import { db } from '@/db'
 import { wearEvents, profileSettings, follows, profiles, watches } from '@/db/schema'
-import { eq, and, desc, inArray, gte, or } from 'drizzle-orm'
+import { eq, and, desc, inArray, gte, or, sql } from 'drizzle-orm'
 import type { WywtTile, WywtRailData } from '@/lib/wywtTypes'
+import type { WearVisibility } from '@/lib/wearVisibility'
 
 export async function logWearEvent(
   userId: string,
@@ -77,58 +78,102 @@ export async function getAllWearEventsByUser(userId: string) {
 }
 
 /**
- * DAL visibility gate (D-15, PRIV-05). Two-layer enforcement:
- *   - RLS on wear_events (Phase 7) is owner-only at the DB level — direct
- *     anon-key clients cannot read another user's events.
- *   - This DAL gate guards the postgres-role connection used by server-rendered
- *     pages: when viewer != owner AND owner.wornPublic is false, returns [].
- * Owner always sees their own events.
+ * Three-tier viewer-aware wear-event reader (Phase 12 D-03 / WYWT-10).
+ *
+ * Replaces the v2.0 `getPublicWearEventsForViewer` which gated on
+ * `profile_settings.worn_public`. The new gate is per-row
+ * `wear_events.visibility`:
+ *
+ *   - 'public'    — visible to anyone when actor.profile_public = true
+ *   - 'followers' — visible only when viewer follows actor (G-3 directional;
+ *                   variable name `viewerFollowsActor` to avoid the inverted
+ *                   follow direction footgun) AND actor.profile_public = true
+ *   - 'private'   — visible only to the actor themselves (self-bypass G-5)
+ *
+ * Two-layer privacy (v2.0 D-15 → Phase 12):
+ *   - OUTER gate: RLS on wear_events (Phase 7) is owner-only at anon-key
+ *   - INNER gate: this WHERE clause for the postgres-role connection used
+ *     by server-rendered pages
+ *
+ * G-4 outer profile_public gate is preserved on every non-owner branch:
+ * a `visibility='public'` wear by a `profile_public=false` actor is
+ * invisible to non-owner viewers.
  */
-export async function getPublicWearEventsForViewer(
+export async function getWearEventsForViewer(
   viewerUserId: string | null,
-  profileUserId: string
+  profileUserId: string,
 ) {
-  if (viewerUserId !== profileUserId) {
-    const settings = await db
-      .select({ wornPublic: profileSettings.wornPublic })
-      .from(profileSettings)
-      .where(eq(profileSettings.userId, profileUserId))
-      .limit(1)
-    // Missing settings row → defaults to public (matches getProfileSettings default)
-    const wornPublic = settings[0]?.wornPublic ?? true
-    if (!wornPublic) return []
+  // Self bypass (G-5): owner sees ALL their wears regardless of visibility.
+  if (viewerUserId === profileUserId) {
+    return getAllWearEventsByUser(profileUserId)
   }
-  return getAllWearEventsByUser(profileUserId)
+
+  // Resolve viewer→owner follow relationship as a single boolean.
+  // (For per-profile fetch, the follow check is one row, not per-event;
+  // this is cheaper than a leftJoin per the canonical pattern.)
+  let viewerFollowsActor = false
+  if (viewerUserId) {
+    const followRows = await db
+      .select({ id: follows.id })
+      .from(follows)
+      .where(
+        and(
+          eq(follows.followerId, viewerUserId),
+          eq(follows.followingId, profileUserId),
+        ),
+      )
+      .limit(1)
+    viewerFollowsActor = followRows.length > 0
+  }
+
+  // Three-tier predicate composed inline. Drizzle does not compose `or`/`and`
+  // through TS helpers cleanly (RESEARCH "Don't Hand-Roll" recommendation),
+  // so the predicate lives at the call site with comments tracking pitfalls.
+  const visibilityPredicate = viewerFollowsActor
+    ? or(
+        eq(wearEvents.visibility, 'public'),
+        eq(wearEvents.visibility, 'followers'),
+      )
+    : eq(wearEvents.visibility, 'public')
+
+  const rows = await db
+    .select({
+      id: wearEvents.id,
+      userId: wearEvents.userId,
+      watchId: wearEvents.watchId,
+      wornDate: wearEvents.wornDate,
+      note: wearEvents.note,
+      photoUrl: wearEvents.photoUrl,
+      visibility: wearEvents.visibility,
+      createdAt: wearEvents.createdAt,
+    })
+    .from(wearEvents)
+    .innerJoin(profileSettings, eq(profileSettings.userId, wearEvents.userId))
+    .where(
+      and(
+        eq(wearEvents.userId, profileUserId),
+        eq(profileSettings.profilePublic, true), // G-4 outer gate
+        visibilityPredicate,
+      ),
+    )
+    .orderBy(desc(wearEvents.wornDate))
+
+  return rows
 }
 
 /**
  * WYWT rail DAL (CONTEXT.md W-01 / W-03 / W-07).
  *
- * Returns at most one WywtTile per actor:
- *   - viewer's own most-recent wear (within 48h) — always included (W-01),
- *   - plus each followed user's most-recent wear (within 48h) provided their
- *     profile_public AND worn_public are true (F-06 carries into WYWT —
- *     follows do NOT bypass privacy, and profile_public=false hides all
- *     activity from non-owner viewers regardless of worn_public).
- *
- * Single JOIN query to avoid N+1 across follows. Two-layer privacy:
- *   - OUTER gate: RLS on wear_events (Phase 7) is owner-only at anon-key.
- *   - INNER gate (this WHERE clause): self-include short-circuits; followed
- *     actors require BOTH profile_public=true AND worn_public=true. The
- *     profile_public branch mirrors the feed DAL F-06 outer-privacy gate
- *     — without it, a user who sets profile_public=false would still have
- *     their wear events leak through the rail on accounts that follow them.
- *
- * The 48h window is computed as the ISO date string of `now - 48h`. Because
- * wear_events.wornDate is TEXT 'YYYY-MM-DD', we compare `wornDate >= cutoff`
- * as a string comparison (lexicographically correct for ISO dates).
+ * Phase 12 ripple (WYWT-10): the per-tab `worn_public` boolean gate is
+ * replaced with the three-tier `wear_events.visibility` predicate. The
+ * outer `profile_public` gate (G-4) is preserved. The self-include
+ * short-circuit (G-5) is preserved. The follow relationship is checked
+ * per-row via a leftJoin (G-3 directional: viewer → actor).
  */
 export async function getWearRailForViewer(viewerId: string): Promise<WywtRailData> {
-  // 1. Compute the 48h-ago ISO date string.
   const cutoffMs = Date.now() - 48 * 60 * 60 * 1000
-  const cutoffDate = new Date(cutoffMs).toISOString().slice(0, 10) // YYYY-MM-DD
+  const cutoffDate = new Date(cutoffMs).toISOString().slice(0, 10)
 
-  // 2. Resolve the viewer's following-ids (may be empty).
   const followingRows = await db
     .select({ id: follows.followingId })
     .from(follows)
@@ -136,10 +181,6 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
   const followingIds = followingRows.map((r) => r.id)
   const actorIds = [viewerId, ...followingIds]
 
-  // 3. Single JOIN query. Privacy gate: viewer's own rows always pass;
-  //    followed-actor rows require BOTH profile_public=true AND
-  //    worn_public=true (two-layer per-tab privacy — F-06 outer gate +
-  //    W-01 worn-tab gate).
   const rows = await db
     .select({
       wearId: wearEvents.id,
@@ -148,11 +189,11 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
       wornDate: wearEvents.wornDate,
       note: wearEvents.note,
       createdAt: wearEvents.createdAt,
+      visibility: wearEvents.visibility, // Phase 12: tile carries tier
       username: profiles.username,
       displayName: profiles.displayName,
       avatarUrl: profiles.avatarUrl,
       profilePublic: profileSettings.profilePublic,
-      wornPublic: profileSettings.wornPublic,
       brand: watches.brand,
       model: watches.model,
       imageUrl: watches.imageUrl,
@@ -161,23 +202,34 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
     .innerJoin(profiles, eq(profiles.id, wearEvents.userId))
     .innerJoin(profileSettings, eq(profileSettings.userId, wearEvents.userId))
     .innerJoin(watches, eq(watches.id, wearEvents.watchId))
+    .leftJoin(
+      follows,
+      and(
+        eq(follows.followerId, viewerId),
+        eq(follows.followingId, wearEvents.userId),
+      ),
+    )
     .where(
       and(
         inArray(wearEvents.userId, actorIds),
         gte(wearEvents.wornDate, cutoffDate),
         or(
-          eq(wearEvents.userId, viewerId), // self-include bypasses all privacy
+          eq(wearEvents.userId, viewerId), // G-5 self bypass
           and(
-            eq(profileSettings.profilePublic, true), // F-06 outer gate
-            eq(profileSettings.wornPublic, true), // W-01 worn-tab gate
+            eq(profileSettings.profilePublic, true), // G-4 outer gate
+            or(
+              eq(wearEvents.visibility, 'public'),
+              and(
+                eq(wearEvents.visibility, 'followers'),
+                sql`${follows.id} IS NOT NULL`, // viewer follows actor (G-3)
+              ),
+            ),
           ),
         ),
       ),
     )
     .orderBy(desc(wearEvents.wornDate), desc(wearEvents.createdAt))
 
-  // 4. Dedupe to most-recent-per-actor. Rows are sorted wornDate DESC then
-  //    createdAt DESC, so the FIRST row per userId is the most recent.
   const byUser = new Map<string, (typeof rows)[number]>()
   for (const r of rows) {
     if (!byUser.has(r.userId)) byUser.set(r.userId, r)
@@ -195,6 +247,7 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
     imageUrl: r.imageUrl ?? null,
     wornDate: r.wornDate,
     note: r.note,
+    visibility: r.visibility as WearVisibility, // Phase 12: tile carries tier
     isSelf: r.userId === viewerId,
   }))
 
