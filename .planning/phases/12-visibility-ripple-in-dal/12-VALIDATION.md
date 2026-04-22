@@ -84,6 +84,7 @@ created: 2026-04-22
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | End-to-end UAT — three test accounts (owner/follower/stranger), wears at all three visibility tiers, rendering across home rail / profile worn tab / feed | WYWT-10 | Privacy-first UAT rule (per SUMMARY.md / v2.0 retrospective) — visual confirmation that no private/follower-only event leaks to a stranger's rendered surface | (1) Seed three test accounts; (2) follower follows owner, stranger does not; (3) owner logs three wears (public, followers, private); (4) verify each viewer's home rail, profile-of-owner worn tab, and feed; (5) confirm G-4 outer gate by toggling owner's `profile_public=false` — all wears should disappear from non-owner surfaces |
+| Wishlist add-from-rail three-tier gate | WYWT-10 | Server Action auth-context wiring for vitest is not trivially available; covered by manual UAT when V-15 cells are `.skip` | (1) As follower, hit a followers-only wear's add-to-wishlist; expect success. (2) As stranger, hit same; expect uniform `'Wear event not found'`. (3) As stranger, hit private wear; expect same uniform error. |
 | Settings UI no longer shows the `wornPublic` toggle | WYWT-11 / D-06 | Visual verification that the row is gone (grep covers source, but the rendered DOM is the user-facing truth) | Open `/settings` in dev; confirm no "Show worn timeline publicly" toggle row |
 
 ---
