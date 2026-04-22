@@ -1059,19 +1059,19 @@ Every non-verified claim in this research is listed here so the planner and disc
 
 **Nothing in this table is a privacy or correctness risk** — the two MEDIUM items are (A3) an empirical claim the planner can re-verify by reading one file, and nothing else. All security-critical claims (backfill mapping, storage RLS, recipient-only notifications, CHECK constraints) are either in CONTEXT.md decisions or derived from Pitfalls documents.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact partial-UNIQUE-index expression for `notifications` dedup — does `created_at::date` work, or does it need `(created_at AT TIME ZONE 'UTC')::date`?**
+1. **Exact partial-UNIQUE-index expression for `notifications` dedup — does `created_at::date` work, or does it need `(created_at AT TIME ZONE 'UTC')::date`?** — **RESOLVED:** Use `(created_at AT TIME ZONE 'UTC')::date` to avoid session-timezone surprises (reflected in Plan 02 Migration 2 SQL).
    - What we know: `created_at` is `timestamptz`; casting to `date` uses the session timezone.
    - What's unclear: Supabase's session defaults; whether mixing session timezones across services risks producing a different day bucket.
    - Recommendation: Use `(created_at AT TIME ZONE 'UTC')::date` explicitly. UTC-anchored day buckets are stable across callers. Added to §SQL Snippet 2.
 
-2. **Bio search minimum-length guard — DB trigger vs. DAL-only?**
+2. **Bio search minimum-length guard — DB trigger vs. DAL-only?** — **RESOLVED:** DAL-layer enforcement only (Phase 16 `searchProfiles` early-returns on `query.length < 4`). Phase 11 does not address this.
    - What we know: Pitfall C-5 recommends 4-char minimum for bio matches. Phase 16's `searchProfiles` DAL can enforce this with an early return on `query.length < 4`.
    - What's unclear: Whether there's any value in enforcing at the DB (no — Postgres doesn't have a concept of "query parameter length constraint").
    - Recommendation: **DAL-layer enforcement only.** Phase 11 does not address this; document it as a Phase 16 planner concern.
 
-3. **Should Phase 11 pre-populate `profile_settings.worn_public` entry for any user who doesn't have one?**
+3. **Should Phase 11 pre-populate `profile_settings.worn_public` entry for any user who doesn't have one?** — **RESOLVED:** Trust the Phase 7 auto-creation trigger (`20260420000002_profile_trigger.sql`). Users without a profile_settings row get `visibility = 'public'` via the column default — a safe failure mode matching the new-user global default.
    - What we know: The backfill JOIN (`FROM profile_settings ps WHERE ps.user_id = we.user_id`) will leave `wear_events.visibility = 'public'` (the default) for any wear_events row whose user has no profile_settings row.
    - What's unclear: Does every user have a profile_settings row? Phase 7's auto-creation trigger (`20260420000002_profile_trigger.sql`) should create one per user.
    - Recommendation: **Trust the trigger.** If the trigger is working (v2.0 retrospective confirms it is), every user has a profile_settings row. The default-public fallback is a safe failure mode (wears default to public visibility, which is also the global default for new users who haven't hidden anything).
