@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgEnum,
   uuid,
   text,
   integer,
@@ -11,6 +12,24 @@ import {
   unique,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+
+// ----- Phase 11: wear_visibility enum (WYWT-09) -----
+export const wearVisibilityEnum = pgEnum('wear_visibility', [
+  'public',
+  'followers',
+  'private',
+])
+
+// ----- Phase 11: notification_type enum (NOTIF-01, D-09) -----
+// All four values defined upfront even though `price_drop` and `trending_collector`
+// have no write-path in v3.0 (they're stubs per NOTIF-07). Pre-populating avoids
+// ALTER TYPE ADD VALUE in a later phase (non-transactional on Postgres).
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'follow',
+  'watch_overlap',
+  'price_drop',
+  'trending_collector',
+])
 
 // Shadow users table for FK integrity.
 // Supabase Auth owns the real user record; this table exists solely for foreign key references.
@@ -189,10 +208,33 @@ export const wearEvents = pgTable(
     watchId: uuid('watch_id').notNull().references(() => watches.id, { onDelete: 'cascade' }),
     wornDate: text('worn_date').notNull(), // ISO date string, e.g. '2026-04-19'
     note: text('note'),
+    // Phase 11 additions (WYWT-09):
+    photoUrl: text('photo_url'),
+    visibility: wearVisibilityEnum('visibility').notNull().default('public'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index('wear_events_watch_worn_at_idx').on(table.watchId, table.wornDate),
     unique('wear_events_unique_day').on(table.userId, table.watchId, table.wornDate),
   ]
+)
+
+// ----- Phase 11: notifications table (NOTIF-01) -----
+// Column shapes only. Partial indexes, CHECK constraints, dedup UNIQUE, and RLS
+// live in supabase/migrations/20260423000002_phase11_notifications.sql (D-08).
+// Drizzle-orm 0.45.2 cannot express partial indexes or CHECK constraints in the
+// pg-core DSL — raw SQL is authoritative for those. This table definition is the
+// source of truth for column types and type inference only.
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'cascade' }),
+    type: notificationTypeEnum('type').notNull(),
+    payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('notifications_user_id_idx').on(table.userId)],
 )
