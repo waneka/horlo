@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
-stopped_at: Completed 10-06-PLAN.md (WywtRail + WywtTile + WywtOverlay + WywtSlide + WatchPickerDialog + useViewedWears hook)
-last_updated: "2026-04-22T00:32:45.439Z"
+stopped_at: Completed 10-07-PLAN.md (CollectorsLikeYou + PersonalInsightsGrid + SuggestedCollectors + LoadMoreSuggestionsButton)
+last_updated: "2026-04-22T00:46:02.675Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 18
-  percent: 86
+  completed_plans: 19
+  percent: 90
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 ## Current Position
 
 Phase: 10 (activity-feed) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-04-22
 
@@ -55,6 +55,7 @@ Phase 10 [          ] Not started
 | Phase 10 P10-04 | ~9 min | 4 tasks | 11 files |
 | Phase 10 P05 | ~15 min | 3 tasks | 9 files |
 | Phase 10 P06 | 14min | 4 tasks | 11 files |
+| Phase 10 P07 | ~8 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,10 @@ Phase 10 [          ] Not started
 | Phase 10 Plan 06 WatchPickerDialog is a SINGLE shared component | Exported from `src/components/home/WatchPickerDialog.tsx` and consumed by BOTH the WYWT self-tile (Plan 06) and the nav `+ Wear` button (Plan 10-08). Pitfall 10 avoided. JSDoc at file top explicitly forbids forking; future call sites add a prop, never duplicate the component. |
 | Phase 10 Plan 06 jsdom polyfills added to tests/setup.ts | Node 25's native `localStorage` global (no method implementations) shadows jsdom's functional storage; jsdom 25.0.1 also lacks IntersectionObserver + ResizeObserver which embla-carousel-react requires. Added MemoryStorage + stub observers to `tests/setup.ts` (same pattern as existing `matchMedia` stub), guarded on "API missing" so future Node/jsdom versions that restore them do not double-install. |
 | Phase 10 Plan 06 WYWT overlay error UX is INLINE, not toast | Add-to-wishlist failure inside the focus-trapped overlay renders an inline `text-destructive` message + Retry button; markAsWorn failure inside the picker dialog renders an inline `role=alert` paragraph. Toasts would fire outside the focus trap and break WCAG focus management. Matches UI-SPEC error-placement intent. |
+| Phase 10 Plan 07 CollectorsLikeYou 'use cache' with viewerId prop | First line of the async function body is `'use cache'`, second line is `cacheLife('minutes')` (5min stale / 1min revalidate / 1hr expire per Next.js docs). viewerId flows as a function argument so Next.js serializes it into the cache key (Pitfall 7 / T-10-07-01 mitigation). Grep-verified absence of `getCurrentUser` in the cached component file. |
+| Phase 10 Plan 07 Sleeping Beauty ordering vs rendering split | `effectiveDays` (`+Infinity` for never-worn watches) is the ORDERING key in PersonalInsightsGrid; `lastWornDate` is the RENDER key passed to SleepingBeautyCard. The card branches on `lastWornDate === null` to render 'Never worn' literal instead of fabricating a day count. Avoids '999 days unworn' leaking into the UI. |
+| Phase 10 Plan 07 LoadMoreSuggestionsButton mirrors Plan 05 LoadMoreButton byte-for-byte | Same state machine (cursor + appendedRows + error + useTransition), same error copy 'Couldn't load more. Tap to retry.', same aria-label cycle. Both Load More controls on the home therefore feel identical to the user. Plan 05's pattern is now the canonical Load More shape for Phase 10. |
+| Phase 10 Plan 07 SuggestedCollectorRow reuses Phase 9 FollowButton without modification | `variant='inline'` + `initialIsFollowing={false}` always (DAL excludes followed users via notInArray, T-10-04-02). No Suggested-specific variant added. Row link + FollowButton click isolation via absolute-inset `<Link>` overlay + button `relative z-10` — same canonical pattern as Plan 05 ActivityRow F-03. |
 
 ### Critical Pitfalls (from research)
 
@@ -110,7 +115,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T00:32:45.433Z
-Stopped at: Completed 10-06-PLAN.md (WywtRail + WywtTile + WywtOverlay + WywtSlide + WatchPickerDialog + useViewedWears hook)
+Last session: 2026-04-22T00:46:02.672Z
+Stopped at: Completed 10-07-PLAN.md (CollectorsLikeYou + PersonalInsightsGrid + SuggestedCollectors + LoadMoreSuggestionsButton)
 Resume file: None
 Next action: `/gsd-plan-phase 6`

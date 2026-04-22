@@ -13,3 +13,5 @@
 **Recommended action:** Run `/gsd-docs-update` before closing Phase 10, or have the Phase 10 verifier add these as part of the final phase doc sweep.
 
 **Why not auto-fixed in Plan 10-04:** The doc mutation falls outside the data-layer scope of this plan. The plan's `requirements` frontmatter correctly declares these three IDs so the data-layer work is traceable; only the centralized REQUIREMENTS.md index lags.
+
+**Update 2026-04-22 (Plan 10-07 completion):** Plan 10-07 ships the UI for FEED-05, DISC-02, DISC-04 but again could not mark them complete in REQUIREMENTS.md because they still don't exist as v2.0 line-items. `gsd-tools requirements mark-complete` returned `not_found` for all three. Running `/gsd-docs-update` before the Phase 10 verifier pass is now the clear next step — both the data layer (Plan 04) and the UI layer (Plan 07) are landed and waiting for the traceability flip.
