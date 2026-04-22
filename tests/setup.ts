@@ -62,3 +62,63 @@ if (
     configurable: true,
   })
 }
+
+// jsdom does not implement IntersectionObserver — stub it so libraries like
+// embla-carousel-react (which observes slide-in-view for lazy rendering) do
+// not crash under test. The stub is a no-op that satisfies the constructor
+// signature; tests don't need real intersection semantics.
+if (
+  typeof window !== 'undefined' &&
+  typeof window.IntersectionObserver === 'undefined'
+) {
+  class StubIntersectionObserver implements IntersectionObserver {
+    readonly root: Element | Document | null = null
+    readonly rootMargin: string = ''
+    readonly thresholds: ReadonlyArray<number> = []
+    constructor(
+      _callback: IntersectionObserverCallback,
+      _options?: IntersectionObserverInit,
+    ) {}
+    observe(_target: Element): void {}
+    unobserve(_target: Element): void {}
+    disconnect(): void {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return []
+    }
+  }
+  Object.defineProperty(window, 'IntersectionObserver', {
+    value: StubIntersectionObserver,
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(globalThis, 'IntersectionObserver', {
+    value: StubIntersectionObserver,
+    writable: true,
+    configurable: true,
+  })
+}
+
+// jsdom does not implement ResizeObserver — stub it for the same reason as
+// IntersectionObserver. embla-carousel-react observes viewport size changes
+// and crashes without this.
+if (
+  typeof window !== 'undefined' &&
+  typeof window.ResizeObserver === 'undefined'
+) {
+  class StubResizeObserver implements ResizeObserver {
+    constructor(_cb: ResizeObserverCallback) {}
+    observe(_target: Element): void {}
+    unobserve(_target: Element): void {}
+    disconnect(): void {}
+  }
+  Object.defineProperty(window, 'ResizeObserver', {
+    value: StubResizeObserver,
+    writable: true,
+    configurable: true,
+  })
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    value: StubResizeObserver,
+    writable: true,
+    configurable: true,
+  })
+}
