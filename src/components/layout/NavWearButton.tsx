@@ -42,7 +42,15 @@ export function NavWearButton({ ownedWatches }: { ownedWatches: Watch[] }) {
         className="gap-1"
       >
         <Plus className="size-4" aria-hidden />
-        Wear
+        {/*
+          Label hidden below `sm:` (640px) so the 375px-mobile right cluster
+          (ThemeToggle + NavWearButton + Add Watch + UserMenu) fits on one
+          line without wrapping. The Plus icon remains, and the aria-label
+          carries the full semantic name "Log a wear for today" for screen
+          readers. Plan 10-08 acceptance criteria explicitly allows this
+          fallback if the cluster doesn't fit at 375px.
+        */}
+        <span className="hidden sm:inline">Wear</span>
       </Button>
       {open && (
         <Suspense fallback={null}>
