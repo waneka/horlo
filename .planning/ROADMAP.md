@@ -121,7 +121,7 @@ Plans:
 - [x] 10-05-PLAN.md — Network Activity UI (section + rows + Load More)
 - [x] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
 - [x] 10-07-PLAN.md — Collectors Like You + Personal Insights + Suggested Collectors UI
-- [ ] 10-08-PLAN.md — 5-section home page composition + nav + Wear button
+- [x] 10-08-PLAN.md — 5-section home page composition + nav + Wear button
 - [ ] 10-09-PLAN.md — REQUIREMENTS/ROADMAP scope update + privacy E2E verification
 
 ## Backlog
@@ -130,7 +130,7 @@ Plans:
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 7/9 plans executed
+**Plans:** 8/9 plans executed
 
 See `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` for full context.
 
@@ -148,4 +148,4 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Activity Feed | 7/9 | In Progress|  |
+| 10. Activity Feed | 8/9 | In Progress|  |
