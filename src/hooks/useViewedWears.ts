@@ -34,6 +34,12 @@ export function useViewedWears() {
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
+    // One-shot hydration: read localStorage on mount and copy into React
+    // state so the viewed/unviewed ring distinction can render after SSR
+    // paint. `setState` inside a mount effect is the canonical pattern for
+    // "subscribe to an external (browser) system," so the React 19 rule
+    // against set-state-in-effect does not apply here — this IS the platform
+    // API subscription the rule's docs describe.
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
@@ -44,6 +50,7 @@ export function useViewedWears() {
           const filtered = (parsed as unknown[]).filter(
             (v): v is string => typeof v === 'string',
           )
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setViewed(new Set(filtered))
         }
       }
