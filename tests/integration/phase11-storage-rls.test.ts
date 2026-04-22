@@ -237,12 +237,13 @@ maybe('Phase 11 storage RLS — WYWT-13 / WYWT-14 three-tier + folder enforcemen
       const arr = (rows as unknown as Array<{
         id: string
         public: boolean
-        file_size_limit: number
+        file_size_limit: number | string
         allowed_mime_types: string[]
       }>) ?? []
       expect(arr).toHaveLength(1)
       expect(arr[0].public).toBe(false)
-      expect(arr[0].file_size_limit).toBe(5242880)
+      // Drizzle returns bigint columns as strings; coerce to number for comparison.
+      expect(Number(arr[0].file_size_limit)).toBe(5242880)
       expect(arr[0].allowed_mime_types).toEqual(['image/jpeg', 'image/png', 'image/webp'])
     })
   })

@@ -83,6 +83,8 @@ maybe('Phase 11 notifications — NOTIF-01 RLS + CHECK + dedup', () => {
   // (2) Self-notification CHECK constraint
   // -----------------------------------------------------------
   it('rejects insert where actor_id equals user_id (B-9)', async () => {
+    // Drizzle wraps the PostgreSQL error: e.message = "Failed query: ..."
+    // The constraint name is in e.cause.message. Check both levels.
     await expect(
       db.insert(notifications).values({
         userId: userA.id,
@@ -90,7 +92,11 @@ maybe('Phase 11 notifications — NOTIF-01 RLS + CHECK + dedup', () => {
         type: 'follow',
         payload: {},
       }),
-    ).rejects.toThrow(/notifications_no_self_notification|check constraint/i)
+    ).rejects.toSatisfy((e: unknown) => {
+      const err = e as { message?: string; cause?: { message?: string } }
+      const text = `${err.message ?? ''} ${err.cause?.message ?? ''}`
+      return /notifications_no_self_notification|check constraint/i.test(text)
+    })
   })
 
   // -----------------------------------------------------------
