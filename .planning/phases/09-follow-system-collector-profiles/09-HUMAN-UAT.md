@@ -1,9 +1,9 @@
 ---
-status: complete
+status: resolved
 phase: 09-follow-system-collector-profiles
 source: [09-VERIFICATION.md]
 started: 2026-04-21T19:20:00Z
-updated: 2026-04-22T03:25:00Z
+updated: 2026-04-22T03:46:00Z
 ---
 
 ## Current Test
@@ -52,7 +52,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Clicking a follower/following count navigates to the corresponding list page"
-  status: failed
+  status: resolved
   reason: "User reported: the following/followers counts are not clickable"
   severity: major
   test: 3
@@ -62,3 +62,5 @@ blocked: 0
   missing:
     - "Counts need to be wrapped in <Link href='/u/{username}/followers'> and <Link href='/u/{username}/following'>"
     - "List pages already exist at src/app/u/[username]/followers/page.tsx and /following/page.tsx — just wiring"
+  resolved_by: "Quick task 260421-srx (commit 3919d9e)"
+  resolved_at: "2026-04-22T03:46:00Z"
