@@ -182,6 +182,86 @@ describe('getFeedForUser — SQL shape (unit)', () => {
     const whereCalls = calls.filter((c) => c.op === 'where')
     expect(whereCalls).toHaveLength(1)
   })
+
+  // Phase 12 — new tests asserting the updated SQL shape after the visibility
+  // ripple lands in Plan 03. These FAIL in current code (which still uses
+  // profileSettings.wornPublic) and PASS after the metadata->>'visibility' gate
+  // is introduced.
+
+  it('Phase 12: where clause contains no reference to wornPublic', async () => {
+    await getFeedForUser('viewer-uuid', null, 20)
+    const whereCall = calls.find((c) => c.op === 'where')
+    expect(whereCall).toBeDefined()
+    // Collect SQL column names from WHERE args (Drizzle objects have circular
+    // refs; walk the tree tracking column `.name` + `.columnType` properties).
+    const columnNames = new Set<string>()
+    const seen = new WeakSet()
+    function collectNames(val: unknown): void {
+      if (!val || typeof val !== 'object') return
+      if (seen.has(val as object)) return
+      seen.add(val as object)
+      const obj = val as Record<string, unknown>
+      if (typeof obj.name === 'string' && typeof obj.columnType === 'string') {
+        columnNames.add(obj.name as string)
+      }
+      for (const v of Object.values(obj)) collectNames(v)
+    }
+    collectNames(whereCall!.args)
+    expect(columnNames.has('worn_public')).toBe(false)
+  })
+
+  it("Phase 12: where clause references activities.metadata->>'visibility' for watch_worn branch", async () => {
+    await getFeedForUser('viewer-uuid', null, 20)
+    const whereCall = calls.find((c) => c.op === 'where')
+    expect(whereCall).toBeDefined()
+    // The new predicate uses a Drizzle sql`` template with the literal string
+    // 'visibility'. Walk the queryChunks / value arrays in the SQL AST to find
+    // the 'visibility' literal.
+    const seen = new WeakSet()
+    function hasVisibility(val: unknown): boolean {
+      if (!val || typeof val !== 'object') return false
+      if (seen.has(val as object)) return false
+      seen.add(val as object)
+      const obj = val as Record<string, unknown>
+      // sql template chunks store the literal SQL in `value` arrays
+      if (Array.isArray(obj.value)) {
+        for (const chunk of obj.value) {
+          if (typeof chunk === 'string' && chunk.includes('visibility')) return true
+        }
+      }
+      for (const v of Object.values(obj)) {
+        if (hasVisibility(v)) return true
+      }
+      return false
+    }
+    expect(hasVisibility(whereCall!.args)).toBe(true)
+  })
+
+  it('Phase 12: select projection contains no wornPublic field', async () => {
+    await getFeedForUser('viewer-uuid', null, 20)
+    const selectCall = calls.find((c) => c.op === 'select')
+    expect(selectCall).toBeDefined()
+    // The select arg is a projection object; check its JS keys for wornPublic.
+    const projectionKeys = Object.keys(
+      (selectCall!.args[0] as Record<string, unknown>) ?? {},
+    )
+    expect(projectionKeys).not.toContain('wornPublic')
+    // Also confirm no SQL column name 'worn_public' appears in the projection.
+    const columnNames = new Set<string>()
+    const seen = new WeakSet()
+    function collectNames(val: unknown): void {
+      if (!val || typeof val !== 'object') return
+      if (seen.has(val as object)) return
+      seen.add(val as object)
+      const obj = val as Record<string, unknown>
+      if (typeof obj.name === 'string' && typeof obj.columnType === 'string') {
+        columnNames.add(obj.name as string)
+      }
+      for (const v of Object.values(obj)) collectNames(v)
+    }
+    collectNames(selectCall!.args)
+    expect(columnNames.has('worn_public')).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
