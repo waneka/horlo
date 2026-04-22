@@ -1,174 +1,292 @@
-# Project Research Summary
+# Research Summary — v3.0 Production Nav & Daily Wear Loop
 
-**Project:** Horlo — v2.0 Taste Network Foundation
-**Domain:** Social collection platform — multi-user taste graph layered on an existing single-user collector tool
-**Researched:** 2026-04-19
-**Confidence:** HIGH (overall — primary sources are official docs and the existing codebase)
+**Project:** Horlo
+**Milestone:** v3.0 — Production Nav & Daily Wear Loop
+**Domain:** Production navigation overhaul + notifications + people-search + WYWT photo post flow, layered onto an existing Next.js 16 / Supabase / Drizzle / cacheComponents production app
+**Researched:** 2026-04-21
+**Confidence:** HIGH (architecture, codebase-derived patterns, storage RLS, iOS getUserMedia); MEDIUM (heic2any behavior, sonner version, bio-search tradeoffs)
+
+---
 
 ## Executive Summary
 
-Horlo v2.0 adds a social taste network to an established single-user watch collection app. The existing technical foundation (Next.js 16 App Router, Supabase Auth + Postgres, Drizzle ORM, Server Components + Server Actions) is solid and does not need to change. The entire social layer — follows, profiles, activity feed, and Common Ground taste overlap — can be built by extending the existing DAL pattern with new tables and new route segments. No new major dependencies are required; the only optional addition is `swr` for polling-based feed freshness if post-launch UX testing demands it.
+v3.0 is a subsequent milestone on a production app, not greenfield work. The existing stack is locked: Next.js 16 App Router with `cacheComponents: true`, React 19, Supabase Auth + Postgres, Drizzle ORM, Tailwind 4, Zustand (filter-only). This milestone adds the production navigation frame, closes the social loop with notifications, and turns WYWT into a photo-first daily habit with three-tier privacy. Only two new npm packages are required (`sonner@^2.0.7` for toasts, `heic2any@^0.0.4` for iOS HEIC conversion). Everything else is implemented using APIs and patterns already in the stack.
 
-The recommended build order is dictated by a hard dependency chain: RLS on all existing tables must land first (a carry-forward from v1.0 that blocks all multi-user visibility), then the new schema tables, then the profile and privacy surfaces, then follows, then the activity feed and Common Ground. Horlo has a structural differentiator that no competitor (Letterboxd, Goodreads, Discogs) has shipped natively: a semantic similarity engine already built. Common Ground taste overlap between two collectors should ship in v2.0 and is computed server-side using the existing `analyzeSimilarity()` logic — it is not a stretch goal.
+The recommended build order is bottom-up by data dependency, not feature-by-feature: schema + storage migrations must land first (they unblock everything), followed by the visibility ripple across existing DAL functions (the highest-risk code change in the milestone), then notifications and nav in parallel, then the WYWT photo form, and finally people-search and the Explore stub. The phase ordering matters because the three-tier visibility change touches at least 8 existing DAL functions — if any are missed, private wears become visible to non-followers. This is the primary risk vector for the milestone, not the new features themselves.
 
-The dominant risk for this milestone is RLS misconfiguration. There are four distinct failure modes that are silent, hard to detect in the Supabase SQL Editor, and potentially catastrophic (data invisible to owners, private data exposed to others, row ownership injection). Every pitfall in the research maps back to the Phase 1 RLS foundation. Get that phase right — with correct policy syntax, `WITH CHECK` on all UPDATE policies, and User Impersonation testing — and the rest of the milestone is a clean additive build.
+Five architecture decisions are unresolved and must be answered before planning begins. The most consequential is the WYWT image upload pipeline direction (client → Storage directly vs. client → Server Action → Storage), which affects the security model, bandwidth, and the Next.js body size limit. The others concern bottom-nav data fetching, storage bucket topology, `worn_public` deprecation timing, and the wear detail navigation model. These are documented explicitly in the Open Architecture Decisions section and must be resolved in the requirements step before the roadmap is drafted.
+
+---
+
+## Open Architecture Decisions
+
+**These 5 decisions must be resolved before the roadmapper runs. Each has a recommended answer but requires explicit user sign-off.**
+
+---
+
+**Decision 1: WYWT image upload pipeline direction**
+
+- **Option A (recommended):** Client captures + processes image → client uploads directly to Supabase Storage using anon key → client passes storage path to Server Action → Server Action inserts `wear_events` row. EXIF stripping happens in-browser via canvas re-encode.
+- **Option B:** Client sends raw file bytes in FormData to a Server Action → server strips EXIF (needs `sharp` or pure-JS) → server uploads to Storage via service-role client → server inserts row.
+- **Consequences:** Option A avoids doubling bandwidth and sidesteps the Next.js 4MB body size limit, but requires correct client-side EXIF stripping (a security-sensitive operation). Option B is architecturally cleaner (no binary data on the client path, server validates everything) but doubles bandwidth and requires configuring `next.config.ts` body limit.
+
+**Cross-link:** Pitfall E-4 (EXIF not stripped), Pitfall F-1 (Storage RLS is a separate system), Pitfall E-3 (client-only validation).
+
+---
+
+**Decision 2: Bottom nav `ownedWatches` data fetching**
+
+- **Option A:** `BottomNav` calls `getWatchesByUser(user.id)` independently — duplicates the DB read already done in `Header`, but both run in parallel inside separate Suspense boundaries (no latency penalty, one extra DB query per render).
+- **Option B (recommended):** Wrap `getWatchesByUser` with React `cache()` so `Header` and `BottomNav` share the same request-scoped result. Same pattern as `getTasteOverlapData` in `src/data/follows.ts` line 261.
+
+**Cross-link:** Pitfall A-1 (viewer data outside Suspense).
+
+---
+
+**Decision 3: Storage bucket topology — single private bucket vs. split**
+
+- **Option A (recommended):** Single private `wear-photos` bucket. Signed URLs for all wear photos. Simple; one RLS policy set; no bucket routing complexity in the upload path.
+- **Option B:** Two buckets — `public-wear-photos` (public read) for `visibility = 'public'` wears, `private-wear-photos` (private) for `followers` and `private` wears. Avoids signed URL overhead for public-tier wears but doubles RLS surface area and complicates upload routing.
+
+**Cross-link:** Pitfall F-1 (Storage RLS is separate from table RLS), Pitfall F-2 (signed URLs cached by Next.js).
+
+---
+
+**Decision 4: `worn_public` deprecation timing**
+
+- **Option A (recommended):** Deprecate in v3.0. Backfill `visibility` from `worn_public` (`false` → `'private'`, `true` → `'public'`), then remove `wornPublic` reads from all DAL functions in Phase 12. Keep the column with a deprecation comment; remove in a future milestone.
+- **Option B:** Keep `worn_public` as a master override that, if `false`, overrides all per-row `visibility` to effective-private. Preserves global toggle behavior but complicates the DAL (two parallel systems).
+
+**Cross-link:** Pitfall G-6 (incorrect backfill — `false` must map to `'private'`, not `'followers'`), ARCHITECTURE.md `worn_public` migration strategy.
+
+---
+
+**Decision 5: Wear detail — modal overlay vs. dedicated route**
+
+- **Option A:** `/wear/[wearEventId]` dedicated route. Clean URL, shareable, server-rendered. Signed URL generation is lazy (on page load).
+- **Option B (likely recommended):** Modal overlay triggered by tapping a wear tile in the WYWT rail. No route change. Matches the "lightweight interactions" product principle. Signed URLs must be pre-generated for rail tiles at render time.
+- **Consequences:** Affects whether Phase 15 includes a new route or a modal component. Also affects whether signed URLs are pre-generated for all rail tiles (Option B) or lazily on tap (Option A).
+
+**Cross-link:** FEATURES.md differentiators (wear detail overlay), Pitfall F-2 (signed URL caching).
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new npm packages are required for the core social data model. The existing Drizzle ORM already supports `pgPolicy` + `authUid()` helpers from `drizzle-orm/supabase` (installed at ^0.45.2) for defining RLS policies in TypeScript alongside table definitions. The RLS policies compile to Postgres `CREATE POLICY` statements via `drizzle-kit migrate`. Supabase Realtime WebSocket subscriptions are explicitly deferred — server-rendered page loads with `router.refresh()` after mutations are sufficient at MVP scale, and Realtime's free tier (200 concurrent connections) and per-row RLS auth overhead make it a cost driver without meaningful UX benefit for a discovery-driven (not notification-driven) product.
+The existing stack requires no structural changes. Two packages are added: `sonner@^2.0.7` (13.9 kB gzipped; requires a thin client wrapper to use the project's custom ThemeProvider instead of `next-themes`; must mount outside Suspense boundaries) and `heic2any@^0.0.4` (~600 kB WASM; must be lazy-loaded via a dedicated Web Worker — standard dynamic imports are insufficient because webpack includes the import string at build time regardless of execution path).
 
-**Core technologies:**
-- `drizzle-orm/supabase` `pgPolicy` + `authUid()`: RLS policy definitions in TypeScript — colocated with schema, tracked in migrations, no raw SQL maintenance
-- Drizzle ORM + `drizzle-kit migrate`: Generates `CREATE POLICY` SQL from `pgPolicy` definitions — existing toolchain, no new packages
-- Server Components + Server Actions (existing): All new routes follow this pattern — profiles, feeds, and follow mutations are server-rendered with `revalidatePath()` after mutations
-- `swr` ^2.3.x (optional, not yet installed): Add only if polling-based feed freshness is needed post-launch; `refreshInterval: 30000` is the pattern
+All other features — Supabase Storage, `getUserMedia`, canvas EXIF stripping, `pg_trgm`, notifications schema, and the bottom nav — use existing stack capabilities. The critical non-obvious constraint is that `next/image` must not be used for wear photos: `next.config.ts` already has `images: { unoptimized: true }` and there is a confirmed Next.js 16 bug (#88873) where image optimization returns errors for signed Supabase Storage URLs.
 
-**What NOT to add:** Supabase Realtime (defer to v3.0), TanStack Query, Redis, fan-out-on-write, graph databases — all premature at MVP scale (<200 users, <500 watches/user).
+**New packages:**
+- `sonner@^2.0.7` — toast notifications; custom ThemeProvider wrapper required; mount outside Suspense
+- `heic2any@^0.0.4` — iOS HEIC conversion; Web Worker lazy-load mandatory; 600 kB WASM
+
+**Infrastructure additions (no npm):**
+- `pg_trgm` Postgres extension — GIN indexes on `profiles.username` and `profiles.bio`; must be in a Drizzle migration, not a dashboard click
+- Supabase Storage bucket `wear-photos` — private; per-user RLS on `storage.objects` (separate system from table RLS)
+- `notifications` Drizzle table — partial index on `(userId) WHERE readAt IS NULL` for efficient unread count
+- `wear_events` schema extension — `photo_url TEXT`, `note TEXT CHECK (length <= 200)`, `visibility wear_visibility NOT NULL DEFAULT 'public'`
+- `wear_visibility` Postgres enum — `public`, `followers`, `private`
 
 ### Expected Features
 
 **Must have (table stakes):**
-- RLS on all tables (carry-forward from v1.0 MR-03) — blocks all multi-user work; no social feature is safe without it
-- Public profile page `/u/[username]` with read-only collection grid — the minimum viable social surface
-- Follow / unfollow with follower/following counts — without follow, there is no network and no feed payoff
-- Activity feed (watch_added, watch_worn, wishlist_added) for followed users — follows without a feed is a dead end
-- Privacy controls: profile-level + per-tab (collection, wishlist, worn independently) — collectors have different comfort levels for each data type
+- Sticky mobile bottom nav — always visible; 5 destinations; elevated center Wear CTA with iOS safe-area handling (`env(safe-area-inset-bottom)`, `viewport-fit=cover`)
+- Desktop top nav — logo, Explore, persistent search, Wear CTA, +Add, notifications bell, profile dropdown
+- Slim mobile top bar — logo, search icon, notifications icon, settings icon
+- Stub `/explore` route — "coming soon" placeholder; nav must have no broken links
+- Follow notification and watch-overlap notification — live types wired into existing Server Actions (fire-and-forget)
+- Unread bell badge — server-rendered per-request; no WebSocket, no polling
+- Notifications inbox with "Mark all read" — server-authoritative bulk UPDATE on `readAt IS NULL`
+- `/search` with live debounced ILIKE people search — 2-character minimum enforced server-side
+- WYWT multi-step modal (pick watch → photo/note/visibility)
+- Per-wear visibility selector defaulting to Private — never default Public; always show the picker
+- EXIF stripping before upload — canvas re-encode mandatory on ALL upload paths (camera AND file upload)
+- Sonner toast on successful wear log
 
 **Should have (differentiators):**
-- Common Ground taste overlap on collector profile — no major competitor ships this natively; Horlo can because `analyzeSimilarity()` already exists; this is the signature differentiator and must NOT be deferred
-- Profile tabs (Collection / Wishlist / Worn) — standard for collection-first platforms; Wishlist and Worn expose intent and behavior competitors don't surface
-- Shared watches highlight ("You both own: X, Y, Z") — set intersection on brand+model, not the full similarity engine; low complexity, high hook value
-- Activity feed wear events from followed users (WYWT) — strongest daily retention hook; surfaces behavior, not just acquisition
+- Elevated center Wear CTA with cradle/notch visual treatment (CSS only)
+- Wear CTA "done today" muted state
+- Taste overlap % inline on people-search result rows
+- Follow/unfollow inline from search results
+- Stubbed UI templates for Price Drop and Trending notification types (render null for unknown types — no malformed cards)
+- Edit-after-post: add a photo to an already-logged wear event
+- Watch-overlap notifications grouped by watch at display time
 
-**Defer to later:**
-- Likes, comments, notifications — engagement mechanics and moderation out of scope; product model is Rdio-style behavior signal, not approval mechanics
-- "Collectors who own this watch" — requires imprecise brand+model matching without a canonical watch DB; noisy until canonical strategy exists
-- Explore page, suggested collectors, cross-user search — require user critical mass and infrastructure beyond v2.0 scope
-- Supabase Realtime / live feed — polling is sufficient; defer until UX research shows users expect live updates
-- Activity feed pagination — limit to last 50 events at launch; cursor pagination can be added when volume demands it
+**Defer to future milestone:**
+- Wear detail overlay (scope depends on Decision 5; defer if route approach)
+- Notification digest email (custom SMTP not configured)
+- Full-text pg_trgm similarity scoring (ILIKE sufficient at current user count)
+- Supabase Realtime / live bell updates (free tier limit; server-render + `router.refresh()` is correct)
+
+**Anti-features to exclude:**
+- Bottom nav hiding on scroll (utility app, not an infinite-scroll feed)
+- Hamburger menu (retired by bottom nav)
+- Likes, reactions, comments on wear photos
+- `piexifjs` (canvas re-encode already strips EXIF; piexifjs is for selective preservation)
+- `react-webcam`, `browser-image-compression`, `react-dropzone`, `sharp` (all unnecessary)
 
 ### Architecture Approach
 
-The existing DAL + Server Actions + Drizzle pattern extends cleanly to social features. Five new tables are added to `src/db/schema.ts` (`profiles`, `follows`, `profile_settings`, `activities`, `wear_events`) with full RLS policies colocated in the schema file. New DAL files handle each social domain. A new server-safe `src/lib/tasteOverlap.ts` handles Common Ground computation on the server (the existing `analyzeSimilarity()` stays client-only for self-analysis). Privacy enforcement is two-layer: RLS at the database level AND DAL WHERE clause enforcement at the application level — never just one layer.
+v3.0 adds new client islands, server surfaces, DAL functions, and Server Actions on top of the existing architecture without changing any foundational patterns. The Server Component shell + Client Component island split is consistent throughout: `BottomNav` (Server) + `BottomNavClient` (Client), `/search` page (Server) + `SearchClient` (Client), `/notifications` page (Server) + `MarkAllReadButton` (Client). The `cacheComponents: true` constraint governs every new viewer-scoped component — all components that call `getCurrentUser()` or read cookies must live inside a `<Suspense>` boundary, and no `'use cache'` function may call `getCurrentUser()` internally (pass `viewerId` as an explicit argument instead).
 
-**Major components:**
-1. RLS policy layer (`pgPolicy` definitions in `src/db/schema.ts`) — database-level access control; prerequisite for everything else
-2. Profile + privacy DAL (`src/data/profiles.ts`) — owns all profile reads and cross-user visibility checks; privacy rules live here, not in page components
-3. Activity feed DAL (`src/data/activities.ts`) — single JOIN query for feed (not N+1); append-only `activities` table; keyset pagination from the start
-4. Common Ground engine (`src/lib/tasteOverlap.ts`) — server-side computation; only the `TasteOverlapResult` is sent to the client, never raw collections
-5. Follow system (`src/data/follows.ts` + `src/app/actions/follows.ts`) — directed graph (asymmetric follow, Rdio/Twitter model); one row per directed edge
+**Major new components:**
+1. `BottomNav` (Server) + `BottomNavClient` (Client) — nav shell; shares watched data with `Header` via `cache()`-wrapped DAL
+2. `notifications` DAL + Server Actions — `getUnreadCount`, `getNotificationsPage`, `markAllRead`, `insertNotification`, `checkRecentOverlapNotification`; fire-and-forget wiring into `followUser` and `addWatch`
+3. `SearchClient` + `searchProfiles` DAL — pg_trgm ILIKE with batched `isFollowing` lookup (no N+1)
+4. `WywtPostDialog` (orchestrator) → `WatchPickerDialog` (step 1, extended with `onWatchSelected` prop) → `WywtPhotoForm` (step 2) → `CameraCapture`
+5. Schema + Storage foundation — `wear_visibility` enum, `notifications` table, `wear_events` extensions, Storage bucket + RLS, pg_trgm GIN indexes
+
+**Modified existing files (key ones):**
+- `src/app/layout.tsx` — add `<BottomNav>` in Suspense, `pb-16 md:pb-0` on `<main>`, `<Toaster />` outside Suspense
+- `src/data/wearEvents.ts` — visibility ripple in `getPublicWearEventsForViewer` and `getWearRailForViewer`
+- `src/data/activities.ts` — `getFeedForUser` watch_worn gate via `visibility` in activity metadata
+- `src/app/u/[username]/layout.tsx` — replace `getAllWearEventsByUser` with viewer-aware function for worn tab
+- `src/app/actions/follows.ts` and `watches.ts` — add `insertNotification` fire-and-forget
+- `src/components/home/WatchPickerDialog.tsx` — add `onWatchSelected?: (watch: Watch) => void` prop
 
 ### Critical Pitfalls
 
-1. **RLS enabled without all policies written — existing data becomes invisible** — Enable RLS and write all policies in the same migration transaction. Test with Supabase User Impersonation (not the SQL Editor, which bypasses RLS). Minimum: SELECT, INSERT, UPDATE (with USING + WITH CHECK), DELETE for every table.
+**CRITICAL — these will cause data loss, privacy leaks, or broken builds if missed:**
 
-2. **`auth.uid()` without `SELECT` wrapper — per-row function calls blow up query plans** — Write all policies as `user_id = (SELECT auth.uid())`. Postgres caches the subquery result per statement; bare `auth.uid()` is re-evaluated per row. Supabase flags this as lint `0003_auth_rls_initplan`.
+1. **Storage RLS is a separate system from table RLS (Pitfall F-1)** — `wear_events` table RLS does not protect image files in Supabase Storage. Write explicit `storage.objects` policies for the `wear-photos` bucket. Test: access a private wear photo URL directly in incognito — confirm 403. Pairs with Decision 3.
 
-3. **`WITH CHECK` missing from UPDATE policies — users can inject data into other accounts** — Every UPDATE policy needs both `USING` and `WITH CHECK` checking `user_id = (SELECT auth.uid())`. `USING` filters which rows can be touched; `WITH CHECK` prevents changing `user_id` to someone else's ID.
+2. **Three-tier visibility ripple must audit all wear-reading DAL functions before migration (Pitfall G-1 + G-4)** — At least 8 existing DAL functions read `wear_events`. Missing one means followers-only wears are visible publicly. Every function must add the per-row visibility check AND the `profile_public` guard.
 
-4. **Privacy enforcement only in the application layer — data exposed via direct API calls** — Two-layer enforcement is mandatory: RLS policy at the DB level AND DAL WHERE clause. A direct `fetch` with the anon key bypasses the app entirely; only RLS stops it.
+3. **`'use cache'` without `viewerId` as explicit argument leaks data across users (Pitfall B-6)** — Grep gate before shipping: `grep -r "use cache" src/ | xargs grep -l "getCurrentUser\|cookies()"` must return empty.
 
-5. **N+1 queries in the activity feed — home page makes 20-100+ DB round-trips** — Write the feed DAL as a single JOIN query across `activities`, `watches`, and `profiles`. Verify with `EXPLAIN ANALYZE`. Use keyset pagination (`WHERE created_at < $cursor`) from the start — OFFSET degrades at depth and produces duplicates on live inserts.
+4. **Bottom nav outside Suspense breaks cacheComponents builds (Pitfall A-1)** — Wrap in its own `<Suspense fallback={<BottomNavSkeleton />}>`. Never place as a bare `<body>` child.
+
+5. **EXIF not stripped from all upload paths (Pitfall E-4)** — ALL paths (camera AND file upload) must go through canvas re-encode before upload. `heic2any` output must never be uploaded directly. Verify with `exiftool` on a stored file.
+
+6. **Backfill maps `worn_public = false` to wrong visibility tier (Pitfall G-6)** — `false` → `'private'` (not `'followers'`). Post-migration: `SELECT visibility, COUNT(*) FROM wear_events GROUP BY visibility` — confirm `'followers'` count is 0.
+
+7. **Notification generation inside primary Server Action transaction (Pitfall B-2)** — Always fire-and-forget: `generateNotification(...).catch(err => console.error(err))`. Notification failure must never roll back a follow or watch-add.
+
+---
 
 ## Implications for Roadmap
 
-The dependency chain is strict. RLS is the blocker for everything. After RLS, schema must exist before any social app code. After schema: profile identity surface → privacy controls → follow system → public visibility → activity feed + Common Ground.
+**Phase ordering is dictated by hard data dependencies.** The three-tier visibility ripple must complete before the WYWT photo form ships. Schema must exist before any DAL work. Notifications DAL must exist before the nav bell is wired.
 
-### Phase 1: RLS Foundation
-**Rationale:** Hard prerequisite carried from v1.0 (MR-03). Without RLS on existing tables, any multi-user feature leaks private data at the database level. No social feature is safe to ship without this floor. Establishes correct policy syntax as the codebase standard.
-**Delivers:** RLS policies on `watches`, `user_preferences`, `users`; `WITH CHECK` on all UPDATE policies; User Impersonation test verification
-**Addresses:** Unblocks all subsequent social features
-**Avoids:** Pitfalls 1, 2, 3, 4 — the entire RLS misconfiguration cluster
+### Phase 11: Schema + Storage Foundation
 
-### Phase 2: Social Schema + Profile Auto-Creation
-**Rationale:** New tables and the profile auto-creation trigger must exist before any app code can read from them. Pure infrastructure with no visible UX, but unblocks all subsequent phases.
-**Delivers:** `profiles`, `follows`, `profile_settings`, `activities`, `wear_events` tables with migrations; Supabase Auth webhook or DB trigger for profile row on signup; one-time backfill for existing users; all required indexes in the initial migration
-**Avoids:** Pitfall 7 (follows table `status` column designed from the start); Pitfall 5 (indexes on `follows` and `activities` in the initial migration, not added later)
+**Rationale:** Hard prerequisite for everything. Nothing else can start until this phase deploys.
+**Delivers:** All schema migrations to prod; Storage bucket with RLS; pg_trgm + GIN indexes; backfill of `worn_public → visibility`.
+**Avoids:** Pitfall G-6, F-1, F-4, C-1.
+**Research flag:** None — schema fully specified in ARCHITECTURE.md and STACK.md.
 
-### Phase 3: Self Profile + Privacy Controls
-**Rationale:** Build the identity surface for the logged-in user before exposing other users' profiles. Surfaces privacy gaps early in a controlled context before they affect real user data.
-**Delivers:** `/u/[username]` page (own view, Collection tab); `/settings` page with privacy toggles; `updatePrivacySettings` Server Action with `revalidatePath()` cache invalidation
-**Avoids:** Pitfall 10 (cache invalidation on privacy change in the Server Action from day one); Pitfall 3 (privacy enforcement at DAL WHERE clause level, not component conditional render)
+### Phase 12: Visibility Ripple in DAL
 
-### Phase 4: Follow System + Public Profile Visibility
-**Rationale:** Follow is the core network primitive. Once follows exist and profiles are visible, the social graph can form. `proxy.ts` update to allow `/u/` without auth happens here.
-**Delivers:** Follow/unfollow Server Actions; `FollowButton` client island; follower/following counts; read-only collector profile page (other user view) with privacy enforcement; `/u/` added to `PUBLIC_PATHS`; shared watches highlight (set intersection, low complexity — include here)
-**Avoids:** Pitfall 8 (distinct DAL functions for own vs. foreign user reads — code review gate); Pitfall 7 (follows INSERT policy checks `follower_id = auth.uid()`)
+**Rationale:** Highest-risk phase in the milestone. Modifies existing working privacy code. Write integration tests first.
+**Delivers:** All 8+ wear-reading DAL functions updated to three-tier check. `markAsWorn` updated to pass `visibility` in activity metadata. Profile worn tab DAL call updated.
+**Avoids:** Pitfall G-1, G-3, G-4, G-5, G-7, F-1.
+**Research flag:** None — codebase is source of truth; ARCHITECTURE.md has audited each function.
 
-### Phase 5: Activity Feed
-**Rationale:** Follows now exist; the feed has real data to display. Highest-complexity feature; should come after the social graph is established.
-**Delivers:** Activity event logging wired into existing `watches.ts` Server Actions (fire-and-forget, separate try/catch); `getFeedForUser()` JOIN query in DAL; home page activity feed section (Server Component); keyset pagination from day one
-**Avoids:** Pitfall 5 (single JOIN query, verified with EXPLAIN ANALYZE); Pitfall 6 (keyset pagination, no OFFSET)
+### Phase 13: Notifications Foundation
 
-### Phase 6: Common Ground (Taste Overlap)
-**Rationale:** The signature differentiator. Depends on the collector profile page (Phase 4) being stable. Runs server-side, so no new client infrastructure needed.
-**Delivers:** `src/lib/tasteOverlap.ts` server-safe function; Common Ground section on collector profile page; Wishlist and Worn profile tabs (if privacy settings permit)
-**Avoids:** Pitfall 9 (Common Ground computed server-side only; only `TasteOverlapResult` sent to client — not raw foreign collection data)
+**Rationale:** Can parallelize with Phase 12 after Phase 11. Write path is independent of visibility ripple.
+**Delivers:** Notifications DAL + Server Actions. `insertNotification` wired into `followUser` and `addWatch` (fire-and-forget). `/notifications` inbox + `MarkAllReadButton`. `NotificationBell` leaf Server Component. Unread count in Header and BottomNav.
+**Avoids:** Pitfall B-1 (isolate as leaf Suspense), B-2 (fire-and-forget), B-3 (dedup UNIQUE constraint), B-4 (recipient-only RLS), B-6 (`'use cache'` safety), B-9 (self-notification DB CHECK).
+**Research flag:** None — pattern mirrors existing `logActivity()` in v2.0.
+
+### Phase 14: Bottom Nav + Navigation Shell
+
+**Rationale:** Depends on Phase 13 for unread count DAL. Establishes `WywtPostDialog` orchestration shell that Phase 15 needs.
+**Delivers:** `BottomNav` + `BottomNavClient` + `BottomNavSkeleton`. Root layout updated. `WywtPostDialog` outer shell. `WatchPickerDialog` extended with `onWatchSelected`. Desktop top nav and slim mobile top bar (Header surgery). `MobileNav` retired. iOS safe-area handling.
+**Avoids:** Pitfall A-1, A-2, A-3, A-4, I-2 (WatchPickerDialog must not be forked).
+**Research flag:** None — follows existing Header + HeaderNav Server/Client split.
+
+### Phase 15: WYWT Photo Post Flow
+
+**Rationale:** Depends on Phase 11 (schema), Phase 12 (visibility ripple in place), Phase 14 (dialog orchestration). Decision 1 (upload pipeline) and Decision 5 (wear detail) must be resolved before this phase begins.
+**Delivers:** `WywtPhotoForm` + `CameraCapture`. `logWearWithPhoto` Server Action. Image utilities (HEIC convert, canvas resize, EXIF strip). Storage upload wired. `<Toaster />` in root layout. Edit-after-post.
+**Avoids:** Pitfall D-1 (iOS gesture context), D-2 (MediaStream cleanup), D-4 (image too large), E-1 (heic2any eager load), E-2 (sideways images), E-3 (client-only validation), E-4 (EXIF all paths), F-2 (signed URLs cached), F-3 (orphan storage files on delete), F-4 (folder enforcement), H-1 (Toaster inside Suspense), H-2 (toast in Server Action), H-3 (theme mismatch).
+**Research flag:** YES — EXIF orientation handling: PITFALLS.md recommends `exifr` (30KB) for reading EXIF orientation before canvas draw; STACK.md says no new library needed. Resolve before building the image pipeline.
+
+### Phase 16: People Search
+
+**Rationale:** Depends only on Phase 11 for pg_trgm. Independent of visibility ripple. Can parallelize with Phases 14–15 after Phase 11.
+**Delivers:** `searchProfiles` DAL (batched `isFollowing`). `searchPeople` Server Action. `SearchClient` + `SearchResultsList` + `SearchResultRow`. `/search` page with 4 tabs.
+**Avoids:** Pitfall C-1 (pg_trgm from Phase 11 migration), C-2 (server-side 2-char minimum), C-3 (private profiles in search), C-4 (N+1 following-status).
+**Research flag:** None — pg_trgm and search DAL fully specified.
+
+### Phase 17: Explore Stub
+
+**Rationale:** No data dependencies. One file. Can be done any time after Phase 14.
+**Delivers:** `src/app/explore/page.tsx` — "coming soon" Server Component. BottomNav Explore tab no longer 404s.
+**Research flag:** None.
 
 ### Phase Ordering Rationale
 
-- RLS before everything: no multi-user feature is safe without database-level access control
-- Schema before app code: five new tables are dependencies for all social DAL functions
-- Self-profile before other-profile: surfaces privacy assumptions in a controlled context before they affect real user data
-- Follow before feed: the feed query joins `follows` to assemble the personalized event stream
-- Feed before Common Ground: activity logging infrastructure in Server Actions is reused as the activity data source
+- Phase 11 is a hard prerequisite for all other phases — schema must exist before any DAL can reference new columns/tables
+- Phase 12 must precede Phase 15 — WYWT photo form writes `visibility` values; the ripple must be in place so those values are read correctly
+- Phase 13 can parallelize with Phase 12 — no data dependency between notifications and the visibility ripple
+- Phase 14 must follow Phase 13 (unread count DAL) but can start its non-bell work in parallel
+- Phase 15 must follow Phase 12 and Phase 14
+- Phase 16 can parallelize with Phases 14–15 after Phase 11
+- Phase 17 floats
+
+**Privacy-first UAT rule (Pitfall I-1):** Each privacy-touching phase (12, 13, 15) must include a cross-user UAT checklist before shipping. Do not defer UAT to milestone end — the v2.0 retrospective found a privacy bug at Phase 10 that would have been caught at Phase 6 if per-phase UAT existed.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 1 (RLS):** The `watches` visibility policy requires a `SECURITY DEFINER` function to join `profile_settings` without causing RLS recursion. The exact migration workflow (function creation via raw SQL in `drizzle-kit` migration + `pgPolicy` reference) should be validated in a staging environment before applying to production.
-- **Phase 2 (Profile Auto-Creation):** The specific mechanism for profile row creation on Supabase Auth signup (webhook URL configuration vs. DB trigger on `auth.users`) should be verified against current Supabase docs; the correct approach varies by Supabase version and project configuration.
+**Needs research during Phase 15 planning:**
+- EXIF orientation auto-correction: does `createImageBitmap` correct EXIF orientation on iOS Safari 15+, or is `exifr` required? STACK.md and PITFALLS.md contradict each other on this.
 
-Phases with standard patterns (skip research-phase):
-- **Phase 4 (Follow System):** Directed follow graph with asymmetric follow is thoroughly documented; DAL functions and RLS policies are fully specified in research.
-- **Phase 5 (Activity Feed):** JOIN-based feed query, keyset pagination, fire-and-forget activity logging — all standard patterns with verified implementations in research.
-- **Phase 6 (Common Ground):** Pure function composition of existing `analyzeSimilarity()` logic; no new libraries; server-side execution path is fully specified.
+**Standard patterns (skip research):**
+- Phase 11 — Drizzle + Supabase migration patterns documented in deploy runbook
+- Phase 12 — codebase is source of truth; ARCHITECTURE.md has the full DAL audit
+- Phase 13 — fire-and-forget pattern identical to existing `logActivity()`
+- Phase 14 — follows existing Header + HeaderNav Server/Client split exactly
+- Phase 16 — pg_trgm setup fully documented in STACK.md
+- Phase 17 — one file, no decisions
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | No new packages; existing stack is production-validated; Drizzle `pgPolicy` API confirmed against official docs |
-| Features | HIGH | Competitive landscape research thorough (Letterboxd, Goodreads, Discogs, Rdio); feature prioritization aligns with PRODUCT-BRIEF.md |
-| Architecture | HIGH | Primary sources are the existing codebase and PROJECT.md/PRODUCT-BRIEF.md; patterns consistent with what is already built and validated |
-| Pitfalls | HIGH (RLS), MEDIUM (privacy enforcement patterns) | RLS failure modes from official Supabase docs and GitHub discussions; N+1 and pagination from high-confidence sources; some privacy enforcement patterns from community sources |
+| Stack | HIGH | Two new packages only; existing stack validated in production. WASM size and Web Worker pattern verified. Sonner version MEDIUM (GitHub only, no Context7). |
+| Features | HIGH | Strong comparable app evidence. Table stakes and anti-features well-documented. Followers-tier risk documented with clear mitigation. |
+| Architecture | HIGH | Codebase is the primary source. Build order is unambiguous. 5 open decisions documented with recommendations. |
+| Pitfalls | HIGH | 30+ pitfalls catalogued. All CRITICAL/HIGH pitfalls derived from existing codebase patterns and v2.0 retrospective. |
 
-**Overall confidence:** HIGH
+**Overall confidence:** HIGH — the 5 open architecture decisions are the remaining uncertainty. Once resolved, planning can proceed with high confidence.
 
 ### Gaps to Address
 
-- **Realtime decision needs UX validation:** Deferring Supabase Realtime is technically sound but whether users will tolerate a non-live feed is a product assumption. Flag for the post-launch retrospective; if live updates are expected, use Broadcast (not Postgres Changes) to avoid per-row RLS overhead.
-- **Feed RLS policy complexity at scale:** The `activities` SELECT policy ("owner OR following the owner") subquery-joins `follows` on every row authorization. Fine at MVP scale (<200 users); above ~1,000 users needs a denormalized approach or SECURITY DEFINER function. Note this in schema design and revisit if user base grows.
-- **Canonical watch matching imprecision:** Common Ground matches watches by normalized `(brand, model)` string — no canonical watch ID exists in v2.0. Model name inconsistencies between users will produce false negatives. UX should label the section "Shared interests" not "Exact matches" to set expectations.
-- **Username claim flow undefined:** The profile auto-creation mechanism needs a username assignment strategy for existing users and a UX for username selection at signup. Neither is specified in PRODUCT-BRIEF.md and must be defined before Phase 3 ships.
+- **EXIF orientation handling:** Resolve before Phase 15 planning — `createImageBitmap` vs. `exifr` for orientation correction.
+- **Taste overlap % in search:** ARCHITECTURE.md notes the join may be too slow at query time. Phase 16 plan should decide: compute inline or stub with follower-count ranking.
+- **Decision 5 (wear detail):** Phase 15 scope depends on modal vs. route. Must be resolved in requirements.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Drizzle ORM RLS docs — `pgPolicy`, `authUid()`, `authenticatedRole` API: https://orm.drizzle.team/docs/rls
-- Supabase RLS docs — SECURITY DEFINER function pattern for cross-table policies: https://supabase.com/docs/guides/database/postgres/row-level-security
-- Supabase Realtime Postgres Changes — RLS interaction, scaling limits, 200 concurrent connection ceiling: https://supabase.com/docs/guides/realtime/postgres-changes
-- Supabase RLS Performance Advisors — lint `0003_auth_rls_initplan`: https://supabase.com/docs/guides/database/database-advisors
-- Next.js Data Security Guide: https://nextjs.org/docs/app/guides/data-security
-- Drizzle ORM Joins: https://orm.drizzle.team/docs/joins
-- Existing codebase — direct read: `src/proxy.ts`, `src/lib/auth.ts`, `src/data/watches.ts`, `src/db/schema.ts`, `src/app/actions/watches.ts`
-- Keyset cursors vs. OFFSET for Postgres: https://blog.sequinstream.com/keyset-cursors-not-offsets-for-postgres-pagination/
-- RLS performance and best practices — Supabase GitHub Discussion #14576: https://github.com/orgs/supabase/discussions/14576
+
+- Existing codebase — `src/app/layout.tsx`, `src/data/wearEvents.ts`, `src/data/activities.ts`, `src/db/schema.ts`, `src/app/actions/wearEvents.ts`, `src/components/home/WatchPickerDialog.tsx`, `src/proxy.ts`
+- `.planning/PROJECT.md` — milestone requirements, established architecture decisions
+- Supabase Storage docs — RLS policies, signed URLs, bucket creation
+- MDN: getUserMedia — iOS Safari quirks (HIGH confidence)
+- Next.js 16 issue #88873 — `next/image` bug with Supabase Storage signed URLs (confirmed open)
 
 ### Secondary (MEDIUM confidence)
-- GetStream — scalable activity feed architecture: https://getstream.io/blog/scalable-activity-feed-architecture/
-- Letterboxd FAQ, activity feed docs, Wikipedia overview: https://letterboxd.com/about/faq/
-- Goodreads social network site research: https://www.researchgate.net/publication/293768221_Goodreads_A_Social_Network_Site_for_Book_Readers
-- Discogs collection feature documentation: https://support.discogs.com/hc/en-us/articles/360007331534
-- Rdio Wikipedia overview: https://en.wikipedia.org/wiki/Rdio
-- MakerKit real-time notifications guide — initial data + subscription merge pattern: https://makerkit.dev/blog/tutorials/real-time-notifications-supabase-nextjs
-- Neon blog — Drizzle + social network RLS modeling: https://neon.com/blog/modelling-authorization-for-a-social-network-with-postgres-rls-and-drizzle-orm
+
+- heic2any Web Worker lazy-load pattern (DEV Community)
+- sonner GitHub releases v2.0.7
+- Supabase pg_trgm extension docs
+- Bottom nav UX patterns (AppMySite 2025, phone-simulator.com 2026)
+- Notification schema patterns (DEV Community)
 
 ### Tertiary (LOW confidence)
-- Third-party Letterboxd taste comparison tools — evidence of unmet native demand for Common Ground analog: https://github.com/jsalvasoler/letterboxd_user_comparison
+
+- Bio search UX tradeoffs — 4-character minimum for bio matches is inferred from product brief + UX consensus; no specific source
 
 ---
-*Research completed: 2026-04-19*
-*Ready for roadmap: yes*
+*Research completed: 2026-04-21*
+*Ready for roadmap: YES — pending resolution of 5 Open Architecture Decisions above*

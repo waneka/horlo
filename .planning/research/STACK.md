@@ -1,255 +1,675 @@
 ---
 dimension: stack
-generated: 2026-04-19
-milestone: v2.0 Taste Network Foundation
+generated: 2026-04-21
+milestone: v3.0 Production Nav & Daily Wear Loop
 ---
-# Stack Research — v2.0 Social Features
+# Stack Research — v3.0 Production Nav & Daily Wear Loop
 
-**Domain:** Multi-user taste network (profiles, follows, activity feed, Common Ground overlap, privacy controls)
-**Researched:** 2026-04-19
-**Confidence:** HIGH (core patterns), MEDIUM (Realtime strategy)
+**Domain:** Navigation overhaul, notifications, people search, WYWT photo post flow
+**Researched:** 2026-04-21
+**Confidence:** HIGH (browser APIs, Supabase Storage), MEDIUM (sonner version, heic2any behavior)
 
-> This document covers ONLY what is new or changed for v2.0. The v1.0 foundation (Next.js 16, React 19, Supabase Auth + Postgres, Drizzle ORM, Tailwind 4, Vitest) is validated and not re-researched here.
+> This document covers ONLY what is new or changed for v3.0. The existing stack (Next.js 16, React 19, Supabase Auth + Postgres, Drizzle ORM, Tailwind 4, Vitest, custom ThemeProvider) is validated in production and not re-researched here.
 
 ---
 
 ## Summary
 
-The v2.0 social milestone requires three distinct capability additions to the existing stack:
+v3.0 requires **two new npm packages** and no architectural changes:
 
-1. **RLS policies** on all public tables, defined in Drizzle schema using `pgPolicy` + Supabase helpers — enforces per-user data isolation and controlled public visibility without a separate auth layer
-2. **New Drizzle schema tables** for follows, activity events, and user profile/privacy settings — no new ORM or database needed
-3. **A deliberate non-decision on Supabase Realtime** — for an MVP with <200 users on the free tier, server-rendered page loads + router refresh is sufficient; Realtime WebSocket subscriptions are deferred unless UX testing shows users expect live feed updates
+1. **`sonner@^2.0.7`** — toast infrastructure (13.9 kB gzip; acceptable)
+2. **`heic2any@^0.0.4`** — client-side HEIC → JPEG conversion (600 kB WASM; must lazy-load via Web Worker)
 
-No new npm packages are required for the core social data model. One optional package (`swr`) is listed if polling-based feed freshness is needed post-launch. The Common Ground taste overlap feature runs entirely in the existing similarity engine — no new library needed.
+Everything else — Supabase Storage, getUserMedia, canvas EXIF stripping, pg_trgm, notifications schema, bottom nav — is implemented with APIs and patterns already in the stack.
+
+```bash
+npm install sonner heic2any
+```
 
 ---
 
 ## Recommended Stack Additions
 
-### RLS Layer (Drizzle + Supabase)
+### sonner
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `drizzle-orm/supabase` | Already installed (^0.45.2) | `pgPolicy`, `authenticatedRole`, `authUid()` helpers | Defines RLS policies in TypeScript alongside table definitions; colocated with schema, tracked in migrations — no raw SQL files to maintain separately |
-| `drizzle-orm/pg-core` `pgPolicy` | Already installed | Per-table RLS policies | Drizzle now has first-class RLS API; policies compile to Postgres `CREATE POLICY` statements on `drizzle-kit migrate` |
+| | |
+|---|---|
+| **Version** | `^2.0.7` (latest stable — verified via GitHub, released August 2, 2025) |
+| **Purpose** | Toast notifications for wear log success/error, upload feedback |
+| **Bundle** | ~13.9 kB gzipped — acceptable for a persistent UI element |
+| **Integration point** | `src/components/ui/sonner.tsx` (thin wrapper); `src/app/layout.tsx` (mount) |
 
-**Pattern:** All new tables get `pgPolicy` definitions in `schema.ts`. The existing `users`, `watches`, and `userPreferences` tables need RLS added in a migration — they currently have no policies (carried from v1.0 backlog item MR-03).
+**Confidence:** MEDIUM — version and existence verified via GitHub. Bundle size from WebSearch/devpick. No Context7 entry found.
+
+#### Toaster Mount Pattern (Next.js 16 App Router + cacheComponents)
+
+`<Toaster />` can be placed in a Server Component layout. Mount inside `<body>` after `<ThemeProvider>`, outside all `<Suspense>` boundaries so toasts render regardless of streaming state:
+
+```tsx
+// src/app/layout.tsx  (add Toaster import)
+import { Toaster } from '@/components/ui/sonner'
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" suppressHydrationWarning ...>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="min-h-full flex flex-col bg-background">
+        <ThemeProvider>
+          <Suspense fallback={<HeaderSkeleton />}>
+            <Header />
+          </Suspense>
+          <Suspense fallback={null}>
+            <main className="flex-1">{children}</main>
+          </Suspense>
+          <Toaster />   {/* outside Suspense — always rendered */}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+#### Dark Mode Integration — CRITICAL: Custom ThemeProvider
+
+The project does **not** use `next-themes`. It has a custom `ThemeProvider` in `src/components/theme-provider.tsx` that exposes `useTheme()` returning `{ theme, resolvedTheme, setTheme }` where `resolvedTheme` is always `'light' | 'dark'` (never `'system'`).
+
+The shadcn-documented pattern uses `useTheme` from `next-themes` and passes `resolvedTheme` to `<Toaster theme={...}>`. The same pattern works with our custom provider — write a thin client wrapper:
+
+```tsx
+// src/components/ui/sonner.tsx  (new file)
+'use client'
+
+import { Toaster as SonnerToaster } from 'sonner'
+import type { ToasterProps } from 'sonner'
+import { useTheme } from '@/components/theme-provider'
+
+export function Toaster() {
+  const { resolvedTheme } = useTheme()
+  return (
+    <SonnerToaster
+      theme={resolvedTheme as ToasterProps['theme']}
+      richColors
+      position="bottom-right"
+    />
+  )
+}
+```
+
+Import `Toaster` from `@/components/ui/sonner` (not directly from `sonner`) everywhere in the app.
+
+Do NOT use the shadcn CLI to scaffold sonner (`npx shadcn add sonner`) — it generates a `next-themes`-dependent wrapper that conflicts with the custom ThemeProvider.
+
+#### Server Action → Toast Pattern
+
+Server Actions run server-side and cannot call client `toast()` directly. The canonical pattern: the action returns a result; the caller checks it and fires the toast.
+
+```tsx
+// In any 'use client' component that wraps a Server Action
+import { toast } from 'sonner'
+
+// With useTransition (existing WatchPickerDialog pattern):
+startTransition(async () => {
+  const result = await markAsWorn(watchId)
+  if (!result.success) {
+    toast.error("Couldn't log that wear.")
+    return
+  }
+  toast.success('Wear logged.')
+  onOpenChange(false)
+})
+```
+
+This matches the existing `WatchPickerDialog.tsx` mutation pattern — replace the `setError` state call with `toast.error(...)` and add `toast.success(...)` on the happy path.
+
+---
+
+### heic2any
+
+| | |
+|---|---|
+| **Version** | `^0.0.4` (latest; last published April 2023 — stable but unmaintained) |
+| **Purpose** | Client-side HEIC → JPEG conversion for iOS photo uploads |
+| **Bundle** | ~600 kB (libheif compiled to WASM — cannot be tree-shaken) |
+| **Integration point** | `src/lib/heic-worker.ts` (Web Worker only — never imported at module level) |
+
+**Confidence:** MEDIUM — version and WASM size verified via npm and DEV Community article. No viable maintained alternative exists as of April 2026 for browser-based HEIC decoding.
+
+#### Bundle Size Warning — Must Lazy-Load via Web Worker
+
+Standard dynamic imports (`await import('heic2any')`) are insufficient in Next.js. Webpack/Turbopack perform static analysis at build time: seeing the import string causes the module to be included in the route's chunk group regardless of execution path. `next/dynamic` has the same problem — it wraps React components, not arbitrary libraries.
+
+The only reliable solution is a dedicated Web Worker. Workers are emitted as separate entry points; the bundler never preloads or merges them into the route bundle. The 600 kB WASM downloads only when `convertHeicToJpeg()` is called.
 
 ```typescript
-// Example: follows table with correct RLS
-import { pgPolicy, pgTable, uuid, timestamp, index } from 'drizzle-orm/pg-core'
-import { authenticatedRole, authUid } from 'drizzle-orm/supabase'
-import { sql } from 'drizzle-orm'
-import { users } from './users'
+// src/lib/heic-worker.ts
+self.onmessage = async (e: MessageEvent) => {
+  const { buffer, toType, quality } = e.data
+  const heic2any = (await import('heic2any')).default
+  const blob = new Blob([buffer])
+  const result = await heic2any({
+    blob,
+    toType: toType ?? 'image/jpeg',
+    quality: quality ?? 0.85,
+  })
+  const output = Array.isArray(result) ? result[0] : result
+  const outBuffer = await output.arrayBuffer()
+  self.postMessage({ buffer: outBuffer, type: output.type }, [outBuffer])
+}
+```
 
-export const follows = pgTable(
-  'follows',
+```typescript
+// src/lib/convertHeic.ts  (called from upload handler)
+export async function convertHeicToJpeg(file: File): Promise<Blob> {
+  const worker = new Worker(
+    new URL('./heic-worker.ts', import.meta.url)
+    // ^^^ The new URL() form tells webpack to emit as a separate entry point
+  )
+  const buffer = await file.arrayBuffer()
+  return new Promise((resolve, reject) => {
+    worker.onmessage = (e) => {
+      resolve(new Blob([e.data.buffer], { type: e.data.type }))
+      worker.terminate()
+    }
+    worker.onerror = (err) => {
+      reject(err)
+      worker.terminate()
+    }
+    worker.postMessage({ buffer }, [buffer])
+  })
+}
+```
+
+Call `convertHeicToJpeg` only after detecting a HEIC file:
+
+```typescript
+async function handleFileChange(file: File) {
+  const isHeic =
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    file.name.toLowerCase().endsWith('.heic') ||
+    file.name.toLowerCase().endsWith('.heif')
+  const processedBlob = isHeic ? await convertHeicToJpeg(file) : file
+  // → pass processedBlob to EXIF strip → canvas → upload
+}
+```
+
+#### Browser Compatibility
+
+heic2any uses libheif WASM and requires DOM + `window`. All target browsers support this:
+
+| Browser | WASM + Worker Support | Notes |
+|---------|----------------------|-------|
+| Chrome 57+ (Android/desktop) | Full | |
+| Firefox 55+ | Full | |
+| Safari 14+ (desktop) | Full | |
+| iOS Safari 14+ | Full | iOS 14 added WASM support in Safari |
+| All non-Safari iOS browsers | Full (via WebKit) | Apple forces WebKit engine on iOS |
+
+---
+
+## Canvas API + EXIF Stripping (No New Library)
+
+Canvas re-encode via `toBlob()` strips all EXIF metadata automatically — the canvas holds only raw pixel data and cannot encode EXIF into JPEG output.
+
+```typescript
+// src/lib/processWearPhoto.ts
+export async function stripExifAndResize(
+  blob: Blob,
+  maxDimension = 1920,
+): Promise<Blob> {
+  const bitmap = await createImageBitmap(blob)
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('canvas toBlob failed'))),
+      'image/jpeg',
+      0.85,
+    ),
+  )
+}
+```
+
+`createImageBitmap` is preferred over `new Image()` + `onload` because it works in Worker contexts. It is supported in iOS Safari 15+ (HIGH confidence — MDN).
+
+**Do not add `piexifjs`.** Canvas re-encode already strips everything. `piexifjs` is needed only for selective EXIF preservation, which is explicitly out of scope — all EXIF must be stripped for privacy regardless.
+
+EXIF strip must always run on both code paths: camera capture and file upload.
+
+---
+
+## getUserMedia / MediaDevices (No Library)
+
+Pure browser API. No npm package needed.
+
+### Browser Compatibility Matrix
+
+| Browser | Support | Critical Notes |
+|---------|---------|---------------|
+| Chrome (Android, desktop) | Full | HTTPS required |
+| Firefox (Android, desktop) | Full | HTTPS required |
+| Safari iOS 14.3+ | Supported with quirks | See below |
+| Safari iOS < 14.3 | Not supported | WKWebView blocked getUserMedia before 14.3 |
+| Chrome / Firefox / Edge on iOS | Inherit Safari quirks | Apple forces WebKit on iOS; all browsers have the same limitations |
+| PWA standalone (iOS) | Partially buggy | WebKit bug 252465 — video stream may fail to display in standalone home screen mode |
+
+**HTTPS already satisfied** — the app runs on Vercel at horlo.app.
+
+### iOS Safari Quirks (HIGH confidence)
+
+**1. User gesture required.** `getUserMedia()` must be called inside a user interaction event handler (click, touchend). Cannot be called on mount. The Wear CTA is a button, so this is already the correct entry point.
+
+**2. `playsInline` attribute required.** The `<video>` element used for camera preview must have `playsInline={true}` (React prop) or `playsinline` (HTML attribute). Without it, Safari attempts full-screen playback, breaking the preview.
+
+```tsx
+<video ref={videoRef} autoPlay playsInline muted className="..." />
+```
+
+**3. `facingMode: 'environment'` unreliable.** Safari sometimes ignores this constraint even when `getSupportedConstraints()` reports it as supported. For reliable rear camera access, enumerate devices and select by `deviceId`:
+
+```typescript
+async function getRearCameraStream(): Promise<MediaStream> {
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+  // On iOS, the last videoinput is typically the rear camera
+  const rearDevice = videoDevices[videoDevices.length - 1]
+  return navigator.mediaDevices.getUserMedia({
+    video: rearDevice
+      ? { deviceId: { exact: rearDevice.deviceId } }
+      : { facingMode: { ideal: 'environment' } },
+    audio: false,
+  })
+}
+```
+
+**4. Feature detection before calling.** Always check `navigator.mediaDevices?.getUserMedia` before calling. If unavailable, fall back gracefully to `<input type="file" accept="image/*" capture="environment">`:
+
+```typescript
+const hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+```
+
+### Camera Capture Component
+
+New file: `src/components/wear/CameraCapture.tsx`. Responsibilities:
+- Stream setup via `getRearCameraStream()`
+- `<video playsInline autoPlay muted>` preview
+- Static dotted wrist-shot framing overlay — a positioned `<div>` with `border: 2px dashed` CSS, absolutely positioned over the video. No library. No AR. Explicitly out of scope per PROJECT.md.
+- Capture trigger: `ctx.drawImage(videoEl, ...)` → canvas → `toBlob()` → EXIF strip → result callback
+- `stream.getTracks().forEach(t => t.stop())` on unmount to release camera
+
+---
+
+## Supabase Storage (No New Library)
+
+`@supabase/supabase-js` 2.103.0 already in package.json. The Storage API is part of the same client — no additional install needed.
+
+### Bucket Setup
+
+One private bucket: `wear-photos`. Path convention: `{userId}/{wearEventId}.jpg`.
+
+**SQL (add to a Drizzle migration):**
+
+```sql
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'wear-photos',
+  'wear-photos',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do nothing;
+```
+
+Or via JS SDK (run once from a setup script or Supabase Dashboard):
+
+```typescript
+await supabase.storage.createBucket('wear-photos', {
+  public: false,
+  fileSizeLimit: '5MB',
+  allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+})
+```
+
+Deploy the bucket definition as part of the Supabase migrations: include the SQL `INSERT into storage.buckets` in a new Drizzle migration file and run via `supabase db push --linked --include-all` (per the project's documented prod migration workflow in `docs/deploy-db-setup.md`).
+
+### RLS Policies
+
+```sql
+-- INSERT: users may upload only to their own folder
+create policy "wear_photos_insert"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'wear-photos'
+  and (storage.foldername(name))[1] = (select auth.jwt()->>'sub')
+);
+
+-- SELECT: users may read only their own files
+create policy "wear_photos_select"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'wear-photos'
+  and (select auth.jwt()->>'sub') = owner_id
+);
+
+-- DELETE: users may delete only their own files
+create policy "wear_photos_delete"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'wear-photos'
+  and (select auth.jwt()->>'sub') = owner_id
+);
+```
+
+`storage.foldername(name))[1]` extracts the first path segment (the `userId` prefix). `owner_id` is auto-populated by Supabase Storage with the authenticated user's `sub` claim on INSERT.
+
+**Note on follower-visibility photos:** The SELECT policy above restricts to owner-only reads. For "followers" and "public" visibility wears, the signed URL itself provides access — the policy allows the owner to generate a signed URL, and possession of that URL is the access credential. The visibility tier controls who receives the URL (enforced in the DAL), not the storage policy. This is the correct pattern.
+
+### Upload Flow (Signed Upload URL Pattern)
+
+Binary file data cannot be efficiently serialized through a Server Action boundary. The recommended pattern: Server Action generates a signed upload URL; client uploads directly to Supabase Storage.
+
+```typescript
+// src/app/actions/wearPhotos.ts
+'use server'
+import { createServerClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
+
+export async function getWearPhotoUploadUrl(wearEventId: string) {
+  const user = await getCurrentUser()
+  const supabase = createServerClient()
+  const path = `${user.id}/${wearEventId}.jpg`
+  const { data, error } = await supabase.storage
+    .from('wear-photos')
+    .createSignedUploadUrl(path)
+  if (error) throw error
+  return { path, signedUrl: data.signedUrl, token: data.token }
+}
+```
+
+```typescript
+// Client upload (in wear form component)
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+const { error } = await supabase.storage
+  .from('wear-photos')
+  .uploadToSignedUrl(signedUrl, token, jpegBlob, {
+    contentType: 'image/jpeg',
+  })
+```
+
+### Read URLs (DAL Layer)
+
+Store only the storage `path` in `wear_events.photo_url` (e.g. `"abc123/wear456.jpg"`). Never store a pre-generated signed URL in the DB — they expire.
+
+At read time in the DAL, generate signed URLs for photos the viewer is authorized to see:
+
+```typescript
+// src/data/wearEvents.ts  (when assembling wear event rows)
+if (wearEvent.photoUrl && viewerCanSeePhoto) {
+  const { data } = await supabase.storage
+    .from('wear-photos')
+    .createSignedUrl(wearEvent.photoUrl, 3600) // 1 hour
+  return { ...wearEvent, signedPhotoUrl: data?.signedUrl }
+}
+```
+
+### next/image — Use `<img>` for Wear Photos
+
+`next.config.ts` already has `images: { unoptimized: true }`, which makes `next/image` functionally equivalent to a plain `<img>` tag for external images. For wear photos specifically, use `<img>` directly:
+
+- Signed URLs include a `?token=...` query parameter that changes on each generation, making Next.js image optimization cache-unfriendly even if it worked
+- There is a confirmed Next.js 16 bug (issue #88873) where image optimization returns "url parameter is not allowed" for certain cloud storage domains; confirmed tracked by the Next.js team, no fix as of April 2026
+- `unoptimized: true` already removes the only optimization benefit (`next/image` would provide)
+
+**No `remotePatterns` changes needed.** `unoptimized: true` is already set.
+
+---
+
+## pg_trgm (Postgres Extension, No npm Package)
+
+### What It Is
+
+A pre-installed Postgres extension that provides GIN/GiST operator classes for `LIKE`/`ILIKE` acceleration via trigram decomposition. Required for the `/search` people-search feature to avoid sequential scans on `profiles`.
+
+### Enabling in Supabase
+
+pg_trgm is pre-installed on all Supabase instances including the free tier — no tier upgrade needed. Two ways to enable:
+
+**Dashboard:** Database → Extensions → find `pg_trgm` → toggle on.
+
+**SQL (preferred — include in a migration file):**
+
+```sql
+create extension if not exists pg_trgm with schema extensions;
+```
+
+The `with schema extensions` form is Supabase-idiomatic. Add to a new Drizzle migration file and deploy via `supabase db push --linked --include-all`.
+
+### Index Template
+
+```sql
+-- GIN indexes for ILIKE acceleration on profiles search
+create index if not exists profiles_username_trgm_idx
+  on profiles
+  using gin (username gin_trgm_ops);
+
+create index if not exists profiles_bio_trgm_idx
+  on profiles
+  using gin (bio gin_trgm_ops);
+```
+
+GIN (not GiST) is correct here: GIN is faster for read-heavy, infrequently-updated columns. Profile usernames and bios are rarely updated.
+
+**Important:** Standard B-tree indexes cannot accelerate leading-wildcard `ILIKE '%query%'` queries. pg_trgm GIN indexes can — this is the entire point.
+
+### Drizzle Representation
+
+Drizzle lacks a built-in `gin_trgm_ops` operator class helper. Define these indexes in a raw SQL migration file rather than `schema.ts`:
+
+```
+drizzle/migrations/0XXX_add_trgm_search.sql
+```
+
+Contents: the `CREATE EXTENSION` + both `CREATE INDEX` statements above.
+
+### DAL Query Pattern
+
+```typescript
+// src/data/profiles.ts
+import { ilike, or } from 'drizzle-orm'
+
+export async function searchProfiles(query: string, limit = 20) {
+  const term = `%${query}%`
+  return db
+    .select({
+      id: profiles.id,
+      username: profiles.username,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+      bio: profiles.bio,
+    })
+    .from(profiles)
+    .where(or(ilike(profiles.username, term), ilike(profiles.bio, term)))
+    .limit(limit)
+}
+```
+
+With the GIN index in place, Postgres routes this through the trigram index even with leading wildcards (`%query%`).
+
+---
+
+## Notifications Table (Schema Work Only, No New Library)
+
+No new npm packages. Pure Drizzle schema extension.
+
+### Schema Addition for `src/db/schema.ts`
+
+```typescript
+export const notifications = pgTable(
+  'notifications',
   {
-    followerId: uuid('follower_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    followingId: uuid('following_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type', {
+      enum: ['follow', 'watch_overlap', 'price_drop', 'trending'],
+    }).notNull(),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    watchId: uuid('watch_id').references(() => watches.id, { onDelete: 'set null' }),
+    metadata: jsonb('metadata'),   // { username, avatarUrl, watchBrand, watchModel, ... }
+    readAt: timestamp('read_at', { withTimezone: true }),  // null = unread
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index('follows_follower_idx').on(table.followerId),
-    index('follows_following_idx').on(table.followingId),
-    // Any authenticated user can see follows (needed for follower counts on public profiles)
-    pgPolicy('follows_select', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`true`,
-    }),
-    // You can only insert a follow where you are the follower
-    pgPolicy('follows_insert', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`${authUid(table.followerId)}`,
-    }),
-    // You can only delete your own follows
-    pgPolicy('follows_delete', {
-      for: 'delete',
-      to: authenticatedRole,
-      using: sql`${authUid(table.followerId)}`,
-    }),
+    index('notifications_user_id_idx').on(table.userId),
+    index('notifications_user_unread_idx').on(table.userId, table.readAt),   // for unread count
+    index('notifications_user_created_idx').on(table.userId, table.createdAt),
   ]
 )
 ```
 
-**Confidence:** HIGH — Drizzle RLS docs confirm `pgPolicy` + `authUid()` API. Supabase confirms RLS is enforced on all Postgres queries including those via Drizzle's `postgres` driver. The `(select auth.uid())` subquery pattern (what `authUid()` generates) is recommended over bare `auth.uid()` for performance — Postgres caches the subquery result within a statement, avoiding repeated function calls when a policy is evaluated across many rows.
+`readAt IS NULL` = unread. Unread count query:
 
----
-
-### New Schema Tables (Drizzle, no new packages)
-
-All implemented in `src/db/schema.ts` using existing Drizzle + postgres imports.
-
-**`follows`** — collector-to-collector follow graph
-- `follower_id` (FK → users.id), `following_id` (FK → users.id), `created_at`
-- Composite unique on `(follower_id, following_id)` to prevent duplicate follows
-- Indexes on both FKs for follower/following count queries
-
-**`user_profiles`** — public display name, bio, avatar URL; separate from `users` shadow table
-- `user_id` (FK → users.id, unique), `display_name`, `bio`, `avatar_url`, `created_at`, `updated_at`
-- RLS: select = authenticated users can see all profiles; insert/update = owner only
-
-**`user_privacy_settings`** — controls what each user exposes publicly
-- `user_id` (FK → users.id, unique), `profile_public` (bool), `collection_public` (bool), `wishlist_public` (bool), `wear_public` (bool), `created_at`, `updated_at`
-- RLS: select = owner OR querying user has `service_role` (or policies join-check); insert/update = owner only
-- Default: all public (opt-out model matches Rdio-style discovery vision)
-
-**`activity_events`** — append-only event log for network feed
-- `id` (uuid), `user_id` (FK), `event_type` (enum: `watch_added`, `watch_sold`, `wishlist_added`, `worn_today`, `notes_updated`), `watch_id` (FK, nullable), `metadata` (jsonb for extra context), `created_at`
-- No updates, no deletes — append-only. Soft-hide via `visibility` column if needed.
-- RLS select policy: `user_id = auth.uid()` OR `user_id IN (SELECT following_id FROM follows WHERE follower_id = auth.uid())`
-- Index on `(user_id, created_at DESC)` for feed queries
-
-**Note on feed RLS performance:** The "current user can see events from people they follow" RLS policy joins the `follows` table on every row authorization check. At MVP scale (<200 users, <500 events/user), this is fine. At scale this pattern requires either a denormalized `allowed_user_ids` array on each event row, a Postgres function with `SECURITY DEFINER` to cache the following set, or moving to application-layer feed assembly. Flag this for review if the user base grows beyond 1,000.
-
----
-
-### Common Ground Taste Overlap (No New Library)
-
-The existing `analyzeSimilarity()` function in `src/lib/similarity.ts` already computes weighted overlap across style tags, role tags, design traits, complications, and dial color. Common Ground is a projection of this engine onto two users' collections instead of one watch vs. a collection.
-
-**Implementation approach:** Write a new pure function `computeCommonGround(collectionA: Watch[], collectionB: Watch[], preferences: UserPreferences): CommonGroundResult` that:
-1. Runs `analyzeSimilarity` for each watch in B against collection A
-2. Aggregates `SimilarityLabel` distribution
-3. Returns: shared brands, shared style tags, shared role tags, percentage overlap by dimension, top matching watch pairs
-
-No new library needed. This is client-safe computation (same pattern as the existing engine). The function receives data as props — no store reads.
-
-**Confidence:** HIGH — the existing engine is structurally capable of this. The design question (what to surface in the UI) is a product decision, not a technical one.
-
----
-
-### Activity Feed Delivery Strategy
-
-**Recommendation: Server-rendered + Next.js `router.refresh()` for MVP. Do NOT add Supabase Realtime subscriptions in v2.0.**
-
-Rationale:
-
-1. **Free tier limit:** Supabase free tier supports 200 concurrent Realtime WebSocket connections. If every visitor to a profile page opens a subscription, that ceiling is hit with ~100 simultaneous users. For a personal app opening to a small collector community, this is an acceptable risk — but it makes Realtime a cost driver earlier than expected.
-
-2. **Realtime Postgres Changes has a known scaling bottleneck:** Every row change triggers an authorization check against RLS for every subscribed client. 100 subscribers to one table = 100 auth reads per insert. Supabase's own docs flag this as a single-thread process where "compute upgrades don't have a large effect on performance."
-
-3. **Activity feeds are not latency-sensitive in this product.** The Rdio-inspired model is discovery-driven, not notification-driven. A feed that refreshes on page visit (or on a 30-60s interval) delivers the same experience as a live-updating feed for this use case.
-
-4. **Simpler implementation:** Server Component fetch on every route visit means no client-side subscription lifecycle, no `useEffect` cleanup, no auth token refresh in the WebSocket layer, and no delta-merge logic in the client.
-
-**If polling freshness is needed post-launch** (i.e., users expect the feed to update while they're on the page), add `swr` with `refreshInterval`:
-
-```bash
-npm install swr
+```typescript
+// src/data/notifications.ts
+export async function getUnreadCount(userId: string): Promise<number> {
+  const result = await db
+    .select({ count: count() })
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)))
+  return result[0]?.count ?? 0
+}
 ```
 
-Use `useSWR` with a `refreshInterval: 30000` in a client component wrapper around the feed. This keeps the feed fresh without WebSocket complexity and works fine on Vercel's serverless functions.
+### Supabase Realtime — Confirmed Out of Scope for v3.0
 
-**Defer Supabase Realtime to v3.0** if user research shows that live updates are expected. At that point, the correct pattern is: use Broadcast (not Postgres Changes) — the application writes to the activity_events table AND broadcasts to a named channel. Subscribers receive Broadcast messages (which bypass per-row RLS auth overhead) and refresh their local state. This decouples delivery from authorization cost.
+The v2.0 decision stands: "No Supabase Realtime — free tier limit of 200 concurrent WebSockets; server-rendered + `router.refresh()` is sufficient at MVP scale."
 
-**Confidence:** MEDIUM — the polling/refresh recommendation is based on sound analysis of the free tier limits and Supabase Realtime's known scaling constraints (both documented in official Supabase docs). Whether users will tolerate a non-live feed is a product assumption that should be validated.
+For the unread bell badge in the nav: `Header` is a Server Component that already fetches user data. Add `getUnreadCount(userId)` to the existing `Promise.all()` in `Header` — the badge renders server-side and updates on any navigation or `router.refresh()` call.
+
+**Do NOT add:** a WebSocket library, Supabase Realtime subscription, `setInterval` polling, or any client-side real-time mechanism for unread counts in v3.0. The bell dot does not need to update live in a single-user personal app.
+
+---
+
+## Bottom Nav (Bespoke Component, No New Library)
+
+Neither `@base-ui/react` 1.3.0 nor the shadcn registry includes a bottom navigation bar component. Feature requests exist in the shadcn issue tracker (#4398, #5975, #8847) but nothing has shipped as of April 2026 (MEDIUM confidence — verified via GitHub issues search).
+
+### Recommendation: Bespoke, ~60 Lines
+
+```
+src/components/layout/BottomNav.tsx  (new file)
+```
+
+Implementation notes:
+
+- `fixed bottom-0 inset-x-0 z-40` — above page content, below dialogs (`z-50`)
+- iPhone notch clearance: `pb-[env(safe-area-inset-bottom)]` (CSS env variable — no library)
+- Wear CTA center button: use negative `mt` or `translate-y-[-8px]` on the button container to achieve the elevated-above-bar effect; wrap in a `<div>` with `overflow-visible`
+- Active state: `usePathname()` from `next/navigation` — compare against `/`, `/explore`, `/search`, `/watch/new`, `/u/[username]`
+- Main content `<main>` in `layout.tsx` needs `pb-16 md:pb-0` (or `pb-20` if the elevated button bleeds further) to prevent content from being hidden behind the fixed bar
+- Hide on desktop: `md:hidden` on the entire `<BottomNav>` — desktop uses the top header nav
+- `MobileNav.tsx` (current hamburger sheet) is retired once `BottomNav` ships; delete the file and remove the import from `Header.tsx`
+
+---
+
+## wear_events Schema Extension
+
+Extend the existing `wearEvents` table in `src/db/schema.ts` with two new columns. Note: `note` already exists.
+
+```typescript
+// New columns to add to wearEvents table definition
+photoUrl: text('photo_url'),   // storage path: '{userId}/{wearEventId}.jpg'
+visibility: text('visibility', {
+  enum: ['private', 'followers', 'public'],
+}).notNull().default('public'),
+```
+
+The `'followers'` tier is new across the entire codebase. It must be threaded through every wear-reading DAL function — callers that currently check `visibility === 'public'` need to additionally check `visibility === 'followers' AND viewerFollowsOwner`.
 
 ---
 
 ## What NOT to Add
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| Supabase Realtime (Postgres Changes) in v2.0 | Free tier ceiling at 200 concurrent connections; per-row RLS auth check on every event is a single-thread bottleneck; activity feeds are not latency-sensitive for this product | Server Component renders + `router.refresh()` on mutation; `swr` polling if needed |
-| A dedicated graph database (Neo4j, etc.) | Overkill for a follow graph with <10,000 users; Postgres handles social graphs up to millions of edges with proper indexing | Postgres `follows` table with indexed FKs |
-| Redis for feed caching | Unnecessary at MVP scale (<500 watches/user, <200 users); premature infrastructure | Application-layer assembly from `activity_events` on each page load |
-| Fan-out-on-write feed materialization | Fan-out requires background workers; adds infrastructure; only necessary above ~10K follower counts | Fan-out-on-read: query `activity_events WHERE user_id IN (following list)` at read time |
-| TanStack Query / React Query | No existing usage in codebase; adds bundle weight; the existing Server Component + Server Action pattern is sufficient for all data operations | Stick with Server Components for reads, Server Actions for mutations; add `swr` only if polling freshness is needed |
-| Socket.io or custom WebSocket server | Supabase Realtime already provides this if/when needed; a custom WebSocket layer adds significant ops complexity | Supabase Realtime Broadcast when real-time delivery is required |
-| `@supabase/realtime-js` direct import | Already included transitively via `@supabase/supabase-js`; importing directly bypasses the auth-aware client setup | Use `supabase.channel()` via the existing `@supabase/supabase-js` client |
-| Separate profile microservice | No separation of concerns problem at this scale; profiles are just another Postgres table | `user_profiles` table in existing Supabase project |
-
----
-
-## RLS Policy Patterns for Social Visibility
-
-The following table covers each data type and the correct RLS policy shape. All policies use `(select auth.uid())` subquery form for performance.
-
-| Table | Who Can SELECT | Who Can INSERT | Who Can UPDATE | Who Can DELETE |
-|-------|---------------|----------------|----------------|----------------|
-| `users` | Owner only | System (on signup trigger) | Owner only | None (Supabase Auth owns deletion) |
-| `watches` | Owner only OR owner's `collection_public = true` AND requester is authenticated | Owner only | Owner only | Owner only |
-| `user_preferences` | Owner only | Owner only | Owner only | None |
-| `user_profiles` | Any authenticated user | Owner only (one row per user) | Owner only | Owner only |
-| `user_privacy_settings` | Owner only | Owner only | Owner only | None |
-| `follows` | Any authenticated user (needed for follow counts) | Owner (follower_id = auth.uid()) | None (delete + re-insert for changes) | Owner (follower_id = auth.uid()) |
-| `activity_events` | Owner OR following the owner | Owner only (system-written via Server Action) | None (append-only) | Owner only |
-
-**Implementation note:** The `watches` visibility policy requires a join to `user_privacy_settings`. Write this as a `SECURITY DEFINER` function to avoid RLS recursion and performance issues from joining inside a policy expression:
-
-```sql
--- Create helper function (in a Drizzle raw SQL migration)
-CREATE OR REPLACE FUNCTION user_collection_is_public(owner_id uuid)
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER
-AS $$
-  SELECT coalesce(collection_public, true) -- default public
-  FROM user_privacy_settings
-  WHERE user_id = owner_id
-$$;
-
--- Then reference in pgPolicy using sql`` template
-pgPolicy('watches_select', {
-  for: 'select',
-  to: authenticatedRole,
-  using: sql`user_id = (select auth.uid()) OR user_collection_is_public(user_id)`,
-})
-```
-
-**Confidence:** HIGH — the SECURITY DEFINER function pattern for cross-table RLS is documented in Supabase official docs as the recommended approach for policies that depend on other tables.
-
----
-
-## Integration with Existing DAL + Server Actions
-
-No architectural change needed. The existing pattern holds:
-
-- **DAL functions** (`src/data/*.ts`) add new query functions for follows, profiles, activity events
-- **Server Actions** write to `follows` and `activity_events` tables and call `router.refresh()` after mutations — no Realtime push needed
-- **Server Components** fetch profile + collection data in parallel using `Promise.all()` — this is where Common Ground computation happens (server-side, data passed as props to client components)
-- **`proxy.ts`** — no changes needed; all new routes use the same auth enforcement pattern
-
-The one new integration point: **activity event logging**. Every Server Action that mutates watch state (add, status change, mark worn) should also `INSERT` into `activity_events`. This is an additive side-effect — no existing action signatures change.
+| Thing | Why Not |
+|-------|---------|
+| `next-themes` | Project has a custom ThemeProvider; adding next-themes creates two competing theme systems. The custom provider already exposes `resolvedTheme` for Sonner integration. |
+| `piexifjs` | Canvas re-encode already strips all EXIF. piexifjs is needed only for selective EXIF preservation — we want full strip for privacy. |
+| `browser-image-compression` | Does not decode HEIC. Only compresses already-browser-readable formats. Not needed for v3.0. |
+| `react-dropzone` | Single-file upload. Native `<input type="file">` is sufficient and zero-bundle. |
+| `@tanstack/react-query` | No new client-side server-state cache needed. Server Components + `router.refresh()` covers all use cases. |
+| Supabase Realtime / any WebSocket lib | Out of scope. Server-render + `router.refresh()` is sufficient at MVP scale. Free tier: 200 concurrent connections. |
+| `sharp` | Server-side image processing library. Not needed — EXIF strip and resize happen client-side via canvas. |
+| `react-webcam` | Wrapper over getUserMedia that adds bundle weight. The camera component is ~80 lines of raw browser API. |
+| `@radix-ui/react-navigation-menu` | Already have `@base-ui/react`. Bottom nav is too simple to need a primitive — 5 links + 1 elevated button. |
+| `heic-convert` | Node.js only. No browser WASM bundle. Not an alternative to heic2any for client-side conversion. |
+| `setInterval` / polling for unread count | Unnecessary complexity. Server-rendered bell badge + `router.refresh()` on notifications mutations is correct for a personal app. |
 
 ---
 
 ## Installation
 
 ```bash
-# No new runtime packages required for core social features.
-# RLS, schema tables, and Common Ground use existing installed packages.
-
-# Optional: add only if polling-based feed freshness is needed post-launch
-npm install swr
+npm install sonner heic2any
 ```
+
+Two packages. That is the complete install for v3.0.
 
 ---
 
-## Version Compatibility
+## Confidence Assessment
 
-| Package | Version | Notes |
-|---------|---------|-------|
-| `drizzle-orm` | ^0.45.2 (installed) | `pgPolicy` + `authUid()` from `drizzle-orm/supabase` available since ~0.38; confirmed in 0.45.x |
-| `drizzle-kit` | ^0.31.10 (installed) | Generates `CREATE POLICY` SQL from `pgPolicy` definitions on migrate; verified working in 0.31.x |
-| `@supabase/supabase-js` | ^2.103.0 (installed) | Realtime client bundled; no separate install needed if Realtime is added later |
-| `@supabase/ssr` | ^0.10.2 (installed) | No change needed; auth-aware client pattern unchanged for social routes |
-| `swr` | ^2.3.x (not installed) | Add only if polling is needed; compatible with React 19 and Next.js 16 App Router |
+| Area | Confidence | Basis |
+|------|------------|-------|
+| sonner version (2.0.7) | MEDIUM | Verified via GitHub releases; no Context7 entry |
+| sonner bundle size (13.9 kB gzip) | MEDIUM | Multiple WebSearch sources agree |
+| sonner + custom ThemeProvider pattern | HIGH | Derived from confirmed Sonner `theme` prop API + our known ThemeProvider interface |
+| heic2any WASM size (~600 kB) | HIGH | DEV Community article with implementation detail; npm issue tracker confirms |
+| heic2any Web Worker pattern in Next.js | HIGH | DEV Community article with working code; webpack behavior is well-documented |
+| Supabase Storage API | HIGH | Official Supabase docs confirmed |
+| Supabase RLS storage policy template | HIGH | Official Supabase docs confirmed |
+| pg_trgm availability on free tier | MEDIUM | Supabase docs confirm pre-installed; tier restriction not explicitly excluded |
+| getUserMedia iOS Safari quirks | HIGH | MDN + multiple official Apple/WebKit sources |
+| Canvas EXIF strip behavior | HIGH | Well-established browser API behavior; MDN confirmed |
+| Next.js 16 `next/image` bug with storage | HIGH | Confirmed open GitHub issue #88873; tracked by Next.js team |
+| Bottom nav: no library in @base-ui or shadcn | MEDIUM | GitHub issues verified; absence of shipped component verified |
 
 ---
 
 ## Sources
 
-- Drizzle ORM RLS docs — `pgPolicy`, `authUid()`, `authenticatedRole` API confirmed: https://orm.drizzle.team/docs/rls
-- Supabase Realtime Postgres Changes docs — RLS interaction, scaling limitations, concurrent connection limits: https://supabase.com/docs/guides/realtime/postgres-changes
-- Supabase free tier: 200 concurrent Realtime connections confirmed: https://supabase.com/docs/guides/realtime/limits
-- Supabase RLS docs — SECURITY DEFINER function pattern for cross-table policies: https://supabase.com/docs/guides/database/postgres/row-level-security
-- Neon blog — Drizzle + social network RLS modeling (MEDIUM confidence — Neon-specific framing but pattern is Postgres-standard): https://neon.com/blog/modelling-authorization-for-a-social-network-with-postgres-rls-and-drizzle-orm
-- MakerKit real-time notifications guide — initial data + subscription merge pattern: https://makerkit.dev/blog/tutorials/real-time-notifications-supabase-nextjs
+- sonner GitHub (v2.0.7 release): https://github.com/emilkowalski/sonner
+- sonner bundle size: https://bundlephobia.com/package/sonner
+- shadcn sonner docs: https://ui.shadcn.com/docs/components/sonner
+- heic2any npm: https://www.npmjs.com/package/heic2any
+- heic2any Web Worker lazy-load pattern: https://dev.to/calogero_cascio/lazy-loading-a-600kb-webassembly-library-in-nextjs-without-killing-your-bundle-51l4
+- Supabase Storage uploads: https://supabase.com/docs/guides/storage/uploads/standard-uploads
+- Supabase createSignedUrl API: https://supabase.com/docs/reference/javascript/storage-from-createsignedurl
+- Supabase Storage RLS access control: https://supabase.com/docs/guides/storage/security/access-control
+- Supabase bucket creation: https://supabase.com/docs/guides/storage/buckets/creating-buckets
+- pg_trgm Supabase extensions: https://supabase.com/docs/guides/database/extensions
+- getUserMedia MDN: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+- getUserMedia 2026 guide: https://blog.addpipe.com/getusermedia-getting-started/
+- Next.js 16 image optimization bug: https://github.com/vercel/next.js/issues/88873
+- shadcn bottom nav feature request: https://github.com/shadcn-ui/ui/issues/4398
 
 ---
-*Stack research for: Horlo v2.0 Taste Network Foundation — social features only*
-*Researched: 2026-04-19*
+*Stack research for: Horlo v3.0 Production Nav & Daily Wear Loop*
+*Researched: 2026-04-21*
