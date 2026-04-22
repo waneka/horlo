@@ -95,11 +95,10 @@ maybe('Phase 12 visibility matrix', () => {
     }
 
     // Settings — Pp has profile_public=false; everyone else true.
-    // wornPublic=true on ALL actors (including Pp) to PROVE that wornPublic
-    // no longer gates anything in the new DAL — the three-tier visibility
-    // column on wear_events is the sole gate after Phase 12.
+    // wornPublic column dropped in Phase 12 Plan 06 (WYWT-11) — the three-tier
+    // visibility column on wear_events is the sole gate after Phase 12.
     await db.update(profileSettings).set({
-      profilePublic: false, collectionPublic: true, wishlistPublic: true, wornPublic: true,
+      profilePublic: false, collectionPublic: true, wishlistPublic: true,
     }).where(eq(profileSettings.userId, ids.Pp))
 
     // Follow graph: V → Op, Of, Or, Pp. Stranger S has no follows.
@@ -323,8 +322,9 @@ maybe('Phase 12 visibility matrix', () => {
         AND table_name='profile_settings'
         AND column_name='worn_public'
     `)
-    // result.rows is a Postgres result set; expect zero rows after Plan 06 drops
-    // the column. Until Plan 06 lands, this assertion fails with rowCount >= 1.
-    expect((result as unknown as { rows: unknown[] }).rows.length).toBe(0)
+    // Drizzle's postgres driver returns rows directly as an array (not wrapped in
+    // { rows }). Expect zero rows after Plan 06 drops the column.
+    const rows = result as unknown as Array<{ column_name: string }>
+    expect(rows.length).toBe(0)
   })
 })

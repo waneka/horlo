@@ -180,7 +180,9 @@ export const profileSettings = pgTable('profile_settings', {
   profilePublic: boolean('profile_public').notNull().default(true),
   collectionPublic: boolean('collection_public').notNull().default(true),
   wishlistPublic: boolean('wishlist_public').notNull().default(true),
-  wornPublic: boolean('worn_public').notNull().default(true),
+  // wornPublic: REMOVED in Phase 12 (WYWT-11) — replaced by per-row
+  // wear_events.visibility enum. Column dropped in
+  // supabase/migrations/20260424000001_phase12_drop_worn_public.sql.
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 

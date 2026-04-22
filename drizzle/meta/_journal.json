@@ -22,6 +22,13 @@
       "when": 1776755282796,
       "tag": "0002_phase8_notes_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776892119117,
+      "tag": "0003_phase12_drop_worn_public",
+      "breakpoints": true
     }
   ]
 }
