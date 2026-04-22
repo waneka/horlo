@@ -598,27 +598,27 @@ maybe('Phase 12 visibility matrix', () => {
 
 **Note:** All other claims in this research are tagged inline with `[VERIFIED: ...]` or `[CITED: ...]`. Items in this Assumptions Log require either a runtime verification (A1, A4) or a planner code-comment lock (A2, A3).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `getWearEventsForViewer` also accept an optional `visibilityTiers` filter?**
    - What we know: D-03 says one function with three-tier logic, no parameter for filter.
    - What's unclear: stats tab (`[tab]/page.tsx:213`) calls the same function; if owner is viewing own profile, the call returns all rows including private. Currently fine because owner-branch uses `getAllWearEventsByUser` directly.
-   - Recommendation: keep the function signature as `(viewerId, profileUserId)` only; the predicate's self-bypass branch handles owner correctly.
+   - RESOLVED: keep the function signature as `(viewerId, profileUserId)` only; the predicate's self-bypass branch handles owner correctly.
 
 2. **Where should `WearVisibility` type live?**
    - What we know: `wearVisibilityEnum` is already exported from `src/db/schema.ts`. Drizzle's `pgEnum` does not directly export the literal union type for value-side use.
    - What's unclear: whether to introduce `src/lib/wearVisibility.ts` with `export type WearVisibility = 'public' | 'followers' | 'private'`, or use `typeof wearVisibilityEnum.enumValues[number]`.
-   - Recommendation: create `src/lib/wearVisibility.ts` for clarity (matches the codebase's lib/types.ts convention); the `enumValues[number]` trick is too clever for the maintenance burden.
+   - RESOLVED: create `src/lib/wearVisibility.ts` for clarity (matches the codebase's lib/types.ts convention); the `enumValues[number]` trick is too clever for the maintenance burden.
 
 3. **Should the wishlist action's "Wear event not found" error message be preserved verbatim?**
    - What we know: existing code returns `'Wear event not found'` for both missing and `wornPublic=false` cases (Letterboxd-style uniform 404). Preserves the design.
    - What's unclear: should new "private" or "followers (viewer doesn't follow)" cases also return the same message?
-   - Recommendation: YES — preserve uniform message for any negative branch. The test assertions should check for the exact string `'Wear event not found'`.
+   - RESOLVED: YES — preserve uniform message for any negative branch. The test assertions should check for the exact string `'Wear event not found'`.
 
 4. **Is the `[tab]/page.tsx:107` `LockedTabCard` worn-tab branch deletable?**
    - What we know: After Phase 12, `settings.wornPublic` no longer exists; the conditional becomes a TS error.
    - What's unclear: should the worn tab show a "no public wears" empty state, or always render the `WornTabContent` with whatever the new function returns?
-   - Recommendation: delete the branch entirely; let `WornTabContent` render an empty state when `events.length === 0`. Verify `WornTabContent`'s empty state copy is appropriate.
+   - RESOLVED: delete the branch entirely; let `WornTabContent` render an empty state when `events.length === 0`. Verify `WornTabContent`'s empty state copy is appropriate.
 
 ## Environment Availability
 
