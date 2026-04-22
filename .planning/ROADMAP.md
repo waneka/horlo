@@ -182,7 +182,7 @@ Plans:
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
-| 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete   | 2026-04-22 |
+| 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
 
 | Milestone | Phases | Status | Shipped |
 |-----------|--------|--------|---------|
