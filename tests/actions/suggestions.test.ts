@@ -84,6 +84,42 @@ describe('loadMoreSuggestions Server Action', () => {
     expect(getSuggestedCollectors).not.toHaveBeenCalled()
   })
 
+  it("Test 5a: cursor.overlap = NaN → 'Invalid request' (finite guard, WR-01)", async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerId,
+      email: 'v@example.com',
+    })
+    const result = await loadMoreSuggestions({
+      cursor: { overlap: Number.NaN, userId: validCursor.userId },
+    })
+    expect(result).toEqual({ success: false, error: 'Invalid request' })
+    expect(getSuggestedCollectors).not.toHaveBeenCalled()
+  })
+
+  it("Test 5b: cursor.overlap = Infinity → 'Invalid request' (finite guard, WR-01)", async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerId,
+      email: 'v@example.com',
+    })
+    const result = await loadMoreSuggestions({
+      cursor: { overlap: Number.POSITIVE_INFINITY, userId: validCursor.userId },
+    })
+    expect(result).toEqual({ success: false, error: 'Invalid request' })
+    expect(getSuggestedCollectors).not.toHaveBeenCalled()
+  })
+
+  it("Test 5c: cursor.overlap = -Infinity → 'Invalid request' (finite guard, WR-01)", async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerId,
+      email: 'v@example.com',
+    })
+    const result = await loadMoreSuggestions({
+      cursor: { overlap: Number.NEGATIVE_INFINITY, userId: validCursor.userId },
+    })
+    expect(result).toEqual({ success: false, error: 'Invalid request' })
+    expect(getSuggestedCollectors).not.toHaveBeenCalled()
+  })
+
   it('Test 6: valid payload → calls getSuggestedCollectors(user.id, { limit: 5, cursor }) and returns { collectors, nextCursor }', async () => {
     ;(getCurrentUser as Mock).mockResolvedValueOnce({
       id: viewerId,

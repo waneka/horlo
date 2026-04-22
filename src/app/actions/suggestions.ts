@@ -13,12 +13,15 @@ import type { SuggestedCollector } from '@/lib/discoveryTypes'
 /**
  * Keyset cursor shape — must match `SuggestionCursor` from
  * `src/data/suggestions.ts`. `.strict()` rejects mass-assignment attempts
- * (Pitfall 6), `.uuid()` + `.number()` block cursor-fabrication attempts that
- * try to inject arbitrary strings into the DAL WHERE comparator.
+ * (Pitfall 6), `.uuid()` + `.number().finite()` block cursor-fabrication
+ * attempts that try to inject arbitrary strings or non-finite values into
+ * the DAL WHERE comparator. `.finite()` is essential — `NaN`/`Infinity` in
+ * the overlap would cause `c.overlap < cursor.overlap` to evaluate false for
+ * every row, silently stalling pagination by repeatedly returning page 1.
  */
 const cursorSchema = z
   .object({
-    overlap: z.number(),
+    overlap: z.number().finite(),
     userId: z.string().uuid(),
   })
   .strict()
