@@ -267,7 +267,6 @@ maybe('getWatchByIdForViewer — integration', () => {
   // Trigger-aware: UPDATE the auto-created profiles row (don't INSERT) to avoid
   // PK collision with the on_public_user_created trigger.
   const upsertProfile = async (userId: string, username: string) => {
-    const { eq: eqFn } = await import('drizzle-orm')
     await dbModule.db
       .insert(schema.profiles)
       .values({ id: userId, username })

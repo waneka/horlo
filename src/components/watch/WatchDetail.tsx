@@ -32,6 +32,13 @@ interface WatchDetailProps {
   collection: Watch[]
   preferences: UserPreferences
   lastWornDate?: string | null  // sourced from wear_events by server page
+  /**
+   * Gates owner-only UI (Edit, Delete, Mark as Worn, Flag as good deal,
+   * Last worn line). Defaults to true for backward compat with any existing
+   * caller that doesn't yet pass the prop. The route passes `isOwner` from
+   * getWatchByIdForViewer so non-owners never see these controls.
+   */
+  viewerCanEdit?: boolean
 }
 
 function formatDate(dateStr?: string): string {
@@ -53,7 +60,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -130,8 +137,8 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate }: Wa
             )}
           </div>
 
-          {/* Last worn line (owned/grail only) */}
-          {(watch.status === 'owned' || watch.status === 'grail') && (
+          {/* Last worn line (owned/grail only, owner only — non-owners do not see owner's wear state) */}
+          {viewerCanEdit && (watch.status === 'owned' || watch.status === 'grail') && (
             <div className="flex items-baseline gap-2 text-sm">
               <span className="text-muted-foreground">Last worn:</span>
               {lastWornDate ? (
@@ -148,8 +155,8 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate }: Wa
             </div>
           )}
 
-          {/* Flag as good deal (wishlist/grail only) */}
-          {isWishlistLike && (
+          {/* Flag as good deal (wishlist/grail only, owner only) */}
+          {isWishlistLike && viewerCanEdit && (
             <div className="flex items-center gap-3 py-2 min-h-[44px]">
               <Checkbox
                 id="flagged-deal"
@@ -165,51 +172,54 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate }: Wa
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2">
-            {watch.status === 'owned' && (
-              <Button
-                variant="outline"
-                onClick={handleMarkAsWorn}
-                disabled={isPending}
-              >
-                Mark as Worn
-              </Button>
-            )}
-            <Link href={`/watch/${watch.id}/edit`}>
-              <Button variant="outline">Edit</Button>
-            </Link>
-            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <DialogTrigger render={<Button variant="destructive" />}>
-                Delete
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete Watch</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete {watch.brand} {watch.model}?
-                    This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDeleteDialogOpen(false)}
-                    disabled={isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleDelete}
-                    disabled={isPending}
-                  >
-                    Delete
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+          {/* Actions — owner only. Server Actions double-verify ownership
+              (T-RDB-06), so this is a UX gate, not the authoritative check. */}
+          {viewerCanEdit && (
+            <div className="flex flex-wrap gap-2">
+              {watch.status === 'owned' && (
+                <Button
+                  variant="outline"
+                  onClick={handleMarkAsWorn}
+                  disabled={isPending}
+                >
+                  Mark as Worn
+                </Button>
+              )}
+              <Link href={`/watch/${watch.id}/edit`}>
+                <Button variant="outline">Edit</Button>
+              </Link>
+              <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogTrigger render={<Button variant="destructive" />}>
+                  Delete
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete Watch</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete {watch.brand} {watch.model}?
+                      This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDeleteDialogOpen(false)}
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDelete}
+                      disabled={isPending}
+                    >
+                      Delete
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
 
         {/* Right column: spec cards */}

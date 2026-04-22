@@ -2,8 +2,8 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { watches } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { watches, profileSettings } from '@/db/schema'
+import { eq, and, or, sql } from 'drizzle-orm'
 import type { Watch } from '@/lib/types'
 
 // Row type inferred from the Drizzle schema — used for mapping only.
@@ -101,6 +101,59 @@ export async function getWatchById(userId: string, watchId: string): Promise<Wat
     .from(watches)
     .where(and(eq(watches.userId, userId), eq(watches.id, watchId)))
   return rows[0] ? mapRowToWatch(rows[0]) : null
+}
+
+/**
+ * Viewer-aware fetch for /watch/[id]. Returns { watch, isOwner } or null.
+ *
+ * Privacy gate (mirrors getWearRailForViewer — two-layer per CLAUDE.md + STATE.md):
+ *   - OUTER: RLS on watches is owner-only at anon-key.
+ *   - INNER (this WHERE clause): self-include short-circuits (OR owner branch);
+ *     non-owner rows require profile_public=true AND the per-tab flag for the
+ *     watch's status (collection_public for owned/sold/grail, wishlist_public
+ *     for wishlist).
+ *
+ * Missing watch and "exists but private" both return null — uniform path
+ * avoids leaking existence of private watches (precedent: Phase 10 WYWT DAL).
+ */
+export async function getWatchByIdForViewer(
+  viewerId: string,
+  watchId: string,
+): Promise<{ watch: Watch; isOwner: boolean } | null> {
+  const rows = await db
+    .select({
+      watch: watches,
+      profilePublic: profileSettings.profilePublic,
+      collectionPublic: profileSettings.collectionPublic,
+      wishlistPublic: profileSettings.wishlistPublic,
+    })
+    .from(watches)
+    .innerJoin(profileSettings, eq(profileSettings.userId, watches.userId))
+    .where(
+      and(
+        eq(watches.id, watchId),
+        or(
+          eq(watches.userId, viewerId), // owner short-circuit
+          and(
+            eq(profileSettings.profilePublic, true),
+            // per-tab gate by status — wishlist uses wishlist_public,
+            // owned/sold/grail use collection_public
+            sql`(
+              (${watches.status} = 'wishlist' AND ${profileSettings.wishlistPublic} = true)
+              OR (${watches.status} IN ('owned','sold','grail') AND ${profileSettings.collectionPublic} = true)
+            )`,
+          ),
+        ),
+      ),
+    )
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  return {
+    watch: mapRowToWatch(row.watch),
+    isOwner: row.watch.userId === viewerId,
+  }
 }
 
 /**
