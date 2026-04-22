@@ -131,12 +131,15 @@ describe('LoadMoreSuggestionsButton', () => {
         viewerId="v1"
       />,
     )
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }))
     await flush()
     // Appended row renders (Bob's collection link present)
     expect(container.querySelector('a[href="/u/bob/collection"]')).toBeTruthy()
-    // Button unmounts when cursor becomes null
-    expect(screen.queryByRole('button')).toBeNull()
+    // Load More button unmounts when cursor becomes null. Any remaining
+    // <button> elements are stubbed FollowButtons inside appended rows.
+    expect(
+      screen.queryByRole('button', { name: /Load more|Retry|Loading/ }),
+    ).toBeNull()
   })
 
   it('Test 4 — success with nextCursor non-null: button stays mounted', async () => {
@@ -157,9 +160,13 @@ describe('LoadMoreSuggestionsButton', () => {
         viewerId="v1"
       />,
     )
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }))
     await flush()
-    expect(screen.getByRole('button')).toBeTruthy()
+    // Load More button still rendered (accessible name scoped to avoid matching
+    // the stubbed FollowButton inside the appended row).
+    expect(
+      screen.getByRole('button', { name: /Load more/ }),
+    ).toBeTruthy()
   })
 
   it("Test 5 — error: label flips to \"Couldn't load more. Tap to retry.\"", async () => {
@@ -197,15 +204,16 @@ describe('LoadMoreSuggestionsButton', () => {
         viewerId="v1"
       />,
     )
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Load more/ }))
     await flush()
-    expect(screen.getByRole('button')).toHaveTextContent(
-      "Couldn't load more. Tap to retry.",
-    )
-    fireEvent.click(screen.getByRole('button'))
+    const retryBtn = screen.getByRole('button', { name: /Retry/ })
+    expect(retryBtn).toHaveTextContent("Couldn't load more. Tap to retry.")
+    fireEvent.click(retryBtn)
     await flush()
-    // Button unmounts on success+nextCursor=null
-    expect(screen.queryByRole('button')).toBeNull()
+    // Load More button unmounts on success+nextCursor=null
+    expect(
+      screen.queryByRole('button', { name: /Load more|Retry|Loading/ }),
+    ).toBeNull()
     // Appended row renders
     expect(container.querySelector('a[href="/u/carol/collection"]')).toBeTruthy()
   })
