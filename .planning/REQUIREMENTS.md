@@ -9,33 +9,33 @@ Requirements for Taste Network Foundation milestone. Each maps to roadmap phases
 
 ### Data Foundation
 
-- [ ] **DATA-01**: RLS policies enabled on all existing tables (users, watches, user_preferences) with `(SELECT auth.uid())` performance pattern
-- [ ] **DATA-02**: Profiles table with username, display name, avatar URL, bio, auto-created on signup
-- [ ] **DATA-03**: Follows table (asymmetric follow, follower/following) with appropriate indexes
-- [ ] **DATA-04**: Activities table logging watch_added, wishlist_added, watch_worn events with user and watch references
-- [ ] **DATA-05**: Profile settings table with profile_visibility, collection_public, wishlist_public, worn_public booleans
-- [ ] **DATA-06**: Wear events table replacing/augmenting lastWornDate with structured wear history
-- [ ] **DATA-07**: RLS policies on all new social tables enforcing ownership for writes and privacy settings for reads
+- [x] **DATA-01**: RLS policies enabled on all existing tables (users, watches, user_preferences) with `(SELECT auth.uid())` performance pattern
+- [x] **DATA-02**: Profiles table with username, display name, avatar URL, bio, auto-created on signup
+- [x] **DATA-03**: Follows table (asymmetric follow, follower/following) with appropriate indexes
+- [x] **DATA-04**: Activities table logging watch_added, wishlist_added, watch_worn events with user and watch references
+- [x] **DATA-05**: Profile settings table with profile_visibility, collection_public, wishlist_public, worn_public booleans
+- [x] **DATA-06**: Wear events table replacing/augmenting lastWornDate with structured wear history
+- [x] **DATA-07**: RLS policies on all new social tables enforcing ownership for writes and privacy settings for reads
 
 ### Profiles
 
-- [ ] **PROF-01**: User can view their own profile page at `/u/[username]` with header (avatar, username, stats, taste tags)
-- [ ] **PROF-02**: User can view Collection tab showing owned watches in grid with filters
-- [ ] **PROF-03**: User can view Wishlist tab showing tracked intent (target price, notes, status)
-- [ ] **PROF-04**: User can view Worn tab showing wear history (timeline + calendar)
-- [ ] **PROF-05**: User can view Notes tab showing watch-linked notes
-- [ ] **PROF-06**: User can view Stats tab showing collection composition and insights
-- [ ] **PROF-07**: User can edit their profile (display name, avatar URL, bio)
-- [ ] **PROF-08**: User can view another collector's profile (read-only, respects privacy settings)
-- [ ] **PROF-09**: User can see Common Ground taste overlap on another collector's profile
-- [ ] **PROF-10**: Profile auto-derives taste tags from collection composition
+- [x] **PROF-01**: User can view their own profile page at `/u/[username]` with header (avatar, username, stats, taste tags)
+- [x] **PROF-02**: User can view Collection tab showing owned watches in grid with filters
+- [x] **PROF-03**: User can view Wishlist tab showing tracked intent (target price, notes, status)
+- [x] **PROF-04**: User can view Worn tab showing wear history (timeline + calendar)
+- [x] **PROF-05**: User can view Notes tab showing watch-linked notes
+- [x] **PROF-06**: User can view Stats tab showing collection composition and insights
+- [x] **PROF-07**: User can edit their profile (display name, avatar URL, bio)
+- [x] **PROF-08**: User can view another collector's profile (read-only, respects privacy settings)
+- [x] **PROF-09**: User can see Common Ground taste overlap on another collector's profile
+- [x] **PROF-10**: Profile auto-derives taste tags from collection composition
 
 ### Follow System
 
-- [ ] **FOLL-01**: User can follow another collector
-- [ ] **FOLL-02**: User can unfollow a collector
-- [ ] **FOLL-03**: User can see follower and following counts on any profile
-- [ ] **FOLL-04**: User can view list of followers and following on a profile
+- [x] **FOLL-01**: User can follow another collector
+- [x] **FOLL-02**: User can unfollow a collector
+- [x] **FOLL-03**: User can see follower and following counts on any profile
+- [x] **FOLL-04**: User can view list of followers and following on a profile
 
 ### Activity Feed
 
@@ -47,18 +47,18 @@ Requirements for Taste Network Foundation milestone. Each maps to roadmap phases
 
 ### Network Home
 
-- [ ] **WYWT-03**: WYWT rail on home page showing followed users' wear events (last 48h, one tile per actor)
+- [x] **WYWT-03**: WYWT rail on home page showing followed users' wear events (last 48h, one tile per actor)
 - [x] **DISC-02**: "From collectors like you" recommendations on home based on rule-based overlap + co-occurrence
 - [x] **DISC-04**: Suggested collectors on home ordered by taste overlap
 
 ### Privacy & Settings
 
-- [ ] **PRIV-01**: User can set profile visibility (public/private)
-- [ ] **PRIV-02**: User can control collection visibility (public/private)
-- [ ] **PRIV-03**: User can control wishlist visibility (public/private)
-- [ ] **PRIV-04**: User can control worn history visibility (public/private)
-- [ ] **PRIV-05**: Privacy controls enforced at both RLS and DAL layers
-- [ ] **PRIV-06**: Private profiles show locked state with follow button visible (Letterboxd pattern)
+- [x] **PRIV-01**: User can set profile visibility (public/private)
+- [x] **PRIV-02**: User can control collection visibility (public/private)
+- [x] **PRIV-03**: User can control wishlist visibility (public/private)
+- [x] **PRIV-04**: User can control worn history visibility (public/private)
+- [x] **PRIV-05**: Privacy controls enforced at both RLS and DAL layers
+- [x] **PRIV-06**: Private profiles show locked state with follow button visible (Letterboxd pattern)
 
 ## Future Requirements
 
@@ -117,33 +117,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 6 | Pending |
-| DATA-07 | Phase 6 | Pending |
-| DATA-02 | Phase 7 | Pending |
-| DATA-03 | Phase 7 | Pending |
-| DATA-04 | Phase 7 | Pending |
-| DATA-05 | Phase 7 | Pending |
-| DATA-06 | Phase 7 | Pending |
-| PROF-01 | Phase 8 | Pending |
-| PROF-02 | Phase 8 | Pending |
-| PROF-03 | Phase 8 | Pending |
-| PROF-04 | Phase 8 | Pending |
-| PROF-05 | Phase 8 | Pending |
-| PROF-06 | Phase 8 | Pending |
-| PROF-07 | Phase 8 | Pending |
-| PROF-10 | Phase 8 | Pending |
-| PRIV-01 | Phase 8 | Pending |
-| PRIV-02 | Phase 8 | Pending |
-| PRIV-03 | Phase 8 | Pending |
-| PRIV-04 | Phase 8 | Pending |
-| PRIV-05 | Phase 8 | Pending |
-| PRIV-06 | Phase 8 | Pending |
-| FOLL-01 | Phase 9 | Pending |
-| FOLL-02 | Phase 9 | Pending |
-| FOLL-03 | Phase 9 | Pending |
-| FOLL-04 | Phase 9 | Pending |
-| PROF-08 | Phase 9 | Pending |
-| PROF-09 | Phase 9 | Pending |
+| DATA-01 | Phase 6 | Complete |
+| DATA-07 | Phase 6 | Complete |
+| DATA-02 | Phase 7 | Complete |
+| DATA-03 | Phase 7 | Complete |
+| DATA-04 | Phase 7 | Complete |
+| DATA-05 | Phase 7 | Complete |
+| DATA-06 | Phase 7 | Complete |
+| PROF-01 | Phase 8 | Complete |
+| PROF-02 | Phase 8 | Complete |
+| PROF-03 | Phase 8 | Complete |
+| PROF-04 | Phase 8 | Complete |
+| PROF-05 | Phase 8 | Complete |
+| PROF-06 | Phase 8 | Complete |
+| PROF-07 | Phase 8 | Complete |
+| PROF-10 | Phase 8 | Complete |
+| PRIV-01 | Phase 8 | Complete |
+| PRIV-02 | Phase 8 | Complete |
+| PRIV-03 | Phase 8 | Complete |
+| PRIV-04 | Phase 8 | Complete |
+| PRIV-05 | Phase 8 | Complete |
+| PRIV-06 | Phase 8 | Complete |
+| FOLL-01 | Phase 9 | Complete |
+| FOLL-02 | Phase 9 | Complete |
+| FOLL-03 | Phase 9 | Complete |
+| FOLL-04 | Phase 9 | Complete |
+| PROF-08 | Phase 9 | Complete |
+| PROF-09 | Phase 9 | Complete |
 | DISC-02 | Phase 10 | Complete |
 | DISC-04 | Phase 10 | Complete |
 | FEED-01 | Phase 10 | Complete |

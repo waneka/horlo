@@ -23,10 +23,10 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
 
 ### v2.0 Taste Network Foundation
 
-- [ ] **Phase 6: RLS Foundation** - Defense-in-depth row-level security on all existing tables, prerequisite for all multi-user features
-- [ ] **Phase 7: Social Schema & Profile Auto-Creation** - Five new tables land with full RLS, profile rows auto-created on signup
-- [ ] **Phase 8: Self Profile & Privacy Controls** - Collector's own profile page with all tabs, privacy settings surface
-- [ ] **Phase 9: Follow System & Collector Profiles** - Follow/unfollow, public collector profile view, Common Ground taste overlap
+- [x] **Phase 6: RLS Foundation** - Defense-in-depth row-level security on all existing tables, prerequisite for all multi-user features
+- [x] **Phase 7: Social Schema & Profile Auto-Creation** - Five new tables land with full RLS, profile rows auto-created on signup
+- [x] **Phase 8: Self Profile & Privacy Controls** - Collector's own profile page with all tabs, privacy settings surface
+- [x] **Phase 9: Follow System & Collector Profiles** - Follow/unfollow, public collector profile view, Common Ground taste overlap
 - [x] **Phase 10: Network Home** - Five-section authenticated home: WYWT rail (follow-network wear events, last 48h) · From Collectors Like You (rule-based recs) · Network Activity feed · Personal Insights · Suggested Collectors (completed 2026-04-22)
 
 ## Phase Details
