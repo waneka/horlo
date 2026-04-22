@@ -196,4 +196,43 @@ describe('WywtOverlay — W-05 full-screen / modal + Add-to-wishlist', () => {
     // Retry button should be available after an error.
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
   })
+
+  it('WR-03 Test 8 — after a successful add, a second handler invocation is suppressed (no duplicate action call)', async () => {
+    // Regression: without the `status === 'added'` guard in handleAddToWishlist,
+    // a fast second tap before swipe-away could dispatch a second action and
+    // create a duplicate wishlist row. The handler MUST be idempotent after
+    // success.
+    mockAddToWishlistFromWearEvent.mockResolvedValue({
+      success: true,
+      data: { watchId: 'new-watch' },
+    })
+
+    const tile = makeTile(0, { wearEventId: 'target-evt' })
+    render(
+      <WywtOverlay
+        tiles={[tile]}
+        initialIndex={0}
+        open
+        onOpenChange={() => {}}
+        onViewed={() => {}}
+        viewerId="viewer-1"
+      />,
+    )
+
+    // First click — the action fires once.
+    fireEvent.click(screen.getByRole('button', { name: 'Add to wishlist' }))
+    await waitFor(() =>
+      expect(screen.getByText('Added to wishlist.')).toBeTruthy(),
+    )
+    expect(mockAddToWishlistFromWearEvent).toHaveBeenCalledTimes(1)
+
+    // After success the button is unmounted (status='added' renders only the
+    // "Added to wishlist." text). The total invocation count must still be 1
+    // — no duplicate dispatch from latent re-render paths.
+    expect(
+      screen.queryByRole('button', { name: 'Add to wishlist' }),
+    ).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(mockAddToWishlistFromWearEvent).toHaveBeenCalledTimes(1)
+  })
 })

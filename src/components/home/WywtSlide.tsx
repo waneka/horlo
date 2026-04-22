@@ -28,6 +28,13 @@ export function WywtSlide({ tile }: { tile: WywtTile }) {
   const [status, setStatus] = useState<'idle' | 'added' | 'error'>('idle')
 
   const handleAddToWishlist = () => {
+    // WR-03 double-submit guard: block when a request is already in flight
+    // (pending) OR when the previous attempt already succeeded (status=added).
+    // Without the `status === 'added'` check a second tap on an already-added
+    // slide — reachable e.g. via a fast keyboard Enter — would dispatch a
+    // second action and create a duplicate watches row. `useTransition` only
+    // covers the in-flight case; success is a persistent latched state.
+    if (pending || status === 'added') return
     setStatus('idle')
     startTransition(async () => {
       const result = await addToWishlistFromWearEvent({
