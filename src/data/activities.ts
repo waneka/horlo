@@ -46,7 +46,11 @@ export async function logActivity(
  *
  * F-05 own-filter: `not(eq(activities.userId, viewerId))`.
  * FEED-03 keyset: tuple comparison `(created_at, id) < ($cursorCreatedAt,
- * $cursorId)` — stable against concurrent inserts.
+ * $cursorId)` — stable against concurrent inserts. `created_at` is a
+ * Postgres `timestamptz` with microsecond precision, so `id` is a
+ * rare-case tiebreaker that only fires when two rows share a
+ * microsecond-identical `created_at`. UUID v4 `id` values give effective
+ * uniqueness; this invariant is what FEED-03 leans on.
  * Returns RawFeedRow[] — aggregation happens in `aggregateFeed`
  * (caller-composed by `loadMoreFeed`).
  */

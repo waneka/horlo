@@ -12,13 +12,19 @@ export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn'
 /**
  * Keyset pagination cursor for the Network Activity feed (F-04).
  *
- * Encoded as `(created_at DESC, id DESC)` — `id` is the UUID tiebreaker for
- * rows sharing a millisecond timestamp. The wire encoding (opaque base64 vs.
- * plain tuple) is the DAL's choice per CONTEXT decisions.
+ * Encoded as `(created_at DESC, id DESC)`. `id` is the UUID tiebreaker for
+ * the *rare* case where two rows share the same `created_at` down to the
+ * microsecond — Postgres `timestamptz` has microsecond precision, so in
+ * practice the `id` fallback almost never fires. It exists to guarantee a
+ * total order under pathological concurrent inserts; it is NOT a
+ * millisecond-granularity tiebreaker.
+ *
+ * The wire encoding (opaque base64 vs. plain tuple) is the DAL's choice per
+ * CONTEXT decisions.
  */
 export interface FeedCursor {
   createdAt: string // ISO 8601 timestamp, e.g. '2026-04-21T14:23:00.000Z'
-  id: string // UUID of last-seen row (tiebreaker)
+  id: string // UUID of last-seen row; rare-case tiebreaker for microsecond-identical created_at values
 }
 
 /**
