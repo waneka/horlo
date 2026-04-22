@@ -2,6 +2,20 @@
 -- Source: 11-CONTEXT.md D-01/D-02/D-03/D-04, 11-RESEARCH.md §SQL Snippet 4, §Pitfall 2
 -- Requirements: WYWT-13 (bucket), WYWT-14 (three-tier storage RLS)
 --
+-- =============================================================================
+-- KNOWN ISSUE (WR-04): The SELECT policy below is BROKEN without Migration 4b.
+-- wear_events has owner-only RLS, so the EXISTS subqueries that JOIN wear_events
+-- return no rows for non-owner viewers — public + followers tiers fail closed.
+-- Migration 4b (20260423000004b_phase11_storage_rls_secdef_fix.sql) replaces the
+-- SELECT policy with SECURITY DEFINER helpers that bypass wear_events RLS.
+-- Migration 6 (20260423000006_phase11_secdef_revoke_public.sql) tightens those
+-- helpers' EXECUTE grants.
+-- DO NOT deploy Migration 4 without 4b — non-owner access will fail closed.
+-- Squashing 4 + 4b into a single migration before production rollout is tracked
+-- as follow-up work in the Phase 11 review; until then, treat 4 + 4b (+ 6) as
+-- an indivisible group.
+-- =============================================================================
+--
 -- DEPENDENCY: This migration REQUIRES Migration 1 (wear_events.visibility + wear_visibility enum)
 -- to have run first. The SELECT policy JOINs wear_events on visibility. Running Migration 4
 -- before Migration 1 will fail at CREATE POLICY with "column wear_events.visibility does not
