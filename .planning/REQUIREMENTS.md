@@ -43,6 +43,13 @@ Requirements for Taste Network Foundation milestone. Each maps to roadmap phases
 - [x] **FEED-02**: Activity feed shows watch_added, wishlist_added, and watch_worn events
 - [x] **FEED-03**: Activity feed uses keyset pagination for efficient loading
 - [x] **FEED-04**: Bulk imports generate a single aggregated activity event (not one per watch)
+- [ ] **FEED-05**: Home page surfaces up to 4 personal insight cards (Sleeping Beauty, Most Worn This Month, Wishlist Gap, Common Ground with a follower)
+
+### Network Home
+
+- [ ] **WYWT-03**: WYWT rail on home page showing followed users' wear events (last 48h, one tile per actor)
+- [ ] **DISC-02**: "From collectors like you" recommendations on home based on rule-based overlap + co-occurrence
+- [ ] **DISC-04**: Suggested collectors on home ordered by taste overlap
 
 ### Privacy & Settings
 
@@ -60,9 +67,7 @@ Deferred to future milestones. Tracked but not in current roadmap.
 ### Discovery & Recommendations
 
 - **DISC-01**: User can browse trending watches (network-weighted)
-- **DISC-02**: User can see "From collectors like you" recommendations based on overlap + co-occurrence
 - **DISC-03**: User can browse collector archetypes
-- **DISC-04**: User can see suggested collectors on home page
 
 ### Explore
 
@@ -84,7 +89,6 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 - **WYWT-01**: Dedicated wear page with multiple entry points
 - **WYWT-02**: Optional wrist photo, note, and visibility controls on wear events
-- **WYWT-03**: WYWT rail on home page showing followed users' wear events
 
 ### Watch Details (Social Context)
 
@@ -140,17 +144,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOLL-04 | Phase 9 | Pending |
 | PROF-08 | Phase 9 | Pending |
 | PROF-09 | Phase 9 | Pending |
+| DISC-02 | Phase 10 | Pending |
+| DISC-04 | Phase 10 | Pending |
 | FEED-01 | Phase 10 | Complete |
 | FEED-02 | Phase 10 | Complete |
 | FEED-03 | Phase 10 | Complete |
 | FEED-04 | Phase 10 | Complete |
+| FEED-05 | Phase 10 | Pending |
 | WYWT-03 | Phase 10 | Complete |
 
 **Coverage:**
-- v2.0 requirements: 31 total
-- Mapped to phases: 31 (WYWT-03 expanded into Phase 10 per 10-CONTEXT.md)
+- v2.0 requirements: 35 total  (was 31; +FEED-05, +WYWT-03, +DISC-02, +DISC-04)
+- Mapped to phases: 35
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-19*
-*Last updated: 2026-04-19 — traceability populated after roadmap creation*
+*Last updated: 2026-04-21 — Phase 10 scope expansion (FEED-05 + WYWT-03/DISC-02/DISC-04 promoted from future)*
