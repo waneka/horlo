@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
-stopped_at: Completed 10-04-PLAN.md (wishlistGap + Collectors Like You DAL + Suggested Collectors DAL + loadMoreSuggestions Server Action)
-last_updated: "2026-04-21T23:56:31.324Z"
-last_activity: 2026-04-21
+stopped_at: Completed 10-05-PLAN.md (NetworkActivityFeed + ActivityRow + AggregatedActivityRow + LoadMoreButton + FeedEmptyState)
+last_updated: "2026-04-22T00:13:01.487Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 16
-  percent: 76
+  completed_plans: 17
+  percent: 81
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 ## Current Position
 
 Phase: 10 (activity-feed) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
-Last activity: 2026-04-21
+Last activity: 2026-04-22
 
 ## Progress Bar
 
@@ -53,6 +53,7 @@ Phase 10 [          ] Not started
 | Phase 10 P02 | 10min | 3 tasks | 6 files |
 | Phase 10 P03 | 5min | 2 tasks | 5 files |
 | Phase 10 P10-04 | ~9 min | 4 tasks | 11 files |
+| Phase 10 P05 | ~15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Phase 10 [          ] Not started
 | Phase 10 Plan 04 wishlistGap — CANONICAL_ROLES defined locally | `CANONICAL_ROLES = [dive, dress, sport, field, pilot, chronograph, travel, formal, casual]` lives in `src/lib/wishlistGap.ts`, not `src/lib/constants.ts`. The existing `ROLE_TAGS` constant is a DIFFERENT vocabulary (use-case roles: daily, gada, travel, weekend, formal, beater...) and cannot be reused. `GAP_THRESHOLD = 0.10`. Array-order-first tiebreak on both gap and leansOn for stable output. |
 | Phase 10 Plan 04 rationale templates — deterministic, no LLM | 5 priority-ordered templates (brand-match → popular-role(≥5 owners) → dominant-style(>50%) → top-role-pair → community-fallback); first match wins. Brand-match beats popular-role when both fire (Test 6 pins this). Zero Anthropic dependency per C-03; the home page is always rendereable without an API key. |
 | Phase 10 Plan 04 Suggested Collectors keyset cursor | `SuggestionCursor = { overlap: number, userId: string }` with sort `(overlap DESC, userId ASC)` and strict-after filter `c.overlap < cursor.overlap \|\| (c.overlap === cursor.overlap && c.userId > cursor.userId)`. Guarantees disjoint pages. `overlap` bucket mapping: Strong=0.85, Some=0.55, Different=0.20 — representative midpoints of tasteOverlap's qualitative bands. `viewerId` flows as a function argument (never closure-captured) so Plan 07's `'use cache'` wrapper produces a correct cache key (Pitfall 7 / T-10-04-03). |
+| Phase 10 Plan 05 aggregated-row verb — 'wishlisted {N} watches' for wishlist_added | UI-SPEC only documented the 'added {N} watches' variant. Kept symmetric because `wishlist_added` is a first-class `AggregatedRow` type in `feedTypes.ts` and asymmetric fallback would mislabel activity. Reviewer can flip in one line if the UI-SPEC author prefers the asymmetric form. |
+| Phase 10 Plan 05 feed-row image hardening | All thumbnails routed through `getSafeImageUrl` before `next/image`, matching `ProfileWatchCard` (Phase 8). Activities `metadata.imageUrl` is user-supplied from Phase 7 URL imports; https-upgrade + protocol guard apply at the component level as a Rule 2 correctness addition even though T-10-05-05 was marked 'accept' in the plan's threat register. |
+| Phase 10 Plan 05 F-03 dual link pattern | `absolute inset-0` Link overlay for profile nav + nested `relative z-10` Link for watch-name. Avoids invalid `<a>` inside `<a>` and keeps the row a pure Server Component. This is the canonical pattern for any future feed-row surface. |
 
 ### Critical Pitfalls (from research)
 
@@ -101,7 +105,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-21T23:56:31.320Z
-Stopped at: Completed 10-04-PLAN.md (wishlistGap + Collectors Like You DAL + Suggested Collectors DAL + loadMoreSuggestions Server Action)
+Last session: 2026-04-22T00:13:01.483Z
+Stopped at: Completed 10-05-PLAN.md (NetworkActivityFeed + ActivityRow + AggregatedActivityRow + LoadMoreButton + FeedEmptyState)
 Resume file: None
 Next action: `/gsd-plan-phase 6`
