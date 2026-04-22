@@ -78,13 +78,14 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   3. `getFeedForUser` activity rows for `watch_worn` events respect per-row visibility drawn from activity metadata; no JOIN to `wear_events` is needed on the feed hot path
   4. The profile worn tab for a non-owner viewer calls a viewer-aware DAL function, not `getAllWearEventsByUser`; a private wear event on that profile does not appear in the viewer's rendered worn tab
   5. Integration tests cover: (a) public wear visible to all, (b) followers-only wear visible to follower and invisible to stranger, (c) private wear visible only to owner — all three pass before this phase ships
-**Plans**: 6 plans (Wave 0: Plan 01 tests-first · Wave 1: Plans 02-03 parallel DAL ripple · Wave 2: Plan 04 consumers · Wave 3: Plans 05-06 cleanup + [BLOCKING] column drop migration)
+**Plans**: 7 plans (Wave 0: Plan 01 tests-first · Wave 1: Plans 02-03 parallel DAL ripple · Wave 2: Plan 04 consumers · Wave 3: Plans 05-06 cleanup + [BLOCKING] column drop migration · Gap closure: Plan 07 wishlist test fixture three-tier contract)
   - [x] 12-01-PLAN.md — Author Phase 12 visibility matrix integration tests + modify unit tests (red-state commits; privacy-first UAT rule) [Wave 0]
   - [x] 12-02-PLAN.md — Introduce WearVisibility type + getWearEventsForViewer (rename, three-tier predicate) + getWearRailForViewer WHERE rewrite + WywtTile carries visibility [Wave 1; depends on Plan 01]
   - [x] 12-03-PLAN.md — Widen logActivity (WatchWornMetadata requires visibility) + getFeedForUser metadata->>'visibility' gate + markAsWorn writes visibility:'public' [Wave 1; depends on Plan 01]
   - [x] 12-04-PLAN.md — Profile tab page calls getWearEventsForViewer; delete worn-tab LockedTabCard branch; wishlist action three-tier gate via inline JOIN [Wave 2; depends on Plan 02]
   - [x] 12-05-PLAN.md — Strip wornPublic from ProfileSettings type, VISIBILITY_FIELDS, settings page + SettingsClient; repo-wide invariant grep clean [Wave 3; depends on Plans 02-04]
   - [x] 12-06-PLAN.md — [BLOCKING] Drop wornPublic from src/db/schema.ts; drizzle-kit generate; author supabase migration 20260424000001_phase12_drop_worn_public.sql; apply locally; verify matrix final cell green; MANUAL prod push checkpoint [Wave 3; depends on Plan 05]
+  - [ ] 12-07-PLAN.md — [GAP CLOSURE] Update tests/actions/wishlist.test.ts mock fixture to three-tier contract (visibility + profilePublic) · queue-based db.select chain · rewrite Test 5 Case B and Test 9 · add Test 10 (followers tier happy) and Test 11 (followers tier deny) [Wave 1; gap closure for VERIFICATION.md truth #5]
 **Pitfalls to address**: G-1 (audit all 8+ DAL functions before touching any), G-3 (wornPublic fallthrough removed), G-4 (profile_public outer gate preserved), G-5 (self-tile bypass unchanged), G-7 (visibility in activity metadata at write time), F-1 (table RLS does not protect Storage — separate), B-6 (no getCurrentUser inside use cache), privacy-first UAT rule from SUMMARY.md
 
 ---
