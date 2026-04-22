@@ -196,6 +196,44 @@ maybe('Phase 11 storage RLS — WYWT-13 / WYWT-14 three-tier + folder enforcemen
       const c = await clientAs(userS)
       expect(await canDownload(c, 'private')).toBe(false)
     })
+
+    // Dynamic coverage (WR-05): policy must react to follow-relationship and
+    // visibility-tier changes, not just the static matrix above.
+    it('F loses access to followers-tier photo after unfollowing A', async () => {
+      const c = await clientAs(userF)
+      // Sanity: F can download while the follow exists.
+      expect(await canDownload(c, 'followers')).toBe(true)
+
+      // Break the follow relationship.
+      await db.delete(follows).where(eq(follows.followerId, userF.id))
+      try {
+        expect(await canDownload(c, 'followers')).toBe(false)
+      } finally {
+        // Restore follow relationship so subsequent tests (and afterAll cleanup) are unaffected.
+        await db.insert(follows).values({ followerId: userF.id, followingId: userA.id })
+      }
+    })
+
+    it('F loses access when A tightens a public photo to private', async () => {
+      const c = await clientAs(userF)
+      // Sanity: F can download while visibility='public'.
+      expect(await canDownload(c, 'public')).toBe(true)
+
+      // Tighten: public → private.
+      await db
+        .update(wearEvents)
+        .set({ visibility: 'private' })
+        .where(eq(wearEvents.id, wearEventIds.public))
+      try {
+        expect(await canDownload(c, 'public')).toBe(false)
+      } finally {
+        // Restore to public so subsequent tests (if any) and the nine-cell matrix intent survive.
+        await db
+          .update(wearEvents)
+          .set({ visibility: 'public' })
+          .where(eq(wearEvents.id, wearEventIds.public))
+      }
+    })
   })
 
   describe('folder-enforcement INSERT (WYWT-14 / Pitfall F-4)', () => {
