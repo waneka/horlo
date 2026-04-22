@@ -27,7 +27,7 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
 - [ ] **Phase 7: Social Schema & Profile Auto-Creation** - Five new tables land with full RLS, profile rows auto-created on signup
 - [ ] **Phase 8: Self Profile & Privacy Controls** - Collector's own profile page with all tabs, privacy settings surface
 - [ ] **Phase 9: Follow System & Collector Profiles** - Follow/unfollow, public collector profile view, Common Ground taste overlap
-- [ ] **Phase 10: Activity Feed** - Home page network feed showing followed collectors' watch events
+- [ ] **Phase 10: Network Home** - Five-section authenticated home: WYWT rail (follow-network wear events, last 48h) · From Collectors Like You (rule-based recs) · Network Activity feed · Personal Insights · Suggested Collectors
 
 ## Phase Details
 
@@ -101,16 +101,20 @@ Plans:
 - [x] 09-03-follower-following-list-routes-PLAN.md — follower/following list routes + FollowerListCard + AvatarDisplay size=40
 - [x] 09-04-common-ground-hero-tab-locked-state-PLAN.md — Common Ground hero band, 6th tab, LockedTabCard + layout/tab router wiring
 
-### Phase 10: Activity Feed
-**Goal**: The home page shows a live-ish feed of what followed collectors are doing with their collections, making the network feel active.
+### Phase 10: Network Home
+**Goal**: The home page at `/` becomes a 5-section authenticated network home. The viewer sees a rolling rail of followed collectors' recent wear events, rule-based watch recommendations from similar collectors, a paginated feed of network activity, personal insight cards, and suggested collectors to follow.
 **Depends on**: Phase 9
-**Requirements**: FEED-01, FEED-02, FEED-03, FEED-04
+**Requirements**: FEED-01, FEED-02, FEED-03, FEED-04, FEED-05, WYWT-03, DISC-02, DISC-04
 **Success Criteria** (what must be TRUE):
-  1. User visiting the home page sees a feed of watch_added, wishlist_added, and watch_worn events from collectors they follow, with the collector's name, avatar, and watch details on each entry
-  2. When a user adds a watch to their collection, a single activity event is written — bulk imports produce one aggregated event rather than N individual events
-  3. The feed loads the most recent events first and shows a "load more" control that fetches the next page using keyset pagination (no OFFSET) — the same watches do not appear twice when new events arrive between page loads
-  4. A user with no follows sees an empty-state prompt directing them to find collectors to follow rather than a blank page
-  5. Activity feed data for private collectors or private collection tabs is not surfaced to non-followers — privacy settings from Phase 8 are respected in the feed DAL query
+  1. Authenticated user visiting `/` sees all 5 sections in this order: WYWT rail → From Collectors Like You → Network Activity → Personal Insights → Suggested Collectors (L-01)
+  2. Activity feed shows `watch_added`, `wishlist_added`, `watch_worn` events from followed collectors with keyset pagination (`(created_at, id)` tuple cursor), aggregates 3+ same-actor same-type events within a 1-hour window into one row (F-08), and filters out the viewer's own events (F-05)
+  3. WYWT rail shows at most one tile per actor from the last 48 hours, with the viewer's own most-recent tile always included; worn_public=false actors' tiles are omitted; viewed tiles persist across sessions via localStorage
+  4. From Collectors Like You shows up to 12 deduped `(brand, model)` watches drawn from similar collectors' collections, excluding anything the viewer already owns or wishlists, cached per-viewer via Next.js 16 Cache Components (`cacheLife('minutes')`)
+  5. Personal Insights renders up to 4 cards (Sleeping Beauty, Most Worn This Month, Wishlist Gap, Common Ground with a follower); section is hidden entirely when the viewer has no owned watches (I-04)
+  6. Suggested Collectors lists public profiles the viewer does not follow, ordered by tasteOverlap DESC, with the existing Phase 9 FollowButton (variant="inline"); private profiles are excluded
+  7. Nav exposes `+ Wear` and Add Watch buttons; Explore, global search, and notifications bell remain hidden until their respective requirements ship
+  8. Two-layer privacy (RLS `activities_select_own_or_followed` + DAL WHERE clause) blocks non-follower visibility of private actors' activities; integration tests cover F-06 (4 privacy branches), W-01 (worn_public), and S-01 (private profile exclusion from Suggested)
+  9. Phase 10 ships NO new database tables — only one RLS policy expansion on `public.activities` and one `cacheComponents: true` flag in `next.config.ts`
 **Plans**: 9 plans
 
 Plans:
@@ -122,7 +126,7 @@ Plans:
 - [x] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
 - [x] 10-07-PLAN.md — Collectors Like You + Personal Insights + Suggested Collectors UI
 - [x] 10-08-PLAN.md — 5-section home page composition + nav + Wear button
-- [ ] 10-09-PLAN.md — REQUIREMENTS/ROADMAP scope update + privacy E2E verification
+- [x] 10-09-PLAN.md — REQUIREMENTS/ROADMAP scope update + privacy E2E verification
 
 ## Backlog
 
@@ -148,4 +152,4 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Activity Feed | 8/9 | In Progress|  |
+| 10. Network Home | 9/9 | Completed | 2026-04-22 |
