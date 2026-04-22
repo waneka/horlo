@@ -28,7 +28,6 @@ interface SettingsClientProps {
     profilePublic: boolean
     collectionPublic: boolean
     wishlistPublic: boolean
-    wornPublic: boolean
   }
 }
 
@@ -94,12 +93,6 @@ export function SettingsClient({ settings }: SettingsClientProps) {
             description="Hide your wishlist from other users."
             field="wishlistPublic"
             initialValue={settings.wishlistPublic}
-          />
-          <PrivacyToggleRow
-            label="Worn History"
-            description="Hide your wear log from other users."
-            field="wornPublic"
-            initialValue={settings.wornPublic}
           />
           <div className="flex min-h-12 items-center justify-between gap-4 py-2">
             <div className="flex-1">

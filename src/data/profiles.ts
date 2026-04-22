@@ -9,20 +9,17 @@ export interface ProfileSettings {
   profilePublic: boolean
   collectionPublic: boolean
   wishlistPublic: boolean
-  wornPublic: boolean
 }
 
 export type VisibilityField =
   | 'profilePublic'
   | 'collectionPublic'
   | 'wishlistPublic'
-  | 'wornPublic'
 
 const DEFAULT_SETTINGS: Omit<ProfileSettings, 'userId'> = {
   profilePublic: true,
   collectionPublic: true,
   wishlistPublic: true,
-  wornPublic: true,
 }
 
 export async function getProfileByUsername(username: string) {
@@ -66,7 +63,6 @@ export async function getProfileSettings(userId: string): Promise<ProfileSetting
       profilePublic: rows[0].profilePublic,
       collectionPublic: rows[0].collectionPublic,
       wishlistPublic: rows[0].wishlistPublic,
-      wornPublic: rows[0].wornPublic,
     }
   }
   return { userId, ...DEFAULT_SETTINGS }
@@ -118,7 +114,6 @@ export async function updateProfileSettingsField(
       profilePublic: field === 'profilePublic' ? value : true,
       collectionPublic: field === 'collectionPublic' ? value : true,
       wishlistPublic: field === 'wishlistPublic' ? value : true,
-      wornPublic: field === 'wornPublic' ? value : true,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({

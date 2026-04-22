@@ -46,7 +46,6 @@ const VISIBILITY_FIELDS = [
   'profilePublic',
   'collectionPublic',
   'wishlistPublic',
-  'wornPublic',
 ] as const
 
 const updateSettingsSchema = z

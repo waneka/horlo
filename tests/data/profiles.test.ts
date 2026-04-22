@@ -34,7 +34,6 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
       profilePublic: true,
       collectionPublic: true,
       wishlistPublic: true,
-      wornPublic: true,
     })
   })
 
@@ -45,7 +44,7 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
         profilePublic: false,
         collectionPublic: true,
         wishlistPublic: false,
-        wornPublic: false,
+        wornPublic: false, // column still in DB until Plan 06; not mapped into return type
       },
     ]
     const settings = await getProfileSettings('user-with-row')
@@ -54,7 +53,6 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
       profilePublic: false,
       collectionPublic: true,
       wishlistPublic: false,
-      wornPublic: false,
     })
   })
 

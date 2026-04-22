@@ -39,7 +39,6 @@ export default async function SettingsPage() {
             profilePublic: settings.profilePublic,
             collectionPublic: settings.collectionPublic,
             wishlistPublic: settings.wishlistPublic,
-            wornPublic: settings.wornPublic,
           }}
         />
       </div>
