@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
-status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-04-22T22:14:50.697Z"
-last_activity: 2026-04-22 -- Phase 999.1 planning complete
+status: verifying
+stopped_at: Completed 999.1-01-PLAN.md
+last_updated: "2026-04-22T22:22:20.581Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 12 — visibility-ripple-in-dal
+**Current focus:** Phase 999.1 — phase-5-code-review-followups-rls-errors
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-22 -- Phase 999.1 planning complete
+Phase: 999.1 (phase-5-code-review-followups-rls-errors) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-04-22
 
 ## Progress Bar
 
@@ -61,6 +61,7 @@ Phase 16 [ ] People Search
 | Phase 10 P07 | ~8 min | 3 tasks | 15 files |
 | Phase 10 P08 | ~5 min | 3 tasks | 4 files |
 | Phase 10 P09 | 14min | 3 tasks | 4 files |
+| Phase 999.1 P01 | 4min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Phase 16 [ ] People Search
 | DEBT-02 in Phase 11 | RLS audit pairs naturally with the schema phase since both are RLS-heavy; resolves MR-03 |
 | DEBT-01 in Phase 14 | PreferencesClient error surfacing is a UI concern that fits the nav overhaul phase |
 | Explore stub in Phase 14 | /explore is a nav dependency; BottomNav Explore tab links to /explore; one file, ships with nav shell |
+| Phase 999.1 — MR-01 surfaces save errors without rollback | Local mirror state intentionally NOT rolled back on save failure; review called rollback "optional" and revalidatePath in savePreferences reconciles on next nav. Inline role=alert banner is sufficient visibility |
+| Phase 999.1 — MR-02 import hygiene only | Did NOT migrate Server Actions to err instanceof UnauthorizedError discriminator; that distinguishes Unauthorized vs infra errors and is a separately-tracked larger refactor. Existing catch-all preserved verbatim |
+| Phase 999.1 — MR-03 paperwork closure | Phase 6 enabled RLS (20260420000000_rls_existing_tables.sql); Phase 11 audited it (20260423000005_phase11_debt02_audit.sql). Phase 999.1 adds zero SQL — re-adding RLS would duplicate live policies |
 
 ### Key Decisions (v2.0)
 
@@ -141,7 +145,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T19:32:47.918Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-visibility-ripple-in-dal/12-CONTEXT.md
+Last session: 2026-04-22T22:22:20.577Z
+Stopped at: Completed 999.1-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 11`

@@ -160,7 +160,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** Close the three MEDIUM findings from the Phase 5 code review by (a) surfacing preference save failures to the user in `PreferencesClient` with a `role="alert"` inline banner and exposed `isPending` state, (b) removing the unused `UnauthorizedError` import from `src/app/actions/watches.ts` and `src/app/actions/preferences.ts`, and (c) formally documenting that MR-03 (RLS on users / watches / user_preferences) was resolved by Phase 6 migration `20260420000000_rls_existing_tables.sql` and re-audited by Phase 11 DEBT-02 migration `20260423000005_phase11_debt02_audit.sql`. No new RLS SQL is authored by this phase.
 **Requirements:** MR-01, MR-02, MR-03
-**Plans:** 0/1 plans complete
+**Plans:** 1/1 plans complete
 **Success Criteria** (what must be TRUE):
   1. `src/components/preferences/PreferencesClient.tsx` inspects the `ActionResult` returned by `savePreferences`; on `{ success: false }` it renders an accessible `role="alert"` banner with the message `"Couldn't save preferences: {error}"`; the discarded-pending-tuple pattern (`const [, startTransition]`) is gone and `isPending` is surfaced as a "Saving…" hint.
   2. `grep -c UnauthorizedError src/app/actions/watches.ts` returns `0` and `grep -c UnauthorizedError src/app/actions/preferences.ts` returns `0`; each file imports only `getCurrentUser` from `@/lib/auth`; action behavior is otherwise byte-for-byte unchanged.
@@ -170,7 +170,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 Source of truth: `git show b3e547b:.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` (file was archived in git history at commit b3e547b).
 
 Plans:
-- [ ] 999.1-01-PLAN.md — PreferencesClient error UX (MR-01) + remove dead UnauthorizedError imports (MR-02) + document MR-03 closure [Wave 1]
+- [x] 999.1-01-PLAN.md — PreferencesClient error UX (MR-01) + remove dead UnauthorizedError imports (MR-02) + document MR-03 closure [Wave 1]
 
 ## Progress
 
@@ -182,7 +182,7 @@ Plans:
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
-| 999.1. Phase 5 Code Review Follow-ups | 0/1 | Not started | - |
+| 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete   | 2026-04-22 |
 
 | Milestone | Phases | Status | Shipped |
 |-----------|--------|--------|---------|
