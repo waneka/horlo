@@ -107,14 +107,17 @@ export async function getPublicWearEventsForViewer(
  * Returns at most one WywtTile per actor:
  *   - viewer's own most-recent wear (within 48h) — always included (W-01),
  *   - plus each followed user's most-recent wear (within 48h) provided their
- *     worn_public is true (F-06 carries into WYWT — follows do NOT bypass
- *     privacy).
+ *     profile_public AND worn_public are true (F-06 carries into WYWT —
+ *     follows do NOT bypass privacy, and profile_public=false hides all
+ *     activity from non-owner viewers regardless of worn_public).
  *
  * Single JOIN query to avoid N+1 across follows. Two-layer privacy:
  *   - OUTER gate: RLS on wear_events (Phase 7) is owner-only at anon-key.
- *   - INNER gate (this WHERE clause): `or(self, wornPublic)` re-enforces the
- *     worn_public rule at the postgres-role connection level that server-
- *     rendered pages use.
+ *   - INNER gate (this WHERE clause): self-include short-circuits; followed
+ *     actors require BOTH profile_public=true AND worn_public=true. The
+ *     profile_public branch mirrors the feed DAL F-06 outer-privacy gate
+ *     — without it, a user who sets profile_public=false would still have
+ *     their wear events leak through the rail on accounts that follow them.
  *
  * The 48h window is computed as the ISO date string of `now - 48h`. Because
  * wear_events.wornDate is TEXT 'YYYY-MM-DD', we compare `wornDate >= cutoff`
@@ -134,7 +137,9 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
   const actorIds = [viewerId, ...followingIds]
 
   // 3. Single JOIN query. Privacy gate: viewer's own rows always pass;
-  //    followed-actor rows require worn_public = true.
+  //    followed-actor rows require BOTH profile_public=true AND
+  //    worn_public=true (two-layer per-tab privacy — F-06 outer gate +
+  //    W-01 worn-tab gate).
   const rows = await db
     .select({
       wearId: wearEvents.id,
@@ -146,6 +151,7 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
       username: profiles.username,
       displayName: profiles.displayName,
       avatarUrl: profiles.avatarUrl,
+      profilePublic: profileSettings.profilePublic,
       wornPublic: profileSettings.wornPublic,
       brand: watches.brand,
       model: watches.model,
@@ -160,8 +166,11 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
         inArray(wearEvents.userId, actorIds),
         gte(wearEvents.wornDate, cutoffDate),
         or(
-          eq(wearEvents.userId, viewerId), // self-include bypasses worn_public
-          eq(profileSettings.wornPublic, true), // followed actors gated
+          eq(wearEvents.userId, viewerId), // self-include bypasses all privacy
+          and(
+            eq(profileSettings.profilePublic, true), // F-06 outer gate
+            eq(profileSettings.wornPublic, true), // W-01 worn-tab gate
+          ),
         ),
       ),
     )
