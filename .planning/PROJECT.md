@@ -70,11 +70,11 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 ## Context
 
-**Current state:** Next.js 16 App Router, React 19, TypeScript 5 strict, Supabase Auth + Postgres, Drizzle ORM, Tailwind CSS 4, Shadcn/base-ui. ~7,958 LOC TypeScript across `src/`. 697 tests passing (18 test files). Deployed at horlo.app on Vercel.
+**Current state (post v2.0):** Next.js 16 App Router with `cacheComponents: true`, React 19, TypeScript 5 strict, Supabase Auth + Postgres with RLS enabled project-wide, Drizzle ORM, Tailwind CSS 4, Shadcn/base-ui. 2070+ tests passing across 55+ test files, plus 50+ integration tests that activate against local Supabase. Deployed at horlo.app on Vercel.
 
-**Architecture:** Server Components by default, Zustand demoted to filter-only ephemeral state (31 lines), server-only DAL for all data access, Server Actions for all mutations, proxy.ts enforces auth at the edge, double-verified in every DAL function and Server Action.
+**Architecture:** Server Components by default, Zustand demoted to filter-only ephemeral state (31 lines), server-only DAL for all data access, Server Actions for all mutations, proxy.ts enforces auth at the edge, double-verified in every DAL function and Server Action. Two-layer privacy (RLS at DB + DAL WHERE clauses) protects follower/followee reads. Root layout uses inline theme script + Suspense around dynamic children to satisfy Next 16 Cache Components.
 
-**Production:** Supabase project `wdntzsckjaoqodsyscns`, Vercel deployment at `horlo.app`/`www.horlo.app`. Email confirmation OFF (personal-MVP). Drizzle migrations tracked. Deploy runbook: `docs/deploy-db-setup.md`.
+**Production:** Supabase project `wdntzsckjaoqodsyscns`, Vercel deployment at `horlo.app`/`www.horlo.app`. Email confirmation OFF (personal-MVP). Drizzle migrations tracked; production RLS policies (including `activities_select_own_or_followed`) pushed via `supabase db push --linked --include-all`. Deploy runbook: `docs/deploy-db-setup.md`.
 
 ## Constraints
 
@@ -97,6 +97,12 @@ A collector can evaluate any watch against their collection and get a meaningful
 | proxy.ts + double-verified auth | Defense in depth: proxy.ts for redirects, DAL/SA for data access | ✓ Good — tested via Phase 4 UAT |
 | Email confirmation OFF | Personal-MVP posture; free-tier SMTP limited to 2/hour | — Pending — revisit when opening to other users, configure custom SMTP |
 | Session-mode pooler for migrations | Direct-connect host is IPv6-only, unreachable on most home ISPs | ✓ Good — documented in runbook |
+| Two-layer privacy (RLS + DAL WHERE) | Single-layer is fragile; if one breaks, data leaks. Enforce at both layers so either breaking alone is still caught | ✓ Good — shipped in v2.0 Phase 6-10; integration tests in `tests/integration/home-privacy.test.ts` exercise the combined guarantee |
+| No Supabase Realtime in v2.0 | Free tier limit of 200 concurrent WebSockets; server-rendered + `router.refresh()` is sufficient at MVP scale | ✓ Good — v2.0 shipped without it; revisit if user scale grows |
+| Per-user independent watch entries (no canonical watch table) | Canonical normalization adds huge product complexity; per-user entries ship faster and let the UI/DAL compose views | ✓ Good — shipped in v2.0; revisit in a future "data strategy" phase if social features need cross-user watch identity |
+| Cache Components (`cacheComponents: true`) with inline theme script | Next.js 16 `cacheComponents` forbids `cookies()` in layout body; canonical shadcn/next-themes inline `<script>` in `<head>` is the zero-FOUC escape hatch | ✓ Good — shipped in Phase 10; Suspense wraps Header + main |
+| Rule-based recommendations (no LLM) in v2.0 | Keep the home page rendereable without API keys; 5 priority-ordered rationale templates produce deterministic, testable output | ✓ Good — shipped; revisit if product needs richer personalization |
+| Viewer-aware DAL for cross-user reads | Different functions for owner-only (`getWatchById`) vs viewer-aware (`getWatchByIdForViewer`) keeps edit/delete paths strictly owner-scoped while allowing public views of public profiles | ✓ Good — pattern established in quick-260421-rdb; mirror for any future cross-user read |
 
 ## Evolution
 
@@ -116,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 after v2.0 Phase 10 (Network Home) — 5-section home page shipped: WYWT rail, Network Activity feed with time-window aggregation, Collectors Like You recommendations (cached), Personal Insights, Suggested Collectors; nav `+ Wear` button uses shared WatchPickerDialog; cacheComponents enabled with inline-theme-script layout pattern*
+*Last updated: 2026-04-22 after v2.0 (Taste Network Foundation) milestone completion — Phases 6-10 shipped: RLS foundation, social schema with auto-created profiles, self-profile + privacy controls, follow graph + Common Ground, 5-section Network Home with activity feed + WYWT rail + recommendations. Two quick-task fixes (watch-detail viewer-aware DAL + follower-count links) applied during UAT. REQUIREMENTS.md archived; next milestone TBD.*

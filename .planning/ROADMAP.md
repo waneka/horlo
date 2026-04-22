@@ -3,7 +3,8 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-19) — [archive](milestones/v1.0-ROADMAP.md)
-- 🔄 **v2.0 Taste Network Foundation** — Phases 6-10 (in progress)
+- ✅ **v2.0 Taste Network Foundation** — Phases 6-10 (shipped 2026-04-22) — [archive](milestones/v2.0-ROADMAP.md)
+- 📋 **Next milestone** — TBD — run `/gsd-new-milestone` to start
 
 ## Phases
 
@@ -21,112 +22,24 @@ See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
 
 </details>
 
-### v2.0 Taste Network Foundation
+<details>
+<summary>✅ v2.0 Taste Network Foundation (Phases 6-10) — SHIPPED 2026-04-22</summary>
 
-- [x] **Phase 6: RLS Foundation** - Defense-in-depth row-level security on all existing tables, prerequisite for all multi-user features
-- [x] **Phase 7: Social Schema & Profile Auto-Creation** - Five new tables land with full RLS, profile rows auto-created on signup
-- [x] **Phase 8: Self Profile & Privacy Controls** - Collector's own profile page with all tabs, privacy settings surface
-- [x] **Phase 9: Follow System & Collector Profiles** - Follow/unfollow, public collector profile view, Common Ground taste overlap
-- [x] **Phase 10: Network Home** - Five-section authenticated home: WYWT rail (follow-network wear events, last 48h) · From Collectors Like You (rule-based recs) · Network Activity feed · Personal Insights · Suggested Collectors (completed 2026-04-22)
+- [x] Phase 6: RLS Foundation (1/1 plans)
+- [x] Phase 7: Social Schema & Profile Auto-Creation (3/3 plans)
+- [x] Phase 8: Self Profile & Privacy Controls (4/4 plans)
+- [x] Phase 9: Follow System & Collector Profiles (4/4 plans)
+- [x] Phase 10: Network Home (9/9 plans)
 
-## Phase Details
+35/35 requirements shipped. Cross-phase integration verified. End-to-end privacy flows audited.
 
-### Phase 6: RLS Foundation
-**Goal**: Every existing database table is protected by correctly-written RLS policies so that multi-user data visibility is safe to build on top of.
-**Depends on**: Nothing (carry-forward from v1.0 MR-03, prerequisite for all v2.0 work)
-**Requirements**: DATA-01, DATA-07
-**Success Criteria** (what must be TRUE):
-  1. User A's watches, preferences, and user row are completely invisible to User B at the database level — verified by querying the DB while impersonating User B via Supabase User Impersonation tool (not the SQL Editor, which bypasses RLS)
-  2. A user can read and write their own data without any change in behavior from before RLS was enabled
-  3. Every UPDATE policy has both a USING clause and a WITH CHECK clause using the `(SELECT auth.uid())` subquery pattern — no bare `auth.uid()` calls that would cause per-row re-evaluation
-  4. RLS is enabled on `public.users`, `public.watches`, and `public.user_preferences` — confirmed via Supabase dashboard or `SELECT relrowsecurity FROM pg_class WHERE relname = 'watches'`
-**Plans**: 1 plan
+See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2.0-MILESTONE-AUDIT.md](milestones/v2.0-MILESTONE-AUDIT.md) for the audit report.
 
-Plans:
-- [x] 06-01-PLAN.md — Write RLS migration (enable + 12 policies) and push to Supabase
+</details>
 
-### Phase 7: Social Schema & Profile Auto-Creation
-**Goal**: The five new social tables exist in Postgres with full RLS policies and correct indexes, and every user (new and existing) has a profile row.
-**Depends on**: Phase 6
-**Requirements**: DATA-02, DATA-03, DATA-04, DATA-05, DATA-06
-**Success Criteria** (what must be TRUE):
-  1. Drizzle schema defines `profiles`, `follows`, `profile_settings`, `activities`, and `wear_events` tables and `drizzle-kit migrate` produces a verified migration that applies cleanly to the prod Supabase project
-  2. Every existing user has a profile row — backfill script runs without error and is idempotent
-  3. A new user who completes signup finds a profile row already present without any manual step (auto-created via DB trigger or Auth webhook)
-  4. Each new table has its RLS policies defined and verified: owners can read and write their own rows; other authenticated users are blocked at the DB level
-  5. Required indexes on `follows(follower_id)`, `follows(following_id)`, `activities(user_id, created_at)`, and `wear_events(watch_id, worn_at)` are present in the migration
-**Plans**: 3 plans
+### 📋 Next Milestone — TBD
 
-Plans:
-- [x] 07-01-PLAN.md — Add 5 social tables to Drizzle schema, write RLS + trigger migrations, push to production
-- [x] 07-02-PLAN.md — Replace lastWornDate with wear_events table across all app code
-- [x] 07-03-PLAN.md — Create activity logging DAL, integrate into Server Actions, apply column-drop migration
-
-### Phase 8: Self Profile & Privacy Controls
-**Goal**: A collector can view and edit their own full profile page and control exactly what other users can see.
-**Depends on**: Phase 7
-**Requirements**: PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, PROF-06, PROF-07, PROF-10, PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05, PRIV-06
-**Success Criteria** (what must be TRUE):
-  1. User can navigate to `/u/[their-username]` and see a profile header with avatar, username, bio, follower/following counts, and auto-derived taste tags drawn from collection composition
-  2. User can switch between Collection, Wishlist, Worn, Notes, and Stats tabs — each tab loads the correct data and respects the user's own privacy settings when previewing
-  3. User can open Settings and toggle profile visibility, collection visibility, wishlist visibility, and worn history visibility — changes persist and take effect immediately without a page reload
-  4. When a user sets their profile to private, any visitor who is not the owner sees a locked profile state with a follow button visible but no collection content (Letterboxd pattern)
-  5. Privacy enforcement operates at both the RLS layer and the DAL WHERE clause — a direct database query with a foreign user's token cannot read private rows
-  6. User can edit display name, avatar URL, and bio from their profile page and see the changes reflected immediately
-**Plans**: 4 plans
-**UI hint**: yes
-
-Plans:
-- [x] 08-01-PLAN.md — Schema migration (notes_public/notes_updated_at), profile DAL + Server Actions, taste tag computation lib, cross-user wear-event DAL gate
-- [x] 08-02-PLAN.md — Profile route shell (/u/[username]/[tab]), ProfileHeader with edit mode, LockedProfileState, /settings page with optimistic privacy toggles
-- [x] 08-03-PLAN.md — Collection / Wishlist / Notes tab content with ProfileWatchCard, dynamic FilterChips, NoteRow + per-note visibility pill + remove dialog
-- [x] 08-04-PLAN.md — Worn tab (Timeline + Calendar toggle, Log Today's Wear), Stats tab (Most/Least Worn, distributions, observations); reusable stats lib
-
-### Phase 9: Follow System & Collector Profiles
-**Goal**: Collectors can follow each other, the social graph exists, and visiting another collector's profile shows their public collection alongside a Common Ground taste overlap.
-**Depends on**: Phase 8
-**Requirements**: FOLL-01, FOLL-02, FOLL-03, FOLL-04, PROF-08, PROF-09
-**Success Criteria** (what must be TRUE):
-  1. User can click Follow on any collector's profile and see the follower count increment; clicking Unfollow reverses this — both actions persist across page reload
-  2. Visiting another collector's public profile at `/u/[username]` shows their collection in read-only view; tabs and data respect that collector's privacy settings (private tabs show locked state, not empty)
-  3. User can open the followers or following list on any profile and see the accounts represented as clickable collector cards
-  4. The Common Ground section on another collector's profile shows watches both collectors own (set intersection on brand+model) and a taste-overlap summary derived from the similarity engine — computed server-side, only the result is sent to the client
-  5. Following counts are accurate on both the follower's and the followed collector's profile without a full page refresh after the follow action
-**Plans**: 4 plans
-**UI hint**: yes
-
-Plans:
-- [x] 09-01-data-actions-taste-overlap-PLAN.md — follows DAL, Server Actions, tasteOverlap library + Wave 0 tests
-- [x] 09-02-follow-button-and-header-wiring-PLAN.md — FollowButton component, ProfileHeader/LockedProfileState wiring, layout isFollowing hydration
-- [x] 09-03-follower-following-list-routes-PLAN.md — follower/following list routes + FollowerListCard + AvatarDisplay size=40
-- [x] 09-04-common-ground-hero-tab-locked-state-PLAN.md — Common Ground hero band, 6th tab, LockedTabCard + layout/tab router wiring
-
-### Phase 10: Network Home
-**Goal**: The home page at `/` becomes a 5-section authenticated network home. The viewer sees a rolling rail of followed collectors' recent wear events, rule-based watch recommendations from similar collectors, a paginated feed of network activity, personal insight cards, and suggested collectors to follow.
-**Depends on**: Phase 9
-**Requirements**: FEED-01, FEED-02, FEED-03, FEED-04, FEED-05, WYWT-03, DISC-02, DISC-04
-**Success Criteria** (what must be TRUE):
-  1. Authenticated user visiting `/` sees all 5 sections in this order: WYWT rail → From Collectors Like You → Network Activity → Personal Insights → Suggested Collectors (L-01)
-  2. Activity feed shows `watch_added`, `wishlist_added`, `watch_worn` events from followed collectors with keyset pagination (`(created_at, id)` tuple cursor), aggregates 3+ same-actor same-type events within a 1-hour window into one row (F-08), and filters out the viewer's own events (F-05)
-  3. WYWT rail shows at most one tile per actor from the last 48 hours, with the viewer's own most-recent tile always included; worn_public=false actors' tiles are omitted; viewed tiles persist across sessions via localStorage
-  4. From Collectors Like You shows up to 12 deduped `(brand, model)` watches drawn from similar collectors' collections, excluding anything the viewer already owns or wishlists, cached per-viewer via Next.js 16 Cache Components (`cacheLife('minutes')`)
-  5. Personal Insights renders up to 4 cards (Sleeping Beauty, Most Worn This Month, Wishlist Gap, Common Ground with a follower); section is hidden entirely when the viewer has no owned watches (I-04)
-  6. Suggested Collectors lists public profiles the viewer does not follow, ordered by tasteOverlap DESC, with the existing Phase 9 FollowButton (variant="inline"); private profiles are excluded
-  7. Nav exposes `+ Wear` and Add Watch buttons; Explore, global search, and notifications bell remain hidden until their respective requirements ship
-  8. Two-layer privacy (RLS `activities_select_own_or_followed` + DAL WHERE clause) blocks non-follower visibility of private actors' activities; integration tests cover F-06 (4 privacy branches), W-01 (worn_public), and S-01 (private profile exclusion from Suggested)
-  9. Phase 10 ships NO new database tables — only one RLS policy expansion on `public.activities` and one `cacheComponents: true` flag in `next.config.ts`
-**Plans**: 9 plans
-
-Plans:
-- [x] 10-01-PLAN.md — Wave 0: RLS migration + cacheComponents flag + shared feed types + timeAgo helper
-- [x] 10-02-PLAN.md — Feed DAL (getFeedForUser) + aggregateFeed + loadMoreFeed Server Action
-- [x] 10-03-PLAN.md — WYWT DAL (getWearRailForViewer) + addToWishlistFromWearEvent Server Action
-- [x] 10-04-PLAN.md — wishlistGap + recommendations + suggestions DALs
-- [x] 10-05-PLAN.md — Network Activity UI (section + rows + Load More)
-- [x] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
-- [x] 10-07-PLAN.md — Collectors Like You + Personal Insights + Suggested Collectors UI
-- [x] 10-08-PLAN.md — 5-section home page composition + nav + Wear button
-- [x] 10-09-PLAN.md — REQUIREMENTS/ROADMAP scope update + privacy E2E verification
+Run `/gsd-new-milestone` to define goals, requirements, and phases.
 
 ## Backlog
 
@@ -134,22 +47,17 @@ Plans:
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 9/9 plans complete
+**Plans:** TBD (promote with /gsd-review-backlog when ready)
 
-See `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` for full context.
+See `.planning/milestones/v1.0-phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` (or `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` if not yet archived) for full context.
 
 Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 6. RLS Foundation | 0/1 | Not started | - |
-| 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
-| 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
-| 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Network Home | 9/9 | Complete    | 2026-04-22 |
+| Milestone | Phases | Status | Shipped |
+|-----------|--------|--------|---------|
+| v1.0 MVP | 1-5 | ✅ Complete | 2026-04-19 |
+| v2.0 Taste Network Foundation | 6-10 | ✅ Complete | 2026-04-22 |
+| Next | TBD | 📋 Planning | - |
