@@ -168,7 +168,7 @@ describe('addToWishlistFromWearEvent Server Action', () => {
     expect(watchDAL.createWatch).not.toHaveBeenCalled()
   })
 
-  it('Test 5: wear event not found OR privacy-gated — Wear event not found', async () => {
+  it('Test 5: wear event not found OR privacy-gated (three-tier) — Wear event not found', async () => {
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@h.test' })
     // Case A: no row at all.
     mockJoinRows = []
@@ -176,11 +176,21 @@ describe('addToWishlistFromWearEvent Server Action', () => {
     expect(resultMissing).toEqual({ success: false, error: 'Wear event not found' })
     expect(watchDAL.createWatch).not.toHaveBeenCalled()
 
-    // Case B: row exists but actor has wornPublic=false and is not viewer.
+    // Case B: row exists but actor's wear is visibility='private' and viewer is not the actor.
+    // Per src/app/actions/wishlist.ts the three-tier gate denies non-self + non-public + non-followers-with-follow.
+    // This exercises the 'private' deny branch explicitly (no follows query should be issued — isSelf=false, visibility !== 'followers').
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@h.test' })
-    mockJoinRows = [publicWearJoinRow({ wornPublic: false })]
+    mockJoinRows = [publicWearJoinRow({ visibility: 'private' })]
     const resultPrivate = await addToWishlistFromWearEvent({ wearEventId })
     expect(resultPrivate).toEqual({ success: false, error: 'Wear event not found' })
+    expect(watchDAL.createWatch).not.toHaveBeenCalled()
+
+    // Case C: row exists with profilePublic=false (G-4 outer gate fails) even for 'public' visibility.
+    // Exercises the profilePublic=false deny branch — confirms the outer gate is not bypassable via visibility alone.
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@h.test' })
+    mockJoinRows = [publicWearJoinRow({ profilePublic: false, visibility: 'public' })]
+    const resultOuterGate = await addToWishlistFromWearEvent({ wearEventId })
+    expect(resultOuterGate).toEqual({ success: false, error: 'Wear event not found' })
     expect(watchDAL.createWatch).not.toHaveBeenCalled()
   })
 
@@ -292,9 +302,15 @@ describe('addToWishlistFromWearEvent Server Action', () => {
     errSpy.mockRestore()
   })
 
-  it('Test 9 (bonus): self wear event (actor==viewer) is allowed even when wornPublic=false', async () => {
+  it('Test 9 (bonus): G-5 self-bypass — self wear event (actorId == viewerUserId) is allowed regardless of visibility', async () => {
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@h.test' })
-    mockJoinRows = [publicWearJoinRow({ actorId: viewerUserId, wornPublic: false })]
+    // Even visibility='private' + profilePublic=false must succeed when viewer is the actor.
+    // isSelf short-circuits the canSee logic (src/app/actions/wishlist.ts:84,104).
+    mockJoinRows = [publicWearJoinRow({
+      actorId: viewerUserId,
+      visibility: 'private',
+      profilePublic: false,
+    })]
     ;(watchDAL.createWatch as Mock).mockResolvedValueOnce({
       id: newWatchId,
       brand: 'Rolex',
@@ -309,5 +325,7 @@ describe('addToWishlistFromWearEvent Server Action', () => {
     })
     const result = await addToWishlistFromWearEvent({ wearEventId })
     expect(result.success).toBe(true)
+    // G-5 self-bypass must NOT issue a follows query (selectCallCount stays at 1).
+    expect(selectCallCount).toBe(1)
   })
 })
