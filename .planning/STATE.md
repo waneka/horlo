@@ -4,14 +4,14 @@ milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-04-22T19:32:47.929Z"
-last_activity: 2026-04-22
+last_updated: "2026-04-22T20:36:33.927Z"
+last_activity: 2026-04-22 -- Phase 12 execution started
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 5
+  total_plans: 11
   completed_plans: 5
-  percent: 100
+  percent: 45
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 11 — schema-storage-foundation
+**Current focus:** Phase 12 — visibility-ripple-in-dal
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Executing Phase 11
-Last activity: 2026-04-22
+Phase: 12 (visibility-ripple-in-dal) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 12
+Last activity: 2026-04-22 -- Phase 12 execution started
 
 ## Progress Bar
 

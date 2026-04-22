@@ -40,7 +40,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 ### v3.0 Production Nav & Daily Wear Loop (Phases 11-16)
 
 - [x] **Phase 11: Schema + Storage Foundation** — All migrations, bucket, pg_trgm, worn_public backfill, RLS audit (completed 2026-04-22)
-- [ ] **Phase 12: Visibility Ripple in DAL** — Three-tier wear privacy wired through all existing wear-reading DAL functions
+- [x] **Phase 12: Visibility Ripple in DAL** — Three-tier wear privacy wired through all existing wear-reading DAL functions (completed 2026-04-22)
 - [ ] **Phase 13: Notifications Foundation** — notifications DAL + Server Actions + bell + inbox + fire-and-forget wiring
 - [ ] **Phase 14: Nav Shell + Explore Stub** — Bottom nav, desktop top nav, slim mobile nav, MobileNav retired, /explore stub
 - [ ] **Phase 15: WYWT Photo Post Flow** — Multi-step wear post modal, camera, HEIC upload, visibility selector, Storage upload, Sonner toast, wear detail route
@@ -71,14 +71,20 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 ### Phase 12: Visibility Ripple in DAL
 **Goal**: Every existing function that reads `wear_events` for non-owner viewers correctly enforces the three-tier visibility gate so followers-only wears are never exposed publicly.
 **Depends on**: Phase 11 (visibility column and enum must exist)
-**Requirements**: WYWT-10
+**Requirements**: WYWT-10, WYWT-11
 **Success Criteria** (what must be TRUE):
   1. `getPublicWearEventsForViewer` returns a wear event with `visibility = 'followers'` only when the viewer follows the actor; the same event is invisible to a stranger; `worn_public` boolean is no longer the gate
   2. `getWearRailForViewer` home rail includes followers-only tiles only for followed actors; a user with `worn_public = true` but `visibility = 'followers'` on a wear event does not expose that event to non-followers
   3. `getFeedForUser` activity rows for `watch_worn` events respect per-row visibility drawn from activity metadata; no JOIN to `wear_events` is needed on the feed hot path
   4. The profile worn tab for a non-owner viewer calls a viewer-aware DAL function, not `getAllWearEventsByUser`; a private wear event on that profile does not appear in the viewer's rendered worn tab
   5. Integration tests cover: (a) public wear visible to all, (b) followers-only wear visible to follower and invisible to stranger, (c) private wear visible only to owner — all three pass before this phase ships
-**Plans**: TBD
+**Plans**: 6 plans (Wave 0: Plan 01 tests-first · Wave 1: Plans 02-03 parallel DAL ripple · Wave 2: Plan 04 consumers · Wave 3: Plans 05-06 cleanup + [BLOCKING] column drop migration)
+  - [x] 12-01-PLAN.md — Author Phase 12 visibility matrix integration tests + modify unit tests (red-state commits; privacy-first UAT rule) [Wave 0]
+  - [x] 12-02-PLAN.md — Introduce WearVisibility type + getWearEventsForViewer (rename, three-tier predicate) + getWearRailForViewer WHERE rewrite + WywtTile carries visibility [Wave 1; depends on Plan 01]
+  - [x] 12-03-PLAN.md — Widen logActivity (WatchWornMetadata requires visibility) + getFeedForUser metadata->>'visibility' gate + markAsWorn writes visibility:'public' [Wave 1; depends on Plan 01]
+  - [x] 12-04-PLAN.md — Profile tab page calls getWearEventsForViewer; delete worn-tab LockedTabCard branch; wishlist action three-tier gate via inline JOIN [Wave 2; depends on Plan 02]
+  - [x] 12-05-PLAN.md — Strip wornPublic from ProfileSettings type, VISIBILITY_FIELDS, settings page + SettingsClient; repo-wide invariant grep clean [Wave 3; depends on Plans 02-04]
+  - [x] 12-06-PLAN.md — [BLOCKING] Drop wornPublic from src/db/schema.ts; drizzle-kit generate; author supabase migration 20260424000001_phase12_drop_worn_public.sql; apply locally; verify matrix final cell green; MANUAL prod push checkpoint [Wave 3; depends on Plan 05]
 **Pitfalls to address**: G-1 (audit all 8+ DAL functions before touching any), G-3 (wornPublic fallthrough removed), G-4 (profile_public outer gate preserved), G-5 (self-tile bypass unchanged), G-7 (visibility in activity metadata at write time), F-1 (table RLS does not protect Storage — separate), B-6 (no getCurrentUser inside use cache), privacy-first UAT rule from SUMMARY.md
 
 ---
@@ -153,7 +159,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 5/5 plans complete
+**Plans:** 6/6 plans complete
 
 See `.planning/milestones/v1.0-phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` (or `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` if not yet archived) for full context.
 
@@ -165,7 +171,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
-| 12. Visibility Ripple in DAL | 0/TBD | Not started | - |
+| 12. Visibility Ripple in DAL | 6/6 | Complete   | 2026-04-22 |
 | 13. Notifications Foundation | 0/TBD | Not started | - |
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |

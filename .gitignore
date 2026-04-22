@@ -46,3 +46,4 @@ next-env.d.ts
 # supabase cli (machine-local runtime state)
 supabase/.branches/
 supabase/.temp/
+supabase/snippets/
