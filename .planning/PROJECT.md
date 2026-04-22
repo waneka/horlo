@@ -10,6 +10,18 @@ Shipped as a cloud-backed, authenticated web app at [horlo.app](https://horlo.ap
 
 A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
 
+## Current Milestone: v3.0 Production Nav & Daily Wear Loop
+
+**Goal:** Ship the production navigation frame (top + bottom + new entry points), close the social system with notifications, and turn WYWT into a photo-first daily habit with three-tier privacy.
+
+**Target features:**
+
+- Navigation overhaul — desktop top nav (logo + Explore, persistent search, Wear CTA, +Add icon, notifications bell, profile dropdown), slim mobile top nav (logo, search, notifications, settings), sticky mobile bottom nav (Home / Explore / **Wear elevated CTA** / Add / Profile)
+- Stub routes for unbuilt destinations — `/explore` placeholder so nav has no broken links
+- Notifications foundation — new `notifications` table with per-row `read_at`; live types (Follow, Watch-overlap); stubbed UI templates (Price Drop, Trending) for future data wiring; "N new" badge in nav, "Mark all read" page, unread bell dot
+- Search (people-only) — `/search` with live debounced results; 4 tabs visible (All / Watches / People / Collections); only People populated (`pg_trgm` ILIKE on username + bio with taste overlap %); other tabs show "coming soon"
+- WYWT post flow — reuses `WatchPickerDialog` for step 1; new wear form with photo (Take Wrist Shot via custom `getUserMedia` + static dotted guide overlay, or Upload Photo with `heic2any` HEIC conversion); per-wear note (0/200); per-wear visibility (Private / **Followers** / Public — new "followers" tier rippled through all wear-reading DALs); EXIF stripping; Supabase Storage with per-user RLS buckets + signed URLs; sonner toast on success
+
 ## Requirements
 
 ### Validated
@@ -122,4 +134,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-22 after v2.0 (Taste Network Foundation) milestone completion — Phases 6-10 shipped: RLS foundation, social schema with auto-created profiles, self-profile + privacy controls, follow graph + Common Ground, 5-section Network Home with activity feed + WYWT rail + recommendations. Two quick-task fixes (watch-detail viewer-aware DAL + follower-count links) applied during UAT. REQUIREMENTS.md archived; next milestone TBD.*
+*Last updated: 2026-04-21 — v3.0 (Production Nav & Daily Wear Loop) milestone started. Adds full navigation overhaul (desktop + mobile + sticky bottom nav), notifications foundation (new table + live Follow/Watch-overlap types + stubbed Price/Trending), people-only search at `/search`, and WYWT photo post flow with three-tier visibility (Private/Followers/Public — new "followers" privacy tier rippling through every wear-reading DAL). Image storage on Supabase with per-user RLS buckets. Continues phase numbering from Phase 11.*

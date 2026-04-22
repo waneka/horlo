@@ -1,43 +1,39 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Taste Network Foundation
-status: verifying
-stopped_at: Completed quick task 260421-rdb (watch detail privacy fix)
-last_updated: "2026-04-22T03:51:54.799Z"
-last_activity: 2026-04-22
+milestone: v3.0
+milestone_name: Production Nav & Daily Wear Loop
+status: defining_requirements
+stopped_at: Milestone v3.0 started — defining requirements
+last_updated: "2026-04-21T00:00:00.000Z"
+last_activity: 2026-04-21
 progress:
-  total_phases: 6
-  completed_phases: 5
-  total_plans: 21
-  completed_plans: 21
-  percent: 100
+  total_phases: null
+  completed_phases: 0
+  total_plans: null
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-19)
+See: .planning/PROJECT.md (updated 2026-04-21)
 
-**Core value:** Collectors discover watches through other people's collections and taste — not algorithms, catalogs, or content feeds.
-**Current focus:** Phase 10 — activity-feed
+**Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
+**Current focus:** Milestone v3.0 — Production Nav & Daily Wear Loop (defining requirements)
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-22
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-21 — Milestone v3.0 started
 
 ## Progress Bar
 
 ```
-Phase  6 [          ] Not started
-Phase  7 [          ] Not started
-Phase  8 [          ] Not started
-Phase  9 [          ] Not started
-Phase 10 [          ] Not started
+Phase numbering will continue from Phase 11 once the roadmap is approved.
 ```
 
 ## Performance Metrics
