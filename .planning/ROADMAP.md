@@ -85,7 +85,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   - [x] 12-04-PLAN.md — Profile tab page calls getWearEventsForViewer; delete worn-tab LockedTabCard branch; wishlist action three-tier gate via inline JOIN [Wave 2; depends on Plan 02]
   - [x] 12-05-PLAN.md — Strip wornPublic from ProfileSettings type, VISIBILITY_FIELDS, settings page + SettingsClient; repo-wide invariant grep clean [Wave 3; depends on Plans 02-04]
   - [x] 12-06-PLAN.md — [BLOCKING] Drop wornPublic from src/db/schema.ts; drizzle-kit generate; author supabase migration 20260424000001_phase12_drop_worn_public.sql; apply locally; verify matrix final cell green; MANUAL prod push checkpoint [Wave 3; depends on Plan 05]
-  - [ ] 12-07-PLAN.md — [GAP CLOSURE] Update tests/actions/wishlist.test.ts mock fixture to three-tier contract (visibility + profilePublic) · queue-based db.select chain · rewrite Test 5 Case B and Test 9 · add Test 10 (followers tier happy) and Test 11 (followers tier deny) [Wave 1; gap closure for VERIFICATION.md truth #5]
+  - [x] 12-07-PLAN.md — [GAP CLOSURE] Update tests/actions/wishlist.test.ts mock fixture to three-tier contract (visibility + profilePublic) · queue-based db.select chain · rewrite Test 5 Case B and Test 9 · add Test 10 (followers tier happy) and Test 11 (followers tier deny) [Wave 1; gap closure for VERIFICATION.md truth #5]
 **Pitfalls to address**: G-1 (audit all 8+ DAL functions before touching any), G-3 (wornPublic fallthrough removed), G-4 (profile_public outer gate preserved), G-5 (self-tile bypass unchanged), G-7 (visibility in activity metadata at write time), F-1 (table RLS does not protect Storage — separate), B-6 (no getCurrentUser inside use cache), privacy-first UAT rule from SUMMARY.md
 
 ---
@@ -160,7 +160,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 6/6 plans complete
+**Plans:** 7/7 plans complete
 
 See `.planning/milestones/v1.0-phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` (or `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` if not yet archived) for full context.
 
@@ -172,7 +172,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
-| 12. Visibility Ripple in DAL | 6/6 | Complete   | 2026-04-22 |
+| 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
 | 13. Notifications Foundation | 0/TBD | Not started | - |
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
