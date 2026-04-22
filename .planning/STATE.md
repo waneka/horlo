@@ -123,6 +123,7 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260421-rdb | Fix 404 on watch detail pages for watches owned by other users — viewer-aware DAL with privacy gating | 2026-04-22 | 0604e09 | [260421-rdb-fix-404-on-watch-detail-pages-for-watche](./quick/260421-rdb-fix-404-on-watch-detail-pages-for-watche/) |
+| 260421-srx | Wrap follower/following counts in `<Link>` on ProfileHeader + LockedProfileState (Phase 9 UAT gap) | 2026-04-22 | 3919d9e | [260421-srx-wrap-follower-following-counts-in-link-o](./quick/260421-srx-wrap-follower-following-counts-in-link-o/) |
 
 ## Session Continuity
 
