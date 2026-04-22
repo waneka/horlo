@@ -2,10 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { wearEvents, watches, profileSettings } from '@/db/schema'
+import { wearEvents, watches, profileSettings, follows } from '@/db/schema'
 import { getCurrentUser } from '@/lib/auth'
 import { createWatch } from '@/data/watches'
 import { logActivity } from '@/data/activities'
@@ -29,10 +29,14 @@ const schema = z.object({ wearEventId: z.string().uuid() }).strict()
  * duplicates are tolerated because <specifics> calls this a conversion
  * moment with one-tap no-friction UX.
  *
- * Visibility gate (defense-in-depth, T-10-03-03): the source wear event must
- * either be the viewer's own OR belong to an actor whose worn_public = true.
- * Rejections return a generic 'Wear event not found' to avoid existence
- * leaks.
+ * Three-tier visibility gate (Phase 12 / WYWT-10): the source wear event
+ * must be the viewer's own (G-5 self-bypass) OR the actor's profile_public
+ * must be true (G-4 outer gate) AND one of:
+ *   - wear_events.visibility = 'public', OR
+ *   - wear_events.visibility = 'followers' AND viewer follows actor (G-3
+ *     directional: viewer is the follower).
+ * Any negative branch returns the uniform 'Wear event not found' message
+ * to avoid existence leaks (Letterboxd-style 404; RESEARCH Open Question #3).
  *
  * Activity logging is fire-and-forget (Phase 7 D-05) — a failure in
  * logActivity never blocks the primary mutation.
@@ -52,8 +56,8 @@ export async function addToWishlistFromWearEvent(
     return { success: false, error: 'Invalid request' }
   }
 
-  // Resolve the source wear event, its watch metadata, and the actor's
-  // worn_public setting in a single JOIN query.
+  // Resolve the source wear event, its watch metadata, the actor's profile_public,
+  // and the wear visibility in a single JOIN query.
   const rows = await db
     .select({
       watchId: wearEvents.watchId,
@@ -62,7 +66,8 @@ export async function addToWishlistFromWearEvent(
       model: watches.model,
       imageUrl: watches.imageUrl,
       movement: watches.movement,
-      wornPublic: profileSettings.wornPublic,
+      profilePublic: profileSettings.profilePublic,
+      visibility: wearEvents.visibility,
     })
     .from(wearEvents)
     .innerJoin(watches, eq(watches.id, wearEvents.watchId))
@@ -75,10 +80,34 @@ export async function addToWishlistFromWearEvent(
     return { success: false, error: 'Wear event not found' }
   }
 
-  // Privacy gate: viewer-own is fine; otherwise worn_public must be true.
-  // Same 'Wear event not found' message on both branches to avoid leaking
-  // existence of private wears.
-  if (row.actorId !== user.id && !row.wornPublic) {
+  // Three-tier visibility gate. Self-bypass (G-5) FIRST.
+  const isSelf = row.actorId === user.id
+  let isFollower = false
+  if (!isSelf && row.visibility === 'followers') {
+    // Only resolve the follow relationship when needed (followers tier).
+    // 'public' tier doesn't need a follow check; 'private' is rejected
+    // unconditionally for non-self.
+    const followRows = await db
+      .select({ id: follows.id })
+      .from(follows)
+      .where(
+        and(
+          eq(follows.followerId, user.id),
+          eq(follows.followingId, row.actorId),
+        ),
+      )
+      .limit(1)
+    isFollower = followRows.length > 0
+  }
+
+  const canSee =
+    isSelf ||
+    (row.profilePublic &&
+      (row.visibility === 'public' ||
+        (row.visibility === 'followers' && isFollower)))
+
+  if (!canSee) {
+    // Uniform error string preserves Letterboxd-style 404 (RESEARCH Open Question #3).
     return { success: false, error: 'Wear event not found' }
   }
 
