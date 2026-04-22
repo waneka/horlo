@@ -62,15 +62,16 @@ A collector can evaluate any watch against their collection and get a meaningful
 - ✓ 5-section Network Home — WYWT rail + Network Activity feed + Collectors Like You + Personal Insights + Suggested Collectors — v2.0 Phase 10 (FEED-01..05, WYWT-03, DISC-02, DISC-04)
 - ✓ Nav `+ Wear` button wired to shared WatchPickerDialog — v2.0 Phase 10 (WYWT-03)
 - ✓ Cache Components enabled (Next.js 16 `cacheComponents: true`) with canonical Suspense+inline-theme-script layout pattern — v2.0 Phase 10
+- ✓ Schema + storage foundation — `wear_visibility` enum (public/followers/private), `wear_events.photo_url`+`note`+`visibility` columns with `worn_public` backfill, `notifications` table + `notification_type` enum with recipient-only RLS + partial UNIQUE dedup, `pg_trgm` + GIN trigram indexes on `profiles.username`/`bio`, `wear-photos` private Supabase Storage bucket with three-tier SELECT RLS + folder-enforcement INSERT/UPDATE/DELETE, SECURITY DEFINER helpers with revoked PUBLIC/anon EXECUTE, and DEBT-02 RLS audit on users/watches/user_preferences — v3.0 Phase 11 (WYWT-09, WYWT-11, WYWT-13, WYWT-14, NOTIF-01, SRCH-08, DEBT-02)
 
 ### Active
 
 - [ ] Zustand watchStore filter reducer unit tests with beforeEach reset — carried from v1.0 (TEST-04)
 - [ ] Integration test for POST /api/extract-watch route handler — carried from v1.0 (TEST-05)
 - [ ] Component tests for WatchForm, FilterBar, WatchCard — carried from v1.0 (TEST-06)
-- [ ] RLS on public tables (users, watches, user_preferences) — defense-in-depth, deferred from v1.0 code review (MR-03)
 - [ ] PreferencesClient error handling — surface save failures to user (MR-01)
 - [ ] Custom SMTP for email confirmation — currently OFF for personal-MVP posture
+- [ ] Incognito 403 verification for private wear photos (Roadmap SC-3, 11-HUMAN-UAT.md #2) — browser check pending
 
 ### Out of Scope
 
@@ -134,4 +135,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-21 — v3.0 (Production Nav & Daily Wear Loop) milestone started. Adds full navigation overhaul (desktop + mobile + sticky bottom nav), notifications foundation (new table + live Follow/Watch-overlap types + stubbed Price/Trending), people-only search at `/search`, and WYWT photo post flow with three-tier visibility (Private/Followers/Public — new "followers" privacy tier rippling through every wear-reading DAL). Image storage on Supabase with per-user RLS buckets. Continues phase numbering from Phase 11.*
+*Last updated: 2026-04-22 — Phase 11 complete. Schema + storage foundation landed: `wear_visibility` enum with worn_public backfill, `notifications` table with recipient-only RLS + dedup, `pg_trgm` GIN indexes for `/search`, `wear-photos` private Storage bucket with three-tier RLS, DEBT-02 RLS audit. Migration 6 revoked PUBLIC/anon EXECUTE on SECDEF helpers (WR-01 fix). 30/30 Wave 0 tests pass. Incognito 403 browser check for private wear photos remains pending as HUMAN-UAT item. Up next: Phase 12 (Visibility Ripple in DAL) — rippling the new three-tier visibility through every existing wear-reading function for non-owner viewers.*
