@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Taste Network Foundation
 status: executing
-stopped_at: Completed 10-05-PLAN.md (NetworkActivityFeed + ActivityRow + AggregatedActivityRow + LoadMoreButton + FeedEmptyState)
-last_updated: "2026-04-22T00:13:01.487Z"
+stopped_at: Completed 10-06-PLAN.md (WywtRail + WywtTile + WywtOverlay + WywtSlide + WatchPickerDialog + useViewedWears hook)
+last_updated: "2026-04-22T00:32:45.439Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 17
-  percent: 81
+  completed_plans: 18
+  percent: 86
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-19)
 ## Current Position
 
 Phase: 10 (activity-feed) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-04-22
 
@@ -54,6 +54,7 @@ Phase 10 [          ] Not started
 | Phase 10 P03 | 5min | 2 tasks | 5 files |
 | Phase 10 P10-04 | ~9 min | 4 tasks | 11 files |
 | Phase 10 P05 | ~15 min | 3 tasks | 9 files |
+| Phase 10 P06 | 14min | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,10 @@ Phase 10 [          ] Not started
 | Phase 10 Plan 05 aggregated-row verb — 'wishlisted {N} watches' for wishlist_added | UI-SPEC only documented the 'added {N} watches' variant. Kept symmetric because `wishlist_added` is a first-class `AggregatedRow` type in `feedTypes.ts` and asymmetric fallback would mislabel activity. Reviewer can flip in one line if the UI-SPEC author prefers the asymmetric form. |
 | Phase 10 Plan 05 feed-row image hardening | All thumbnails routed through `getSafeImageUrl` before `next/image`, matching `ProfileWatchCard` (Phase 8). Activities `metadata.imageUrl` is user-supplied from Phase 7 URL imports; https-upgrade + protocol guard apply at the component level as a Rule 2 correctness addition even though T-10-05-05 was marked 'accept' in the plan's threat register. |
 | Phase 10 Plan 05 F-03 dual link pattern | `absolute inset-0` Link overlay for profile nav + nested `relative z-10` Link for watch-name. Avoids invalid `<a>` inside `<a>` and keeps the row a pure Server Component. This is the canonical pattern for any future feed-row surface. |
+| Phase 10 Plan 06 WywtRail is 'use client' (not a two-layer shell) | Rail receives already-computed `WywtRailData` as a prop from the parent Server Component (Plan 10-08), so there is no server-only data access it needs to do itself. The planner's <behavior> block offered a two-layer Server+Client option; collapsing to a single 'use client' file saves boilerplate with zero SSR loss. |
+| Phase 10 Plan 06 WatchPickerDialog is a SINGLE shared component | Exported from `src/components/home/WatchPickerDialog.tsx` and consumed by BOTH the WYWT self-tile (Plan 06) and the nav `+ Wear` button (Plan 10-08). Pitfall 10 avoided. JSDoc at file top explicitly forbids forking; future call sites add a prop, never duplicate the component. |
+| Phase 10 Plan 06 jsdom polyfills added to tests/setup.ts | Node 25's native `localStorage` global (no method implementations) shadows jsdom's functional storage; jsdom 25.0.1 also lacks IntersectionObserver + ResizeObserver which embla-carousel-react requires. Added MemoryStorage + stub observers to `tests/setup.ts` (same pattern as existing `matchMedia` stub), guarded on "API missing" so future Node/jsdom versions that restore them do not double-install. |
+| Phase 10 Plan 06 WYWT overlay error UX is INLINE, not toast | Add-to-wishlist failure inside the focus-trapped overlay renders an inline `text-destructive` message + Retry button; markAsWorn failure inside the picker dialog renders an inline `role=alert` paragraph. Toasts would fire outside the focus trap and break WCAG focus management. Matches UI-SPEC error-placement intent. |
 
 ### Critical Pitfalls (from research)
 
@@ -105,7 +110,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-22T00:13:01.483Z
-Stopped at: Completed 10-05-PLAN.md (NetworkActivityFeed + ActivityRow + AggregatedActivityRow + LoadMoreButton + FeedEmptyState)
+Last session: 2026-04-22T00:32:45.433Z
+Stopped at: Completed 10-06-PLAN.md (WywtRail + WywtTile + WywtOverlay + WywtSlide + WatchPickerDialog + useViewedWears hook)
 Resume file: None
 Next action: `/gsd-plan-phase 6`

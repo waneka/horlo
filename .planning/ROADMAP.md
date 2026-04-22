@@ -119,7 +119,7 @@ Plans:
 - [x] 10-03-PLAN.md — WYWT DAL (getWearRailForViewer) + addToWishlistFromWearEvent Server Action
 - [x] 10-04-PLAN.md — wishlistGap + recommendations + suggestions DALs
 - [x] 10-05-PLAN.md — Network Activity UI (section + rows + Load More)
-- [ ] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
+- [x] 10-06-PLAN.md — WYWT rail + overlay + shared WatchPickerDialog
 - [ ] 10-07-PLAN.md — Collectors Like You + Personal Insights + Suggested Collectors UI
 - [ ] 10-08-PLAN.md — 5-section home page composition + nav + Wear button
 - [ ] 10-09-PLAN.md — REQUIREMENTS/ROADMAP scope update + privacy E2E verification
@@ -130,7 +130,7 @@ Plans:
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 5/9 plans executed
+**Plans:** 6/9 plans executed
 
 See `.planning/phases/05-migration-zustand-cleanup-similarity-rewire-prod-db-bootstrap/05-REVIEW.md` for full context.
 
@@ -148,4 +148,4 @@ Phases execute in numeric order: 6 → 7 → 8 → 9 → 10
 | 7. Social Schema & Profile Auto-Creation | 0/3 | Not started | - |
 | 8. Self Profile & Privacy Controls | 0/4 | Not started | - |
 | 9. Follow System & Collector Profiles | 0/4 | Not started | - |
-| 10. Activity Feed | 5/9 | In Progress|  |
+| 10. Activity Feed | 6/9 | In Progress|  |
