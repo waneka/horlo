@@ -28,6 +28,8 @@ interface SettingsClientProps {
     profilePublic: boolean
     collectionPublic: boolean
     wishlistPublic: boolean
+    notifyOnFollow: boolean
+    notifyOnWatchOverlap: boolean
   }
 }
 
@@ -125,16 +127,26 @@ export function SettingsClient({ settings }: SettingsClientProps) {
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Appearance">
-        <div className="flex min-h-12 items-center justify-between">
-          <p className="text-sm">Theme</p>
-          <Badge variant="outline">Coming soon</Badge>
+      <SettingsSection title="Notifications">
+        <div className="divide-y divide-border">
+          <PrivacyToggleRow
+            label="New Followers"
+            description="Get notified when someone starts following you."
+            field="notifyOnFollow"
+            initialValue={settings.notifyOnFollow}
+          />
+          <PrivacyToggleRow
+            label="Watch Overlaps"
+            description="Get notified when another collector owns a watch you own."
+            field="notifyOnWatchOverlap"
+            initialValue={settings.notifyOnWatchOverlap}
+          />
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Notifications">
+      <SettingsSection title="Appearance">
         <div className="flex min-h-12 items-center justify-between">
-          <p className="text-sm">Email notifications</p>
+          <p className="text-sm">Theme</p>
           <Badge variant="outline">Coming soon</Badge>
         </div>
       </SettingsSection>

@@ -39,6 +39,8 @@ export default async function SettingsPage() {
             profilePublic: settings.profilePublic,
             collectionPublic: settings.collectionPublic,
             wishlistPublic: settings.wishlistPublic,
+            notifyOnFollow: settings.notifyOnFollow,
+            notifyOnWatchOverlap: settings.notifyOnWatchOverlap,
           }}
         />
       </div>
