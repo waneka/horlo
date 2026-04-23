@@ -121,15 +121,15 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   4. The active route in the bottom nav shows a filled icon in accent color; tapping the Add icon in either the desktop or mobile nav routes to `/watch/new`; the old `MobileNav` hamburger component is removed from the codebase
   5. `/explore` renders a "coming soon" placeholder page; no nav link produces a 404; the desktop profile dropdown consolidates profile link, settings, theme toggle, and sign out; preference save failures surface a visible error message to the user (DEBT-01)
 **Plans**: 9 plans (Wave 1: Plans 01, 02, 05, 06, 07, 08, 09 parallel · Wave 2: Plans 03, 04 parallel)
-  - [ ] 14-01-PLAN.md — Shared PUBLIC_PATHS constant + proxy refactor (NAV-05 D-21/D-22) [Wave 1]
-  - [ ] 14-02-PLAN.md — Root layout IBM Plex Sans font swap + viewport-fit=cover + preserved theme script (NAV-03 D-07/D-08/D-09) [Wave 1]
+  - [x] 14-01-PLAN.md — Shared PUBLIC_PATHS constant + proxy refactor (NAV-05 D-21/D-22) [Wave 1]
+  - [x] 14-02-PLAN.md — Root layout IBM Plex Sans font swap + viewport-fit=cover + preserved theme script (NAV-03 D-07/D-08/D-09) [Wave 1]
   - [ ] 14-03-PLAN.md — BottomNav Client Component + NavWearButton appearance prop + layout mount + main padding (NAV-01/02/03/04/05/09/10) [Wave 2; depends on 14-01, 14-02]
   - [ ] 14-04-PLAN.md — SlimTopNav + DesktopTopNav + Header delegator + HeaderNav Insights removal + NotificationBell relocation + MobileNav deletion (NAV-05/06/07/10/12) [Wave 2; depends on 14-01, 14-05]
-  - [ ] 14-05-PLAN.md — InlineThemeSegmented + UserMenu consolidation (Profile/Settings/Theme/Sign out) (NAV-08 D-17) [Wave 1]
-  - [ ] 14-06-PLAN.md — /explore and /search coming-soon stubs (NAV-11 D-18/D-19) [Wave 1]
-  - [ ] 14-07-PLAN.md — ProfileTabs owner-only Insights tab + InsightsTabContent + [tab]/page gate + /insights redirect (NAV-11 D-13/D-14/D-15) [Wave 1]
-  - [ ] 14-08-PLAN.md — Settings "Taste Preferences" link row (NAV-11 D-12) [Wave 1]
-  - [ ] 14-09-PLAN.md — DEBT-01 regression-lock test + REQUIREMENTS.md traceability (DEBT-01 D-25) [Wave 1]
+  - [x] 14-05-PLAN.md — InlineThemeSegmented + UserMenu consolidation (Profile/Settings/Theme/Sign out) (NAV-08 D-17) [Wave 1]
+  - [x] 14-06-PLAN.md — /explore and /search coming-soon stubs (NAV-11 D-18/D-19) [Wave 1]
+  - [x] 14-07-PLAN.md — ProfileTabs owner-only Insights tab + InsightsTabContent + [tab]/page gate + /insights redirect (NAV-11 D-13/D-14/D-15) [Wave 1]
+  - [x] 14-08-PLAN.md — Settings "Taste Preferences" link row (NAV-11 D-12) [Wave 1]
+  - [x] 14-09-PLAN.md — DEBT-01 regression-lock test + REQUIREMENTS.md traceability (DEBT-01 D-25) [Wave 1]
 **Pitfalls to address**: A-1 (BottomNav inside Suspense boundary, not bare body), A-2 (usePathname hydration — client component for active state), A-3 (iOS safe-area-inset on nav and main), A-4 (auth route exclusion), A-5 (inline theme script contract unchanged), I-2 (WatchPickerDialog not forked — extend via props only), B-1 (bell count rendered as isolated Suspense leaf), P-08 (Insights tab existence leak — uniform notFound for non-owners), P-11 (no `'use cache'` on /insights redirect)
 **UI hint**: yes
 
@@ -173,7 +173,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** Close the three MEDIUM findings from the Phase 5 code review by (a) surfacing preference save failures to the user in `PreferencesClient` with a `role="alert"` inline banner and exposed `isPending` state, (b) removing the unused `UnauthorizedError` import from `src/app/actions/watches.ts` and `src/app/actions/preferences.ts`, and (c) formally documenting that MR-03 (RLS on users / watches / user_preferences) was resolved by Phase 6 migration `20260420000000_rls_existing_tables.sql` and re-audited by Phase 11 DEBT-02 migration `20260423000005_phase11_debt02_audit.sql`. No new RLS SQL is authored by this phase.
 **Requirements:** MR-01, MR-02, MR-03
-**Plans:** 5/5 plans complete
+**Plans:** 7/9 plans executed
 **Success Criteria** (what must be TRUE):
   1. `src/components/preferences/PreferencesClient.tsx` inspects the `ActionResult` returned by `savePreferences`; on `{ success: false }` it renders an accessible `role="alert"` banner with the message `"Couldn't save preferences: {error}"`; the discarded-pending-tuple pattern (`const [, startTransition]`) is gone and `isPending` is surfaced as a "Saving…" hint.
   2. `grep -c UnauthorizedError src/app/actions/watches.ts` returns `0` and `grep -c UnauthorizedError src/app/actions/preferences.ts` returns `0`; each file imports only `getCurrentUser` from `@/lib/auth`; action behavior is otherwise byte-for-byte unchanged.
@@ -192,7 +192,7 @@ Plans:
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
-| 14. Nav Shell + Explore Stub | 0/9 | Planned | - |
+| 14. Nav Shell + Explore Stub | 7/9 | In Progress|  |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
