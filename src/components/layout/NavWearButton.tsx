@@ -68,7 +68,7 @@ export function NavWearButton({
         >
           <Watch className="size-7 text-accent-foreground" aria-hidden />
         </span>
-        <span className="text-[12px] leading-[16px] font-medium text-accent">
+        <span className="text-[12px] leading-[16px] font-semibold text-accent">
           Wear
         </span>
       </button>

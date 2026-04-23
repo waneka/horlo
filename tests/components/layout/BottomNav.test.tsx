@@ -43,10 +43,13 @@ describe('BottomNav (Phase 14 NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-09, NA
     const homeLink = screen.getByRole('link', { name: /home/i })
     expect(exploreLink.getAttribute('aria-current')).toBe('page')
     expect(homeLink.getAttribute('aria-current')).toBeNull()
-    expect(exploreLink.className).toMatch(/text-accent|text-accent/) // class on Link wrapper
-    // Inner icon/label inherit the active class — find the label span:
+    // text-accent is applied to the inner icon + label span (not the Link
+    // wrapper) so the inactive <Link> inherits the current-color text
+    // context without forcing its own color. Verify on the label span:
     const exploreLabel = screen.getByText('Explore')
     expect(exploreLabel.className).toMatch(/text-accent/)
+    const homeLabel = screen.getByText('Home')
+    expect(homeLabel.className).toMatch(/text-muted-foreground/)
   })
 
   it('Test 3 — on /watch/new, Add item has text-accent (active)', () => {

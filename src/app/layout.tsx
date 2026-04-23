@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 import { Header } from '@/components/layout/Header'
 import { HeaderSkeleton } from '@/components/layout/HeaderSkeleton'
+import { BottomNavServer } from '@/components/layout/BottomNavServer'
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: '--font-sans',
@@ -53,7 +54,12 @@ export default function RootLayout({
             <Header />
           </Suspense>
           <Suspense fallback={null}>
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+              {children}
+            </main>
+          </Suspense>
+          <Suspense fallback={null}>
+            <BottomNavServer />
           </Suspense>
         </ThemeProvider>
       </body>
