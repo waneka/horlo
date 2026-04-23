@@ -100,7 +100,11 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   3. The notifications bell renders an unread dot when unread count > 0 and no dot when count = 0; the count is server-rendered per request without client-side polling
   4. The `/notifications` page lists notifications newest-first with visual differentiation between read and unread rows; "Mark all read" sets all unread rows to read and the bell dot disappears on next render
   5. Settings page exposes per-type opt-out toggles for "New followers" and "Watch overlaps"; toggling off prevents new notification inserts of that type; the notifications inbox shows "You're all caught up" copy when zero rows exist
-**Plans**: TBD
+**Plans**: 4 plans (Wave 0: Plan 01 schema+migration+tests · Wave 1: Plans 02-03 parallel DAL+logger+SA and UI components · Wave 2: Plan 04 page+wire-up+Bell+settings+Header)
+  - [ ] 13-01-PLAN.md — Drizzle schema edits + Supabase migration (3 profile_settings columns + backfill) + TypeScript type extensions + Wave 0 test suite RED [Wave 0]
+  - [ ] 13-02-PLAN.md — Fire-and-forget logger + notifications DAL (5 functions) + markAllNotificationsRead SA + VISIBILITY_FIELDS enum widening [Wave 1; depends on 13-01]
+  - [ ] 13-03-PLAN.md — NotificationRow + NotificationsInbox (NOTIF-08 collapse + Today/Yesterday/Earlier buckets) + NotificationsEmptyState [Wave 1; depends on 13-01; parallel with 13-02]
+  - [ ] 13-04-PLAN.md — NotificationBell cached Server Component + /notifications page + SettingsClient Notifications section + followUser/addWatch logNotification wiring + temporary Header bell placement + full suite GREEN [Wave 2; depends on 13-02, 13-03]
 **Pitfalls to address**: B-1 (bell count as isolated Suspense leaf), B-2 (fire-and-forget — failure never rolls back follow or addWatch), B-3 (dedup UNIQUE constraint + ON CONFLICT DO NOTHING), B-4 (recipient-only RLS SELECT policy), B-5 (Mark All Read operates on WHERE read_at IS NULL server-side, not a client-supplied list), B-6 (viewerId as explicit argument to any use cache wrapper), B-8 (unknown types render null, not broken card), B-9 (self-notification DB CHECK), B-7 (ON DELETE CASCADE verified in schema), A-1 (NotificationBell in its own Suspense leaf, not blocking page)
 **UI hint**: yes
 
@@ -178,7 +182,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
-| 13. Notifications Foundation | 0/TBD | Not started | - |
+| 13. Notifications Foundation | 0/4 | Not started | - |
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
