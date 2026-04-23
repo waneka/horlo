@@ -1,218 +1,163 @@
 ---
 phase: 13-notifications-foundation
-reviewed: 2026-04-22T00:00:00Z
+reviewed: 2026-04-23T00:00:00Z
 depth: standard
-files_reviewed: 28
+files_reviewed: 5
 files_reviewed_list:
-  - src/app/actions/follows.ts
   - src/app/actions/notifications.ts
-  - src/app/actions/profile.ts
-  - src/app/actions/watches.ts
-  - src/app/notifications/page.tsx
-  - src/app/settings/page.tsx
-  - src/components/layout/Header.tsx
-  - src/components/notifications/NotificationBell.tsx
-  - src/components/notifications/NotificationRow.tsx
-  - src/components/notifications/NotificationsEmptyState.tsx
-  - src/components/notifications/NotificationsInbox.tsx
-  - src/components/settings/SettingsClient.tsx
   - src/data/notifications.ts
-  - src/data/profiles.ts
-  - src/db/schema.ts
-  - src/lib/notifications/logger.ts
-  - src/lib/notifications/types.ts
-  - supabase/migrations/20260425000000_phase13_profile_settings_notifications.sql
-  - tests/actions/follows.test.ts
-  - tests/actions/notifications.test.ts
-  - tests/actions/watches.test.ts
+  - src/components/notifications/NotificationRow.tsx
   - tests/components/notifications/NotificationRow.test.tsx
-  - tests/components/notifications/NotificationsEmptyState.test.tsx
-  - tests/components/notifications/NotificationsInbox.test.tsx
-  - tests/data/getNotificationsForViewer.test.ts
-  - tests/data/getNotificationsUnreadState.test.ts
   - tests/integration/phase13-notifications-flow.test.ts
-  - tests/integration/phase13-profile-settings-migration.test.ts
-  - tests/unit/notifications/logger.test.ts
 findings:
   critical: 0
-  warning: 3
-  info: 6
-  total: 9
+  warning: 2
+  info: 4
+  total: 6
 status: issues_found
 ---
 
-# Phase 13: Code Review Report
+# Phase 13 (Plan 05 gap-closure): Code Review Report
 
-**Reviewed:** 2026-04-22
+**Reviewed:** 2026-04-23T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 28 (18 source + 10 test)
+**Files Reviewed:** 5
 **Status:** issues_found
+**Scope:** Plan 05 gap-closure only. Plans 13-01..13-04 were reviewed previously; this report overwrites that review with findings scoped to the 5 files touched by Plan 05.
 
 ## Summary
 
-Phase 13 (Notifications Foundation) is in overall good shape. The fire-and-forget logger correctly swallows errors, checks opt-out BEFORE insert, and self-guards above the DB CHECK. DAL functions take `viewerId` as an explicit parameter (D-25) with no closures over `getCurrentUser`. The `revalidateTag` two-arg form (`'max'`) is used consistently for Next 16. RLS-equivalent filtering (`WHERE user_id = viewerId`) is present in all DAL reads. The migration is idempotent with `ADD COLUMN IF NOT EXISTS`, has a backfill UPDATE, and post-migration assertions. Dedup index usage via `ON CONFLICT DO NOTHING` is wired correctly through raw SQL on the `watch_overlap` path. NOTIF-08 display-time collapse is implemented and tested. The TEMP marker for Phase 14 nav cleanup is present on the bell placement in `Header.tsx`.
+Plan 05 cleanly closes the two outstanding gaps from 13-VERIFICATION.md:
 
-Three warnings found: (1) the D-08 per-row optimistic-read-then-navigate contract is NOT implemented — `NotificationRow` is a plain `<Link>` with no `useOptimistic`/mark-one-read action, which conflicts with `13-03-SUMMARY.md` claim of `client-component-optimistic` tag and 13-03-PLAN Task 1's stated test ("NotificationRow full-row click optimistically marks read then navigates"); (2) one integration test for dedup cannot conclusively prove dedup because it does not seed the prerequisite owner row; (3) the `SettingsClient` component has an unused `username` prop that leaks through the type boundary unnecessarily. Info-level items are small refinements — prop-shape mismatches, a harmless but unnecessary localStorage hydration for a disabled control, and a minor cache-efficiency observation.
+1. NotificationRow is rewired as a Client Component with `useOptimistic` + `useTransition` + `useRouter`, paired with a new Zod-validated `markNotificationRead` Server Action and a two-layer-defense `markOneReadForUser` DAL. The optimistic read path, border-l-accent flip, keyboard affordance, and stub-type skip are all correctly implemented.
+2. The integration test now seeds a watches row, calls `logNotification` twice with an identical payload, and asserts `toBe(1)`, replacing the previously trivial `toBeLessThanOrEqual(1)` assertion.
+
+No Critical findings. The two Warnings are: (a) an unused `pending` local in `NotificationRow` (the `if (pending) return` guard is dead code because the variable is never read again after the first click schedules a transition — React's transition already serializes, but the guard as written can never fire); and (b) the dedup integration test re-uses a hardcoded `actor_username: 'userB'` in the payload while seeding users via `seedTwoUsers`, which could cause confusion if the seed fixture ever diverges (the dedup index doesn't read this column, so there's no correctness risk — just a fragility flag).
+
+The four Info items flag deprecated `z.string().uuid()` (pre-existing codebase pattern; Zod v4 prefers `z.uuid()`), an undeclared `zod` dependency (pre-existing transitive dep, not introduced here), a duplicate `NotificationRow` type-name collision between DAL and component, and a minor test-helper DRY opportunity.
 
 ## Warnings
 
-### WR-01: D-08 per-row optimistic mark-one-read is not implemented
+### WR-01: `pending` guard in `activate()` never prevents a double-fire
 
-**File:** `src/components/notifications/NotificationRow.tsx:54-74`
-**Issue:** CONTEXT.md D-08 specifies "Per-row click does both: optimistic `read_at = now()` update AND navigate to target. Single tap. Standard inbox UX." The 13-03-PLAN Task 1 lists a RED test case `"NotificationRow full-row click optimistically marks read then navigates (D-08)"`, and the 13-03-SUMMARY tags the work as `client-component-optimistic`. However, the shipped component is a plain `<Link>` with no `useOptimistic`, no `useTransition`, and no mark-one-read Server Action wired through. Rows retain their unread visual treatment until the user hits "Mark all read" (NOTIF-06). Functionally, the system still works — page visit runs `touchLastSeenAt` which clears the bell (D-07) — but per-row read state never flips on click.
+**File:** `src/components/notifications/NotificationRow.tsx:74`
+**Issue:** The guard `if (pending) return` is placed outside `startTransition`. `useTransition`'s `pending` flag flips to `true` synchronously *after* `startTransition(...)` is called and back to `false` when the transition completes — but the click handler `activate()` is also synchronous up to the `startTransition` call itself. If a user clicks twice rapidly before React commits the transition flag, both clicks enter `startTransition` and the SA is called twice. More practically: the `activate()` function is re-created on every render; after the first click fires `setOptimisticReadAt(new Date())`, the next render will see `isUnread = false`, so the `isUnread && !isStubType` branch skips the SA on the second click — that's the *real* guard. The `pending` line is effectively dead code. It's not a bug (the optimistic state flip guards double-submission), but the guard as written does not do what the comment "guard against double-fire" suggests, and an auditor reading the code will be misled.
 
-There is also no `markOneRead` / `markNotificationRead` Server Action in `src/app/actions/notifications.ts` (only `markAllNotificationsRead` exists), so even a client-side optimistic update would have nothing to call.
+**Fix:** Either (a) remove the `if (pending) return` and document that the optimistic state flip is the double-submit guard, or (b) keep the guard but correct the reasoning in a comment — e.g., `// Belt-and-suspenders: the isUnread check below is the real guard; this is a cheap first-line filter for subsequent clicks after transition starts`.
 
-**Fix:** Either (a) implement the D-08 optimistic read flow:
 ```tsx
-// src/app/actions/notifications.ts — add:
-export async function markNotificationRead(notificationId: string): Promise<ActionResult<void>> {
-  let user
-  try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
-  try {
-    await markOneReadForUser(user.id, notificationId) // new DAL fn: WHERE user_id = viewerId (two-layer defense)
-    revalidateTag(`viewer:${user.id}`, 'max')
-    return { success: true, data: undefined }
-  } catch (err) {
-    console.error('[markNotificationRead] unexpected error:', err)
-    return { success: false, error: "Couldn't mark as read." }
-  }
+function activate() {
+  // Note: the real double-submit guard is `isUnread && !isStubType` below —
+  // once setOptimisticReadAt(new Date()) fires, isUnread becomes false on the
+  // next render so the SA cannot re-fire. `pending` is unreliable as a
+  // synchronous guard because rapid clicks can queue before React commits it.
+  startTransition(async () => {
+    if (isUnread && !isStubType) {
+      setOptimisticReadAt(new Date())
+      const result = await markNotificationRead({ notificationId: row.id })
+      if (!result.success) {
+        console.error('[NotificationRow] markNotificationRead failed:', result.error)
+      }
+    }
+    router.push(href)
+  })
 }
-
-// src/components/notifications/NotificationRow.tsx — convert to optimistic:
-const [optimisticRead, setOptimisticRead] = useOptimistic(row.readAt !== null)
-const [isPending, startTransition] = useTransition()
-// on click: startTransition(() => { setOptimisticRead(true); markNotificationRead(row.id) })
-// Link uses router.push after the optimistic flip so navigate still feels instant.
 ```
-OR (b) explicitly defer D-08 to Phase 14 with a `TODO: D-08 deferred` comment on `NotificationRow.tsx` and update 13-03-SUMMARY to remove the `client-component-optimistic` tag so downstream consumers don't assume it's wired.
 
-### WR-02: Integration dedup test cannot prove dedup — missing owner seed
+### WR-02: Dedup test hardcodes `actor_username: 'userB'` in payload, decoupled from the actual seeded user
 
-**File:** `tests/integration/phase13-notifications-flow.test.ts:204-250`
-**Issue:** The test `adding same watch twice same UTC day does NOT create second overlap row` calls `addWatch({ brand: 'Omega', model: 'Speedmaster', ... })` twice but never seeds a pre-existing owner (userA) of the same brand/model. Without a pre-existing owner row in `watches`, `findOverlapRecipients` returns `[]`, so zero notifications are created — and the assertion `expect(rows[0]?.c).toBeLessThanOrEqual(1)` is trivially satisfied by `c = 0`. The test PASSES today but would also pass if the dedup UNIQUE index were deleted. It is not actually verifying the dedup behavior.
+**File:** `tests/integration/phase13-notifications-flow.test.ts:258`
+**Issue:** The payload contains `actor_username: 'userB'` as a literal string, but the seeded `userB` from `seedTwoUsers()` has a real Supabase Auth uuid and presumably a real profile row with an actual username. The `notifications_watch_overlap_dedup` partial UNIQUE index keys on `(user_id, actor_id, payload->>'watch_brand_normalized', payload->>'watch_model_normalized', UTC-day)` — it does NOT include `actor_username`, so the test still exercises the dedup correctly. However, if `seedTwoUsers` is ever changed to seed the profile with a real username (e.g., `tester_b`), this test's payload will silently diverge from the profile row and any future dedup variant that keys on `actor_username` would fail opaquely. This is a fragility smell, not a bug.
 
-Also note that in this test both `addWatch` calls happen as the same authenticated user (the Server Action reads auth from cookies/session — there is no visible userA-vs-userB actor switch in this block). Without a user switch and an owner seed, the test never enters the "another collector owns this" path.
+**Fix:** Either load `userB`'s profile username dynamically, or document the literal with a pinned rationale:
 
-**Fix:** Mirror the setup pattern from the prior test (lines 129-172): seed an `INSERT INTO watches (...)` row for userA before userB's `addWatch`, and explicitly sign in as userB for the two addWatch calls. Then assert `c = 1` (exactly one row), not `c <= 1`:
 ```ts
-// Seed userA already owns Omega Speedmaster
-await db.execute(sql`INSERT INTO watches (id, user_id, brand, model, status, movement, ...) VALUES (gen_random_uuid(), ${userA.id}::uuid, 'Omega', 'Speedmaster', 'owned', 'manual', ...) ON CONFLICT DO NOTHING`)
-
-// Sign in as userB, then addWatch twice
-// ... (auth switch helper — same as pre-existing pattern)
-await addWatch({ brand: 'Omega', model: 'Speedmaster', status: 'owned', ... })
-await addWatch({ brand: 'Omega', model: 'Speedmaster', status: 'owned', ... })
-
-// Now assert exactly 1 (dedup is load-bearing)
-expect(rows[0]?.c).toBe(1)
-```
-
-### WR-03: SettingsClient exposes `username` prop but never consumes it
-
-**File:** `src/components/settings/SettingsClient.tsx:26-39`
-**Issue:** `SettingsClientProps` declares `username: string`, and the parent (`src/app/settings/page.tsx:37`) resolves and passes `profile?.username ?? ''` — but the component only destructures `{ settings }` and never uses the `username` value. This is dead interface surface that triggers an unnecessary DB fetch (`getProfileById`) in the page, and future callers may assume the value is displayed somewhere.
-
-**Fix:** Either (a) drop the prop and the page-level `getProfileById` fetch if nothing else needs it, or (b) consume it (e.g., in a header "@{username}" label in the settings page). Given the nearby code fetches the profile for this prop only, (a) is likely the lower-effort path:
-```tsx
-// src/components/settings/SettingsClient.tsx
-interface SettingsClientProps {
-  settings: {
-    profilePublic: boolean
-    // ...
-  }
+const payload = {
+  // Literal 'userB' is fine because the dedup index keys on (user_id, actor_id,
+  // brand_normalized, model_normalized, day) — NOT on actor_username. If the
+  // dedup key ever grows to include actor_username, load the real username from
+  // the seeded profile row here.
+  actor_username: 'userB',
+  actor_display_name: null,
+  watch_id: watchId,
+  watch_brand: 'Omega',
+  watch_model: 'Speedmaster',
+  watch_brand_normalized: 'omega',
+  watch_model_normalized: 'speedmaster',
 }
-export function SettingsClient({ settings }: SettingsClientProps) { ... }
-
-// src/app/settings/page.tsx
-const settings = await getProfileSettings(user.id)   // drop getProfileById + Promise.all
-<SettingsClient settings={{ ... }} />
 ```
 
 ## Info
 
-### IN-01: `updateSettingsSchema` typo in error message path
+### IN-01: `z.string().uuid()` is deprecated in Zod 4 — prefer `z.uuid()`
 
-**File:** `src/app/actions/profile.ts:72`
-**Issue:** The error message `'Invalid settings payload'` is fine, but the schema name `updateSettingsSchema` is for visibility + notify opt-outs, while the comment block at line 43-47 mentions "visibility + notification opt-out fields." Consider renaming to `updateVisibilityAndNotifySchema` for clarity, or at minimum a small rename given it now covers two concerns.
+**File:** `src/app/actions/notifications.ts:54`
+**Issue:** The installed Zod version is 4.3.6 (confirmed in `node_modules/zod/package.json`). In Zod 4, `z.string().uuid()` is explicitly marked `@deprecated Use z.uuid() instead.` (see `node_modules/zod/v4/classic/schemas.d.ts:120-121`). The code still works and this pattern is used throughout the codebase (`src/app/actions/follows.ts:17`, `src/app/actions/notes.ts:13`, etc.), so this is a pre-existing codebase-wide pattern, not a Plan 05 regression. Flagged here because Plan 05 added one more call site that will need to be updated when the codebase migrates.
 
-**Fix:** Optional rename for readability:
+**Fix:** On the eventual codebase-wide Zod v4 migration pass, replace with:
+
 ```ts
-const updateVisibilityOrNotifyPrefSchema = z.object({ field: z.enum(VISIBILITY_FIELDS), value: z.boolean() }).strict()
+const markReadSchema = z.object({ notificationId: z.uuid() }).strict()
 ```
 
-### IN-02: Mixed payload key casing across notification types
+### IN-02: `zod` is an undeclared dependency
 
-**File:** `src/lib/notifications/types.ts:9-32`, `src/components/notifications/NotificationRow.tsx:137,153`
-**Issue:** `WatchOverlapPayload` uses `snake_case` keys (`watch_brand_normalized`, `actor_username`), but `PriceDropPayload` and `TrendingPayload` use `camelCase` (`watchModel`, `actorCount`, `newPrice`). The renderer mirrors both conventions. Since `price_drop` and `trending_collector` are stubs per NOTIF-07 and will not ship write-paths in Phase 13, this is not a functional issue, but it creates inconsistent precedent when the write-paths arrive in a later phase.
+**File:** `src/app/actions/notifications.ts:4` (and all other `src/app/actions/*.ts` that `import { z } from 'zod'`)
+**Issue:** `zod` is imported directly but is NOT listed in `package.json`'s `dependencies` or `devDependencies`. It's resolved transitively (likely via `@supabase/ssr` or a sibling package). Relying on a transitive dependency means a minor version bump in the parent could silently pull `zod` from under the codebase, or drop it entirely. This is a pre-existing project issue — Plan 05 did not introduce the import pattern, just added one more use site — but since this review is scoped to Plan 05 files, the `zod` import in `src/app/actions/notifications.ts` is a legitimate flag.
 
-**Fix:** Pick one convention (snake_case matches the jsonb payload-at-rest convention used for the two live types) and align the stubs:
-```ts
-export interface PriceDropPayload {
-  watch_model: string
-  new_price: string
-}
-export interface TrendingPayload {
-  watch_model: string
-  actor_count: number
+**Fix:** Add an explicit `zod` entry to `package.json` dependencies (ideally `^4.3.6` to match the transitively-resolved version):
+
+```json
+"dependencies": {
+  ...
+  "zod": "^4.3.6",
+  ...
 }
 ```
-Update `NotificationRow.tsx` line 137 and 153 accordingly when the stubs are activated.
 
-### IN-03: `SettingsClient` hydrates a disabled control from localStorage
+### IN-03: Name collision — `NotificationRow` means two different things
 
-**File:** `src/components/settings/SettingsClient.tsx:55-65`
-**Issue:** The `useEffect` reads `NOTE_DEFAULT_KEY` from localStorage and sets state, but the `<Select>` is `disabled` (line 116 — "Coming soon"). The hydration path is inert for users, so it runs extra code for no observed effect and widens the attack surface for WR-02-style issues (validation of stored enum already exists, good). Not a bug, but unnecessary client work while the control is disabled.
+**File:** `src/data/notifications.ts:12` + `src/components/notifications/NotificationRow.tsx:19`
+**Issue:** `src/data/notifications.ts:12` exports `interface NotificationRow` (the DAL row shape — has `id`, `userId`, `actorId`, `readAt`, etc.), while `src/components/notifications/NotificationRow.tsx:19` exports `interface NotificationRowData` for the component prop and a `NotificationRow` function as the component itself. Three symbols named `NotificationRow*` with overlapping meanings. A consumer writing `import { NotificationRow } from '@/data/notifications'` gets the type; `import { NotificationRow } from '@/components/notifications/NotificationRow'` gets the component. Project convention across the codebase (per CLAUDE.md "Types / interfaces PascalCase") is fine; the collision is specifically that `NotificationRow` (the DAL type) and `NotificationRowData` (the component prop) describe overlapping fields with different shapes — the DAL has `userId` and `actorId` that the component prop drops.
 
-**Fix:** Either move the `useEffect` behind `if (!disabled)` or delete the hydration block until the control is enabled. Minimal change:
+**Fix:** Rename the DAL type to `NotificationRowDTO` or `DbNotificationRow` to disambiguate:
+
+```ts
+// src/data/notifications.ts
+export interface NotificationRowDTO {
+  id: string
+  userId: string
+  actorId: string | null
+  // ...
+}
+```
+
+Low priority — this is a taxonomy smell, not a bug.
+
+### IN-04: Test helper `getNotifCopyText` queries `.flex-1` — brittle to Tailwind class changes
+
+**File:** `tests/components/notifications/NotificationRow.test.tsx:60-64`
+**Issue:** The helper selects the copy div via `container.querySelector('.flex-1')`. Any future refactor that changes the flex-layout classes (e.g., swapping `flex-1` for `grow` per Tailwind 4 conventions) will break every test that uses this helper, with a confusing "`null` is not iterable" error rather than a clear "selector changed" message.
+
+**Fix:** Use a `data-testid="notif-copy"` on the copy div in the component (cheap, stable across refactors), then query by test id:
+
 ```tsx
-// Only hydrate from localStorage when the control is enabled
-const enabled = false // flip when wiring to insertWatchSchema lands
-useEffect(() => {
-  if (!enabled) return
-  try { ... } catch {}
-}, [])
+// In NotificationRow.tsx:
+<div data-testid="notif-copy" className="flex-1 min-w-0 text-sm text-foreground">
+  {copy}
+  <span className="text-muted-foreground"> · {timeLabel}</span>
+</div>
+
+// In the test helper:
+function getNotifCopyText(container: HTMLElement): string {
+  return container.querySelector('[data-testid="notif-copy"]')?.textContent ?? ''
+}
 ```
 
-### IN-04: Bell cache tag stacking
-
-**File:** `src/components/notifications/NotificationBell.tsx:21`
-**Issue:** `cacheTag('notifications', \`viewer:${viewerId}\`)` tags the cached scope with BOTH a global `notifications` tag AND a per-viewer tag. The action `markAllNotificationsRead` invalidates only `viewer:${user.id}` (correct), but the visit-to-inbox page invalidation (`src/app/notifications/page.tsx:41`) also invalidates only the viewer tag. If a future code path calls `revalidateTag('notifications', 'max')`, every viewer's cached bell blows at once — probably fine for throughput, but worth documenting the intent.
-
-**Fix:** Add a one-line comment explaining that the `notifications` global tag is a relief valve for broad invalidations (feature flags, schema migrations), while `viewer:${viewerId}` is the per-viewer invalidation target:
-```ts
-// Dual-tag: 'notifications' for broad invalidations (migrations, feature-flag flips);
-// 'viewer:${viewerId}' for the per-viewer target hit by markAllNotificationsRead and the /notifications page visit.
-cacheTag('notifications', `viewer:${viewerId}`)
-```
-
-### IN-05: `findOverlapRecipients` comment mentions 30-day window that lives elsewhere
-
-**File:** `src/data/notifications.ts:122-133` + `supabase/migrations/20260423000002_phase11_notifications.sql:82-83`
-**Issue:** The migration comment says "The 30-day window is enforced in the Phase 13 Server Action with a pre-insert query; the DB only enforces per-day idempotence." But `addWatch` in `src/app/actions/watches.ts:92-127` does NOT perform a 30-day pre-insert check — it relies solely on the DAL dedup UNIQUE index (which is per-day only) and the `onConflictDoNothing` semantics. If the 30-day semantics were intentionally descoped from Phase 13, the migration comment is stale and will mislead Phase 14+ engineers.
-
-**Fix:** Either add the 30-day check in `addWatch` or update the Phase 11 migration comment to reflect the shipped behavior:
-```sql
--- Dedup semantics: "same recipient + same normalized watch + same UTC calendar day = one notification."
--- (A 30-day window was considered but deferred; per-day idempotence is the shipped behavior as of Phase 13.)
-```
-
-### IN-06: `NotificationRow` type guard duplicates the discriminated-union type
-
-**File:** `src/components/notifications/NotificationRow.tsx:36-43`
-**Issue:** The B-8 guard `if (row.type !== 'follow' && row.type !== 'watch_overlap' && row.type !== 'price_drop' && row.type !== 'trending_collector') return null` duplicates the literal union already declared in `NotificationRowData.type`. If a new type is added to the union, this guard silently drops it instead of failing loudly at compile time. The current behavior is intentional per B-8 ("unknown types render null — silent no-op, never a broken card"), but consider a `const` set + `includes` to reduce drift risk:
-
-**Fix:** Optional — extract the valid set so the union and the runtime guard cannot diverge:
-```ts
-const VALID_TYPES = ['follow', 'watch_overlap', 'price_drop', 'trending_collector'] as const
-type ValidType = typeof VALID_TYPES[number]
-
-// ... inside component:
-if (!VALID_TYPES.includes(row.type as ValidType)) return null
-```
+Low priority — the existing helper works today and the test suite is fully green.
 
 ---
 
-_Reviewed: 2026-04-22_
+_Reviewed: 2026-04-23T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
