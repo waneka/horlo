@@ -1,19 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/proxy'
-
-const PUBLIC_PATHS = [
-  '/login',
-  '/signup',
-  '/forgot-password',
-  '/reset-password',
-  '/auth',
-]
+import { isPublicPath } from '@/lib/constants/public-paths'
 
 export default async function proxy(request: NextRequest) {
   const { user, response } = await updateSession(request)
 
   const pathname = request.nextUrl.pathname
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+  const isPublic = isPublicPath(pathname)
 
   if (!user && !isPublic) {
     const loginUrl = new URL('/login', request.url)
