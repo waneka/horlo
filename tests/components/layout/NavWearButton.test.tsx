@@ -54,9 +54,9 @@ function makeWatch(id: string): Watch {
 }
 
 describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
-  it('Test 1 — renders with label "Wear" and a Plus icon', () => {
+  it('Test 1 — renders with label "Wear" and a Plus icon (default/header variant)', () => {
     render(<NavWearButton ownedWatches={[]} />)
-    // Label
+    // Label (desktop shows "Wear" via `hidden sm:inline` but still in DOM)
     expect(screen.getByRole('button', { name: /log a wear/i })).toBeTruthy()
     expect(screen.getByText('Wear')).toBeTruthy()
     // Plus icon is an svg inside the button; lucide icons render as <svg>.
@@ -97,12 +97,86 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
     })
   })
 
-  it('Test 4 — button uses outline variant', () => {
+  it('Test 4 — button uses outline variant (header default)', () => {
     render(<NavWearButton ownedWatches={[]} />)
     const btn = screen.getByRole('button', { name: /log a wear/i })
     // shadcn Button outline variant includes `border-border` and `bg-background`.
     const cls = btn.getAttribute('class') ?? ''
     expect(cls).toMatch(/border-border/)
     expect(cls).toMatch(/bg-background/)
+  })
+
+  describe('Phase 14-03 Task 1 — bottom-nav appearance variant', () => {
+    it('Test 5 — `appearance="bottom-nav"` renders a 56×56 rounded-full element with the Watch icon and "Wear" label', () => {
+      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+
+      // aria-label differs from header variant — see Test 8 for the exact text
+      const btn = screen.getByRole('button', { name: /log a wear/i })
+      expect(btn).toBeTruthy()
+
+      // The "Wear" text label renders under the circle (still accessible
+      // because it's inside the button with the aria-label as well).
+      expect(screen.getByText('Wear')).toBeTruthy()
+
+      // Inner circle is the child <span> carrying rounded-full + size-14.
+      // Find it via the SVG's parent (<span> wrapping the Watch icon).
+      const svg = btn.querySelector('svg')
+      expect(svg).toBeTruthy()
+      const circleSpan = svg!.parentElement as HTMLElement
+      expect(circleSpan.className).toMatch(/size-14/)
+      expect(circleSpan.className).toMatch(/rounded-full/)
+    })
+
+    it('Test 6 — `appearance="bottom-nav"` circle has the two-layer Figma shadow', () => {
+      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      const btn = screen.getByRole('button', { name: /log a wear/i })
+      const svg = btn.querySelector('svg')!
+      const circleSpan = svg.parentElement as HTMLElement
+      // The shadow class uses Tailwind's arbitrary-value syntax with embedded
+      // commas; match on the leading shadow prefix + first rgba pair.
+      expect(circleSpan.className).toMatch(/shadow-\[/)
+      expect(circleSpan.className).toContain('0px_10px_15px_0px_rgba(0,0,0,0.1)')
+    })
+
+    it('Test 7 — `appearance="bottom-nav"` circle uses `bg-accent` fill', () => {
+      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      const btn = screen.getByRole('button', { name: /log a wear/i })
+      const svg = btn.querySelector('svg')!
+      const circleSpan = svg.parentElement as HTMLElement
+      expect(circleSpan.className).toMatch(/bg-accent/)
+    })
+
+    it('Test 8 — `appearance="bottom-nav"` button has aria-label "Log a wear" (UI-SPEC Copywriting)', () => {
+      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      // Exact aria-label lock — NOT "Log a wear for today" (that's the header
+      // variant). Bottom-nav variant uses the tighter "Log a wear" string.
+      const btn = screen.getByLabelText('Log a wear')
+      expect(btn).toBeTruthy()
+      expect(btn.tagName).toBe('BUTTON')
+    })
+
+    it('Test 9 — both appearances open the SAME WatchPickerDialog', async () => {
+      const watches = [makeWatch('x'), makeWatch('y'), makeWatch('z')]
+      render(<NavWearButton ownedWatches={watches} appearance="bottom-nav" />)
+
+      expect(screen.queryByTestId('mock-picker')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: /log a wear/i }))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-picker')).toBeTruthy()
+      })
+      const picker = screen.getByTestId('mock-picker')
+      expect(picker.getAttribute('data-open')).toBe('true')
+      expect(picker.getAttribute('data-count')).toBe('3')
+    })
+
+    it('Test 10 — `appearance="bottom-nav"` Watch icon is 28×28 (size-7)', () => {
+      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      const btn = screen.getByRole('button', { name: /log a wear/i })
+      const svg = btn.querySelector('svg')
+      expect(svg).toBeTruthy()
+      // size-7 = 28px
+      expect(svg!.getAttribute('class') ?? '').toMatch(/size-7/)
+    })
   })
 })
