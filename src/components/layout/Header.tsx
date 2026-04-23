@@ -1,16 +1,26 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { MobileNav } from '@/components/layout/MobileNav'
-import { HeaderNav } from '@/components/layout/HeaderNav'
-import { UserMenu } from '@/components/layout/UserMenu'
-import { NavWearButton } from '@/components/layout/NavWearButton'
-import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { Suspense } from 'react'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getProfileById } from '@/data/profiles'
 import { getWatchesByUser } from '@/data/watches'
+import { SlimTopNav } from '@/components/layout/SlimTopNav'
+import { DesktopTopNav } from '@/components/layout/DesktopTopNav'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import type { Watch } from '@/lib/types'
 
+/**
+ * Header — thin Server Component delegator (Phase 14 D-23 / D-24).
+ *
+ * Resolves auth + profile + owned watches, then renders both SlimTopNav
+ * (mobile, <768px) and DesktopTopNav (desktop, ≥768px). Each surface
+ * CSS-hides itself at the wrong breakpoint, so only one is visible at a
+ * time. The SlimTopNav/DesktopTopNav components own the `<header>`
+ * element — this component does not render one itself.
+ *
+ * NotificationBell is its own Suspense leaf (Pitfall A-1/B-1). The `bell`
+ * element is constructed exactly ONCE and handed by reference to both
+ * surfaces so the downstream `cacheTag(..., viewer:${viewerId})` keys a
+ * single cache entry per render pass (RESEARCH §P-06).
+ */
 export async function Header() {
   let user: { id: string; email: string } | null = null
   try {
@@ -20,11 +30,6 @@ export async function Header() {
     // unauth is the expected case on /login, /signup, etc.
   }
 
-  // Look up the viewer's username so HeaderNav can render the Profile link,
-  // and resolve owned watches so the NavWearButton can open the shared picker
-  // (CONTEXT.md N-01 — two triggers, one dialog). Falls back to defaults on
-  // any error so the header still renders with the rest of the nav even if a
-  // transient DB blip occurs.
   let username: string | null = null
   let ownedWatches: Watch[] = []
   if (user) {
@@ -34,39 +39,30 @@ export async function Header() {
         getWatchesByUser(user.id),
       ])
       username = profile?.username ?? null
-      // WatchPickerDialog itself filters to status='owned', but we do it here
-      // too so the prop carried across the component boundary is minimal.
       ownedWatches = watches.filter((w) => w.status === 'owned')
     } catch (err) {
       console.error('[Header] failed to resolve user data:', err)
     }
   }
 
+  // CRITICAL (RESEARCH §P-06): single element, passed by reference to both
+  // nav surfaces. Constructing two separate <NotificationBell> elements
+  // would double the cacheTag entries. Do not "simplify" this block.
+  const bell = user ? (
+    <Suspense fallback={null}>
+      <NotificationBell viewerId={user.id} />
+    </Suspense>
+  ) : null
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2 md:gap-8">
-          <MobileNav />
-          <Link href="/" className="flex items-center gap-2">
-            <span className="font-serif text-xl">Horlo</span>
-          </Link>
-          <HeaderNav username={username} />
-        </div>
-        <div className="flex items-center gap-2 md:gap-4">
-          <ThemeToggle />
-          {user && (
-            <>
-              <NavWearButton ownedWatches={ownedWatches} />
-              <Link href="/watch/new">
-                <Button>Add Watch</Button>
-              </Link>
-              {/* TEMP: UAT placement — Phase 14 will move this to the new nav */}
-              <NotificationBell viewerId={user.id} />
-            </>
-          )}
-          <UserMenu user={user} username={username} />
-        </div>
-      </div>
-    </header>
+    <>
+      <SlimTopNav hasUser={!!user} bell={bell} />
+      <DesktopTopNav
+        user={user}
+        username={username}
+        ownedWatches={ownedWatches}
+        bell={bell}
+      />
+    </>
   )
 }

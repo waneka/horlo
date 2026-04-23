@@ -121,7 +121,11 @@ describe('Header bell placement (Phase 14 D-23 / D-24 / RESEARCH P-06)', () => {
   it('Test 1b — both surfaces receive matching viewerId in their NotificationBell child', async () => {
     mockUser = { id: 'viewer-42', email: 'alice@example.com' }
     const tree = await Header()
-    // Traverse the element tree capturing every <NotificationBell> and its viewerId prop.
+    // Traverse the element tree capturing every <NotificationBell> and its
+    // viewerId prop. Because Header returns element-literals (not the
+    // result of rendering the mocked nav surfaces), we also walk the
+    // well-known prop slots ("bell" on nav surfaces, "children" on Suspense)
+    // so the NotificationBell inside Suspense is visited.
     const viewerIds: string[] = []
     const visit = (node: unknown) => {
       if (!isValidElement(node)) return
@@ -141,15 +145,19 @@ describe('Header bell placement (Phase 14 D-23 / D-24 / RESEARCH P-06)', () => {
       const children = el.props?.children
       if (Array.isArray(children)) children.forEach(visit)
       else if (children) visit(children)
+      // Walk through the explicit `bell` prop (nav surface slot)
+      const bell = el.props?.bell
+      if (bell) visit(bell)
     }
     visit(tree as ReactElement)
 
-    // The shared bell prop is a single <Suspense><NotificationBell /></Suspense>.
-    // Because the same element reference is passed to both mocked surfaces,
-    // traversing the fragment + both surface subtrees should reveal the
-    // NotificationBell element at least once; we just need at least one
-    // and all occurrences must share the same viewerId.
-    expect(viewerIds.length).toBeGreaterThanOrEqual(1)
+    // Shared bell prop is a single <Suspense><NotificationBell /></Suspense>.
+    // With the element reference shared between both surfaces, the traversal
+    // that walks BOTH nav surfaces' `bell` prop will see two occurrences of
+    // the same NotificationBell element (one per surface), and both must
+    // carry the same viewerId — which is the "one cacheTag entry per render
+    // pass" invariant expressed at the element level (RESEARCH §P-06).
+    expect(viewerIds.length).toBe(2)
     for (const vid of viewerIds) {
       expect(vid).toBe('viewer-42')
     }
