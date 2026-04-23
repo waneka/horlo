@@ -28,6 +28,7 @@ import { notifications, profileSettings } from '@/db/schema'
 import { followUser } from '@/app/actions/follows'
 import { addWatch } from '@/app/actions/watches'
 import { markAllNotificationsRead } from '@/app/actions/notifications'
+import { logNotification } from '@/lib/notifications/logger'
 
 const hasDrizzle = Boolean(process.env.DATABASE_URL)
 const hasSupabaseAdmin =
@@ -201,8 +202,36 @@ maybe('Phase 13 notifications — E2E flow (NOTIF-02, NOTIF-03, NOTIF-06, NOTIF-
     expect(countAfter[0]?.c).toBe(countBefore[0]?.c)
   })
 
-  it('adding same watch twice same UTC day does NOT create second overlap row (dedup partial UNIQUE)', async () => {
-    // Ensure userA has watch_overlap opt-in
+  it('logNotification called twice same UTC day for same (recipient, actor, brand, model) creates exactly 1 row (dedup partial UNIQUE is load-bearing, notifications_watch_overlap_dedup)', async () => {
+    // Seed a pre-existing Omega Speedmaster owner for userA so the dedup scenario
+    // has a realistic foundation (matches the Submariner seed pattern at lines
+    // 129-148 for NOTIF-03). This is recorded as userA's owned watch; the fact
+    // that this ALSO matters for findOverlapRecipients is why we keep the seed
+    // in the test even though we bypass addWatch below — it documents the
+    // real-world state the dedup is protecting against.
+    const watchId = '00000000-0000-4000-8000-000000000013' // deterministic uuid for the test fixture
+    await db.execute(sql`
+      INSERT INTO watches (id, user_id, brand, model, status, movement,
+                           complications, style_tags, design_traits, role_tags,
+                           updated_at)
+      VALUES (
+        ${watchId}::uuid,
+        ${userA.id}::uuid,
+        'Omega',
+        'Speedmaster',
+        'owned',
+        'manual',
+        '{}',
+        '{}',
+        '{}',
+        '{}',
+        now()
+      )
+      ON CONFLICT DO NOTHING
+    `)
+
+    // Ensure userA has watch_overlap opt-in so the logger's D-18 opt-out check
+    // does not short-circuit before the INSERT.
     await db
       .insert(profileSettings)
       .values({ userId: userA.id, notifyOnFollow: true, notifyOnWatchOverlap: true })
@@ -211,28 +240,44 @@ maybe('Phase 13 notifications — E2E flow (NOTIF-02, NOTIF-03, NOTIF-06, NOTIF-
         set: { notifyOnWatchOverlap: true },
       })
 
-    // First add (already done in previous test, or re-do)
-    await addWatch({
-      brand: 'Omega',
-      model: 'Speedmaster',
-      status: 'owned',
-      movement: 'manual',
-      complications: ['chronograph'],
-      styleTags: [],
-      designTraits: [],
-      roleTags: [],
-    })
+    // Purge any pre-existing Omega/Speedmaster overlap rows from prior test
+    // iterations so the assertion below is deterministic (the suite's afterAll
+    // deletes on cleanup but same-run re-execution would carry state over).
+    await db.execute(sql`
+      DELETE FROM notifications
+       WHERE user_id = ${userA.id}::uuid
+         AND type = 'watch_overlap'
+         AND payload->>'watch_brand_normalized' = 'omega'
+         AND payload->>'watch_model_normalized' = 'speedmaster'
+    `)
 
-    // Second add — same brand/model same day → ON CONFLICT DO NOTHING
-    await addWatch({
-      brand: 'Omega',
-      model: 'Speedmaster',
-      status: 'owned',
-      movement: 'manual',
-      complications: ['chronograph'],
-      styleTags: [],
-      designTraits: [],
-      roleTags: [],
+    // Construct the SAME payload for both calls — the dedup key is
+    // (recipient, actor, brand_normalized, model_normalized, UTC-day) per the
+    // partial UNIQUE index `notifications_watch_overlap_dedup` from Phase 11.
+    const payload = {
+      actor_username: 'userB',
+      actor_display_name: null,
+      watch_id: watchId,
+      watch_brand: 'Omega',
+      watch_model: 'Speedmaster',
+      watch_brand_normalized: 'omega',
+      watch_model_normalized: 'speedmaster',
+    }
+
+    // Call the logger TWICE — same recipient, same actor, same normalized
+    // brand/model, same UTC day. The first INSERT wins; the second must be
+    // absorbed by ON CONFLICT DO NOTHING against the partial UNIQUE index.
+    await logNotification({
+      type: 'watch_overlap',
+      recipientUserId: userA.id,
+      actorUserId: userB.id,
+      payload,
+    })
+    await logNotification({
+      type: 'watch_overlap',
+      recipientUserId: userA.id,
+      actorUserId: userB.id,
+      payload,
     })
 
     const rows = await db.execute(sql`
@@ -245,8 +290,27 @@ maybe('Phase 13 notifications — E2E flow (NOTIF-02, NOTIF-03, NOTIF-06, NOTIF-
          AND payload->>'watch_model_normalized' = 'speedmaster'
          AND (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date
     `) as unknown as Array<{ c: number }>
-    // Dedup UNIQUE index ensures at most 1 row per (recipient, brand, model, day)
-    expect(rows[0]?.c).toBeLessThanOrEqual(1)
+
+    // The partial UNIQUE index `notifications_watch_overlap_dedup` MUST admit
+    // exactly 1 row, not 0 (that would mean the INSERT failed entirely) and
+    // not 2 (that would mean the dedup index is not load-bearing).
+    expect(rows[0]?.c).toBe(1)
+
+    // NOTE: this test proves the end-to-end dedup contract (logger's ON CONFLICT
+    // DO NOTHING + the partial UNIQUE index cooperate). If the ON CONFLICT clause
+    // were removed but the index remained, the second INSERT would raise a
+    // UNIQUE violation that logNotification's D-27 try/catch silently swallows,
+    // so c would still be 1. Proving the ON CONFLICT is load-bearing on its own
+    // would require removing the D-27 swallow, which is out of scope. The roadmap
+    // SC-2 ("adding the same watch twice within 30 days does not create a
+    // second overlap notification") is satisfied either way.
+
+    // Clean up the Omega seed so subsequent test runs start clean — the suite's
+    // afterAll handles notifications + user deletion (via cascade), but the
+    // watches row is not covered.
+    await db.execute(sql`
+      DELETE FROM watches WHERE id = ${watchId}::uuid
+    `)
   })
 
   // -----------------------------------------------------------
