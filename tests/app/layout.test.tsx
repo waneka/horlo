@@ -77,7 +77,7 @@ describe('RootLayout (Phase 14 NAV-03 D-07, D-08)', () => {
     )
   })
 
-  it('wraps Header and main in Suspense (Pitfall A-1)', () => {
+  it('wraps Header, main, and BottomNavServer in Suspense leaves (Pitfall A-1)', () => {
     const tree = RootLayout({ children: null }) as any
     // Look for React.Suspense presence by type identity
     const suspenses: any[] = []
@@ -89,9 +89,9 @@ describe('RootLayout (Phase 14 NAV-03 D-07, D-08)', () => {
       else if (c) walk(c)
     }
     walk(tree)
-    // Plan 02 ships with Header + main = 2 Suspense boundaries.
-    // Plan 03 will raise this to >= 3 once BottomNavServer is mounted; that
-    // update is performed as part of Plan 03 Task 2 Step C.
-    expect(suspenses.length).toBeGreaterThanOrEqual(2)
+    // Plan 02 shipped Header + main = 2 Suspense boundaries.
+    // Plan 03 raises the lock to >= 3 once BottomNavServer is mounted as its
+    // own sibling Suspense leaf (cacheComponents discipline — Pitfall A-1).
+    expect(suspenses.length).toBeGreaterThanOrEqual(3)
   })
 })
