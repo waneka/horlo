@@ -1,10 +1,11 @@
 ---
 phase: 14
 slug: nav-shell-explore-stub
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-23
+reviewed_at: 2026-04-23T00:00:00Z
 ---
 
 # Phase 14 — UI Design Contract
@@ -42,7 +43,7 @@ Declared values (must be multiples of 4):
 | 3xl | 64px | Page-level spacing |
 
 Exceptions:
-- Bottom nav bar content zone: **60px height** + `env(safe-area-inset-bottom)` (NAV-03, CONTEXT.md D-06)
+- Bottom nav bar content zone: **60px height** + `env(safe-area-inset-bottom)` (NAV-03, CONTEXT.md D-06) *(hardware/Figma-constrained, not a design-grid token)*
 - Wear circle: **56×56px** — not on the 8-point scale; Figma-locked (CONTEXT.md D-01 / Figma node 1:4714)
 - Non-Wear nav icon size: **24×24px** (CONTEXT.md D-02 / Figma)
 - Wear icon inside circle: **28×28px** (CONTEXT.md D-02 / Figma)
@@ -58,14 +59,14 @@ Exceptions:
 
 | Role | Size | Weight | Line Height | Font | Usage |
 |------|------|--------|-------------|------|-------|
-| Nav label | 12px | 500 (Medium) | 16px (1.33) | IBM Plex Sans | Bottom nav item labels, slim top nav labels |
+| Nav label | 12px | 600 (Semibold) | 16px (1.33) | IBM Plex Sans | Bottom nav item labels, slim top nav labels |
 | Body | 16px | 400 (Regular) | 1.5 | IBM Plex Sans | Page body text, descriptions |
 | UI label / small | 14px | 400 (Regular) | 1.5 | IBM Plex Sans | Secondary UI text, dropdown items, helper copy |
 | Heading | 20px | 600 (Semibold) | 1.2 | IBM Plex Sans | Section headings, page titles |
 | Wordmark | — | 400 | — | Instrument Serif | Horlo logo only (`font-serif text-xl`) |
 | Code | 14px | 400 | 1.5 | Geist Mono | Code/data contexts only |
 
-**Weights used:** 400 (Regular) + 500 (Medium) for nav labels + 600 (Semibold) for headings.
+**Weights used:** 400 (Regular) + 600 (Semibold). Nav labels use 600 at 12px to preserve visual distinction from 16px body text at 400.
 
 **Font load:** Import `IBM_Plex_Sans` via `next/font/google` in `src/app/layout.tsx` alongside existing `Geist_Mono` and `Instrument_Serif`. Expose as `--font-sans` CSS variable. Wire into `globals.css` `@theme` block: `--font-sans: var(--font-sans)` (replaces `--font-geist-sans`). Remove `Geist` import and its CSS variable.
 
@@ -129,6 +130,8 @@ New pages / routes:
 
 ### Mobile Bottom Nav (< 768px)
 
+**Focal point:** The Wear circle (56×56, `bg-accent`, elevated ~20px above the bar top) is the primary visual anchor of the mobile bottom nav. Its accent fill and physical elevation above the bar plane draw the eye and reinforce the core action hierarchy.
+
 ```
 ┌─────────────────────────────────────────────┐
 │                                   ○ Wear    │ ← Wear circle: 56×56, bg-accent, elevated ~20px above bar
@@ -141,7 +144,7 @@ New pages / routes:
 ```
 
 - Bar background: `bg-background/95 backdrop-blur border-t border-border`
-- Bar content height: 60px
+- Bar content height: 60px *(hardware/Figma-constrained, not a design-grid token)*
 - Total height: `60px + env(safe-area-inset-bottom)`
 - Position: `fixed bottom-0 left-0 right-0 z-50`
 - Layout: `flex justify-between items-end` (Wear column uses `flex flex-col items-center` with negative top offset to elevate circle)
