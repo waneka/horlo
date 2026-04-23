@@ -40,12 +40,17 @@ export async function updateProfile(data: unknown): Promise<ActionResult<void>> 
   }
 }
 
-// T-08-04: Zod enum whitelist of the four visibility fields.
+// T-08-04: Zod enum whitelist of the visibility + notification opt-out fields.
 // Arbitrary column updates impossible.
+// Widened in Phase 13 (NOTIF-09, D-17) to include the two notification opt-outs.
+// The Zod `.enum()` below auto-widens via the tuple type; mass-assignment protection
+// is preserved (T-08-04 still rejects unknown keys).
 const VISIBILITY_FIELDS = [
   'profilePublic',
   'collectionPublic',
   'wishlistPublic',
+  'notifyOnFollow',
+  'notifyOnWatchOverlap',
 ] as const
 
 const updateSettingsSchema = z
