@@ -16,8 +16,6 @@ interface NavItem {
 
 const baseNavItems: NavItem[] = [
   { href: '/', label: 'Collection' },
-  { href: '/insights', label: 'Insights' },
-  { href: '/preferences', label: 'Preferences' },
 ]
 
 export function HeaderNav({ username }: { username?: string | null }) {

@@ -1,14 +1,25 @@
-// Fallback shown while <Header /> suspends on its auth / profile reads.
-// Must match Header's outer sticky chrome + inner h-16 row to avoid CLS
-// when the real header streams in.
+/**
+ * Fallback shown while <Header /> suspends on its auth / profile reads.
+ *
+ * Renders TWO skeleton strips — one per breakpoint — so neither SlimTopNav
+ * (mobile-only, height 3rem) nor DesktopTopNav (desktop-only, height 4rem)
+ * cause Cumulative Layout Shift when the real nav streams in (Pitfall P-09).
+ */
 export function HeaderSkeleton() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2 md:gap-8">
+    <>
+      {/* Mobile skeleton — matches SlimTopNav dimensions */}
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur md:hidden">
+        <div className="container mx-auto flex h-12 items-center justify-between px-4">
           <span className="font-serif text-xl">Horlo</span>
         </div>
-      </div>
-    </header>
+      </header>
+      {/* Desktop skeleton — matches DesktopTopNav dimensions */}
+      <header className="sticky top-0 z-50 hidden w-full border-b border-border bg-background/80 backdrop-blur md:block">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <span className="font-serif text-xl">Horlo</span>
+        </div>
+      </header>
+    </>
   )
 }
