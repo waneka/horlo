@@ -20,15 +20,25 @@ vi.mock('@/data/follows', () => ({
   getTasteOverlapData: vi.fn(),
 }))
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  // Bug fix (debug session notifications-revalidate-tag-in-render):
+  // followUser now also invalidates the recipient's bell cache, so the
+  // Server Action imports revalidateTag from next/cache.
+  revalidateTag: vi.fn(),
+}))
 
-vi.mock('@/lib/notifications/logger', () => ({ logNotification: vi.fn() }))
+vi.mock('@/lib/notifications/logger', () => ({
+  // Explicit resolved Promise so the awaited call in the action body
+  // doesn't short-circuit into try/catch with a non-thenable mock.
+  logNotification: vi.fn(() => Promise.resolve()),
+}))
 vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 
 import { followUser, unfollowUser } from '@/app/actions/follows'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import * as followsDAL from '@/data/follows'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { logNotification } from '@/lib/notifications/logger'
 import { getProfileById } from '@/data/profiles'
 
@@ -108,7 +118,12 @@ describe('followUser Server Action', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/u/[username]', 'layout')
   })
 
-  it('on success calls logNotification non-awaited with follow payload (NOTIF-02)', async () => {
+  it('on success awaits logNotification with follow payload (NOTIF-02)', async () => {
+    // Previously fire-and-forget (void logNotification). Changed to awaited as
+    // part of the cache-tag-invalidation fix (debug session
+    // notifications-revalidate-tag-in-render): the next revalidateTag call must
+    // run AFTER the DB insert to avoid a race with the bell cache refetch.
+    // The logger's internal try/catch preserves the D-28 "can't roll back" contract.
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
     ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
     ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
@@ -126,6 +141,19 @@ describe('followUser Server Action', () => {
         actor_display_name: 'Alice',
       },
     })
+  })
+
+  it('on success invalidates the recipient viewer cache tag (bug fix)', async () => {
+    // Ensures the RECIPIENT's NotificationBell cache is marked stale so their
+    // unread dot lights up on the next render. Before the fix no invalidation
+    // happened, so the recipient had to wait up to 30s for the cacheLife TTL.
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
+    ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
+
+    await followUser({ userId: targetUserId })
+
+    expect(revalidateTag).toHaveBeenCalledWith(`viewer:${targetUserId}`, 'max')
   })
 
   it('does NOT call logNotification on self-follow rejection (D-24 belt-and-suspenders)', async () => {

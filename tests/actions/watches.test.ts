@@ -14,8 +14,17 @@ vi.mock('@/data/watches', () => ({
   updateWatch: vi.fn(),
   deleteWatch: vi.fn(),
 }))
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
-vi.mock('@/lib/notifications/logger', () => ({ logNotification: vi.fn() }))
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  // Bug fix (debug session notifications-revalidate-tag-in-render):
+  // addWatch now invalidates each watch_overlap recipient's bell cache.
+  revalidateTag: vi.fn(),
+}))
+vi.mock('@/lib/notifications/logger', () => ({
+  // Explicit resolved Promise so the now-awaited logger call doesn't short-
+  // circuit the action's try/catch with a non-thenable mock value.
+  logNotification: vi.fn(() => Promise.resolve()),
+}))
 vi.mock('@/data/notifications', () => ({ findOverlapRecipients: vi.fn() }))
 vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 
@@ -25,6 +34,7 @@ import * as watchDAL from '@/data/watches'
 import { logNotification } from '@/lib/notifications/logger'
 import { findOverlapRecipients } from '@/data/notifications'
 import { getProfileById } from '@/data/profiles'
+import { revalidateTag } from 'next/cache'
 import type { Watch } from '@/lib/types'
 
 const validWatch = {
@@ -130,6 +140,10 @@ describe('addWatch — overlap notification wiring (NOTIF-03)', () => {
         watch_model_normalized: 'seamaster',
       }),
     })
+    // Bug fix (debug session notifications-revalidate-tag-in-render):
+    // after inserting the overlap notification, the recipient's bell cache
+    // tag MUST be invalidated so their unread dot lights up on next render.
+    expect(revalidateTag).toHaveBeenCalledWith(`viewer:${recipientUserId}`, 'max')
   })
 
   it('does NOT call findOverlapRecipients for wishlist status (RESEARCH Open Q #1)', async () => {

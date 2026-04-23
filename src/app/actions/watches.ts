@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import * as watchDAL from '@/data/watches'
 import { logActivity } from '@/data/activities'
@@ -102,9 +102,15 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
           const brandNormalized = watch.brand.trim().toLowerCase()
           const modelNormalized = watch.model.trim().toLowerCase()
           for (const recipient of recipients) {
-            // Fire-and-forget per recipient (D-28). Logger internal try/catch +
-            // opt-out check (D-18) + dedup UNIQUE constraint handle edge cases.
-            void logNotification({
+            // Awaited per-recipient (was fire-and-forget). Next 16 workAsyncStorage
+            // is torn down when the action returns, so we need the insert to
+            // complete before revalidateTag — otherwise the bell refetch could
+            // race the insert and re-cache "no unread" for up to 30s. Logger's
+            // internal try/catch (Plan 02 D-27) guarantees no throw, so the D-28
+            // "logger failure can't roll back the watch add" contract is preserved.
+            // Opt-out check (D-18) + dedup UNIQUE constraint handle edge cases
+            // inside the logger itself.
+            await logNotification({
               type: 'watch_overlap',
               recipientUserId: recipient.userId,
               actorUserId: user.id,
@@ -118,6 +124,11 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
                 watch_model_normalized: modelNormalized,
               },
             })
+            // RESEARCH Pitfall 6 — invalidate the RECIPIENT's NotificationBell
+            // cache so their unread dot lights up on next render. Bug fix (debug
+            // session notifications-revalidate-tag-in-render): previously no
+            // invalidation happened on the watch_overlap write path.
+            revalidateTag(`viewer:${recipient.userId}`, 'max')
           }
         }
       } catch (err) {

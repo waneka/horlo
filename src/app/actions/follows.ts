@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 
 import * as followsDAL from '@/data/follows'
@@ -52,10 +52,14 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
     // precedent — path template must be literal with the bracketed segment.
     revalidatePath('/u/[username]', 'layout')
 
-    // NOTIF-02 — fire-and-forget. Non-awaited (D-28) so a logger failure cannot
-    // roll back the follow above. The logger's internal try/catch (Plan 02) means
-    // promise rejections never surface as unhandled.
-    void logNotification({
+    // NOTIF-02. Awaited (not fire-and-forget): Next 16 workAsyncStorage is torn
+    // down when the Server Action returns, so we need the notification insert to
+    // complete BEFORE we invalidate the recipient's bell cache — otherwise the
+    // bell refetch could race the insert and re-cache a stale "no unread" state
+    // for up to 30s. The logger's internal try/catch (Plan 02 D-27) guarantees
+    // it never throws, so awaiting preserves the D-28 "logger failure can't roll
+    // back the follow" contract.
+    await logNotification({
       type: 'follow',
       recipientUserId: parsed.data.userId,
       actorUserId: user.id,
@@ -64,6 +68,13 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
         actor_display_name: actorProfile?.displayName ?? null,
       },
     })
+
+    // RESEARCH Pitfall 6 — invalidate the RECIPIENT's NotificationBell cache so
+    // their unread dot lights up on next render. Bug fix (debug session
+    // notifications-revalidate-tag-in-render): previously no invalidation
+    // happened on the follow-write path, so the recipient saw no dot until
+    // cacheLife TTL (30s) expired. Two-arg Next 16 form — Pitfall 4.
+    revalidateTag(`viewer:${parsed.data.userId}`, 'max')
 
     return { success: true, data: undefined }
   } catch (err) {
