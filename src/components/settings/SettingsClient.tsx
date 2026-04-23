@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -142,6 +144,24 @@ export function SettingsClient({ settings }: SettingsClientProps) {
             initialValue={settings.notifyOnWatchOverlap}
           />
         </div>
+      </SettingsSection>
+
+      {/* D-12: /preferences moved off the primary nav in Phase 14. This row
+          is the sole entry point; "Collection" section placement per
+          RESEARCH Open Question #4. */}
+      <SettingsSection title="Collection">
+        <Link
+          href="/preferences"
+          className="flex min-h-12 items-center justify-between py-2 hover:bg-accent/5 rounded"
+        >
+          <div className="flex-1">
+            <p className="text-sm font-normal text-foreground">Taste Preferences</p>
+            <p className="text-xs text-muted-foreground">
+              Configure your collecting taste — case size, styles, complications, goal.
+            </p>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+        </Link>
       </SettingsSection>
 
       <SettingsSection title="Appearance">
