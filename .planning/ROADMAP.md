@@ -120,8 +120,17 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   3. The bottom nav and slim mobile top nav are absent on `/login`, `/signup`, and any pre-auth route; the desktop top nav contains logo, Explore link, persistent search input, Wear CTA, Add icon, notifications bell, and profile dropdown
   4. The active route in the bottom nav shows a filled icon in accent color; tapping the Add icon in either the desktop or mobile nav routes to `/watch/new`; the old `MobileNav` hamburger component is removed from the codebase
   5. `/explore` renders a "coming soon" placeholder page; no nav link produces a 404; the desktop profile dropdown consolidates profile link, settings, theme toggle, and sign out; preference save failures surface a visible error message to the user (DEBT-01)
-**Plans**: TBD
-**Pitfalls to address**: A-1 (BottomNav inside Suspense boundary, not bare body), A-2 (usePathname hydration — client component for active state), A-3 (iOS safe-area-inset on nav and main), A-4 (auth route exclusion), A-5 (inline theme script contract unchanged), I-2 (WatchPickerDialog not forked — extend via props only), B-1 (bell count rendered as isolated Suspense leaf)
+**Plans**: 9 plans (Wave 1: Plans 01, 02, 05, 06, 07, 08, 09 parallel · Wave 2: Plans 03, 04 parallel)
+  - [ ] 14-01-PLAN.md — Shared PUBLIC_PATHS constant + proxy refactor (NAV-05 D-21/D-22) [Wave 1]
+  - [ ] 14-02-PLAN.md — Root layout IBM Plex Sans font swap + viewport-fit=cover + preserved theme script (NAV-03 D-07/D-08/D-09) [Wave 1]
+  - [ ] 14-03-PLAN.md — BottomNav Client Component + NavWearButton appearance prop + layout mount + main padding (NAV-01/02/03/04/05/09/10) [Wave 2; depends on 14-01, 14-02]
+  - [ ] 14-04-PLAN.md — SlimTopNav + DesktopTopNav + Header delegator + HeaderNav Insights removal + NotificationBell relocation + MobileNav deletion (NAV-05/06/07/10/12) [Wave 2; depends on 14-01, 14-05]
+  - [ ] 14-05-PLAN.md — InlineThemeSegmented + UserMenu consolidation (Profile/Settings/Theme/Sign out) (NAV-08 D-17) [Wave 1]
+  - [ ] 14-06-PLAN.md — /explore and /search coming-soon stubs (NAV-11 D-18/D-19) [Wave 1]
+  - [ ] 14-07-PLAN.md — ProfileTabs owner-only Insights tab + InsightsTabContent + [tab]/page gate + /insights redirect (NAV-11 D-13/D-14/D-15) [Wave 1]
+  - [ ] 14-08-PLAN.md — Settings "Taste Preferences" link row (NAV-11 D-12) [Wave 1]
+  - [ ] 14-09-PLAN.md — DEBT-01 regression-lock test + REQUIREMENTS.md traceability (DEBT-01 D-25) [Wave 1]
+**Pitfalls to address**: A-1 (BottomNav inside Suspense boundary, not bare body), A-2 (usePathname hydration — client component for active state), A-3 (iOS safe-area-inset on nav and main), A-4 (auth route exclusion), A-5 (inline theme script contract unchanged), I-2 (WatchPickerDialog not forked — extend via props only), B-1 (bell count rendered as isolated Suspense leaf), P-08 (Insights tab existence leak — uniform notFound for non-owners), P-11 (no `'use cache'` on /insights redirect)
 **UI hint**: yes
 
 ---
@@ -183,7 +192,7 @@ Plans:
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
-| 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
+| 14. Nav Shell + Explore Stub | 0/9 | Planned | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
