@@ -164,7 +164,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** Close the three MEDIUM findings from the Phase 5 code review by (a) surfacing preference save failures to the user in `PreferencesClient` with a `role="alert"` inline banner and exposed `isPending` state, (b) removing the unused `UnauthorizedError` import from `src/app/actions/watches.ts` and `src/app/actions/preferences.ts`, and (c) formally documenting that MR-03 (RLS on users / watches / user_preferences) was resolved by Phase 6 migration `20260420000000_rls_existing_tables.sql` and re-audited by Phase 11 DEBT-02 migration `20260423000005_phase11_debt02_audit.sql`. No new RLS SQL is authored by this phase.
 **Requirements:** MR-01, MR-02, MR-03
-**Plans:** 4/4 plans complete
+**Plans:** 5/5 plans complete
 **Success Criteria** (what must be TRUE):
   1. `src/components/preferences/PreferencesClient.tsx` inspects the `ActionResult` returned by `savePreferences`; on `{ success: false }` it renders an accessible `role="alert"` banner with the message `"Couldn't save preferences: {error}"`; the discarded-pending-tuple pattern (`const [, startTransition]`) is gone and `isPending` is surfaced as a "Saving…" hint.
   2. `grep -c UnauthorizedError src/app/actions/watches.ts` returns `0` and `grep -c UnauthorizedError src/app/actions/preferences.ts` returns `0`; each file imports only `getCurrentUser` from `@/lib/auth`; action behavior is otherwise byte-for-byte unchanged.
@@ -182,7 +182,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
-| 13. Notifications Foundation | 4/4 | Complete   | 2026-04-23 |
+| 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
 | 14. Nav Shell + Explore Stub | 0/TBD | Not started | - |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
