@@ -22,10 +22,15 @@ vi.mock('@/data/follows', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
+vi.mock('@/lib/notifications/logger', () => ({ logNotification: vi.fn() }))
+vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
+
 import { followUser, unfollowUser } from '@/app/actions/follows'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import * as followsDAL from '@/data/follows'
 import { revalidatePath } from 'next/cache'
+import { logNotification } from '@/lib/notifications/logger'
+import { getProfileById } from '@/data/profiles'
 
 // Valid v4 UUID literals (M=4, N∈{8,9,a,b}) so z.string().uuid() accepts them.
 const viewerUserId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
@@ -90,6 +95,7 @@ describe('followUser Server Action', () => {
       id: viewerUserId,
       email: 'v@example.com',
     })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
     ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
 
     const result = await followUser({ userId: targetUserId })
@@ -100,6 +106,32 @@ describe('followUser Server Action', () => {
     // FOLL-03 end-to-end count path assertion.
     expect(revalidatePath).toHaveBeenCalledTimes(1)
     expect(revalidatePath).toHaveBeenCalledWith('/u/[username]', 'layout')
+  })
+
+  it('on success calls logNotification non-awaited with follow payload (NOTIF-02)', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
+    ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
+
+    const result = await followUser({ userId: targetUserId })
+
+    expect(result.success).toBe(true)
+    expect(logNotification).toHaveBeenCalledTimes(1)
+    expect(logNotification).toHaveBeenCalledWith({
+      type: 'follow',
+      recipientUserId: targetUserId,
+      actorUserId: viewerUserId,
+      payload: {
+        actor_username: 'alice',
+        actor_display_name: 'Alice',
+      },
+    })
+  })
+
+  it('does NOT call logNotification on self-follow rejection (D-24 belt-and-suspenders)', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+    await followUser({ userId: viewerUserId })
+    expect(logNotification).not.toHaveBeenCalled()
   })
 
   it('treats a duplicate-key error from DAL as silently idempotent (no-op, success=true)', async () => {

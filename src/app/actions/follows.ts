@@ -5,6 +5,8 @@ import { z } from 'zod'
 
 import * as followsDAL from '@/data/follows'
 import { getCurrentUser } from '@/lib/auth'
+import { logNotification } from '@/lib/notifications/logger'
+import { getProfileById } from '@/data/profiles'
 import type { ActionResult } from '@/lib/actionTypes'
 
 // Mass-assignment protection (T-09-01, T-09-05): Zod .strict() rejects any
@@ -36,6 +38,11 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
   }
 
   try {
+    // Pre-resolve actor profile so logNotification has denormalized fields.
+    // Fetching before the primary commit keeps the logger non-blocking (see below).
+    // RESEARCH Open Q #5 locks this denormalize-in-caller approach.
+    const actorProfile = await getProfileById(user.id)
+
     // D-10: DAL uses onConflictDoNothing, so duplicate follows are a silent
     // no-op. The action is therefore idempotent — rapid double-clicks yield
     // the same end state without surfacing a duplicate-key error.
@@ -44,6 +51,20 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
     // (which calls getFollowerCounts) re-fetches on the next navigation. WR-07
     // precedent — path template must be literal with the bracketed segment.
     revalidatePath('/u/[username]', 'layout')
+
+    // NOTIF-02 — fire-and-forget. Non-awaited (D-28) so a logger failure cannot
+    // roll back the follow above. The logger's internal try/catch (Plan 02) means
+    // promise rejections never surface as unhandled.
+    void logNotification({
+      type: 'follow',
+      recipientUserId: parsed.data.userId,
+      actorUserId: user.id,
+      payload: {
+        actor_username: actorProfile?.username ?? '',
+        actor_display_name: actorProfile?.displayName ?? null,
+      },
+    })
+
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[followUser] unexpected error:', err)

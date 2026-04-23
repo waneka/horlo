@@ -5,6 +5,9 @@ import { z } from 'zod'
 import * as watchDAL from '@/data/watches'
 import { logActivity } from '@/data/activities'
 import { getCurrentUser } from '@/lib/auth'
+import { logNotification } from '@/lib/notifications/logger'
+import { findOverlapRecipients } from '@/data/notifications'
+import { getProfileById } from '@/data/profiles'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { Watch } from '@/lib/types'
 
@@ -81,6 +84,48 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     } catch (err) {
       console.error('[addWatch] activity log failed (non-fatal):', err)
     }
+
+    // NOTIF-03 — watch-overlap notifications. Only fire for owned status (D-23
+    // self-exclusion is inside findOverlapRecipients; non-owned wishlist/grail
+    // adds do NOT create overlap notifications per RESEARCH Open Q #1 — literal
+    // reading of "another collector already owns").
+    if (watch.status === 'owned') {
+      try {
+        const recipients = await findOverlapRecipients({
+          brand: watch.brand,
+          model: watch.model,
+          actorUserId: user.id,
+        })
+        if (recipients.length > 0) {
+          // Pre-resolve actor profile once — denormalize into payload per D-20.
+          const actorProfile = await getProfileById(user.id)
+          const brandNormalized = watch.brand.trim().toLowerCase()
+          const modelNormalized = watch.model.trim().toLowerCase()
+          for (const recipient of recipients) {
+            // Fire-and-forget per recipient (D-28). Logger internal try/catch +
+            // opt-out check (D-18) + dedup UNIQUE constraint handle edge cases.
+            void logNotification({
+              type: 'watch_overlap',
+              recipientUserId: recipient.userId,
+              actorUserId: user.id,
+              payload: {
+                actor_username: actorProfile?.username ?? '',
+                actor_display_name: actorProfile?.displayName ?? null,
+                watch_id: watch.id,
+                watch_brand: watch.brand,
+                watch_model: watch.model,
+                watch_brand_normalized: brandNormalized,
+                watch_model_normalized: modelNormalized,
+              },
+            })
+          }
+        }
+      } catch (err) {
+        // Overlap lookup failures are non-fatal — never block the watch add.
+        console.error('[addWatch] overlap lookup failed (non-fatal):', err)
+      }
+    }
+
     revalidatePath('/')
     return { success: true, data: watch }
   } catch (err) {

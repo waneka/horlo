@@ -5,6 +5,7 @@ import { MobileNav } from '@/components/layout/MobileNav'
 import { HeaderNav } from '@/components/layout/HeaderNav'
 import { UserMenu } from '@/components/layout/UserMenu'
 import { NavWearButton } from '@/components/layout/NavWearButton'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getProfileById } from '@/data/profiles'
 import { getWatchesByUser } from '@/data/watches'
@@ -59,6 +60,8 @@ export async function Header() {
               <Link href="/watch/new">
                 <Button>Add Watch</Button>
               </Link>
+              {/* TEMP: UAT placement — Phase 14 will move this to the new nav */}
+              <NotificationBell viewerId={user.id} />
             </>
           )}
           <UserMenu user={user} />
