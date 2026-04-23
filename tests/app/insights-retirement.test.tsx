@@ -39,7 +39,7 @@ describe('/insights retirement (Phase 14 D-13)', () => {
 
   it('redirects to / when profile is missing (edge case: user row w/o profile)', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
-    vi.mocked(getProfileById).mockResolvedValue(null)
+    vi.mocked(getProfileById).mockResolvedValue(null as any)
     await expect(InsightsRetirementPage()).rejects.toThrow('NEXT_REDIRECT')
     expect(redirect).toHaveBeenCalledWith('/')
   })
