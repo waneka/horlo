@@ -74,7 +74,7 @@
 
 ### Carry-Over Debt (DEBT)
 
-- [ ] **DEBT-01**: PreferencesClient surfaces preference save failures with user-visible error UX (resolves MR-01 — currently swallowed)
+- [x] **DEBT-01**: PreferencesClient surfaces preference save failures with user-visible error UX (resolves MR-01 — currently swallowed)
 - [ ] **DEBT-02**: RLS defense-in-depth audit on `users` / `watches` / `user_preferences` tables — verify policies exist, follow `(SELECT auth.uid())` InitPlan-optimized pattern, include `WITH CHECK` on UPDATE policies (resolves MR-03)
 
 ---
@@ -189,7 +189,7 @@ Which phases cover which requirements. Updated by `gsd-roadmapper` during roadma
 | WYWT-17 | Phase 15 | Pending |
 | WYWT-18 | Phase 15 | Pending |
 | WYWT-19 | Phase 15 | Pending |
-| DEBT-01 | Phase 14 | Pending |
+| DEBT-01 | Phase 14 | Complete (fix shipped Phase 999.1; regression-lock test added Phase 14) |
 | DEBT-02 | Phase 11 | Pending |
 
 **Coverage:**
