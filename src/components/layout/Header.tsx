@@ -64,7 +64,7 @@ export async function Header() {
               <NotificationBell viewerId={user.id} />
             </>
           )}
-          <UserMenu user={user} />
+          <UserMenu user={user} username={username} />
         </div>
       </div>
     </header>

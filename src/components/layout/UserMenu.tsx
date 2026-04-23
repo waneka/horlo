@@ -10,11 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { InlineThemeSegmented } from '@/components/layout/InlineThemeSegmented'
 
 export function UserMenu({
   user,
+  username,
 }: {
   user: { id: string; email: string } | null
+  username: string | null
 }) {
   if (!user) {
     return (
@@ -37,18 +40,33 @@ export function UserMenu({
           </Button>
         }
       />
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="font-normal">
             <div className="text-xs text-muted-foreground">Signed in as</div>
             <div className="truncate text-sm">{user.email}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          {username && (
+            <DropdownMenuItem
+              render={<Link href={`/u/${username}/collection`}>Profile</Link>}
+            />
+          )}
+          <DropdownMenuItem render={<Link href="/settings">Settings</Link>} />
+          <DropdownMenuSeparator />
+          <div className="px-2 py-1.5">
+            <div className="mb-1.5 text-xs text-muted-foreground">Theme</div>
+            <InlineThemeSegmented />
+          </div>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             render={
               <form action={logout} className="w-full">
-                <button type="submit" className="w-full text-left">
-                  Log out
+                <button
+                  type="submit"
+                  className="w-full text-left text-destructive"
+                >
+                  Sign out
                 </button>
               </form>
             }
