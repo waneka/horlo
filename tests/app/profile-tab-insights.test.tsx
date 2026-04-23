@@ -92,14 +92,14 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
     } as any)
-    const result = await ProfileTabPage({
+    const result = (await ProfileTabPage({
       params: Promise.resolve({ username: 'alice', tab: 'insights' }),
-    })
-    expect(InsightsTabContent).toHaveBeenCalledWith(
-      { profileUserId: 'user-1' },
-      expect.anything(),
-    )
+    })) as any
+    // The Server Component returns a React element. Assert its type is the
+    // mocked InsightsTabContent and the profileUserId prop equals the owner id.
     expect(result).toBeTruthy()
+    expect(result.type).toBe(InsightsTabContent)
+    expect(result.props).toEqual({ profileUserId: 'user-1' })
   })
 
   it('returns notFound when viewer is NOT owner (uniform 404 — P-08)', async () => {

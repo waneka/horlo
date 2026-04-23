@@ -18,6 +18,7 @@ import { WornTabContent } from '@/components/profile/WornTabContent'
 import { StatsTabContent } from '@/components/profile/StatsTabContent'
 import { LockedTabCard } from '@/components/profile/LockedTabCard'
 import { CommonGroundTabContent } from '@/components/profile/CommonGroundTabContent'
+import { InsightsTabContent } from '@/components/profile/InsightsTabContent'
 import { resolveCommonGround } from '../common-ground-gate'
 import {
   styleDistribution,
@@ -37,6 +38,7 @@ const VALID_TABS = [
   'notes',
   'stats',
   'common-ground',
+  'insights',
 ] as const
 type Tab = (typeof VALID_TABS)[number]
 
@@ -82,6 +84,15 @@ export default async function ProfileTabPage({
         ownerDisplayLabel={ownerDisplayLabel}
       />
     )
+  }
+
+  // D-13 / P-08: Insights tab is OWNER-ONLY. Non-owners (and anonymous
+  // viewers) get the same uniform 404 as missing routes — no existence
+  // leak. ProfileTabs also omits the tab link for non-owners (two-layer
+  // privacy per Phase 12 pattern).
+  if (tab === 'insights') {
+    if (!isOwner) notFound()
+    return <InsightsTabContent profileUserId={profile.id} />
   }
 
   // The shared layout already short-circuits when profile_public=false && !isOwner.
