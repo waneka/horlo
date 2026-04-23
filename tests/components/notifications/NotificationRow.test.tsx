@@ -1,27 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Mock } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 
 // ---------------------------------------------------------------------------
 // Mocks — declared before component import so vitest hoists them.
 // ---------------------------------------------------------------------------
-
-vi.mock('next/link', () => ({
-  default: ({
-    href,
-    children,
-    className,
-    'aria-label': ariaLabel,
-  }: {
-    href: string
-    children: React.ReactNode
-    className?: string
-    'aria-label'?: string
-  }) => (
-    <a href={href} className={className} aria-label={ariaLabel}>
-      {children}
-    </a>
-  ),
-}))
 
 // AvatarDisplay renders a simple div with username initial in tests.
 vi.mock('@/components/profile/AvatarDisplay', () => ({
@@ -35,8 +18,21 @@ vi.mock('@/lib/timeAgo', () => ({
   timeAgo: () => '2h',
 }))
 
+// D-08: next/navigation + markNotificationRead mocks for the optimistic read
+// flow. Declared before component import so vi.mock calls hoist.
+const mockPush = vi.fn()
+const mockRefresh = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
+}))
+
+vi.mock('@/app/actions/notifications', () => ({
+  markNotificationRead: vi.fn(async () => ({ success: true, data: undefined })),
+}))
+
 import { NotificationRow } from '@/components/notifications/NotificationRow'
 import type { NotificationRowData } from '@/components/notifications/NotificationRow'
+import { markNotificationRead } from '@/app/actions/notifications'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -98,14 +94,16 @@ describe('NotificationRow', () => {
       expect(actorSpan.className).toContain('font-normal')
     })
 
-    it('link routes to /u/[username]', () => {
+    it('link aria-label includes actor name and routes via click (see D-08 suite)', () => {
       render(
         <NotificationRow
           row={makeRow({ type: 'follow', actorUsername: 'alice', payload: {} })}
         />,
       )
       const link = screen.getByRole('link')
-      expect(link.getAttribute('href')).toBe('/u/alice')
+      // Href is no longer an anchor attribute — navigation runs via router.push
+      // in the click handler. The aria-label carries the actor name instead.
+      expect(link.getAttribute('aria-label')).toBe('Alice notification')
     })
   })
 
@@ -124,18 +122,23 @@ describe('NotificationRow', () => {
       expect(text).toContain('Speedmaster')
     })
 
-    it('link routes to /u/[username]?focusWatch=[id]', () => {
+    it('click navigates to /u/[username]?focusWatch=[id] via router.push', async () => {
+      mockPush.mockClear()
+      ;(markNotificationRead as Mock).mockResolvedValue({ success: true, data: undefined })
       render(
         <NotificationRow
           row={makeRow({
             type: 'watch_overlap',
             actorUsername: 'alice',
-            payload: { watch_id: 'w-123', watch_model: 'Speedmaster' },
+            payload: { watch_id: 'w-123', watch_model: 'Speedmaster', actor_username: 'alice' },
           })}
         />,
       )
       const link = screen.getByRole('link')
-      expect(link.getAttribute('href')).toBe('/u/alice?focusWatch=w-123')
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(mockPush).toHaveBeenCalledWith('/u/alice?focusWatch=w-123')
     })
   })
 
@@ -243,6 +246,98 @@ describe('NotificationRow', () => {
       const { container } = render(<NotificationRow row={makeRow({ type: 'follow', payload: {} })} />)
       const text = getNotifCopyText(container)
       expect(text).toContain('2h')
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // D-08: per-row optimistic read-then-navigate flow
+  // ---------------------------------------------------------------------------
+  describe('NotificationRow — D-08 per-row optimistic read', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      ;(markNotificationRead as Mock).mockResolvedValue({ success: true, data: undefined })
+    })
+
+    it('click on unread follow row calls markNotificationRead with the row id', async () => {
+      const row = makeRow({ type: 'follow', readAt: null, id: 'abc-1' })
+      render(<NotificationRow row={row} />)
+      const link = screen.getByRole('link', { name: /notification/i })
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(markNotificationRead).toHaveBeenCalledWith({ notificationId: 'abc-1' })
+    })
+
+    it('click on unread row navigates via router.push to the resolved href', async () => {
+      const row = makeRow({
+        type: 'follow',
+        readAt: null,
+        id: 'abc-2',
+        actorUsername: 'alice',
+        payload: { actor_username: 'alice' },
+      })
+      render(<NotificationRow row={row} />)
+      const link = screen.getByRole('link', { name: /notification/i })
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(mockPush).toHaveBeenCalledWith('/u/alice')
+    })
+
+    it('click on unread row optimistically drops border-l-accent immediately', async () => {
+      // Slow the SA so we can catch the optimistic state before it resolves.
+      ;(markNotificationRead as Mock).mockImplementationOnce(
+        () =>
+          new Promise((r) => setTimeout(() => r({ success: true, data: undefined }), 50)),
+      )
+      const row = makeRow({ type: 'follow', readAt: null, id: 'abc-3' })
+      const { container } = render(<NotificationRow row={row} />)
+      const link = container.querySelector('[role="link"]') as HTMLElement
+      expect(link.className).toContain('border-l-accent') // unread before click
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      // After the click, optimistic state flips immediately — the border class is gone
+      // even though the SA promise may still be pending.
+      expect(link.className).not.toContain('border-l-accent')
+    })
+
+    it('click on already-read row navigates but does NOT call markNotificationRead', async () => {
+      const row = makeRow({ type: 'follow', readAt: new Date(), id: 'abc-4' })
+      render(<NotificationRow row={row} />)
+      const link = screen.getByRole('link', { name: /notification/i })
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(markNotificationRead).not.toHaveBeenCalled()
+      expect(mockPush).toHaveBeenCalled()
+    })
+
+    it('Enter key on focused row triggers the same flow as click', async () => {
+      const row = makeRow({ type: 'follow', readAt: null, id: 'abc-5' })
+      render(<NotificationRow row={row} />)
+      const link = screen.getByRole('link', { name: /notification/i })
+      await act(async () => {
+        fireEvent.keyDown(link, { key: 'Enter' })
+      })
+      expect(markNotificationRead).toHaveBeenCalledWith({ notificationId: 'abc-5' })
+      expect(mockPush).toHaveBeenCalled()
+    })
+
+    it('price_drop row click does NOT call markNotificationRead (stub type)', async () => {
+      const row = makeRow({
+        type: 'price_drop',
+        readAt: null,
+        id: 'abc-6',
+        payload: { watchModel: 'Speedmaster', newPrice: '$5,000' },
+      })
+      render(<NotificationRow row={row} />)
+      const link = screen.getByRole('link', { name: /notification/i })
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(markNotificationRead).not.toHaveBeenCalled()
+      // Navigation still happens (to '#'); that's fine.
     })
   })
 })

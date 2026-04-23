@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidateTag } from 'next/cache'
-import { markAllReadForUser } from '@/data/notifications'
+import { z } from 'zod'
+import { markAllReadForUser, markOneReadForUser } from '@/data/notifications'
 import { getCurrentUser } from '@/lib/auth'
 import type { ActionResult } from '@/lib/actionTypes'
 
@@ -33,5 +34,46 @@ export async function markAllNotificationsRead(): Promise<ActionResult<void>> {
   } catch (err) {
     console.error('[markAllNotificationsRead] unexpected error:', err)
     return { success: false, error: "Couldn't mark notifications as read. Try again." }
+  }
+}
+
+/**
+ * markNotificationRead — NOTIF-05 + CONTEXT.md D-08 per-row optimistic mark-read.
+ *
+ * Accepts a notification id, validates it as a uuid, and sets read_at = now()
+ * on that single row IF AND ONLY IF the row belongs to the caller
+ * (WHERE user_id = current AND id = notificationId — two-layer defense above RLS).
+ *
+ * Cache invalidation (RESEARCH Pitfall 6): calls revalidateTag(`viewer:${user.id}`, 'max')
+ * so the bell DAL refetches. The 'max' second argument is Next 16's explicit
+ * revalidation profile (Pitfall 4 — single-arg form is deprecated).
+ *
+ * Return shape matches markAllNotificationsRead — ActionResult<void> discriminated
+ * union (D-12).
+ */
+const markReadSchema = z.object({ notificationId: z.string().uuid() }).strict()
+
+export async function markNotificationRead(
+  data: unknown,
+): Promise<ActionResult<void>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = markReadSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid notification id' }
+  }
+
+  try {
+    await markOneReadForUser(user.id, parsed.data.notificationId)
+    revalidateTag(`viewer:${user.id}`, 'max')
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[markNotificationRead] unexpected error:', err)
+    return { success: false, error: "Couldn't mark as read. Try again." }
   }
 }

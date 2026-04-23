@@ -108,6 +108,34 @@ export async function markAllReadForUser(viewerId: string): Promise<void> {
 }
 
 /**
+ * Mark-one-read — used by the per-row SA (D-08). Idempotent: already-read rows
+ * are a no-op (the WHERE `read_at IS NULL` clause filters them out).
+ *
+ * Two-layer defense (D-25 + Pitfall 5): explicit viewerId argument AND a
+ * WHERE user_id = viewerId clause. Even if a caller somehow supplied a
+ * notificationId belonging to a different user, the UPDATE would affect 0 rows
+ * because the combined (user_id, id) filter doesn't match.
+ *
+ * Mirrors the Phase 11 partial-index read path (`read_at IS NULL`) so the UPDATE
+ * only touches rows that are actually unread — keeps the partial index small.
+ */
+export async function markOneReadForUser(
+  viewerId: string,
+  notificationId: string,
+): Promise<void> {
+  await db
+    .update(notifications)
+    .set({ readAt: new Date() })
+    .where(
+      and(
+        eq(notifications.userId, viewerId),
+        eq(notifications.id, notificationId),
+        sql`${notifications.readAt} IS NULL`,
+      ),
+    )
+}
+
+/**
  * Update profile_settings.notifications_last_seen_at = now() for the viewer.
  * Called server-side when the user visits /notifications (D-07). Idempotent.
  */

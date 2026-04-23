@@ -1,7 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+import { useOptimistic, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { AvatarDisplay } from '@/components/profile/AvatarDisplay'
+import { markNotificationRead } from '@/app/actions/notifications'
 import { timeAgo } from '@/lib/timeAgo'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +34,19 @@ export interface NotificationRowProps {
 }
 
 export function NotificationRow({ row }: NotificationRowProps) {
+  const router = useRouter()
+  // D-08: optimistic per-row read state. The reducer accepts the new readAt
+  // value and returns it — simplest possible useOptimistic shape. The first
+  // arg (`row.readAt`) is the server-truth; React snaps back automatically
+  // if the transition rejects (see PrivacyToggleRow.tsx for the same pattern).
+  const [optimisticReadAt, setOptimisticReadAt] = useOptimistic<Date | null, Date | null>(
+    row.readAt,
+    (_current, next) => next,
+  )
+  const [pending, startTransition] = useTransition()
+
   // B-8: unknown types render null — silent no-op, never a broken card.
+  // AFTER hooks so Rules of Hooks are honored.
   if (
     row.type !== 'follow' &&
     row.type !== 'watch_overlap' &&
@@ -42,7 +56,7 @@ export function NotificationRow({ row }: NotificationRowProps) {
     return null
   }
 
-  const isUnread = row.readAt === null
+  const isUnread = optimisticReadAt === null
   const actorName =
     row.actorDisplayName ?? row.actorUsername ?? 'Someone'
   const actorCount = row.actorCount ?? 1
@@ -51,12 +65,45 @@ export function NotificationRow({ row }: NotificationRowProps) {
   const href = resolveHref(row)
   const copy = resolveCopy(row, actorName, actorCount, isUnread)
 
+  // Stub types (price_drop, trending_collector) have no real DB row to mark read
+  // per D-19/D-20 (Phase 13 never inserts these). They still render and still
+  // navigate (to '#') but skip the SA call.
+  const isStubType = row.type === 'price_drop' || row.type === 'trending_collector'
+
+  function activate() {
+    if (pending) return
+    startTransition(async () => {
+      if (isUnread && !isStubType) {
+        setOptimisticReadAt(new Date())
+        // Fire-and-await the SA but do NOT block navigation on failure —
+        // router.push runs regardless. If the SA fails the next render of
+        // /notifications (on back-nav or revalidation) snaps the row back to
+        // unread, mirroring PrivacyToggleRow's failure model.
+        const result = await markNotificationRead({ notificationId: row.id })
+        if (!result.success) {
+          console.error('[NotificationRow] markNotificationRead failed:', result.error)
+        }
+      }
+      router.push(href)
+    })
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      activate()
+    }
+  }
+
   return (
-    <Link
-      href={href}
+    <div
+      role="link"
+      tabIndex={0}
       aria-label={`${actorName} notification`}
+      onClick={activate}
+      onKeyDown={onKeyDown}
       className={cn(
-        'group relative flex items-center gap-3 min-h-12 bg-card px-4 py-2 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group relative flex items-center gap-3 min-h-12 bg-card px-4 py-2 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer',
         isUnread && 'border-l-2 border-l-accent',
       )}
     >
@@ -70,7 +117,7 @@ export function NotificationRow({ row }: NotificationRowProps) {
         {copy}
         <span className="text-muted-foreground"> · {timeLabel}</span>
       </div>
-    </Link>
+    </div>
   )
 }
 
