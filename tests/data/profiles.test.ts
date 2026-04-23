@@ -26,7 +26,7 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
     mockRows = []
   })
 
-  it('returns DEFAULT_SETTINGS (all public: true) when no row exists', async () => {
+  it('returns DEFAULT_SETTINGS (all public: true, notify opts on) when no row exists', async () => {
     mockRows = []
     const settings = await getProfileSettings('user-no-row')
     expect(settings).toEqual({
@@ -34,6 +34,9 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
       profilePublic: true,
       collectionPublic: true,
       wishlistPublic: true,
+      notificationsLastSeenAt: new Date(0),
+      notifyOnFollow: true,
+      notifyOnWatchOverlap: true,
     })
   })
 
@@ -44,7 +47,9 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
         profilePublic: false,
         collectionPublic: true,
         wishlistPublic: false,
-        wornPublic: false, // column still in DB until Plan 06; not mapped into return type
+        notificationsLastSeenAt: new Date('2026-04-01T00:00:00Z'),
+        notifyOnFollow: true,
+        notifyOnWatchOverlap: false,
       },
     ]
     const settings = await getProfileSettings('user-with-row')
@@ -53,6 +58,9 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
       profilePublic: false,
       collectionPublic: true,
       wishlistPublic: false,
+      notificationsLastSeenAt: new Date('2026-04-01T00:00:00Z'),
+      notifyOnFollow: true,
+      notifyOnWatchOverlap: false,
     })
   })
 

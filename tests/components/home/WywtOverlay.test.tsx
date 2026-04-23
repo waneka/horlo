@@ -52,6 +52,7 @@ function makeTile(i: number, overrides: Partial<WywtTile> = {}): WywtTile {
     imageUrl: `https://example.com/${i}.jpg`,
     wornDate: '2026-04-21',
     note: null,
+    visibility: 'public',
     isSelf: false,
     ...overrides,
   }

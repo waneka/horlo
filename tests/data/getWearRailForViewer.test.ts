@@ -306,7 +306,8 @@ maybe('getWearRailForViewer — integration', () => {
   const seedProfile = async (
     u: { id: string; email: string },
     username: string,
-    wornPublic = true,
+    // wornPublic param retained for call-site compatibility but unused — column dropped Phase 12.
+    _wornPublic = true,
   ) => {
     await dbModule.db.insert(schema.users).values({ id: u.id, email: u.email }).onConflictDoNothing()
     await dbModule.db
@@ -320,7 +321,6 @@ maybe('getWearRailForViewer — integration', () => {
         profilePublic: true,
         collectionPublic: true,
         wishlistPublic: true,
-        wornPublic,
       })
       .onConflictDoNothing()
   }
@@ -484,24 +484,13 @@ maybe('getWearRailForViewer — integration', () => {
     expect(bobTiles).toHaveLength(0)
   })
 
-  it('Test 5: viewer self wear is included even if viewer worn_public=false', async () => {
-    // Flip viewer worn_public off
-    const { eq: eqFn } = await import('drizzle-orm')
-    await dbModule.db
-      .update(schema.profileSettings)
-      .set({ wornPublic: false })
-      .where(eqFn(schema.profileSettings.userId, viewer.id))
-    try {
-      const result = await dal.getWearRailForViewer(viewer.id)
-      const selfTile = result.tiles.find((t) => t.userId === viewer.id)
-      expect(selfTile).toBeDefined()
-      expect(selfTile!.isSelf).toBe(true)
-    } finally {
-      await dbModule.db
-        .update(schema.profileSettings)
-        .set({ wornPublic: true })
-        .where(eqFn(schema.profileSettings.userId, viewer.id))
-    }
+  it('Test 5: viewer self wear is always included (wornPublic column removed Phase 12 — visibility is per wear_events.visibility)', async () => {
+    // wornPublic column dropped Phase 12; per-wear visibility (public/followers/private) now
+    // lives on wear_events.visibility. Self-include is unconditional (viewer sees own wear).
+    const result = await dal.getWearRailForViewer(viewer.id)
+    const selfTile = result.tiles.find((t) => t.userId === viewer.id)
+    expect(selfTile).toBeDefined()
+    expect(selfTile!.isSelf).toBe(true)
   })
 
   it('Test 6: non-followed user (charlie) — their wear is NOT in the rail', async () => {
@@ -513,12 +502,10 @@ maybe('getWearRailForViewer — integration', () => {
   })
 
   it('Test 7: wear from 50h ago is EXCLUDED (outside 48h window)', async () => {
-    // Flip bob worn_public on so we can test the 48h gate isolated
+    // wornPublic column removed Phase 12; visibility now per wear_events.visibility.
+    // Bob's wear events default to 'public' visibility, so the 48h window gate is
+    // the only gate being tested here.
     const { eq: eqFn } = await import('drizzle-orm')
-    await dbModule.db
-      .update(schema.profileSettings)
-      .set({ wornPublic: true })
-      .where(eqFn(schema.profileSettings.userId, bob.id))
 
     // Wipe bob's existing wears first
     await dbModule.db.delete(schema.wearEvents).where(eqFn(schema.wearEvents.userId, bob.id))
@@ -531,12 +518,6 @@ maybe('getWearRailForViewer — integration', () => {
     const result = await dal.getWearRailForViewer(viewer.id)
     const bobTiles = result.tiles.filter((t) => t.userId === bob.id)
     expect(bobTiles).toHaveLength(0)
-
-    // Restore bob worn_public=false for other tests
-    await dbModule.db
-      .update(schema.profileSettings)
-      .set({ wornPublic: false })
-      .where(eqFn(schema.profileSettings.userId, bob.id))
   })
 
   it('Test 8: multiple eligible tiles ordered by wornDate DESC', async () => {

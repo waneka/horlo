@@ -49,7 +49,6 @@ maybe('getRecommendationsForViewer — integration', () => {
         profilePublic: opts.profilePublic ?? true,
         collectionPublic: opts.collectionPublic ?? true,
         wishlistPublic: true,
-        wornPublic: true,
       })
       .onConflictDoNothing()
   }

@@ -173,7 +173,6 @@ maybe('getSuggestedCollectors — integration', () => {
         profilePublic: opts.profilePublic ?? true,
         collectionPublic: true,
         wishlistPublic: true,
-        wornPublic: true,
       })
       .onConflictDoNothing()
   }

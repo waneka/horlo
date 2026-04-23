@@ -32,6 +32,7 @@ function makeTile(overrides: Partial<WywtTileData> = {}): WywtTileData {
       .toISOString()
       .slice(0, 10),
     note: null,
+    visibility: 'public',
     isSelf: false,
     ...overrides,
   }

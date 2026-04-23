@@ -9,17 +9,26 @@ export interface ProfileSettings {
   profilePublic: boolean
   collectionPublic: boolean
   wishlistPublic: boolean
+  // Phase 13 additions (NOTIF-04, NOTIF-09):
+  notificationsLastSeenAt: Date
+  notifyOnFollow: boolean
+  notifyOnWatchOverlap: boolean
 }
 
 export type VisibilityField =
   | 'profilePublic'
   | 'collectionPublic'
   | 'wishlistPublic'
+  | 'notifyOnFollow'
+  | 'notifyOnWatchOverlap'
 
 const DEFAULT_SETTINGS: Omit<ProfileSettings, 'userId'> = {
   profilePublic: true,
   collectionPublic: true,
   wishlistPublic: true,
+  notificationsLastSeenAt: new Date(0), // safe default: epoch means "everything is newer, show dot" for missing rows
+  notifyOnFollow: true,
+  notifyOnWatchOverlap: true,
 }
 
 export async function getProfileByUsername(username: string) {
@@ -63,6 +72,9 @@ export async function getProfileSettings(userId: string): Promise<ProfileSetting
       profilePublic: rows[0].profilePublic,
       collectionPublic: rows[0].collectionPublic,
       wishlistPublic: rows[0].wishlistPublic,
+      notificationsLastSeenAt: rows[0].notificationsLastSeenAt,
+      notifyOnFollow: rows[0].notifyOnFollow,
+      notifyOnWatchOverlap: rows[0].notifyOnWatchOverlap,
     }
   }
   return { userId, ...DEFAULT_SETTINGS }
@@ -102,11 +114,13 @@ export async function updateProfileFields(
 export async function updateProfileSettingsField(
   userId: string,
   field: VisibilityField,
-  value: boolean
+  value: boolean,
 ) {
   // Upsert in case the row is somehow missing (defense in depth + Pitfall 8).
-  // For the insert path we apply the new value to `field` and leave the other
-  // three at their default (true) — matches the Phase 7 trigger behavior.
+  // For the insert path we apply the new value to `field` and leave the others
+  // at their defaults (true) — matches the Phase 7 trigger behavior.
+  // Note: notificationsLastSeenAt is a timestamp, not boolean — NOT writable via this
+  // function. Touched separately via touchLastSeenAt (Plan 02).
   await db
     .insert(profileSettings)
     .values({
@@ -114,6 +128,9 @@ export async function updateProfileSettingsField(
       profilePublic: field === 'profilePublic' ? value : true,
       collectionPublic: field === 'collectionPublic' ? value : true,
       wishlistPublic: field === 'wishlistPublic' ? value : true,
+      notifyOnFollow: field === 'notifyOnFollow' ? value : true,
+      notifyOnWatchOverlap: field === 'notifyOnWatchOverlap' ? value : true,
+      // notificationsLastSeenAt omitted — DB DEFAULT now() applies on insert
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({

@@ -183,6 +183,17 @@ export const profileSettings = pgTable('profile_settings', {
   // wornPublic: REMOVED in Phase 12 (WYWT-11) — replaced by per-row
   // wear_events.visibility enum. Column dropped in
   // supabase/migrations/20260424000001_phase12_drop_worn_public.sql.
+
+  // Phase 13 additions (NOTIF-04, NOTIF-09; CONTEXT.md D-06, D-16, D-18):
+  // - notificationsLastSeenAt drives the bell unread-dot query (D-06):
+  //   dot = EXISTS(notifications WHERE user_id = current AND created_at > last_seen_at).
+  //   Updated server-side when the user visits /notifications (D-07).
+  // - notifyOnFollow / notifyOnWatchOverlap are write-time opt-outs (D-18):
+  //   logNotification reads these before insert; skips insert when false.
+  notificationsLastSeenAt: timestamp('notifications_last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  notifyOnFollow: boolean('notify_on_follow').notNull().default(true),
+  notifyOnWatchOverlap: boolean('notify_on_watch_overlap').notNull().default(true),
+
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
 

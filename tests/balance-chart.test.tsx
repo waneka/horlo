@@ -8,8 +8,8 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-// @ts-expect-error — assign stub
-globalThis.ResizeObserver = ResizeObserverStub
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(globalThis as any).ResizeObserver = ResizeObserverStub
 
 describe('BalanceChart', () => {
   it('renders empty state copy when data is empty', () => {

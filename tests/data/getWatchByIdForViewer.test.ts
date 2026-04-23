@@ -283,7 +283,6 @@ maybe('getWatchByIdForViewer — integration', () => {
         profilePublic: true,
         collectionPublic: true,
         wishlistPublic: true,
-        wornPublic: true,
       })
       .onConflictDoUpdate({
         target: schema.profileSettings.userId,
@@ -291,7 +290,6 @@ maybe('getWatchByIdForViewer — integration', () => {
           profilePublic: true,
           collectionPublic: true,
           wishlistPublic: true,
-          wornPublic: true,
         },
       })
   }
