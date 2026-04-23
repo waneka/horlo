@@ -27,8 +27,8 @@ interface DesktopTopNavProps {
  *   Explore link · persistent search input · NavWearButton · Add icon ·
  *   NotificationBell · UserMenu (D-17 dropdown)
  *
- * ThemeToggle is intentionally absent — D-16 relocates it into UserMenu's
- * InlineThemeSegmented row (delivered by Plan 14-05).
+ * The theme toggle is intentionally absent — D-16 relocates it into
+ * UserMenu's InlineThemeSegmented row (delivered by Plan 14-05).
  *
  * Gated by `isPublicPath(pathname)` — returns null on auth routes to prevent
  * chrome leak (T-14-04-01).

@@ -10,11 +10,11 @@ import type { Watch } from '@/lib/types'
 /**
  * Header — thin Server Component delegator (Phase 14 D-23 / D-24).
  *
- * Resolves auth + profile + owned watches, then renders both SlimTopNav
- * (mobile, <768px) and DesktopTopNav (desktop, ≥768px). Each surface
- * CSS-hides itself at the wrong breakpoint, so only one is visible at a
- * time. The SlimTopNav/DesktopTopNav components own the `<header>`
- * element — this component does not render one itself.
+ * Resolves auth + profile + owned watches, then renders both nav surfaces
+ * (mobile <768px and desktop ≥768px). Each surface CSS-hides itself at
+ * the wrong breakpoint, so only one is visible at a time. The nav
+ * components own the `<header>` element — this component does not
+ * render one itself.
  *
  * NotificationBell is its own Suspense leaf (Pitfall A-1/B-1). The `bell`
  * element is constructed exactly ONCE and handed by reference to both
