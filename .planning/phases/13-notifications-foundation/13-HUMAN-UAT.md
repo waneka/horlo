@@ -8,17 +8,17 @@ updated: 2026-04-23T00:00:00Z
 
 ## Current Test
 
-[awaiting human testing]
+[items 4-6 awaiting human testing]
 
 ## Tests
 
 ### 1. Bell unread dot appears when another user follows you
 expected: After userB follows userA, userA sees a filled dot on the bell icon in the header
-result: [pending]
+result: passed — confirmed live in dev after debug round 3 (write-path recipient-tag invalidation fix in follows.ts / watches.ts)
 
 ### 2. Bell dot clears after visiting /notifications
 expected: After visiting /notifications, returning to home shows the bell without a dot
-result: [pending]
+result: passed — confirmed live in dev after debug round 4 (updateTag RYOW semantics fix in markNotificationsSeen SA)
 
 ### 3. Per-row optimistic read flip in the browser (D-08)
 expected: Clicking an unread row in /notifications immediately removes the left accent border AND navigates to the target — without waiting for a server round-trip (test with DevTools Slow 3G throttling)
@@ -39,9 +39,9 @@ result: [pending]
 ## Summary
 
 total: 6
-passed: 0
+passed: 2
 issues: 0
-pending: 6
+pending: 4
 skipped: 0
 blocked: 0
 
