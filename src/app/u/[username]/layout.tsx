@@ -137,6 +137,7 @@ export default async function ProfileLayout({
         <ProfileTabs
           username={username}
           showCommonGround={overlap?.hasAny ?? false}
+          isOwner={isOwner}
         />
       </div>
       <div className="mt-6">{children}</div>

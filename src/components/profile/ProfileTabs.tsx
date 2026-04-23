@@ -17,25 +17,43 @@ const COMMON_GROUND_TAB = {
   label: 'Common Ground',
 } as const
 
+// D-13: Insights tab is OWNER-ONLY. Non-owners never see this link — the
+// tab is omitted entirely from the tab strip (existence-leak defense,
+// RESEARCH P-08). Direct URL access is separately gated in [tab]/page.tsx.
+const OWNER_INSIGHTS_TAB = {
+  id: 'insights',
+  label: 'Insights',
+} as const
+
 interface ProfileTabsProps {
   username: string
   /**
-   * When true, append a 6th "Common Ground" tab. Set by the layout when the
+   * When true, append a "Common Ground" tab. Set by the layout when the
    * three-way gate (viewer && !isOwner && collectionPublic) passes AND the
    * computed overlap has any content (overlap.hasAny === true).
    * See src/app/u/[username]/common-ground-gate.ts.
    */
   showCommonGround?: boolean
+  /**
+   * When true, append the owner-only Insights tab. Non-owners never see this
+   * entry — the tab is omitted entirely from the DOM (existence-leak
+   * defense; RESEARCH P-08 / D-13). Direct URL access to /u/{owner}/insights
+   * is separately gated in [tab]/page.tsx.
+   */
+  isOwner?: boolean
 }
 
 export function ProfileTabs({
   username,
   showCommonGround = false,
+  isOwner = false,
 }: ProfileTabsProps) {
   const pathname = usePathname() ?? ''
-  const tabs = showCommonGround
-    ? [...BASE_TABS, COMMON_GROUND_TAB]
-    : [...BASE_TABS]
+  const tabs = [
+    ...BASE_TABS,
+    ...(showCommonGround ? [COMMON_GROUND_TAB] : []),
+    ...(isOwner ? [OWNER_INSIGHTS_TAB] : []),
+  ]
   // Active tab = trailing segment after /u/{username}/
   const activeTab =
     tabs.find((t) => pathname.endsWith(`/${t.id}`))?.id ?? 'collection'
