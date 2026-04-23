@@ -31,10 +31,10 @@ function userProps(extra: Record<string, unknown> = {}) {
   return {
     user: { id: 'u1', email: 'alice@example.com' },
     username: 'alice',
-    ownedWatches: [],
+    ownedWatches: [] as never[],
     bell: bellStub,
     ...extra,
-  } as const
+  }
 }
 
 describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
