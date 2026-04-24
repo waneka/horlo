@@ -261,7 +261,7 @@ export function ComposeStep({
           is itself inside DialogRoot) so accessibility is already covered
           by the outer container's role=dialog semantics. */}
       <div className="flex items-center justify-between">
-        <h2 className="font-heading text-base leading-none font-medium">
+        <h2 className="font-heading text-base leading-none font-semibold">
           Log a wear
         </h2>
         <button

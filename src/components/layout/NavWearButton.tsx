@@ -10,30 +10,44 @@ import type { Watch as WatchType } from '@/lib/types'
 /**
  * NavWearButton — the nav `+ Wear` entry point (CONTEXT.md N-01, Pitfall 10).
  *
- * This is ONE of TWO triggers that open the SAME `WatchPickerDialog`:
- *   1. WYWT rail self-placeholder tile (Plan 10-06)
- *   2. This nav button (Plan 10-08) — reused by header (default) + mobile
- *      bottom nav (Plan 14-03 `appearance="bottom-nav"`)
+ * Phase 15 Plan 03b D-04: lazy target swapped from `WatchPickerDialog` to
+ * `WywtPostDialog` so the nav-wear entry point now opens the full photo-
+ * post flow (two-step modal: picker → compose with photo + note + visibility).
+ * `LogTodaysWearButton` (profile page) remains on the quick-log markAsWorn
+ * path and is NOT migrated by this plan.
  *
- * DO NOT create a second picker component and DO NOT fork this component.
+ * This is ONE of TWO triggers that open the SAME `WywtPostDialog`:
+ *   1. WYWT rail self-placeholder tile (WywtRail — also swapped in Plan 03b)
+ *   2. This nav button — reused by header (default) + mobile bottom nav
+ *      (`appearance="bottom-nav"`)
+ *
+ * DO NOT create a second dialog component and DO NOT fork this component.
  * If behavior diverges between nav surfaces, add a prop (e.g. `appearance`)
  * — never copy this file.
  *
  * Lazy-loaded dialog rationale:
- *   Header renders on every authenticated route. Eager-importing the picker
- *   would ship `WatchPickerDialog` + its shadcn Dialog + markAsWorn glue on
- *   pages that never need it (e.g. `/settings`, `/preferences`, `/watch/new`
- *   itself). Lazy import + render-gated `{open && ...}` keeps the initial
- *   bundle small. Same posture as `WywtRail` (Plan 10-06).
+ *   Header renders on every authenticated route. Eager-importing the dialog
+ *   would ship `WywtPostDialog` + `WatchPickerDialog` + `ComposeStep` +
+ *   `PhotoUploader` + the heic-worker chunk on pages that never need it
+ *   (e.g. `/settings`, `/preferences`, `/watch/new` itself). Lazy import +
+ *   render-gated `{open && ...}` keeps the initial bundle small.
  */
-const WatchPickerDialog = lazy(() =>
-  import('@/components/home/WatchPickerDialog').then((m) => ({
-    default: m.WatchPickerDialog,
+const WywtPostDialog = lazy(() =>
+  import('@/components/wywt/WywtPostDialog').then((m) => ({
+    default: m.WywtPostDialog,
   })),
 )
 
 type NavWearButtonProps = {
   ownedWatches: WatchType[]
+  /**
+   * Viewer id — required by `WywtPostDialog` (Phase 15 Plan 03b) for the
+   * preflight `getWornTodayIdsForUserAction` fetch and the Storage path
+   * construction (`{viewerId}/{wearEventId}.jpg`). Passed through from the
+   * Server Component callers (Header, BottomNavServer) which already have
+   * the resolved `user.id` via `getCurrentUser()`.
+   */
+  viewerId: string
   /**
    * Visual variant. `header` (default) is the outline Button + Plus icon
    * used in the desktop top nav. `bottom-nav` is the 56×56 accent circle
@@ -47,6 +61,7 @@ type NavWearButtonProps = {
 
 export function NavWearButton({
   ownedWatches,
+  viewerId,
   appearance = 'header',
 }: NavWearButtonProps) {
   const [open, setOpen] = useState(false)
@@ -105,10 +120,11 @@ export function NavWearButton({
       {trigger}
       {open && (
         <Suspense fallback={null}>
-          <WatchPickerDialog
+          <WywtPostDialog
             open={open}
             onOpenChange={setOpen}
-            watches={ownedWatches}
+            ownedWatches={ownedWatches}
+            viewerId={viewerId}
           />
         </Suspense>
       )}

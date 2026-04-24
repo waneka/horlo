@@ -7,18 +7,22 @@ import { useViewedWears } from '@/hooks/useViewedWears'
 import type { WywtRailData, WywtTile as WywtTileData } from '@/lib/wywtTypes'
 import type { Watch } from '@/lib/types'
 
-// Lazy-load the overlay + picker so they stay out of the initial home-page
-// bundle. Most home-page renders never open either: a user scrolls, reads the
-// feed, and leaves. Deferring the cost to first-tap keeps the primary hook
-// (the rail strip) fast.
+// Lazy-load the overlay + post dialog so they stay out of the initial home-
+// page bundle. Most home-page renders never open either: a user scrolls,
+// reads the feed, and leaves. Deferring the cost to first-tap keeps the
+// primary hook (the rail strip) fast.
 const WywtOverlay = lazy(() =>
   import('@/components/home/WywtOverlay').then((m) => ({
     default: m.WywtOverlay,
   })),
 )
-const WatchPickerDialog = lazy(() =>
-  import('@/components/home/WatchPickerDialog').then((m) => ({
-    default: m.WatchPickerDialog,
+// Phase 15 Plan 03b D-04: the self-placeholder tap now opens the full
+// WywtPostDialog (two-step photo-post flow) instead of WatchPickerDialog
+// (quick-log markAsWorn). Non-self tile taps continue to open WywtOverlay
+// (Phase 10 pattern preserved per WYWT-18 / phase 10-06).
+const WywtPostDialog = lazy(() =>
+  import('@/components/wywt/WywtPostDialog').then((m) => ({
+    default: m.WywtPostDialog,
   })),
 )
 
@@ -26,13 +30,14 @@ const WatchPickerDialog = lazy(() =>
  * WYWT rail (CONTEXT.md W-01 / W-03 / W-07, UI-SPEC § Component Inventory).
  *
  * Client component because it owns the open/close state for the overlay and
- * picker dialog, plus the viewed-state hook. Accepts already-computed
+ * post dialog, plus the viewed-state hook. Accepts already-computed
  * `WywtRailData` from a Server Component parent (Plan 08) so no DAL read
  * happens on the client.
  *
  * Self-placeholder rules (W-03):
  *   - If the viewer has NO `isSelf` tile in `data.tiles`, prepend a
- *     placeholder at position 0 that opens the WatchPickerDialog.
+ *     placeholder at position 0 that opens the WywtPostDialog (Phase 15
+ *     Plan 03b D-04 — swapped from WatchPickerDialog).
  *   - If the viewer DOES have an `isSelf` tile already, render it in its
  *     natural order — no placeholder.
  *
@@ -124,10 +129,11 @@ export function WywtRail({
 
       <Suspense fallback={null}>
         {pickerOpen && (
-          <WatchPickerDialog
+          <WywtPostDialog
             open={pickerOpen}
             onOpenChange={setPickerOpen}
-            watches={ownedWatches}
+            ownedWatches={ownedWatches}
+            viewerId={data.viewerId}
           />
         )}
       </Suspense>

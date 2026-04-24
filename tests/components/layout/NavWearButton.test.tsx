@@ -4,28 +4,33 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { NavWearButton } from '@/components/layout/NavWearButton'
 import type { Watch } from '@/lib/types'
 
-// Mock the shared WatchPickerDialog so we can assert on its open / watches
-// props without rendering its internals. Mocking also suppresses the lazy
-// boundary in tests (no Suspense fallback to wait on).
+// Phase 15 Plan 03b D-04: NavWearButton now lazy-imports WywtPostDialog
+// instead of WatchPickerDialog. Mock the new module so we can assert on
+// open / ownedWatches / viewerId without rendering the real orchestrator
+// (which would trigger the getWornTodayIdsForUserAction preflight + real
+// WatchPickerDialog render).
 const mockDialog = vi.fn<
   (props: {
     open: boolean
     onOpenChange: (v: boolean) => void
-    watches: Watch[]
+    ownedWatches: Watch[]
+    viewerId: string
   }) => React.ReactNode
 >()
-vi.mock('@/components/home/WatchPickerDialog', () => ({
-  WatchPickerDialog: (props: {
+vi.mock('@/components/wywt/WywtPostDialog', () => ({
+  WywtPostDialog: (props: {
     open: boolean
     onOpenChange: (v: boolean) => void
-    watches: Watch[]
+    ownedWatches: Watch[]
+    viewerId: string
   }) => {
     mockDialog(props)
     return (
       <div
         data-testid="mock-picker"
         data-open={props.open ? 'true' : 'false'}
-        data-count={props.watches.length}
+        data-count={props.ownedWatches.length}
+        data-viewer-id={props.viewerId}
       >
         <button
           type="button"
@@ -55,7 +60,7 @@ function makeWatch(id: string): Watch {
 
 describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
   it('Test 1 — renders with label "Wear" and a Plus icon (default/header variant)', () => {
-    render(<NavWearButton ownedWatches={[]} />)
+    render(<NavWearButton ownedWatches={[]} viewerId="u1" />)
     // Label (desktop shows "Wear" via `hidden sm:inline` but still in DOM)
     expect(screen.getByRole('button', { name: /log a wear/i })).toBeTruthy()
     expect(screen.getByText('Wear')).toBeTruthy()
@@ -66,7 +71,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
 
   it('Test 2 — clicking the button opens the WatchPickerDialog with the watches prop', async () => {
     const watches = [makeWatch('a'), makeWatch('b')]
-    render(<NavWearButton ownedWatches={watches} />)
+    render(<NavWearButton ownedWatches={watches} viewerId="u1" />)
 
     // Picker is not mounted before click (NavWearButton uses `open && ...`).
     expect(screen.queryByTestId('mock-picker')).toBeNull()
@@ -83,7 +88,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
   })
 
   it('Test 3 — dialog onOpenChange(false) closes the dialog', async () => {
-    render(<NavWearButton ownedWatches={[makeWatch('a')]} />)
+    render(<NavWearButton ownedWatches={[makeWatch('a')]} viewerId="u1" />)
     fireEvent.click(screen.getByRole('button', { name: /log a wear/i }))
     await waitFor(() => {
       expect(screen.getByTestId('mock-picker')).toBeTruthy()
@@ -98,7 +103,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
   })
 
   it('Test 4 — button uses outline variant (header default)', () => {
-    render(<NavWearButton ownedWatches={[]} />)
+    render(<NavWearButton ownedWatches={[]} viewerId="u1" />)
     const btn = screen.getByRole('button', { name: /log a wear/i })
     // shadcn Button outline variant includes `border-border` and `bg-background`.
     const cls = btn.getAttribute('class') ?? ''
@@ -108,7 +113,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
 
   describe('Phase 14-03 Task 1 — bottom-nav appearance variant', () => {
     it('Test 5 — `appearance="bottom-nav"` renders a 56×56 rounded-full element with the Watch icon and "Wear" label', () => {
-      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      render(<NavWearButton ownedWatches={[]} viewerId="u1" appearance="bottom-nav" />)
 
       // aria-label differs from header variant — see Test 8 for the exact text
       const btn = screen.getByRole('button', { name: /log a wear/i })
@@ -128,7 +133,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
     })
 
     it('Test 6 — `appearance="bottom-nav"` circle has the two-layer Figma shadow', () => {
-      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      render(<NavWearButton ownedWatches={[]} viewerId="u1" appearance="bottom-nav" />)
       const btn = screen.getByRole('button', { name: /log a wear/i })
       const svg = btn.querySelector('svg')!
       const circleSpan = svg.parentElement as HTMLElement
@@ -139,7 +144,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
     })
 
     it('Test 7 — `appearance="bottom-nav"` circle uses `bg-accent` fill', () => {
-      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      render(<NavWearButton ownedWatches={[]} viewerId="u1" appearance="bottom-nav" />)
       const btn = screen.getByRole('button', { name: /log a wear/i })
       const svg = btn.querySelector('svg')!
       const circleSpan = svg.parentElement as HTMLElement
@@ -147,7 +152,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
     })
 
     it('Test 8 — `appearance="bottom-nav"` button has aria-label "Log a wear" (UI-SPEC Copywriting)', () => {
-      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      render(<NavWearButton ownedWatches={[]} viewerId="u1" appearance="bottom-nav" />)
       // Exact aria-label lock — NOT "Log a wear for today" (that's the header
       // variant). Bottom-nav variant uses the tighter "Log a wear" string.
       const btn = screen.getByLabelText('Log a wear')
@@ -157,7 +162,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
 
     it('Test 9 — both appearances open the SAME WatchPickerDialog', async () => {
       const watches = [makeWatch('x'), makeWatch('y'), makeWatch('z')]
-      render(<NavWearButton ownedWatches={watches} appearance="bottom-nav" />)
+      render(<NavWearButton ownedWatches={watches} viewerId="u1" appearance="bottom-nav" />)
 
       expect(screen.queryByTestId('mock-picker')).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: /log a wear/i }))
@@ -171,7 +176,7 @@ describe('NavWearButton — nav `+ Wear` trigger for the shared picker', () => {
     })
 
     it('Test 10 — `appearance="bottom-nav"` Watch icon is 28×28 (size-7)', () => {
-      render(<NavWearButton ownedWatches={[]} appearance="bottom-nav" />)
+      render(<NavWearButton ownedWatches={[]} viewerId="u1" appearance="bottom-nav" />)
       const btn = screen.getByRole('button', { name: /log a wear/i })
       const svg = btn.querySelector('svg')
       expect(svg).toBeTruthy()

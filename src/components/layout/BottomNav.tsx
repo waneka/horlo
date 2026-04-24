@@ -45,12 +45,20 @@ import type { Watch } from '@/lib/types'
  * Wear button (NAV-09, Pitfall I-2):
  *   - Reuses the shared `NavWearButton` with `appearance="bottom-nav"`.
  *   - DO NOT fork: both the header Wear CTA and this bottom-nav Wear
- *     circle open the SAME lazy-loaded `WatchPickerDialog`.
+ *     circle open the SAME lazy-loaded `WywtPostDialog` (Phase 15
+ *     Plan 03b D-04 — swapped from `WatchPickerDialog`).
  */
 
 interface BottomNavProps {
   username: string | null
   ownedWatches: Watch[]
+  /**
+   * Viewer id plumbed from BottomNavServer's `getCurrentUser()` result —
+   * forwarded to `NavWearButton` so the Phase 15 WywtPostDialog preflight
+   * can call `getWornTodayIdsForUserAction({ userId, today })` and so the
+   * Storage path `{viewerId}/{wearEventId}.jpg` resolves correctly.
+   */
+  viewerId: string
 }
 
 interface NavLinkProps {
@@ -87,7 +95,7 @@ function NavLink({ href, icon: Icon, label, active }: NavLinkProps) {
   )
 }
 
-export function BottomNav({ username, ownedWatches }: BottomNavProps) {
+export function BottomNav({ username, ownedWatches, viewerId }: BottomNavProps) {
   const pathname = usePathname() ?? ''
   if (isPublicPath(pathname)) return null
   if (!username) return null
@@ -124,7 +132,11 @@ export function BottomNav({ username, ownedWatches }: BottomNavProps) {
         all 5 column labels share a common bottom baseline. The 56×56 accent
         circle is visually prominent via size + fill, not physical elevation.
       */}
-      <NavWearButton ownedWatches={ownedWatches} appearance="bottom-nav" />
+      <NavWearButton
+        ownedWatches={ownedWatches}
+        viewerId={viewerId}
+        appearance="bottom-nav"
+      />
       <NavLink href="/watch/new" icon={Plus} label="Add" active={isAdd} />
       <NavLink
         href={profileHref}

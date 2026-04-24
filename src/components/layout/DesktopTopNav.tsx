@@ -82,7 +82,7 @@ export function DesktopTopNav({
         <div className="flex items-center gap-2">
           {user && (
             <>
-              <NavWearButton ownedWatches={ownedWatches} />
+              <NavWearButton ownedWatches={ownedWatches} viewerId={user.id} />
               <Link href="/watch/new" aria-label="Add watch">
                 <Button variant="ghost" size="icon">
                   <Plus className="h-5 w-5" aria-hidden />

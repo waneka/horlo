@@ -44,5 +44,11 @@ export async function BottomNavServer() {
     console.error('[BottomNavServer] failed to resolve user data:', err)
   }
 
-  return <BottomNav username={username} ownedWatches={ownedWatches} />
+  return (
+    <BottomNav
+      username={username}
+      ownedWatches={ownedWatches}
+      viewerId={user.id}
+    />
+  )
 }
