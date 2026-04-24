@@ -149,6 +149,33 @@ describe('BottomNav (Phase 14 NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-09, NA
     expect(nav.className).toContain('env(safe-area-inset-bottom)')
   })
 
+  it('Test 18a — bar height is 80px-based and uses items-stretch for same-height columns (14.1 geometry)', () => {
+    mockPath('/')
+    render(<BottomNav username="alice" ownedWatches={[]} />)
+    const nav = screen.getByRole('navigation', { name: /primary/i })
+    const cls = nav.className
+    expect(cls).toContain('h-[calc(80px+env(safe-area-inset-bottom))]')
+    expect(cls).toMatch(/items-stretch/)
+    expect(cls).not.toMatch(/items-end/)
+  })
+
+  it('Test 18b — no column uses -translate-y-5 (14.1: Wear column flush with bar plane)', () => {
+    mockPath('/')
+    const { container } = render(
+      <BottomNav username="alice" ownedWatches={[]} />,
+    )
+    expect(container.innerHTML).not.toContain('-translate-y-5')
+  })
+
+  it('Test 18c — all 5 labels sit in a pb-2 band so they share a common bottom baseline (14.1)', () => {
+    mockPath('/')
+    render(<BottomNav username="alice" ownedWatches={[]} />)
+    for (const text of ['Home', 'Explore', 'Wear', 'Add', 'Profile']) {
+      const label = screen.getByText(text)
+      expect(label.className).toMatch(/pb-2/)
+    }
+  })
+
   it('Test 18 — inactive non-Wear labels use text-muted-foreground; active use text-accent (D-04)', () => {
     mockPath('/')
     render(<BottomNav username="alice" ownedWatches={[]} />)

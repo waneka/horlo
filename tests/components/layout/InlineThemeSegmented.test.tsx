@@ -63,6 +63,32 @@ describe('InlineThemeSegmented (Phase 14 NAV-08 D-17)', () => {
     expect(system.getAttribute('aria-pressed')).toBe('false')
   })
 
+  it('Test 6a — React synthetic pointerdown does not bubble to parent handler (menu-dismissal guard, 14.1)', () => {
+    // Regression lock for the 14.1 fix: buttons inside a base-ui DropdownMenu
+    // Popup must stop React synthetic pointer-event propagation so the
+    // Menu's Floating UI useDismiss (which hangs handlers via React synthetic
+    // events) doesn't tear down the Popup before onClick fires.
+    const parentSpy = vi.fn()
+    render(
+      <div onPointerDown={parentSpy}>
+        <InlineThemeSegmented />
+      </div>,
+    )
+    for (const name of ['Light', 'Dark', 'System']) {
+      parentSpy.mockClear()
+      fireEvent.pointerDown(screen.getByRole('button', { name }))
+      expect(parentSpy).not.toHaveBeenCalled()
+    }
+  })
+
+  it('Test 6b — full pointer+click sequence still fires setTheme after stopPropagation guard (14.1)', () => {
+    render(<InlineThemeSegmented />)
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Dark' }))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Dark' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }))
+    expect(setTheme).toHaveBeenCalledWith('dark')
+  })
+
   it('Test 7 — before mount (theme undefined) defaults to System selected', () => {
     currentTheme = undefined
     // Rendering synchronously, without waiting for useEffect to flip `mounted`

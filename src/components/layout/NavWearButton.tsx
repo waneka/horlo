@@ -36,10 +36,11 @@ type NavWearButtonProps = {
   ownedWatches: WatchType[]
   /**
    * Visual variant. `header` (default) is the outline Button + Plus icon
-   * used in the desktop top nav. `bottom-nav` is the elevated 56×56 accent
-   * circle used in the mobile bottom nav (Phase 14-03, Figma node 1:4714).
-   * The parent (`BottomNav`) handles column-level vertical elevation via
-   * `-translate-y-5`; this component only renders the circle + label.
+   * used in the desktop top nav. `bottom-nav` is the 56×56 accent circle
+   * used in the mobile bottom nav (Phase 14-03, Figma node 1:4714). In
+   * `bottom-nav` mode this component owns its full column (flex-1 h-full
+   * with a two-row icon/label shape) so its label shares the bottom
+   * baseline of sibling NavLinks.
    */
   appearance?: 'header' | 'bottom-nav'
 }
@@ -52,23 +53,28 @@ export function NavWearButton({
 
   const trigger =
     appearance === 'bottom-nav' ? (
-      // D-01/D-02/D-03: 56×56 circle, Watch icon 28×28, two-layer Figma
-      // shadow, accent fill. Label "Wear" below in accent color.
+      // D-02/D-03: 56×56 accent circle, Watch icon 28×28, two-layer Figma
+      // shadow. Two-row column (icon area flex-1 + label band pb-2) mirrors
+      // NavLink so the "Wear" label shares the bottom baseline of Home,
+      // Explore, Add, Profile. No physical elevation — prominence comes
+      // from the filled accent circle, not translate-y.
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Log a wear"
-        className="flex flex-col items-center gap-1"
+        className="flex flex-1 flex-col items-center h-full min-h-11"
       >
-        <span
-          className={cn(
-            'flex size-14 items-center justify-center rounded-full bg-accent',
-            'shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)]',
-          )}
-        >
-          <Watch className="size-7 text-accent-foreground" aria-hidden />
+        <span className="flex-1 flex items-center justify-center">
+          <span
+            className={cn(
+              'flex size-14 items-center justify-center rounded-full bg-accent',
+              'shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)]',
+            )}
+          >
+            <Watch className="size-7 text-accent-foreground" aria-hidden />
+          </span>
         </span>
-        <span className="text-[12px] leading-[16px] font-semibold text-accent">
+        <span className="text-[12px] leading-[16px] font-semibold text-accent pb-2">
           Wear
         </span>
       </button>

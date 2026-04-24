@@ -24,6 +24,14 @@ export function InlineThemeSegmented() {
   React.useEffect(() => setMounted(true), [])
   const current = mounted ? theme ?? 'system' : 'system'
 
+  // When this row renders inside a @base-ui/react DropdownMenu Popup, the
+  // Menu's dismissal logic (Floating UI useDismiss) can treat pointer events
+  // on non-MenuItem descendants as implicit outside interactions and unmount
+  // the Popup before the button's synthetic click dispatches — effectively
+  // swallowing setTheme(). Stopping propagation of pointer events at the
+  // button keeps the Menu mounted and lets onClick fire normally.
+  const stopPointer = (e: React.PointerEvent) => e.stopPropagation()
+
   return (
     <div className="flex w-full items-stretch rounded border border-border">
       {options.map(({ value, label, Icon }, i) => {
@@ -34,7 +42,12 @@ export function InlineThemeSegmented() {
             type="button"
             aria-pressed={selected}
             aria-label={label}
-            onClick={() => setTheme(value)}
+            onPointerDown={stopPointer}
+            onPointerUp={stopPointer}
+            onClick={(e) => {
+              e.stopPropagation()
+              setTheme(value)
+            }}
             className={cn(
               'flex flex-1 items-center justify-center gap-1 px-2 py-1.5 text-xs',
               i === 0 && 'rounded-l',

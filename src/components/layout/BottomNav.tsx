@@ -26,9 +26,10 @@ import type { Watch } from '@/lib/types'
  * Layout:
  *   - Fixed to the viewport bottom with safe-area padding for iOS home
  *     indicator (NAV-03 — paired with `viewport-fit=cover` on the layout).
- *   - 5 flex columns: Home · Explore · Wear · Add · Profile. The Wear
- *     column is vertically elevated by `-translate-y-5` so the 56×56
- *     accent circle extends ~20px above the flat bar plane (D-01/D-02).
+ *   - 5 flex columns: Home · Explore · Wear · Add · Profile. Each column
+ *     uses a two-row shape (icon area flex-1 + label band pb-2) so the
+ *     Wear 56×56 circle and the 20px lucide icons sit in the same bar
+ *     plane while all 5 labels share a single bottom baseline.
  *
  * Active state (D-04):
  *   - Non-Wear items flip icon + label color to `text-accent` and bump
@@ -61,19 +62,21 @@ function NavLink({ href, icon: Icon, label, active }: NavLinkProps) {
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className="flex flex-1 flex-col items-center gap-1 py-2 min-h-11"
+      className="flex flex-1 flex-col items-center h-full min-h-11"
     >
-      <Icon
-        className={cn(
-          'size-6',
-          active ? 'text-accent' : 'text-muted-foreground',
-        )}
-        strokeWidth={active ? 2.5 : 2}
-        aria-hidden
-      />
+      <span className="flex-1 flex items-center justify-center">
+        <Icon
+          className={cn(
+            'size-6',
+            active ? 'text-accent' : 'text-muted-foreground',
+          )}
+          strokeWidth={active ? 2.5 : 2}
+          aria-hidden
+        />
+      </span>
       <span
         className={cn(
-          'text-[12px] leading-[16px] font-semibold',
+          'text-[12px] leading-[16px] font-semibold pb-2',
           active ? 'text-accent' : 'text-muted-foreground',
         )}
       >
@@ -100,9 +103,9 @@ export function BottomNav({ username, ownedWatches }: BottomNavProps) {
       aria-label="Primary"
       className={cn(
         'fixed bottom-0 left-0 right-0 z-50 md:hidden',
-        'flex items-end justify-between',
+        'flex items-stretch',
         'bg-background/95 backdrop-blur border-t border-border',
-        'h-[calc(60px+env(safe-area-inset-bottom))]',
+        'h-[calc(80px+env(safe-area-inset-bottom))]',
         'pb-[env(safe-area-inset-bottom)]',
         'px-2',
       )}
@@ -115,13 +118,12 @@ export function BottomNav({ username, ownedWatches }: BottomNavProps) {
         active={isExplore}
       />
       {/*
-        Wear column: elevated ~20px above the bar plane via -translate-y-5
-        on this wrapper (D-01). NavWearButton renders the 56x56 accent
-        circle + "Wear" label; it also owns the WatchPickerDialog open state.
+        Wear column uses NavWearButton's `bottom-nav` appearance, which renders
+        the same two-row (icon area flex-1 + label band) shape as NavLink so
+        all 5 column labels share a common bottom baseline. The 56×56 accent
+        circle is visually prominent via size + fill, not physical elevation.
       */}
-      <div className="flex flex-1 items-end justify-center -translate-y-5">
-        <NavWearButton ownedWatches={ownedWatches} appearance="bottom-nav" />
-      </div>
+      <NavWearButton ownedWatches={ownedWatches} appearance="bottom-nav" />
       <NavLink href="/watch/new" icon={Plus} label="Add" active={isAdd} />
       <NavLink
         href={profileHref}
