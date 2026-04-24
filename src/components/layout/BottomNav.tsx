@@ -27,9 +27,12 @@ import type { Watch } from '@/lib/types'
  *   - Fixed to the viewport bottom with safe-area padding for iOS home
  *     indicator (NAV-03 — paired with `viewport-fit=cover` on the layout).
  *   - 5 flex columns: Home · Explore · Wear · Add · Profile. Each column
- *     uses a two-row shape (icon area flex-1 + label band pb-2) so the
- *     Wear 56×56 circle and the 20px lucide icons sit in the same bar
- *     plane while all 5 labels share a single bottom baseline.
+ *     uses `justify-end gap-1 pb-2` so the icon sits directly above the
+ *     label with a 4px gap — all 5 labels share a single bottom baseline
+ *     regardless of icon size. The Wear circle (56×56) is lifted above
+ *     the bar plane via `-translate-y-2` on the circle only (see
+ *     NavWearButton), preserving the notch/cradle look without shifting
+ *     the label out of its bottom band.
  *
  * Active state (D-04):
  *   - Non-Wear items flip icon + label color to `text-accent` and bump
@@ -62,21 +65,19 @@ function NavLink({ href, icon: Icon, label, active }: NavLinkProps) {
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className="flex flex-1 flex-col items-center h-full min-h-11"
+      className="flex flex-1 flex-col items-center justify-end gap-1 pb-2 h-full min-h-11"
     >
-      <span className="flex-1 flex items-center justify-center">
-        <Icon
-          className={cn(
-            'size-6',
-            active ? 'text-accent' : 'text-muted-foreground',
-          )}
-          strokeWidth={active ? 2.5 : 2}
-          aria-hidden
-        />
-      </span>
+      <Icon
+        className={cn(
+          'size-6',
+          active ? 'text-accent' : 'text-muted-foreground',
+        )}
+        strokeWidth={active ? 2.5 : 2}
+        aria-hidden
+      />
       <span
         className={cn(
-          'text-[12px] leading-[16px] font-semibold pb-2',
+          'text-[12px] leading-[16px] font-semibold',
           active ? 'text-accent' : 'text-muted-foreground',
         )}
       >

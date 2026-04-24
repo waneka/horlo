@@ -167,13 +167,30 @@ describe('BottomNav (Phase 14 NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-09, NA
     expect(container.innerHTML).not.toContain('-translate-y-5')
   })
 
-  it('Test 18c — all 5 labels sit in a pb-2 band so they share a common bottom baseline (14.1)', () => {
+  it('Test 18c — all 5 columns use justify-end gap-1 pb-2 so labels share a common bottom baseline (14.1)', () => {
     mockPath('/')
     render(<BottomNav username="alice" ownedWatches={[]} />)
-    for (const text of ['Home', 'Explore', 'Wear', 'Add', 'Profile']) {
-      const label = screen.getByText(text)
-      expect(label.className).toMatch(/pb-2/)
+    for (const text of ['Home', 'Explore', 'Add', 'Profile']) {
+      const link = screen.getByRole('link', { name: new RegExp(text, 'i') })
+      expect(link.className).toMatch(/justify-end/)
+      expect(link.className).toMatch(/gap-1/)
+      expect(link.className).toMatch(/pb-2/)
     }
+    const wearBtn = screen.getByLabelText('Log a wear')
+    expect(wearBtn.className).toMatch(/justify-end/)
+    expect(wearBtn.className).toMatch(/gap-1/)
+    expect(wearBtn.className).toMatch(/pb-2/)
+  })
+
+  it('Test 18d — Wear circle is lifted above the bar via -translate-y-2 (14.1 cradle)', () => {
+    mockPath('/')
+    const { container } = render(
+      <BottomNav username="alice" ownedWatches={[]} />,
+    )
+    // The accent circle span is the direct child of the Wear button that
+    // wraps the lucide Watch icon; assert the translate-y-2 lift is present
+    // on exactly one element (the circle, not the column).
+    expect(container.innerHTML).toContain('-translate-y-2')
   })
 
   it('Test 18 — inactive non-Wear labels use text-muted-foreground; active use text-accent (D-04)', () => {

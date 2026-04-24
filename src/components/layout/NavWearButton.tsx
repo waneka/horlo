@@ -54,27 +54,26 @@ export function NavWearButton({
   const trigger =
     appearance === 'bottom-nav' ? (
       // D-02/D-03: 56×56 accent circle, Watch icon 28×28, two-layer Figma
-      // shadow. Two-row column (icon area flex-1 + label band pb-2) mirrors
-      // NavLink so the "Wear" label shares the bottom baseline of Home,
-      // Explore, Add, Profile. No physical elevation — prominence comes
-      // from the filled accent circle, not translate-y.
+      // shadow. Column mirrors NavLink's `justify-end gap-1 pb-2` shape so
+      // the "Wear" label shares the bottom baseline of Home/Explore/Add/
+      // Profile. The circle lifts above the bar plane via -translate-y-2
+      // (visual "notch" cradle) — a transform lift does NOT reserve layout
+      // space, so the label stays anchored in its bottom band regardless.
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Log a wear"
-        className="flex flex-1 flex-col items-center h-full min-h-11"
+        className="flex flex-1 flex-col items-center justify-end gap-1 pb-2 h-full min-h-11"
       >
-        <span className="flex-1 flex items-center justify-center">
-          <span
-            className={cn(
-              'flex size-14 items-center justify-center rounded-full bg-accent',
-              'shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)]',
-            )}
-          >
-            <Watch className="size-7 text-accent-foreground" aria-hidden />
-          </span>
+        <span
+          className={cn(
+            'flex size-14 items-center justify-center rounded-full bg-accent -translate-y-2',
+            'shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)]',
+          )}
+        >
+          <Watch className="size-7 text-accent-foreground" aria-hidden />
         </span>
-        <span className="text-[12px] leading-[16px] font-semibold text-accent pb-2">
+        <span className="text-[12px] leading-[16px] font-semibold text-accent">
           Wear
         </span>
       </button>
