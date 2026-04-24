@@ -27,12 +27,12 @@ import type { Watch } from '@/lib/types'
  *   - Fixed to the viewport bottom with safe-area padding for iOS home
  *     indicator (NAV-03 — paired with `viewport-fit=cover` on the layout).
  *   - 5 flex columns: Home · Explore · Wear · Add · Profile. Each column
- *     uses `justify-end gap-1 pb-3` so the icon sits directly above the
+ *     uses `justify-end gap-1 pb-4` so the icon sits directly above the
  *     label with a 4px gap — all 5 labels share a single bottom baseline
- *     regardless of icon size. The Wear circle (56×56) is lifted above
- *     the bar plane via `-translate-y-2` + natural flex overflow on the
- *     circle only (see NavWearButton), preserving the notch/cradle look
- *     without shifting the label out of its bottom band.
+ *     regardless of icon size. The Wear circle (56×56, shrink-0) is
+ *     lifted above the bar plane by ~12px via natural flex overflow (the
+ *     column's content is 92px, exceeding the 80px column) — no transform
+ *     needed, and the label stays anchored in its bottom band.
  *
  * Active state (D-04):
  *   - Non-Wear items flip icon + label color to `text-accent` and bump
@@ -65,7 +65,7 @@ function NavLink({ href, icon: Icon, label, active }: NavLinkProps) {
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className="flex flex-1 flex-col items-center justify-end gap-1 pb-3 h-full min-h-11"
+      className="flex flex-1 flex-col items-center justify-end gap-1 pb-4 h-full min-h-11"
     >
       <Icon
         className={cn(

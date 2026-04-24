@@ -167,35 +167,38 @@ describe('BottomNav (Phase 14 NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-09, NA
     expect(container.innerHTML).not.toContain('-translate-y-5')
   })
 
-  it('Test 18c — all 5 columns use justify-end gap-1 pb-3 so labels share a common bottom baseline (14.1)', () => {
+  it('Test 18c — all 5 columns use justify-end gap-1 pb-4 so labels share a common bottom baseline (14.1)', () => {
     mockPath('/')
     render(<BottomNav username="alice" ownedWatches={[]} />)
     for (const text of ['Home', 'Explore', 'Add', 'Profile']) {
       const link = screen.getByRole('link', { name: new RegExp(text, 'i') })
       expect(link.className).toMatch(/justify-end/)
       expect(link.className).toMatch(/gap-1/)
-      expect(link.className).toMatch(/pb-3/)
+      expect(link.className).toMatch(/pb-4/)
     }
     const wearBtn = screen.getByLabelText('Log a wear')
     expect(wearBtn.className).toMatch(/justify-end/)
     expect(wearBtn.className).toMatch(/gap-1/)
-    expect(wearBtn.className).toMatch(/pb-3/)
+    expect(wearBtn.className).toMatch(/pb-4/)
   })
 
-  it('Test 18d — Wear circle is lifted above the bar via -translate-y-2 and uses shrink-0 to stay a perfect 56×56 (14.1 cradle)', () => {
+  it('Test 18d — Wear circle keeps a perfect 56×56 via shrink-0; cradle lift comes from natural flex overflow (14.1)', () => {
     mockPath('/')
     const { container } = render(
       <BottomNav username="alice" ownedWatches={[]} />,
     )
     // The accent circle span is the direct child of the Wear button that
-    // wraps the lucide Watch icon; assert the translate-y-2 lift is present
-    // and shrink-0 prevents flex from squishing the circle vertically when
-    // the column's natural content height exceeds 80px.
-    expect(container.innerHTML).toContain('-translate-y-2')
+    // wraps the lucide Watch icon. `shrink-0` keeps it a perfect 56×56
+    // when the column's natural content (56 + 4 + 16 + 16 = 92px) exceeds
+    // the 80px column height — the 12px overflow provides the cradle lift
+    // without needing a transform. No translate-y should remain on the
+    // circle in this revision.
     const wearBtn = screen.getByLabelText('Log a wear')
     const circle = wearBtn.querySelector('span.size-14')
     expect(circle).toBeTruthy()
     expect(circle?.className).toMatch(/shrink-0/)
+    expect(circle?.className).not.toMatch(/-translate-y-/)
+    expect(container.innerHTML).not.toContain('-translate-y-')
   })
 
   it('Test 18 — inactive non-Wear labels use text-muted-foreground; active use text-accent (D-04)', () => {
