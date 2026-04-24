@@ -18,6 +18,19 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
 import type { Watch } from '@/lib/types'
 
+// jsdom omits URL.createObjectURL / URL.revokeObjectURL. ComposeStep builds
+// preview URLs from the photo blob inside a useMemo, so the stub must be in
+// place before the first render. Kept test-local so it doesn't pollute the
+// shared setup file.
+if (typeof URL.createObjectURL !== 'function') {
+  ;(URL as unknown as { createObjectURL: (b: Blob) => string }).createObjectURL =
+    () => 'blob:stub/preview'
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  ;(URL as unknown as { revokeObjectURL: (s: string) => void }).revokeObjectURL =
+    () => {}
+}
+
 // ---- Shared mocks ----------------------------------------------------------
 
 // next/link stub (WatchPickerDialog uses <Link> in empty state)

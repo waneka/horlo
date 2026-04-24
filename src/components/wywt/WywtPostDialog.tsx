@@ -112,16 +112,25 @@ export function WywtPostDialog({
   }
 
   // Parent-driven close: reset draft state when `open` flips to false so the
-  // NEXT open starts from the picker with a fresh wearEventId.
-  useEffect(() => {
-    if (open) return
-    setStep('picker')
-    setSelectedWatchId(null)
-    setPhotoBlob(null)
-    setNote('')
-    setVisibility('public')
-    setWornTodayIds(undefined)
-  }, [open])
+  // NEXT open starts from the picker with a fresh wearEventId. We track the
+  // previous `open` value in useState and flip on the true→false transition
+  // directly during render — per React docs, setting state during render is
+  // the recommended pattern for "adjust state based on a changing prop"
+  // (avoids the cascading-rerender hazard that
+  // react-hooks/set-state-in-effect flags, and avoids the ref-mutation-in-
+  // render hazard that react-hooks/refs flags).
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (prevOpen !== open) {
+    setPrevOpen(open)
+    if (!open) {
+      setStep('picker')
+      setSelectedWatchId(null)
+      setPhotoBlob(null)
+      setNote('')
+      setVisibility('public')
+      setWornTodayIds(undefined)
+    }
+  }
 
   if (step === 'picker') {
     return (

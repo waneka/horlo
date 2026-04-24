@@ -19,7 +19,7 @@
 // - 15-CONTEXT.md D-09 (HEIC lazy in worker; non-HEIC skips worker)
 // - 15-UI-SPEC.md §Copywriting Contract
 
-import { useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { stripAndResize } from '@/lib/exif/strip'
@@ -69,61 +69,82 @@ export interface PhotoUploaderProps {
   disabled?: boolean
 }
 
-export function PhotoUploader({
-  onPhotoReady,
-  onError,
-  disabled,
-}: PhotoUploaderProps) {
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    // Reset the input so the same file can be re-selected after Remove.
-    e.target.value = ''
-    if (!file) return
-
-    setBusy(true)
-    try {
-      let blob: Blob = file
-      if (isHeicFile(file)) {
-        try {
-          blob = await convertHeic(file)
-        } catch {
-          onError('Could not convert HEIC photo. Please try another image.')
-          setBusy(false)
-          return
-        }
-      }
-      const result = await stripAndResize(blob)
-      onPhotoReady(result.blob)
-    } catch {
-      onError('Could not process photo. Please try another image.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*,.heic,.heif"
-        onChange={handleFileChange}
-        disabled={disabled || busy}
-        className="sr-only"
-        aria-label="Upload photo from device"
-      />
-      <Button
-        type="button"
-        variant="outline"
-        disabled={disabled || busy}
-        onClick={() => inputRef.current?.click()}
-      >
-        <ImageIcon aria-hidden="true" />
-        {busy ? 'Processing…' : 'Upload photo'}
-      </Button>
-    </>
-  )
+/**
+ * Imperative handle exposed to parents via ref (Phase 15 Plan 03b D-07).
+ *
+ * `openPicker()` programmatically clicks the internal <input type="file">
+ * so ComposeStep's "Choose another" link can re-open the native picker
+ * without the user tapping the Upload photo button again. Browsers require
+ * `.click()` on a file input to originate inside a user-gesture handler;
+ * the link tap that invokes `openPicker()` IS that gesture, so this works.
+ */
+export interface PhotoUploaderHandle {
+  openPicker: () => void
 }
+
+export const PhotoUploader = forwardRef<PhotoUploaderHandle, PhotoUploaderProps>(
+  function PhotoUploader({ onPhotoReady, onError, disabled }, ref) {
+    const inputRef = useRef<HTMLInputElement | null>(null)
+    const [busy, setBusy] = useState(false)
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        openPicker: () => {
+          inputRef.current?.click()
+        },
+      }),
+      [],
+    )
+
+    async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0]
+      // Reset the input so the same file can be re-selected after Remove.
+      e.target.value = ''
+      if (!file) return
+
+      setBusy(true)
+      try {
+        let blob: Blob = file
+        if (isHeicFile(file)) {
+          try {
+            blob = await convertHeic(file)
+          } catch {
+            onError('Could not convert HEIC photo. Please try another image.')
+            setBusy(false)
+            return
+          }
+        }
+        const result = await stripAndResize(blob)
+        onPhotoReady(result.blob)
+      } catch {
+        onError('Could not process photo. Please try another image.')
+      } finally {
+        setBusy(false)
+      }
+    }
+
+    return (
+      <>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          onChange={handleFileChange}
+          disabled={disabled || busy}
+          className="sr-only"
+          aria-label="Upload photo from device"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled || busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          <ImageIcon aria-hidden="true" />
+          {busy ? 'Processing…' : 'Upload photo'}
+        </Button>
+      </>
+    )
+  },
+)
