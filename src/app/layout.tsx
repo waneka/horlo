@@ -6,6 +6,7 @@ import './globals.css'
 import { Header } from '@/components/layout/Header'
 import { HeaderSkeleton } from '@/components/layout/HeaderSkeleton'
 import { BottomNavServer } from '@/components/layout/BottomNavServer'
+import { ThemedToaster } from '@/components/ui/ThemedToaster'
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: '--font-sans',
@@ -61,6 +62,10 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <BottomNavServer />
           </Suspense>
+          {/* WYWT-19: ThemedToaster sits INSIDE ThemeProvider (so useTheme() works)
+              but OUTSIDE every Suspense boundary (Pitfall H-1 — transitions
+              would otherwise unmount the toast layer mid-toast). */}
+          <ThemedToaster />
         </ThemeProvider>
       </body>
     </html>
