@@ -54,20 +54,23 @@ export function NavWearButton({
   const trigger =
     appearance === 'bottom-nav' ? (
       // D-02/D-03: 56×56 accent circle, Watch icon 28×28, two-layer Figma
-      // shadow. Column mirrors NavLink's `justify-end gap-1 pb-2` shape so
+      // shadow. Column mirrors NavLink's `justify-end gap-1 pb-3` shape so
       // the "Wear" label shares the bottom baseline of Home/Explore/Add/
-      // Profile. The circle lifts above the bar plane via -translate-y-2
-      // (visual "notch" cradle) — a transform lift does NOT reserve layout
-      // space, so the label stays anchored in its bottom band regardless.
+      // Profile. `shrink-0` on the circle prevents flex-shrink from
+      // squishing it vertically when the column's natural content height
+      // (56 + 4 + 16 + 12 = 88px) exceeds the 80px column; the overflow
+      // becomes the cradle lift itself. `-translate-y-2` adds a further
+      // 8px transform-based rise (transform doesn't reserve layout space,
+      // so the label stays anchored in its bottom band regardless).
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Log a wear"
-        className="flex flex-1 flex-col items-center justify-end gap-1 pb-2 h-full min-h-11"
+        className="flex flex-1 flex-col items-center justify-end gap-1 pb-3 h-full min-h-11"
       >
         <span
           className={cn(
-            'flex size-14 items-center justify-center rounded-full bg-accent -translate-y-2',
+            'flex size-14 shrink-0 items-center justify-center rounded-full bg-accent -translate-y-2',
             'shadow-[0px_10px_15px_0px_rgba(0,0,0,0.1),0px_4px_6px_0px_rgba(0,0,0,0.1)]',
           )}
         >

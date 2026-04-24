@@ -167,30 +167,35 @@ describe('BottomNav (Phase 14 NAV-01, NAV-02, NAV-03, NAV-04, NAV-05, NAV-09, NA
     expect(container.innerHTML).not.toContain('-translate-y-5')
   })
 
-  it('Test 18c — all 5 columns use justify-end gap-1 pb-2 so labels share a common bottom baseline (14.1)', () => {
+  it('Test 18c — all 5 columns use justify-end gap-1 pb-3 so labels share a common bottom baseline (14.1)', () => {
     mockPath('/')
     render(<BottomNav username="alice" ownedWatches={[]} />)
     for (const text of ['Home', 'Explore', 'Add', 'Profile']) {
       const link = screen.getByRole('link', { name: new RegExp(text, 'i') })
       expect(link.className).toMatch(/justify-end/)
       expect(link.className).toMatch(/gap-1/)
-      expect(link.className).toMatch(/pb-2/)
+      expect(link.className).toMatch(/pb-3/)
     }
     const wearBtn = screen.getByLabelText('Log a wear')
     expect(wearBtn.className).toMatch(/justify-end/)
     expect(wearBtn.className).toMatch(/gap-1/)
-    expect(wearBtn.className).toMatch(/pb-2/)
+    expect(wearBtn.className).toMatch(/pb-3/)
   })
 
-  it('Test 18d — Wear circle is lifted above the bar via -translate-y-2 (14.1 cradle)', () => {
+  it('Test 18d — Wear circle is lifted above the bar via -translate-y-2 and uses shrink-0 to stay a perfect 56×56 (14.1 cradle)', () => {
     mockPath('/')
     const { container } = render(
       <BottomNav username="alice" ownedWatches={[]} />,
     )
     // The accent circle span is the direct child of the Wear button that
     // wraps the lucide Watch icon; assert the translate-y-2 lift is present
-    // on exactly one element (the circle, not the column).
+    // and shrink-0 prevents flex from squishing the circle vertically when
+    // the column's natural content height exceeds 80px.
     expect(container.innerHTML).toContain('-translate-y-2')
+    const wearBtn = screen.getByLabelText('Log a wear')
+    const circle = wearBtn.querySelector('span.size-14')
+    expect(circle).toBeTruthy()
+    expect(circle?.className).toMatch(/shrink-0/)
   })
 
   it('Test 18 — inactive non-Wear labels use text-muted-foreground; active use text-accent (D-04)', () => {
