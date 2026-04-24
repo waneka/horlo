@@ -3,7 +3,7 @@ phase: 15
 plan: 02
 type: execute
 wave: 1
-depends_on: []
+depends_on: ["15-01"]
 files_modified:
   - src/components/ui/ThemedToaster.tsx
   - src/app/layout.tsx
@@ -48,9 +48,9 @@ must_haves:
 <objective>
 Ship the Sonner toast infrastructure: a custom `ThemedToaster` Client Component bound to Horlo's custom `ThemeProvider` (NOT `next-themes`), mounted in the root layout as a sibling of every `<Suspense>` boundary.
 
-Purpose: Plan 03 (WywtPostDialog) fires `toast.success('Wear logged')` from its Client Component submit handler after the Server Action returns success. Without a mounted `<Toaster>` nothing displays. The toaster MUST be outside Suspense (Pitfall H-1 — transition-triggered Suspense re-render unmounts the toast layer) AND bound to the custom ThemeProvider (Pitfall H-3 — `next-themes` breaks under `cacheComponents: true`).
+Purpose: Plan 03b (ComposeStep submit handler) fires `toast.success('Wear logged')` from its Client Component after the Server Action returns success. Without a mounted `<Toaster>` nothing displays. The toaster MUST be outside Suspense (Pitfall H-1 — transition-triggered Suspense re-render unmounts the toast layer) AND bound to the custom ThemeProvider (Pitfall H-3 — `next-themes` breaks under `cacheComponents: true`).
 
-Output: one new Client Component + one-line change to `src/app/layout.tsx` + one Wave 0 test. This plan is independent of Plan 01 — `files_modified` have zero overlap, so both plans run in Wave 1 in parallel.
+Output: one new Client Component + one-line change to `src/app/layout.tsx` + one Wave 0 test. This plan depends on Plan 01 ONLY for the `sonner` dependency install (Plan 01 Task 1 commits `sonner@^2.0.7` to package.json + package-lock.json). Plan 02 itself does NOT touch package.json — it only consumes the dependency. Despite the `depends_on`, Plan 02 is otherwise file-independent from Plan 01 (zero `files_modified` overlap): as soon as Plan 01 Task 1 lands, Plan 02 can proceed in parallel with Plan 01 Tasks 2-3.
 </objective>
 
 <execution_context>
@@ -92,7 +92,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): JSX.
 export function useTheme(): ThemeContextValue  // falls back to {theme: undefined, resolvedTheme: 'light', setTheme: () => {}} when outside provider
 ```
 
-From sonner (installed by Plan 01 Task 1):
+From sonner (installed by Plan 01 Task 1 — Plan 02 consumes but does NOT re-install):
 ```typescript
 import { Toaster } from 'sonner'
 type ToasterProps = {
@@ -132,7 +132,7 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
   <name>Task 1: Create ThemedToaster Client Component + write Wave 0 theming test (RED → GREEN)</name>
   <files>src/components/ui/ThemedToaster.tsx, tests/components/ThemedToaster.test.tsx</files>
   <read_first>
-    - src/components/theme-provider.tsx (verify useTheme signature and fallback values)
+    - src/components/theme-provider.tsx (verify useTheme signature and fallback values — note: `resolvedTheme` starts at 'light', then the mount effect reads the `horlo-theme` cookie + `prefers-color-scheme` and updates state. The test below exercises both the initial-render value and the post-reconcile value via `waitFor`.)
     - RESEARCH.md §Pattern 10 — ThemedToaster (custom ThemeProvider, NOT next-themes) — full code example
     - RESEARCH.md §Pitfall 10 — Sonner theme mismatch with custom ThemeProvider
     - RESEARCH.md §Pitfall 11 — toast() called inside Server Action
@@ -140,18 +140,19 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
     - CONTEXT.md D-25 / D-26 / D-27 / D-28 — toaster mount rules
     - UI-SPEC.md §Sonner ThemedToaster mount
     - tests/components/settings/ (any file) — RTL component test pattern
-    - package.json (confirm `sonner@^2.0.7` present; Plan 01 Task 1 installed it — this plan can start in parallel BECAUSE plan 01 Task 1 commits the install; if the executor runs this plan before Plan 01 they MUST run `npm install sonner@^2.0.7` first)
+    - package.json (confirm `sonner@^2.0.7` present — Plan 01 Task 1 installed it; Plan 02 depends_on ['15-01'] so this guarantee holds by execution order. If the executor runs this plan out of order, they MUST first run `npm install sonner@^2.0.7` in Plan 01 per the dependency ordering. Plan 02 itself MUST NOT run `npm install` — Plan 02's files_modified does not list package.json, and doing so would race Plan 01's lockfile write.)
   </read_first>
   <behavior>
-    - Test 1: Renders `<ThemedToaster />` inside a `<ThemeProvider>` with `resolvedTheme='dark'` → the rendered Toaster's DOM root (or wrapper) has a `data-theme="dark"` attribute OR receives the `theme` prop as 'dark' (assert via `vi.mocked` on sonner if direct DOM probe is brittle).
-    - Test 2: Renders `<ThemedToaster />` OUTSIDE a `<ThemeProvider>` (useTheme fallback path) → does not crash; theme defaults to 'light' (the fallback value from theme-provider.tsx line 109).
-    - Test 3 (snapshot/DOM): `<Toaster>` is positioned at `position="bottom-center"` and `richColors` is enabled.
+    - Test 1 (theme-binding — EXACT match): Render a probe component alongside `<ThemedToaster />` that surfaces `useTheme().resolvedTheme` via a `data-resolved-theme` attribute. Set the `horlo-theme=dark` cookie BEFORE mounting; use `waitFor` to assert that BOTH the probe's `data-resolved-theme` AND the Toaster's `data-theme` equal the same value (either `'light'` on initial render OR `'dark'` after reconciliation, but they MUST always match each other). This proves the Toaster's `theme` prop receives exactly `resolvedTheme` from the custom ThemeProvider (not a hard-coded value, not a constant).
+    - Test 2 (fallback path): Renders `<ThemedToaster />` OUTSIDE a `<ThemeProvider>` (useTheme fallback path) → does not crash; theme defaults to `'light'` (the explicit fallback value from theme-provider.tsx — verified by reading the hook's fallback return).
+    - Test 3 (position + richColors): `<Toaster>` is positioned at `position="bottom-center"` and `richColors` is enabled. Matches RESEARCH §Pattern 10.
   </behavior>
   <action>
-    Step 1 — Install `sonner` if not already present (idempotent — Plan 01 Task 1 also installs it; `npm install sonner@^2.0.7` is safe to re-run):
+    Step 1 — Do NOT install sonner in this plan. Plan 01 Task 1 installs it; Plan 02 depends on that. Simply verify it exists before writing code:
     ```bash
-    npm ls sonner || npm install sonner@^2.0.7
+    node -e "require('sonner')" 2>&1 | head -1  # expect silent success OR "Cannot find module 'sonner'" (fail-fast indicates Plan 01 not yet complete)
     ```
+    If the module is missing, STOP and re-run Plan 01 Task 1 — do NOT install from this plan (lockfile race with Plan 01).
 
     Step 2 — Create `src/components/ui/ThemedToaster.tsx` EXACTLY per RESEARCH §Pattern 10:
     ```tsx
@@ -187,12 +188,12 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
     }
     ```
 
-    Step 3 — Create `tests/components/ThemedToaster.test.tsx` Wave 0 file. Use RTL `render()` and mock sonner:
+    Step 3 — Create `tests/components/ThemedToaster.test.tsx` Wave 0 file. Use RTL `render()` + a PROBE component that surfaces `resolvedTheme` so we assert Toaster's theme EXACTLY matches ThemeProvider's value (no loose `toContain` — a regression that hard-codes theme='light' must fail):
     ```tsx
     import { describe, it, expect, vi } from 'vitest'
-    import { render } from '@testing-library/react'
+    import { render, waitFor } from '@testing-library/react'
     import { ThemedToaster } from '@/components/ui/ThemedToaster'
-    import { ThemeProvider } from '@/components/theme-provider'
+    import { ThemeProvider, useTheme } from '@/components/theme-provider'
 
     vi.mock('sonner', () => ({
       Toaster: (props: Record<string, unknown>) => (
@@ -205,19 +206,40 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
       ),
     }))
 
+    // Probe surfaces useTheme().resolvedTheme so the test can assert the Toaster
+    // mirrors the exact same value — not a loose "it's one of these" assertion.
+    function ResolvedThemeProbe() {
+      const { resolvedTheme } = useTheme()
+      return <div data-testid="resolved-probe" data-resolved-theme={resolvedTheme} />
+    }
+
     describe('ThemedToaster', () => {
-      it('passes resolvedTheme from ThemeProvider to Sonner theme prop', () => {
-        // Set the cookie BEFORE rendering ThemeProvider; its effect reads cookie on mount
+      it('Toaster `theme` prop EXACTLY equals useTheme().resolvedTheme (no hard-coded value)', async () => {
+        // Set cookie BEFORE render; ThemeProvider's mount effect reads it and
+        // reconciles resolvedTheme from its initial 'light' → 'dark'.
         document.cookie = 'horlo-theme=dark; path=/'
         document.documentElement.classList.add('dark')
         const { getByTestId } = render(
-          <ThemeProvider><ThemedToaster /></ThemeProvider>
+          <ThemeProvider>
+            <ResolvedThemeProbe />
+            <ThemedToaster />
+          </ThemeProvider>
         )
+        // Reconciliation timing: ThemeProvider runs its mount useEffect, setting
+        // resolvedTheme to 'dark'. We waitFor the probe to flip to 'dark' AND
+        // assert the Toaster flipped in lockstep.
+        await waitFor(() => {
+          const probe = getByTestId('resolved-probe')
+          const toaster = getByTestId('sonner-toaster')
+          expect(probe.getAttribute('data-resolved-theme')).toBe('dark')
+          expect(toaster.getAttribute('data-theme')).toBe('dark')
+        })
+        // CRITICAL invariant: at ANY render, Toaster.data-theme === probe.data-resolved-theme
+        const probe = getByTestId('resolved-probe')
         const toaster = getByTestId('sonner-toaster')
-        // resolvedTheme starts as 'light' and reconciles to 'dark' in the mount effect
-        // depending on how React batches, the test should accept either — but the
-        // important invariant is that it matches useTheme().resolvedTheme
-        expect(['light', 'dark']).toContain(toaster.getAttribute('data-theme'))
+        expect(toaster.getAttribute('data-theme')).toBe(
+          probe.getAttribute('data-resolved-theme')
+        )
         document.documentElement.classList.remove('dark')
         document.cookie = 'horlo-theme=; path=/; max-age=0'
       })
@@ -238,7 +260,9 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
     })
     ```
 
-    Step 4 — Run test RED (ThemedToaster not created yet — test fails with import error) → implement → GREEN.
+    Reconciliation timing note (for the executor): `useTheme().resolvedTheme` returns `'light'` on the first render (before the ThemeProvider's mount `useEffect` runs). Inside the mount effect the provider reads the `horlo-theme` cookie and calls `setResolvedTheme('dark')`. React commits the state update → the ThemedToaster re-renders → `<Toaster theme='dark' />` → the mocked `<div data-theme="dark" />`. The probe surfaces the SAME `resolvedTheme`, so probe and Toaster are always updated on the same render — the `expect(toaster).toBe(probe)` invariant holds across every render, not just the final one.
+
+    Step 4 — Run test RED (ThemedToaster not created yet → import error) → implement the component → GREEN. The probe-pattern invariant (Test 1's second `expect`) is what catches a regression where someone hard-codes `theme='light'`; the `waitFor` block catches a regression where the Toaster fails to re-render after provider reconciliation.
   </action>
   <verify>
     <automated>npm run test -- tests/components/ThemedToaster.test.tsx</automated>
@@ -249,6 +273,8 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
     - `grep -n "from 'sonner'" src/components/ui/ThemedToaster.tsx` returns exactly 1 match (the named import)
     - `grep -n 'bottom-center' src/components/ui/ThemedToaster.tsx` returns 1 match (position prop)
     - `npm run test -- tests/components/ThemedToaster.test.tsx` exits 0 with ≥3 tests passing
+    - Test 1's probe-vs-Toaster equality invariant is asserted (proves a regression that hard-codes theme='light' would fail)
+    - Plan 02 does NOT modify package.json or package-lock.json (no `npm install` in this plan)
   </done>
 </task>
 
@@ -326,7 +352,7 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
 | T-15-12 | T (Sonner XSS via toast content) | LOW | ThemedToaster + call sites | Sonner renders `toast()` message as text, not innerHTML. Phase 15's only toast message is the literal string `"Wear logged"` (no user input flows into the toast). Note text appears on `/wear/[id]` which React escapes by default. |
 | T-15-13 | I (toast disappears due to Suspense unmount) | LOW | src/app/layout.tsx | Mount location is a SIBLING of Suspense boundaries — architectural enforcement in layout.tsx ensures toast layer persists across transitions. |
 | T-15-14 | D (Theme flash breaks UX) | LOW | ThemedToaster | resolvedTheme starts as 'light' before the ThemeProvider's mount effect reconciles from the cookie. Acceptable — toast typically appears AFTER reconciliation (user interaction). |
-| T-15-15 | T (Server Action call to toast → silent failure) | MED | Server Actions (wearEvents.ts — built in Plan 03) | Discipline enforced in Plan 03 code review: toast() invocation only in Client Component submit handlers after `result.success === true`. Architectural: Server Actions cannot import 'sonner' (will throw at bundle time or silently no-op in the server render — tracked in Plan 03 verification). |
+| T-15-15 | T (Server Action call to toast → silent failure) | MED | Server Actions (wearEvents.ts — built in Plan 03a) | Discipline enforced in Plan 03a code review: toast() invocation only in Client Component submit handlers after `result.success === true`. Architectural: Server Actions cannot import 'sonner' (will throw at bundle time or silently no-op in the server render — tracked in Plan 03a verification). |
 </threat_model>
 
 <verification>
@@ -338,6 +364,7 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
 - `npx tsc --noEmit` exits 0 after the layout.tsx edit
 - `npm run lint` exits 0 on modified files
 - No `'use client'` directive is added or removed in `src/app/layout.tsx` (it remains a Server Component)
+- `git diff HEAD package.json package-lock.json` is empty for Plan 02's commits (Plan 02 does not install any dependencies)
 </verification>
 
 <success_criteria>
@@ -347,13 +374,15 @@ The correct insertion point for `<ThemedToaster />` is INSIDE `<ThemeProvider>` 
 2. `ThemedToaster` imports `Toaster` from `sonner` (not from any shadcn scaffold) and does NOT import `next-themes`
 3. `ThemedToaster` is mounted in root layout INSIDE `<ThemeProvider>` and OUTSIDE every `<Suspense>`
 4. `position="bottom-center"` + `richColors` props are set
-5. Wave 0 `tests/components/ThemedToaster.test.tsx` is green
+5. Wave 0 `tests/components/ThemedToaster.test.tsx` is green; Test 1 asserts Toaster.data-theme EXACTLY equals probe.data-resolved-theme (no loose membership check)
 6. No existing test regresses (`npm run test` full suite still green)
+7. Plan 02 does NOT install dependencies (sonner is installed by Plan 01 Task 1; Plan 02 depends_on ['15-01'] for ordering)
 </success_criteria>
 
 <output>
 After completion, create `.planning/phases/15-wywt-photo-post-flow/15-02-SUMMARY.md` documenting:
-- Sonner version installed (should be 2.0.7 per research)
+- Confirmation that sonner was installed by Plan 01 (not by this plan)
 - Any hydration warnings observed during dev smoke (should be none)
 - Exact layout.tsx diff (before/after insertion point)
+- Reconciliation timing observed in Test 1 (does the probe-vs-Toaster assertion hold on the initial render, after waitFor, or both?)
 </output>

@@ -2,8 +2,8 @@
 phase: 15
 plan: 04
 type: execute
-wave: 3
-depends_on: ["15-03"]
+wave: 4
+depends_on: ["15-03b"]
 files_modified:
   - src/data/wearEvents.ts
   - src/app/wear/[wearEventId]/page.tsx
@@ -80,7 +80,8 @@ Output: One new DAL function + one new route with 2 supporting components + one 
 @.planning/phases/15-wywt-photo-post-flow/15-VALIDATION.md
 @.planning/phases/15-wywt-photo-post-flow/15-01-SUMMARY.md
 @.planning/phases/15-wywt-photo-post-flow/15-02-SUMMARY.md
-@.planning/phases/15-wywt-photo-post-flow/15-03-SUMMARY.md
+@.planning/phases/15-wywt-photo-post-flow/15-03a-SUMMARY.md
+@.planning/phases/15-wywt-photo-post-flow/15-03b-SUMMARY.md
 @.planning/research/PITFALLS.md
 @./CLAUDE.md
 @./AGENTS.md
@@ -595,7 +596,7 @@ export function WearDetailMetadata(props: {
     grep -n "WywtOverlay" src/components/home/WywtRail.tsx
     grep -n "WywtOverlay" src/components/home/WywtTile.tsx
     ```
-    Confirm both files still import and use `WywtOverlay` (the Reels overlay preserved per WYWT-18). If Plan 03 Task 4 accidentally removed this, the executor MUST restore it.
+    Confirm both files still import and use `WywtOverlay` (the Reels overlay preserved per WYWT-18). If Plan 03b Task 4 accidentally removed this, the executor MUST restore it.
 
     Step 7 — Run the existing home-privacy integration test to confirm non-regression:
     ```bash
@@ -633,7 +634,8 @@ export function WearDetailMetadata(props: {
     Phase 15 is fully composed by this point:
     - Photo pipeline (Plan 01): EXIF strip, HEIC worker, PhotoUploader, CameraCaptureView, WristOverlaySvg, uploadWearPhoto
     - Sonner infrastructure (Plan 02): ThemedToaster in root layout
-    - Two-step dialog + Server Action (Plan 03): WywtPostDialog orchestrator, ComposeStep, VisibilitySegmentedControl, extended WatchPickerDialog, logWearWithPhoto Server Action, preflight disable, duplicate-day server catch, orphan cleanup, Sonner toast
+    - Wear backend (Plan 03a): logWearWithPhoto + getWornTodayIdsForUserAction Server Actions, DAL helpers, duplicate-day server catch, orphan cleanup
+    - Wear frontend (Plan 03b): WywtPostDialog orchestrator, ComposeStep (D-07 three-handler split), VisibilitySegmentedControl, extended WatchPickerDialog, NavWearButton/WywtRail call-site swaps, Sonner toast
     - Wear detail route (Plan 04 Tasks 1-2): /wear/[wearEventId] with three-tier gate, signed URL, full-bleed hero
   </what-built>
   <how-to-verify>
@@ -782,5 +784,5 @@ After completion, create `.planning/phases/15-wywt-photo-post-flow/15-04-SUMMARY
 - Manual UAT results per checklist item (pass / fail / notes)
 - Any EXIF orientation edge cases observed on real device (e.g., particular iPhone model / iOS version)
 - Signed URL TTL chosen (60 min per Discretion) and rationale
-- Whether A5 smoke from Plan 03 held at scale (does `.list()` under session client still work for the existence probe?)
+- Whether A5 smoke from Plan 03a held at scale (does `.list()` under session client still work for the existence probe?)
 </output>

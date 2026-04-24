@@ -84,7 +84,7 @@ created: 2026-04-24
 | EXIF GPS stripped in stored Supabase Storage object | WYWT-06 / T-15-03 | Requires real Supabase + `exiftool` (or `exifr` in a Node script) against the stored object | Upload iOS Photos image with known GPS EXIF → download from Storage → run `exiftool` (or `node scripts/check-exif.mjs`) → assert no `GPSLatitude` / `GPSLongitude` fields |
 | Duplicate-day: preflight disables watch in picker; force-insert via dev tools → inline error | WYWT-12 | Combines real session + DB UNIQUE constraint | Log a wear; refresh home; verify the watch is disabled in the picker; open DevTools, re-invoke `logWearWithPhoto` manually → assert 23505-derived inline error |
 | `/wear/[id]` for a follower-only event is 404 to a non-follower | WYWT-17 | Combines real RLS + viewer-session | Seed: userA posts followers-only event; userB (non-follower) visits `/wear/[id]` → assert HTTP 404, NOT a JSON error leak |
-| "Wear logged" Sonner toast visible on success | WYWT-16 | Visual regression on toast position, theme, and stacking | Submit valid wear; verify toast at viewport bottom-right, matches active theme (light/dark), auto-dismisses ~4s |
+| "Wear logged" Sonner toast visible on success | WYWT-16 | Visual regression on toast position, theme, and stacking | Submit valid wear; verify toast at viewport bottom-center, matches active theme (light/dark), auto-dismisses ~4s |
 
 ---
 
