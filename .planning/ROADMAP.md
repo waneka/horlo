@@ -145,7 +145,11 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   3. All captured or uploaded images are resized to a max 1080px dimension and EXIF-stripped via canvas re-encode before upload; a photo uploaded from iOS camera roll with EXIF GPS data has no GPS metadata in the stored file (verified with exiftool)
   4. The visibility selector shows Private, Followers, and Public with Public as the default; a successful wear post triggers a "Wear logged" Sonner toast; the same (user, watch, calendar day) combination cannot be logged twice — a clear error appears on the second attempt
   5. `/wear/[wearEventId]` shows the wear detail (image, watch, collector, note, timestamp) gated by three-tier visibility; a stranger gets a uniform 404 for private and followers-only wear events; the WYWT rail tile tap continues to open the Reels-style overlay from Phase 10
-**Plans**: TBD
+**Plans**: 4 plans (Wave 1: Plans 01, 02 parallel · Wave 2: Plan 03 · Wave 3: Plan 04)
+  - [ ] 15-01-PLAN.md — Photo pipeline (EXIF strip + resize, HEIC Web Worker + A2 Turbopack spike, Storage upload helper, PhotoUploader + CameraCaptureView + WristOverlaySvg); Wave 0 tests [Wave 1]
+  - [ ] 15-02-PLAN.md — ThemedToaster bound to custom ThemeProvider; mounted in root layout outside Suspense [Wave 1]
+  - [ ] 15-03-PLAN.md — Two-step WywtPostDialog flow: extended WatchPickerDialog (onWatchSelected + wornTodayIds), WywtPostDialog orchestrator, ComposeStep + VisibilitySegmentedControl, NavWearButton + WywtRail call-site swap, logWearWithPhoto Server Action + preflight wrapper + orphan cleanup, Wave 0 integration tests [Wave 2; depends on 15-01, 15-02]
+  - [ ] 15-04-PLAN.md — /wear/[wearEventId] Server Component with getWearEventByIdForViewer three-tier DAL, uniform notFound(), per-request signed URL mint, WearDetailHero + Metadata components, 9-cell privacy matrix integration test, Manual iOS UAT checkpoint [Wave 3; depends on 15-03]
 **Pitfalls to address**: D-1 (getUserMedia must be first await on iOS gesture — no awaits before it), D-2 (MediaStream cleanup on unmount), D-3 (camera permission denied UX), D-4 (canvas resize before upload — target < 500KB), D-5 (overlay relative units), E-1 (heic2any lazy-loaded in Web Worker — never eager import), E-2 (EXIF orientation before canvas draw — research flag: createImageBitmap vs exifr), E-3 (server-side storage path validation in Server Action), E-4 (EXIF stripped on ALL paths including camera), F-2 (signed URLs generated per-request, never in cached components), F-3 (orphan storage cleanup if row insert fails), F-4 (path convention {userId}/{wearEventId}.jpg enforced), H-1 (Toaster outside Suspense boundaries), H-2 (toast called from Client Component not Server Action), H-3 (Toaster uses custom ThemeProvider wrapper not next-themes scaffold)
 **UI hint**: yes
 
@@ -193,7 +197,7 @@ Plans:
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
 | 14. Nav Shell + Explore Stub | 9/9 | Complete    | 2026-04-24 |
-| 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
+| 15. WYWT Photo Post Flow | 0/4 | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
 
