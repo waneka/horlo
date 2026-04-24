@@ -44,9 +44,33 @@ interface Props {
   onOpenChange: (v: boolean) => void
   /** Pass the viewer's full watch set; this component filters to status='owned'. */
   watches: Watch[]
+  /**
+   * NEW (Phase 15 Plan 03b, D-02): When provided, selection is emitted upward
+   * via this callback and `markAsWorn` is NOT called. The parent
+   * (`WywtPostDialog`) owns the step transition to the compose form.
+   *
+   * Backwards-compatible: when omitted, the dialog keeps its original Phase 10
+   * behavior (Log wear → markAsWorn → close).
+   */
+  onWatchSelected?: (watchId: string) => void
+  /**
+   * NEW (Phase 15 Plan 03b, D-03): Watches already worn today render disabled
+   * with a "Worn today" label — prevents the duplicate-day 23505 path before
+   * it reaches the Server Action. Preflight data comes from
+   * `getWornTodayIdsForUserAction` (Plan 03a) in the orchestrator.
+   *
+   * Backwards-compatible: when omitted, all rows render enabled.
+   */
+  wornTodayIds?: ReadonlySet<string>
 }
 
-export function WatchPickerDialog({ open, onOpenChange, watches }: Props) {
+export function WatchPickerDialog({
+  open,
+  onOpenChange,
+  watches,
+  onWatchSelected,
+  wornTodayIds,
+}: Props) {
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -69,6 +93,14 @@ export function WatchPickerDialog({ open, onOpenChange, watches }: Props) {
 
   const handleSubmit = () => {
     if (!selectedId) return
+    // Phase 15 Plan 03b (D-02): when the parent owns the step machine, emit
+    // the selection upward and short-circuit the markAsWorn path entirely.
+    // The parent (WywtPostDialog) is responsible for advancing to compose
+    // and for closing / resetting the dialog when appropriate.
+    if (onWatchSelected) {
+      onWatchSelected(selectedId)
+      return
+    }
     setError(null)
     startTransition(async () => {
       const result = await markAsWorn(selectedId)
@@ -138,26 +170,45 @@ export function WatchPickerDialog({ open, onOpenChange, watches }: Props) {
           role="listbox"
           aria-label="Your watches"
         >
-          {filtered.map((w) => (
-            <li key={w.id}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={selectedId === w.id}
-                onClick={() => setSelectedId(w.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-left transition ${
-                  selectedId === w.id
-                    ? 'bg-muted'
-                    : 'hover:bg-muted/40'
-                }`}
-              >
-                <span className="text-sm font-semibold">{w.brand}</span>
-                <span className="text-sm text-muted-foreground">
-                  {w.model}
-                </span>
-              </button>
-            </li>
-          ))}
+          {filtered.map((w) => {
+            // Phase 15 Plan 03b (D-03): rows present in `wornTodayIds` render
+            // disabled with a trailing "Worn today" micro-label. Clicking a
+            // disabled row is a no-op (selectedId remains unchanged), so the
+            // Log wear button stays disabled.
+            const isWornToday = wornTodayIds?.has(w.id) ?? false
+            return (
+              <li key={w.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selectedId === w.id}
+                  aria-disabled={isWornToday}
+                  disabled={isWornToday}
+                  onClick={() => {
+                    if (isWornToday) return
+                    setSelectedId(w.id)
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-left transition ${
+                    isWornToday
+                      ? 'opacity-50 cursor-not-allowed'
+                      : selectedId === w.id
+                        ? 'bg-muted'
+                        : 'hover:bg-muted/40'
+                  }`}
+                >
+                  <span className="text-sm font-semibold">{w.brand}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {w.model}
+                  </span>
+                  {isWornToday && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      Worn today
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
         </ul>
 
         {error && (
