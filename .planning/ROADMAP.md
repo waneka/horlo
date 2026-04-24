@@ -192,7 +192,7 @@ Plans:
 | 11. Schema + Storage Foundation | 5/5 | Complete    | 2026-04-22 |
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
-| 14. Nav Shell + Explore Stub | 9/9 | Complete   | 2026-04-23 |
+| 14. Nav Shell + Explore Stub | 9/9 | Complete    | 2026-04-24 |
 | 15. WYWT Photo Post Flow | 0/TBD | Not started | - |
 | 16. People Search | 0/TBD | Not started | - |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
