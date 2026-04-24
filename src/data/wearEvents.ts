@@ -221,6 +221,91 @@ export async function getWearEventsForViewer(
 }
 
 /**
+ * Three-tier viewer-aware single-wear reader (WYWT-17, CONTEXT.md D-22).
+ *
+ * Mirrors the three-tier predicate of getWearEventsForViewer but for a
+ * single `wear_events.id` lookup. JOINs `profile_settings`, `profiles`,
+ * `watches` so the caller (Server Component page) has everything needed
+ * to render hero + metadata without additional round trips.
+ *
+ * Returns null for:
+ *   - Missing row (wearEventId does not exist)
+ *   - Actor's profile_public = false (G-4 outer gate) and viewer != actor
+ *   - visibility='private' and viewer != actor
+ *   - visibility='followers' and viewer does not follow actor
+ *
+ * The page calls Next.js `notFound()` uniformly when this returns null,
+ * so missing and denied responses are INDISTINGUISHABLE from the outside.
+ * Mirrors Phase 8 notes-IDOR mitigation and Phase 10 WYWT overlay precedent.
+ *
+ * IMPORTANT: This function returns `photoUrl` as the RAW Storage path,
+ * NEVER a signed URL. The page.tsx Server Component is responsible for
+ * minting signed URLs per request — Pitfall F-2 (signed URLs must NOT
+ * live inside any cached DAL function, nor be returned from this layer).
+ */
+export async function getWearEventByIdForViewer(
+  viewerUserId: string | null,
+  wearEventId: string,
+) {
+  const rows = await db
+    .select({
+      id: wearEvents.id,
+      userId: wearEvents.userId,
+      watchId: wearEvents.watchId,
+      wornDate: wearEvents.wornDate,
+      note: wearEvents.note,
+      photoUrl: wearEvents.photoUrl,
+      visibility: wearEvents.visibility,
+      createdAt: wearEvents.createdAt,
+      // JOINed metadata for the detail page
+      actorProfilePublic: profileSettings.profilePublic,
+      username: profiles.username,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+      brand: watches.brand,
+      model: watches.model,
+      watchImageUrl: watches.imageUrl,
+    })
+    .from(wearEvents)
+    .innerJoin(profileSettings, eq(profileSettings.userId, wearEvents.userId))
+    .innerJoin(profiles, eq(profiles.id, wearEvents.userId))
+    .innerJoin(watches, eq(watches.id, wearEvents.watchId))
+    .where(eq(wearEvents.id, wearEventId))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null // 404 for missing
+
+  // G-5 self bypass — owner always sees regardless of visibility/profile_public.
+  if (viewerUserId && row.userId === viewerUserId) {
+    return row
+  }
+
+  // G-4 outer profile_public gate for ALL non-owner branches.
+  if (!row.actorProfilePublic) return null
+
+  // Three-tier visibility predicate
+  if (row.visibility === 'public') return row
+  if (row.visibility === 'private') return null
+  if (row.visibility === 'followers') {
+    // null viewer short-circuits — no follow row can exist for a null viewer.
+    if (!viewerUserId) return null
+    const followRows = await db
+      .select({ id: follows.id })
+      .from(follows)
+      .where(
+        and(
+          eq(follows.followerId, viewerUserId),
+          eq(follows.followingId, row.userId),
+        ),
+      )
+      .limit(1)
+    return followRows.length > 0 ? row : null
+  }
+  return null // defensive fallthrough — visibility enum is exhaustive
+}
+
+/**
  * WYWT rail DAL (CONTEXT.md W-01 / W-03 / W-07).
  *
  * Phase 12 ripple (WYWT-10): the per-tab `worn_public` boolean gate is
