@@ -43,7 +43,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 - [x] **Phase 12: Visibility Ripple in DAL** — Three-tier wear privacy wired through all existing wear-reading DAL functions (completed 2026-04-22)
 - [x] **Phase 13: Notifications Foundation** — notifications DAL + Server Actions + bell + inbox + fire-and-forget wiring (completed 2026-04-23)
 - [x] **Phase 14: Nav Shell + Explore Stub** — Bottom nav, desktop top nav, slim mobile nav, MobileNav retired, /explore stub (completed 2026-04-23)
-- [ ] **Phase 15: WYWT Photo Post Flow** — Multi-step wear post modal, camera, HEIC upload, visibility selector, Storage upload, Sonner toast, wear detail route
+- [x] **Phase 15: WYWT Photo Post Flow** — Multi-step wear post modal, camera, HEIC upload, visibility selector, Storage upload, Sonner toast, wear detail route (completed 2026-04-24)
 - [ ] **Phase 16: People Search** — /search page, live debounced ILIKE, taste overlap %, FollowButton inline
 
 ## Phase Details
@@ -145,11 +145,12 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   3. All captured or uploaded images are resized to a max 1080px dimension and EXIF-stripped via canvas re-encode before upload; a photo uploaded from iOS camera roll with EXIF GPS data has no GPS metadata in the stored file (verified with exiftool)
   4. The visibility selector shows Private, Followers, and Public with Public as the default; a successful wear post triggers a "Wear logged" Sonner toast; the same (user, watch, calendar day) combination cannot be logged twice — a clear error appears on the second attempt
   5. `/wear/[wearEventId]` shows the wear detail (image, watch, collector, note, timestamp) gated by three-tier visibility; a stranger gets a uniform 404 for private and followers-only wear events; the WYWT rail tile tap continues to open the Reels-style overlay from Phase 10
-**Plans**: 4 plans (Wave 1: Plans 01, 02 parallel · Wave 2: Plan 03 · Wave 3: Plan 04)
-  - [ ] 15-01-PLAN.md — Photo pipeline (EXIF strip + resize, HEIC Web Worker + A2 Turbopack spike, Storage upload helper, PhotoUploader + CameraCaptureView + WristOverlaySvg); Wave 0 tests [Wave 1]
-  - [ ] 15-02-PLAN.md — ThemedToaster bound to custom ThemeProvider; mounted in root layout outside Suspense [Wave 1]
-  - [ ] 15-03-PLAN.md — Two-step WywtPostDialog flow: extended WatchPickerDialog (onWatchSelected + wornTodayIds), WywtPostDialog orchestrator, ComposeStep + VisibilitySegmentedControl, NavWearButton + WywtRail call-site swap, logWearWithPhoto Server Action + preflight wrapper + orphan cleanup, Wave 0 integration tests [Wave 2; depends on 15-01, 15-02]
-  - [ ] 15-04-PLAN.md — /wear/[wearEventId] Server Component with getWearEventByIdForViewer three-tier DAL, uniform notFound(), per-request signed URL mint, WearDetailHero + Metadata components, 9-cell privacy matrix integration test, Manual iOS UAT checkpoint [Wave 3; depends on 15-03]
+**Plans**: 5 plans (Wave 1: Plan 01 · Wave 1*: Plan 02 serial after Plan 01 Task 1 for sonner install · Wave 2: Plan 03a backend · Wave 3: Plan 03b frontend · Wave 4: Plan 04)
+  - [x] 15-01-PLAN.md — Photo pipeline (EXIF strip + resize, HEIC Web Worker + A2 Turbopack spike, Storage upload helper, PhotoUploader + CameraCaptureView + WristOverlaySvg); Wave 0 tests [Wave 1]
+  - [x] 15-02-PLAN.md — ThemedToaster bound to custom ThemeProvider; mounted in root layout outside Suspense [Wave 1*; depends on 15-01 for sonner install — Plan 02 does NOT touch package.json]
+  - [x] 15-03a-PLAN.md — Wear backend: logWearWithPhoto + getWornTodayIdsForUserAction Server Actions, getWornTodayIdsForUser + logWearEventWithPhoto DAL helpers, duplicate-day server catch, orphan cleanup (23505 + non-23505 paths), A5 session-client .list() smoke, integration tests [Wave 2; depends on 15-01, 15-02]
+  - [x] 15-03b-PLAN.md — Wear frontend: extended WatchPickerDialog (onWatchSelected + wornTodayIds), WywtPostDialog orchestrator, ComposeStep (D-07 three-handler split: X/Retake/Choose-another), VisibilitySegmentedControl, NavWearButton + WywtRail call-site swap, Wave 0 RTL tests [Wave 3; depends on 15-03a]
+  - [x] 15-04-PLAN.md — /wear/[wearEventId] Server Component with getWearEventByIdForViewer three-tier DAL, uniform notFound(), per-request signed URL mint, WearDetailHero + Metadata components, 9-cell privacy matrix integration test, Manual iOS UAT checkpoint [Wave 4; depends on 15-03b]
 **Pitfalls to address**: D-1 (getUserMedia must be first await on iOS gesture — no awaits before it), D-2 (MediaStream cleanup on unmount), D-3 (camera permission denied UX), D-4 (canvas resize before upload — target < 500KB), D-5 (overlay relative units), E-1 (heic2any lazy-loaded in Web Worker — never eager import), E-2 (EXIF orientation before canvas draw — research flag: createImageBitmap vs exifr), E-3 (server-side storage path validation in Server Action), E-4 (EXIF stripped on ALL paths including camera), F-2 (signed URLs generated per-request, never in cached components), F-3 (orphan storage cleanup if row insert fails), F-4 (path convention {userId}/{wearEventId}.jpg enforced), H-1 (Toaster outside Suspense boundaries), H-2 (toast called from Client Component not Server Action), H-3 (Toaster uses custom ThemeProvider wrapper not next-themes scaffold)
 **UI hint**: yes
 
@@ -177,7 +178,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 
 **Goal:** Close the three MEDIUM findings from the Phase 5 code review by (a) surfacing preference save failures to the user in `PreferencesClient` with a `role="alert"` inline banner and exposed `isPending` state, (b) removing the unused `UnauthorizedError` import from `src/app/actions/watches.ts` and `src/app/actions/preferences.ts`, and (c) formally documenting that MR-03 (RLS on users / watches / user_preferences) was resolved by Phase 6 migration `20260420000000_rls_existing_tables.sql` and re-audited by Phase 11 DEBT-02 migration `20260423000005_phase11_debt02_audit.sql`. No new RLS SQL is authored by this phase.
 **Requirements:** MR-01, MR-02, MR-03
-**Plans:** 9/9 plans complete
+**Plans:** 5/5 plans complete
 **Success Criteria** (what must be TRUE):
   1. `src/components/preferences/PreferencesClient.tsx` inspects the `ActionResult` returned by `savePreferences`; on `{ success: false }` it renders an accessible `role="alert"` banner with the message `"Couldn't save preferences: {error}"`; the discarded-pending-tuple pattern (`const [, startTransition]`) is gone and `isPending` is surfaced as a "Saving…" hint.
   2. `grep -c UnauthorizedError src/app/actions/watches.ts` returns `0` and `grep -c UnauthorizedError src/app/actions/preferences.ts` returns `0`; each file imports only `getCurrentUser` from `@/lib/auth`; action behavior is otherwise byte-for-byte unchanged.
@@ -197,7 +198,7 @@ Plans:
 | 12. Visibility Ripple in DAL | 7/7 | Complete    | 2026-04-22 |
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
 | 14. Nav Shell + Explore Stub | 9/9 | Complete    | 2026-04-24 |
-| 15. WYWT Photo Post Flow | 0/4 | Not started | - |
+| 15. WYWT Photo Post Flow | 5/5 | Complete   | 2026-04-24 |
 | 16. People Search | 0/TBD | Not started | - |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
 
