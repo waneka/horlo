@@ -18,6 +18,65 @@ export async function logWearEvent(
     .onConflictDoNothing()
 }
 
+/**
+ * Preflight duplicate-day helper (WYWT-12, 15-CONTEXT.md D-13).
+ *
+ * Returns the set of watch IDs that `userId` has wear events for on `today`.
+ * Used by Plan 03b's `WatchPickerDialog` to dim/disable watches already worn
+ * today (preflight UI guard). Paired with the server-side 23505 catch in
+ * `logWearWithPhoto` for defense in depth against concurrent inserts.
+ *
+ * Owner-only query — only the caller's own picker invokes this (the Server
+ * Action wrapper `getWornTodayIdsForUserAction` further guards against
+ * cross-user input per T-15-16). PROJECT.md caps users at <500 watches so a
+ * full scan per (user, date) is acceptable; no index beyond the existing
+ * `wear_events_unique_day` UNIQUE constraint is needed.
+ */
+export async function getWornTodayIdsForUser(
+  userId: string,
+  today: string,
+): Promise<ReadonlySet<string>> {
+  const rows = await db
+    .select({ watchId: wearEvents.watchId })
+    .from(wearEvents)
+    .where(and(eq(wearEvents.userId, userId), eq(wearEvents.wornDate, today)))
+  return new Set(rows.map((r) => r.watchId))
+}
+
+/**
+ * Photo-bearing wear event insert (WYWT-15, 15-CONTEXT.md D-15).
+ *
+ * Mirrors logWearEvent's shape but accepts the full payload including the
+ * client-generated wearEventId (so the Server Action can assert the Storage
+ * object exists at `{userId}/{id}.jpg` BEFORE inserting — Pattern 7), the
+ * three-tier visibility, and the photo path (or null for no-photo posts).
+ *
+ * Unlike logWearEvent, this helper does NOT use `onConflictDoNothing` —
+ * caller (`logWearWithPhoto` Server Action) catches PG 23505 explicitly so it
+ * can (a) return the duplicate-day error to the client and (b) clean up the
+ * orphan Storage object. Silently swallowing the conflict would leave the
+ * client thinking the insert succeeded.
+ */
+export async function logWearEventWithPhoto(input: {
+  id: string
+  userId: string
+  watchId: string
+  wornDate: string
+  note: string | null
+  photoUrl: string | null
+  visibility: WearVisibility
+}): Promise<void> {
+  await db.insert(wearEvents).values({
+    id: input.id,
+    userId: input.userId,
+    watchId: input.watchId,
+    wornDate: input.wornDate,
+    note: input.note,
+    photoUrl: input.photoUrl,
+    visibility: input.visibility,
+  })
+}
+
 export async function getMostRecentWearDate(
   userId: string,
   watchId: string
