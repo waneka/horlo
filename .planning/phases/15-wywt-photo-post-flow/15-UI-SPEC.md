@@ -1,10 +1,11 @@
 ---
 phase: 15
 slug: wywt-photo-post-flow
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova / neutral / css-variables
 created: 2026-04-24
+reviewed_at: 2026-04-24
 ---
 
 # Phase 15 — UI Design Contract
