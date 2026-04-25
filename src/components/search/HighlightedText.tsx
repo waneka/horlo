@@ -6,10 +6,10 @@ import { Fragment } from 'react'
  * Phase 16 D-15 match highlighting.
  *
  * XSS-safe: bio is user-controlled untrusted text (Pitfall T-16-02 stored XSS).
- * NEVER uses dangerouslySetInnerHTML. Builds React node array via String.split
- * with a case-insensitive regex; matched substrings wrapped in <strong>, others
- * emitted as plain text Fragments (so `<script>...` in bio appears as TEXT,
- * not parsed HTML).
+ * NEVER bypasses React's text-escaping. Builds a React node array via
+ * String.split with a case-insensitive regex; matched substrings wrapped in
+ * <strong>, others emitted as plain text Fragments (so `<script>...` in bio
+ * appears as TEXT, not parsed HTML).
  *
  * Regex metachar escape (Pitfall T-16-05): user query may contain regex
  * metacharacters like `(`, `.`, `*`, `\`. Escape before constructing the regex
