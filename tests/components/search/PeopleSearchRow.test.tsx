@@ -164,13 +164,21 @@ describe('PeopleSearchRow (D-13 / D-14 / D-15 / D-16 / D-17)', () => {
       bio: '<script>alert(1)</script>nice watch',
       bioSnippet: '<script>alert(1)</script>nice watch',
     }
-    render(<PeopleSearchRow result={xssResult} q="nice" viewerId="me" />)
-    // No actual <script> element should be in the DOM
+    const { container } = render(
+      <PeopleSearchRow result={xssResult} q="nice" viewerId="me" />,
+    )
+    // No actual <script> element should be in the DOM (the bio's <script>...
+    // appears as a text node, not as a parsed HTML element).
     expect(document.querySelector('script')).toBeNull()
-    // The literal text is rendered (the <script> appears as text)
-    expect(
-      screen.getByText(/<script>alert\(1\)<\/script>nice watch/),
-    ).toBeInTheDocument()
+    // The literal text is rendered. With q="nice", HighlightedText splits the
+    // bio across multiple text nodes (and a <strong> for the match), so we
+    // verify the bio paragraph's combined textContent contains the FULL
+    // literal — the script tag, the highlighted match, and the trailing word.
+    const bioParagraph = container.querySelector('p.line-clamp-1')
+    expect(bioParagraph).not.toBeNull()
+    expect(bioParagraph?.textContent).toBe(
+      '<script>alert(1)</script>nice watch',
+    )
   })
 
   it('Test 7: regex metachar safety — q="(.*)" does not crash (D-15)', () => {
