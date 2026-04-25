@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
 status: executing
-stopped_at: Completed 16-04-nav-cleanup-PLAN.md
-last_updated: "2026-04-25T16:45:05.798Z"
+stopped_at: Completed 16-03-search-components-PLAN.md
+last_updated: "2026-04-25T17:04:55.406Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 36
-  completed_plans: 34
-  percent: 94
+  completed_plans: 35
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 ## Current Position
 
 Phase: 16 (people-search) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-04-25
 
@@ -65,6 +65,7 @@ Phase 16 [ ] People Search
 | Phase 16-people-search P01 | 8min | 6 tasks | 7 files |
 | Phase 16-people-search P02 | 11min | 2 tasks | 3 files |
 | Phase 16-people-search P04 | 12min | 3 tasks | 4 files |
+| Phase 16-people-search P03 | 15min | 5 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Phase 16 [ ] People Search
 | Phase 16-04 — max-w-md (not max-w-lg) for nav search input width | Within the documented D-27 max-w-md..max-w-lg range, max-w-md reads balanced against the right-cluster icons (Wear + Add + Bell + Avatar). max-w-lg dominates visually and crowds the avatar |
 | Phase 16-04 — bg-muted/50 paired with border-transparent | The muted fill alone (with the default border still rendering) read as a flat outlined input, not a fill. border-transparent lets the muted fill BE the primary visual; focus-visible:bg-background lifts on focus while the default focus-visible:border-ring re-asserts the focus ring outline |
 | Phase 16-04 — HeaderNav.test.tsx deleted in same task as HeaderNav.tsx | The test file imported the component itself and ran source-level grep checks against src/components/layout/HeaderNav.tsx. Deleting both in Task 2 with a pre-deletion grep gate keeps each commit valid; Tests A/B in DesktopTopNav.test.tsx now enforce the D-23 absence contract |
+| Phase 16-03 — Skeleton primitive lives at src/components/ui/skeleton.tsx | Plan 03 referenced `@/components/ui/skeleton` even though the file did not exist; HeaderSkeleton.tsx is layout-specific not the reusable primitive. Created the canonical shadcn Skeleton (animate-pulse rounded-md bg-muted) so future skeleton callers go through one path |
+| Phase 16-03 — globalThis.jest shim aliased to vi timer methods in tests/setup.ts | RTL waitFor() polls Jest fake timers via jest.advanceTimersByTime(); vitest's vi.useFakeTimers() sets setTimeout.clock but typeof jest === 'undefined', so RTL falls back to real-timer polling which deadlocks. The shim makes vi.useFakeTimers() + waitFor() compose correctly — required to turn Plan 01 RED hook tests GREEN |
+| Phase 16-03 — Test 6 (XSS-safety) repaired for split-text-node behavior | getByText regex against a string split across text nodes (HighlightedText wraps the match in <strong>) is incompatible with RTL's getNodeText() which excludes element-children text. Repair preserves intent (no <script> in DOM + literal text rendered) by selecting the bio paragraph and asserting textContent equals the full literal — proves XSS-safety AND verbatim text rendering simultaneously |
 
 ### Key Decisions (v2.0)
 
@@ -155,7 +159,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-25T16:45:05.794Z
-Stopped at: Completed 16-04-nav-cleanup-PLAN.md
+Last session: 2026-04-25T17:04:55.403Z
+Stopped at: Completed 16-03-search-components-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 11`
