@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
 status: executing
-stopped_at: Completed 16-02-search-dal-PLAN.md
-last_updated: "2026-04-25T16:29:19.558Z"
+stopped_at: Completed 16-04-nav-cleanup-PLAN.md
+last_updated: "2026-04-25T16:45:05.798Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 36
-  completed_plans: 33
-  percent: 92
+  completed_plans: 34
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 ## Current Position
 
 Phase: 16 (people-search) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-04-25
 
@@ -64,6 +64,7 @@ Phase 16 [ ] People Search
 | Phase 999.1 P01 | 4min | 3 tasks | 5 files |
 | Phase 16-people-search P01 | 8min | 6 tasks | 7 files |
 | Phase 16-people-search P02 | 11min | 2 tasks | 3 files |
+| Phase 16-people-search P04 | 12min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Phase 16 [ ] People Search
 | Phase 16-02 — searchProfiles in NEW src/data/search.ts | Keeps the heavy taste-overlap dependency tree (computeTasteOverlap, computeTasteTags, getWatchesByUser, getPreferencesByUser, getAllWearEventsByUser) out of the primitive src/data/profiles.ts DAL; mirrors src/data/suggestions.ts precedent |
 | Phase 16-02 — Server-side q.length minimum lives in DAL only (D-20) | Server Action does NOT pre-filter; security invariant in one place, easier to audit. Empty results from short queries return { success: true, data: [] } |
 | Phase 16-02 — Drizzle SQL-shape unit tests use cycle-safe safeStringify | PgColumn.table parent back-pointer crashes JSON.stringify with "Converting circular structure to JSON". Assertions match Drizzle compiled SQL chunks (" ilike ", " in ") not JS operator names (Drizzle never preserves the JS operator name into runtime SQL) |
+| Phase 16-04 — max-w-md (not max-w-lg) for nav search input width | Within the documented D-27 max-w-md..max-w-lg range, max-w-md reads balanced against the right-cluster icons (Wear + Add + Bell + Avatar). max-w-lg dominates visually and crowds the avatar |
+| Phase 16-04 — bg-muted/50 paired with border-transparent | The muted fill alone (with the default border still rendering) read as a flat outlined input, not a fill. border-transparent lets the muted fill BE the primary visual; focus-visible:bg-background lifts on focus while the default focus-visible:border-ring re-asserts the focus ring outline |
+| Phase 16-04 — HeaderNav.test.tsx deleted in same task as HeaderNav.tsx | The test file imported the component itself and ran source-level grep checks against src/components/layout/HeaderNav.tsx. Deleting both in Task 2 with a pre-deletion grep gate keeps each commit valid; Tests A/B in DesktopTopNav.test.tsx now enforce the D-23 absence contract |
 
 ### Key Decisions (v2.0)
 
@@ -151,7 +155,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-25T16:29:19.554Z
-Stopped at: Completed 16-02-search-dal-PLAN.md
+Last session: 2026-04-25T16:45:05.794Z
+Stopped at: Completed 16-04-nav-cleanup-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 11`
