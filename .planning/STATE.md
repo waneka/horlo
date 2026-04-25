@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
 status: executing
-stopped_at: Completed 16-01-tests-first-PLAN.md (Wave 0 RED baseline)
-last_updated: "2026-04-25T16:14:01.745Z"
+stopped_at: Completed 16-02-search-dal-PLAN.md
+last_updated: "2026-04-25T16:29:19.558Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 36
-  completed_plans: 32
-  percent: 89
+  completed_plans: 33
+  percent: 92
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 ## Current Position
 
 Phase: 16 (people-search) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-25
 
@@ -63,6 +63,7 @@ Phase 16 [ ] People Search
 | Phase 10 P09 | 14min | 3 tasks | 4 files |
 | Phase 999.1 P01 | 4min | 3 tasks | 5 files |
 | Phase 16-people-search P01 | 8min | 6 tasks | 7 files |
+| Phase 16-people-search P02 | 11min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Phase 16 [ ] People Search
 | Phase 999.1 — MR-01 surfaces save errors without rollback | Local mirror state intentionally NOT rolled back on save failure; review called rollback "optional" and revalidatePath in savePreferences reconciles on next nav. Inline role=alert banner is sufficient visibility |
 | Phase 999.1 — MR-02 import hygiene only | Did NOT migrate Server Actions to err instanceof UnauthorizedError discriminator; that distinguishes Unauthorized vs infra errors and is a separately-tracked larger refactor. Existing catch-all preserved verbatim |
 | Phase 999.1 — MR-03 paperwork closure | Phase 6 enabled RLS (20260420000000_rls_existing_tables.sql); Phase 11 audited it (20260423000005_phase11_debt02_audit.sql). Phase 999.1 adds zero SQL — re-adding RLS would duplicate live policies |
+| Phase 16-02 — searchProfiles in NEW src/data/search.ts | Keeps the heavy taste-overlap dependency tree (computeTasteOverlap, computeTasteTags, getWatchesByUser, getPreferencesByUser, getAllWearEventsByUser) out of the primitive src/data/profiles.ts DAL; mirrors src/data/suggestions.ts precedent |
+| Phase 16-02 — Server-side q.length minimum lives in DAL only (D-20) | Server Action does NOT pre-filter; security invariant in one place, easier to audit. Empty results from short queries return { success: true, data: [] } |
+| Phase 16-02 — Drizzle SQL-shape unit tests use cycle-safe safeStringify | PgColumn.table parent back-pointer crashes JSON.stringify with "Converting circular structure to JSON". Assertions match Drizzle compiled SQL chunks (" ilike ", " in ") not JS operator names (Drizzle never preserves the JS operator name into runtime SQL) |
 
 ### Key Decisions (v2.0)
 
@@ -147,7 +151,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-25T16:14:01.741Z
-Stopped at: Completed 16-01-tests-first-PLAN.md (Wave 0 RED baseline)
+Last session: 2026-04-25T16:29:19.554Z
+Stopped at: Completed 16-02-search-dal-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 11`
