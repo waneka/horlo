@@ -2,11 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { isPublicPath } from '@/lib/constants/public-paths'
-import { HeaderNav } from '@/components/layout/HeaderNav'
 import { NavWearButton } from '@/components/layout/NavWearButton'
 import { UserMenu } from '@/components/layout/UserMenu'
 import type { Watch } from '@/lib/types'
@@ -23,9 +22,14 @@ interface DesktopTopNavProps {
  * DesktopTopNav — desktop top chrome (≥768px) per CONTEXT.md D-16.
  *
  * Composition (left → right):
- *   Horlo wordmark · HeaderNav (Collection + dynamic Profile/Settings) ·
- *   Explore link · persistent search input · NavWearButton · Add icon ·
- *   NotificationBell · UserMenu (D-17 dropdown)
+ *   Horlo wordmark · Explore link · persistent search input (D-24 muted fill +
+ *   leading magnifier) · NavWearButton · Add icon · NotificationBell · UserMenu
+ *
+ * Phase 16 changes (D-23, D-24):
+ *   - HeaderNav inline links removed (Profile + Settings now exclusively in
+ *     UserMenu dropdown — Phase 14 D-17 made these redundant).
+ *   - Search input restyled with muted-fill (bg-muted/50) + leading lucide
+ *     Search icon + widened to max-w-md. handleSearchSubmit preserved.
  *
  * The theme toggle is intentionally absent — D-16 relocates it into
  * UserMenu's InlineThemeSegmented row (delivered by Plan 14-05).
@@ -62,7 +66,6 @@ export function DesktopTopNav({
           <Link href="/" className="flex items-center gap-2">
             <span className="font-serif text-xl">Horlo</span>
           </Link>
-          <HeaderNav username={username} />
           <Link
             href="/explore"
             className="text-sm font-semibold text-muted-foreground hover:text-foreground"
@@ -70,14 +73,20 @@ export function DesktopTopNav({
             Explore
           </Link>
         </div>
-        <form onSubmit={handleSearchSubmit} className="max-w-xs flex-1">
-          <Input
-            type="search"
-            name="q"
-            placeholder="Search collectors, watches…"
-            aria-label="Search"
-            className="w-full"
-          />
+        <form onSubmit={handleSearchSubmit} className="max-w-md flex-1">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              name="q"
+              placeholder="Search collectors, watches…"
+              aria-label="Search"
+              className="w-full bg-muted/50 border-transparent pl-9 rounded-md focus-visible:bg-background"
+            />
+          </div>
         </form>
         <div className="flex items-center gap-2">
           {user && (
