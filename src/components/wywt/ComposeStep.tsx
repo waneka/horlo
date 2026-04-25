@@ -16,7 +16,6 @@ import { PhotoUploader } from './PhotoUploader'
 import type { PhotoUploaderHandle } from './PhotoUploader'
 import { CameraCaptureView } from './CameraCaptureView'
 import { VisibilitySegmentedControl } from './VisibilitySegmentedControl'
-import { stripAndResize } from '@/lib/exif/strip'
 import { uploadWearPhoto } from '@/lib/storage/wearPhotos'
 import { logWearWithPhoto } from '@/app/actions/wearEvents'
 import { cn } from '@/lib/utils'
@@ -54,10 +53,16 @@ import type { WearVisibility } from '@/lib/wearVisibility'
  *   all three to a single handler.
  *
  * Submit pipeline:
- *   1. (optional) stripAndResize(photoBlob) → canvas re-encode + 1080 cap
- *   2. (optional) uploadWearPhoto(userId, wearEventId, strippedBlob) →
- *      direct client upload to Supabase Storage at {userId}/{wearEventId}.jpg
- *   3. logWearWithPhoto({wearEventId, watchId, note, visibility, hasPhoto}) →
+ *   1. (optional) uploadWearPhoto(userId, wearEventId, photoBlob) →
+ *      direct client upload to Supabase Storage at {userId}/{wearEventId}.jpg.
+ *      `photoBlob` is ALREADY EXIF-stripped + 1080-capped: PhotoUploader
+ *      (file path) and CameraCaptureView (camera path) both run
+ *      `stripAndResize` BEFORE invoking handlePhotoReady. Re-running it here
+ *      would force a second canvas-based JPEG re-encode (lossy generation
+ *      loss; ~50–300ms wasted CPU). Per WR-01, the submit-time strip was
+ *      removed — Pitfall 5 (uniform EXIF strip on all paths) is satisfied
+ *      upstream since BOTH entry points pipe through stripAndResize.
+ *   2. logWearWithPhoto({wearEventId, watchId, note, visibility, hasPhoto}) →
  *      Plan 03a Server Action. On success → toast.success('Wear logged')
  *      (Plan 02 Toaster) → onSubmitted() to close the dialog. On failure →
  *      inline role="alert" with the exact server error string; no toast.
@@ -216,10 +221,15 @@ export function ComposeStep({
     setError(null)
     startTransition(async () => {
       try {
-        // Process + upload photo if present
+        // Upload photo if present. WR-01: do NOT re-run stripAndResize here —
+        // PhotoUploader (line 118 in PhotoUploader.tsx) and CameraCaptureView
+        // (line 91 in CameraCaptureView.tsx) already pipe their blob through
+        // stripAndResize BEFORE invoking handlePhotoReady, so by the time we
+        // reach this submit handler `photoBlob` is already EXIF-stripped and
+        // ≤1080px. A second canvas re-encode would introduce extra
+        // generation-loss artifacts and waste 50–300ms of main-thread CPU.
         if (photoBlob) {
-          const { blob } = await stripAndResize(photoBlob)
-          const upload = await uploadWearPhoto(viewerId, wearEventId, blob)
+          const upload = await uploadWearPhoto(viewerId, wearEventId, photoBlob)
           if ('error' in upload) {
             setError('Photo upload failed — please try again.')
             return

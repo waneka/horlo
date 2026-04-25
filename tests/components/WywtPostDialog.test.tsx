@@ -583,34 +583,43 @@ describe('ComposeStep — Task 3 core flow + photo submit order + toast', () => 
     expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 
-  it('Test 17 (photo submit order) — stripAndResize → uploadWearPhoto → logWearWithPhoto', async () => {
-    mockStripAndResize.mockResolvedValue({
-      blob: new Blob(['stripped'], { type: 'image/jpeg' }),
-      width: 1080,
-      height: 720,
-    })
+  it('Test 17 (photo submit order) — uploadWearPhoto → logWearWithPhoto (stripAndResize already ran upstream)', async () => {
+    // WR-01: stripAndResize is invoked by PhotoUploader / CameraCaptureView
+    // BEFORE the blob reaches ComposeStep. The submit handler no longer
+    // re-runs it. Test 17 used to assert `stripAndResize → uploadWearPhoto`
+    // ordering inside the submit handler — that pre-condition was the very
+    // double-encode bug WR-01 fixes. The new contract: by the time submit
+    // fires, `photoBlob` is already stripped, so the submit handler only
+    // runs `uploadWearPhoto → logWearWithPhoto`.
     mockUploadWearPhoto.mockResolvedValue({ path: 'u1/11111111-1111-4111-8111-111111111111.jpg' })
     mockLogWearWithPhoto.mockResolvedValue({ success: true, data: { wearEventId: 'w' } })
 
-    const rawBlob = new Blob(['raw'], { type: 'image/jpeg' })
-    renderCompose({ photoBlob: rawBlob })
+    // The test seeds `photoBlob` directly via the harness — it does NOT
+    // round-trip through PhotoUploader, so stripAndResize is never invoked
+    // in this isolated unit. The pre-strip is verified separately by the
+    // PhotoUploader / CameraCaptureView component tests.
+    const alreadyStrippedBlob = new Blob(['stripped'], { type: 'image/jpeg' })
+    renderCompose({ photoBlob: alreadyStrippedBlob })
     fireEvent.click(screen.getByRole('button', { name: /Log wear/i }))
 
     await waitFor(() => expect(mockLogWearWithPhoto).toHaveBeenCalled())
 
-    // Call order matches the plan's Step 3 happy-path contract.
-    const stripOrder = mockStripAndResize.mock.invocationCallOrder[0]
+    // submit handler must NOT re-encode the blob (WR-01 regression guard).
+    expect(mockStripAndResize).not.toHaveBeenCalled()
+
+    // Call order: uploadWearPhoto runs before logWearWithPhoto.
     const uploadOrder = mockUploadWearPhoto.mock.invocationCallOrder[0]
     const logOrder = mockLogWearWithPhoto.mock.invocationCallOrder[0]
-    expect(stripOrder).toBeLessThan(uploadOrder)
     expect(uploadOrder).toBeLessThan(logOrder)
 
     // logWearWithPhoto hasPhoto=true path
     expect(mockLogWearWithPhoto.mock.calls[0][0].hasPhoto).toBe(true)
-    // uploadWearPhoto called with (userId, wearEventId, strippedBlob)
-    const [uid, weid] = mockUploadWearPhoto.mock.calls[0]
+    // uploadWearPhoto called with (userId, wearEventId, alreadyStrippedBlob)
+    const [uid, weid, blobArg] = mockUploadWearPhoto.mock.calls[0]
     expect(uid).toBe('u1')
     expect(weid).toBe('11111111-1111-4111-8111-111111111111')
+    // Verify the same blob was forwarded — no copy / re-encode in between.
+    expect(blobArg).toBe(alreadyStrippedBlob)
   })
 })
 
