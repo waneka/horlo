@@ -98,16 +98,22 @@ export function CameraCaptureView({
   }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-md bg-black">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        aria-label="Camera preview"
-        className="block w-full object-cover"
-      />
-      <WristOverlaySvg className="pointer-events-none absolute inset-0" />
+    <div>
+      {/* Video + overlay share their own relative wrapper so the overlay's
+          inset-0 maps to the video bounds, not the buttons strip below. Keeps
+          the wrist-overlay SVG centered over the actual camera frame regardless
+          of stream aspect ratio. */}
+      <div className="relative w-full overflow-hidden rounded-md bg-black">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          aria-label="Camera preview"
+          className="block w-full object-cover"
+        />
+        <WristOverlaySvg className="pointer-events-none absolute inset-0" />
+      </div>
       <div className="mt-3 flex justify-center gap-2">
         <Button
           type="button"
