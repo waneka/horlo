@@ -363,9 +363,15 @@ export function ComposeStep({
           disabled={pending}
         />
       ) : (
-        /* PRE-CAPTURE CHOOSER — visible Take wrist shot + Upload photo. The
-            actual PhotoUploader instance lives below so its ref survives
-            transitions to/from the preview state. */
+        /* PRE-CAPTURE CHOOSER — visible Take wrist shot + Upload photo, both
+            inside the dashed border so they read as a single "pick a photo
+            source" zone (UI-SPEC §Copywriting Contract / D-06; WR-03 fix —
+            previously the Upload button rendered outside the dashed box
+            below). The Upload button here is a visual MIRROR that proxies
+            taps through the always-mounted PhotoUploader's openPicker(); the
+            real PhotoUploader is rendered sr-only below so its ref stays
+            stable across state transitions for the D-07 "Choose another"
+            re-open path. */
         <div className="flex flex-col items-center gap-2 py-8 border-2 border-dashed border-border rounded-md bg-muted/30">
           <div className="flex gap-2">
             <Button
@@ -377,23 +383,29 @@ export function ComposeStep({
             >
               Take wrist shot
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => photoUploaderRef.current?.openPicker()}
+              disabled={pending}
+              className="min-h-11"
+            >
+              Upload photo
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">Photo optional</p>
         </div>
       )}
 
-      {/* Persistent PhotoUploader — kept mounted across all photo-zone states
-          so photoUploaderRef stays alive. Visible only when the pre-capture
-          chooser is showing; otherwise rendered hidden (sr-only) so its
-          internal file <input> remains clickable via imperative openPicker(). */}
-      <div
-        className={
-          !photoBlob && !cameraStream
-            ? 'flex justify-center'
-            : 'sr-only'
-        }
-        aria-hidden={!!photoBlob || !!cameraStream}
-      >
+      {/* Persistent PhotoUploader — kept mounted in sr-only across ALL
+          photo-zone states so photoUploaderRef stays alive (the "Choose
+          another" link in the post-capture preview path needs to call
+          openPicker() imperatively). The visible Upload photo button now
+          lives inside the dashed chooser above and proxies through this
+          ref — the rendered PhotoUploader's own button is intentionally
+          inaccessible (sr-only + aria-hidden) so we never show two file
+          chooser buttons stacked. (WR-03.) */}
+      <div className="sr-only" aria-hidden>
         <PhotoUploader
           ref={photoUploaderRef}
           onPhotoReady={handleUploadReady}
