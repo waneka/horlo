@@ -168,7 +168,7 @@ export function WywtPostDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <ComposeStep
           watch={selectedWatch}
           viewerId={viewerId}
