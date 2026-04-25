@@ -186,7 +186,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
 | 14. Nav Shell + Explore Stub | 9/9 | Complete    | 2026-04-24 |
 | 15. WYWT Photo Post Flow | 5/5 | Complete    | 2026-04-25 |
-| 16. People Search | 5/5 | Complete   | 2026-04-25 |
+| 16. People Search | 5/5 | Complete    | 2026-04-25 |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
 
 | Milestone | Phases | Status | Shipped |
