@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 let mockPathname = '/'
 vi.mock('next/navigation', () => ({
@@ -121,5 +122,79 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
     ).toBeNull()
     const userMenu = screen.getByTestId('user-menu')
     expect(userMenu.getAttribute('data-username')).toBe('alice')
+  })
+})
+
+describe('Phase 16 polish (D-23 HeaderNav removed; D-24 nav search restyle)', () => {
+  beforeEach(() => {
+    mockPathname = '/'
+  })
+
+  // Test A (D-23): inline Collection / Profile / Settings nav links removed
+  // from the header chrome (those live exclusively in UserMenu's dropdown).
+  // The wordmark "Horlo" links to / and the Explore link MUST still exist —
+  // the assertion is narrowly scoped to the three deleted link names.
+  it('Test A (D-23) — does not render Collection/Profile/Settings inline nav links', () => {
+    render(<DesktopTopNav {...userProps()} />)
+    expect(screen.queryByRole('link', { name: 'Collection' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Profile' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Settings$/ })).toBeNull()
+    // Sanity: Explore link DOES still exist
+    expect(screen.getByRole('link', { name: 'Explore' })).toBeInTheDocument()
+  })
+
+  // Test B (D-23): No HeaderNav nav element rendered. After D-23 the outer
+  // <header> is the only navigation landmark in the chrome; no inner <nav>
+  // with role="navigation" remains.
+  it('Test B (D-23) — does not render the HeaderNav nav element', () => {
+    render(<DesktopTopNav {...userProps()} />)
+    const navs = screen.queryAllByRole('navigation')
+    expect(navs.length).toBeLessThanOrEqual(1)
+  })
+
+  // Test C (D-24): leading magnifier icon inside the search input wrapper.
+  // Asserts a sibling/preceding Search icon (lucide-react renders <svg>).
+  it('Test C (D-24) — renders a leading Search icon in the persistent search input', () => {
+    render(<DesktopTopNav {...userProps()} />)
+    const input = screen.getByRole('searchbox')
+    const wrapper = input.closest('form') ?? input.parentElement
+    expect(wrapper?.querySelector('svg')).not.toBeNull()
+  })
+
+  // Test D (D-24): muted-fill background class on the input.
+  it('Test D (D-24) — applies muted fill background to the persistent search input', () => {
+    render(<DesktopTopNav {...userProps()} />)
+    const input = screen.getByRole('searchbox')
+    expect(input.className).toMatch(/bg-muted/)
+  })
+
+  // Test E (D-25 preserved): submit-only behavior still routes to
+  // /search?q={encoded} — locks Phase 14 D-16 against accidental regression
+  // when the input shell is restyled.
+  it('Test E (D-25 preserved) — submit-only handler navigates to /search?q={encoded}', async () => {
+    const setHref = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      configurable: true,
+      value: {
+        href: '',
+        set href(v: string) {
+          setHref(v)
+        },
+      },
+    })
+    try {
+      render(<DesktopTopNav {...userProps()} />)
+      const input = screen.getByRole('searchbox')
+      await userEvent.type(input, 'bob{Enter}')
+      expect(setHref).toHaveBeenCalledWith('/search?q=bob')
+    } finally {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        configurable: true,
+        value: originalLocation,
+      })
+    }
   })
 })
