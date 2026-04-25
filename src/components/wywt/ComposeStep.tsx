@@ -108,6 +108,14 @@ export function ComposeStep({
     null,
   )
   const photoUploaderRef = useRef<PhotoUploaderHandle | null>(null)
+  // WR-04: ref-based re-entrance guard for handleTapCamera. Cannot use
+  // useState here because the React state update would land on the
+  // microtask queue AFTER the awaited getUserMedia resolves, leaving a
+  // window in which a second tap re-enters the function. A useRef write
+  // is synchronous and intentionally NOT a state update — it does not
+  // trigger a re-render and does not introduce a microtask between the
+  // tap gesture and the getUserMedia call (Pitfall 1 / T-15-01 preserved).
+  const cameraOpeningRef = useRef(false)
 
   // Preview URL lifecycle — revoke on blob change / unmount.
   const photoPreviewUrl = useMemo(
@@ -135,7 +143,19 @@ export function ComposeStep({
 
   // Pitfall 1 (T-15-01): getUserMedia MUST be the first await. Do NOT
   // await anything (setState, props, fetch) before it.
+  //
+  // WR-04: a rapid second tap during the in-flight first call (cameraStream
+  // is still null because setState hasn't run yet) would acquire a SECOND
+  // MediaStream — only the last setCameraStream wins, and the earlier
+  // stream's tracks never stop (LED stays on until tab close). The
+  // synchronous `cameraOpeningRef` flag short-circuits the re-entrant call
+  // BEFORE getUserMedia is invoked. setError + the ref write are synchronous
+  // (not setState) so they do NOT introduce a microtask boundary between
+  // the user gesture and getUserMedia, preserving iOS Safari's gesture
+  // context.
   const handleTapCamera = async () => {
+    if (cameraOpeningRef.current || cameraStream) return
+    cameraOpeningRef.current = true
     setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -154,6 +174,8 @@ export function ComposeStep({
       } else {
         setError('Camera unavailable — use Upload photo instead.')
       }
+    } finally {
+      cameraOpeningRef.current = false
     }
   }
 
