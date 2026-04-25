@@ -1,4 +1,30 @@
 import '@testing-library/jest-dom/vitest'
+import { vi } from 'vitest'
+
+// React Testing Library's `waitFor` auto-advances Jest fake timers by checking
+// `typeof jest !== 'undefined'`. Vitest's `vi.useFakeTimers()` does set
+// `setTimeout.clock` (which RTL also checks), but `jest` is undefined so RTL
+// falls back to real-timer polling — which deadlocks tests that combine
+// `vi.useFakeTimers()` with `waitFor()` (the polling setInterval is itself
+// faked and never fires).
+//
+// This shim aliases a minimal `jest` global to `vi` so RTL detects fake timers
+// and calls `jest.advanceTimersByTime(interval)` (which is now
+// `vi.advanceTimersByTime`). Standard vitest+RTL workaround documented in
+// vitest's migration guide. Only the timer-related members RTL actually uses
+// are forwarded.
+if (typeof (globalThis as { jest?: unknown }).jest === 'undefined') {
+  Object.defineProperty(globalThis, 'jest', {
+    value: {
+      advanceTimersByTime: (ms: number) => vi.advanceTimersByTime(ms),
+      runAllTimers: () => vi.runAllTimers(),
+      useFakeTimers: () => vi.useFakeTimers(),
+      useRealTimers: () => vi.useRealTimers(),
+    },
+    writable: true,
+    configurable: true,
+  })
+}
 
 // jsdom does not implement window.matchMedia — stub it so libraries like
 // next-themes that probe `(prefers-color-scheme: dark)` do not crash under test.
