@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 Phase: 15 (wywt-photo-post-flow) — EXECUTING
 Plan: 1 of 5
 Status: Executing Phase 15
-Last activity: 2026-04-24 -- Phase 15 execution started
+Last activity: 2026-04-24 -- Completed quick task 260424-nk2: WYWT rail wrist-shot wiring
 
 ## Progress Bar
 
@@ -142,6 +142,7 @@ None.
 |---|-------------|------|--------|-----------|
 | 260421-rdb | Fix 404 on watch detail pages for watches owned by other users — viewer-aware DAL with privacy gating | 2026-04-22 | 0604e09 | [260421-rdb-fix-404-on-watch-detail-pages-for-watche](./quick/260421-rdb-fix-404-on-watch-detail-pages-for-watche/) |
 | 260421-srx | Wrap follower/following counts in `<Link>` on ProfileHeader + LockedProfileState (Phase 9 UAT gap) | 2026-04-22 | 3919d9e | [260421-srx-wrap-follower-following-counts-in-link-o](./quick/260421-srx-wrap-follower-following-counts-in-link-o/) |
+| 260424-nk2 | Fix Phase 15 UAT bug: WYWT rail and overlay show watch catalog photo instead of wrist shot | 2026-04-24 | 19a7b32 | [260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl](./quick/260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl/) |
 
 ## Session Continuity
 
