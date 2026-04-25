@@ -7,13 +7,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
 
-// Stub HeaderNav, NavWearButton, UserMenu to isolate composition testing
-vi.mock('@/components/layout/HeaderNav', () => ({
-  HeaderNav: ({ username }: { username?: string | null }) => (
-    <div data-testid="header-nav" data-username={username ?? ''} />
-  ),
-}))
-
+// Stub NavWearButton, UserMenu to isolate composition testing
 vi.mock('@/components/layout/NavWearButton', () => ({
   NavWearButton: () => <div data-testid="nav-wear" />,
 }))
@@ -43,10 +37,9 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
     mockPathname = '/'
   })
 
-  it('Test 9 — renders wordmark, HeaderNav, search input, NavWearButton, Add icon, NotificationBell, UserMenu (all present)', () => {
+  it('Test 9 — renders wordmark, search input, NavWearButton, Add icon, NotificationBell, UserMenu (all present)', () => {
     const { container } = render(<DesktopTopNav {...userProps()} />)
     expect(screen.getByText('Horlo')).toBeInTheDocument()
-    expect(screen.getByTestId('header-nav')).toBeInTheDocument()
     expect(
       container.querySelector('input[type="search"]'),
     ).toBeTruthy()
