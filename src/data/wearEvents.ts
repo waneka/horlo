@@ -332,6 +332,7 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
       watchId: wearEvents.watchId,
       wornDate: wearEvents.wornDate,
       note: wearEvents.note,
+      photoUrl: wearEvents.photoUrl, // Phase 15 UAT: raw Storage path; page.tsx signs it
       createdAt: wearEvents.createdAt,
       visibility: wearEvents.visibility, // Phase 12: tile carries tier
       username: profiles.username,
@@ -379,6 +380,12 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
     if (!byUser.has(r.userId)) byUser.set(r.userId, r)
   }
 
+  // Phase 15 UAT: `photoUrl` here is the RAW Storage path from
+  // wear_events.photo_url (or null). The home page Server Component
+  // (src/app/page.tsx) mints a signed URL per request and replaces this
+  // field before passing tiles down to <WywtRail>. Pitfall F-2: never
+  // cache signed URLs across requests/users — minting must stay outside
+  // any cached DAL function.
   const tiles: WywtTile[] = [...byUser.values()].map((r) => ({
     wearEventId: r.wearId,
     userId: r.userId,
@@ -389,6 +396,7 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
     brand: r.brand,
     model: r.model,
     imageUrl: r.imageUrl ?? null,
+    photoUrl: r.photoUrl ?? null,
     wornDate: r.wornDate,
     note: r.note,
     visibility: r.visibility as WearVisibility, // Phase 12: tile carries tier

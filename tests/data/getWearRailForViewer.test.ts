@@ -186,9 +186,11 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
         displayName: 'Bob',
         avatarUrl: 'av.png',
         wornPublic: true,
+        visibility: 'public',
         brand: 'Omega',
         model: 'Speedmaster',
         imageUrl: null,
+        photoUrl: null,
       },
     ]
     const result = await getWearRailForViewer(VIEWER)
@@ -203,10 +205,61 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
       brand: 'Omega',
       model: 'Speedmaster',
       imageUrl: null,
+      photoUrl: null,
       wornDate: '2026-04-21',
       note: 'heritage day',
+      visibility: 'public',
       isSelf: false,
     })
+  })
+
+  it('Unit 12 (Phase 15 UAT): projects wearEvents.photoUrl into tile.photoUrl when present', async () => {
+    wearRows = [
+      {
+        wearId: 'we-photo',
+        userId: 'user-A',
+        watchId: 'w-A',
+        wornDate: '2026-04-21',
+        note: null,
+        createdAt: new Date('2026-04-21T14:00:00Z'),
+        username: 'alice',
+        displayName: 'Alice',
+        avatarUrl: null,
+        visibility: 'public',
+        brand: 'Rolex',
+        model: 'GMT',
+        imageUrl: 'https://catalog.example/gmt.jpg',
+        // Raw Storage path — DAL must NOT sign this; the page Server Component does.
+        photoUrl: 'user-A/evt-1.jpg',
+      },
+    ]
+    const result = await getWearRailForViewer(VIEWER)
+    expect(result.tiles).toHaveLength(1)
+    expect(result.tiles[0].photoUrl).toBe('user-A/evt-1.jpg')
+  })
+
+  it('Unit 13 (Phase 15 UAT): tile.photoUrl is null when wear_events.photo_url is null', async () => {
+    wearRows = [
+      {
+        wearId: 'we-nophoto',
+        userId: 'user-A',
+        watchId: 'w-A',
+        wornDate: '2026-04-21',
+        note: null,
+        createdAt: new Date('2026-04-21T14:00:00Z'),
+        username: 'alice',
+        displayName: 'Alice',
+        avatarUrl: null,
+        visibility: 'public',
+        brand: 'Rolex',
+        model: 'GMT',
+        imageUrl: 'https://catalog.example/gmt.jpg',
+        photoUrl: null,
+      },
+    ]
+    const result = await getWearRailForViewer(VIEWER)
+    expect(result.tiles).toHaveLength(1)
+    expect(result.tiles[0].photoUrl).toBeNull()
   })
 
   // Phase 12 — new tests asserting the updated SQL shape after the visibility

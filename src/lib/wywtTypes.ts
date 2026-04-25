@@ -23,6 +23,24 @@ export interface WywtTile {
   brand: string
   model: string
   imageUrl: string | null
+  /**
+   * Wrist-shot photo for this wear event.
+   *
+   * At the DAL boundary (`getWearRailForViewer`) this is the RAW Storage
+   * path (`{userId}/{wearEventId}.jpg`) in the private `wear-photos` bucket.
+   * The home page Server Component (`src/app/page.tsx`) mints a signed URL
+   * per request and replaces this field before passing the tiles down to
+   * the client `<WywtRail>` component.
+   *
+   * Pitfall F-2: never cache signed URLs across requests/users — Supabase
+   * Smart CDN keys each token as a separate cache entry, so per-request
+   * minting is both free and correct. Mirrors the pattern in
+   * `src/app/wear/[wearEventId]/page.tsx`.
+   *
+   * Null when the wear event has no photo (no-photo posts and pre-Phase-15
+   * backfilled events).
+   */
+  photoUrl: string | null
   wornDate: string // ISO date 'YYYY-MM-DD'
   note: string | null
   /** Three-tier visibility tier this tile came from (Phase 12 / WYWT-10). */
