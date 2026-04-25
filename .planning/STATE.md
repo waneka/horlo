@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Production Nav & Daily Wear Loop
-status: executing
-stopped_at: Completed 16-03-search-components-PLAN.md
-last_updated: "2026-04-25T17:04:55.406Z"
+status: verifying
+stopped_at: Completed 16-05-search-page-assembly-PLAN.md (Phase 16 complete; ready for /gsd-verify-work)
+last_updated: "2026-04-25T17:33:30.856Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 36
-  completed_plans: 35
-  percent: 97
+  completed_plans: 36
+  percent: 100
 ---
 
 # Project State
@@ -27,20 +27,20 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 
 Phase: 16 (people-search) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-25
 
 ## Progress Bar
 
 ```
-Phase 11 [ ] Schema + Storage Foundation
-Phase 12 [ ] Visibility Ripple in DAL
-Phase 13 [ ] Notifications Foundation
-Phase 14 [ ] Nav Shell + Explore Stub
-Phase 15 [ ] WYWT Photo Post Flow
-Phase 16 [ ] People Search
+Phase 11 [x] Schema + Storage Foundation
+Phase 12 [x] Visibility Ripple in DAL
+Phase 13 [x] Notifications Foundation
+Phase 14 [x] Nav Shell + Explore Stub
+Phase 15 [x] WYWT Photo Post Flow
+Phase 16 [x] People Search
 
-[░░░░░░░░░░░░░░░░░░░░] 0/6 phases complete
+[████████████████████] 6/6 phases complete
 ```
 
 ## Performance Metrics
@@ -48,9 +48,9 @@ Phase 16 [ ] People Search
 | Metric | Value |
 |--------|-------|
 | Phases total | 6 |
-| Phases complete | 0 |
-| Plans total | TBD |
-| Plans complete | 0 |
+| Phases complete | 6 |
+| Plans total | 36 |
+| Plans complete | 36 |
 | Requirements mapped | 51/51 |
 | Phase 10 P01 | 18min | 3 tasks | 10 files |
 | Phase 10 P02 | 10min | 3 tasks | 6 files |
@@ -66,6 +66,7 @@ Phase 16 [ ] People Search
 | Phase 16-people-search P02 | 11min | 2 tasks | 3 files |
 | Phase 16-people-search P04 | 12min | 3 tasks | 4 files |
 | Phase 16-people-search P03 | 15min | 5 tasks | 9 files |
+| Phase 16-people-search P05 | ~50min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,11 @@ Phase 16 [ ] People Search
 | Phase 16-03 — Skeleton primitive lives at src/components/ui/skeleton.tsx | Plan 03 referenced `@/components/ui/skeleton` even though the file did not exist; HeaderSkeleton.tsx is layout-specific not the reusable primitive. Created the canonical shadcn Skeleton (animate-pulse rounded-md bg-muted) so future skeleton callers go through one path |
 | Phase 16-03 — globalThis.jest shim aliased to vi timer methods in tests/setup.ts | RTL waitFor() polls Jest fake timers via jest.advanceTimersByTime(); vitest's vi.useFakeTimers() sets setTimeout.clock but typeof jest === 'undefined', so RTL falls back to real-timer polling which deadlocks. The shim makes vi.useFakeTimers() + waitFor() compose correctly — required to turn Plan 01 RED hook tests GREEN |
 | Phase 16-03 — Test 6 (XSS-safety) repaired for split-text-node behavior | getByText regex against a string split across text nodes (HighlightedText wraps the match in <strong>) is incompatible with RTL's getNodeText() which excludes element-children text. Repair preserves intent (no <script> in DOM + literal text rendered) by selecting the bio paragraph and asserting textContent equals the full literal — proves XSS-safety AND verbatim text rendering simultaneously |
+| Phase 16-05 — Server-Component-as-children pattern (D-29) | Server Component child rendered server-side and passed via React node tree to Client parent which decides WHEN to display it. Avoids forcing the heavy DAL onto the client; Client decides WHEN, Server decides WHAT |
+| Phase 16-05 — Pitfall C-1 closed via forced-plan EXPLAIN ANALYZE | At 127 rows the planner correctly prefers Seq Scan because GIN consultation cost > heap scan cost. Forced plan (`SET enable_seqscan = off`) proves both `profiles_username_trgm_idx` and `profiles_bio_trgm_idx` are on disk, correctly defined with `gin_trgm_ops`, and reachable when row counts grow |
+| Phase 16-05 — SuggestedCollectorsForSearch limit 8 + NO LoadMore (Open Question 3) | /search empty/no-results state should feel light, not feed-like. Diverges from home's 5 + LoadMore. Defined inline in src/app/search/page.tsx rather than abstracted to a shared module — single caller, lifting is premature |
+| Phase 16-05 — declarative autoFocus over imperative useRef | shadcn `<Input>` wrapper does not forwardRef, so an imperative `useRef` + `.focus()` would silently no-op. `autoFocus` is forwarded as a plain DOM attribute via rest spread and works regardless of ref forwarding |
+| Phase 16-05 — Suspense wraps Client Component using useSearchParams (Pitfall 4) | Without Suspense, useSearchParams() inside the Client tree causes prerender bailout. `<Suspense fallback={<div … />}>` produces only the placeholder in static HTML; the dynamic Client subtree streams in. No data leakage in static HTML |
 
 ### Key Decisions (v2.0)
 
@@ -159,7 +165,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-25T17:04:55.403Z
-Stopped at: Completed 16-03-search-components-PLAN.md
+Last session: 2026-04-25T17:33:30.852Z
+Stopped at: Completed 16-05-search-page-assembly-PLAN.md (Phase 16 complete; ready for /gsd-verify-work)
 Resume file: None
-Next action: `/gsd-plan-phase 11`
+Next action: `/gsd-verify-work 16` — run cross-plan verifier on Phase 16 People Search

@@ -42,7 +42,7 @@
 ### People Search (SRCH)
 
 - [x] **SRCH-01**: `/search` route exists with 4 result tabs: All · Watches · People · Collections
-- [ ] **SRCH-02**: Watches and Collections tabs show "coming soon" empty state with no query firing
+- [x] **SRCH-02**: Watches and Collections tabs show "coming soon" empty state with no query firing
 - [x] **SRCH-03**: Search input is live-debounced (250ms) and fires after a 2-character minimum
 - [x] **SRCH-04**: People results query `profiles.username` and `profiles.bio` with `pg_trgm` ILIKE; ordered by taste overlap % desc, then username asc; LIMIT 20
 - [x] **SRCH-05**: Result rows show username · bio snippet · taste overlap % · inline FollowButton
@@ -163,7 +163,7 @@ Which phases cover which requirements. Updated by `gsd-roadmapper` during roadma
 | NOTIF-09 | Phase 13 | Pending |
 | NOTIF-10 | Phase 13 | Pending |
 | SRCH-01 | Phase 16 | Complete |
-| SRCH-02 | Phase 16 | Pending |
+| SRCH-02 | Phase 16 | Complete |
 | SRCH-03 | Phase 16 | Complete |
 | SRCH-04 | Phase 16 | Complete |
 | SRCH-05 | Phase 16 | Complete |

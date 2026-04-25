@@ -44,7 +44,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 - [x] **Phase 13: Notifications Foundation** — notifications DAL + Server Actions + bell + inbox + fire-and-forget wiring (completed 2026-04-23)
 - [x] **Phase 14: Nav Shell + Explore Stub** — Bottom nav, desktop top nav, slim mobile nav, MobileNav retired, /explore stub (completed 2026-04-23)
 - [x] **Phase 15: WYWT Photo Post Flow** — Multi-step wear post modal, camera, HEIC upload, visibility selector, Storage upload, Sonner toast, wear detail route (completed 2026-04-24)
-- [ ] **Phase 16: People Search** — /search page, live debounced ILIKE, taste overlap %, FollowButton inline
+- [x] **Phase 16: People Search** — /search page, live debounced ILIKE, taste overlap %, FollowButton inline (completed 2026-04-25)
 
 ## Phase Details
 
@@ -171,7 +171,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
   - [x] 16-02-PLAN.md — searchProfiles DAL + searchPeopleAction Server Action [Wave 1; depends on 16-01]
   - [x] 16-03-PLAN.md — useSearchState hook + HighlightedText + PeopleSearchRow + SearchResultsSkeleton + ComingSoonCard [Wave 2; depends on 16-01, 16-02]
   - [x] 16-04-PLAN.md — DesktopTopNav restyle (D-23 HeaderNav delete + D-24 magnifier/muted-fill) [Wave 1; depends on 16-01]
-  - [ ] 16-05-PLAN.md — SearchPageClient + /search Server Component wrapper + EXPLAIN ANALYZE manual checkpoint [Wave 3; depends on 16-02, 16-03, 16-04]
+  - [x] 16-05-PLAN.md — SearchPageClient + /search Server Component wrapper + EXPLAIN ANALYZE manual checkpoint [Wave 3; depends on 16-02, 16-03, 16-04]
 **Pitfalls to address**: C-1 (pg_trgm from Phase 11 — verified by EXPLAIN ANALYZE showing index scan), C-2 (2-char minimum enforced server-side in DAL, not only client), C-3 (profile_public WHERE clause in searchProfiles DAL — two-layer), C-4 (batched isFollowing lookup — no N+1, same pattern as v2.0 Suggested Collectors), C-5 (bio search minimum-length guard for bio matches)
 **UI hint**: yes
 
@@ -186,7 +186,7 @@ See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2
 | 13. Notifications Foundation | 5/5 | Complete    | 2026-04-23 |
 | 14. Nav Shell + Explore Stub | 9/9 | Complete    | 2026-04-24 |
 | 15. WYWT Photo Post Flow | 5/5 | Complete    | 2026-04-25 |
-| 16. People Search | 4/5 | In Progress|  |
+| 16. People Search | 5/5 | Complete   | 2026-04-25 |
 | 999.1. Phase 5 Code Review Follow-ups | 1/1 | Complete    | 2026-04-22 |
 
 | Milestone | Phases | Status | Shipped |

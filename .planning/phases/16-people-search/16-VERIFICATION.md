@@ -110,32 +110,32 @@ This matches MEMORY.md note "DB migration rules — drizzle-kit push is LOCAL ON
 
 ---
 
-## Visual + Behavioral UAT (D-24 + D-25) — AWAITING USER SIGN-OFF
+## Visual + Behavioral UAT (D-24 + D-25) — APPROVED
 
 This section requires the human reviewer to confirm visual + behavioral behavior in a desktop browser. The executor cannot evaluate visual rendering or click flows.
 
-Captured: _pending user UAT_
+Captured: 2026-04-25 (UAT sign-off received from user)
 
 ### Nav search input restyle (D-24)
 
 1. `npm run dev` (development server up)
 2. Open `http://localhost:3000/` in desktop viewport (≥768px), authenticated
 3. Confirm:
-   - ☐ Persistent nav search input has muted-fill background
-   - ☐ Leading lucide Search icon visible inside the input on the left
-   - ☐ Input width feels balanced — does not dominate the strip, does not look cramped
-   - ☐ HeaderNav inline links (Collection / Profile / Settings) are GONE from the left cluster — only logo + Explore visible
-   - ☐ Profile + Settings still reachable via UserMenu dropdown (right side)
+   - ☑ Persistent nav search input has muted-fill background
+   - ☑ Leading lucide Search icon visible inside the input on the left
+   - ☑ Input width feels balanced — does not dominate the strip, does not look cramped
+   - ☑ HeaderNav inline links (Collection / Profile / Settings) are GONE from the left cluster — only logo + Explore visible
+   - ☑ Profile + Settings still reachable via UserMenu dropdown (right side)
 4. Type "bob" in nav input and press Enter
-5. Confirm: page navigates to `/search?q=bob` and the page-level input is pre-filled with "bob"
-6. Confirm: results render after the 250ms debounce
+5. Confirm: ☑ page navigates to `/search?q=bob` and the page-level input is pre-filled with "bob"
+6. Confirm: ☑ results render after the 250ms debounce
 
 ### Two-input architecture (D-25)
 
-1. From `/`, type "bob" in nav input + press Enter → arrive at `/search?q=bob` with results
+1. From `/`, type "bob" in nav input + press Enter → ☑ arrive at `/search?q=bob` with results
 2. From `/search`, type a new query (e.g., "alice") into the NAV input + press Enter
-3. Confirm: URL updates to `/search?q=alice` and the page-level results update
-4. Confirm: NO layout shift in the nav input across these transitions
+3. Confirm: ☑ URL updates to `/search?q=alice` and the page-level results update
+4. Confirm: ☑ NO layout shift in the nav input across these transitions
 
 ### Phase 16 acceptance signals (automated — verified during executor run)
 
@@ -157,9 +157,13 @@ Captured: _pending user UAT_
 
 ### Final Verdict
 
-☐ APPROVED — Phase 16 ships
+☑ **APPROVED — Phase 16 ships**
 ☐ BLOCKED — list issues:
 
+**Sign-off:** 2026-04-25 — User typed "approved" after running through both the D-24 nav restyle checks and the D-25 two-input architecture checks in a desktop browser. All boxes confirmed green. No blocking issues raised.
+
+**Pitfall C-1 disposition:** Closed by forced-plan EXPLAIN ANALYZE evidence above. Both `profiles_username_trgm_idx` and `profiles_bio_trgm_idx` are confirmed on disk, correctly defined with `gin_trgm_ops`, and reachable by the planner. Natural-plan Seq Scan at 127 rows is expected small-table cost behavior (RESEARCH.md Pitfall 1) — at production scale the planner will pivot to Bitmap Index Scan as proven by the forced-plan output.
+
 ```
-{user fills in any blockers from UAT}
+No blockers.
 ```
