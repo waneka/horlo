@@ -202,6 +202,18 @@ export async function logWearWithPhoto(input: {
   }
 
   // Activity logging — fire-and-forget (D-10 contract from Phase 12).
+  //
+  // WR-05 — INTENTIONAL SNAPSHOT SEMANTICS (NOT a join at read-time):
+  // brand/model/imageUrl are captured from the `watch` row fetched at the
+  // ownership check above (line 128). If the watch is deleted between that
+  // fetch and this insert, the activity row carries the brand/model/imageUrl
+  // it had at log-time — it does NOT reflect the live (post-deletion) row.
+  // This matches Phase 12 D-10's denormalized activity contract: activities
+  // are immutable point-in-time snapshots of what the user did, not joined
+  // views. Same shape as `markAsWorn` above (line 41). No fix is needed; the
+  // race is narrow (concurrent watch deletion is not a user-initiated
+  // workflow on this surface) and snapshot semantics are the desired
+  // behavior for an activity feed.
   try {
     await logActivity(user.id, 'watch_worn', parsed.data.watchId, {
       brand: watch.brand,
