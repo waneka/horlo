@@ -1,27 +1,70 @@
-import { Search } from 'lucide-react'
+import { Suspense } from 'react'
+
+import { getCurrentUser } from '@/lib/auth'
+import { getSuggestedCollectors } from '@/data/suggestions'
+import { SuggestedCollectorRow } from '@/components/home/SuggestedCollectorRow'
+import { SearchPageClient } from '@/components/search/SearchPageClient'
 
 /**
- * /search stub — Phase 14 NAV-11 D-19.
+ * Phase 16 /search route (SRCH-01..SRCH-07).
  *
- * Minimal "coming soon" placeholder so the slim top nav search icon and
- * desktop nav search input never 404. Phase 16 rewrites this page with
- * real people-search (pg_trgm ILIKE + taste overlap). Copy + icon locked
- * by 14-UI-SPEC.md §Copywriting Contract. Renders inside the authenticated
- * shell (proxy.ts redirects unauth users to /login — D-20).
+ * Server Component wrapper that:
+ *   1. Resolves viewerId via getCurrentUser() (proxy.ts redirects unauth
+ *      users to /login before reaching here — auth gate already in place
+ *      from Phase 14 D-21/D-22).
+ *   2. Renders SuggestedCollectorsForSearch as a Server Component child
+ *      passed via the `children` prop into <SearchPageClient> (D-29).
+ *      The Client Component decides WHEN to show the children
+ *      (pre-query state — D-11; no-results state — D-10).
+ *   3. Wraps the Client Component in <Suspense> so useSearchParams() does
+ *      not cause prerender bailout (Pitfall 4 — verified in Next 16 docs).
+ *
+ * Per Open Question 3 in research, the suggested-collectors block on
+ * /search renders a fixed limit of 8 with NO LoadMore button — the empty
+ * state should feel light, not feed-like. (SuggestedCollectors home
+ * component renders limit 5 + LoadMore; we deliberately fork here.)
  */
-export default function SearchPage() {
+export default async function SearchPage() {
+  const user = await getCurrentUser()
   return (
-    <main className="mx-auto flex max-w-2xl flex-col items-center justify-center px-4 py-24 text-center">
-      <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent/10">
-        <Search className="size-6 text-accent" aria-hidden />
+    <Suspense fallback={<div className="mx-auto w-full max-w-3xl px-4 py-8" />}>
+      <SearchPageClient viewerId={user.id}>
+        {/* D-29 Server Component child — renders inside Client Component's
+            pre-query (D-11) and no-results (D-10) states. */}
+        <SuggestedCollectorsForSearch viewerId={user.id} />
+      </SearchPageClient>
+    </Suspense>
+  )
+}
+
+/**
+ * Server Component variant of SuggestedCollectors specifically for /search:
+ *   - Fixed limit of 8 (vs home's 5 + Load More — Open Question 3 resolution)
+ *   - NO Load-More button (Open Question 3)
+ *   - Same DAL (getSuggestedCollectors) so the home and search empty states
+ *     stay visually consistent
+ */
+async function SuggestedCollectorsForSearch({ viewerId }: { viewerId: string }) {
+  const { collectors } = await getSuggestedCollectors(viewerId, { limit: 8 })
+
+  if (collectors.length === 0) {
+    return (
+      <div className="py-8 text-center space-y-2">
+        <p className="text-base font-semibold">
+          You&apos;re already following everyone we can suggest
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Check back as more collectors join.
+        </p>
       </div>
-      <h1 className="font-serif text-3xl md:text-4xl text-foreground">
-        Search is coming.
-      </h1>
-      <p className="mt-3 max-w-md text-sm text-muted-foreground">
-        Find collectors by name, discover taste overlap, and follow people
-        who wear what you love. Check back soon.
-      </p>
-    </main>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {collectors.map((c) => (
+        <SuggestedCollectorRow key={c.userId} collector={c} viewerId={viewerId} />
+      ))}
+    </div>
   )
 }
