@@ -28,6 +28,7 @@ function makeTile(overrides: Partial<WywtTileData> = {}): WywtTileData {
     brand: 'Rolex',
     model: 'Submariner',
     imageUrl: 'https://example.com/sub.jpg',
+    photoUrl: null,
     wornDate: new Date(Date.now() - 5 * 60 * 60 * 1000) // 5h ago
       .toISOString()
       .slice(0, 10),
@@ -168,6 +169,61 @@ describe('WywtTile — W-04 Instagram Reels feel + Pitfall 4 hydration', () => {
     expect(button.getAttribute('aria-label')).toBe(
       'What are you wearing? Log a wear for today.',
     )
+  })
+
+  it('Test 10 (Phase 15 UAT) — when tile.photoUrl is set, renders <img src={photoUrl}> instead of imageUrl', () => {
+    // Tile uses alt="" (decorative — username + time in caption convey context),
+    // which makes the <img> presentational so getByRole("img") doesn't see it.
+    // Query the DOM directly.
+    const { container } = render(
+      <WywtTile
+        tile={makeTile({
+          photoUrl: 'https://signed.example/wrist.jpg',
+          imageUrl: 'https://catalog.example/sub.jpg',
+        })}
+        isSelfPlaceholder={false}
+        viewedIds={new Set()}
+        hydrated
+        onOpen={() => {}}
+        onOpenPicker={() => {}}
+      />,
+    )
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(img!.getAttribute('src')).toBe('https://signed.example/wrist.jpg')
+  })
+
+  it('Test 11 (Phase 15 UAT) — when tile.photoUrl is null, falls back to tile.imageUrl', () => {
+    const { container } = render(
+      <WywtTile
+        tile={makeTile({
+          photoUrl: null,
+          imageUrl: 'https://catalog.example/sub.jpg',
+        })}
+        isSelfPlaceholder={false}
+        viewedIds={new Set()}
+        hydrated
+        onOpen={() => {}}
+        onOpenPicker={() => {}}
+      />,
+    )
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(img!.getAttribute('src')).toBe('https://catalog.example/sub.jpg')
+  })
+
+  it('Test 12 (Phase 15 UAT) — when both photoUrl and imageUrl are null, renders WatchIcon placeholder (no <img>)', () => {
+    const { container } = render(
+      <WywtTile
+        tile={makeTile({ photoUrl: null, imageUrl: null })}
+        isSelfPlaceholder={false}
+        viewedIds={new Set()}
+        hydrated
+        onOpen={() => {}}
+        onOpenPicker={() => {}}
+      />,
+    )
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('Test 9 (Pitfall 4 guard) — pre-hydration always renders unviewed ring even if viewedIds contains the id', () => {

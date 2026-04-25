@@ -47,9 +47,12 @@ export function WywtSlide({ tile }: { tile: WywtTile }) {
   return (
     <div className="relative h-full flex flex-col bg-background">
       <div className="relative flex-1 bg-muted">
-        {tile.imageUrl ? (
+        {/* Phase 15 UAT: prefer the user's wrist-shot wear photo (signed
+            URL, minted per-request in src/app/page.tsx) over the watch
+            catalog imageUrl. Falls back to catalog when photo_url is null. */}
+        {(tile.photoUrl ?? tile.imageUrl) ? (
           <Image
-            src={tile.imageUrl}
+            src={tile.photoUrl ?? tile.imageUrl ?? ''}
             alt={`${tile.brand} ${tile.model}`}
             fill
             className="object-contain"

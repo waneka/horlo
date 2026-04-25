@@ -90,9 +90,13 @@ export function WywtTile({
           : 'ring-2 ring-ring',
       )}
     >
-      {tile.imageUrl ? (
+      {/* Phase 15 UAT: prefer the user's wrist-shot wear photo (signed URL,
+          minted per-request in src/app/page.tsx) over the watch catalog
+          imageUrl. Falls back to catalog when photo_url is null (no-photo
+          posts and pre-Phase-15 backfilled events). */}
+      {(tile.photoUrl ?? tile.imageUrl) ? (
         <Image
-          src={tile.imageUrl}
+          src={tile.photoUrl ?? tile.imageUrl ?? ''}
           alt=""
           fill
           className="object-cover"

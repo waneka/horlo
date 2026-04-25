@@ -50,6 +50,7 @@ function makeTile(i: number, overrides: Partial<WywtTile> = {}): WywtTile {
     brand: 'Rolex',
     model: `Model-${i}`,
     imageUrl: `https://example.com/${i}.jpg`,
+    photoUrl: null,
     wornDate: '2026-04-21',
     note: null,
     visibility: 'public',

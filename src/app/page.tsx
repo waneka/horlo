@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth'
 import { getWatchesByUser } from '@/data/watches'
 import { getWearRailForViewer } from '@/data/wearEvents'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { WywtRail } from '@/components/home/WywtRail'
 import { CollectorsLikeYou } from '@/components/home/CollectorsLikeYou'
 import { NetworkActivityFeed } from '@/components/home/NetworkActivityFeed'
@@ -24,10 +25,43 @@ import { SuggestedCollectors } from '@/components/home/SuggestedCollectors'
  */
 export default async function Home() {
   const user = await getCurrentUser()
-  const [watches, railData] = await Promise.all([
+  // `let` on railData (rather than destructuring directly) — we replace its
+  // tiles below with signed-URL versions of any photo paths.
+  const [watches, railDataRaw] = await Promise.all([
     getWatchesByUser(user.id),
     getWearRailForViewer(user.id),
   ])
+  let railData = railDataRaw
+
+  // Phase 15 UAT: mint signed URLs for any tile that has a wrist-shot photo.
+  //
+  // The DAL returns `tile.photoUrl` as the RAW Storage path (Pitfall F-2 —
+  // signed URLs MUST live outside any cached DAL function). We sign here,
+  // per-request, with a 60-min TTL — mirrors the inline pattern in
+  // src/app/wear/[wearEventId]/page.tsx. Supabase Smart CDN keys each token
+  // as a separate cache entry, so per-request minting is both free and
+  // correct (a cached signed URL would either leak across users or expire
+  // mid-render). Deliberately NOT wrapped in `cache()` / `'use cache'`.
+  const tilesWithPhotos = railData.tiles.filter((t) => t.photoUrl)
+  if (tilesWithPhotos.length > 0) {
+    const supabase = await createSupabaseServerClient()
+    const signed = await Promise.all(
+      tilesWithPhotos.map(async (t) => {
+        const { data } = await supabase.storage
+          .from('wear-photos')
+          .createSignedUrl(t.photoUrl as string, 60 * 60)
+        return { wearEventId: t.wearEventId, signedUrl: data?.signedUrl ?? null }
+      }),
+    )
+    const byId = new Map(signed.map((s) => [s.wearEventId, s.signedUrl]))
+    railData = {
+      ...railData,
+      tiles: railData.tiles.map((t) =>
+        t.photoUrl ? { ...t, photoUrl: byId.get(t.wearEventId) ?? null } : t,
+      ),
+    }
+  }
+
   const ownedWatches = watches.filter((w) => w.status === 'owned')
 
   return (
