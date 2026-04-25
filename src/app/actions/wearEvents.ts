@@ -9,6 +9,7 @@ import { logActivity } from '@/data/activities'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { WearVisibility } from '@/lib/wearVisibility'
+import { todayLocalISO } from '@/lib/wear'
 
 const watchIdSchema = z.string().uuid()
 
@@ -32,7 +33,11 @@ export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
     return { success: false, error: 'Watch not found' }
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  // WR-02: use the user's local calendar day. The Server Action runs in the
+  // user's request context (no compute job / cron offset concern), so the
+  // process clock matches the actor. Avoids the UTC-boundary duplicate-day
+  // false positive documented in src/lib/wear.ts:todayLocalISO.
+  const today = todayLocalISO()
 
   try {
     await wearEventDAL.logWearEvent(user.id, parsed.data, today)
@@ -150,7 +155,12 @@ export async function logWearWithPhoto(input: {
     }
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  // WR-02: local calendar day — see src/lib/wear.ts:todayLocalISO. Client
+  // (WywtPostDialog preflight) AND server MUST agree on the same calendar
+  // boundary or the picker's "Worn today" hint and the DB UNIQUE
+  // (user_id, watch_id, worn_date) constraint will diverge across the UTC
+  // day boundary.
+  const today = todayLocalISO()
   const note = parsed.data.note?.trim() ? parsed.data.note.trim() : null
 
   try {

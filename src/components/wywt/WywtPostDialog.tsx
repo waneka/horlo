@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { WatchPickerDialog } from '@/components/home/WatchPickerDialog'
 import { ComposeStep } from './ComposeStep'
 import { getWornTodayIdsForUserAction } from '@/app/actions/wearEvents'
+import { todayLocalISO } from '@/lib/wear'
 import type { Watch } from '@/lib/types'
 import type { WearVisibility } from '@/lib/wearVisibility'
 
@@ -77,7 +78,11 @@ export function WywtPostDialog({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    const today = new Date().toISOString().split('T')[0]
+    // WR-02: client preflight uses the user's LOCAL calendar day (matches
+    // logWearWithPhoto / markAsWorn server-side). UTC computation would
+    // disable a watch as "Worn today" the morning AFTER an evening wear
+    // for any user west of UTC. See src/lib/wear.ts:todayLocalISO.
+    const today = todayLocalISO()
     getWornTodayIdsForUserAction({ userId: viewerId, today })
       .then((ids) => {
         if (!cancelled) setWornTodayIds(new Set(ids))

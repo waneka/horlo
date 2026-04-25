@@ -42,10 +42,15 @@ const hasSupabase =
 
 const maybe = hasDrizzle && hasSupabase ? describe : describe.skip
 
+// WR-02: Server Action computes `today` via `todayLocalISO()` (local
+// calendar day). The test-side helper must produce dates in the same
+// timezone basis or the duplicate-day collision in Test 20 will not fire
+// when the local day differs from UTC. Use local Date methods.
 function isoToday(offsetDays = 0): string {
   const d = new Date()
-  d.setUTCDate(d.getUTCDate() + offsetDays)
-  return d.toISOString().slice(0, 10)
+  d.setDate(d.getDate() + offsetDays)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // Minimal valid JPEG (SOI + EOI marker).
@@ -517,10 +522,15 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
         const { logWearWithPhoto } = await loadActions()
         // Stub today() so the Server Action uses `date` instead of the
         // current day. The Server Action computes `today` via
-        // `new Date().toISOString().split('T')[0]`, so we need to pin the
-        // Date constructor for this one call. Use vi.useFakeTimers.
+        // `todayLocalISO()` (WR-02 — local calendar day), so we pin the
+        // system clock to the LOCAL noon of `date`. T12:00:00 in the
+        // runner's local zone keeps the local calendar day equal to
+        // `date` regardless of host timezone — the seeded row's `wornDate`
+        // (also produced by the local-date `isoToday` helper above) and
+        // the Server Action's `today` agree, triggering the unique
+        // (user_id, watch_id, worn_date) collision.
         vi.useFakeTimers()
-        vi.setSystemTime(new Date(`${date}T12:00:00Z`))
+        vi.setSystemTime(new Date(`${date}T12:00:00`))
         try {
           const result = await logWearWithPhoto({
             wearEventId: secondEventId,
