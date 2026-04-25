@@ -104,6 +104,25 @@ import { searchProfiles } from '@/data/search'
 
 const VIEWER = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 
+// Drizzle's PgTable/PgColumn objects carry a `column.table === parentTable`
+// back-reference that breaks JSON.stringify with "Converting circular
+// structure to JSON". The unit tests above only need to do substring
+// assertions on the captured WHERE arguments (e.g., "profile_public",
+// "ilike", "username", "bio", "inArray"), so we serialize with a cycle
+// breaker. Keys we want to read (column.name, sqlChunks, queryChunks,
+// table-name strings, the operator name on Drizzle SQL nodes) all serialize
+// fine — only the parent-table back-pointer needs to be skipped.
+function safeStringify(value: unknown): string {
+  const seen = new WeakSet<object>()
+  return JSON.stringify(value, (key, val) => {
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val as object)) return '[Circular]'
+      seen.add(val as object)
+    }
+    return val
+  })
+}
+
 describe('searchProfiles — SQL shape (unit)', () => {
   beforeEach(() => {
     followingRows = []
@@ -129,12 +148,16 @@ describe('searchProfiles — SQL shape (unit)', () => {
     await searchProfiles({ q: 'bo', viewerId: VIEWER })
     const whereCall = calls.find((c) => c.op === 'candidates.where')
     expect(whereCall).toBeDefined()
-    const whereJson = JSON.stringify(whereCall!.args)
+    const whereJson = safeStringify(whereCall!.args)
     expect(whereJson).toContain('profile_public')
     expect(whereJson).toContain('ilike')
     expect(whereJson).toContain('username')
-    // bio ILIKE must NOT be present at length-2
-    expect(whereJson).not.toContain('"bio"')
+    // bio ILIKE must NOT be present at length-2. The Drizzle-compiled SQL
+    // chunks include exactly one " ilike " operator chunk when only
+    // username matches, and two when the OR(username ILIKE, bio ILIKE)
+    // compound predicate fires (length >= 3).
+    const ilikeOpMatches = whereJson.match(/" ilike "/g) ?? []
+    expect(ilikeOpMatches.length).toBe(1)
   })
 
   it('Test 4: q.length >= 3 → WHERE includes or(username ILIKE, bio ILIKE) (D-21)', async () => {
@@ -142,17 +165,21 @@ describe('searchProfiles — SQL shape (unit)', () => {
     await searchProfiles({ q: 'bob', viewerId: VIEWER })
     const whereCall = calls.find((c) => c.op === 'candidates.where')
     expect(whereCall).toBeDefined()
-    const whereJson = JSON.stringify(whereCall!.args)
+    const whereJson = safeStringify(whereCall!.args)
     expect(whereJson).toContain('username')
     expect(whereJson).toContain('bio')
     expect(whereJson).toContain('ilike')
+    // Compound predicate (D-21) should emit TWO ilike SQL chunks: one
+    // for username, one for bio.
+    const ilikeOpMatches = whereJson.match(/" ilike "/g) ?? []
+    expect(ilikeOpMatches.length).toBe(2)
   })
 
   it('Test 5: WHERE always gates on profile_public (D-18 / Pitfall C-3)', async () => {
     candidateRows = []
     await searchProfiles({ q: 'bob', viewerId: VIEWER })
     const whereCall = calls.find((c) => c.op === 'candidates.where')
-    const whereJson = JSON.stringify(whereCall!.args)
+    const whereJson = safeStringify(whereCall!.args)
     expect(whereJson).toContain('profile_public')
   })
 
@@ -160,7 +187,7 @@ describe('searchProfiles — SQL shape (unit)', () => {
     candidateRows = []
     await searchProfiles({ q: 'bob', viewerId: VIEWER })
     const whereCall = calls.find((c) => c.op === 'candidates.where')
-    const whereJson = JSON.stringify(whereCall!.args)
+    const whereJson = safeStringify(whereCall!.args)
     // The sql`${profiles.id} != ${viewerId}` predicate either binds VIEWER
     // as a parameter or stamps it into the chunked tagged-template args.
     expect(whereJson).toContain(VIEWER)
@@ -261,11 +288,16 @@ describe('searchProfiles — SQL shape (unit)', () => {
     await searchProfiles({ q: 'al', viewerId: VIEWER })
     const followsFromCalls = calls.filter((c) => c.op === 'follows.from')
     expect(followsFromCalls.length).toBe(1)
-    // Assert WHERE uses inArray(follows.followingId, topIds)
+    // Assert WHERE uses inArray(follows.followingId, topIds). Drizzle's
+    // inArray() compiles to a SQL chunk with " in " as the operator and
+    // the candidate id list as a bound array — both surfaces are stable
+    // assertions that survive Drizzle internals churn.
     const followsWhere = calls.find((c) => c.op === 'follows.where')
     expect(followsWhere).toBeDefined()
-    const whereJson = JSON.stringify(followsWhere!.args)
-    expect(whereJson).toContain('inArray')
+    const whereJson = safeStringify(followsWhere!.args)
+    expect(whereJson).toContain('" in "')
+    expect(whereJson).toContain('u-alice')
+    expect(whereJson).toContain('u-bob')
   })
 
   it('Test 12: isFollowing flag wired correctly from the followingSet', async () => {
