@@ -193,28 +193,89 @@ Explicitly excluded from v4.0. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. Empty initially; populated by the roadmapper.
+Which phases cover which requirements. Populated by the roadmapper on 2026-04-26.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAT-01..12 | TBD | Pending |
-| DISC-03..08 | TBD | Pending |
-| SRCH-09..15 | TBD | Pending |
-| EVAL-01..06 | TBD | Pending |
-| SET-01..12 | TBD | Pending |
-| SMTP-01..06 | TBD | Pending |
-| FEAT-07..08 | TBD | Pending |
-| NAV-13..15 | TBD | Pending |
-| UX-01..08 | TBD | Pending |
-| WYWT-20..21 | TBD | Pending |
-| DEBT-03..06 | TBD | Pending |
-| TEST-04..06 | TBD | Pending |
+| CAT-01 | Phase 17 — Catalog Foundation | Pending |
+| CAT-02 | Phase 17 — Catalog Foundation | Pending |
+| CAT-03 | Phase 17 — Catalog Foundation | Pending |
+| CAT-04 | Phase 17 — Catalog Foundation | Pending |
+| CAT-05 | Phase 17 — Catalog Foundation | Pending |
+| CAT-06 | Phase 17 — Catalog Foundation | Pending |
+| CAT-07 | Phase 17 — Catalog Foundation | Pending |
+| CAT-08 | Phase 17 — Catalog Foundation | Pending |
+| CAT-09 | Phase 17 — Catalog Foundation | Pending |
+| CAT-10 | Phase 17 — Catalog Foundation | Pending |
+| CAT-11 | Phase 17 — Catalog Foundation | Pending |
+| CAT-12 | Phase 17 — Catalog Foundation | Pending |
+| DISC-03 | Phase 18 — /explore Discovery Surface | Pending |
+| DISC-04 | Phase 18 — /explore Discovery Surface | Pending |
+| DISC-05 | Phase 18 — /explore Discovery Surface | Pending |
+| DISC-06 | Phase 18 — /explore Discovery Surface | Pending |
+| DISC-07 | Phase 18 — /explore Discovery Surface | Pending |
+| DISC-08 | Phase 18 — /explore Discovery Surface | Pending |
+| SRCH-09 | Phase 19 — /search Watches + Collections | Pending |
+| SRCH-10 | Phase 19 — /search Watches + Collections | Pending |
+| SRCH-11 | Phase 19 — /search Watches + Collections | Pending |
+| SRCH-12 | Phase 19 — /search Watches + Collections | Pending |
+| SRCH-13 | Phase 19 — /search Watches + Collections | Pending |
+| SRCH-14 | Phase 19 — /search Watches + Collections | Pending |
+| SRCH-15 | Phase 19 — /search Watches + Collections | Pending |
+| EVAL-01 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| EVAL-02 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| EVAL-03 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| EVAL-04 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| EVAL-05 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| EVAL-06 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| SMTP-01 | Phase 21 — Custom SMTP via Resend | Pending |
+| SMTP-02 | Phase 21 — Custom SMTP via Resend | Pending |
+| SMTP-03 | Phase 21 — Custom SMTP via Resend | Pending |
+| SMTP-04 | Phase 21 — Custom SMTP via Resend | Pending |
+| SMTP-05 | Phase 21 — Custom SMTP via Resend | Pending |
+| SMTP-06 | Phase 21 — Custom SMTP via Resend | Pending |
+| SET-01 | Phase 22 — Settings Restructure + Account Section | Pending |
+| SET-02 | Phase 22 — Settings Restructure + Account Section | Pending |
+| SET-03 | Phase 22 — Settings Restructure + Account Section | Pending |
+| SET-04 | Phase 22 — Settings Restructure + Account Section | Pending |
+| SET-05 | Phase 22 — Settings Restructure + Account Section | Pending |
+| SET-06 | Phase 22 — Settings Restructure + Account Section | Pending |
+| SET-07 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| SET-08 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| SET-09 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| SET-10 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| SET-11 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| SET-12 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| FEAT-07 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| FEAT-08 | Phase 23 — Settings Sections + Schema-Field UI | Pending |
+| DEBT-03 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| DEBT-04 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| DEBT-05 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| DEBT-06 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| TEST-04 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| TEST-05 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| TEST-06 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
+| NAV-13 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| NAV-14 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| NAV-15 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-01 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-02 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-03 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-04 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-05 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-06 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-07 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| UX-08 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| WYWT-20 | Phase 26 — WYWT Auto-Nav | Pending |
+| WYWT-21 | Phase 26 — WYWT Auto-Nav | Pending |
 
 **Coverage:**
-- v4.0 requirements: 64 total
-- Mapped to phases: 0 (filled by roadmapper)
-- Unmapped: 64 ⚠️ (will resolve to 0 after roadmap creation)
+- v4.0 requirements: 71 enumerated (CAT 12 + DISC 6 + SRCH 7 + EVAL 6 + SET 12 + SMTP 6 + FEAT 2 + NAV 3 + UX 8 + WYWT 2 + DEBT 4 + TEST 3 = 71)
+- Mapped to phases: 71 ✓
+- Unmapped: 0 ✓
+
+> **Note on count:** The original Coverage block in this file stated 64 total v4.0 requirements, but the explicitly enumerated REQ-IDs sum to 71. The roadmapper has trusted the enumeration (each REQ-ID corresponds to a distinct, observable requirement) and surfaced the discrepancy here for the user to reconcile. No requirements have been silently dropped or merged.
 
 ---
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-26 — initial v4.0 milestone scope*
+*Traceability populated: 2026-04-26 — 71 requirements mapped across Phases 17–26*
