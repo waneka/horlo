@@ -207,3 +207,25 @@ export async function deleteWatch(userId: string, watchId: string): Promise<void
     throw new Error(`Watch not found or access denied: watchId=${watchId}, userId=${userId}`)
   }
 }
+
+/**
+ * Link a per-user watch to a canonical catalog row (CAT-08, Phase 17).
+ * Idempotent: re-running with the same args is a no-op.
+ * Owner-scoped: WHERE clause includes user_id to prevent cross-user catalog linking (T-17-02-03).
+ *
+ * Called by:
+ *   - addWatch Server Action (Plan 03 wiring)
+ *   - backfill script (Plan 04)
+ *
+ * Failure semantics: caller MUST wrap in try/catch (fire-and-forget per CAT-08).
+ */
+export async function linkWatchToCatalog(
+  userId: string,
+  watchId: string,
+  catalogId: string,
+): Promise<void> {
+  await db
+    .update(watches)
+    .set({ catalogId })
+    .where(and(eq(watches.id, watchId), eq(watches.userId, userId)))
+}
