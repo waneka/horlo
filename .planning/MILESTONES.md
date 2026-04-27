@@ -1,5 +1,35 @@
 # Milestones
 
+## v3.0 Production Nav & Daily Wear Loop (Shipped: 2026-04-27)
+
+**Phases completed:** 7 phases (11, 12, 13, 14, 15, 16, 999.1), 37 plans, 56 tasks
+**Timeline:** 5 days (2026-04-22 → 2026-04-26)
+**Scope:** 372 files changed, ~58k insertions / ~28k deletions, 21,311 LOC TypeScript in src/
+**Git range:** 178 commits since 2026-04-22
+**Audit:** `tech_debt` — 51/51 requirements satisfied at code level; ~30 advisory items + 31 deferred human-verification UAT items
+
+**Key accomplishments:**
+
+1. **Schema + storage foundation (Phase 11)** — `wear_visibility` enum (public/followers/private), `wear_events.photo_url`+`note`+`visibility` columns with `worn_public` backfill, `notifications` table with recipient-only RLS + partial UNIQUE dedup index, `pg_trgm` extension + GIN trigram indexes on `profiles.username`/`bio`, `wear-photos` private Storage bucket with three-tier SELECT RLS, SECURITY DEFINER helpers with revoked PUBLIC/anon EXECUTE, DEBT-02 RLS audit on users/watches/user_preferences (NOTIF-01, SRCH-08, WYWT-09/11/13/14, DEBT-02)
+2. **Visibility ripple in DAL (Phase 12)** — Three-tier wear privacy wired through `getWearEventsForViewer` / `getWearRailForViewer` / `getFeedForUser` (jsonb metadata gate) / `addToWishlistFromWearEvent`; `worn_public` column dropped from schema + local + prod (WYWT-10/11)
+3. **Notifications foundation (Phase 13)** — Fire-and-forget `logNotification` with opt-out + self-guard + internal try/catch; 6-function notifications DAL with explicit-viewerId two-layer defense; `markAllNotificationsRead` + `markNotificationRead` + `markNotificationsSeen` Server Actions; cached `NotificationBell` Server Component with per-viewer `cacheTag`; `/notifications` page with optimistic per-row read flip; Settings opt-out toggles (NOTIF-02..10)
+4. **Production nav shell (Phase 14)** — Mobile `BottomNav` (5-item sticky with elevated Wear cradle), `SlimTopNav` (<768px) / `DesktopTopNav` (≥768px) split, `MobileNav` hamburger deleted, `/explore` + `/search` stubs close nav-link 404s, `/insights` retired to owner-only profile tab, `UserMenu` consolidates Profile/Settings/Theme/Sign out, shared `PUBLIC_PATHS` constant + `isPublicPath` predicate unifies proxy + nav auth gate, IBM Plex Sans + `viewport-fit=cover` metadata, DEBT-01 regression-locked (NAV-01..12, DEBT-01)
+5. **WYWT photo post flow (Phase 15)** — Two-step modal (`WywtPostDialog` reuses `WatchPickerDialog` for step 1, new `ComposeStep` for photo + note + visibility); `CameraCaptureView` with `WristOverlaySvg` static guide overlay; `PhotoUploader` with HEIC→JPEG via `heic2any` lazy-loaded in Web Worker; canvas-reencoded JPEG ≤1080px with EXIF strip; client-direct upload to `wear-photos` bucket; `logWearWithPhoto` Server Action with orphan-cleanup on 23505 + non-23505; `/wear/[wearEventId]` route with three-tier gate + uniform 404 + per-request signed URL; Sonner `<ThemedToaster />` bound to custom `ThemeProvider` (WYWT-01..08, WYWT-12, WYWT-15..19)
+6. **People search (Phase 16)** — `/search` 4-tab page with People populated; `searchProfiles` DAL with two-layer privacy + compound bio-search predicate + batched `isFollowing` (anti-N+1); `useSearchState` hook (250 ms debounce + AbortController + URL sync + 2-char client minimum); XSS-safe `HighlightedText`; `PeopleSearchRow` with avatar + highlighted username/bio + overlap pill + inline `FollowButton`; `DesktopTopNav` search input restyled, `HeaderNav` deleted; pg_trgm Bitmap Index Scan evidence captured via forced-plan EXPLAIN ANALYZE (SRCH-01..07)
+7. **Phase 5 code-review follow-ups (Phase 999.1)** — `PreferencesClient` surfaces save failures via `role="alert"` inline banner (MR-01); dead `UnauthorizedError` imports removed (MR-02); MR-03 closed paperwork-only with in-tree note citing Phase 6 RLS migration + Phase 11 DEBT-02 audit migration
+
+**Tech debt deferred:**
+- 31 human-verification UAT items (iOS device tests, multi-session flows, FOUC checks, prod browser smoke tests)
+- WristOverlaySvg geometry redesign (user owns)
+- 9 test files with stale `wornPublic` references (Phase 12 fallout fixture cleanup)
+- WYWT post-submit auto-navigation to `/wear/[wearEventId]` (currently dialog closes with toast only — UX enhancement, not a requirement gap)
+- Pre-existing `LayoutProps` TS error in `src/app/u/[username]/layout.tsx:21`
+- Nyquist coverage partial across phases — most have draft VALIDATION.md without `nyquist_compliant: true` + `wave_0_complete: true`
+
+See `.planning/milestones/v3.0-MILESTONE-AUDIT.md` for full audit detail.
+
+---
+
 ## v2.0 Taste Network Foundation (Shipped: 2026-04-22)
 
 **Phases completed:** 6 phases, 21 plans, 54 tasks
