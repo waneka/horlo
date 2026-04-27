@@ -1,292 +1,213 @@
-# Research Summary — v3.0 Production Nav & Daily Wear Loop
+# Project Research Summary
 
 **Project:** Horlo
-**Milestone:** v3.0 — Production Nav & Daily Wear Loop
-**Domain:** Production navigation overhaul + notifications + people-search + WYWT photo post flow, layered onto an existing Next.js 16 / Supabase / Drizzle / cacheComponents production app
-**Researched:** 2026-04-21
-**Confidence:** HIGH (architecture, codebase-derived patterns, storage RLS, iOS getUserMedia); MEDIUM (heic2any behavior, sonner version, bio-search tradeoffs)
-
----
+**Domain:** Taste-aware watch collection intelligence — v4.0 Discovery & Polish milestone
+**Researched:** 2026-04-26
+**Confidence:** HIGH
 
 ## Executive Summary
 
-v3.0 is a subsequent milestone on a production app, not greenfield work. The existing stack is locked: Next.js 16 App Router with `cacheComponents: true`, React 19, Supabase Auth + Postgres, Drizzle ORM, Tailwind 4, Zustand (filter-only). This milestone adds the production navigation frame, closes the social loop with notifications, and turns WYWT into a photo-first daily habit with three-tier privacy. Only two new npm packages are required (`sonner@^2.0.7` for toasts, `heic2any@^0.0.4` for iOS HEIC conversion). Everything else is implemented using APIs and patterns already in the stack.
+Horlo v4.0 is a feature-completion milestone layered onto a v3.0 codebase that already ships production navigation, three-tier wear privacy, notifications, photo-first WYWT, and people search. The milestone has one keystone architectural shift — a canonical `watches_catalog` table with a nullable `catalog_id` FK from per-user `watches` — and ten dependent surfaces that this shift unblocks (`/explore` rails, `/search` Watches tab, `/search` Collections cross-user search, deep-linkable `/evaluate?catalogId=`, denormalized owners/wishlist counts). Everything else (Settings expansion with Account/Notifications/Appearance, custom SMTP via Resend, profile avatar in DesktopTopNav, empty-state CTAs, WYWT auto-nav, form-feedback polish, schema-field UI exposure, dead-stub cleanup, carryover tests) is independent and can ship in parallel tracks.
 
-The recommended build order is bottom-up by data dependency, not feature-by-feature: schema + storage migrations must land first (they unblock everything), followed by the visibility ripple across existing DAL functions (the highest-risk code change in the milestone), then notifications and nav in parallel, then the WYWT photo form, and finally people-search and the Explore stub. The phase ordering matters because the three-tier visibility change touches at least 8 existing DAL functions — if any are missed, private wears become visible to non-followers. This is the primary risk vector for the milestone, not the new features themselves.
+The recommended approach is the **expand-contract migration pattern** for the catalog (additive schema, idempotent backfill, keep `catalog_id` nullable indefinitely; do NOT add `SET NOT NULL` in v4.0), composition-only for /explore + /search (no new search engine — `pg_trgm` GIN is two orders of magnitude under the threshold where Algolia/Meilisearch become useful), a route-not-modal pattern for `/evaluate` (verdict UI is too dense for a modal; reuses existing `/api/extract-watch` and `analyzeSimilarity()`), vertical tabs via `@base-ui/react` with hash state for Settings (avoids per-section route boilerplate and the shadcn Sidebar primitive that would conflict with the BottomNav), and Resend over SMTP for Auth-only email (no npm install needed; native Supabase partner integration; 30x the free-tier headroom of Postmark).
 
-Five architecture decisions are unresolved and must be answered before planning begins. The most consequential is the WYWT image upload pipeline direction (client → Storage directly vs. client → Server Action → Storage), which affects the security model, bandwidth, and the Next.js body size limit. The others concern bottom-nav data fetching, storage bucket topology, `worn_public` deprecation timing, and the wear detail navigation model. These are documented explicitly in the Open Architecture Decisions section and must be resolved in the requirements step before the roadmap is drafted.
-
----
-
-## Open Architecture Decisions
-
-**These 5 decisions must be resolved before the roadmapper runs. Each has a recommended answer but requires explicit user sign-off.**
-
----
-
-**Decision 1: WYWT image upload pipeline direction**
-
-- **Option A (recommended):** Client captures + processes image → client uploads directly to Supabase Storage using anon key → client passes storage path to Server Action → Server Action inserts `wear_events` row. EXIF stripping happens in-browser via canvas re-encode.
-- **Option B:** Client sends raw file bytes in FormData to a Server Action → server strips EXIF (needs `sharp` or pure-JS) → server uploads to Storage via service-role client → server inserts row.
-- **Consequences:** Option A avoids doubling bandwidth and sidesteps the Next.js 4MB body size limit, but requires correct client-side EXIF stripping (a security-sensitive operation). Option B is architecturally cleaner (no binary data on the client path, server validates everything) but doubles bandwidth and requires configuring `next.config.ts` body limit.
-
-**Cross-link:** Pitfall E-4 (EXIF not stripped), Pitfall F-1 (Storage RLS is a separate system), Pitfall E-3 (client-only validation).
-
----
-
-**Decision 2: Bottom nav `ownedWatches` data fetching**
-
-- **Option A:** `BottomNav` calls `getWatchesByUser(user.id)` independently — duplicates the DB read already done in `Header`, but both run in parallel inside separate Suspense boundaries (no latency penalty, one extra DB query per render).
-- **Option B (recommended):** Wrap `getWatchesByUser` with React `cache()` so `Header` and `BottomNav` share the same request-scoped result. Same pattern as `getTasteOverlapData` in `src/data/follows.ts` line 261.
-
-**Cross-link:** Pitfall A-1 (viewer data outside Suspense).
-
----
-
-**Decision 3: Storage bucket topology — single private bucket vs. split**
-
-- **Option A (recommended):** Single private `wear-photos` bucket. Signed URLs for all wear photos. Simple; one RLS policy set; no bucket routing complexity in the upload path.
-- **Option B:** Two buckets — `public-wear-photos` (public read) for `visibility = 'public'` wears, `private-wear-photos` (private) for `followers` and `private` wears. Avoids signed URL overhead for public-tier wears but doubles RLS surface area and complicates upload routing.
-
-**Cross-link:** Pitfall F-1 (Storage RLS is separate from table RLS), Pitfall F-2 (signed URLs cached by Next.js).
-
----
-
-**Decision 4: `worn_public` deprecation timing**
-
-- **Option A (recommended):** Deprecate in v3.0. Backfill `visibility` from `worn_public` (`false` → `'private'`, `true` → `'public'`), then remove `wornPublic` reads from all DAL functions in Phase 12. Keep the column with a deprecation comment; remove in a future milestone.
-- **Option B:** Keep `worn_public` as a master override that, if `false`, overrides all per-row `visibility` to effective-private. Preserves global toggle behavior but complicates the DAL (two parallel systems).
-
-**Cross-link:** Pitfall G-6 (incorrect backfill — `false` must map to `'private'`, not `'followers'`), ARCHITECTURE.md `worn_public` migration strategy.
-
----
-
-**Decision 5: Wear detail — modal overlay vs. dedicated route**
-
-- **Option A:** `/wear/[wearEventId]` dedicated route. Clean URL, shareable, server-rendered. Signed URL generation is lazy (on page load).
-- **Option B (likely recommended):** Modal overlay triggered by tapping a wear tile in the WYWT rail. No route change. Matches the "lightweight interactions" product principle. Signed URLs must be pre-generated for rail tiles at render time.
-- **Consequences:** Affects whether Phase 15 includes a new route or a modal component. Also affects whether signed URLs are pre-generated for all rail tiles (Option B) or lazily on tap (Option A).
-
-**Cross-link:** FEATURES.md differentiators (wear detail overlay), Pitfall F-2 (signed URL caching).
-
----
+Key risks cluster around the catalog migration (backfill safety, ON CONFLICT semantics, casing/typo identity fragmentation, dual Drizzle+Supabase migration tracks, RLS-default-on for new tables), the SMTP go-live ordering (DKIM verification must complete BEFORE flipping "Confirm email" ON, or new signups silently land in spam), enum cleanup (`ALTER TYPE DROP VALUE` does not exist — requires rename+recreate), Cache Components Suspense boundaries on `/evaluate`, and BottomNav muscle-memory disruption (`/explore` deserves the bottom-nav slot; profile goes top-right, NOT into BottomNav). Mitigations are documented per pitfall and informed by patterns proven in v3.0 (Phase 11 RLS audit, Phase 13 fire-and-forget logger, Phase 15 Sonner ThemeProvider binding, Phase 16 anti-N+1 + forced-plan EXPLAIN verification).
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack requires no structural changes. Two packages are added: `sonner@^2.0.7` (13.9 kB gzipped; requires a thin client wrapper to use the project's custom ThemeProvider instead of `next-themes`; must mount outside Suspense boundaries) and `heic2any@^0.0.4` (~600 kB WASM; must be lazy-loaded via a dedicated Web Worker — standard dynamic imports are insufficient because webpack includes the import string at build time regardless of execution path).
+The v4.0 stack is **almost entirely composition** of what's already in the tree. Exactly one new package — `resend@^4.0.0` — and that install is *optional* (Auth-only path is pure SMTP via Supabase Dashboard config; install Resend SDK only when product transactional emails ship). Everything else is schema additions, raw-SQL migrations, route additions, and UI composition with libraries already shipped (Drizzle 0.45.2, `@supabase/ssr` 0.10.2, `@base-ui/react` 1.3.0, Sonner via `<ThemedToaster />`, `pg_trgm`, `pg_cron`).
 
-All other features — Supabase Storage, `getUserMedia`, canvas EXIF stripping, `pg_trgm`, notifications schema, and the bottom nav — use existing stack capabilities. The critical non-obvious constraint is that `next/image` must not be used for wear photos: `next.config.ts` already has `images: { unoptimized: true }` and there is a confirmed Next.js 16 bug (#88873) where image optimization returns errors for signed Supabase Storage URLs.
+**Core technologies (additions, not the existing stack):**
+- **`watches_catalog` table + nullable FK** — surrogate UUID PK, natural-key UNIQUE on `(brand_normalized, model_normalized, reference_normalized)` with `NULLS NOT DISTINCT` (PG 15+) or `COALESCE` fallback; mirrors classic e-commerce normalization
+- **Resend SMTP via Supabase native partner integration** — `smtp.resend.com:465`; 3,000/mo, 100/day free tier; SPF + DKIM + bounce MX at registrar; `resend` npm SDK NOT required for Auth-only path
+- **`pg_trgm` GIN on `watches_catalog.brand` + `model`** — same query shape as Phase 16 `profiles.username` (proven); at <5,000 catalog rows times handful of users, no Algolia/Meilisearch
+- **`pg_cron` daily refresh of `owners_count` + `wishlist_count`** — denormalized counters for /explore Trending; reject live triggers (write amplification on `addWatch` hot path)
+- **`@base-ui/react` Tabs `orientation="vertical"`** — Settings sidebar pattern with hash-state URL, accordion fallback on mobile; reject shadcn Sidebar (built for app-shell nav, conflicts with BottomNav)
 
-**New packages:**
-- `sonner@^2.0.7` — toast notifications; custom ThemeProvider wrapper required; mount outside Suspense
-- `heic2any@^0.0.4` — iOS HEIC conversion; Web Worker lazy-load mandatory; 600 kB WASM
-
-**Infrastructure additions (no npm):**
-- `pg_trgm` Postgres extension — GIN indexes on `profiles.username` and `profiles.bio`; must be in a Drizzle migration, not a dashboard click
-- Supabase Storage bucket `wear-photos` — private; per-user RLS on `storage.objects` (separate system from table RLS)
-- `notifications` Drizzle table — partial index on `(userId) WHERE readAt IS NULL` for efficient unread count
-- `wear_events` schema extension — `photo_url TEXT`, `note TEXT CHECK (length <= 200)`, `visibility wear_visibility NOT NULL DEFAULT 'public'`
-- `wear_visibility` Postgres enum — `public`, `followers`, `private`
+See `.planning/research/STACK.md` for full recommendations including DNS records, Supabase rate-limit knob behavior, and rejected alternatives.
 
 ### Expected Features
 
-**Must have (table stakes):**
-- Sticky mobile bottom nav — always visible; 5 destinations; elevated center Wear CTA with iOS safe-area handling (`env(safe-area-inset-bottom)`, `viewport-fit=cover`)
-- Desktop top nav — logo, Explore, persistent search, Wear CTA, +Add, notifications bell, profile dropdown
-- Slim mobile top bar — logo, search icon, notifications icon, settings icon
-- Stub `/explore` route — "coming soon" placeholder; nav must have no broken links
-- Follow notification and watch-overlap notification — live types wired into existing Server Actions (fire-and-forget)
-- Unread bell badge — server-rendered per-request; no WebSocket, no polling
-- Notifications inbox with "Mark all read" — server-authoritative bulk UPDATE on `readAt IS NULL`
-- `/search` with live debounced ILIKE people search — 2-character minimum enforced server-side
-- WYWT multi-step modal (pick watch → photo/note/visibility)
-- Per-wear visibility selector defaulting to Private — never default Public; always show the picker
-- EXIF stripping before upload — canvas re-encode mandatory on ALL upload paths (camera AND file upload)
-- Sonner toast on successful wear log
+The eight v4.0 surfaces map cleanly to comparable apps (Letterboxd, Discogs, Goodreads, Are.na, Untappd, Spotify), with /evaluate being Horlo's differentiator — no comparable taste-app ships a "is this a fit?" pre-commit verdict engine.
 
-**Should have (differentiators):**
-- Elevated center Wear CTA with cradle/notch visual treatment (CSS only)
-- Wear CTA "done today" muted state
-- Taste overlap % inline on people-search result rows
-- Follow/unfollow inline from search results
-- Stubbed UI templates for Price Drop and Trending notification types (render null for unknown types — no malformed cards)
-- Edit-after-post: add a photo to an already-logged wear event
-- Watch-overlap notifications grouped by watch at display time
+**Must have (table stakes for v4.0 launch):**
+- `watches_catalog` table + backfill (keystone — unblocks 4 downstream surfaces)
+- `/explore` Popular Collectors rail + Trending Watches rail + sparse-network welcome hero
+- `/search` Watches tab populated with thumbnails + owned/wishlist badges + "Evaluate" inline CTA
+- `/search` Collections tab (cross-collection by-watch-identity + by-tag-profile, two-layer privacy)
+- `/evaluate` route (paste URL — verdict + three-CTA ladder: Save to Evaluate Later [reuse wishlist] / Add to Wishlist / Add to Collection)
+- Settings restructure (vertical tabs, hash-driven, sections in canonical order: Account / Profile / Preferences / Privacy / Notifications / Appearance)
+- Settings — Account: change email + change password with re-auth flow (Supabase `updateUser` + `verifyOtp` `email_change`)
+- Settings — Preferences UI for `collectionGoal` + `overlapTolerance` (schema fields exist; expose them)
+- Settings — Notifications opt-out toggle UI (backend wired in v3.0 Phase 13)
+- Custom SMTP via Resend + email confirmation ON (config, not code)
+- Profile avatar in `DesktopTopNav` top-right with dual affordance (avatar = profile, chevron = menu)
+- Empty-state CTAs across Collection / Wishlist / Worn / Notes (single primary CTA, voice-aware copy)
+- Form feedback polish (Sonner toast + inline `aria-live` + categorized URL-extract errors + pending states)
+- `notesPublic` per-note visibility owner edit; `isChronometer` toggle in WatchForm
+- WYWT post-submit auto-nav to `/wear/[id]` (v3.0 deferred UX)
+- Remove `price_drop` + `trending_collector` notification stubs
+- Test fixture cleanup (9 files w/ `wornPublic` references) + TEST-04/05/06
 
-**Defer to future milestone:**
-- Wear detail overlay (scope depends on Decision 5; defer if route approach)
-- Notification digest email (custom SMTP not configured)
-- Full-text pg_trgm similarity scoring (ILIKE sufficient at current user count)
-- Supabase Realtime / live bell updates (free tier limit; server-render + `router.refresh()` is correct)
+**Should have (v4.x patch milestones):**
+- /explore "Watches Gaining Traction" rail (7-day delta — requires `watches_catalog_daily_snapshots`)
+- /search Watches filter facets (Movement / Case size / Style)
+- /evaluate "Compare with watch I own" pairwise drill-down
+- Preferences live preview ("here's how your similarity engine reads your taste")
+- Sonner `toast.promise()` refactor; optimistic-update extension to status toggles
 
-**Anti-features to exclude:**
-- Bottom nav hiding on scroll (utility app, not an infinite-scroll feed)
-- Hamburger menu (retired by bottom nav)
-- Likes, reactions, comments on wear photos
-- `piexifjs` (canvas re-encode already strips EXIF; piexifjs is for selective preservation)
-- `react-webcam`, `browser-image-compression`, `react-dropzone`, `sharp` (all unnecessary)
+**Defer (v5+):**
+- Taste Clusters visualization (k-means on preference vectors)
+- Editorial Featured Collection (admin tooling required)
+- Account — Delete Account / Wipe Collection (Danger Zone — needs multi-step confirm + soft-delete cron)
+- Multi-watch Comparison Tool; saved-search alerts; faceted search on Collections; Realtime updates
+- Watch-overlap digest emails (would require `resend` SDK install)
+- Migrating similarity engine to read from canonical catalog (catalog is silent infrastructure in v4.0)
+
+See `.planning/research/FEATURES.md` for the full prioritization matrix and competitor analysis.
 
 ### Architecture Approach
 
-v3.0 adds new client islands, server surfaces, DAL functions, and Server Actions on top of the existing architecture without changing any foundational patterns. The Server Component shell + Client Component island split is consistent throughout: `BottomNav` (Server) + `BottomNavClient` (Client), `/search` page (Server) + `SearchClient` (Client), `/notifications` page (Server) + `MarkAllReadButton` (Client). The `cacheComponents: true` constraint governs every new viewer-scoped component — all components that call `getCurrentUser()` or read cookies must live inside a `<Suspense>` boundary, and no `'use cache'` function may call `getCurrentUser()` internally (pass `viewerId` as an explicit argument instead).
+V4.0 layers onto v3.0's established frame: Server Components by default with `cacheComponents: true`, server-only DAL with `'server-only'` import, Server Actions for all mutations, `proxy.ts` edge auth via `PUBLIC_PATHS`, two-layer privacy (RLS + DAL WHERE), Drizzle for column shapes + raw-SQL Supabase migrations for RLS/partial indexes/CHECK/triggers, fire-and-forget activity + notification logging, Sonner `<ThemedToaster />` bound to custom ThemeProvider. The catalog is **silent infrastructure** in v4.0 — `analyzeSimilarity()` is NOT modified; it continues reading from per-user `watches`. Catalog migration to similarity is a v5.0+ concern.
 
-**Major new components:**
-1. `BottomNav` (Server) + `BottomNavClient` (Client) — nav shell; shares watched data with `Header` via `cache()`-wrapped DAL
-2. `notifications` DAL + Server Actions — `getUnreadCount`, `getNotificationsPage`, `markAllRead`, `insertNotification`, `checkRecentOverlapNotification`; fire-and-forget wiring into `followUser` and `addWatch`
-3. `SearchClient` + `searchProfiles` DAL — pg_trgm ILIKE with batched `isFollowing` lookup (no N+1)
-4. `WywtPostDialog` (orchestrator) → `WatchPickerDialog` (step 1, extended with `onWatchSelected` prop) → `WywtPhotoForm` (step 2) → `CameraCapture`
-5. Schema + Storage foundation — `wear_visibility` enum, `notifications` table, `wear_events` extensions, Storage bucket + RLS, pg_trgm GIN indexes
+**Major components (new for v4.0):**
+1. **`watches_catalog` (Postgres table)** — canonical spec sheet with denormalized `owners_count` + `wishlist_count`; public-read RLS / service-role-write-only (deliberate departure from two-layer privacy, documented as Key Decision); populated via `addWatch` (`user_promoted` source) and `/api/extract-watch` (`url_extracted` source, higher-trust enrichment via `ON CONFLICT DO UPDATE … COALESCE` per nullable spec column)
+2. **`src/data/catalog.ts` + `src/data/explore.ts` (new DAL modules)** — `getOrCreateCatalogEntry`, `searchCatalogWatches` (mirrors Phase 16 `searchProfiles` shape including anti-N+1 `inArray` for viewer-state badges), `getPopularCollectors`, `getTrendingWatches`
+3. **`/evaluate` route (Server Component shell + Client Component form)** — `<Suspense>` wraps the auth-gated body; reuses `/api/extract-watch` route handler unchanged; `analyzeSimilarity()` runs client-side (pure); shared `<SimilarityVerdictCard>` component extracted from existing `<SimilarityBadge>` (refactor: pure renderer, computation moves to caller)
+4. **`/settings` single-page vertical-tabs layout (`<SettingsTabs>` Client Component)** — base-ui Tabs with `orientation="vertical"`, hash state via `window.location.hash` + `useEffect` (no `router.push` to avoid re-running page loader), section components `<AccountSection>` / `<PreferencesSection>` / `<PrivacySection>` / `<NotificationsSection>` / `<AppearanceSection>` (the latter lifts `<InlineThemeSegmented>` from UserMenu)
+5. **Auth confirm route handler extension** — `/auth/confirm/route.ts` switches on `type` to handle `signup` | `recovery` | `email_change` | `magiclink` | `invite` with a redirect map (post-`email_change` lands on `/settings/account?status=email_changed`)
+6. **`pg_cron` daily refresh function** — `refresh_watches_catalog_counts()` SECURITY DEFINER with REVOKE FROM PUBLIC/anon/authenticated + GRANT TO service_role (mirrors Phase 11 SECDEF posture from MEMORY); local-dev path is manual `npm run db:refresh-counts` script (vanilla Supabase Docker doesn't ship pg_cron)
 
-**Modified existing files (key ones):**
-- `src/app/layout.tsx` — add `<BottomNav>` in Suspense, `pb-16 md:pb-0` on `<main>`, `<Toaster />` outside Suspense
-- `src/data/wearEvents.ts` — visibility ripple in `getPublicWearEventsForViewer` and `getWearRailForViewer`
-- `src/data/activities.ts` — `getFeedForUser` watch_worn gate via `visibility` in activity metadata
-- `src/app/u/[username]/layout.tsx` — replace `getAllWearEventsByUser` with viewer-aware function for worn tab
-- `src/app/actions/follows.ts` and `watches.ts` — add `insertNotification` fire-and-forget
-- `src/components/home/WatchPickerDialog.tsx` — add `onWatchSelected?: (watch: Watch) => void` prop
+See `.planning/research/ARCHITECTURE.md` for full data flow diagrams, JOIN topologies, and integration points.
 
 ### Critical Pitfalls
 
-**CRITICAL — these will cause data loss, privacy leaks, or broken builds if missed:**
+The five highest-severity risks are migration safety, SMTP DKIM ordering, enum-removal mechanics, Cache Components Suspense, and BottomNav muscle memory.
 
-1. **Storage RLS is a separate system from table RLS (Pitfall F-1)** — `wear_events` table RLS does not protect image files in Supabase Storage. Write explicit `storage.objects` policies for the `wear-photos` bucket. Test: access a private wear photo URL directly in incognito — confirm 403. Pairs with Decision 3.
+1. **Catalog migration backfill half-completes; `SET NOT NULL` forced too early** — Split into THREE phases: (a) additive schema with `NULLS NOT DISTINCT` UNIQUE in raw SQL, (b) idempotent batched backfill script with `WHERE catalog_id IS NULL` short-circuit + final `COUNT(*)` assertion, (c) **DO NOT** add `SET NOT NULL` in v4.0 (preserves "user hasn't matched catalog yet" UX state; defer to v5.0). Local works, prod aborts because casing collisions explode `(brand, model, NULL reference)` UNIQUE.
 
-2. **Three-tier visibility ripple must audit all wear-reading DAL functions before migration (Pitfall G-1 + G-4)** — At least 8 existing DAL functions read `wear_events`. Missing one means followers-only wears are visible publicly. Every function must add the per-row visibility check AND the `profile_public` guard.
+2. **`ON CONFLICT (...) DO NOTHING` silently discards URL-extracted enrichment** — Two helpers, not one: `upsertCatalogFromUserInput` uses `DO NOTHING` (don't enrich from typed input — too much typo risk); `upsertCatalogFromExtractedUrl` uses `DO UPDATE SET col = COALESCE(catalog.col, EXCLUDED.col)` per nullable spec column with `source` pinned to `admin_curated` if already set. Catalog identity fragmentation (Pitfall 3 in PITFALLS.md) is a sibling: normalize at Server Action boundary via Postgres generated columns (`brand_normalized TEXT GENERATED ALWAYS AS (lower(trim(brand))) STORED`); UNIQUE on the normalized trio; preserve original casing for display.
 
-3. **`'use cache'` without `viewerId` as explicit argument leaks data across users (Pitfall B-6)** — Grep gate before shipping: `grep -r "use cache" src/ | xargs grep -l "getCurrentUser\|cookies()"` must return empty.
+3. **`watches_catalog` public-read RLS forgotten — table anon-invisible after RLS-default-on** — Project-wide RLS audited ON in v3.0 Phase 11 (DEBT-02). Every new table inherits "no policies — no rows visible to non-service-role." `/search` Watches and `/explore` Trending silently return empty arrays in production. Mandate that EVERY phase plan adding a table includes BOTH a Drizzle migration AND a sibling `supabase/migrations/*.sql` with `ALTER TABLE … ENABLE RLS` + `CREATE POLICY … FOR SELECT USING (true)` in the SAME commit. Add `tests/integration/catalog-rls.test.ts` opening anon connection asserting >0 rows.
 
-4. **Bottom nav outside Suspense breaks cacheComponents builds (Pitfall A-1)** — Wrap in its own `<Suspense fallback={<BottomNavSkeleton />}>`. Never place as a bare `<body>` child.
+4. **Custom SMTP goes live before DKIM verifies — confirmation emails land in spam, lock out new signups** — Mandatory ordered checklist: Resend account — DNS records at registrar — wait minimum 1 hour for propagation — verify Resend "Verified" badge — send Resend test email — copy SMTP creds to Supabase Dashboard — send Supabase Auth test — ONLY THEN toggle "Confirm email" ON. Backout plan: keep Supabase hosted SMTP toggle accessible; revert if DKIM fails post-flip. Two domain setup recommended (`mail.staging.horlo.app` for staging, `mail.horlo.app` for prod).
 
-5. **EXIF not stripped from all upload paths (Pitfall E-4)** — ALL paths (camera AND file upload) must go through canvas re-encode before upload. `heic2any` output must never be uploaded directly. Verify with `exiftool` on a stored file.
+5. **`ALTER TYPE notification_type DROP VALUE` does not exist — Postgres rejects the migration** — Pre-flight assertion: `SELECT type, COUNT(*) FROM notifications WHERE type IN ('price_drop', 'trending_collector')` MUST return zero rows before proceeding. Two-step pattern: `ALTER TYPE … RENAME TO …_old` — `CREATE TYPE … AS ENUM (...)` (without dead values) — `ALTER TABLE … ALTER COLUMN type TYPE … USING type::text::…` — `DROP TYPE …_old`. `grep -r 'price_drop\|trending_collector'` across `src/`, `tests/`, `scripts/`, `seed/` BEFORE step 1; update Drizzle `pgEnum` AFTER prod migration applied.
 
-6. **Backfill maps `worn_public = false` to wrong visibility tier (Pitfall G-6)** — `false` → `'private'` (not `'followers'`). Post-migration: `SELECT visibility, COUNT(*) FROM wear_events GROUP BY visibility` — confirm `'followers'` count is 0.
-
-7. **Notification generation inside primary Server Action transaction (Pitfall B-2)** — Always fire-and-forget: `generateNotification(...).catch(err => console.error(err))`. Notification failure must never roll back a follow or watch-add.
-
----
+Additional high-severity pitfalls (full list in `.planning/research/PITFALLS.md`):
+- **`/evaluate` Cache Components Suspense pattern** — `cookies()` / `auth.getUser()` must live INSIDE a Suspense boundary, not in the route's default export body; `next dev` is permissive but `next build` aborts
+- **/search Collections two-layer privacy drift** — gate BOTH `profile_public` AND `collection_public` (latter on `profile_settings` table — easy to forget when copying Phase 16 people-search pattern)
+- **Email-change "updated" toast fires before user clicks link** — `updateUser({ email })` resolves on dispatch, NOT confirmation; show pending banner ("Confirmation sent to both old@ and new@"), do NOT display new email as current
+- **BottomNav muscle memory** — Profile lives in SlimTopNav top-right (universal Twitter/Letterboxd/GitHub/Instagram pattern); BottomNav stays 5 slots: Home / Search / **Wear** / Notifications / **Explore** (the new /explore replaces "discover")
+- **WYWT auto-nav races storage CDN propagation** — Inside `/wear/[id]` page, wrap photo render in `<Suspense fallback={<PhotoSkeleton />}>` to cover the 200–800ms signed-URL window; await both `uploadResult` AND `logWearWithPhoto` BEFORE `router.push`
 
 ## Implications for Roadmap
 
-**Phase ordering is dictated by hard data dependencies.** The three-tier visibility ripple must complete before the WYWT photo form ships. Schema must exist before any DAL work. Notifications DAL must exist before the nav bell is wired.
+The keystone (`watches_catalog`) creates a hard dependency that drives phase ordering. SMTP is independent, /evaluate is mostly independent (URL-paste path works without catalog; deep-link from /search Watches requires catalog). Settings work parallels everything. Polish lands last.
 
-### Phase 11: Schema + Storage Foundation
+### Phase 1: Catalog Schema + Backfill (Keystone)
 
-**Rationale:** Hard prerequisite for everything. Nothing else can start until this phase deploys.
-**Delivers:** All schema migrations to prod; Storage bucket with RLS; pg_trgm + GIN indexes; backfill of `worn_public → visibility`.
-**Avoids:** Pitfall G-6, F-1, F-4, C-1.
-**Research flag:** None — schema fully specified in ARCHITECTURE.md and STACK.md.
+**Rationale:** Unblocks 4 downstream surfaces (`/explore` Trending, `/search` Watches, `/search` Collections by-watch-identity, `/evaluate?catalogId=` deep-link). Higher-risk migration work goes first while milestone scope is still flexible.
 
-### Phase 12: Visibility Ripple in DAL
+**Delivers:** `watches_catalog` table with normalized natural-key UNIQUE, public-read RLS, pg_trgm GIN indexes, nullable `watches.catalog_id` FK with `ON DELETE SET NULL`, idempotent batched backfill script, two upsert helpers (`upsertCatalogFromUserInput` `DO NOTHING` vs `upsertCatalogFromExtractedUrl` `DO UPDATE SET … COALESCE`), `addWatch` and `/api/extract-watch` extended to populate catalog, `pg_cron` daily refresh function (prod-only) + manual `npm run db:refresh-counts` script for local dev, source-of-truth decision documented (catalog authoritative for SPEC fields; per-user `watches` authoritative for OWNERSHIP/PROVENANCE fields).
 
-**Rationale:** Highest-risk phase in the milestone. Modifies existing working privacy code. Write integration tests first.
-**Delivers:** All 8+ wear-reading DAL functions updated to three-tier check. `markAsWorn` updated to pass `visibility` in activity metadata. Profile worn tab DAL call updated.
-**Avoids:** Pitfall G-1, G-3, G-4, G-5, G-7, F-1.
-**Research flag:** None — codebase is source of truth; ARCHITECTURE.md has audited each function.
+### Phase 2: /explore Discovery Surface
 
-### Phase 13: Notifications Foundation
+Smallest catalog-dependent surface. Popular Collectors rail + Trending Watches rail + sparse-network welcome hero. BottomNav slot wiring (Explore replaces Discover slot).
 
-**Rationale:** Can parallelize with Phase 12 after Phase 11. Write path is independent of visibility ripple.
-**Delivers:** Notifications DAL + Server Actions. `insertNotification` wired into `followUser` and `addWatch` (fire-and-forget). `/notifications` inbox + `MarkAllReadButton`. `NotificationBell` leaf Server Component. Unread count in Header and BottomNav.
-**Avoids:** Pitfall B-1 (isolate as leaf Suspense), B-2 (fire-and-forget), B-3 (dedup UNIQUE constraint), B-4 (recipient-only RLS), B-6 (`'use cache'` safety), B-9 (self-notification DB CHECK).
-**Research flag:** None — pattern mirrors existing `logActivity()` in v2.0.
+### Phase 3: /search Watches + Collections Tabs
 
-### Phase 14: Bottom Nav + Navigation Shell
+Reuses Phase 16 4-tab shell. `searchCatalogWatches` DAL (anti-N+1 owned/wishlist badges + Evaluate inline CTA). `searchCollections` DAL with two-layer privacy (BOTH `profile_public` AND `collection_public`).
 
-**Rationale:** Depends on Phase 13 for unread count DAL. Establishes `WywtPostDialog` orchestration shell that Phase 15 needs.
-**Delivers:** `BottomNav` + `BottomNavClient` + `BottomNavSkeleton`. Root layout updated. `WywtPostDialog` outer shell. `WatchPickerDialog` extended with `onWatchSelected`. Desktop top nav and slim mobile top bar (Header surgery). `MobileNav` retired. iOS safe-area handling.
-**Avoids:** Pitfall A-1, A-2, A-3, A-4, I-2 (WatchPickerDialog must not be forked).
-**Research flag:** None — follows existing Header + HeaderNav Server/Client split.
+### Phase 4: /evaluate Route + Verdict UI
 
-### Phase 15: WYWT Photo Post Flow
+`<Suspense>`-wrapped Server Component; Client Component form posting to `/api/extract-watch`; pure-renderer `<SimilarityVerdictCard>` extracted from `<SimilarityBadge>`; three-CTA ladder reusing `wishlist` status.
 
-**Rationale:** Depends on Phase 11 (schema), Phase 12 (visibility ripple in place), Phase 14 (dialog orchestration). Decision 1 (upload pipeline) and Decision 5 (wear detail) must be resolved before this phase begins.
-**Delivers:** `WywtPhotoForm` + `CameraCapture`. `logWearWithPhoto` Server Action. Image utilities (HEIC convert, canvas resize, EXIF strip). Storage upload wired. `<Toaster />` in root layout. Edit-after-post.
-**Avoids:** Pitfall D-1 (iOS gesture context), D-2 (MediaStream cleanup), D-4 (image too large), E-1 (heic2any eager load), E-2 (sideways images), E-3 (client-only validation), E-4 (EXIF all paths), F-2 (signed URLs cached), F-3 (orphan storage files on delete), F-4 (folder enforcement), H-1 (Toaster inside Suspense), H-2 (toast in Server Action), H-3 (theme mismatch).
-**Research flag:** YES — EXIF orientation handling: PITFALLS.md recommends `exifr` (30KB) for reading EXIF orientation before canvas draw; STACK.md says no new library needed. Resolve before building the image pipeline.
+### Phase 5: Custom SMTP Setup (Resend)
 
-### Phase 16: People Search
+Independent from catalog. Long DNS propagation lead time — start in parallel with Phase 1. Resend domain verify, Supabase Dashboard wire, "Confirm email" ON only after DKIM "Verified ✓" badge.
 
-**Rationale:** Depends only on Phase 11 for pg_trgm. Independent of visibility ripple. Can parallelize with Phases 14–15 after Phase 11.
-**Delivers:** `searchProfiles` DAL (batched `isFollowing`). `searchPeople` Server Action. `SearchClient` + `SearchResultsList` + `SearchResultRow`. `/search` page with 4 tabs.
-**Avoids:** Pitfall C-1 (pg_trgm from Phase 11 migration), C-2 (server-side 2-char minimum), C-3 (private profiles in search), C-4 (N+1 following-status).
-**Research flag:** None — pg_trgm and search DAL fully specified.
+### Phase 6: Settings Restructure + Account Section
 
-### Phase 17: Explore Stub
+Depends on Phase 5 SMTP. Vertical-tabs shell + Account section (email/password change with re-auth + pending banner UI). `/auth/confirm` extended with redirect map per `type`.
 
-**Rationale:** No data dependencies. One file. Can be done any time after Phase 14.
-**Delivers:** `src/app/explore/page.tsx` — "coming soon" Server Component. BottomNav Explore tab no longer 404s.
-**Research flag:** None.
+### Phase 7: Settings Sections (Preferences / Privacy / Notifications / Appearance) + notesPublic + isChronometer
+
+Depends on Phase 6 shell. UI exposure of existing schema fields. Lifts `<InlineThemeSegmented>` from UserMenu.
+
+### Phase 8: Notification Stub Cleanup + Test Fixture Cleanup
+
+Two-step ENUM rename+recreate; pre-flight zero-row assertion; Drizzle update lands AFTER prod migration. 9 fixture files w/ `wornPublic` cleanup; TEST-04/05/06.
+
+### Phase 9: Profile Nav Prominence + Empty-State CTAs + Form Polish
+
+Polish phase. Top-right avatar in `DesktopTopNav` (dual affordance: avatar=profile, chevron=menu). Voice-aware empty states with single primary CTA + "Add manually" fallback. Sonner toast + inline `aria-live` polite banners + categorized URL-extract errors.
+
+### Phase 10: WYWT Auto-Nav
+
+Single race condition: `router.push(/wear/${wearEventId})` after BOTH upload AND server action resolve; `<Suspense fallback={<PhotoSkeleton />}>` around photo render in `/wear/[id]`.
 
 ### Phase Ordering Rationale
 
-- Phase 11 is a hard prerequisite for all other phases — schema must exist before any DAL can reference new columns/tables
-- Phase 12 must precede Phase 15 — WYWT photo form writes `visibility` values; the ripple must be in place so those values are read correctly
-- Phase 13 can parallelize with Phase 12 — no data dependency between notifications and the visibility ripple
-- Phase 14 must follow Phase 13 (unread count DAL) but can start its non-bell work in parallel
-- Phase 15 must follow Phase 12 and Phase 14
-- Phase 16 can parallelize with Phases 14–15 after Phase 11
-- Phase 17 floats
-
-**Privacy-first UAT rule (Pitfall I-1):** Each privacy-touching phase (12, 13, 15) must include a cross-user UAT checklist before shipping. Do not defer UAT to milestone end — the v2.0 retrospective found a privacy bug at Phase 10 that would have been caught at Phase 6 if per-phase UAT existed.
+- **Catalog is keystone, must land first** — every search/explore/evaluate-deep-link surface depends on it
+- **SMTP DNS propagation lead time** — start Phase 5 in parallel with Phase 1; the DNS wait window can run during catalog implementation
+- **Settings shell before sections** — vertical-tabs layout is the substrate
+- **Notifications cleanup independent** — schedule when convenient
+- **Polish phase last** — empty-state CTAs need all functional surfaces existing to link correctly
 
 ### Research Flags
 
-**Needs research during Phase 15 planning:**
-- EXIF orientation auto-correction: does `createImageBitmap` correct EXIF orientation on iOS Safari 15+, or is `exifr` required? STACK.md and PITFALLS.md contradict each other on this.
+Phases likely needing deeper research during planning:
 
-**Standard patterns (skip research):**
-- Phase 11 — Drizzle + Supabase migration patterns documented in deploy runbook
-- Phase 12 — codebase is source of truth; ARCHITECTURE.md has the full DAL audit
-- Phase 13 — fire-and-forget pattern identical to existing `logActivity()`
-- Phase 14 — follows existing Header + HeaderNav Server/Client split exactly
-- Phase 16 — pg_trgm setup fully documented in STACK.md
-- Phase 17 — one file, no decisions
+- **Phase 1 (Catalog Schema + Backfill):** Highest-risk migration; validate `NULLS NOT DISTINCT` behavior with current Drizzle 0.45.2 introspection (fallback: `UNIQUE (brand_norm, model_norm, COALESCE(reference_norm, ''))`); generated-column normalization pattern needs final read
+- **Phase 5 (Custom SMTP):** Verify Resend free-tier rates haven't shifted; validate Supabase rate-limit auto-jump from 2/h to 30/h on custom SMTP save
+- **Phase 8 (Notification Stub Cleanup):** ALTER TYPE rename + recreate has known data-cast pitfalls; grep across `tests/`, `scripts/`, `seed/` BEFORE writing the migration
 
----
+Phases with standard patterns (skip deeper research, plan directly): Phases 2, 3, 4, 6, 7, 9, 10.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Two new packages only; existing stack validated in production. WASM size and Web Worker pattern verified. Sonner version MEDIUM (GitHub only, no Context7). |
-| Features | HIGH | Strong comparable app evidence. Table stakes and anti-features well-documented. Followers-tier risk documented with clear mitigation. |
-| Architecture | HIGH | Codebase is the primary source. Build order is unambiguous. 5 open decisions documented with recommendations. |
-| Pitfalls | HIGH | 30+ pitfalls catalogued. All CRITICAL/HIGH pitfalls derived from existing codebase patterns and v2.0 retrospective. |
+| Stack | HIGH | Resend partner integration, `pg_trgm` proven in Phase 16, `@base-ui/react` Tabs vertical, Supabase Auth `updateUser` |
+| Features | HIGH-MEDIUM | Catalog search UX, settings IA, save-vs-commit converge across multiple sources. /explore section composition is MEDIUM (comparable apps diverge). Reusing `wishlist` for "Save to Evaluate Later" is opinionated |
+| Architecture | HIGH | Phase 16 patterns generalize cleanly. `pg_cron` vs live triggers is MEDIUM but documented |
+| Pitfalls | HIGH | Each pitfall has verifiable warning sign + tested mitigation from v3.0 patterns |
 
-**Overall confidence:** HIGH — the 5 open architecture decisions are the remaining uncertainty. Once resolved, planning can proceed with high confidence.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **EXIF orientation handling:** Resolve before Phase 15 planning — `createImageBitmap` vs. `exifr` for orientation correction.
-- **Taste overlap % in search:** ARCHITECTURE.md notes the join may be too slow at query time. Phase 16 plan should decide: compute inline or stub with follower-count ranking.
-- **Decision 5 (wear detail):** Phase 15 scope depends on modal vs. route. Must be resolved in requirements.
-
----
+- **`NULLS NOT DISTINCT` vs `COALESCE` fallback** — verify in Phase 1 plan
+- **Source-of-truth for SPEC fields** — catalog vs per-user `watches` Key Decision
+- **/evaluate auth posture** — auth-only redirect for v4.0 (recommend); demo path defers to v5.0
+- **Catalog-row image_url provenance** — resolve in Phase 1
+- **Trending vs Gaining Traction** — Trending P1; Gaining Traction P2 (requires daily snapshots)
+- **Sonner `toast.promise()` refactor** — absorb in Phase 9 or defer
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
-- Existing codebase — `src/app/layout.tsx`, `src/data/wearEvents.ts`, `src/data/activities.ts`, `src/db/schema.ts`, `src/app/actions/wearEvents.ts`, `src/components/home/WatchPickerDialog.tsx`, `src/proxy.ts`
-- `.planning/PROJECT.md` — milestone requirements, established architecture decisions
-- Supabase Storage docs — RLS policies, signed URLs, bucket creation
-- MDN: getUserMedia — iOS Safari quirks (HIGH confidence)
-- Next.js 16 issue #88873 — `next/image` bug with Supabase Storage signed URLs (confirmed open)
+- **STACK.md sources:** Resend Supabase partner integration docs, Supabase Auth `updateUser` JS reference, Drizzle ORM zero-downtime schema changes, Base UI Tabs (vertical orientation), Cybertec polymorphism analysis
+- **FEATURES.md sources:** Letterboxd Watchlist FAQ, Discogs database search, Are.na Channels, Goodreads recommendation engine, NN/G empty-state guidelines, NN/G error-form guidelines, NN/G scoped-vs-global search, GOV.UK Design System forms
+- **ARCHITECTURE.md sources:** Direct codebase read (`src/`, `.planning/PROJECT.md`, prior phase RESEARCH artifacts); Cache Components rules from Phase 10/13/14 verified-shipped patterns
+- **PITFALLS.md sources:** Postgres 15 `NULLS NOT DISTINCT` docs, Postgres ALTER TYPE limitations, MEMORY (drizzle/supabase migration split, SECDEF grants), v3.0 Phase 11/13/15/16 patterns
 
 ### Secondary (MEDIUM confidence)
 
-- heic2any Web Worker lazy-load pattern (DEV Community)
-- sonner GitHub releases v2.0.7
-- Supabase pg_trgm extension docs
-- Bottom nav UX patterns (AppMySite 2025, phone-simulator.com 2026)
-- Notification schema patterns (DEV Community)
+- Spotify editorial-playlist ecosystem (sparse-network evidence)
+- Pencil & Paper error/success UX articles
+- LogRocket React toast libraries 2025 comparison
+- Sonner Toast docs
 
 ### Tertiary (LOW confidence)
 
-- Bio search UX tradeoffs — 4-character minimum for bio matches is inferred from product brief + UX consensus; no specific source
+- Specific UX copy for two-link email confirmation
+- Exact Resend free-tier rates as of April 2026 (verify in Phase 5 plan)
 
 ---
-*Research completed: 2026-04-21*
-*Ready for roadmap: YES — pending resolution of 5 Open Architecture Decisions above*
+*Research completed: 2026-04-26*
+*Ready for roadmap: yes*

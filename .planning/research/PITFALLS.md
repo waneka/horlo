@@ -1,1435 +1,1026 @@
-# Pitfalls Research
+---
+dimension: pitfalls
+generated: 2026-04-26
+milestone: v4.0 Discovery & Polish
+---
+# Pitfalls Research — v4.0 Discovery & Polish
 
-**Domain:** Adding production navigation, notifications, people-search, and WYWT photo post flow to an existing Next.js 16 / Supabase / RLS / cacheComponents app (Horlo v3.0)
-**Researched:** 2026-04-21
-**Confidence:** HIGH (cacheComponents constraints, RLS, viewer-aware DAL, iOS getUserMedia, Storage RLS), MEDIUM (three-tier visibility ripple, HEIC edge cases, Sonner wiring)
+**Domain:** Adding canonical `watches_catalog` + /explore + /search Watches/Collections + /evaluate flow + Settings expansion (Account/Notifications/Appearance) + custom SMTP (Resend) + profile nav prominence + empty-state CTAs + WYWT auto-nav + form polish + dead-stub notification cleanup, into an existing Next.js 16 / React 19 / Supabase / RLS / Drizzle / `cacheComponents: true` app (Horlo, post v3.0).
+
+**Researched:** 2026-04-26
+
+**Confidence:** HIGH (catalog FK + ON CONFLICT semantics, Cache Components rules already proven in Phase 11–16, RLS two-layer patterns, Supabase Auth `updateUser` flow, ALTER TYPE ADD/DROP VALUE constraints, pg_cron availability, BottomNav muscle-memory risk), MEDIUM (Resend deliverability under DKIM lag, Server Action + `useTransition` + `router.push` ordering across React 19 changes, Sonner toast persistence across Cache Components revalidation), LOW (exact UX copy for two-link email confirmation in Settings — UX decision, not a verifiable claim)
+
+**Legend:**
+- 🆕 NEW pitfall introduced by v4.0 features
+- ♻️ KNOWN pattern that needs reapplying (proven in v3.0; risk if forgotten)
+- 🔁 HYBRID — old pattern operating in a new context where it can break differently
 
 ---
 
-## A. Bottom Nav + Cache Components
+## Critical Pitfalls
 
----
-
-### Pitfall A-1: Bottom Nav in Static Layout Body Breaks cacheComponents — Viewer Data in the Wrong Render Context
-
-**Severity:** CRITICAL
+### Pitfall 1: Catalog Migration Backfill Half-Completes; `catalog_id` Left NULL on a Subset, Then SET NOT NULL Forced Too Early 🆕
 
 **What goes wrong:**
-`cacheComponents: true` makes the root layout statically prerenderable. Any call to `cookies()` or `headers()` in the layout body (outside a Suspense boundary) throws at build/prerender time or silently returns empty values. The bottom nav needs the authenticated viewer's unread notification count and profile URL. Placing the bottom nav directly in `<body>` — outside a Suspense boundary — forces those `cookies()` reads into the static render path and either breaks the build or produces a nav that always shows "logged out" state.
+The expand-contract pattern requires three deploys: (1) add nullable `catalog_id` + create `watches_catalog`, (2) backfill, (3) tighten constraints. If a phase plan tries to do all three in one phase — particularly if it ends with `ALTER TABLE watches ALTER COLUMN catalog_id SET NOT NULL` — and the backfill skips any row (typo'd brand, NULL reference colliding with another NULL reference under default UNIQUE semantics, or a transient connection drop mid-batch), the SET NOT NULL fails with `column "catalog_id" contains null values` and the entire migration aborts on production. Recovery is painful because half the catalog rows are inserted but none are linked.
 
 **Why it happens:**
-The v2.0 layout refactor already moved `<Header>` inside a Suspense boundary for exactly this reason. That lesson is not obvious to the implementer building the bottom nav, who looks at the layout and sees it compiles fine — the error only surfaces when cacheComponents prerender runs (or on first prod deploy).
+Drizzle migration scripts are tempting to write linearly: schema change → backfill → constraint tighten in one file. The local Supabase Docker instance has only a handful of seed watches, so the backfill always succeeds locally. Production has hundreds of rows including `null reference` values that collide under `UNIQUE (brand, model, reference)` if `NULLS NOT DISTINCT` is forgotten (Postgres 14 and earlier default to `NULLS DISTINCT`; Postgres 15+ supports `NULLS NOT DISTINCT` as an explicit option, but Drizzle's `uniqueIndex().on(...)` does not emit `NULLS NOT DISTINCT` by default — you must drop to raw SQL).
 
 **How to avoid:**
-Wrap the bottom nav component in the same Suspense boundary that wraps `<Header>` and `{children}`, or in its own dedicated `<Suspense>` below `{children}`. The bottom nav must not be a sibling of the `<head>` inline theme script; it must be inside the dynamic Suspense subtree. Concrete task: in `src/app/layout.tsx`, confirm the bottom nav renders inside the existing `<Suspense>` wrapper, never at the bare `<body>` level.
+- Split into THREE phases / migration files: (1) additive (table + nullable FK + UNIQUE with explicit `NULLS NOT DISTINCT` via raw SQL — never via `drizzle-kit push`), (2) backfill (Node script `scripts/backfill-watches-catalog.ts`, idempotent, batched, with COUNT(*) WHERE catalog_id IS NULL assertion at the end), (3) DO NOT add SET NOT NULL in v4.0 — keep `catalog_id` nullable indefinitely (a user-typed "rough draft" watch may legitimately not match any catalog row).
+- Backfill script must run AFTER prod migration ships (read MEMORY: drizzle-kit push is LOCAL ONLY; prod uses `supabase db push --linked --include-all`).
+- Backfill script ends with: `SELECT COUNT(*) FROM watches WHERE catalog_id IS NULL` — if non-zero, log every unlinked row's `(brand, model, reference)` for human review BEFORE retrying.
+- Fall back to `UNIQUE (brand, model, COALESCE(reference, ''))` if `NULLS NOT DISTINCT` proves fragile under Drizzle introspection.
 
 **Warning signs:**
-- Build output contains: `Error: cookies() was called outside a request scope` or similar dynamic API error.
-- Bottom nav renders but unread count is always 0 even for authenticated users.
-- `next build` succeeds locally (Node env skips prerender) but prod deploy fails.
+- Migration file contains both `ADD COLUMN catalog_id` AND `ALTER COLUMN catalog_id SET NOT NULL` in the same up().
+- Backfill script lacks a final `WHERE catalog_id IS NULL` assertion.
+- UNIQUE constraint uses Drizzle's `uniqueIndex(...)` without explicit `NULLS NOT DISTINCT` raw SQL, AND `reference` is nullable.
+- Local works; staging works; prod migration aborts. (Local seed has fewer collisions.)
 
-**Phase to address:** Bottom nav phase (Phase 11) — verify layout placement before writing any viewer-data fetch inside the nav component.
+**Phase to address:** Phase 1 of v4.0 (Catalog Schema + Backfill).
 
 ---
 
-### Pitfall A-2: Bottom Nav Active State Hydration Mismatch via `usePathname`
-
-**Severity:** MEDIUM
+### Pitfall 2: `INSERT … ON CONFLICT (brand, model, reference) DO NOTHING` Silently Skips Catalog Enrichment 🆕
 
 **What goes wrong:**
-`usePathname()` is a client hook. A bottom nav that uses it to highlight the active tab must be a Client Component (`'use client'`). If the nav is initially SSR'd with no active state (server doesn't know the path at prerender time for a cached component) and the client hydrates with a path-based active class, React sees a mismatch and logs a hydration warning. Visually: the active indicator flickers or jumps on first paint.
+The catalog populates from three sources (`user_promoted`, `url_extracted`, `admin_curated`). When a user URL-imports a watch via `/api/extract-watch` and the LLM stage pulls a better spec sheet (lugToLug, water resistance) than a previously user-promoted catalog row, the natural code is `INSERT INTO watches_catalog (...) VALUES (...) ON CONFLICT (brand, model, reference) DO NOTHING`. This is **wrong** — `DO NOTHING` discards the higher-quality URL-extracted data entirely. The catalog row stays at its `user_promoted` quality forever.
 
 **Why it happens:**
-The natural instinct is to keep the nav as a Server Component for performance. Adding `usePathname` without the `'use client'` directive is a compile error, so the developer adds the directive — but doesn't account for what the server rendered versus what the client expects.
+`ON CONFLICT DO NOTHING` is the safest-feeling dedup primitive and is what every "Drizzle deduplication" SO answer gravitates toward. The merge nuance ("enrich missing NULL columns from new insert, never overwrite non-null") is real product logic that doesn't fit on the `ON CONFLICT` line alone.
 
 **How to avoid:**
-Mark the bottom nav (or just the active-state sub-component) as `'use client'`. Accept that this means a small JS bundle for the nav. The server renders the nav without active-state classes; the client adds them after hydration. Use `suppressHydrationWarning` only as a last resort — prefer designing the component so the server-rendered and client-rendered output are identical (i.e., render no active state on the server, add it client-side via effect).
+- Two-step pattern in the URL-extracted insert path:
+  ```sql
+  INSERT INTO watches_catalog (brand, model, reference, ...specs..., source)
+  VALUES (...) 
+  ON CONFLICT (brand, model, reference) DO UPDATE
+  SET 
+    movement = COALESCE(watches_catalog.movement, EXCLUDED.movement),
+    case_size_mm = COALESCE(watches_catalog.case_size_mm, EXCLUDED.case_size_mm),
+    -- ...for every nullable spec column...
+    source = CASE 
+      WHEN watches_catalog.source = 'admin_curated' THEN watches_catalog.source
+      ELSE EXCLUDED.source 
+    END,
+    updated_at = NOW()
+  RETURNING id;
+  ```
+- Use plain `DO NOTHING` ONLY for the user-promoted path inside `addWatch` (don't enrich from typed input — too much typo risk).
+- Never overwrite `admin_curated` rows from any automated path — pin via the CASE on `source`.
 
 **Warning signs:**
-- React hydration warning in browser console mentioning the nav element.
-- Active tab indicator visibly jumps 100–200ms after page load.
+- The `addWatch` and the `/api/extract-watch` paths share the same insert helper.
+- Code review finds `ON CONFLICT DO NOTHING` and the test only asserts "row exists" not "spec sheet was enriched."
+- After a known better-quality URL extract for an existing catalog row, `SELECT lug_to_lug_mm FROM watches_catalog WHERE brand=... AND model=...` is still NULL.
 
-**Phase to address:** Bottom nav phase — add hydration test during UAT.
+**Phase to address:** Phase 1 (Catalog Schema) — design the two helpers (`upsertCatalogFromUserInput` vs. `upsertCatalogFromExtractedUrl`) before any insert path is wired.
 
 ---
 
-### Pitfall A-3: iOS Safe Area Inset Clips Content Behind Sticky Bottom Nav
-
-**Severity:** HIGH
+### Pitfall 3: Catalog Identity Fragmentation from Typo / Casing — User Types "Rolex", "ROLEX", "rolex"; Three Catalog Rows Created 🆕
 
 **What goes wrong:**
-On iPhone with home indicator (all Face ID devices), `position: fixed; bottom: 0` places the nav over the home indicator bar. On iPhones, the bottom ~34px is the home indicator zone. Without `padding-bottom: env(safe-area-inset-bottom)` on both the nav and the page's scroll container, content at the bottom of a page is hidden beneath the nav. This is invisible on desktop and Android testing but breaks iOS consistently.
+The natural-key UNIQUE is `(brand, model, reference)` — case-sensitive by default in Postgres `text` columns. A user adding "Rolex Submariner 116610LN" creates a different catalog row than another user adding "ROLEX Submariner 116610LN" or "rolex submariner 116610ln". Three catalog rows for the same physical watch. `/explore` "trending watches" double-counts; /search Watches finds three results; `owners_count` is fragmented.
 
 **Why it happens:**
-Developers test on desktop, where safe-area-inset is 0. The issue is iOS-specific and requires a real device or accurate simulator testing to catch.
+- Postgres `text` UNIQUE is case-sensitive.
+- `CITEXT` would solve case but introduces a new column type the codebase doesn't use elsewhere; whitespace/punctuation drift ("Sub-mariner" vs "Submariner") still escapes both `text` and `CITEXT` UNIQUE.
+- Existing v1.0 watches have ~years of casing inconsistency that the catalog backfill will inherit and explode into duplicate rows on the first INSERT pass.
 
 **How to avoid:**
-Apply `padding-bottom: calc(64px + env(safe-area-inset-bottom))` to the bottom nav (where 64px is nav height). Apply a matching `pb-[calc(64px+env(safe-area-inset-bottom))]` (or equivalent CSS var) to the page's main scroll container so the last card or CTA is not obscured. Add `viewport-fit=cover` to the `<meta name="viewport">` tag in layout.tsx — without this, `env(safe-area-inset-bottom)` returns 0 even on notched devices.
+- Normalize at the Server Action boundary BEFORE the UNIQUE check fires: `brand.trim().toLowerCase()`, `model.trim().toLowerCase()`, `reference?.trim().toLowerCase() ?? null`. Store the normalized values in a separate column (`brand_normalized`, `model_normalized`, `reference_normalized`) and put the UNIQUE on the normalized trio. Display the original-cased value (preserve user input on screen).
+- Pattern: `brand TEXT NOT NULL` (display) + `brand_normalized TEXT NOT NULL GENERATED ALWAYS AS (lower(trim(brand))) STORED` + `UNIQUE (brand_normalized, model_normalized, reference_normalized)`. Postgres generated columns are deterministic and indexable.
+- For pre-existing duplicates discovered during backfill: log them, halt backfill, present a deduplication report to the user (admin task — small data set, manual merge in v4.0; the admin tooling is out of scope but the report-and-halt step is in scope).
+- Document the policy: "Catalog identity is normalized; user-facing display preserves original input."
 
 **Warning signs:**
-- Last item in a list is cut off on iPhone.
-- The Wear CTA button cannot be tapped on iPhones with home indicator.
-- `env(safe-area-inset-bottom)` evaluates to 0 (missing `viewport-fit=cover`).
+- Backfill produces N+M catalog rows where N = unique watches, M = casing duplicates.
+- /explore trending watches shows the same model twice with different `owners_count`.
+- Catalog row count grows linearly with `watches` row count instead of plateauing.
+- A schema column named `brand` is queried with `WHERE brand = 'Rolex'` (case-sensitive bug) instead of `WHERE brand_normalized = 'rolex'`.
 
-**Phase to address:** Bottom nav phase — must be in the initial build, not a post-launch fix.
+**Phase to address:** Phase 1 (Catalog Schema) — generated columns and normalization MUST be in the initial table definition, not retrofitted.
 
 ---
 
-### Pitfall A-4: Bottom Nav Visible on Auth Pages Causes Layout Shift
-
-**Severity:** MEDIUM
+### Pitfall 4: `watches_catalog` Public-Read RLS Policy Forgotten — Table Becomes Anon-Invisible After RLS-Default-On 🆕
 
 **What goes wrong:**
-The bottom nav renders in the root layout, which wraps all routes including `/login`, `/signup`, and `/auth/callback`. On auth pages, the nav is irrelevant and its safe-area padding pushes the login form up. More visibly, the nav flashes in for an unauthenticated visitor who lands on `/login` before being redirected — it appears and disappears, causing a jarring layout shift.
+Project-wide RLS was audited ON in v3.0 Phase 11 (DEBT-02). When the migration adds `watches_catalog`, **every** new table inherits "no RLS policies → no rows visible to non-service-role connections". /search Watches and /explore Trending — both anon-tolerable read paths — silently return empty arrays. The bug is invisible in dev (where the developer is signed in as service role through Drizzle) and only manifests on the live anon viewer.
 
 **Why it happens:**
-Root layout components render on every route by default. Auth page exclusion requires either a route group layout or a conditional render based on the current path.
+Drizzle migrations create the table; RLS policies live in raw SQL Supabase migrations. The project established this dual-track in v3.0 (Drizzle for column shapes; raw `supabase/migrations/*.sql` for RLS, partial indexes, CHECK constraints). Forgetting the second file is a paperwork-only mistake with a security/availability footgun.
 
 **How to avoid:**
-Use Next.js route groups: put auth routes in `(auth)/` with their own layout that does not include the bottom nav. Alternatively, render the bottom nav conditionally based on `usePathname()` matching non-auth routes — but route groups are cleaner and don't require client-side logic in the root layout.
+- Mandate that EVERY phase plan that adds a table includes BOTH a Drizzle migration AND a sibling `supabase/migrations/*.sql` migration that calls `ALTER TABLE … ENABLE ROW LEVEL SECURITY` and creates SELECT policies (and any INSERT/UPDATE/DELETE policies if applicable).
+- For `watches_catalog` specifically:
+  ```sql
+  ALTER TABLE watches_catalog ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY watches_catalog_select_all ON watches_catalog
+    FOR SELECT USING (true);
+  -- Intentionally no INSERT/UPDATE/DELETE policies — Server Actions use service role
+  -- (verify in DAL: catalog inserts MUST go through the SECDEF / service-role path).
+  ```
+- Add a regression test: `tests/integration/catalog-rls.test.ts` that opens an anon connection and asserts `SELECT * FROM watches_catalog LIMIT 1` returns >0 rows after seeding.
+- Add a Drizzle introspection guard in CI: any `pgTable` whose name doesn't appear in a `supabase/migrations/*.sql` policy file fails review.
 
 **Warning signs:**
-- Bottom nav visible on `/login` page.
-- Layout shift score (CLS) elevated on auth page loads.
+- /search Watches tab returns empty array for every query in production but works locally.
+- Anon connection (logged-out user) sees empty /explore.
+- New migration file created in `drizzle/` with no companion file in `supabase/migrations/`.
+- The phrase `ENABLE ROW LEVEL SECURITY` does not appear in the v4.0 catalog phase commits.
 
-**Phase to address:** Bottom nav phase — route group decision must be made before nav implementation begins.
+**Phase to address:** Phase 1 (Catalog Schema) — include the RLS migration in the SAME commit as the table.
 
 ---
 
-### Pitfall A-5: Inline Theme Script + Bottom Nav Theme Toggle Interaction
-
-**Severity:** LOW
+### Pitfall 5: `cookies()` / `auth.getUser()` Called in `/evaluate` Page Body — Cache Components Strict Build Failure 🆕 ♻️
 
 **What goes wrong:**
-The inline `<script>` in `<head>` reads `document.cookie` and sets `classList` before paint to prevent FOUC. This script is tightly coupled to the cookie name and `classList` values the theme system uses. If the bottom nav (or the profile dropdown in the top nav) introduces a new theme toggle mechanism that changes the cookie name or format, the inline script breaks and users see white flash on dark-mode preference.
+`/evaluate` is per-viewer (it loads the user's collection and preferences to compute similarity) but the natural Server Component shape is to fetch `auth.getUser()` and `getWatchesForUser(userId)` directly in the page body. With `cacheComponents: true`, **any cookies/headers/auth call outside a Suspense boundary** in a route component throws at build/prerender time. The page builds locally because dev mode is permissive, then fails on Vercel deploy.
 
 **Why it happens:**
-The inline script is a fragile string-based snippet, not a module import. It is easy to update the theme store logic without updating the inline script.
+Phase 11–14 already taught this lesson (`<Header>` was moved into Suspense for exactly this reason). New pages don't automatically inherit that knowledge — the implementer copies the layout pattern of a different existing page (e.g., a public marketing page), which doesn't have the constraint, and the test environment passes.
 
 **How to avoid:**
-Treat the inline theme script as a configuration contract: document the cookie name (e.g., `theme`) and the expected values (`light`/`dark`/`system`) in a comment above the script. Any changes to the theme system must update both the script and the store. Prefer keeping the theme toggle in the top nav profile dropdown (existing location) rather than adding a second toggle in the bottom nav, to minimize divergence risk.
-
-**Warning signs:**
-- FOUC (white flash) on dark-mode preference after a nav-related change.
-- Theme cookie name changed but inline script still checks old name.
-
-**Phase to address:** Bottom nav phase — check inline script contract when wiring the profile dropdown theme toggle.
-
----
-
-## B. Notifications
-
----
-
-### Pitfall B-1: Bell Unread Count Queried in Root Layout — Per-Request DB Hit on Every Page
-
-**Severity:** HIGH
-
-**What goes wrong:**
-The unread notification count needs to appear in the top nav bell and in the bottom nav (if shown there). Fetching it in the root layout means every authenticated page load hits the `notifications` table. At Horlo's current scale this is tolerable, but the pattern is wrong: it ties page render latency to a DB round-trip for a non-critical piece of UI.
-
-**Why it happens:**
-The layout is where the bell lives, so developers put the fetch there. The cacheComponents architecture makes this worse: if the fetch is inside the Suspense boundary, it serializes with the page content load.
-
-**How to avoid:**
-Fetch the unread count in a separate leaf Server Component (`<UnreadBadge>`) wrapped in its own `<Suspense fallback={<BellIcon />}>`. This defers the count without blocking the nav frame. Tag the fetch with `cacheTag('notifications:${userId}')` and call `revalidateTag('notifications:${userId}')` in the "mark as read" Server Action. The bell renders immediately; the count resolves asynchronously. Do NOT use `'use cache'` on the unread count fetch directly without passing `viewerId` as an argument (see Pitfall B-6).
-
-**Warning signs:**
-- Root layout Server Component directly `await`s a notifications DAL function.
-- Page TTFB increases by the DB query time for the notification count.
-
-**Phase to address:** Notifications phase — design the badge as an isolated Suspense leaf before wiring it into the layout.
-
----
-
-### Pitfall B-2: Notification Generation Inside Server Action Transaction — Failure Rolls Back Original Action
-
-**Severity:** HIGH
-
-**What goes wrong:**
-The follow Server Action creates a `follows` row and then generates a "New Follower" notification for the target. If notification generation is inside the same DB transaction (or even just sequenced synchronously with no error isolation), a notification insert failure rolls back the follow. The user clicks Follow, sees it work, but the follow didn't persist because the notification table had an unexpected constraint violation.
-
-This mirrors the v2.0 pattern for activity logging, where `logActivity()` is fire-and-forget with no throw propagation.
-
-**Why it happens:**
-The natural implementation is `await db.insert(follows...) + await db.insert(notifications...)` in sequence. If notification insert throws, it propagates up and undoes the follow.
-
-**How to avoid:**
-Generate notifications as a fire-and-forget side effect, matching the established `logActivity()` pattern from v2.0. Wrap notification generation in a try/catch that logs but does not rethrow:
-```typescript
-// After the primary action succeeds:
-generateNotification(...).catch(err => console.error('notification gen failed', err));
-```
-The primary action (follow, watch-overlap detection) must never fail because the notification system failed. Notifications are best-effort observability, not transactional requirements.
-
-**Warning signs:**
-- Follow action fails intermittently and the error message references the `notifications` table.
-- Server Action wraps both the primary insert and notification generation in a single `try` block without isolating notification errors.
-
-**Phase to address:** Notifications phase — establish the fire-and-forget pattern in the first notification generation function; enforce it via code review gate.
-
----
-
-### Pitfall B-3: Watch-Overlap Notifications Created on Every Add — Duplicate Spam
-
-**Severity:** HIGH
-
-**What goes wrong:**
-When User A adds a watch that User B (a follower) already owns, a "Watch Overlap" notification is generated for User B. If User A edits the watch, re-saves it, or the overlap-detection logic runs on every write, User B receives the same notification repeatedly. A user with 50 followers who all own Rolex Submariner-adjacent watches could generate hundreds of overlap notifications from a single add.
-
-**Why it happens:**
-Overlap detection is run on every `addWatch` or `updateWatch` call without checking whether a notification for this (actor, watch brand/model, recipient) combination was already sent.
-
-**How to avoid:**
-Apply a deduplication check before inserting any notification. For watch-overlap notifications, check for an existing notification row with the same `(type='watch_overlap', actor_id, recipient_id, watch_id)` within a configurable window (e.g., 24 hours). Use a UNIQUE constraint or an `ON CONFLICT DO NOTHING` insert:
-```sql
-INSERT INTO notifications (type, actor_id, recipient_id, watch_id, ...)
-VALUES (...)
-ON CONFLICT (type, actor_id, recipient_id, watch_id) DO NOTHING;
-```
-Add a partial unique index that enforces deduplication at the DB layer, not just in application code.
-
-**Warning signs:**
-- A user receives 10+ overlap notifications in a session after adding or editing a single watch.
-- Notification table grows by N rows per watch add, where N = follower count.
-
-**Phase to address:** Notifications phase — add the unique constraint and `ON CONFLICT DO NOTHING` pattern in the schema migration, not as a post-launch fix.
-
----
-
-### Pitfall B-4: Notifications RLS Permits Cross-User Read via Anon Key
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-Without a properly scoped RLS SELECT policy, a user can query the `notifications` table and read other users' notifications. Notifications contain actor IDs, watch IDs, and interaction metadata — leaking social graph and behavioral data. This is worse than the v2.0 activities table leak because notifications contain directed personal signals ("User X followed you", "User Y owns your watch").
-
-**Why it happens:**
-RLS tables default to deny-all, but developers sometimes add a permissive SELECT policy to debug and forget to remove it. Or they copy the activities policy pattern (`activities_select_own_or_followed`) without recognizing that notifications should only be readable by the recipient — never by the actor or by followers.
-
-**How to avoid:**
-Notifications SELECT policy must be:
-```sql
-CREATE POLICY "notifications_select_recipient_only" ON notifications
-  FOR SELECT USING (recipient_id = (SELECT auth.uid()));
-```
-No other SELECT policy should exist on this table. Add two-layer enforcement: DAL `getNotificationsForUser(userId)` must also include `WHERE recipient_id = userId` as a WHERE clause (not just relying on RLS). Integration test: query notifications as User B for a row generated for User A; confirm 0 rows returned.
-
-**Warning signs:**
-- Notification SELECT policy has `OR actor_id = (SELECT auth.uid())` — actors should NOT read notifications they generated.
-- Direct Supabase client query returns another user's notification rows.
-
-**Phase to address:** Notifications phase — write the RLS policy and integration test before any notification reads are wired into the UI.
-
----
-
-### Pitfall B-5: "Mark All Read" Race Condition — New Notification Arrives Between Read and Write
-
-**Severity:** LOW
-
-**What goes wrong:**
-User opens the notifications page (10 unread). A new notification arrives (11 unread) before they click "Mark All Read". The mark-all action uses a `WHERE read_at IS NULL` condition and sets `read_at = now()`. This correctly marks all 11, including the just-arrived one. However, if the UI was rendered with 10 items and the "mark all read" action is scoped by a snapshot of IDs from the render (not a `WHERE read_at IS NULL` query), the 11th notification is missed.
-
-**Why it happens:**
-Client-side implementations capture the list of notification IDs at render time and send them to the Server Action. The Server Action marks those specific IDs as read, missing any that arrived after render.
-
-**How to avoid:**
-The "Mark All Read" Server Action must operate on the DB directly with `WHERE recipient_id = userId AND read_at IS NULL` — never on a client-supplied list of IDs. The Server Action:
-```typescript
-await db.update(notifications)
-  .set({ read_at: new Date() })
-  .where(and(
-    eq(notifications.recipientId, userId),
-    isNull(notifications.readAt)
-  ));
-```
-After the update, call `revalidateTag('notifications:${userId}')` to refresh the bell count.
-
-**Warning signs:**
-- "Mark all read" Server Action accepts an `ids: string[]` parameter from the client.
-- After marking read, unread count is non-zero because a race delivered a new notification.
-
-**Phase to address:** Notifications phase — design the Server Action to be server-authoritative on the scope.
-
----
-
-### Pitfall B-6: `'use cache'` on Notification Query Without `viewerId` as Argument — Cross-User Cache Leak
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-A cached function that fetches notifications uses `viewerId` from a closure call to `getCurrentUser()` rather than as a function argument. Next.js 16 `'use cache'` caches the function output keyed on its arguments. If `viewerId` is obtained inside the function body (from cookies, not the argument list), all calls to the function share the same cache key and User A sees User B's notifications.
-
-This is the same pitfall formalized in the v2.0 retrospective under "Cache-key safety for `'use cache'`."
-
-**Why it happens:**
-The pattern `const user = await getCurrentUser()` inside a cached function looks correct. The bug is that `getCurrentUser()` returns different values for different users, but the cache key is derived only from the function's argument list — which is empty, so every user gets the same (first-cached) result.
-
-**How to avoid:**
-Any `'use cache'` function that returns viewer-scoped data must accept `viewerId` as an explicit argument:
-```typescript
-'use cache';
-export async function getNotificationsForUser(viewerId: string) {
-  cacheTag(`notifications:${viewerId}`);
-  return db.select()...where(eq(notifications.recipientId, viewerId));
-}
-```
-Never call `getCurrentUser()` or `cookies()` inside a `'use cache'` function body. Grep gate before shipping: `grep -r "use cache" src/ | xargs grep -l "getCurrentUser\|cookies()"` must return empty.
-
-**Warning signs:**
-- Notification count shows another user's count after a session switch.
-- Cached function has `'use cache'` and calls `getCurrentUser()` in the function body.
-
-**Phase to address:** Notifications phase AND any phase that adds `'use cache'` to viewer-scoped queries — enforce via code review.
-
----
-
-### Pitfall B-7: Notifications Survive User Deletion — Orphan Rows
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-If a user account is deleted (or the `profiles` row is removed), their notifications remain in the `notifications` table. Orphan rows reference deleted actor or recipient IDs. DAL queries that JOIN on `profiles` to resolve actor usernames will silently drop the notification from results (LEFT JOIN returns null) or hard-fail (INNER JOIN). The notification bell count may become non-zero but the page shows nothing.
-
-**Why it happens:**
-The schema is designed with application-level deletes, not cascading FK constraints. Supabase / Postgres default is no cascade on FK if the constraint is added as `ON DELETE NO ACTION`.
-
-**How to avoid:**
-Define the `notifications` table FK constraints with `ON DELETE CASCADE` for both `actor_id` and `recipient_id` references to `auth.users` (or `profiles`):
-```sql
-actor_id UUID REFERENCES profiles(user_id) ON DELETE CASCADE,
-recipient_id UUID REFERENCES profiles(user_id) ON DELETE CASCADE
-```
-This means deleting a profile cleans up all their sent and received notifications automatically. Verify in the Drizzle schema definition.
-
-**Warning signs:**
-- Notification count is positive but the notifications page is empty.
-- DB query on `notifications` JOIN `profiles` returns null for `actor_username`.
-
-**Phase to address:** Notifications phase — add `ON DELETE CASCADE` in the initial schema migration.
-
----
-
-### Pitfall B-8: Stubbed Price Drop / Trending Templates Render with Empty Data
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-The v3.0 plan stubs "Price Drop" and "Trending" notification types in the UI for future data wiring. If the UI template renders before the data contract is defined, it displays a notification card with missing title, empty body, and a broken icon. Users see malformed cards in the notification list. The visual bug erodes trust in the notification system before the real types ship.
-
-**Why it happens:**
-Template components are built speculatively — the developer creates the `NotificationCard` component with a switch on `notification.type` and adds `case 'price_drop':` with placeholder copy. When a price_drop row somehow makes it into the DB (e.g., from a migration seed or a bug), it renders with all empty fields.
-
-**How to avoid:**
-Add an explicit guard: if `notification.type` is not in the set of currently live types (`['follow', 'watch_overlap']`), render nothing (return null) rather than a placeholder card. Stubbed types should not have a rendered code path until the data that powers them exists. Log unknown types to the console in dev mode to surface accidental data.
-
-**Warning signs:**
-- Notification card renders with undefined title or empty body text.
-- `console.warn('unknown notification type')` never fires even though the card looks wrong.
-
-**Phase to address:** Notifications phase — add the `return null` guard on unknown types in the `NotificationCard` component before any notification is visible to users.
-
----
-
-### Pitfall B-9: Notification Generated for Self-Action
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-A user who follows themselves (if not guarded at the RLS or Server Action layer), or who adds a watch that matches their own existing collection, generates a notification addressed to themselves. The result: "You followed yourself" in the notifications list. More subtly, watch-overlap detection between a user and their own followers could trigger a self-notification if the actor_id check is wrong.
-
-**Why it happens:**
-Notification generation code checks `recipient_id != actor_id` inconsistently or not at all. The follow Server Action may block self-follows at the UI layer but not enforce it at the DB layer.
-
-**How to avoid:**
-In every notification generation call, assert `recipientId !== actorId` before inserting. Add a CHECK constraint to the notifications table:
-```sql
-CONSTRAINT no_self_notification CHECK (actor_id != recipient_id)
-```
-For follows, also add a CHECK constraint on the `follows` table: `follower_id != following_id`.
-
-**Warning signs:**
-- Notification row exists with `actor_id = recipient_id`.
-- "You followed yourself" text appears in the notification list.
-
-**Phase to address:** Notifications phase — add DB constraints in the schema migration; enforce in generation functions.
-
----
-
-## C. People-Search
-
----
-
-### Pitfall C-1: `pg_trgm` Extension Not Enabled — ILIKE is a Full Table Scan
-
-**Severity:** HIGH
-
-**What goes wrong:**
-`ILIKE '%query%'` on `username` and `bio` performs a full table scan. Without the `pg_trgm` extension and a GIN trigram index, the search query degrades linearly with table size. Even at 1,000 users it is noticeably slow; at 10,000 users it is unusable.
-
-More importantly, `pg_trgm` is not enabled by default in new Supabase projects. Enabling it requires a migration (`CREATE EXTENSION IF NOT EXISTS pg_trgm`). Forgetting to run this migration in production means the GIN index is created but falls back to a seq scan (because the trigram operator class is missing), and no error is thrown.
-
-**Why it happens:**
-Local dev typically has `pg_trgm` enabled from a previous project or database setup. The issue is invisible locally and only surfaces in the production Supabase project where the extension was never enabled.
-
-**How to avoid:**
-Add the extension and index creation to the Drizzle migration file (not just raw SQL run once):
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX IF NOT EXISTS idx_profiles_username_trgm ON profiles USING gin (username gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_profiles_bio_trgm ON profiles USING gin (bio gin_trgm_ops);
-```
-After the prod migration, run `SELECT * FROM pg_extension WHERE extname = 'pg_trgm'` to verify. Add to the deploy runbook.
-
-**Warning signs:**
-- `EXPLAIN ANALYZE` on the search query shows `Seq Scan` on `profiles` rather than `Bitmap Index Scan`.
-- Search response time scales with number of profiles (5ms at 100 users, 500ms at 10,000).
-- Extension missing: `ERROR: operator class "gin_trgm_ops" does not exist for access method "gin"`.
-
-**Phase to address:** People-search phase — create the migration with extension + index before writing the search DAL query.
-
----
-
-### Pitfall C-2: Empty or Single-Character Search Query Returns All Profiles
-
-**Severity:** HIGH
-
-**What goes wrong:**
-`ILIKE '%a%'` matches almost every row in `profiles`. An empty query (`ILIKE '%%'`) matches all rows. Both cases return the entire user table to the client. This is a performance bomb (full table dump on every keystroke), a privacy issue (users who set their profile private still appear in a correctly-RLS'd query, but the response is large), and violates the intended UX.
-
-**Why it happens:**
-Debounce is added client-side but the minimum query length check is not enforced server-side. The client skips requests for empty queries, but a malicious or fast client can bypass the debounce.
-
-**How to avoid:**
-Enforce minimum query length in the DAL and in the Server Action — not just client-side. Return an empty array immediately if `query.trim().length < 2`. Document this as a contract:
-```typescript
-if (query.trim().length < 2) return [];
-```
-Also, implement a server-side rate limit or Supabase edge function rate limiter for the search endpoint if it becomes a vector for enumeration.
-
-**Warning signs:**
-- Search API called with a 1-character query returns 50+ profiles.
-- Empty query returns all users (check with direct `fetch` bypassing debounce).
-
-**Phase to address:** People-search phase — add the length guard in the DAL, not just in the client component.
-
----
-
-### Pitfall C-3: Search Returns Private Profile Rows — RLS Must Gate Search Too
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-A user who set their profile to private (`profile_public = false`) should not appear in people-search results for non-followers. Without an RLS policy or DAL WHERE clause that excludes private profiles from the search result set, their username and bio are searchable by anyone. The search surface is a new read path that must be independently gated — the existing profile page RLS does not automatically apply to the search query.
-
-**Why it happens:**
-The search DAL is written as a new function (`searchProfiles`) that queries `profiles` directly without inheriting the privacy rules from the profile-view DAL. Developers assume "RLS handles it" — but the RLS policy on `profiles` may allow any authenticated user to read any row (since profiles table visibility was designed for profile-page reads, not search).
-
-**How to avoid:**
-The search DAL must include a WHERE clause:
-```typescript
-WHERE (profile_public = true OR user_id = viewerId)
-```
-Two-layer enforcement: the RLS policy must also be scoped to exclude private profiles from search reads for non-owners. Validate with an integration test: create a private profile, search for their username as another user, confirm 0 results.
-
-**Warning signs:**
-- Search for a known private user's username returns their profile.
-- `searchProfiles` DAL function has no `profile_public` filter.
-
-**Phase to address:** People-search phase — add the filter in the initial DAL implementation; include in the privacy integration test suite.
-
----
-
-### Pitfall C-4: "Following" Status Per Row Requires N+1 Unless Batched
-
-**Severity:** HIGH
-
-**What goes wrong:**
-The search results page shows a row for each matching profile with a Follow/Following button. Rendering the correct button state (following or not) requires knowing if the viewer follows each result. The naive implementation queries `SELECT * FROM follows WHERE follower_id = viewer AND following_id = result` per result row — one query per result.
-
-**Why it happens:**
-The Follow button is a separate component that fetches its own state. Each renders independently.
-
-**How to avoid:**
-Batch the following-status lookup: fetch all `following_id` values for the current viewer in a single query at the search DAL level, then pass the set to the result components as a prop:
-```typescript
-const viewerFollows = new Set(
-  (await db.select({ id: follows.followingId })
-    .from(follows)
-    .where(eq(follows.followerId, viewerId)))
-    .map(r => r.id)
-);
-// Pass viewerFollows to search results
-```
-This is the same no-N+1 pattern used in the v2.0 Network Home for the Suggested Collectors section.
-
-**Warning signs:**
-- Supabase logs show one `SELECT FROM follows` query per search result row.
-- Search results page with 10 results produces 11+ DB queries.
-
-**Phase to address:** People-search phase — design the batched follow-status query in the initial DAL implementation.
-
----
-
-### Pitfall C-5: Bio Search Exposes Sensitive Substring Matches
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-`ILIKE '%query%'` matches substrings anywhere in `bio`. A user might write a bio like "not interested in Patek, mainly AP and Rolex" — searching for "Patek" returns this user, potentially revealing their stated disinterest. More practically, a bio might contain an email address, phone number, or other PII that the user included without realizing it would be full-text searchable by strangers.
-
-**Why it happens:**
-Bios are freeform text fields. Users don't expect substring searching.
-
-**How to avoid:**
-For v3.0 MVP, limit search to username only by default, with bio as a secondary match that requires longer query strings (minimum 4 characters for bio matches). Truncate the bio snippet in search results rather than highlighting the match. Add a note in the profile settings page that bio content is searchable. This is a UX/privacy tradeoff to document consciously rather than a hard technical fix.
-
-**Warning signs:**
-- Bio search returns rows where the matched text is PII or sensitive preference data.
-- Users report appearing in searches for terms they buried in their bio.
-
-**Phase to address:** People-search phase — document the bio-search decision in the plan; apply minimum-length guard for bio matching.
-
----
-
-## D. WYWT Photo Capture (`getUserMedia`)
-
----
-
-### Pitfall D-1: iOS Safari Loses User Gesture Context in Async `getUserMedia` Chain
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-iOS Safari requires `getUserMedia()` to be called in direct response to a user gesture (tap). If the call is inside an async chain where a `await` occurs before `getUserMedia()` is invoked, iOS considers the gesture context "consumed" and blocks the camera. The error: `NotAllowedError: The request is not allowed by the user agent or the platform in the current context`. No permission dialog appears; the camera just fails silently.
-
-**Why it happens:**
-The natural implementation: user taps "Take Wrist Shot" → component checks state → `await someSetup()` → `await navigator.mediaDevices.getUserMedia(...)`. The intermediate await breaks the gesture chain on iOS.
-
-**How to avoid:**
-Call `navigator.mediaDevices.getUserMedia(constraints)` as the FIRST async operation in the tap handler — no awaits before it. If setup is needed (e.g., resolving constraints), do it synchronously or store the MediaStream reference and do async work after:
-```typescript
-async function handleTakePhoto() {
-  // getUserMedia must be first — no awaits before this on iOS
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-  // Now safe to do async work
-  setStream(stream);
-}
-```
-Test on a real iOS device or Safari Technology Preview, not just Chrome DevTools mobile emulation.
-
-**Warning signs:**
-- Camera works in Chrome but fails in iOS Safari with `NotAllowedError`.
-- Permission dialog never appears on iOS even on first use.
-- There is an `await` before the `getUserMedia` call in the event handler.
-
-**Phase to address:** WYWT photo phase — design the gesture handler before writing any setup logic.
-
----
-
-### Pitfall D-2: MediaStream Not Stopped on Component Unmount — Camera Stays "On"
-
-**Severity:** HIGH
-
-**What goes wrong:**
-When the user dismisses the camera dialog or navigates away, the `<video>` element is removed from the DOM but the underlying `MediaStream` tracks are not stopped. The browser keeps the camera hardware active (green LED indicator remains on). On iOS, background camera access can trigger OS-level warnings or drain battery.
-
-**Why it happens:**
-The `MediaStream` is stored in state. When the component unmounts, React cleans up state but does not automatically call `.stop()` on the stream tracks.
-
-**How to avoid:**
-Return a cleanup function from the `useEffect` that manages the stream:
-```typescript
-useEffect(() => {
-  if (!stream) return;
-  return () => {
-    stream.getTracks().forEach(track => track.stop());
-  };
-}, [stream]);
-```
-Also call `stream.getTracks().forEach(t => t.stop())` explicitly when the user closes the dialog — don't rely solely on the unmount cleanup (the dialog may remain mounted in a hidden state).
-
-**Warning signs:**
-- Camera indicator remains on after closing the WYWT dialog.
-- Multiple calls to `getUserMedia` succeed without re-requesting permissions (stale stream).
-
-**Phase to address:** WYWT photo phase — add the cleanup useEffect in the initial implementation.
-
----
-
-### Pitfall D-3: Camera Permission Denied — No Fallback UX
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-When the user denies camera permission (or has permanently denied it in iOS Settings), `getUserMedia` rejects with `NotAllowedError`. Without explicit error handling, the user sees a blank video area with no explanation. On iOS, the browser cannot prompt for permission again after denial — the user must go to Settings > Safari > Camera. This is non-obvious.
-
-**Why it happens:**
-Happy-path implementation: only the `await getUserMedia` success path is handled.
-
-**How to avoid:**
-Catch `NotAllowedError` specifically and show a clear error state:
-```typescript
-catch (err) {
-  if (err.name === 'NotAllowedError') {
-    setError('Camera access denied. To take a wrist shot, allow camera access in your browser settings, then try again.');
-  }
-}
-```
-Also handle `NotFoundError` (no camera hardware) and `NotSupportedError` (HTTP context — should not occur on Vercel, but possible in local network testing). The upload option must remain available as a fallback regardless of camera error state.
-
-**Warning signs:**
-- Video element is blank with no error message after permission denial.
-- No try/catch around `getUserMedia` call.
-
-**Phase to address:** WYWT photo phase — implement error states alongside the happy path.
-
----
-
-### Pitfall D-4: Canvas-Captured Image is Too Large for Mobile Upload
-
-**Severity:** HIGH
-
-**What goes wrong:**
-Drawing the video frame to a canvas with `canvas.toDataURL('image/jpeg')` at the native camera resolution produces an image that may be 3–8MB. On mobile data, uploading 5MB blocks the form for 10–30 seconds. The upload progress bar (if any) appears frozen.
-
-**Why it happens:**
-Developers capture at the highest available resolution because quality seems better. The camera stream resolution is whatever the device reports as default — often 1920x1080 or higher on modern phones.
-
-**How to avoid:**
-Explicitly constrain the camera resolution at capture time and/or resize on canvas before upload:
-```typescript
-// Constrain at getUserMedia
-{ video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1080 } } }
-// Or resize on canvas:
-const MAX_DIMENSION = 1200;
-// scale canvas dimensions to MAX_DIMENSION before drawing
-```
-Target output: under 500KB JPEG at quality 0.85. This is sufficient for wrist-shot display sizes (max 600px in the feed). Add client-side size validation before upload: if the compressed result is still >2MB, reject it with a clear message.
-
-**Warning signs:**
-- Upload takes >5 seconds on a good connection.
-- Network tab shows image payload >2MB.
-- Canvas `toDataURL` called without explicit width/height constraints.
-
-**Phase to address:** WYWT photo phase — set canvas dimensions and JPEG quality in the initial capture implementation.
-
----
-
-### Pitfall D-5: Static Overlay Not Scaling With Video Element
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-The dotted guide overlay (wrist shot framing guide) is positioned via absolute CSS over the `<video>` element. If the video element's display size differs from the CSS layout size (which it will on different viewport widths and orientations), the overlay is misaligned. The circle that should be "center your watch here" appears in the wrong position on a 375px-wide iPhone vs. a 414px-wide one.
-
-**Why it happens:**
-The overlay dimensions are hard-coded in pixels rather than relative to the video element's rendered size.
-
-**How to avoid:**
-Use relative positioning: the overlay container should be `position: relative` with `width: 100%; aspect-ratio: 1/1` matching the video aspect ratio. The guide overlay uses `position: absolute; inset: 0` with percentage-based `width`/`height`. Verify on at least three viewport widths (320px, 390px, 428px) during UAT.
-
-**Warning signs:**
-- Guide overlay is not centered on a non-standard viewport width.
-- Overlay dimensions are specified in `px` rather than `%` or `vw`.
-
-**Phase to address:** WYWT photo phase — design the overlay in CSS with relative units from the start.
-
----
-
-## E. HEIC Handling + Image Upload
-
----
-
-### Pitfall E-1: `heic2any` Loaded Eagerly — 1MB Bundle on Every Page
-
-**Severity:** HIGH
-
-**What goes wrong:**
-`heic2any` is approximately 1MB when bundled. If imported at the top of the WYWT photo component file, it is included in the initial page bundle and downloaded on every page load — even when the user never uploads a HEIC file (i.e., most Android users, all desktop users).
-
-**Why it happens:**
-Static top-level imports are the default pattern. `import heic2any from 'heic2any'` at the top of the file.
-
-**How to avoid:**
-Dynamic import triggered only when a HEIC file is detected:
-```typescript
-const file = e.target.files[0];
-if (file.type === 'image/heic' || file.name.toLowerCase().endsWith('.heic')) {
-  const { default: heic2any } = await import('heic2any');
-  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
-}
-```
-This defers the 1MB bundle to the rare case where a HEIC file is selected. Bundle analyzer should confirm `heic2any` is not in the main chunk.
-
-**Warning signs:**
-- Bundle analyzer shows `heic2any` in the main or layout chunk.
-- `import heic2any from 'heic2any'` at the top of any file outside a dynamic import.
-
-**Phase to address:** WYWT photo phase — implement as a dynamic import from day one.
-
----
-
-### Pitfall E-2: EXIF Orientation Tag Not Honored — Sideways Images
-
-**Severity:** HIGH
-
-**What goes wrong:**
-iPhones capture photos in the sensor's native orientation and write the correct rotation into the EXIF `Orientation` tag. A photo taken in portrait mode may have `Orientation: 6` (rotate 90°CW). When drawn to a canvas via `drawImage()` without reading the EXIF orientation, the resulting JPEG is rotated 90° (or 180° or 270°). The image uploads correctly but displays sideways in the feed and on the wear detail page.
-
-**Why it happens:**
-`canvas.drawImage(imageElement, ...)` ignores EXIF data. The browser may or may not auto-rotate the image for display (modern Chrome does; older Safari and most canvas operations do not). HEIC-to-JPEG conversion via `heic2any` strips the EXIF orientation tag, so the resulting JPEG has no rotation instruction — but the pixel data is still unrotated.
-
-**How to avoid:**
-Before drawing to canvas, read the EXIF `Orientation` tag using a small EXIF reader (e.g., `exifr` — 30KB, tree-shakeable) and apply the corresponding canvas rotation:
-```typescript
-import { parse as parseExif } from 'exifr';
-const { Orientation } = await parseExif(file, { pick: ['Orientation'] });
-// Apply rotation to canvas context before drawImage
-```
-Test with photos taken in all four orientations on a real iPhone.
-
-**Warning signs:**
-- Uploaded wrist shots appear sideways or upside-down in the feed.
-- Canvas draw code has no rotation transform before `drawImage`.
-
-**Phase to address:** WYWT photo phase — implement EXIF orientation handling alongside the canvas capture code.
-
----
-
-### Pitfall E-3: Client-Side Validation Only — Server Accepts Any File
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-The upload component validates file size and MIME type on the client. A user (or attacker) bypasses the client and sends a direct `multipart/form-data` POST to the Supabase Storage upload endpoint with a 100MB video file, an SVG with embedded script, or a file with a spoofed MIME type. Supabase Storage does not validate file content by default — it stores whatever is uploaded.
-
-**Why it happens:**
-Client validation is easy to implement and provides good UX. Server-side validation requires a Server Action or edge function in the upload path, which adds complexity.
-
-**How to avoid:**
-Add a Server Action or route handler that:
-1. Validates file size (reject >5MB after compression).
-2. Validates MIME type by reading the first 12 bytes (magic bytes) — `image/jpeg` starts with `FFD8FF`, `image/png` with `89504E47`. Do not trust the `Content-Type` header or file extension.
-3. Sets Supabase Storage upload metadata with an explicit `contentType`.
-
-Additionally, configure a file size limit in the Supabase Storage bucket policy (50MB default is too permissive; set to 5MB).
-
-**Warning signs:**
-- Upload path calls Supabase Storage directly from the client without a server intermediary.
-- No server-side file size check exists.
-- MIME type validation uses only `file.type` (client-reported, spoofable).
-
-**Phase to address:** WYWT photo phase — add server-side validation in the Server Action that handles the upload.
-
----
-
-### Pitfall E-4: `heic2any` Does Not Strip EXIF — PII in Uploaded Images
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-HEIC files (and the JPEGs produced by `heic2any` conversion) may contain EXIF metadata including GPS coordinates (precise location where the photo was taken), device model, and timestamp. For a "what are you wearing today" feature, leaking GPS coordinates from a morning photo taken at home is a significant privacy issue.
-
-**Why it happens:**
-`heic2any` converts pixel data but passes EXIF through to the output JPEG. Canvas re-encoding (`canvas.toDataURL('image/jpeg')`) strips EXIF — but only if the canvas draw path is used. The upload-from-file path (where the user uploads an existing photo without going through canvas) may skip the canvas step and upload the raw HEIC-converted JPEG with full EXIF intact.
-
-**How to avoid:**
-ALL upload paths must go through the canvas re-encode step, even for uploaded files. Do not use `heic2any` output directly as the upload blob. Always:
-1. Convert HEIC → JPEG (if needed).
-2. Load the JPEG into an `<img>` element.
-3. Draw to canvas (this strips EXIF).
-4. Export from canvas as the final upload blob.
-
-Verify by uploading an iPhone photo and checking the stored file with `exiftool` — confirm no GPS data.
-
-**Warning signs:**
-- The upload flow has a code path where `heic2any` output is uploaded directly without canvas re-encode.
-- `exiftool output.jpg` shows `GPSLatitude` or `GPSLongitude` tags.
-
-**Phase to address:** WYWT photo phase — enforce canvas-always in the upload utility function; add an integration test that checks EXIF is absent from stored images.
-
----
-
-## F. Supabase Storage + RLS
-
----
-
-### Pitfall F-1: Storage RLS Policies Are Separate From Table RLS — Different Mental Model
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-Supabase Storage uses `storage.objects` — a separate Postgres table in the `storage` schema with its own RLS policies. The RLS policies on the `wear_events` table do NOT automatically protect the associated image files. A user who cannot read `wear_events.image_url` can still access the image file directly if the storage bucket has no RLS or is public.
-
-**Why it happens:**
-Developers apply RLS to application tables and assume "storage is protected." The two systems are completely independent.
-
-**How to avoid:**
-Write storage bucket policies explicitly for each bucket used. For the wear photos bucket (private wears):
-```sql
--- Users can only read their own files or public wear files
-CREATE POLICY "wear_photos_select" ON storage.objects
-  FOR SELECT USING (
-    bucket_id = 'wear-photos'
-    AND (
-      (storage.foldername(name))[1] = (SELECT auth.uid()::text)  -- own files
-      OR EXISTS (
-        SELECT 1 FROM wear_events we
-        JOIN profiles p ON p.user_id = we.user_id
-        WHERE we.image_path = name
-          AND (we.visibility = 'public' OR (we.visibility = 'followers' AND EXISTS (
-            SELECT 1 FROM follows f WHERE f.follower_id = (SELECT auth.uid()) AND f.following_id = we.user_id
-          )))
-          AND p.profile_public = true
-      )
+- The `/evaluate` page must follow the canonical Cache Components shape:
+  ```tsx
+  // src/app/evaluate/page.tsx — Server Component
+  export default function EvaluatePage({ searchParams }: { searchParams: Promise<{ url?: string }> }) {
+    return (
+      <Suspense fallback={<EvaluateSkeleton />}>
+        <EvaluateContent searchParams={searchParams} />
+      </Suspense>
     )
-  );
-```
-This is complex but necessary. Verify by attempting to access another user's private wear photo URL directly — confirm 403.
+  }
+  
+  async function EvaluateContent({ searchParams }: { searchParams: Promise<{ url?: string }> }) {
+    const supabase = await createServerClient() // cookies() lives here, INSIDE Suspense
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/signin?next=/evaluate')
+    // ...fetch collection + preferences, run similarity...
+  }
+  ```
+- Anonymous evaluation: redirect to /signin with `?next=/evaluate` (don't try to render read-only mode — similarity needs collection + preferences to be meaningful; an unauthed verdict is uninteresting).
+- Run `next build` locally before merging — `next dev` will not catch this.
 
 **Warning signs:**
-- Storage bucket is set to "Public" in the Supabase dashboard.
-- No policies exist in `storage.objects` for the wear-photos bucket.
-- A private wear image URL is directly accessible in an incognito window.
+- Page calls `cookies()` or `await createServerClient()` directly inside `export default function PageName()`.
+- No `<Suspense>` wrapping the dynamic data fetch.
+- `next dev` works; `next build` fails with "cookies() was called outside a request scope".
+- Review of phase plan does not reference Phase 14 / Phase 15 layout patterns.
 
-**Phase to address:** WYWT photo phase — write storage policies in the same migration as the wear_events schema changes.
+**Phase to address:** Phase 4 of v4.0 ("Evaluate this Watch" route).
 
 ---
 
-### Pitfall F-2: Signed URLs Cached by Next.js Image Optimizer or CDN
-
-**Severity:** HIGH
+### Pitfall 6: /search Collections Privacy Two-Layer Drift — Gates `profile_public` at SQL but Forgets `collection_public` at DAL 🆕 ♻️
 
 **What goes wrong:**
-Supabase signed URLs for private storage objects expire after a configured duration (e.g., 1 hour). If the signed URL is passed to `<Image>` from `next/image`, Next.js attempts to cache the optimized image indefinitely. On the second request, the Next.js image cache serves the optimized image at a stale signed URL path. When the signed URL expires, the image optimizer may re-request using the expired URL, returning a 400 error.
-
-Additionally, if a Vercel edge cache or CDN caches the image response at the signed URL, the URL may remain in cache after the wear event visibility changes to Private.
+/search Collections (Tab) joins `watches` to `profiles` to find matches. The natural query gates `profile_public = true` (because the people-search Phase 16 pattern does this). But Collections has a second privacy gate: `profile_settings.collection_public`. A user with `profile_public = true` but `collection_public = false` (private collection on a public profile) leaks their watch list through Collections search.
 
 **Why it happens:**
-Signed URLs look like regular image URLs. Next.js image optimization and CDN caching treat them the same.
+The two-layer privacy pattern from v2.0/v3.0 is "RLS at DB + DAL WHERE at app". Phase 16 people-search successfully implemented this for `profile_public`. The collections variant requires gating on TWO booleans — one of which (`collection_public`) lives on a DIFFERENT table (`profile_settings`, not `profiles`). Joining the third table is an extra step that's easy to forget when copying the people-search pattern.
 
 **How to avoid:**
-For private wear images (visibility = 'followers' or 'private'), do not use `<Image>` from `next/image`. Use a plain `<img>` tag and generate fresh signed URLs on each server render. Set signed URL expiry to a reasonable session duration (e.g., 2 hours). For public wear images, public bucket URLs are fine with `<Image>`.
-
-```typescript
-// Server component: generate a fresh signed URL per render for private images
-const { data } = await supabase.storage
-  .from('wear-photos')
-  .createSignedUrl(imagePath, 7200); // 2 hours
-```
-
-Add the Supabase storage hostname to `next.config.ts` `remotePatterns` for `<Image>` on public images.
-
-**Warning signs:**
-- Private wear images use `<Image src={signedUrl}>`.
-- Images break for users after ~1 hour.
-- `next.config.ts` does not include the Supabase storage hostname in `remotePatterns`.
-
-**Phase to address:** WYWT photo phase — make the public/private image rendering decision explicit in the component design.
-
----
-
-### Pitfall F-3: Deleting a `wear_events` Row Does Not Delete the Storage Object — Orphan Files
-
-**Severity:** MEDIUM
-
-**What goes wrong:**
-When a user deletes a wear event, the `wear_events` row is removed from the DB. But the associated image file in Supabase Storage is not deleted — it persists indefinitely, consuming storage quota and potentially being accessible via direct URL if the bucket policy allows it.
-
-**Why it happens:**
-Postgres `ON DELETE CASCADE` applies to DB tables, not storage objects. Storage cleanup must be triggered explicitly in application code.
-
-**How to avoid:**
-In the "delete wear event" Server Action, after deleting the DB row, also delete the storage object:
-```typescript
-// In the delete wear event Server Action:
-if (wearEvent.imagePath) {
-  await supabase.storage.from('wear-photos').remove([wearEvent.imagePath]);
-}
-await db.delete(wearEvents).where(eq(wearEvents.id, wearEventId));
-```
-Note: delete the storage object AFTER verifying the DB delete succeeded, to avoid orphaning the file if the action fails partway. Consider a periodic cleanup job (Supabase Edge Function cron) as a safety net.
-
-**Warning signs:**
-- Storage bucket grows over time even as users delete wears.
-- No `supabase.storage.remove()` call exists in the delete wear Server Action.
-
-**Phase to address:** WYWT photo phase — add storage cleanup to the delete action alongside the DB delete.
-
----
-
-### Pitfall F-4: Per-User Folder Convention Not Enforced by Storage RLS
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-The convention `{user_id}/{filename}` in the storage path is intended to scope files per user. But this is just a convention — nothing prevents a user from uploading to `{other_user_id}/{filename}` unless the storage RLS INSERT policy explicitly checks that the first path component matches the authenticated user's ID.
-
-**Why it happens:**
-Developers implement the folder convention in the client upload code but do not add the RLS enforcement. The convention is honored in the happy path but bypassable via a direct API call.
-
-**How to avoid:**
-Storage INSERT policy must validate the folder path:
-```sql
-CREATE POLICY "wear_photos_insert" ON storage.objects
-  FOR INSERT WITH CHECK (
-    bucket_id = 'wear-photos'
-    AND (storage.foldername(name))[1] = (SELECT auth.uid()::text)
-  );
-```
-Test by attempting to upload a file to another user's folder path via a direct Supabase client call.
-
-**Warning signs:**
-- Storage INSERT policy exists but does not check `foldername(name)[1] = auth.uid()`.
-- A user can upload to `{other_user_id}/photo.jpg` without a policy violation.
-
-**Phase to address:** WYWT photo phase — add the path enforcement in the storage INSERT policy migration.
-
----
-
-## G. Three-Tier Visibility Ripple
-
----
-
-### Pitfall G-1: Not Auditing Every Wear-Reading DAL Function Before Adding "Followers" Tier
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-The existing wear DAL functions implement two-tier visibility (`worn_public = true/false`). Adding a third tier ("Followers") requires every function that reads wear events to check `visibility IN ('public') OR (visibility = 'followers' AND viewer follows actor) OR actor = viewer`. If even one DAL function is missed, followers-only wears are visible to the public or to non-followers.
-
-This is the exact class of bug that the v2.0 retrospective identified: "the outer `profile_public` check was missing from the non-self branch. RLS alone would have leaked." The same failure mode applies here at larger scale.
-
-**Why it happens:**
-There are multiple DAL functions that read wear events: WYWT rail, profile worn tab, home feed, watch detail context, notifications. Each is written independently and must each be updated.
-
-**How to avoid:**
-Before writing a single line of visibility code, enumerate EVERY function in the DAL that reads `wear_events`. Create a checklist:
-- `getWearRailForViewer` ✓
-- `getWornTabForViewer` ✓
-- `getWearEventsForHome` ✓
-- `getWatchContextWears` ✓
-- (any new functions for v3.0 WYWT post)
-
-Each function must be updated to the three-tier check before the visibility enum migration is deployed. Add a grep gate: `grep -r "wear_events" src/data/ | grep -v "three_tier_visibility_check_confirmed"` (add a comment marker to each audited function).
-
-**Warning signs:**
-- A DAL function queries `wear_events` with only `WHERE worn_public = true` (old two-tier check).
-- Integration test for "follower-only wear visible to non-follower" passes (i.e., the test does NOT exist yet).
-
-**Phase to address:** WYWT photo/visibility phase — audit first, migration second, implementation third.
-
----
-
-### Pitfall G-2: Default Visibility Set Wrong — Mass Privacy Exposure or Confusing Behavior
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-If the new wear form defaults to "Public" when the user's mental model is "Followers," every wear logged before the user changes the default setting is public. For a user who thinks "only my followers can see this," having their wears public is a trust violation.
-
-Conversely, if default is "Private," the WYWT rail (the social proof feature) never populates for new users — the product's core retention loop fails.
-
-**Why it happens:**
-The default is a product decision that gets made implicitly by whoever writes the form component, without a conscious design discussion.
-
-**How to avoid:**
-Make the default a first-class product decision documented in the plan. Recommendation: default to the user's last-used visibility (stored in their `profile_settings` on the server, not localStorage — avoid SSR/hydration mismatch). On first use, default to "Followers" as the most balanced choice. Show the visibility picker explicitly in the form — never hide it.
-
-Do NOT store the default in localStorage — this causes SSR/client hydration mismatch (server renders "Private", client renders "Public", React hydration warning + potential flash of wrong state).
-
-**Warning signs:**
-- Wear form default visibility is hardcoded as "public" or "private" without user preference.
-- Default stored in `localStorage` without SSR handling.
-- No visibility picker shown in the WYWT form (user can't see or change the default).
-
-**Phase to address:** WYWT photo/visibility phase — document the default decision in the plan; store preference server-side.
-
----
-
-### Pitfall G-3: "Followers" Gate Checks in the Wrong Direction
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-The "Followers" tier should show a wear to users who follow the actor (i.e., `viewer follows actor`). An inverted check — `actor follows viewer` — shows the wear to users the actor follows, which is a completely different set and a privacy hole. This inversion is easy to write wrong:
-```typescript
-// WRONG: checks if actor follows viewer
-follows.followerId === actorId && follows.followingId === viewerId
-// CORRECT: checks if viewer follows actor
-follows.followerId === viewerId && follows.followingId === actorId
-```
-
-**Why it happens:**
-"Follower" and "following" are directional terms that developers often confuse. The v2.0 retrospective established the `viewer-aware DAL pattern` but new developers writing new visibility checks may not read the established precedent.
-
-**How to avoid:**
-In the DAL, use explicit variable names:
-```typescript
-const viewerFollowsActor = await db.select()...
-  .where(and(eq(follows.followerId, viewerId), eq(follows.followingId, actorId)));
-```
-Name the variable `viewerFollowsActor` — not `isFollowing` or `followsRelationship`. Add a unit test specifically for the directional check: viewer follows actor → wear visible; actor follows viewer but viewer does not follow actor → wear not visible.
-
-**Warning signs:**
-- Follow direction check uses ambiguous variable names like `isFollowing`.
-- No unit test distinguishing `A follows B` from `B follows A` for the visibility gate.
-
-**Phase to address:** WYWT photo/visibility phase — add the directional unit tests in the same plan that implements the three-tier check.
-
----
-
-### Pitfall G-4: Public Wear Still Visible When Profile Is Locked Private
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-A user with `profile_public = false` logs a wear event with `visibility = 'public'`. The wear appears in the WYWT rail for other users (and potentially in search or explore). The user's profile is private, but their activity is public — this was the exact bug caught in Phase 10 Plan 09 E2E during v2.0. The three-tier visibility adds a new path where a user might set `visibility = 'public'` on a single wear without intending to expose their overall identity.
-
-**Why it happens:**
-Per-wear visibility and per-profile visibility are checked independently. The DAL that enforces per-wear visibility may not also check `profile_public` for the actor.
-
-**How to avoid:**
-The canonical rule (established in v2.0): any wear read must check BOTH per-wear visibility AND `profile_public = true` for the actor. The DAL WHERE clause must always include:
-```sql
-AND p.profile_public = true  -- profile-level gate, always
-AND (
-  we.visibility = 'public'
-  OR (we.visibility = 'followers' AND viewer_follows_actor)
-  OR we.user_id = viewer_id  -- self always sees own
-)
-```
-This is the two-layer check applied to the wear surface. Add it to the audit checklist for every wear-reading DAL function (see Pitfall G-1).
-
-**Warning signs:**
-- WYWT rail shows wears from users with `profile_public = false`.
-- DAL function checks `visibility` but not `profile_public`.
-
-**Phase to address:** WYWT photo/visibility phase — integrate the `profile_public` check into the three-tier visibility template; include in integration tests.
-
----
-
-### Pitfall G-5: Self-Visibility Branch Missing — Viewer Cannot See Own Private Wears
-
-**Severity:** HIGH
-
-**What goes wrong:**
-The three-tier check `visibility = 'public' OR (followers AND viewer_follows_actor) OR profile_public` has no explicit branch for the case where `viewer = actor`. If a user logs a Private wear, they should see it in their own worn tab. Without the self-include branch, the user logs a private wear and it disappears from their own view — a confusing and trust-eroding experience.
-
-**Why it happens:**
-Privacy check logic is written from the perspective of "what can others see" without handling the self case.
-
-**How to avoid:**
-Always add the self branch first:
-```sql
-WHERE (
-  we.user_id = (SELECT auth.uid())  -- always see own wears, any visibility
-  OR (
-    p.profile_public = true
-    AND (
-      we.visibility = 'public'
-      OR (we.visibility = 'followers' AND viewer_follows_actor)
+- Build the privacy gate as a reusable SQL helper or DAL primitive:
+  ```typescript
+  // src/data/search.ts
+  function publicCollectionPredicate(viewerId: string | null) {
+    return and(
+      eq(profileSettings.profilePublic, true),
+      eq(profileSettings.collectionPublic, true),
+      viewerId ? ne(profiles.id, viewerId) : sql`true`,
     )
-  )
-)
-```
-Unit test: user queries their own private wears — confirm they are returned.
+  }
+  ```
+- Three-layer test fixture: viewer is User A; create User B (`profile_public=true, collection_public=true`) and User C (`profile_public=true, collection_public=false`). /search Collections must find B and NOT find C.
+- Add a SECURITY DEFINER helper or DB-level VIEW `public_collection_watches` that pre-applies both gates — DAL queries hit the view, never the raw `watches` table for cross-user reads.
+- Verify with the `EXPLAIN` plan in Phase 6 that the three predicates push down to indexes (a sequential scan of `watches` joined to two boolean columns at scale becomes the next pitfall — see Pitfall 17).
 
 **Warning signs:**
-- User logs a private wear and it does not appear in their own worn tab.
-- Visibility WHERE clause has no `we.user_id = auth.uid()` branch.
+- DAL function name says "public collection" but only filters one boolean.
+- Test fixtures don't include the (profile_public=true, collection_public=false) edge case.
+- Code review finds the `profile_settings` join missing from the Collections-search query.
 
-**Phase to address:** WYWT photo/visibility phase — include the self-visibility unit test in the visibility implementation plan.
+**Phase to address:** Phase 5 of v4.0 (/search Watches + Collections Tabs).
 
 ---
 
-### Pitfall G-6: Backfill Migration Incorrectly Maps `worn_public = false` Wears
-
-**Severity:** HIGH
+### Pitfall 7: /search Collections N+1 on `isOwned` / `isWishlisted` Badges — Anti-Pattern Re-emerges After Phase 16 ♻️
 
 **What goes wrong:**
-The migration that adds the `visibility` enum must backfill existing `wear_events` rows. The correct mapping:
-- `worn_public = true` → `visibility = 'public'`
-- `worn_public = false` → `visibility = 'private'`
-
-An incorrect backfill that maps `worn_public = false` to `'followers'` instead of `'private'` silently exposes previously-private wears to all followers — a privacy regression that may not be noticed until a user checks their worn tab.
+/search Collections returns up to 50 collection-result rows. Each row may show "you also own 3 of these watches" — requiring a per-row lookup against the viewer's collection. The naive implementation runs 50 DB queries per search keystroke. With 250ms debounce + AbortController, this is "only" a handful of requests per second, but each query is uncached and produces a load-amplification factor of 50×.
 
 **Why it happens:**
-The developer assumes "followers" is a reasonable default for previously-private wears. It is not — the user's explicit prior choice was "private."
+Phase 16 people-search SOLVED this for `isFollowing` via batched `inArray(follows.followingId, topIds)`. The Collections variant requires the same trick but with a different predicate (`watches.userId IN (...) AND watches.brand=... AND ...`). Implementers see the people-search pattern, think "yeah I know N+1," then write `await Promise.all(rows.map(r => getOverlapForViewer(r.userId, viewerId)))` — which is parallel-N+1, still N round trips.
 
 **How to avoid:**
-The backfill must preserve the user's stated intent. `worn_public = false` → `'private'`. Document this mapping in the migration file as a comment. After running the migration, verify the count:
+- Pre-LIMIT to 50 in SQL → JS-sort → ONE batched lookup with `inArray`:
+  ```typescript
+  const topUserIds = topRows.map(r => r.userId)
+  const overlapRows = await db
+    .select({ otherUserId: watches.userId, brand: watches.brand, model: watches.model })
+    .from(watches)
+    .where(and(
+      inArray(watches.userId, topUserIds),
+      eq(watches.userId, /* viewer */)  // Wait, viewer's collection — separate query
+    ))
+  ```
+- Recognize that the anti-N+1 trick from Phase 16 (`isFollowing` was a single boolean per row) is HARDER for Collections (overlap is a count or a list per row). Two-step pattern: (1) fetch viewer's full collection ONCE; (2) for each result row, intersect with the in-memory viewer collection (no further DB round trips).
+- Test with 50 result rows — assert ≤2 DB queries in the integration test (one for results, one for viewer collection).
+
+**Warning signs:**
+- DAL function uses `await Promise.all(rows.map(...))`.
+- Integration test passes with N=1 fixture row but never tested with N=50.
+- /search Collections feels noticeably slower than /search People at the same row count.
+
+**Phase to address:** Phase 5 (/search Watches + Collections Tabs) — write the anti-N+1 test BEFORE the implementation.
+
+---
+
+### Pitfall 8: Settings Email-Change UX Lies — "Email Updated" Toast Fires Before Confirmation Click 🆕
+
+**What goes wrong:**
+`supabase.auth.updateUser({ email: 'new@x.com' })` resolves successfully when the confirmation emails are dispatched (one to old, one to new — Supabase's "Secure email change" mode). The user has NOT yet clicked either link. The natural flow shows a "Email updated to new@x.com" toast and immediately reflects the new address in the UI. But Supabase Auth has not actually rotated the email on the user record yet — it's pending. The user closes the tab, never clicks the link, and is then mystified why login still uses the old email.
+
+**Why it happens:**
+The Supabase JS reference docs say `updateUser({ email })` returns a User object that includes the new email in `email_change_sent_at` / `new_email` fields, BUT the canonical `email` field is unchanged until verification. Reading the response naively (`data.user.email`) gives the OLD email, while the form just submitted the NEW one — leading developers to think "the response is wrong, let me just optimistically update from the form value."
+
+**How to avoid:**
+- Separate "submitted change request" from "change confirmed" UI states:
+  - Toast: "Confirmation link sent to **both** new@x.com and old@x.com — click both to complete the change."
+  - UI shows: "Current email: old@x.com (pending change to new@x.com)" — do NOT display the new email as current.
+- Detect pending state: read `supabase.auth.getUser()` after the update; check `user.new_email` field. If non-null, render the pending banner.
+- Confirmation handler at `/auth/confirm?type=email_change` shows the success toast with `?status=email_changed`, NOT the form submission handler.
+- Add a "Resend confirmation" button after the initial submit (Resend dashboard caps + Supabase per-hour limits — see Pitfall 14).
+
+**Warning signs:**
+- Settings/Account UI shows the new email as "Current" before any link is clicked.
+- No "pending" state in the email-change UX.
+- Code reads `data.user.email` from the `updateUser` response and treats it as authoritative.
+- Toast copy says "Email updated" instead of "Confirmation sent."
+
+**Phase to address:** Phase 6 of v4.0 (Settings Account section).
+
+---
+
+### Pitfall 9: Custom SMTP Goes Live Before DKIM Verifies — Confirmation Emails Land in Spam, Lock Out New Signups 🆕
+
+**What goes wrong:**
+Order of operations matters: (1) Add Resend account, (2) Add domain in Resend, (3) Add DNS records (SPF + DKIM + bounce MX) at registrar, (4) WAIT for DNS propagation (5min – 48hr depending on registrar TTL), (5) Click "Verify" in Resend, (6) Once verified, copy SMTP creds to Supabase Dashboard, (7) Toggle "Confirm email" ON, (8) Disable Supabase's hosted 2/h SMTP fallback (auto-disabled when custom is saved). Skipping step 4 — flipping the Supabase config to use Resend creds before DKIM is verified — means Resend rejects messages OR ESPs (Gmail, Outlook) silently spam-filter them. New signups never see the confirmation email; their account is stuck pre-confirmation forever.
+
+Worse: with "Confirm email" toggled ON, the personal-MVP Horlo account itself can be locked out if a session is invalidated and the password reset email never delivers.
+
+**Why it happens:**
+Excitement to "ship the SMTP change" runs ahead of the DNS reality. Vercel doesn't host Horlo's DNS — the registrar does — adding a propagation step that's invisible from the developer's terminal. Resend's "domain pending verification" state is not blocking from the Resend side; only the receiving ESP's DKIM check fails.
+
+**How to avoid:**
+- Mandatory ordered checklist in the migration phase plan, with each step requiring pasted evidence of completion (DNS dig output, Resend "Verified ✓" screenshot, Supabase Dashboard config screenshot):
+  1. ✅ Resend account + horlo.app domain added
+  2. ✅ DNS records added at registrar (paste `dig TXT send.horlo.app +short` output showing the SPF + DKIM records)
+  3. ✅ Wait minimum 1 hour for propagation (set a calendar reminder; do NOT proceed before)
+  4. ✅ Resend dashboard shows "Verified" green badge
+  5. ✅ Send test email from Resend dashboard to the dev's personal account; confirm inbox (not spam)
+  6. ✅ Copy SMTP creds to Supabase Dashboard
+  7. ✅ Send Supabase Auth test email (sign-up confirmation) to a fresh test address
+  8. ✅ ONLY THEN toggle "Confirm email" ON in production
+- Backout plan: keep the Supabase hosted SMTP toggle accessible. If verification fails post-flip, revert to hosted SMTP (2/h cap) until DKIM resolves.
+- Two domain setup recommended: `noreply@horlo.app` for production, `noreply@staging.horlo.app` for staging — separate Resend domain entries, separate verification cycles, no risk of staging email contaminating prod sender reputation.
+
+**Warning signs:**
+- Phase plan checklist has fewer than 7 ordered steps.
+- "Confirm email ON" appears in the same commit as "Add Resend SMTP creds."
+- `dig TXT resend._domainkey.horlo.app +short` returns NXDOMAIN or wrong TXT value at flip time.
+- Emails from `noreply@horlo.app` are landing in Gmail spam during smoke test.
+
+**Phase to address:** Phase 9 of v4.0 (Custom SMTP) — DNS setup must be the first commit; flip happens in the LAST commit of the phase, not the first.
+
+---
+
+### Pitfall 10: ALTER TYPE DROP VALUE Doesn't Exist — Removing `price_drop` + `trending_collector` Enum Values Requires Type Recreation 🆕
+
+**What goes wrong:**
+The phase plan to "remove dead notification stubs" naturally writes:
 ```sql
-SELECT visibility, COUNT(*) FROM wear_events GROUP BY visibility;
--- Confirm 'followers' count = 0 after backfill (no pre-existing rows had followers tier)
+ALTER TYPE notification_type DROP VALUE 'price_drop';
+ALTER TYPE notification_type DROP VALUE 'trending_collector';
 ```
-
-**Warning signs:**
-- Migration backfill sets `visibility = 'followers'` for rows where `worn_public = false`.
-- Post-migration query shows unexpected `'followers'` rows from before v3.0.
-
-**Phase to address:** WYWT photo/visibility phase — write the backfill SQL in the plan, not ad-hoc during execution.
-
----
-
-### Pitfall G-7: "Followers" Wears Surface in Notification Paths for Non-Followers
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-When a followed user logs a wear event, the system may generate a notification or surface it in recommendations. If the wear is `visibility = 'followers'` but the notification path does not re-check the visibility (it just checks "this user follows the actor"), a user who unfollowed the actor after the notification was generated receives a notification about a followers-only wear — and potentially clicks through to see it.
+Postgres does not support `ALTER TYPE … DROP VALUE`. The migration fails with `ERROR: cannot drop value from enum type`. The workaround is a multi-step rename + recreate that's irreversible without data loss IF any rows in `notifications.type` use those values.
 
 **Why it happens:**
-Notifications are generated at write time. The visibility check occurs at read time. Between write and read, the follow relationship may change, or the notification itself carries a reference to the wear that was accessible at generation but not at render.
+ALTER TYPE supports `ADD VALUE` (added in PG 9.1) and `RENAME VALUE` (added in PG 10) but NOT `DROP VALUE` — by design, because dropped values could leave orphan references in any column using the type. Drizzle's `pgEnum` definition update doesn't handle drops either; introspection produces a DROP+CREATE that fails for the same reason.
 
 **How to avoid:**
-Notification click-through must re-check visibility at render time — do not assume a notification implies current access to the referenced wear. The wear detail view that a notification links to must enforce the standard three-tier visibility check. A notification about a wear that the viewer can no longer access should render an empty state ("This wear is no longer available") rather than the full wear.
+- BEFORE writing the migration: assert the values are unused.
+  ```sql
+  SELECT type, COUNT(*) FROM notifications WHERE type IN ('price_drop', 'trending_collector') GROUP BY type;
+  -- Expect: empty result (zero rows)
+  ```
+  If non-zero, decide: delete the rows? remap? defer the enum cleanup?
+- Two-step migration pattern (only safe path):
+  ```sql
+  -- Step 1: Rename old type
+  ALTER TYPE notification_type RENAME TO notification_type_old;
+  -- Step 2: Create new type without the dead values
+  CREATE TYPE notification_type AS ENUM ('follow', 'watch_overlap');
+  -- Step 3: Migrate the column (requires temporary text cast)
+  ALTER TABLE notifications 
+    ALTER COLUMN type TYPE notification_type 
+    USING type::text::notification_type;
+  -- Step 4: Drop old type
+  DROP TYPE notification_type_old;
+  ```
+- Test fixtures and seed data: `grep -r 'price_drop\|trending_collector'` across the entire repo (including `tests/`, `scripts/`, `seed/`) BEFORE running step 1. Any test fixture seeding these values will explode at step 3.
+- Drizzle source of truth update: AFTER the SQL migration ships, update `pgEnum('notification_type', [...])` in `src/db/schema.ts` to drop the two values; commit AFTER the prod migration applied (otherwise drizzle-kit push regenerates them locally).
 
 **Warning signs:**
-- Clicking a notification goes directly to a wear detail that is now private/followers-only for the viewer.
-- Wear detail page does not re-check visibility when rendered from a notification link.
+- Migration uses `ALTER TYPE … DROP VALUE` (will fail at runtime).
+- No pre-flight count of `WHERE type IN ('price_drop', 'trending_collector')`.
+- Drizzle schema update lands BEFORE the SQL migration on prod.
+- `grep -r 'price_drop'` finds matches in `tests/` that aren't updated in the same PR.
 
-**Phase to address:** Notifications phase AND WYWT photo/visibility phase — add the "access revoked" empty state to wear detail.
-
----
-
-## H. Sonner Toast
+**Phase to address:** Phase 8 of v4.0 (Notification Stub Cleanup) — write the count-rows assertion as the first migration step.
 
 ---
 
-### Pitfall H-1: Toaster Mounted Inside a Suspense Boundary That Suspends — Toast Layer Disappears
+## High Pitfalls
 
-**Severity:** HIGH
+### Pitfall 11: Denormalized `owners_count` Drifts; pg_cron Not Installed in Local Supabase Docker Causes "Works in Prod, Empty Locally" Bug 🆕
 
 **What goes wrong:**
-If `<Toaster>` (from Sonner) is rendered inside a Suspense boundary that suspends during a page transition, the toast layer is unmounted and any pending toasts are lost. The user completes an action (submits WYWT form), a toast is triggered, the page transition starts, Suspense kicks in, and the toast disappears before the user sees it.
+`owners_count` and `wishlist_count` on `watches_catalog` power /explore "trending watches". The plan calls for a daily `pg_cron` job: `UPDATE watches_catalog SET owners_count = ...`. Local Supabase Docker (`supabase start`) ships with `pg_cron` available but NOT scheduled by default. Developer runs locally, sees empty trending list, tries to debug, eventually realizes pg_cron isn't running. Worse: a developer who doesn't know about pg_cron writes `AFTER INSERT/UPDATE/DELETE` triggers on `watches` instead, which works locally — and creates **write amplification** (every watch insert fires three trigger updates on `watches_catalog`, holding row locks and causing contention under load).
 
 **Why it happens:**
-`<Toaster>` is added inside the layout's Suspense wrapper because it's near the bottom of the layout JSX, which lives inside the boundary.
+pg_cron is enabled per-database via `CREATE EXTENSION IF NOT EXISTS pg_cron` AND requires the `cron.database_name` postgresql.conf setting AND requires the cron schema/permissions setup. On Supabase managed prod, the dashboard exposes pg_cron natively (Database → Extensions → enable). Locally, the Docker image may or may not ship with cron preconfigured depending on Supabase CLI version. Triggers feel "more reliable" because they don't depend on a scheduler.
 
 **How to avoid:**
-Mount `<Toaster>` as a sibling of (not inside) the Suspense boundary. In the root layout:
-```tsx
-<body>
-  <script>/* inline theme */</script>
-  <Toaster />  {/* outside Suspense — always mounted */}
-  <Suspense fallback={<LoadingShell />}>
-    <Header />
-    {children}
-    <BottomNav />
-  </Suspense>
-</body>
-```
-The Toaster must be a stable root-level element that is never suspended.
+- Make `owners_count` / `wishlist_count` updates a SCHEDULED batch job, not a trigger:
+  ```sql
+  -- supabase/migrations/2026XXXX_owners_count_cron.sql
+  CREATE EXTENSION IF NOT EXISTS pg_cron;
+  
+  CREATE OR REPLACE FUNCTION refresh_catalog_counts() RETURNS void AS $$
+  BEGIN
+    UPDATE watches_catalog c
+    SET owners_count = sub.owned, wishlist_count = sub.wishlisted, updated_at = NOW()
+    FROM (
+      SELECT catalog_id,
+        COUNT(*) FILTER (WHERE status = 'owned') AS owned,
+        COUNT(*) FILTER (WHERE status = 'wishlist') AS wishlisted
+      FROM watches WHERE catalog_id IS NOT NULL GROUP BY catalog_id
+    ) sub
+    WHERE c.id = sub.catalog_id;
+  END $$ LANGUAGE plpgsql;
+  
+  SELECT cron.schedule('refresh-catalog-counts', '0 4 * * *', 'SELECT refresh_catalog_counts()');
+  ```
+- For local development: add `npm run db:refresh-counts` script that calls `SELECT refresh_catalog_counts()` directly. Document in README that pg_cron is prod-only; locally invoke manually.
+- Acceptable staleness: 24h is fine for "trending" — a watch added today appears in trending tomorrow. Document this in PROJECT.md Key Decisions.
+- If sub-hour freshness needed later: switch to materialized view + `REFRESH MATERIALIZED VIEW CONCURRENTLY` on a 5-min cron, OR add a `pg_notify` trigger that batches updates in a queue — both are v5.0+ scope.
 
 **Warning signs:**
-- Toast appears for <200ms then disappears during navigation.
-- `<Toaster>` is nested inside a `<Suspense>` in layout.tsx.
+- Phase plan uses `CREATE TRIGGER ... AFTER INSERT ON watches` for count maintenance.
+- /explore trending is empty in local dev with seed data.
+- pg_cron not mentioned in `docs/deploy-db-setup.md`.
+- /explore /search Watches takes >500ms because counts are computed on-the-fly via `COUNT(*)` GROUP BY.
 
-**Phase to address:** Any phase that adds Sonner (likely the WYWT phase) — check layout placement before testing toasts.
+**Phase to address:** Phase 1 (Catalog Schema) for the schema; Phase 3 (/explore) for cron job activation.
 
 ---
 
-### Pitfall H-2: Server Action Returns Data, Client Forgets to Wire Toast Trigger
-
-**Severity:** MEDIUM
+### Pitfall 12: BottomNav Profile-Slot Addition Breaks Muscle Memory — User Taps "Wear" and Lands on "Profile" 🆕
 
 **What goes wrong:**
-Server Actions return data but do not run client-side code. The toast must be triggered client-side. A common mistake: the Server Action completes, the developer assumes `toast.success()` can be called inside the Server Action body. It cannot — it runs on the server with no browser context.
+Current BottomNav: 5 slots (Home / Search / **Wear** / Notifications / Discover-or-similar) shipped in Phase 14, with the elevated Wear cradle in the center. v4.0 wants Profile prominence. Two options:
+- (a) Replace one of the 5 with Profile → muscle memory shifts. The Wear button position is sacred (centered, elevated); moving anything else risks tapping wrong icon.
+- (b) Keep 5 slots; add avatar to SlimTopNav top-right.
+
+Option (a) chosen naively often replaces "Discover" with "Profile" — and now /explore (which the milestone is shipping!) loses its bottom-nav entry. Option (a) chosen as "replace Notifications" leaves the unread-bell affordance only on top-nav, which is invisible on small viewports.
 
 **Why it happens:**
-The developer writes `toast.success('Wear logged!')` inside the Server Action file because it seems like the right place for the UX feedback.
+"Profile prominence" is articulated as a milestone goal. The natural path is "add a Profile slot". But the BottomNav is a finite resource; every addition is a removal.
 
 **How to avoid:**
-The toast trigger lives in the client component's form submission handler:
-```typescript
-const [state, formAction] = useActionState(wearServerAction, null);
+- Choose option (b): Profile lives in SlimTopNav as a top-right avatar. BottomNav stays 5 slots: Home / Search / Wear / Notifications / **Explore** (the new /explore page replaces whatever was there as the "discovery" entry).
+- Reasoning:
+  - /explore is the v4.0 marquee feature; it deserves bottom-nav real estate.
+  - Profile is a "settle into your profile" action — top-right avatar is the universal pattern (Twitter, Letterboxd, GitHub, Instagram all use this).
+  - Avoids the muscle-memory nuke of moving the Wear cradle's neighbors.
+- Document the BottomNav slot decision as a Key Decision in PROJECT.md so future milestones don't relitigate it.
+- Visual regression test for the BottomNav layout (Playwright screenshot or simpler: position assertions).
 
-useEffect(() => {
-  if (state?.success) {
-    toast.success('Wear logged!');
-    router.refresh();
+**Warning signs:**
+- Phase plan says "add Profile to BottomNav" without specifying which slot is removed.
+- Designer mockup shows 6 slots in BottomNav (no, that's not 5).
+- "Discover" / "Explore" missing from BottomNav while /explore page is live.
+
+**Phase to address:** Phase 11 of v4.0 (Profile Nav Prominence) — decision must be locked BEFORE BottomNav code is touched.
+
+---
+
+### Pitfall 13: WYWT Auto-Nav to /wear/[id] Races Storage Upload Completion — User Lands on 404 🆕 ♻️
+
+**What goes wrong:**
+v3.0 Phase 15 ships the WYWT photo flow with client-direct Supabase Storage upload + Server Action that inserts the row + orphan-cleanup on row-insert failure. v4.0 adds the auto-navigation: after submit success, `router.push(\`/wear/${wearEventId}\`)`. The race condition: the Server Action returns the `wearEventId` BEFORE the storage upload's signed-URL is propagated through Supabase's storage CDN. The user lands on `/wear/[id]`, the page tries to fetch the image, and the signed URL doesn't resolve for 200–800ms — black image, "image not found" fallback flashes, then it loads.
+
+A second variant: React 19 `useTransition` + `router.push` ordering. The transition wraps the Server Action call; `router.push` runs INSIDE the transition. If the toast fires from outside the transition (Sonner has its own update path), the toast and the navigation race. User sees toast "Posted ✓" twice if the navigation re-renders the toast emitter.
+
+**Why it happens:**
+- Storage upload is client-direct, which means the Server Action only sees the storage KEY, not whether the CDN has cached it.
+- React 19 transitions are not new but the interaction with Server Actions is subtle: `startTransition(() => { action(...).then(() => router.push(...)) })` does NOT actually await the action correctly.
+- Phase 15 deferred the auto-nav explicitly because the simpler "dialog closes + toast" flow had no race.
+
+**How to avoid:**
+- Auto-nav AFTER both promises resolve, in this order:
+  1. `await uploadResult` — confirm storage put returned 200 (already done in Phase 15's flow).
+  2. `await logWearWithPhoto(...)` — Server Action returns `wearEventId`.
+  3. `router.push(\`/wear/${wearEventId}\`)` — navigate.
+- Inside the new `/wear/[id]` page, use `<Suspense fallback={<PhotoSkeleton />}>` around the photo render. The signed URL fetches per-request; the skeleton covers the 200–800ms CDN window.
+- For useTransition + Sonner ordering: fire the toast and `router.push` in sequence INSIDE the transition's `.then()`, NOT separately. Pattern:
+  ```tsx
+  startTransition(async () => {
+    const result = await logWearWithPhoto(formData)
+    if (result.error) { toast.error(result.error); return }
+    router.push(`/wear/${result.wearEventId}`)
+    toast.success('Posted ✓')  // Fires AFTER navigation starts; survives client transition
+  })
+  ```
+- Alternative (safer): close the dialog + toast immediately on success; navigate to /wear/[id] only AFTER 500ms delay. Less elegant but eliminates the race entirely.
+
+**Warning signs:**
+- Phase plan describes auto-nav as "router.push after action returns" without addressing the storage CDN propagation.
+- /wear/[id] page does NOT wrap the photo render in Suspense.
+- E2E test for WYWT post + auto-nav passes locally but flakes 1/10 in CI (timing-dependent).
+- User reports "I posted a wear and it took me to a 404 / blank page that loaded after a second."
+
+**Phase to address:** Phase 12 of v4.0 (WYWT Auto-Nav).
+
+---
+
+### Pitfall 14: Resend Free-Tier Cap Burned by Email-Change Cycles — 100/day Hits in an Afternoon 🆕
+
+**What goes wrong:**
+Resend free tier: 3000/mo, **100/day**. Each email-change request fires TWO emails (Secure email change mode: confirmation to old + new). Password reset cycles fire one. A user who toggles email back and forth during testing burns 10–20 emails. A leaked test loop (e.g., a CI job that loops through "create user → change email → change email → ...") burns the daily 100-cap in minutes. Once capped, no signup confirmation, no password reset, no email-change for the rest of the day.
+
+Add Supabase's separate per-hour limit (default 30/h after custom SMTP enabled), and the cap profile is layered: Supabase 30/h × Resend 100/day. The narrower of the two trips first. For a personal-MVP the 100/day is the binding constraint.
+
+**Why it happens:**
+Free tier limits are easy to forget when local development = no SMTP fires (local uses inbucket / mailpit). Production behavior differs sharply.
+
+**How to avoid:**
+- Use a non-prod Resend domain (`mail.staging.horlo.app`) for staging; prod-only Resend for production. Quotas don't share.
+- For local dev: keep Supabase using local inbucket. NEVER point local at Resend SMTP. Document in `.env.example`.
+- For test loops in CI: stub the email send. Add a `RESEND_DISABLE_FOR_TESTS=true` env that the Server Action respects.
+- Real user education: If the hard cap hits, manually create the user in Supabase Dashboard (admin override) and document a recovery path in `docs/deploy-db-setup.md`.
+- Monitoring: add a daily cron in Resend dashboard to email the team if usage > 70% of cap. Resend does have webhook events for "approaching quota."
+
+**Warning signs:**
+- Local Supabase config points at smtp.resend.com (should point at inbucket).
+- Test fixture creates 10+ users in a single integration run with confirmation ON.
+- Resend dashboard shows >50 emails sent in any 1-hour window during normal operations.
+
+**Phase to address:** Phase 9 (Custom SMTP) — set up monitoring and quota guards in the same phase.
+
+---
+
+### Pitfall 15: Notification Opt-Out UI Toggles Optimistically But Server Action Eats the Change — Stale Cache Bug 🆕 ♻️
+
+**What goes wrong:**
+Settings → Notifications has two toggles: `notifyOnFollow` and `notifyOnWatchOverlap`. UI uses optimistic update + Server Action + cache invalidation. Race condition: user toggles OFF; client optimistically shows OFF; Server Action persists OFF; cache tag for the user's settings is invalidated. Meanwhile, the `logNotification` writer (fire-and-forget) reads `profile_settings.notify_on_follow` — but the writer runs in a DIFFERENT request context that hits its own cached read of profile_settings, returning TRUE (stale). One stray "follow" notification fires after the user clearly opted out.
+
+Phase 13 already wired this correctly via `updateTag('profile_settings:viewer:${id}', 'max')` for read-your-own-writes — but the writer (`logNotification`) runs in the request context of the FOLLOW action, which has no relationship to the recipient's tag.
+
+**Why it happens:**
+Cache invalidation in Next.js 16 Cache Components is per-tag. The recipient's `profile_settings` tag is invalidated when the recipient toggles. But the FOLLOWER's request — which is the one calling `logNotification(recipientId, ...)` — never had that tag in its cache key, so its read of `profile_settings.notify_on_follow` may have been cached at follow-time on a DIFFERENT user's request and is being shared.
+
+**How to avoid:**
+- `logNotification` MUST read `profile_settings` with `cache: 'no-store'` or directly via Drizzle (no `'use cache'` wrapper) — opt-out reads must be live-from-DB.
+- Verify in code review: any DAL function that reads opt-out settings is NOT inside a `'use cache'` block.
+- Test: create user A; user B follows A; A toggles `notifyOnFollow` OFF; B unfollows then refollows immediately. Assert: at most 1 notification row exists (from the first follow, before opt-out). The second follow must NOT generate a notification.
+- Alternative: read opt-out at the END of `logNotification` (right before the INSERT), with `await db.select().from(profileSettings)...` — shortest possible window between read and write.
+
+**Warning signs:**
+- `logNotification` source uses `'use cache'` or imports a DAL function that does.
+- Test scenario "user toggled off after follow chain started" not in the test suite.
+- Sentry / logs show notifications firing for opted-out users.
+
+**Phase to address:** Phase 7 of v4.0 (Settings Notifications + Notification Stub Cleanup).
+
+---
+
+### Pitfall 16: Empty-State CTAs Link to Routes That Require ANTHROPIC_API_KEY in Local Dev — Personal-MVP Onboarding Friction 🆕
+
+**What goes wrong:**
+Empty-state CTAs are explicitly in scope. "Add your first watch" is the obvious primary CTA on an empty collection page. Today's "Add Watch" flow funnels through `/add` which uses URL-extract → which calls `/api/extract-watch` → which (in the LLM stage) requires `ANTHROPIC_API_KEY`. If a developer runs locally without the key set (which the `.env.example` documents but doesn't enforce), the CTA navigates to a page that errors out at the LLM stage.
+
+Also: "Evaluate this watch" CTAs from various surfaces (profile, /explore, post-add) ALL converge on `/evaluate` which has the same dependency.
+
+**Why it happens:**
+The 3-stage extraction pipeline (structured data → HTML selectors → LLM fallback) gracefully degrades if the LLM stage is gated, but only if the gate is *explicit*. A missing env var produces an HTTP 500 from `/api/extract-watch` if the early stages didn't yield a result. Empty-state CTAs that assume the happy path break in dev.
+
+**How to avoid:**
+- Audit every empty-state CTA for its dependency chain. Document it in the phase plan:
+  | CTA | Target route | Dependencies | Fallback |
+  |---|---|---|---|
+  | "Add your first watch" | /add | ANTHROPIC_API_KEY (LLM stage) | "Add manually" link visible if URL-extract errors |
+  | "Evaluate any watch" | /evaluate | ANTHROPIC_API_KEY | "Demo with example URL" |
+  | "Browse other collectors" | /explore | none | n/a |
+- Add a friendlier error to `/api/extract-watch` when `ANTHROPIC_API_KEY` is unset: return 503 with `code: 'extract_unavailable'` and the page renders "URL extraction is not configured. Use manual add."
+- Provide an "Add manually" affordance on the empty-state itself (parallel to the extract CTA), so the user has a non-LLM path.
+- Test the empty-state interactions with `ANTHROPIC_API_KEY` UNSET (set up a CI job that explicitly clears the env var).
+
+**Warning signs:**
+- Empty-state copy promises "fast" or "instant" extraction.
+- CTAs link to /add or /evaluate with no fallback.
+- `.env.example` lists the key but no test asserts the unset behavior is graceful.
+- Local developer reports "I cleared my .env to test something and now /add is broken."
+
+**Phase to address:** Phase 13 of v4.0 (Empty-State CTAs).
+
+---
+
+### Pitfall 17: /search Watches GIN Index Plan Doesn't Get Selected — pg_trgm Bitmap Scan Falls to Seq Scan at Tiny Tables 🆕 ♻️
+
+**What goes wrong:**
+Phase 16 already has this lesson: at <127 rows, the planner picks Seq Scan over GIN+pg_trgm Bitmap Index Scan because the planner's cost model thinks Seq Scan is cheaper at tiny scale. /search Watches against `watches_catalog` will start with <100 rows in v4.0; the GIN index will not be reached. Local EXPLAIN shows Seq Scan; developer thinks "the index is broken" and starts retro-fitting.
+
+In production, as the catalog grows past ~150 rows, the plan flips to Bitmap Index Scan automatically. The "broken" index was working — the test scale was just below the threshold.
+
+**Why it happens:**
+Postgres's cost-based planner is correct: scanning 100 rows is faster than building a bitmap from a GIN tree. This is a feature, not a bug, but it's repeatedly misread as a bug by developers used to "indexes always win."
+
+**How to avoid:**
+- The Phase 16 verification pattern: forced-plan EXPLAIN ANALYZE with `SET enable_seqscan = OFF;` to prove the index is REACHABLE, regardless of whether the planner chooses it at current scale.
+  ```sql
+  SET enable_seqscan = OFF;
+  EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM watches_catalog WHERE brand ILIKE '%rolex%';
+  -- Expect: "Bitmap Index Scan on watches_catalog_brand_trgm_idx"
+  ```
+- Document the result in the phase plan as `XX-VERIFICATION.md` (mirror Phase 16's evidence file).
+- Don't try to "force" the planner with HINT comments at low scale — the planner is right. The index lights up automatically at scale.
+- Add a benchmark test that seeds 200+ catalog rows and asserts the production plan IS `Bitmap Index Scan`.
+
+**Warning signs:**
+- Code review questions "is the GIN index even being used?"
+- Phase plan adds `BTREE` indexes "just in case" (extra write cost, no read benefit).
+- Verification step missing or only shows Seq Scan plan with no analysis.
+- Search latency is fine in local (sub-50ms on tiny data); fine in prod (sub-50ms on bitmap scan); panic between.
+
+**Phase to address:** Phase 5 of v4.0 (/search Watches Tab) — adopt the Phase 16 verification pattern verbatim.
+
+---
+
+### Pitfall 18: WatchForm `isChronometer` Toggle Lands But Catalog Field Drift — Per-User and Catalog Disagree 🆕
+
+**What goes wrong:**
+`isChronometer` exists today on `watches` (per-user). v4.0 also adds it to `watches_catalog` (canonical). User adds a watch with `isChronometer=true`; the user-promoted catalog row is created with `is_chronometer=true`. Later, ANOTHER user adds the same watch (matched by natural key) with `isChronometer=false` (mistake or different sub-reference). The existing catalog row is not updated (`ON CONFLICT DO NOTHING` for user-promoted path, see Pitfall 2). The catalog says TRUE; the new user's per-user `watches` row says FALSE. /search Watches displays "Chronometer ✓" via catalog; the user's own collection card says FALSE. Inconsistency.
+
+**Why it happens:**
+Two sources of truth (catalog + per-user) for the same field, no sync direction defined. Same problem affects `caseSizeMm`, `lugToLugMm`, `productionYearStart`, etc.
+
+**How to avoid:**
+- Define ONE source of truth per field. Recommendation: catalog is authoritative for SPEC fields (size, movement, water resistance, isChronometer); per-user `watches` is authoritative for OWNERSHIP/PROVENANCE fields (status, pricePaid, acquisitionDate, notes, condition).
+- For spec fields on per-user watches: either (a) drop them from `watches` in v5.0 (read from catalog via JOIN), or (b) treat them as a per-user OVERRIDE that only exists if explicitly set, with the catalog as default. v4.0 should not yet drop columns — defer to v5.0.
+- Display rule: WatchDetail shows catalog spec by default; if the user has overridden a field on their per-user row, show "(your value)" badge and the user's value.
+- Alternative simpler rule for v4.0: catalog is purely advisory; the user's `watches` row is what shows in their collection. /search and /explore use catalog. No cross-display.
+
+**Warning signs:**
+- Phase plan adds isChronometer to BOTH tables without a "source of truth" decision.
+- WatchDetail tries to read both and reconcile in JSX (sign of muddled ownership).
+- /search Watches shows different specs than the user's own collection view of the same model.
+
+**Phase to address:** Phase 1 (Catalog Schema) — make the source-of-truth decision before column duplication ships.
+
+---
+
+### Pitfall 19: `wear_events.watchId` Cascade-Deletes Block Watch Deletion — Catalog Refactor Tempts ON DELETE SET NULL ♻️
+
+**What goes wrong:**
+`wear_events.watch_id` references `watches.id` with `ON DELETE CASCADE` (deleting a watch deletes its wear history). `activities.watch_id` references with `ON DELETE SET NULL` (activity feed survives). The v4.0 migration for catalog might tempt the engineer to "harmonize" these to all be `SET NULL` — but `wear_events` cascade is INTENTIONAL because a wear event without a watch is meaningless on the user's profile (it would render as "User wore [unknown] on April 5"). Changing to SET NULL produces zombie wear events.
+
+A second variant: the catalog phase adds `ON DELETE SET NULL` for `watches.catalog_id`, which is correct. But code review might not catch a copy-paste mistake that changes `watches.user_id`'s `ON DELETE CASCADE` to SET NULL — making user-deleted accounts leave orphan watches.
+
+**Why it happens:**
+ON DELETE policies are easy to harmonize accidentally during a refactor. Each policy is a deliberate product decision, not a stylistic choice.
+
+**How to avoid:**
+- Document the ON DELETE policy for every FK in `src/db/schema.ts` with a comment explaining WHY:
+  ```typescript
+  watchId: uuid('watch_id').notNull().references(() => watches.id, {
+    onDelete: 'cascade'  // wear events without a watch are meaningless; cascade matches user expectation when they delete a watch
+  }),
+  ```
+- Migration review checklist: any change to ON DELETE behavior requires explicit explanation in the phase plan.
+- `catalog_id ON DELETE SET NULL`: correct (catalog merge/delete shouldn't blow up user collections).
+- Test fixture: delete a watch with wear events + activities + catalog link → assert wear events GONE, activities ORPHANED with NULL watchId, catalog row UNTOUCHED.
+
+**Warning signs:**
+- Phase plan migration changes ON DELETE on existing FKs (vs only adding new ones).
+- Code review skips the ON DELETE comments because "they're just FK details."
+- After v4.0 ships, deleted watches leave orphan wear events on a user's profile.
+
+**Phase to address:** Phase 1 (Catalog Schema) — explicit ON DELETE policy review.
+
+---
+
+## Medium Pitfalls
+
+### Pitfall 20: Sonner Toast Persists Across `revalidateTag('max')` But Theme Change Mid-Toast Loses Theming 🔁
+
+**What goes wrong:**
+Sonner is bound to the custom ThemeProvider (Phase 15 D-15). A Server Action that fires `revalidateTag(...)` triggers a render of subtree components, and the ThemedToaster wrapper re-mounts. Active toasts at the moment of the revalidation can flash to the wrong theme briefly OR (worse) show a Provider undefined error if the re-mount races the Sonner toast's own theme listener.
+
+**Why it happens:**
+Phase 15 verified Sonner-to-ThemeProvider binding works. Phase 13 verified `revalidateTag` for cross-user fan-out works. The combination — toast from Server Action that also revalidates — wasn't a Phase 15 test scenario.
+
+**How to avoid:**
+- ThemedToaster lives at the layout level OUTSIDE any Suspense that revalidates per-action. Make sure the ThemeProvider wraps the entire app (it should, per Phase 15) and the toaster is inside the provider but outside any subtree that revalidates.
+- Test scenario: trigger a Server Action that calls `toast.success(...)` AND `revalidateTag(...)` in the same handler; verify the toast theme matches the (possibly newly toggled) theme without flashing.
+
+**Warning signs:**
+- Sonner toast appears in light mode briefly when the user is in dark mode.
+- Console error: "Cannot read theme from undefined provider" during a revalidation.
+
+**Phase to address:** Phase 14 of v4.0 (Form Polish).
+
+---
+
+### Pitfall 21: Search-Box Debounce + AbortController Leak State Across /search Tabs 🆕 ♻️
+
+**What goes wrong:**
+Phase 16's `useSearchState` hook (250ms debounce + AbortController + URL sync) was scoped to the People tab. v4.0 adds Watches and Collections tabs, all sharing the same search box. If the user types "Rolex", switches from People to Watches mid-keystroke, the People AbortController fires its abort, but the Watches request kicks off with the latest input. If the abort signal isn't propagated to the new tab's fetch, two in-flight requests race; the slower one's response paints LAST, even if the user has already typed "Rolex Submariner".
+
+**Why it happens:**
+Tab-switching changes the active fetcher but the URL search param (`?q=...`) persists. The hook's debounce timer resets on tab switch but the abort controller is per-fetch, not per-tab.
+
+**How to avoid:**
+- One AbortController PER (tab, query) pair. On tab switch: abort the previous tab's controller; fire a fresh fetch for the new tab.
+- Alternatively: derive results client-side from a SINGLE query response that includes all four (All / Watches / People / Collections) result types, capped at 5 each. Tab switching becomes a render-only filter, no extra fetches. Trade-off: bigger initial response payload (~5kB max), but simpler state.
+- Test: rapid typing + tab-switch combinations. Use `react-testing-library` async utilities to assert no stale results paint.
+
+**Warning signs:**
+- Switching tabs while typing produces results from the previous tab briefly.
+- Network panel shows two concurrent in-flight `/api/search?...` requests.
+
+**Phase to address:** Phase 5 of v4.0 (/search Watches + Collections Tabs).
+
+---
+
+### Pitfall 22: Email Change Confirmation Link Routes to /auth/confirm — Existing Handler Doesn't Distinguish `email_change` Type 🆕
+
+**What goes wrong:**
+The `/auth/confirm` route handler shipped in v1.0 handles `type=signup`. v4.0 needs it to also handle `type=email_change` (and existing `type=recovery`, `type=magiclink`). The naive extension adds a switch on `type` but forgets that `email_change` uses a DIFFERENT verifyOtp signature OR that the redirect target is different (post-confirm should go to `/settings/account?status=email_changed`, not `/dashboard`).
+
+**Why it happens:**
+The Supabase `verifyOtp({ type, token_hash })` signature is uniform across types (good — single switch). But the post-success UX differs per type, and copy-paste from the signup branch produces a wrong-destination redirect for email_change.
+
+**How to avoid:**
+- Explicit switch with a redirect map:
+  ```typescript
+  const redirectMap: Record<EmailOtpType, string> = {
+    signup: '/dashboard',
+    recovery: '/settings/account?status=password_reset_initiated',
+    email_change: '/settings/account?status=email_changed',
+    magiclink: '/dashboard',
+    invite: '/dashboard',
   }
-  if (state?.error) {
-    toast.error(state.error);
-  }
-}, [state]);
-```
-The Server Action returns `{ success: true }` or `{ error: string }`. The `useEffect` (or `useActionState` callback) triggers the toast. Document this pattern in the WYWT plan as a required wiring step.
+  ```
+- Test each type end-to-end: signup confirmation, email change, password reset.
+- Verify the email template's `{{ .ConfirmationURL }}` includes the correct `type=` param.
 
 **Warning signs:**
-- `import { toast } from 'sonner'` exists in a Server Action file.
-- Form submits successfully but no toast appears.
+- Single-branch handler (`if (type !== 'signup')` etc.) — incomplete coverage.
+- Redirect after email_change goes to /dashboard, not /settings/account.
+- No integration test for email_change confirmation flow.
 
-**Phase to address:** WYWT photo phase (when Sonner is first added) — include the wiring in the plan as an explicit task.
+**Phase to address:** Phase 6 (Settings Account section) — extend the confirm handler in the same phase as the Settings work.
 
 ---
 
-### Pitfall H-3: Toaster Not Wired to Theme — Toast Doesn't Match Dark Mode
-
-**Severity:** MEDIUM
+### Pitfall 23: Catalog Backfill Locks `watches` Table — Long-Running UPDATE Blocks Concurrent User Writes 🆕
 
 **What goes wrong:**
-Sonner's `<Toaster>` renders in light mode by default. In dark mode, the toast appears as a jarring white card over a dark interface.
+The backfill script runs `UPDATE watches SET catalog_id = $1 WHERE id = $2` for every watch. At low scale (Horlo's ~few hundred watches today) this is sub-second. As the user base grows pre-v5.0, the backfill could lock rows that a user is concurrently editing. The user's "save edits" Server Action waits for the lock; UI shows "Saving..." spinner indefinitely.
+
+The bigger risk: running the backfill against PROD in a single transaction that wraps the entire script (millions of row locks) instead of per-batch transactions. If the script halts midway, the next attempt re-locks; combined with autovacuum issues this can produce sustained latency for user writes.
 
 **Why it happens:**
-`<Toaster>` is added without the `theme` prop. The theme system (cookie-based, existing) is not automatically read by Sonner.
+Drizzle's `db.transaction(...)` wrapper around the batch loop is tempting because it reads cleanly. At the wrong granularity it's a footgun.
 
 **How to avoid:**
-Pass the theme to the Toaster. Since the root layout is a Server Component (with cacheComponents), the theme must be read from the cookie at request time and passed as a prop, or the Toaster must use a Client Component wrapper that reads the theme from a context/store:
-```tsx
-// Simple approach: read cookie in layout, pass as prop
-<Toaster theme={resolvedTheme as 'light' | 'dark' | 'system'} />
-```
-Since `cookies()` is not allowed in the cacheComponents layout body (see Pitfall A-1), wrap the Toaster in the same Suspense-exempt approach used for the theme script, or accept a brief theme mismatch on first paint and use CSS variables to match the theme.
+- Per-BATCH transactions (commit every 100 rows), NOT a single transaction wrapping the whole backfill.
+- Run during low-traffic window (Horlo is single-user-MVP today; this is moot for now but noted for v5.0+).
+- Backfill uses `UPDATE ... WHERE id = $1 AND catalog_id IS NULL` so it's idempotent on resume.
+- Don't call `VACUUM FULL` after — `VACUUM FULL` takes an exclusive lock; ordinary autovacuum is fine.
 
 **Warning signs:**
-- White toast card in dark mode.
-- `<Toaster>` has no `theme` prop.
+- Backfill script wraps `for (const batch of batches)` in `db.transaction(...)` (single transaction).
+- No batch-commit frequency documented.
+- Phase plan suggests pausing user writes (capacity issue, not v4.0 scale problem).
 
-**Phase to address:** WYWT photo phase — add theme prop when wiring Sonner.
-
----
-
-## I. Cross-Cutting (v2.0 Retrospective Lessons Applied to v3.0)
+**Phase to address:** Phase 1 (Catalog Schema + Backfill).
 
 ---
 
-### Pitfall I-1: UAT Run at Milestone End Instead of Per-Phase — Privacy Bugs Found Late
-
-**Severity:** HIGH
+### Pitfall 24: `notesPublic` Per-Note Visibility — Owner Edit UI Saves But Cross-User View Doesn't Refresh ♻️
 
 **What goes wrong:**
-In v2.0, Phase 9 HUMAN-UAT was deferred and carried across two phases. The follower-count link bug was only found at the milestone audit. For v3.0, a three-tier visibility privacy bug found at Phase 13 (say) requires retrofitting three earlier phases. Privacy regressions are much cheaper to fix within the phase that introduced them.
+The `notesPublic` column already exists per-watch. v4.0 exposes the OWNER edit toggle. User A flips notes from public→private. User B viewing A's profile does NOT see the change for up to 30s because B's view is cached at `viewer:` tag with `cacheLife({revalidate:30})`. This is correct cache behavior but UX-confusing — and in the WORST case, the SWR revalidation is to the OLD (public) value if the cache hadn't expired.
 
 **Why it happens:**
-UAT feels like "end-to-end work" and gets pushed to a checkpoint at the end of a milestone. Individual phases ship without user-facing verification.
+Phase 13's `revalidateTag('max')` pattern is for cross-user reads. The notesPublic toggle changes need to fan out to ALL viewers' caches, not just the owner's.
 
 **How to avoid:**
-Each phase plan must include a HUMAN-UAT checklist at the end. For privacy-touching phases (visibility changes, notifications, search), the UAT must include at least one cross-user privacy scenario ("log in as User B; confirm User A's private wear is not visible"). Bake UAT into the phase plan as a required final task, not a milestone-level activity.
+- The Server Action that toggles `notesPublic` MUST `revalidateTag(\`watches:user:${userId}\`)` and ANY higher-fan-out tag (e.g., a global `notes:public` tag if /search Notes ever materializes — out of scope for v4.0).
+- Document that "private" takes effect within 30s for cross-user viewers; "public" is immediate (cache miss → fresh read).
+- Owner sees the change immediately via `updateTag()`.
+- Reference Phase 13's read-your-own-writes vs SWR fan-out distinction.
 
 **Warning signs:**
-- Phase plan has no UAT or verification section.
-- Privacy-touching phase ships without a cross-user visibility test.
+- The Server Action only `updateTag`s the owner's tag.
+- Test: User A toggles private; User B reload immediately sees public note.
 
-**Phase to address:** All phases, explicitly Phase 11–13 — include UAT tasks in every plan that touches privacy.
+**Phase to address:** Phase 7 (Settings Notifications + notesPublic).
 
 ---
 
-### Pitfall I-2: WatchPickerDialog Forked Instead of Extended — v2.0 Pitfall 10 Carried Forward
-
-**Severity:** HIGH
+### Pitfall 25: /evaluate Anonymous Path Skipped — Page Hard-Redirects Without Considering Marketing Intent 🆕
 
 **What goes wrong:**
-The WYWT post flow reuses `WatchPickerDialog` for step 1 (select watch). In v3.0, the flow adds a photo step after watch selection. The temptation is to copy `WatchPickerDialog` into a new `WywtPickerDialog` and add the photo step there. Forking creates two diverging components that both show owned watches. The next time owned-watch display logic needs updating, the developer updates one and misses the other.
-
-The v2.0 research established: `WatchPickerDialog` is the single shared component — never fork.
-
-**How to avoid:**
-Extend `WatchPickerDialog` via props (e.g., `onWatchSelected` callback that hands off to the photo step in the WYWT flow). The photo capture step is a separate modal or flow that opens after watch selection — not embedded in WatchPickerDialog. Add a JSDoc comment to `WatchPickerDialog`:
-```typescript
-/**
- * SINGLE SHARED COMPONENT — DO NOT FORK.
- * Extend via onWatchSelected callback. See: .planning/PITFALLS.md Pitfall I-2.
- */
-```
-Add a grep gate in the phase plan: `grep -r "WywtPickerDialog\|WatchPickerDialog.*copy\|clone.*WatchPickerDialog" src/` must return empty.
-
-**Warning signs:**
-- A new `WywtPickerDialog.tsx` or `WearPickerDialog.tsx` file is created.
-- Two components independently query owned watches.
-
-**Phase to address:** WYWT photo phase — address in the plan before any component files are created.
-
----
-
-### Pitfall I-3: Code Review Skipped for Cross-Component Privacy Invariants
-
-**Severity:** CRITICAL
-
-**What goes wrong:**
-In v2.0, 2059 tests passed but the Common Ground home-card privacy leak was missed. A code review caught it because the reviewer was specifically looking for cross-component privacy invariants. For v3.0, the three-tier visibility ripple spans multiple components and DAL functions — exactly the type of cross-component invariant that tests miss.
+The /evaluate page is genuinely useful as a marketing demo: "paste any watch URL, see how it'd fit a sample collection." Hard-redirecting unauthenticated users to /signin makes /evaluate inaccessible to demo links shared with prospective users. v4.0 milestone scope says "Evaluate this watch flow" — does it include the unauthenticated demo case?
 
 **Why it happens:**
-Tests verify per-function correctness. Cross-component privacy invariants require a reviewer who holds the whole data flow in mind simultaneously.
+The Cache Components / auth pattern naturally guides toward "auth required, redirect on miss" (per Pitfall 5). The marketing-demo case requires a deliberate decision.
 
 **How to avoid:**
-Schedule a dedicated code review gate for any phase that ships three-tier visibility changes. The review checklist must include:
-- Every `wear_events` read path audited for three-tier check (see G-1).
-- Storage RLS policies reviewed against table RLS.
-- Notification generation functions verified to not rethrow (see B-2).
-- `'use cache'` functions verified to not capture `viewerId` from closures (see B-6).
+- Decide explicitly in phase plan: is /evaluate auth-only or marketing-also?
+- If marketing-also: anonymous users see a sample collection (e.g., a curated "popular collector" demo profile) instead of redirecting. Verdict still computes; uses the demo collection + default preferences.
+- If auth-only: redirect, but log a metric (`/evaluate?next=...` referrer) so we know how many anonymous users would have used it.
+- Recommendation for v4.0: auth-only, redirect to signin. Marketing case is v5.0+ scope.
 
 **Warning signs:**
-- Phase ships visibility changes without a code review.
-- Code review exists but uses a generic checklist not tailored to privacy invariants.
+- Phase plan doesn't explicitly handle the unauthenticated path.
+- Acceptance criteria says "user evaluates a watch" without specifying signed-in vs anonymous.
 
-**Phase to address:** WYWT photo/visibility phase AND notifications phase — add a code review plan step.
+**Phase to address:** Phase 4 ("Evaluate this Watch") — decision in phase plan, not in implementation.
+
+---
+
+### Pitfall 26: Drizzle vs Supabase Migration Drift — Schema Type Diverges from RLS Policy Definition 🆕 ♻️
+
+**What goes wrong:**
+MEMORY rule: drizzle-kit push is LOCAL ONLY; prod uses `supabase db push --linked`. v4.0 has TWO migration tracks (Drizzle for shapes, raw SQL for RLS/CHECK/partial indexes). If the Drizzle column shape ships to prod (via supabase db push including drizzle output) but the companion raw-SQL RLS file is ACCIDENTALLY skipped (e.g., not added to the `supabase/migrations/` directory), prod has the column but no policy → table is invisible to non-service-role.
+
+Worse: if the RLS file is ADDED to a Drizzle migration directory by mistake, drizzle-kit's introspection won't recognize the policy DSL and will plan a diff that DROPS the policy on the next push.
+
+**Why it happens:**
+Two migration tools, one DB, no cross-validation. The split is intentional (Drizzle can't express partial indexes / RLS) but error-prone.
+
+**How to avoid:**
+- Pre-deploy checklist for every migration phase:
+  1. ✅ Drizzle migration in `drizzle/` directory (column shapes).
+  2. ✅ Companion raw SQL migration in `supabase/migrations/` (RLS, CHECK, partial indexes, triggers).
+  3. ✅ Both files are referenced in the phase plan migration section.
+  4. ✅ `npm run db:reset` (which runs `supabase db reset` + `drizzle push` + applies supabase migrations) succeeds locally.
+  5. ✅ Prod deploy runs `supabase db push --linked --include-all` — verify the supabase migrations file is in the diff list.
+- See MEMORY: project_local_db_reset.md for the local reset workflow gotcha.
+- Add a CI check: any new `pgTable` in `src/db/schema.ts` must have a matching `ALTER TABLE … ENABLE ROW LEVEL SECURITY` line in some `supabase/migrations/*.sql` file.
+
+**Warning signs:**
+- Phase plan migration section says "add table X" without mentioning the RLS file.
+- `supabase db push --linked --dry-run` shows policy drops you didn't write.
+- Local works, staging works, prod table is empty for non-service-role.
+
+**Phase to address:** Phase 1 (Catalog Schema) — establish the dual-migration pattern as a phase template for the milestone.
 
 ---
 
 ## Technical Debt Patterns
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Bottom nav outside Suspense | Simpler layout | Build breaks with cacheComponents; or unread count always 0 | Never |
-| Notification generation inside action transaction | Simpler error handling | Original action fails when notification fails | Never — always fire-and-forget |
-| Single visibility tier (worn_public boolean) carried into v3.0 | No migration needed | "Followers" tier impossible without backfill; privacy invariants fragmented | Never — migrate in one phase |
-| `heic2any` static import | One-line import | 1MB added to every page bundle | Never — always dynamic import |
-| Skip canvas re-encode for uploaded files | Simpler upload path | EXIF GPS data leaked in uploaded images | Never for a production social feature |
-| Storage bucket set to Public | No signed URL complexity | Private wears directly accessible by URL guessing | Never for private content |
-| Client-side file validation only | Fast UX feedback | Server accepts any file via direct upload | Never — always add server-side validation |
-| Toast triggered inside Server Action | Intuitive placement | Runtime error — no browser context on server | Never |
-| Default visibility hardcoded as 'public' | Simplest form state | Users' private content inadvertently published | Never — use server-stored preference |
-
----
+|---|---|---|---|
+| Skip catalog normalization (`brand_normalized` generated columns) | Faster initial migration | Casing duplicates accumulate; deduplication script required later | Never — solve at v4.0 ship |
+| Use `ON CONFLICT DO NOTHING` for all catalog inserts (vs. enrich path) | Simpler code | URL-extracted spec sheets discarded; catalog stays low-quality forever | Only for `user_promoted` source; never for `url_extracted` |
+| Defer pg_cron setup; computed counts on-the-fly | Skip the cron config phase | /explore queries become 200ms+ at scale; user-facing latency | When catalog <50 rows total |
+| Trigger-based `owners_count` instead of cron | "Real-time" trending | Write amplification; lock contention on hot watches | Never at v4.0 scale; reconsider at 100k+ catalog rows |
+| Skip the email-change "pending" UI state | Faster Settings ship | User confusion when confirmation lapses; support burden | Never — pending state is the safety net |
+| Skip Suspense around `/evaluate` data fetch | Cleaner page code | Build fails on Vercel | Never with cacheComponents:true |
+| Single AbortController across /search tabs | Less hook complexity | Stale results paint on rapid tab switch | Acceptable in v4.0 if guarded by tab-key dependency in useEffect |
+| One-shot backfill (no batching) | Simpler script | Lock contention on prod, no idempotent resume | Only at <500 rows total — skip batching only for v4.0 personal-MVP scale |
+| Combine schema + backfill + SET NOT NULL in one migration | "Atomic" feel | Half-completion is unrecoverable; cannot resume | Never |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Next.js 16 cacheComponents + layout | Viewer-scoped data in layout body outside Suspense | Suspense-wrap all viewer-aware components; `viewerId` as function arg to `'use cache'` |
-| Supabase Storage RLS | Assumes table RLS also protects storage objects | Write explicit `storage.objects` policies; test with direct URL access |
-| `getUserMedia` + iOS Safari | Async work before `getUserMedia()` call | Call `getUserMedia` first in gesture handler — no awaits before it |
-| Sonner `<Toaster>` + Suspense | Toaster inside Suspense boundary | Mount `<Toaster>` as root-level sibling of Suspense boundary |
-| Sonner + Server Actions | `toast()` called inside Server Action | Server Action returns result; client `useEffect` triggers toast |
-| `heic2any` + EXIF | HEIC-to-JPEG output uploaded directly | Always re-encode through canvas to strip EXIF |
-| Supabase signed URLs + `next/image` | `<Image>` caches signed URLs indefinitely | Use `<img>` for private images; generate fresh signed URLs server-side per render |
-| `pg_trgm` + Supabase | Extension assumed present; GIN index silently degrades | `CREATE EXTENSION IF NOT EXISTS pg_trgm` in migration; verify in prod |
-| `'use cache'` + viewer context | `getCurrentUser()` called inside cached function body | Pass `viewerId` as explicit argument; grep gate for violations |
-| Three-tier visibility + notifications | Notification click-through skips re-check | Wear detail always re-validates visibility on render |
-
----
+|---|---|---|
+| Resend SMTP | Flip Supabase config before DKIM verifies | Wait for "Verified ✓" + send self-test email FIRST |
+| Resend rate limits | Run integration tests with real SMTP credentials | Stub email send in tests via `RESEND_DISABLE_FOR_TESTS` env |
+| Supabase Auth `updateUser({email})` | Treat response `data.user.email` as confirmed | Read `user.new_email` to detect pending state |
+| Supabase Auth confirm handler | Single switch case for `type=signup`; missing `email_change` | Map all four EmailOtpType values with redirect targets |
+| pg_cron in Supabase | Assume scheduled job runs locally | Document local manual invocation; cron is prod-only |
+| Drizzle pgEnum updates | Update schema.ts before SQL migration ships | SQL migration first → wait for prod push → then schema.ts |
+| Drizzle migration + Supabase RLS | Forget the raw-SQL companion migration file | Mandate both files reviewed in same PR |
+| Vercel + DNS for Resend | Add records in Vercel dashboard (DNS not Vercel-managed) | Records go in registrar / authoritative DNS host |
+| Anthropic API key in CTAs | Assume key is set; CTAs assume happy path | Provide `Add manually` / `Demo URL` fallback affordances |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Bell unread count in root layout (not leaf Suspense) | Every page load blocked by notifications DB query | Isolate as `<UnreadBadge>` leaf Server Component with its own Suspense | All authenticated page loads |
-| `pg_trgm` missing; ILIKE on profiles | Search response time scales with user count | Enable extension in migration; verify prod | >500 users |
-| Following-status N+1 in search results | 1 follows query per search result row | Batch-load all following IDs for viewer; pass as Set | >5 search results shown |
-| Camera capture at full native resolution | 5–8MB upload on mobile data | Constrain `getUserMedia` resolution; resize on canvas; target <500KB | Any mobile upload |
-| `heic2any` in main bundle | +1MB on first page load for all users | Dynamic import; only loaded when HEIC file detected | All pages if statically imported |
-| Signed URL generation for every wear in a list | N signed URL requests per wear list render | Batch signed URL generation; cache within request | Any list with >3 private wears |
-
----
+|---|---|---|---|
+| Per-row catalog count via `COUNT(*) GROUP BY` on /explore | /explore loads >500ms | Denormalize `owners_count` + `wishlist_count` updated nightly | At >500 catalog rows or >5 concurrent /explore views |
+| /search Watches GIN plan unreachable at tiny tables | Latency seems fine but verification confused | `SET enable_seqscan = OFF` proof + scale benchmark | Misleading at <127 rows; resolves automatically at scale |
+| Trigger-based `owners_count` write amplification | INSERT latency 2–5× normal; lock waits | Cron-based batch update | At >10 concurrent watch adds |
+| /search Collections N+1 on overlap badges | Search latency scales linearly with row count | One in-memory join after pre-fetching viewer collection | At ≥10 result rows |
+| Backfill in single transaction | Other writes wait; transaction log balloons | Per-batch transactions, 100 rows each | At >1000 rows or any concurrent writes |
+| /evaluate page renders without Suspense around data fetch | Build fails before perf is even measurable | Canonical Suspense + Server Component pattern | Always with cacheComponents:true |
+| Notification opt-out read inside `'use cache'` | Stale opt-out → spam | `cache: 'no-store'` for opt-out reads | Whenever the recipient toggles after the actor's request started |
 
 ## Security Mistakes
 
-| Mistake | Risk | Severity | Prevention |
-|---------|------|----------|------------|
-| Storage RLS not written; bucket assumed private by table RLS | Private wear images directly accessible via URL | CRITICAL | Separate `storage.objects` policies per bucket; test with direct URL |
-| `'use cache'` without `viewerId` argument | User A sees User B's notifications/wears | CRITICAL | Grep gate: no `getCurrentUser()` inside `'use cache'` functions |
-| Three-tier visibility not audited across all DAL reads | Followers-only wears visible publicly | CRITICAL | Audit checklist before migration; integration tests for each read path |
-| File upload validated client-side only | Malicious files or oversized uploads bypass client | CRITICAL | Server Action validates magic bytes + size; Supabase bucket size limit |
-| EXIF not stripped from all upload paths | GPS coordinates leak from wear photos | CRITICAL | Canvas re-encode mandatory for all upload paths; no `heic2any` output uploaded directly |
-| Notification SELECT policy allows actor reads | Actor can read their own generated notifications about others | HIGH | `recipient_id = auth.uid()` only; no actor access |
-| Self-notification not guarded | "You followed yourself" notifications | MEDIUM | DB CHECK constraint `actor_id != recipient_id`; Server Action guard |
-| Storage per-user folder not RLS-enforced | User uploads to another user's storage folder | CRITICAL | `foldername(name)[1] = auth.uid()` in INSERT policy |
+| Mistake | Risk | Prevention |
+|---|---|---|
+| `watches_catalog` ENABLE ROW LEVEL SECURITY forgotten | Anon users see empty catalog (availability issue, not leak) | Mandatory companion RLS migration file |
+| `watches_catalog` policy uses `USING (true)` for INSERT/UPDATE | Anon users could write catalog rows directly via JS SDK | Only SELECT policy `USING (true)`; writes via Server Action service role |
+| /search Collections gates `profile_public` only; misses `collection_public` | Private collection content leaks via search | Three-layer predicate (profile_public AND collection_public AND viewer ≠ self) |
+| Email-change UI shows new email as "Current" before confirmation | Misleads user; if they leave the tab, they think it changed | Pending state explicitly distinguished from confirmed state |
+| `verifyOtp` not validating type matches expected handler context | Confirmed-recovery path could be reused for email_change reuse | Explicit switch on `type` with allowlist |
+| Resend SMTP creds committed to .env.local checked into branch | Deliverability hijack | `.gitignore` enforced; rotate creds if leaked |
+| Drizzle migration ships without companion supabase RLS file | New table accessible to unintended principals OR invisible | Mandate both files in same PR |
+| Backfill script runs as service_role indefinitely on prod | Long-running superuser session | Run from local machine with explicit timeout; never schedule on prod cron |
 
----
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---|---|---|
+| BottomNav slot reshuffle | Muscle memory broken; users tap wrong icon for days | Avatar in TopNav; BottomNav 5 slots stable |
+| Email-change toast says "Updated" before link click | User confused why old email still works | Toast says "Confirmation sent — check both inboxes" |
+| /evaluate hard-redirects unauthenticated users with no marketing path | Demo-link share workflow broken | Decide auth-only vs marketing demo upfront |
+| Empty-state CTA links to /add which silently 500s on missing key | User stuck; no fallback | Provide "Add manually" affordance alongside URL extract |
+| Notification toggle UI reflects optimistic state | Genuine vs persisted state confusion if Server Action fails | Show "Saving..." inline indicator; revert on error |
+| Search box debounce + tab-switch produces stale results | Wrong results paint after typing more | One AbortController per (tab, query); cancel on tab switch |
+| WYWT auto-nav lands on /wear/[id] before storage CDN propagates | Black image / loading flicker | Suspense + skeleton on /wear/[id] photo render |
+| Sonner toast theme flash during revalidation | Visual noise | Toaster outside revalidating Suspense subtree |
+| Catalog typo creates duplicate "trending" entries | Same model appears twice in /explore | Normalize at server boundary; display original |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Bottom nav Suspense placement:** Verify `<BottomNav>` is inside the Suspense boundary in layout.tsx — run `next build` and confirm no dynamic API errors.
-- [ ] **`'use cache'` viewer safety:** `grep -r "use cache" src/ | xargs grep -l "getCurrentUser\|cookies()"` returns empty.
-- [ ] **Notifications RLS:** Query notifications table as User B for User A's rows — confirm 0 returned.
-- [ ] **Notification fire-and-forget:** Every notification generation call is wrapped in `.catch()` with no rethrow.
-- [ ] **Watch-overlap dedup:** Log a watch twice in one session; confirm recipient receives only one overlap notification.
-- [ ] **Three-tier visibility audit:** Every `wear_events` read in `src/data/` has been audited for the three-tier check + `profile_public` guard.
-- [ ] **Visibility direction test:** Unit test exists confirming `viewer follows actor` (not `actor follows viewer`) gates follower-tier wears.
-- [ ] **Self-see own private wears:** Log a private wear; confirm it appears in own worn tab.
-- [ ] **Storage policies:** Direct URL access to another user's private wear photo returns 403.
-- [ ] **Storage folder enforcement:** Attempt to upload to another user's folder path; confirm policy violation.
-- [ ] **EXIF stripped:** Upload an iPhone photo; run `exiftool` on stored file; confirm no GPSLatitude.
-- [ ] **Camera cleanup:** Open camera dialog, close it; confirm camera LED indicator goes off.
-- [ ] **iOS gesture context:** Test `getUserMedia` in iOS Safari on a real device — no `NotAllowedError`.
-- [ ] **Canvas size limit:** Upload path produces a file <1MB (check network tab).
-- [ ] **Signed URL strategy:** Private wear images use `<img>` (not `<Image>`) with server-generated signed URLs.
-- [ ] **heic2any bundle:** Bundle analyzer confirms `heic2any` not in main chunk.
-- [ ] **pg_trgm in prod:** `SELECT * FROM pg_extension WHERE extname = 'pg_trgm'` returns a row in the production Supabase project.
-- [ ] **Search min-length server-side:** Direct search request with a 1-character query returns `[]`.
-- [ ] **Toaster placement:** `<Toaster>` is a sibling of (not inside) the Suspense boundary in layout.tsx.
-- [ ] **Toast from Server Action:** Toast is triggered by `useEffect` on `useActionState` result — not called inside the Server Action file.
-- [ ] **WatchPickerDialog not forked:** `grep -r "WywtPickerDialog\|WearPickerDialog" src/` returns empty.
-- [ ] **Backfill correctness:** Post-migration `SELECT visibility, COUNT(*) FROM wear_events GROUP BY visibility` shows 0 rows with `'followers'` (all pre-existing rows should be 'public' or 'private').
-- [ ] **iOS safe-area:** Test bottom nav on iPhone with home indicator — last page content not clipped; Wear CTA tappable.
-- [ ] **Orphan file cleanup:** Delete a wear event with a photo; confirm storage object is deleted.
-- [ ] **ON DELETE CASCADE for notifications:** Delete a test profile; confirm their notification rows are gone.
-
----
+- [ ] **`watches_catalog` table:** Often missing the companion RLS migration — verify `ENABLE ROW LEVEL SECURITY` + SELECT policy in `supabase/migrations/`.
+- [ ] **Catalog UNIQUE constraint:** Often missing `NULLS NOT DISTINCT` — verify either explicit raw-SQL `NULLS NOT DISTINCT` OR `COALESCE(reference, '')` fallback.
+- [ ] **Catalog backfill:** Often missing the post-run `WHERE catalog_id IS NULL` count assertion — verify zero unlinked rows.
+- [ ] **Catalog normalization:** Often missing `brand_normalized` / `model_normalized` generated columns — verify casing test scenarios.
+- [ ] **/evaluate page:** Often missing Suspense around the data fetch — verify `next build` runs successfully.
+- [ ] **/search Collections:** Often missing `collection_public` gate — verify three-layer privacy test (profile_public ∧ collection_public ∧ viewer self-exclusion).
+- [ ] **/search anti-N+1:** Often missing batched fetch for overlap badges — verify integration test with 50-row fixture.
+- [ ] **Resend custom SMTP:** Often shipped before DKIM verifies — verify Resend dashboard "Verified ✓" + Supabase test email lands in inbox NOT spam.
+- [ ] **Email change confirm:** Often missing `type=email_change` handler in `/auth/confirm` — verify all four EmailOtpType branches.
+- [ ] **Email change UI:** Often shows new email immediately — verify "pending" state with `user.new_email` field.
+- [ ] **Notification enum drop:** Often uses `ALTER TYPE … DROP VALUE` (which doesn't exist) — verify rename + recreate pattern + zero-row pre-check.
+- [ ] **pg_cron `owners_count`:** Often missing schedule registration in `cron.job` — verify `SELECT * FROM cron.job` shows the job in prod.
+- [ ] **BottomNav refactor:** Often replaces a slot without updating `PUBLIC_PATHS` or muscle-memory comm — verify Phase 14 nav pattern docs updated.
+- [ ] **WYWT auto-nav:** Often races storage CDN — verify `<Suspense>` on /wear/[id] photo render.
+- [ ] **Notification opt-out:** Often reads opt-out inside `'use cache'` — verify `cache: 'no-store'` on the opt-out branch.
+- [ ] **Catalog ON DELETE policies:** Often harmonized accidentally — verify each FK's policy commented with rationale.
+- [ ] **Drizzle migration vs RLS:** Often missing companion SQL file — verify PR has BOTH files.
+- [ ] **Empty-state CTAs:** Often link to /add or /evaluate without LLM-key fallback — verify "Add manually" affordance exists.
+- [ ] **Search across tabs:** Often shares one AbortController — verify per-(tab, query) cancellation logic.
+- [ ] **isChronometer source of truth:** Often duplicated without sync rule — verify catalog-vs-watches policy is documented.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Private wear photos accessible via direct URL | HIGH | Change bucket to private immediately; rotate signed URLs; audit access logs; notify affected users |
-| Three-tier visibility DAL missed — followers-only wears public | HIGH | Immediate hotfix deploy; audit which wears were exposed; notify users; add integration tests before re-deploying |
-| EXIF GPS in stored photos | HIGH | Delete affected files; re-upload without EXIF; add canvas re-encode to all paths; consider notifying users whose location was exposed |
-| `'use cache'` cross-user data leak | HIGH | Invalidate all cache tags; deploy fix; audit for other `'use cache'` violations |
-| Camera not releasing on iOS | LOW | Force-close browser tab; fix cleanup useEffect; deploy |
-| `heic2any` in main bundle | MEDIUM | Move to dynamic import; rebuild; deploy; no data migration needed |
-| Duplicate notifications sent | MEDIUM | Add `ON CONFLICT DO NOTHING`; optionally delete duplicate rows from `notifications` table; no user data affected |
-| `pg_trgm` missing in prod | LOW | Run `CREATE EXTENSION IF NOT EXISTS pg_trgm` via Supabase SQL editor; re-create GIN indexes; search immediately improved |
-| Wear events backfill incorrect | HIGH | Write a corrective migration; restore `'private'` for rows incorrectly set to `'followers'`; no user data lost but privacy must be immediately restored |
-| Toaster suspended and toast lost | LOW | Move `<Toaster>` outside Suspense; deploy; cosmetic fix only |
-
----
+|---|---|---|
+| Catalog backfill half-completed (some rows NULL `catalog_id`) | LOW | Re-run backfill script; idempotent with `WHERE catalog_id IS NULL`. Identify NULL-remaining rows for manual review. |
+| Catalog enrichment lost via `DO NOTHING` | MEDIUM | One-off script: re-fetch the LLM extraction for the affected URLs; UPDATE catalog rows with COALESCE pattern. |
+| Casing duplicates in catalog | MEDIUM | Manual merge script: pick canonical row per `(brand_normalized, model_normalized, reference_normalized)`; UPDATE `watches.catalog_id` to the canonical; DELETE the duplicates. |
+| `watches_catalog` RLS missing → empty for anon | LOW | One-line SQL migration: `CREATE POLICY watches_catalog_select_all ON watches_catalog FOR SELECT USING (true)`. |
+| `cookies()` in /evaluate breaks build | LOW | Wrap in Suspense pattern; redeploy. |
+| /search Collections leaks private collections | HIGH | Hotfix: deploy patched DAL gate + invalidate all viewer caches. Audit logs for any cross-user reads during the leak window. |
+| Resend not verified at flip time → confirmation emails fail | MEDIUM | Backout: revert Supabase SMTP config to hosted (2/h cap); manually create blocked users in Supabase Dashboard. |
+| Resend free-tier daily cap hit | MEDIUM | Upgrade to paid ($20/mo for 50k/mo); apologize to blocked users; reset cycle 24h later. |
+| Email-change UI lied → user thinks email changed but didn't | LOW | Add pending banner; manually nudge user via support to click confirmation link. |
+| ALTER TYPE DROP VALUE migration aborted | MEDIUM | Switch to rename + recreate pattern; assert zero rows of the dead values first. |
+| Pg_cron not scheduled in prod → counts stale | LOW | One-shot: `SELECT cron.schedule(...)` via Supabase Dashboard SQL editor. |
+| BottomNav slot reshuffle causes user reports | MEDIUM | Revert to 5-stable-slot layout; profile in TopNav avatar. |
+| WYWT auto-nav 404 race | LOW | Add Suspense + skeleton; retry on user side resolves. |
+| Notification opt-out spam after toggle | LOW | Patch `logNotification` to read `cache: 'no-store'`; backfill: no-op (false positives can't be unsent but rate is tiny). |
+| `wear_events` cascade-delete misconfigured | HIGH | If accidentally `SET NULL`, manually clean up zombie rows; restore `CASCADE` in next migration. |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Bottom nav outside Suspense (A-1) | Phase 11 (bottom nav) | `next build` clean; unread count renders for authenticated user |
-| iOS safe-area inset (A-3) | Phase 11 (bottom nav) | UAT on real iPhone — all CTAs tappable |
-| Bottom nav on auth pages (A-4) | Phase 11 (bottom nav) | `/login` renders without nav |
-| Notifications RLS (B-4) | Phase 12 (notifications) | Integration test: cross-user notification read returns 0 rows |
-| Notification fire-and-forget (B-2) | Phase 12 (notifications) | Code review: no notification error propagates to caller |
-| Watch-overlap dedup (B-3) | Phase 12 (notifications) | Add watch twice; confirm 1 notification received |
-| `'use cache'` viewer leak (B-6) | Phase 12 + any cached query | Grep gate: no `getCurrentUser` inside `'use cache'` |
-| Search full table scan (C-1) | Phase 13 (people-search) | `pg_trgm` enabled in prod; EXPLAIN shows index scan |
-| Search returns private profiles (C-3) | Phase 13 (people-search) | Integration test: private user not in search results |
-| Following-status N+1 in search (C-4) | Phase 13 (people-search) | Supabase logs: ≤2 queries per search result page |
-| iOS getUserMedia gesture (D-1) | Phase 14 (WYWT photo) | UAT on real iOS Safari — camera opens without NotAllowedError |
-| Camera not released (D-2) | Phase 14 (WYWT photo) | Camera LED off after dialog close |
-| Canvas oversized image (D-4) | Phase 14 (WYWT photo) | Network tab: upload payload <1MB |
-| `heic2any` bundle size (E-1) | Phase 14 (WYWT photo) | Bundle analyzer: `heic2any` not in main chunk |
-| EXIF orientation (E-2) | Phase 14 (WYWT photo) | Upload portrait photo; confirm displays upright |
-| EXIF GPS leak (E-4) | Phase 14 (WYWT photo) | `exiftool` on stored file: no GPSLatitude |
-| Client-only file validation (E-3) | Phase 14 (WYWT photo) | Direct upload request with >5MB file rejected server-side |
-| Storage RLS separate from table RLS (F-1) | Phase 14 (WYWT photo) | Direct URL to private wear photo returns 403 |
-| Signed URLs + `next/image` (F-2) | Phase 14 (WYWT photo) | Private wear images use `<img>` not `<Image>` |
-| Orphan storage on wear delete (F-3) | Phase 14 (WYWT photo) | Delete wear; confirm storage object gone |
-| Three-tier DAL audit (G-1) | Phase 14 (WYWT visibility) | Checklist: every wear_events DAL function reviewed |
-| Default visibility (G-2) | Phase 14 (WYWT visibility) | Form defaults to last-used server preference; no localStorage |
-| Follower direction inversion (G-3) | Phase 14 (WYWT visibility) | Unit test: `A follows B` vs `B follows A` — correct gating |
-| `profile_public` gate on wear reads (G-4) | Phase 14 (WYWT visibility) | Integration test: private profile wear not visible to public |
-| Self-visibility branch (G-5) | Phase 14 (WYWT visibility) | User sees own private wears in worn tab |
-| Backfill mapping (G-6) | Phase 14 (WYWT visibility) | Post-migration count: 0 rows with 'followers' from pre-v3.0 data |
-| Followers-only wear in notification path (G-7) | Phase 12 + Phase 14 | Wear detail re-checks visibility; expired-access shows empty state |
-| Toaster inside Suspense (H-1) | Phase 14 (first Sonner use) | `<Toaster>` outside Suspense in layout.tsx |
-| Toast not wired from Server Action (H-2) | Phase 14 (first Sonner use) | WYWT form submit shows success toast |
-| Toaster theme mismatch (H-3) | Phase 14 (first Sonner use) | Dark mode: toast matches theme |
-| UAT per-phase, not milestone-end (I-1) | All phases | Each plan has UAT checklist; privacy phases include cross-user scenarios |
-| WatchPickerDialog fork (I-2) | Phase 14 (WYWT photo) | Grep gate: no WywtPickerDialog file created |
-| Code review for privacy invariants (I-3) | Phase 14 (WYWT visibility) | Code review plan step with visibility-specific checklist |
+|---|---|---|
+| 1: Catalog half-backfill + premature SET NOT NULL | Phase 1 (Catalog Schema + Backfill) | Three separate migration files; final assertion `WHERE catalog_id IS NULL = 0`; `catalog_id` stays NULLABLE in v4.0 |
+| 2: `ON CONFLICT DO NOTHING` discards enrichment | Phase 1 | Two separate upsert helpers; integration test asserts spec enrichment from URL extract |
+| 3: Casing duplicates in catalog | Phase 1 | Generated columns in initial schema; test with mixed-casing fixtures |
+| 4: `watches_catalog` RLS missing | Phase 1 | Companion `supabase/migrations/*.sql` file in same PR; anon-connection regression test |
+| 5: `cookies()` outside Suspense in /evaluate | Phase 4 (/evaluate route) | `next build` step in CI; canonical Suspense pattern from Phase 11–14 |
+| 6: /search Collections privacy two-layer drift | Phase 5 (/search Watches + Collections) | Three-layer fixture test (profile_public ∧ collection_public ∧ viewer ≠ self) |
+| 7: /search Collections N+1 | Phase 5 | Integration test asserts ≤2 DB queries per 50-row search |
+| 8: Email-change UI lies | Phase 6 (Settings Account) | "Pending" state distinguished from "confirmed"; reads `user.new_email` |
+| 9: SMTP flip before DKIM verified | Phase 9 (Custom SMTP) | Mandatory ordered checklist with evidence; no "Confirm email ON" in same commit as creds |
+| 10: ALTER TYPE DROP VALUE non-existent | Phase 8 (Notification Stub Cleanup) | Pre-flight zero-row count + rename-recreate pattern |
+| 11: pg_cron not local + trigger write amplification | Phase 1 (schema) + Phase 3 (/explore activation) | Cron registered in prod; trigger explicitly forbidden |
+| 12: BottomNav muscle memory | Phase 11 (Profile Nav Prominence) | 5-slot decision locked in phase plan; Profile in TopNav avatar |
+| 13: WYWT auto-nav races storage | Phase 12 (WYWT Auto-Nav) | Suspense on /wear/[id]; toast + push ordering inside transition |
+| 14: Resend free-tier burned | Phase 9 (Custom SMTP) | Local stub via env var; non-prod Resend domain for staging |
+| 15: Notification opt-out stale cache | Phase 7 (Settings Notifications + notesPublic) | `cache: 'no-store'` on opt-out reads; integration test for toggle race |
+| 16: Empty-state CTAs broken without ANTHROPIC_API_KEY | Phase 13 (Empty-State CTAs) | "Add manually" affordance; CI test with key UNSET |
+| 17: GIN plan unreachable at tiny tables | Phase 5 (/search) | Forced-plan EXPLAIN ANALYZE evidence file |
+| 18: isChronometer source of truth drift | Phase 1 (Catalog Schema) | Source-of-truth doc in PROJECT.md Key Decisions |
+| 19: ON DELETE policy harmonization | Phase 1 (Catalog Schema) | Comments on every FK; explicit review checklist |
+| 20: Sonner toast revalidation interaction | Phase 14 (Form Polish) | ThemedToaster outside Suspense; integration test |
+| 21: Search debounce/AbortController across tabs | Phase 5 (/search) | Per-(tab, query) AbortController; rapid-tab-switch test |
+| 22: /auth/confirm missing email_change branch | Phase 6 (Settings Account) | All four EmailOtpType branches covered + e2e test |
+| 23: Backfill table locks user writes | Phase 1 (Catalog Schema + Backfill) | Per-batch transactions; not single-tx |
+| 24: notesPublic cross-user cache stale | Phase 7 (Settings + notesPublic) | `revalidateTag('max')` fan-out + 30s staleness documented |
+| 25: /evaluate anonymous path decision | Phase 4 (/evaluate route) | Phase plan explicitly handles unauth path; redirect to /signin documented |
+| 26: Drizzle vs Supabase migration drift | Phase 1 + every subsequent migration phase | Pre-deploy checklist; CI guard for table without RLS file |
+
+---
+
+## Summary by NEW vs KNOWN Pattern Reapplication
+
+**🆕 NEW pitfalls v4.0 introduces (12):**
+- Pitfalls 1, 2, 3, 4 (catalog schema family)
+- Pitfall 8 (email change pending state)
+- Pitfall 9 (SMTP DKIM ordering)
+- Pitfall 10 (enum drop)
+- Pitfall 11 (owners_count freshness model)
+- Pitfall 12 (BottomNav muscle memory)
+- Pitfall 14 (Resend rate cap)
+- Pitfall 16 (empty-state CTA dependencies)
+- Pitfall 18 (catalog source-of-truth)
+- Pitfall 22 (email_change confirm handler)
+- Pitfall 23 (backfill locking)
+- Pitfall 25 (/evaluate anon decision)
+
+**♻️ KNOWN patterns needing reapplication (8):**
+- Pitfall 5 (Cache Components Suspense — Phase 11–14 lesson)
+- Pitfall 6 (two-layer privacy — Phase 9 lesson on a new endpoint)
+- Pitfall 7 (anti-N+1 — Phase 16 lesson on Collections variant)
+- Pitfall 15 (notification opt-out cache — Phase 13 lesson)
+- Pitfall 17 (pg_trgm planner threshold — Phase 11/16 lesson)
+- Pitfall 19 (ON DELETE policy — schema-level discipline)
+- Pitfall 24 (notesPublic cross-user fan-out — Phase 13 pattern)
+- Pitfall 26 (Drizzle vs Supabase migration split — MEMORY)
+
+**🔁 HYBRID — old pattern in new context (2):**
+- Pitfall 13 (WYWT auto-nav races — Phase 15 storage flow + new auto-nav)
+- Pitfall 20 (Sonner + revalidateTag interaction — Phase 13 + Phase 15 patterns colliding)
 
 ---
 
 ## Sources
 
-- [Horlo v2.0 Retrospective](../.planning/RETROSPECTIVE.md) — HIGH confidence (first-party, direct lessons)
-- [Horlo PROJECT.md — Key Decisions](../.planning/PROJECT.md) — HIGH confidence (established patterns: viewer-aware DAL, two-layer privacy, cacheComponents layout)
-- [Next.js 16 cacheComponents docs — dynamic API restrictions](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents) — HIGH confidence
-- [Supabase Storage RLS documentation](https://supabase.com/docs/guides/storage/security/access-control) — HIGH confidence
-- [MDN getUserMedia — security/gesture requirements](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#security) — HIGH confidence
-- [iOS Safari camera permission behavior — WebKit Bugzilla / MDN notes](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API#browser_compatibility) — MEDIUM confidence (iOS-specific behavior, verified by community reports)
-- [heic2any npm package — bundle size and API](https://www.npmjs.com/package/heic2any) — HIGH confidence
-- [EXIF orientation handling — canvas drawImage](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Using_images) — HIGH confidence
-- [Sonner toast + Next.js App Router wiring](https://sonner.emilkowal.ski/) — HIGH confidence
-- [Supabase signed URL expiry and caching](https://supabase.com/docs/reference/javascript/storage-from-createsignedurl) — HIGH confidence
+**Catalog schema design + UNIQUE NULLS NOT DISTINCT:**
+- [PostgreSQL CREATE TABLE — UNIQUE NULLS NOT DISTINCT](https://www.postgresql.org/docs/15/sql-createtable.html) (PG 15+ feature; Supabase is PG 15+)
+- [Drizzle ORM uniqueIndex docs](https://orm.drizzle.team/docs/indexes-constraints) (does not emit NULLS NOT DISTINCT by default — must drop to raw SQL)
+- [Cybertec — Practical examples of normalization in PostgreSQL](https://www.cybertec-postgresql.com/en/practical-examples-data-normalization-in-postgresql/)
+- [Drizzle ORM Migrations in Production: Zero-Downtime Schema Changes](https://dev.to/whoffagents/drizzle-orm-migrations-in-production-zero-downtime-schema-changes-e71) (expand-contract pattern)
+
+**Postgres ALTER TYPE constraints:**
+- [PostgreSQL ALTER TYPE docs](https://www.postgresql.org/docs/current/sql-altertype.html) (no DROP VALUE; rename+recreate workaround)
+- [Postgres mailing-list "DROP VALUE FROM ENUM"](https://www.postgresql.org/message-id/) (long-standing rejected request)
+
+**Supabase Auth API:**
+- [`supabase.auth.updateUser` reference](https://supabase.com/docs/reference/javascript/auth-updateuser) (response shape, `new_email` field for pending state)
+- [Supabase Auth — Secure Email Change](https://supabase.com/docs/guides/auth/auth-email-passwordless) (two-link pattern)
+- [Supabase Auth — verifyOtp](https://supabase.com/docs/reference/javascript/auth-verifyotp) (EmailOtpType union)
+- [Custom SMTP rate-limit discussion (#16209)](https://github.com/orgs/supabase/discussions/16209)
+
+**Resend / SMTP:**
+- [Resend pricing (3000/mo, 100/day free)](https://resend.com/pricing)
+- [Resend — Send with Supabase SMTP](https://resend.com/docs/send-with-supabase-smtp)
+- [Resend domain verification (DKIM lag)](https://resend.com/docs/dashboard/domains/introduction)
+
+**Cache Components / Suspense:**
+- [Next.js — cacheComponents config](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents)
+- Project's own Phase 11–16 verification evidence files (`.planning/phases/11-VERIFICATION.md` etc.)
+
+**pg_cron on Supabase:**
+- [Supabase — pg_cron extension](https://supabase.com/docs/guides/database/extensions/pg_cron)
+- [pg_cron README](https://github.com/citusdata/pg_cron)
+
+**RLS + Drizzle:**
+- Project Phase 11 DEBT-02 audit migration (`supabase/migrations/20260423000005_phase11_debt02_audit.sql`)
+- MEMORY: project_drizzle_supabase_db_mismatch.md
+- MEMORY: project_local_db_reset.md
+- MEMORY: project_supabase_secdef_grants.md
+
+**Anti-N+1 / pg_trgm planner threshold:**
+- Project Phase 16 verification evidence (`.planning/phases/16-VERIFICATION.md`) — forced-plan EXPLAIN ANALYZE pattern
+- [PostgreSQL — Cost-based query planner](https://www.postgresql.org/docs/current/planner-stats.html)
+
+**WYWT / Storage CDN:**
+- [Supabase Storage signed URLs propagation](https://supabase.com/docs/guides/storage/uploads/standard-uploads)
+- Project Phase 15 storage RLS migration
 
 ---
-*Pitfalls research for: Horlo v3.0 — Production Nav & Daily Wear Loop (Next.js 16 cacheComponents + Supabase Storage RLS + three-tier visibility)*
-*Researched: 2026-04-21*
+
+*Pitfalls research for: Horlo v4.0 Discovery & Polish*
+*Researched: 2026-04-26*

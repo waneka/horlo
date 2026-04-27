@@ -1,259 +1,629 @@
-# Feature Research
+---
+dimension: features
+generated: 2026-04-26
+milestone: v4.0 Discovery & Polish
+---
+# Feature Research — v4.0 Discovery & Polish
 
-**Domain:** Taste-discovery social app — Production Navigation & Daily Wear Loop (v3.0)
-**Researched:** 2026-04-21
-**Confidence:** HIGH for navigation and photo-post patterns (strong comparable app evidence); MEDIUM for notification schema choices (engineering rationale + partial comparables); MEDIUM for people-search ranking (UX patterns clear, taste-overlap weighting is Horlo-specific)
+**Domain:** Taste-discovery / catalog-backed collection app — Discovery surfaces, catalog search, "evaluate without commit" flows, settings IA, profile prominence, empty-state polish, form feedback
+**Researched:** 2026-04-26
+**Confidence:** HIGH for catalog search UX, settings IA, toast vs inline, save-vs-commit pattern, empty-state guidelines (multiple authoritative sources). MEDIUM for /explore section composition (comparable apps diverge — Letterboxd is editorial-curated, Discogs is community-aggregated, Are.na is chronological-firehose). MEDIUM for in-network-vs-across-network search axis (Discogs supports both; Goodreads supports neither well; we have to choose).
+
+> This document scopes ONLY the eight v4.0 surfaces. v3.0-shipped features (production nav, three-tier wear privacy, notifications system, photo WYWT, people search, public profiles, follow graph, Common Ground) are not re-researched — see `.planning/research/FEATURES.md` history (Phase 11–16 era) for that material.
 
 ---
 
-## Feature 1: Production Navigation
+## Feature Landscape
 
-### Table Stakes
+### Feature 1: `/explore` Discovery Surface
+
+**Comparable apps:**
+- **Letterboxd** — `/films/popular/`, `/lists/popular/`, "Members enjoying X" rail. Editorial Journal posts surface curated content. No algorithmic feed.
+- **Discogs** — Explore tab → Trending Releases + Most Collected (filterable by genre/format) + Recently Created Lists. Community-aggregated, not editorial.
+- **Are.na** — Explore is "a chronological aggregation of everyone's individual activity on the system — an in-plain-sight, nothing-to-hide aggregated pulse." Pure firehose; no ranking; no algorithm.
+- **Goodreads** — Browsing → recommendations + choice awards + giveaways + new releases + lists + interviews. The 20-billion-data-point recommendation engine maps "books that appear on the same bookshelves." Closest analog to Horlo's Common Ground.
+- **Untappd** — "Personalized recommendations based on your taste" + nearby breweries + "what your friends are drinking."
+
+#### Table Stakes
 
 | Feature | Why Expected | Complexity | Dependencies / Notes |
-|---------|--------------|------------|----------------------|
-| Sticky mobile bottom nav (always visible, does not hide on scroll) | Users expect primary nav to always be reachable; hiding on scroll forces a deliberate swipe-up before any navigation — acceptable for content-heavy feeds (Instagram Reels) but a friction tax on a utility-first app where the user may want to switch context at any point | LOW | Existing: Tailwind `fixed bottom-0` + `env(safe-area-inset-bottom)` padding |
-| Elevated center Wear CTA | Instagram's original + Strava both use an elevated/notch center FAB for the primary creation action. Users of any activity-logging app expect the logging action to be visually dominant and reach-friendly at thumb-center | LOW–MEDIUM | Requires `pb-[env(safe-area-inset-bottom)]` on nav container AND `calc(height + env(safe-area-inset-bottom))` for nav height; existing WatchPickerDialog is already the Wear entry point (v2.0 WYWT-03) |
-| Active-state filled icons | Outline → filled icon + accent-color shift on the active tab is the universal language for "you are here." Missing it leaves users uncertain which section they're in | LOW | Existing icon set is lucide-react; lucide has filled variants for some icons, otherwise a filled SVG override per active tab is needed |
-| Desktop top nav with logo, persistent search, Wear CTA, notifications bell, profile dropdown | At >=768px, bottom nav disappears; all primary actions surface in a horizontal top bar. This is the universal desktop web pattern (Letterboxd, Goodreads, Strava web) | MEDIUM | Replaces the placeholder nav from v2.0; new: notifications bell, profile dropdown |
-| Slim mobile top bar (logo + search icon + notifications icon + settings icon) | Mobile top bar carries secondary/utility actions (search, notifications) so bottom nav stays clean with only the 5 primary destinations | LOW | New component; notifications bell icon needs unread dot wired to v3.0 notifications table |
-| iOS safe-area-inset handling | Without `viewport-fit=cover` + `env(safe-area-inset-bottom)` padding on the nav container, the home-indicator bar on iPhone overlaps nav items and makes them untappable. Table stakes for any PWA or web app used on iOS | LOW | Must add `viewport-fit=cover` to `<meta name="viewport">` in root layout; Tailwind 4 can express `pb-[env(safe-area-inset-bottom)]` as an arbitrary value |
-| Stub `/explore` route so no nav link is broken | Users will tap every nav item. A 404 on Explore is a trust-breaker. A clearly labeled "coming soon" placeholder is acceptable | LOW | New route; no data dependencies |
-| `+ Add` button or icon in nav (desktop top + mobile bottom) | Adding a watch is a frequent action; burying it behind a settings menu is table stakes friction | LOW | Existing: the `+` icon in v2.0 header wired to the Add flow |
+|---|---|---|---|
+| **Popular Collectors rail** (most-followed public profiles, exclude self + already-followed) | Letterboxd, Goodreads, Untappd all ship a "discover people" rail on their explore surface. Without it, /explore for a sparse-network user feels like a dead room. | S | Reuses v2.0 follow graph + `profile_public` gate. SQL: `SELECT p FROM profiles JOIN follows ON follows.followingId = p.id WHERE p.profile_public = true GROUP BY p.id ORDER BY COUNT(follows.id) DESC LIMIT 10`. Two-layer privacy preserved. |
+| **Trending Watches rail** (highest `owners_count + wishlist_count * 0.5` over a rolling window) | Discogs Trending Releases is the canonical pattern; Letterboxd `/films/popular/` is the same shape. A taste-discovery app without "what's hot in the catalog" is incomplete. | M | Hard dependency on `watches_catalog` (per STACK.md). `pg_cron` daily-batch UPDATE keeps the counts fresh at acceptable staleness. NOT a live trigger — would hot-loop on every `addWatch`. |
+| **"Welcome to /explore" hero block when network is sparse** | NN/G empty-state research: "Don't default to totally empty states — creates confusion." For a brand-new user with 0 follows, /explore must feel like onboarding, not a dead end. | S | Conditional render: if `followingCount < 3 && wearEventsCount < 1`, swap default rails for an onboarding hero ("Add your first watch / Find collectors / Try Evaluate"). Same data already available in DAL. |
+| **Sparse-network fallback — editorial / global content beats personalized empty content** | Spotify's "editorial playlists generate 1B streams/week" is the canonical evidence: editorial fills the cold-start gap that personalization can't. For Horlo, "Trending Watches" + "Popular Collectors" are global signals that work for any user, regardless of network depth. | S | This is a *design constraint*, not a separate feature — every /explore section must work for a 0-follow user. Personalized rails come later. |
+| **Section header → "See all" link on each rail** | Standard rail pattern (Letterboxd, Discogs, Spotify). Without it, users can't drill into a rail to see >10 items. | S | Routes: `/explore/collectors` (full popular-collectors list, paginated), `/explore/watches` (full trending-watches list). Server Components, mirror /search Watches/People DAL pattern. |
 
-### Differentiators
+#### Differentiators
 
 | Feature | Value Proposition | Complexity | Dependencies / Notes |
-|---------|-------------------|------------|----------------------|
-| Elevated center Wear CTA with notch/cradle visual treatment | The cradle (semi-circular cutout in the bar with a floating circle above it) signals "this is the heartbeat of the app" more strongly than a same-height center tab. Strava, Streaks, and early Instagram all used this. In a collection app, "Wear today" is the daily ritual — visually elevating it trains the habit | MEDIUM | Pure CSS/Tailwind; no data dependencies; the cradle is a `clip-path` or `border-radius` trick on the nav bar with an absolutely-positioned circular button floating above |
-| Wear CTA renders differently when user has already worn a watch today | If a wear event exists for today, the CTA shifts to a "muted" filled state (e.g., filled icon + subdued color) rather than the full accent. Communicates "done for today" without removing the button | MEDIUM | Depends on: `markAsWorn` Server Action (existing v2.0), querying today's wear events on page load. Adds one DAL query to the root layout or home page |
+|---|---|---|---|
+| **"Watches Gaining Traction" rail** — fastest 7-day growth in `owners_count + wishlist_count`, NOT raw popularity | "Trending" without time-derivative is just "popular forever." A 7-day-delta rail surfaces watches that are *currently* moving — a stronger taste-network signal. Reddit r/rising, Letterboxd "What's hot this week" use this. | M | Adds a `watches_catalog_daily_snapshots` table (date, catalog_id, owners_count, wishlist_count) — `pg_cron` daily insert. Query: 7-day diff. Defer if scope-tight. |
+| **"Collectors Like You" / Common Ground rail on /explore** | Common Ground already exists (v2.0 PROF-09); surfacing top-3 highest-overlap public profiles on /explore turns the page from "what's globally popular" into "what's relevant to YOU." This is the Goodreads "books on same bookshelves" signal applied to people. | M | Compute is already there. New: position on /explore home (vs current home page where it lives). Can hide for users with <5 watches (nothing to overlap on). |
+| **Featured Collection / Editorial-style highlight** | Letterboxd Journal sets the model: a single human-curated highlight per week. Doesn't need automation, doesn't need a CMS — admin updates a static `featured.json` or DB row. Adds editorial voice. | S–M | Could ship as a static MDX on the page initially; if it becomes a thing, build a `featured` table later. **Optional — defer if scope-tight.** |
+| **"Recently Joined" rail (last 7 days, public profiles only)** | Untappd, Letterboxd surface this; helps new users find peers. Especially valuable during a private-beta period where the network is still forming. | S | `SELECT * FROM profiles WHERE profile_public = true AND created_at > NOW() - INTERVAL '7 days' ORDER BY created_at DESC LIMIT 10`. No new schema. |
 
-### Anti-Features
+#### Anti-Features
 
-| Feature | Why Requested | Why Avoid | Cite |
-|---------|---------------|-----------|------|
-| Bottom nav hides on scroll-down / reveals on scroll-up | Maximizes content viewport; Instagram Reels does this | Horlo is a utility-discovery app, not an endless scroll feed. Hiding nav trades a few pixels of content height for unpredictable nav availability. The user deciding to switch from Home to Profile should not require a deliberate scroll-up first. If viewport space becomes an issue in the collection grid, address it at the grid level. | PRODUCT-BRIEF §10: "no social feed" — this is not an infinite-scroll content app |
-| Hamburger menu / drawer for primary navigation | Familiar from older web apps | Hides primary actions behind an extra tap. Bottom nav is reachable in one tap from any content position; a drawer requires two. For a 5-destination app, bottom nav is always correct. | Navigation Model §9 defines the 5 bottom destinations explicitly |
-| Notification count badge on Explore or Add nav items | Might seem helpful to badge more items | Notification badges belong only on the notifications bell. Badging Explore or Add with counts introduces false urgency and conditions users to expect algorithmic push content, conflicting with the discovery-first (not push-first) positioning. | PRODUCT-BRIEF §2: "Discovery > social engagement" |
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Algorithmic personalized feed (Instagram Explore-style)** | Feels modern, "personalized" | Free-tier infra cost (real-time scoring), opacity ("why am I seeing this?"), and pivots Horlo from a deliberate-discovery tool toward an attention-engagement product. PRODUCT-BRIEF §10 explicitly calls out "Discovery > social engagement." | Editorial + popular + Common Ground rails (above). Algorithm = "watches you haven't seen, sorted by combined popularity + your overlap." Deterministic, explainable. |
+| **Are.na-style chronological "everything happening" firehose** | Pure transparency, no algorithm anxiety | Untenable at scale; requires Realtime infrastructure (excluded by v3.0 KEY DECISION). At <100-user scale would feel empty, at >1000-user scale would be noise. The Goodreads/Letterboxd "popular + curated rails" pattern is correct at our scale. | Rails-with-Section-Headers pattern, refreshed daily via `pg_cron`. |
+| **Taste Clusters visualization (k-means on user preference vectors)** | "Show me my taste cluster" is intuitively appealing | High implementation cost (clustering infra, label-quality problem — what do you call cluster #3?), low value at <100 users (clusters are noise without volume). STACK.md explicitly defers this to v5.0. | None for v4.0 — defer. |
+| **"Trending Today" with hourly refresh** | Feels live | Hot-loop write amplification on `watches_catalog.owners_count` if triggers fire on every insert. Daily-batch via `pg_cron` is sufficient — "trending" doesn't need sub-day freshness for a taste-discovery app. | `pg_cron` daily UPDATE — documented in STACK.md. |
+| **Push notifications when a "trending watch" is one you wishlist** | Could be useful | Reactivates the v3.0 `price_drop` / `trending_collector` notification stub patterns we're explicitly removing in v4.0 (per PROJECT.md cleanup). Wait until product signal demands it. | None — keep the notification surface focused on follow + watch_overlap. |
 
 ---
 
-## Feature 2: Notifications
+### Feature 2: `/search` Watches Tab — Catalog Search
 
-### Table Stakes
+**Comparable apps:**
+- **Letterboxd** — `/films/` browse + global search; autocomplete dropdown with poster + year; Enter for full-results page.
+- **Discogs** — Top-bar global search with "All / Releases / Artists / Labels / Users" scope. Autocomplete with thumbnail + format/year metadata.
+- **Goodreads** — Search by title/author/ISBN; autocomplete shows cover + author. Filter facets on results page.
+- **Spotify** — Autocomplete instant results, then "See all" → faceted results page (artists / albums / songs).
+
+#### Table Stakes
 
 | Feature | Why Expected | Complexity | Dependencies / Notes |
-|---------|--------------|------------|----------------------|
-| Follow notification — "X started following you" | Every social app with a follow graph surfaces this. Users want to know their follower count is growing; it validates the taste-network identity. | LOW | Depends on: `follows` table (existing v2.0); trigger: `insertFollow` Server Action writes a row to new `notifications` table |
-| Watch-overlap notification — "X added [watch] to their collection" when you own the same watch | Core taste-network signal. When someone whose taste you track adds a watch you own, it reinforces your collection identity and signals the watch is well-regarded in the community. | MEDIUM | Depends on: `activities` table (existing v2.0, `watch_added` type); derivation: at insert time, query all users who own a watch with matching `brand`+`model` (normalized, lowercased, trimmed); fan-out a notification row per match. No canonical watch IDs — brand+model fuzzy match is correct for v3.0 given KEY DECISION: per-user entries |
-| Unread count badge on notifications bell (nav) | Universally expected: a red or accent dot/number on the bell when unseen notifications exist | LOW | Depends on: `notifications` table with `read_at`; query `count(*) where user_id = current AND read_at IS NULL` |
-| Notifications inbox page with "Mark all read" | Users expect a dedicated page to scan all notifications; "mark all read" sets `read_at = now()` on every unread row for the user in a single `UPDATE WHERE user_id = X AND read_at IS NULL` | LOW | Per-row `read_at` is correct for v3.0 scale. The user-level `last_seen_at` cursor is more scalable (one write vs. N writes) but loses per-notification read state — you cannot show which individual notifications are unread when a user returns mid-list. At sub-500-user MVP scale, per-row UPDATE is correct. |
-| Empty state in notifications inbox | Without it, a blank page after "mark all read" feels broken | LOW | Static illustration + copy: "You're all caught up." No data dependency |
+|---|---|---|---|
+| **Live debounced results (no submit required)** | The Phase 16 `useSearchState` hook (250ms debounce + AbortController + URL sync) already shipped this for People. Watches must match — anything else feels archaic and inconsistent. Algolia/UX consensus: 200–400ms debounce. | S | Reuse `useSearchState` from Phase 16 verbatim. New DAL function `searchCatalogWatches(q, { limit, viewerId })` mirroring `searchProfiles`. |
+| **2-character minimum query** | A 1-char `pg_trgm` ILIKE on `brand` returns hundreds of low-signal rows. 2-char minimum already established in Phase 16 for People; consistency demands it for Watches. | S | Same gate: `if (q.trim().length < 2) return []`. |
+| **Result rows show brand + model + reference + thumbnail (if available)** | Discogs/Letterboxd/Goodreads ALL show thumbnail + metadata in autocomplete and result rows. Brand-name-only result rows feel broken. | M | `watches_catalog` should carry an optional `image_url` (canonical/representative). For backfill, take the first user's `imageUrl` for that catalog row. Lazy-load thumbnails via `next/image` (already in tree). |
+| **"Owned by you" / "On your wishlist" badge on result rows** | Discogs shows "In your collection" / "In your wantlist" inline. Without it, the user re-clicks watches they already own and discovers the duplicate after the click. Anti-N+1 fan-out from Phase 16 (`inArray` for `isFollowing`) generalizes directly. | M | New: `getOwnedAndWishlistedCatalogIdsForUser(userId)` → `Set<catalogId>`. Pass into result rows. |
+| **Empty-state in tab when no query** | NN/G: empty states should "increase learnability + suggest a CTA." When the user lands on the Watches tab with no query, show "Search for a watch by brand, model, or reference." + 3-5 example queries ("Speedmaster", "GMT-Master", "Nautilus 5711"). | S | Static UI. No data dependency. |
+| **"No results for {q}" state with fallback CTA** | When the query truly returns nothing, dead-ends are forbidden. CTA: "Can't find it? [Add it to your collection manually]" — this seeds the `user_promoted` catalog row per STACK.md. | S | Reuses existing add-watch flow with the search query pre-filled. |
+| **XSS-safe highlighted match text** | The Phase 16 `HighlightedText` (regex-escape + React text children, no `dangerouslySetInnerHTML`) is reusable verbatim across brand + model + reference. | S | Reuse Phase 16 component. |
+| **AbortController for in-flight queries** | Standard pattern in Phase 16. A user typing "Speedm" → "Speedmaster" should not race two queries. | S | Reuse Phase 16 `useSearchState`. |
 
-### Differentiators
+#### Differentiators
 
 | Feature | Value Proposition | Complexity | Dependencies / Notes |
-|---------|-------------------|------------|----------------------|
-| Watch-overlap notification grouped by watch at display time | Groups multiple overlap events for the same watch into one row rather than N separate rows — e.g., "3 collectors also own your Ref 5711." Reduces inbox noise when a popular watch triggers many matches at once. | MEDIUM | Insert individual rows; aggregate at display time by `(notification_type, watch_brand, watch_model, target_user_id, date)`. This preserves per-actor detail for future drill-down without complicating the write path. |
-| Stubbed UI templates for Price Drop and Trending Collector notifications | Signals the product roadmap to users who see the inbox: "notifications will get richer." Templates with placeholder data or a "coming soon" label set expectations without overpromising. | LOW | No data wiring needed; static template components rendered conditionally by notification `type` enum |
-| Per-type opt-out in Settings | "Notify me about: New followers / Watch overlaps" toggles per notification type. Respects user agency; follows Strava's and Instagram's established pattern of per-category notification controls. Prevents churned users from muting all notifications just to stop one noisy type. | MEDIUM | New: `notification_settings` JSONB column on `profile_settings` (or separate table). Read before fan-out: if target user has `follows_notifications = false`, skip inserting the follow notification row. |
+|---|---|---|---|
+| **Filter facets on results page** — Movement (auto/manual/quartz), Case size (≤36 / 36–40 / 40–42 / >42mm), Style tags | Once result count exceeds a screen, faceted refinement is the universal e-commerce pattern (Adobe Commerce / Algolia best-practice). Movement + case-size are the two highest-signal facets for watches. | M | Pure SQL `WHERE` extensions on the catalog query. Tailwind 4 collapsible facet sections (mobile-first). Don't ship until result counts cross ~30 — premature for v4.0 catalog scale. **DEFER to v4.x** unless the catalog hits that threshold. |
+| **"Evaluate this watch" inline CTA on each row** | Differentiator that ties Watches search → Feature 4 (Evaluate flow). User searches "Daytona" → sees rows → clicks "Evaluate" → /evaluate?catalogId={id} pre-filled. Closes the discovery → decision loop. | S | Adds a small button per row. Routes to `/evaluate?catalogId=X`. Catalog row → `Watch`-shaped object passed to `analyzeSimilarity()`. |
+| **Sort by "Best match" (relevance) vs "Most owned" vs "Recently added"** | Power-user surface. Not v1, but a small Select control on the results header. | S | Three SQL `ORDER BY` branches. |
 
-### Anti-Features
+#### Anti-Features
 
-| Feature | Why Requested | Why Avoid | Cite |
-|---------|---------------|-----------|------|
-| "X liked your wear" or reaction notifications | Likes are a natural extension of photo sharing | No likes exist and none will be added. Even if reactions were added later, "likes" drive engagement metrics at the cost of anxiety and comparison. | PRODUCT-BRIEF §10: "No engagement mechanics (likes/comments)" |
-| "X commented on your wear" notifications | Comments make wear events feel social | No comment system is planned. WYWT is a personal habit log that generates insights, not a posting surface. | PRODUCT-BRIEF §10: "No heavy posting system" and "No engagement mechanics" |
-| Real-time toast on notification receipt (WebSocket push) | Feels live and premium | No Supabase Realtime in v3.0 (KEY DECISION from v2.0: free-tier 200 concurrent WebSockets limit; server-rendered + `router.refresh()` is sufficient at MVP scale). Inbox-pull model is correct — user opens bell to see new items. Toast on receipt requires Realtime or polling; both add infra cost for minimal user value at sub-100-user scale. | PROJECT.md Key Decision: "No Supabase Realtime in v2.0" — same constraint applies to v3.0 |
-| Notification digest email | Useful engagement driver | Out of scope for v3.0. Email infra (custom SMTP) is not configured and email confirmation is currently OFF. Future milestone item. | PROJECT.md Active requirements: "Custom SMTP for email confirmation — currently OFF" |
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Full-fuzzy `pg_trgm` similarity scoring (`<->` operator with threshold)** | More forgiving for typos | ILIKE `%q%` already handles the misspelling pattern most users hit, and Phase 16 verified GIN indexes are reachable for ILIKE. Trigram-distance scoring adds query complexity without measurable UX win at <5000 catalog rows. **Revisit at 100k+ rows.** | Stick with ILIKE pattern from Phase 16. |
+| **Recent searches list / search history** | Standard UX on high-frequency surfaces (Google) | Catalog search is mid-frequency for Horlo (a few times per month, not per session). Storing/surfacing history adds infra (table or localStorage) for marginal return. Show example queries instead. | Curated example queries in empty state. |
+| **Voice search / image search** | Modern feel | Out of scope; requires significant infra (Whisper API, vision LLM). Defer indefinitely. | None. |
+| **Algolia / Meilisearch / Typesense** | "Search-as-a-service" — fast, faceted out-of-box | <5000 catalog rows × handful of users — `pg_trgm` GIN is two orders of magnitude under the threshold where these become useful. Operational overhead (separate index, sync pipeline, hosted cost) for negative ROI at v4.0 scale. | `pg_trgm` GIN (already in tree). STACK.md confirms. |
 
 ---
 
-## Feature 3: People-Only Search
+### Feature 3: `/search` Collections Tab — Search Across Collections
 
-### Table Stakes
+**The fundamental UX choice:** Search WITHIN a single collection (filter `/u/{user}` by tag/role/brand) or search ACROSS collections (find collections that contain a specific watch / match a tag profile)?
+
+**Comparable apps:**
+- **Discogs** — supports BOTH but separately: in-collection filtering (genre/format/year/style) is on `/user/{u}/collection`; cross-collection search ("which users own this release?") is on the release detail page as "X have this in their collection."
+- **Goodreads** — within-shelf filtering is the dominant pattern; cross-collection ("who else has this on their shelf") is largely missing — frequently complained-about UX gap.
+- **Letterboxd** — list filtering by year/genre/director is in-list; cross-list search is only via "members enjoying X" rails.
+
+**Recommendation for v4.0:** ship CROSS-collection search as the primary `/search` Collections tab semantic, because:
+
+1. The within-collection filtering already exists at `/u/{user}` via the FilterBar (v1.0 shipped) — no work needed
+2. Cross-collection search is the differentiated value prop — "find people whose collection composition matches my taste" is the taste-network unlock
+3. NN/G evidence: "Users overlook, misunderstand, and forget about the search scope; most people expect global results from the search bar." Global-by-default beats scoped-by-default.
+
+#### Table Stakes
 
 | Feature | Why Expected | Complexity | Dependencies / Notes |
-|---------|--------------|------------|----------------------|
-| Live debounced search results — no submit required | Users have been trained by every major search interface that results update as they type. A submit-first search feels archaic. | LOW–MEDIUM | 200–300ms debounce is the evidence-backed sweet spot (Algolia docs, UX research consensus). Use `useDebounce(query, 250)`. Under 200ms fires too many queries; over 300ms feels laggy. |
-| Minimum query length of 2 characters before firing | A 1-character query on `pg_trgm` ILIKE against usernames + bios returns a large, low-signal result set. 2 characters is the established minimum for name search. | LOW | Gate: `if (query.trim().length < 2) return []` |
-| Result ranking: taste overlap % first, then username ILIKE relevance | In a taste-discovery app, showing the most-similar collector first is the core value proposition. Pure alphabetical or follower-count ranking misses the point. Hybrid: `ORDER BY COALESCE(taste_overlap_pct, 0) DESC, username ASC` | MEDIUM | Depends on: Common Ground taste overlap (existing v2.0, server-computed); compute at query time with a result cap of 20; if join is too slow, stub with follower-count ranking and add overlap in a follow-up task |
-| "No results" state with suggested collectors | When a search returns nothing, a blank page creates a dead end. Suggested collectors (top-taste-overlap for current user) give a graceful fallback and reinforce discovery. | LOW | Depends on: `getCollectorsLikeUser()` (existing v2.0 home section DISC-02); reuse for no-results fallback |
-| 4-tab bar (All / Watches / People / Collections) with only People populated | Per PROJECT.md spec. Tabs signal the future shape of search without shipping unbuilt content. "Coming soon" state on non-People tabs prevents confusion. | LOW | Static tab UI; only People tab fires a query |
+|---|---|---|---|
+| **Search collections by watch identity** ("Who owns a Speedmaster Professional?") | The core use case for cross-collection search in any catalog-backed app. Discogs ships this; Goodreads doesn't and gets criticized for it. | M | Query: `SELECT DISTINCT u.* FROM profiles u JOIN watches w ON w.userId = u.id WHERE w.catalogId = $catalogId AND u.profile_public = true LIMIT 20`. Hard dep on `watches_catalog` per STACK.md. |
+| **Search collections by tag profile** ("Find people whose collection is heavy on `dressy` + `chronograph`") | Goes beyond watch-identity match — surfaces taste alignment. Common Ground does this for the current viewer; this exposes the same query for arbitrary tag inputs. | M | Aggregate `watches.styleTags + roleTags` per user; rank by tag-match-count. Reuses similarity-engine vocabulary (`Watch.styleTags`, `Watch.roleTags`). |
+| **Result rows show: avatar + username + bio snippet + collection size + composition pills** | Mirrors People-search row design from Phase 16. Composition pills ("12 owned • mostly dressy + 3 chronographs") preview the collection without a click. | M | Aggregate computed in DAL; rendered with `HighlightedText` (Phase 16). |
+| **Empty state with example searches** | Same NN/G principle as Watches tab. CTA: "Try searching for a brand, role, or style tag." | S | Static UI. |
+| **Two-layer privacy: only public profiles surface** | Critical. A search that exposes private collections is a privacy leak. Mirror Phase 16 pattern: RLS on `watches` (user_id ownership OR public profile join) + DAL `WHERE profile_public = true`. | M | Established v2.0 pattern, already proven in Phase 16. |
+| **"Coming soon" gate during construction phase** | Phase 16 already ships the 4-tab page with Watches/Collections/All as "coming soon." Removing the gate is a 1-line change once the DAL function lands. | S | Already wired in Phase 16. |
 
-### Differentiators
+#### Differentiators
 
 | Feature | Value Proposition | Complexity | Dependencies / Notes |
-|---------|-------------------|------------|----------------------|
-| Taste overlap % shown inline on search result rows | Unlike follower count or join date, overlap % is a signal unique to Horlo: "This collector shares 68% taste with you." Transforms people-search from a username lookup into a discovery surface. | LOW | Depends on: Common Ground computation (v2.0); compute per result row at query time or use pre-computed value |
-| Follow / unfollow inline from search results | No page navigation required to follow a discovered collector. Reduces friction in the discovery loop. | LOW | Depends on: `followUser` / `unfollowUser` Server Actions (existing v2.0 FOLL-01/02); FollowButton component (existing v2.0) |
+|---|---|---|---|
+| **"Collections you might enjoy" suggested results when query is empty** | Cross-applies Common Ground: if no query, surface top-overlap public profiles. Turns the empty Collections tab into a discovery surface, not a dead form. | M | Reuses Common Ground (v2.0 PROF-09). Same query as `/explore` "Collectors Like You" rail — could be the same component. |
+| **"Watches in common with you" badge** ("3 watches you both own") | Inline overlap signal on each result row. Lower-fidelity than full Common Ground % but appropriate for mid-volume scanning. | S | Pre-computed: viewer's catalogIds intersected with each result's catalogIds. Cap result set at 20 to keep this cheap. |
 
-### Anti-Features
+#### Anti-Features
 
-| Feature | Why Requested | Why Avoid | Cite |
-|---------|---------------|-----------|------|
-| Recent searches list / search history | Standard UX on high-frequency search surfaces (Google, Instagram) | People-search in Horlo is low-frequency. Storing and surfacing search history adds infra complexity (new table or localStorage entry) for minimal return. When there is no query, show suggested collectors instead — more useful than a list of previous searches. | PRODUCT-BRIEF §8 implies low-frequency discovery, not a high-frequency search surface |
-| Full pg_trgm similarity scoring (trigram similarity > threshold) | More forgiving UX for mistyped usernames | `pg_trgm` ILIKE (`username ILIKE '%query%'`) already handles partial matches and is sufficient for v3.0. Full trigram similarity scoring adds a GIN index requirement without meaningful UX improvement at sub-1000-user scale. Revisit if the user base grows. | Same rationale as KEY DECISION: per-user entries — complexity vs. current scale |
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Within-collection scoped search inside `/search` Collections tab** | "Search MY collection from the global search" feels powerful | NN/G: "Scoped search is dangerous — users forget which scope they're in." The within-collection filter UI ALREADY exists at `/u/{username}` via FilterBar — no need to duplicate it under `/search`. | Existing FilterBar at `/u/{user}`; potential `/u/{user}?q=…` URL param to deep-link a within-profile search. **Out of scope for v4.0.** |
+| **Saved-search alerts** ("Alert me when someone's collection matches X criteria") | Engagement surface | Reactivates the notification-stub pattern we're removing. Adds infra cost (cron, fan-out, cap-management) for marginal value at MVP scale. | None. |
+| **Free-text "describe your dream collection" semantic search** | LLM-era feel | Adds Anthropic API cost on every search; latency 5–15s breaks the live-search expectation; embeddings infra deferred indefinitely. Tag-profile search (table stakes above) covers 80% of the use case at zero LLM cost. | Tag-profile search (above). |
+| **Cross-collection search that ignores `profile_public`** | "More results" | Privacy violation — non-negotiable. | Two-layer privacy enforced. |
 
 ---
 
-## Feature 4: WYWT Photo Post Flow
+### Feature 4: "Evaluate this Watch" — Save-vs-Commit Pattern
 
-### Table Stakes
+**Comparable apps:**
+- **Letterboxd Watchlist** — single-click clock-icon toggle. Watchlist = "interested but uncommitted." Logging/rating moves the film into the committed history. **Save-then-commit is THE established UX for taste apps.**
+- **Goodreads "Want to Read"** — exclusive shelf; one-click add. The `Want to Read` shelf is the parking lot before commitment to "Currently Reading" or "Read."
+- **Are.na "Save to Channel"** — even more lightweight; "Save to channel" is a dropdown picker, not a commit action. Channels are the meta-organization layer.
+- **Pinterest Save / Boards** — same pattern: save-now, organize-later.
+- **E-commerce Save for Later** (NN/G research) — saves visible from cart; Wishlist is a longer-term parking lot. Both reduce decision friction.
+
+**The mental model unlocks:** users want to ASK QUESTIONS about a watch before they commit to anything (collection, wishlist, sold, grail). "Should I add this?" is the question Horlo's similarity engine already answers — but today the engine only fires *after* the watch is in the collection. The Evaluate flow inverts this.
+
+#### Table Stakes
 
 | Feature | Why Expected | Complexity | Dependencies / Notes |
-|---------|--------------|------------|----------------------|
-| Chooser-first, not camera-first | Mobile web pattern: present options first (Take Photo / Upload / Skip), then launch camera. Camera-first fails gracefully — if the user denies camera permission, a chooser-first flow still offers Upload. | LOW | Chooser step is UI-only; camera and file upload are separate branches |
-| Static framing guide overlay for camera path | When the user picks "Take Wrist Shot," a static overlay (dotted oval or dotted rounded rectangle centered in the frame) communicates "frame your wrist here." Implemented as an absolutely-positioned SVG or CSS border layer over the `<video>` element — no canvas compositing needed until capture. Dotted oval is the most natural for a wrist shot. | LOW | Canvas `drawImage()` at capture; overlay is pure CSS/SVG positioned over video feed |
-| EXIF stripping before upload | Location data embedded in JPEG EXIF is a real privacy risk. Stripping before upload is table stakes for any photo-sharing feature. Approach: re-encode through `canvas.toDataURL('image/jpeg', 0.9)` after capture, which strips all metadata by spec. For uploaded files, draw to canvas and re-export before sending to Supabase. | LOW–MEDIUM | Canvas re-encoding is sufficient for EXIF strip. `heic2any` handles HEIC conversion before the canvas step (already planned per PROJECT.md). |
-| Per-wear visibility selector defaulting to Private | Three-tier selector is expected for any content with personal behavioral data. The DEFAULT must be Private — not last-used, not most-open. Rationale: wear events are behavioral data; logging a wear should never accidentally expose it. Strava's documented fallback behavior (server unable to read default → defaults to "Only You") confirms this industry pattern. | LOW | Default Private is a single schema default on the new `visibility` column. The Followers tier requires DAL propagation (see below). |
-| Followers visibility tier rippled through all wear-reading DALs | A new "Followers" tier means every DAL function that reads wear events must gate on the follow relationship for the Followers case. Missing even one read path is a privacy leak. Two-layer privacy pattern (RLS + DAL WHERE) is the established v2.0 approach. | MEDIUM | Depends on: two-layer privacy pattern (established v2.0 RETROSPECTIVE). Audit: `getWearRailForViewer`, worn tab DAL, any future wear-reading function. Mirror the pattern from `getFeedForUser` (Phase 10). |
-| Note field (0/200 characters), plain text only | A short contextual note is expected on any logging action. Plain text only — no markdown, no special emoji keyboard. 200-char cap prevents WYWT from becoming a micro-blog. | LOW | Existing `markAsWorn` Server Action (v2.0) extended with `note` and `photo_url` parameters |
-| Sonner toast on successful post | Every mutation in the app surfaces a toast. Wear post is no exception. | LOW | Existing: `sonner` is in the stack; established mutation pattern |
-| Multi-step modal (not full-page flow) | Step 1: Pick Watch (reuses WatchPickerDialog). Step 2: Photo + Note + Visibility. A multi-step modal keeps the page context visible beneath and matches the "lightweight interactions" principle. A full-page navigation flow would feel heavy for a 2-step log. | MEDIUM | Depends on: `WatchPickerDialog` (existing v2.0 shared component) as step 1; step 2 is a new modal panel |
-| Supabase Storage with per-user RLS buckets + signed URLs | Photos stored in a bucket with RLS so User A cannot read User B's Private or Followers-tier wear photos. Signed URLs for Private and Followers-tier photos; public URLs acceptable only for Public-tier photos (to avoid per-request signing overhead). | HIGH | New infra: Supabase Storage bucket + RLS policy + signed URL generation in DAL |
+|---|---|---|---|
+| **Dedicated `/evaluate` route (NOT modal)** | Confirmed in STACK.md: SimilarityResult is dense (label + per-dimension breakdown + top-3 nearest + rationale, ~80–120 lines vertical); flow involves a 5–15s server roundtrip. Modal is wrong shape. Letterboxd's `/film/{slug}` detail page is the analog. | M | New page `src/app/evaluate/page.tsx`. Server Component reads `?url=` or `?catalogId=`. Pure composition of existing primitives. |
+| **Paste-URL input as primary entry** | The existing 3-stage extraction pipeline (`/api/extract-watch`) is the differentiated input — paste any retailer URL → pre-filled watch. Don't bury this. | S | Reuse `/api/extract-watch` route handler unchanged. Auth-gated, SSRF-hardened (Phase 1 SEC-01). |
+| **Verdict UI: SimilarityLabel + rationale + top-3 nearest watches** | This UI exists today inside `WatchDetail` (the in-card insight). Extract into `<SimilarityVerdictCard>` — reusable across Evaluate page + WatchDetail + future Wishlist insights. | M | Refactor existing render into shared component; no new logic. |
+| **"Add to my collection" CTA on verdict** | After evaluation, the user's natural next move is "OK, I'm convinced — add it." Letterboxd's "Mark as watched" on a film page is the analog. Friction-free conversion to commit. | S | Calls existing `addWatch` Server Action with the extracted Watch payload. |
+| **"Add to my wishlist" CTA on verdict** | Lower-commitment commit: "interesting, but not buying yet." Mirrors Letterboxd Watchlist clock-icon. Maps to existing `WatchStatus.wishlist`. | S | Same `addWatch` action with `status: 'wishlist'`. |
+| **"Save to Evaluate Later" — defer commit entirely** | The most aligned-with-mental-model action. User wants to think about it, not commit yet. Maps to Letterboxd Watchlist semantics. **Critical for the save-vs-commit UX to work** — without this, "Evaluate" becomes a thinly-disguised wishlist add. | M | **Choice point** — does this need a NEW status (`evaluating`) or does it reuse `wishlist`? Recommendation: **reuse `wishlist`**. A new status forks the data model; the wishlist already serves "interested but uncommitted." If the user wants to track *why* they wishlisted (similarity verdict), the rationale can be stored in the `notes` column alongside. NO new schema required. |
+| **Empty state on `/evaluate` (no URL provided yet)** | Same NN/G principles. CTA: "Paste a watch URL from any retailer — Hodinkee, Bobs Watches, Crown & Caliber, brand sites." Sample URL or two. | S | Static UI. |
+| **Auth-gated** | The similarity computation requires user collection + preferences. Anonymous evaluate would have to use stub data — not useful. | S | proxy.ts already enforces auth on `/evaluate` by default; no exclusion needed. |
 
-### Differentiators
+#### Differentiators
 
 | Feature | Value Proposition | Complexity | Dependencies / Notes |
-|---------|-------------------|------------|----------------------|
-| Edit-after-post: add a photo to a wear event already logged | Collectors often log wear in the morning without a photo, then want to add one later. Allowing photo-add to an existing wear event captures more images and makes the worn tab richer over time. | MEDIUM | New: `updateWearEvent(wearId, { photo_url })` Server Action; wear detail view needs an "Add photo" affordance when `photo_url` is null |
-| Wear detail overlay on home rail tap (image-first, no engagement actions) | When another user taps a wear item in the WYWT rail, they see an image-first overlay with watch brand/model and collector context — no like button, no comment field. Wrist shots become the visual identity of the network. | MEDIUM | Depends on: WYWT rail (existing v2.0 home); new overlay component; `photo_url` from `wear_events` |
+|---|---|---|---|
+| **Three-CTA verdict ladder: Save to Evaluate Later → Add to Wishlist → Add to Collection** | Mirrors mental progression. Most apps offer only commit; Horlo can offer the full ladder of commitment with similarity context attached. | S | All three CTAs map to existing `addWatch` paths (or Letterboxd-style Watchlist if we use a separate status — but recommendation above is to reuse wishlist). |
+| **"Compare with this watch I already own" affordance on verdict** | Surfaces the engine's pairwise reasoning. User clicks a top-3 nearest match → sees "Here's why this watch overlaps with the X in your collection." Educates the engine and reinforces the verdict. | M | New: `<SimilarityPairwiseCard>` — drill-down from top-3 list. Defer to v4.x if scope-tight. |
+| **Pre-fill from `/search` Watches tab → Evaluate inline button** | Cross-feature wiring: the "Evaluate" button on Watches search rows lands on `/evaluate?catalogId=X` and skips the URL-paste step. Powerful. | S | Already noted above as Feature 2 differentiator. |
+| **Shareable verdict URL** (`/evaluate?url=...&shared=true`) | Power-user surface. Lets a collector send a friend a "here's what your engine would say about this watch" link. | S | URL params already drive the page; "shared" mode just hides the "Add to my collection" CTA (since it's not the recipient's verdict). Defer if scope-tight. |
 
-### Anti-Features
+#### Anti-Features
 
-| Feature | Why Requested | Why Avoid | Cite |
-|---------|---------------|-----------|------|
-| Confirmation dialog before submitting a wear log | Preventing accidental posts feels safe | Adds a tap with no real benefit. Wear events are low-stakes; the default of Private means accidental posts are private. Edit-after-post (and a future delete-wear action) is the escape hatch. Confirmation dialogs are a friction anti-pattern for a habit-formation loop. | PRODUCT-BRIEF §2: "Lightweight interactions > heavy posting" |
-| Likes, reactions, or comments on wear photos | Photo sharing invites social engagement mechanics | No engagement mechanics in this product. WYWT is a behavioral data layer (habit + insights), not a posting surface. Photos exist to make the worn tab visually rich and the home rail more compelling — they are not content to engage with. | PRODUCT-BRIEF §10: "No engagement mechanics (likes/comments)" |
-| Multi-photo carousel per wear event | Power users may want to document multiple angles | One wrist shot per wear event keeps the data model simple, storage costs predictable, and the home rail fast. Carousels push WYWT toward "social post" territory, conflicting with the lightweight-interaction principle. Revisit only if user research shows strong demand. | PRODUCT-BRIEF §2: "Lightweight interactions > heavy posting" |
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Modal pattern for Evaluate (parallel + intercepting routes)** | "Less disruptive entry from Add Watch flow" | Verdict UI is too dense; flow is too long. STACK.md: route, not modal. | New `/evaluate` route. |
+| **Anonymous / pre-auth Evaluate** | Conversion driver — "try it without signing up" | Engine requires user's collection + preferences; anonymous version would be a stub. Pivots Horlo from a personal-tool to a marketing surface. Not the right tradeoff for v4.0. | Auth-gated. |
+| **NEW `evaluating` status separate from wishlist** | Cleaner data model for "saved for evaluation" | Forks the data model into a 5-status discriminated union; complicates filter bar, status toggle, similarity engine, public profiles. The wishlist already serves "interested but uncommitted" — re-purposing it costs nothing. | Reuse `WatchStatus.wishlist`; verdict rationale in `notes`. |
+| **"Auto-save every paste" — implicit save** | Frictionless | Violates user agency; user might just be checking, not saving. Goodreads's "auto-add to Want to Read on every interaction" is widely complained-about UX. | Explicit save CTA only. |
+| **Multi-watch comparison on /evaluate (paste 3 URLs, see them ranked)** | Power user feature | Stretches scope dramatically; the engine is pairwise-against-collection, not n-way comparison. Out of scope. | None. Defer to a hypothetical v5.x "Comparison Tool." |
 
-### Followers Tier Introduction Risk
+---
 
-The "Followers" visibility tier is new in v3.0 — v2.0 had only Private and Public. Users who set their profile to "public" may assume wear posts are also public, not realizing "Followers" is a distinct, narrower audience.
+### Feature 5: Settings Page IA — Section Ordering
 
-This is NOT a reason to drop the tier — it is the correct privacy model — but it must be communicated:
+**Comparable apps:**
+- **GitHub Settings** — Profile / Account / Appearance / Accessibility / Notifications / Billing / Emails / Password and authentication / Sessions / SSH and GPG keys / Organizations / Moderation / Repositories / Packages / Pages / Saved replies / Code review limits / Applications / Scheduled reminders / Security log / Danger Zone (per repo, not per account)
+- **Vercel Account** — Profile / Account / Notifications / Email / Authentication / Security / Billing / Invoices / Plans / Integrations / Login Connections
+- **Linear** — Account / Profile / Preferences / Security & access / Notifications / Connected accounts
+- **Letterboxd** — Profile / Account / Privacy / Notifications / Reviews / API
+- **Discord** — Account / Profile / Privacy & Safety / Authorized Apps / Connections / Friend Requests / Voice & Video / Notifications / Keybinds / Language / Streamer Mode / Advanced / Activity Privacy / Game Activity / Game Overlay
 
-1. Default to Private on all wear posts so the first post is never accidentally semi-public
-2. Label the selector clearly: "Followers only — people who follow you" (not just "Followers")
-3. Consider a one-time tooltip on first use of the flow explaining the three tiers
-4. No "remember last-used setting" default — always start on Private to avoid habituation toward a more-open default
+**Pattern across all:** Identity-related (Account, Profile) first → Privacy/Security adjacent → Behavior controls (Notifications, Preferences) middle → Cosmetic (Appearance) lower → Destructive (Danger Zone, Delete Account) last.
 
-The risk of NOT having the Followers tier is worse: without it, users who want to share with their follow network but not the whole internet have only the binary Private/Public choice, which pushes them toward Public (over-sharing) or Private (under-sharing). The tier resolves this. Handle the confusion risk through UI copy, not by removing the tier.
+#### Recommended ordering for `/settings`
+
+| # | Section | Contents | Source of pattern |
+|---|---|---|---|
+| 1 | **Account** | Email change, password change, sign-out-all-sessions (future) | GitHub, Vercel, Linear all start with Account |
+| 2 | **Profile** | Username, display name, bio, avatar, profile_public toggle | GitHub Profile / Letterboxd Profile |
+| 3 | **Preferences** | `collectionGoal`, `overlapTolerance`, similarity tuning (the schema-driven knobs from PROJECT.md) | Linear Preferences |
+| 4 | **Privacy** | `collectionPublic` / `wishlistPublic` toggles; `notesPublic` per-watch handled in WatchForm; default-wear-visibility | Letterboxd Privacy |
+| 5 | **Notifications** | `notifyOnFollow` / `notifyOnWatchOverlap` toggles (backend wired in v3.0 Phase 13; UI exposure new) | Universal |
+| 6 | **Appearance** | Theme switch (lifted from UserMenu as a discoverable home), font scale (future) | GitHub, Vercel both place Appearance below Notifications |
+| 7 | **Danger Zone** | Delete account (future), wipe collection (future) | GitHub Danger Zone is universal pattern |
+
+#### Table Stakes
+
+| Feature | Why Expected | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Account section: change email** | Universal table stakes for any authenticated app since 2010. v3.0 omits it. | M | STACK.md: `supabase.auth.updateUser({ email })` + extend `/auth/confirm` for `type === 'email_change'`. |
+| **Account section: change password** | Same. v3.0 omits it. | M | STACK.md: `supabase.auth.updateUser({ password })` + handle `reauthentication_needed` for stale sessions. |
+| **Notifications section: opt-out toggles** | Backend already wired in v3.0 Phase 13 (`notifyOnFollow`, `notifyOnWatchOverlap`); UI is the gap. | S | Pure UI exposure of existing fields on `userPreferences`. |
+| **Appearance section: theme switch** | Currently in UserMenu; Settings is the discoverable home for cosmetic prefs (GitHub/Vercel pattern). Don't remove from UserMenu — surface in BOTH places. | S | Lift `<InlineThemeSegmented>` into Settings; UserMenu retains its copy. |
+| **Vertical-tabs layout (sidebar-style desktop, accordion mobile)** | STACK.md confirms `@base-ui/react` Tabs with `orientation="vertical"`. Standard SaaS pattern. | M | New layout component; URL hash drives active tab. |
+| **Toast confirmation on save** | Sonner already in tree; every mutation surfaces a toast (established v3.0 pattern). | S | Existing pattern. |
+
+#### Differentiators
+
+| Feature | Value Proposition | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Preferences live preview — "Here's how your similarity engine reads your taste"** | Surfaces what `collectionGoal` + `overlapTolerance` *do*. Without this, the knobs are obscure ("balanced vs specialist vs variety" — what does that mean for me?). Show 1–2 sample similarity verdicts with each setting. | M | Re-uses similarity engine. Renders 2–3 example verdicts at different settings. **Differentiator — can defer.** |
+| **Notification preview** — "Here's what a follow notification looks like" | Mirrors GitHub's notification settings preview. Helps users decide which to opt out of. | S | Pure UI. |
+
+#### Anti-Features
+
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Account section as separate route** (`/settings/account`, `/settings/privacy`, …) | Each section gets its own URL | STACK.md: vertical tabs with hash-based state (`/settings#account`) survive `router.refresh()` AND remain shareable, without per-route layout boilerplate. Can migrate later if sections balloon. | URL-hash-driven tabs. |
+| **Granular per-notification-actor opt-out** ("don't notify me about @user") | Power-user surface | Massive scope creep; mute-list infra; not an MVP problem. | Two coarse toggles (per type) only. |
+| **Email-change without re-auth** | Less friction | Security regression — STACK.md: keep "Secure email change" + "Secure password change" Supabase Dashboard toggles ON. The two-link pattern is the project's two-layer-defense ethos applied to email. | Supabase default flow. |
+| **Delete-account button shipped without confirm modal + cooling-off** | Standard "Danger Zone" feature | Too risky to ship in v4.0 without a multi-step flow (typed-username confirmation, 30-day soft-delete, etc). Defer entirely. | Stub the section as "Coming soon" — visible placeholder, not built. **Or omit Danger Zone entirely from v4.0.** |
+
+---
+
+### Feature 6: Profile Prominence in Nav
+
+**Comparable apps:**
+- **Letterboxd** — top-right avatar + chevron; click avatar → dropdown with Profile / Activity / Reviews / Lists / Watchlist / Diary / Likes / Settings / Sign Out
+- **Mastodon** — top-right avatar opens a sidebar with profile preview + quick actions
+- **Discord** — bottom-left avatar with status indicator
+- **GitHub** — top-right avatar + dropdown
+- **Twitter/X** — top-right avatar mobile bottom-nav profile slot
+- **Universal pattern**: avatar in top-right is the dominant convention across the social/taste/dev category
+
+#### Table Stakes
+
+| Feature | Why Expected | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Top-right avatar in `DesktopTopNav`** | Universal social-app convention; v3.0 buries Profile inside UserMenu dropdown — discoverability problem. | S | Pure markup change in `DesktopTopNav.tsx`. Avatar primitive already in `src/components/ui/`. |
+| **Avatar click → drops to `/u/{username}` directly** | Letterboxd primary pattern. Avatar IS the profile shortcut. Settings/Sign-out adjacent (chevron) → keep current UserMenu dropdown semantics for those. | S | Two-affordance control: avatar = navigate; chevron = open menu. |
+| **Profile slot in mobile `BottomNav`** | Already exists as v3.0 Phase 14. No change needed for mobile. | — | Already shipped. |
+
+#### Differentiators
+
+| Feature | Value Proposition | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Status indicator on avatar** ("worn today" green dot, or notifications dot) | Discord/Mastodon-style. Could double as the notifications indicator (instead of the bell carrying it). | S | Conditional render of a small dot on the avatar. Reuses unread-notifications query. **Optional.** |
+| **Avatar long-press / right-click → quick-actions menu** | Power user surface (Letterboxd-app pattern) | Mostly mobile gesture; defer. | None. |
+
+#### Anti-Features
+
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Two top-right profile entries (avatar + Settings link separately)** | "Both ways to access" | Visual clutter. The chevron-on-avatar pattern handles both with one control. | Single avatar control, dual affordance. |
+| **Profile-tab-on-desktop bottom nav** | Mobile-desktop parity | Desktop has a top nav; bottom nav is mobile-specific. Forcing parity adds noise. | Keep desktop top-right + mobile bottom-nav profile slot. |
+
+---
+
+### Feature 7: Empty-State CTAs Across Collection / Wishlist / Notes / Worn
+
+**Comparable apps best-in-class:**
+- **Linear** — empty Inbox shows literal whitespace + a one-line illustration + "You're all set" + tip ("Track your team's progress here once issues come in"). Subtle.
+- **Notion** — empty database shows a sample schema + "Add your first row" CTA + a sample template gallery
+- **Letterboxd** — empty Watchlist: "Track films you'd like to watch by adding them to your Watchlist. The clock icon adds a film to it." Plus a button "Browse Films" linking to /films/popular/.
+- **Goodreads** — empty Want to Read: "Start tracking books you want to read." + "Find books" CTA.
+- **NN/G** core principle (3 guidelines): (1) Explain why the state is empty; (2) Suggest a clear next step (CTA); (3) Use illustrations/icons sparingly.
+
+#### Table Stakes
+
+| Feature | Why Expected | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Empty-state on Collection (no watches owned)** | First-time user lands on home with 0 watches → must see clear next step. | S | Existing `WatchGrid` already renders 0 cards; need to detect length 0 and render `<EmptyState variant="collection">` with CTAs: [Add a watch] [Evaluate a watch] [Browse popular collectors]. |
+| **Empty-state on Wishlist** | Letterboxd Watchlist analog. CTA: [Evaluate a watch] [Browse trending] | S | Same pattern. |
+| **Empty-state on Worn tab (no wear events ever)** | After v3.0 wear loop ships, a brand-new user lands here often. CTA: [Mark a watch as worn today]. | S | Wear button already exists in `BottomNav`. |
+| **Empty-state on Notes tab (no notes on any watch)** | Less common but real. CTA: [Add a note to a watch in your collection]. | S | Existing notes UI. |
+| **Empty-state in NotificationsInbox (already shipped)** | v3.0 Phase 13 already shipped. | — | Already shipped. |
+| **Empty-state in `/search` Watches/Collections tabs** | See Features 2 & 3 above. | S | Already covered. |
+| **Empty-state on `/explore` for new users (sparse network)** | See Feature 1 above. | S | Already covered. |
+| **Empty-state copy matches Horlo voice — collector-aware, not generic** | "No watches yet" is lazy. "Your collection is empty — start by adding your daily wearer or your grail" tells the story. | S | Copywriting work. |
+| **Single primary CTA per empty state, not 3+** | NN/G research: too many CTAs paralyze. One primary + one optional secondary. | S | Discipline in design phase. |
+
+#### Differentiators
+
+| Feature | Value Proposition | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Onboarding-style empty states (multi-step) on Collection** | First-time users see a 3-step "Add your first watch / Set your preferences / Find collectors" flow inline. NotionNotion uses this for empty databases. | M | New component; 3 dismissable cards. Could feel like onboarding without forcing a tour. |
+| **Sample / placeholder data in empty Collection** | Show a "demo" Speedmaster card with overlay "Add yours" — Notion does this. | M | Visually loud but illustrative. **Risk:** users mistake demo for real data. Skip unless designed carefully. |
+
+#### Anti-Features
+
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **"No data here" / "Empty" copy** | Quick to write | NN/G specifically calls this out as the lazy-placeholder anti-pattern. Generic "no data" tells the user nothing about *why* and *what to do next*. | Specific, voice-aware copy with CTA. |
+| **Multiple competing CTAs in one empty state** | Variety | NN/G: too many CTAs paralyze. One primary, one optional secondary. | Single primary. |
+| **Modal-blocking onboarding tour** | Forced engagement | Friction; many users instinctively dismiss. NN/G empty-state guidelines explicitly recommend in-context CTAs over modal tours. | Inline empty-state CTAs. |
+| **Loading skeleton stuck rendering forever (de facto empty state)** | Misuse of skeletons | NN/G: empty states should be deliberate, not the result of failure to render. | Detect 0 results → render explicit empty state. |
+
+---
+
+### Feature 8: Form Feedback — Toast vs Inline, Pending States, Error Specificity
+
+**Comparable evidence (NN/G, LogRocket, GOV.UK Design System, Pencil & Paper):**
+- **Inline validation** produces a 22% increase in form-success rates and 42% decrease in completion times when feedback is specific.
+- **Toast notifications** violate WCAG 2.2 in three ways: timing (auto-dismiss before screen-readers), keyboard accessibility (focus traps), and announcement (not announced unless `aria-live="polite"`). Sonner handles `aria-live` correctly but auto-dismiss timing is still a concern.
+- **GOV.UK / Carbon Design System** combines both: error summary at top of form (anchor links to fields) + inline errors next to each field. Best practice for forms with > 3 fields.
+- **Sonner** is already in tree (`<ThemedToaster />` shipped in v3.0 Phase 15) bound to custom ThemeProvider.
+
+#### Recommended pattern
+
+| Scenario | Pattern | Rationale |
+|---|---|---|
+| **Mutation success (transient confirmation)** | Sonner toast | Action complete, no further reading. Auto-dismiss is desirable. v3.0-established pattern. |
+| **Mutation error — top-level (network, auth, unknown)** | Sonner toast (error variant) + log to console for ops | Same shape as success; user retries. |
+| **Form validation — field-level** | Inline `<ErrorMessage>` next to field + `aria-describedby` | NN/G evidence: specific, location-bound feedback drives 22% success-rate lift. |
+| **Form validation — multi-field summary at submit** | Inline summary banner at form top with anchor links | GOV.UK best-practice for forms > 3 fields. |
+| **Pending / loading state** | Spinner inside the submit button + button disabled + form fields disabled | Standard submit-button-disabled pattern; prevents double-submit; gives precise location of the operation. |
+| **Optimistic update succeeded, then server failed** | Revert UI + toast error + inline indicator on the affected row | The reverted optimistic UI tells the user "this didn't stick"; toast carries the why. |
+
+#### Table Stakes
+
+| Feature | Why Expected | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Sonner toast on every mutation success** | v3.0 pattern is established. Audit all v4.0 surfaces (Account email/password change, preference saves, evaluate-save, etc) and ensure toast hooks. | S | Existing `<ThemedToaster />`. |
+| **Inline field-level errors on all forms** | NN/G best practice. v3.0 Phase 999.1 (MR-01) already used this pattern (`role="alert"` + `aria-live="polite"`) for `PreferencesClient` save failures. | S | Pattern established; replicate. |
+| **Disabled submit button during pending state** | Prevents double-submit. v3.0 pattern. | S | Existing pattern. |
+| **`aria-live="polite"` on form-level status banners** | Accessibility compliance. v3.0 pattern (MR-01). | S | Pattern established. |
+| **Contextual error messages — say what went wrong AND what to do** | "Network error" → "Couldn't reach the server. Check your connection and try again." Specific > generic. | S | Copywriting. Per Pencil & Paper / NN/G research, this drives the 22% success-rate lift. |
+| **URL-extract error context** ("We couldn't extract this watch from {host}. Try the manufacturer's product page.") | The extract-watch route fails in non-deterministic ways (LLM stage timeout, structured-data missing, host returns 403). Generic error breaks the user. | M | Categorize extract errors in route handler; surface category to client; map to specific copy. Per PROJECT.md v4.0 scope. |
+| **Form fields disabled during pending state** | Prevents user editing mid-submit. | S | Standard pattern. |
+
+#### Differentiators
+
+| Feature | Value Proposition | Complexity | Dependencies / Notes |
+|---|---|---|---|
+| **Promise-based Sonner integration** (`toast.promise()` — auto-pending, success, error states) | Sonner's `toast.promise()` API binds toast lifecycle to the Server Action promise. Cleaner than manual `toast.success()` after `await`. | S | Refactor existing manual toasts. **Optional polish.** |
+| **Optimistic-update pattern across more mutations** | v3.0 Phase 13 already uses `useOptimistic` + `useTransition` on `NotificationRow`. Extend to status toggles, follow buttons, etc. | M | Use `useOptimistic` per surface. |
+| **Undo-toast for destructive mutations** ("Watch deleted — Undo") | Gmail / Linear pattern. 5-second undo window before commit. Reduces destructive-mutation anxiety. | M | Soft-delete with cron cleanup, or in-memory undo queue. **Optional polish — defer if scope-tight.** |
+
+#### Anti-Features
+
+| Feature | Why Requested | Why Avoid | Alternative |
+|---|---|---|---|
+| **Toast-only for form errors** | Less visual noise | NN/G: violates WCAG 2.2 (auto-dismiss before screen-readers); user can miss the toast. Inline is canonical for forms. | Toast + inline. |
+| **Modal-blocking error dialog** | Demands attention | Pencil & Paper: modal errors are an anti-pattern; they break flow and force user acknowledgment for routine errors. | Inline + toast. |
+| **`alert()` / native browser dialog** | Quick to add | Pre-2010 UX. Blocks page; not stylable; not accessible. | Inline / toast. |
+| **Vague "Something went wrong"** | Easy to write | NN/G: "Vague errors trigger user blame and frustration; specific errors let users self-correct." | Specific category + recovery action. |
+| **Auto-clearing form on error** | Clean slate | User loses everything they typed. Anti-pattern. | Preserve all input on error; surface what failed. |
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Mobile bottom nav]
-    requires --> [env safe-area-inset-bottom in root layout viewport meta]
-    requires --> [Stub /explore route]
+[Catalog `watches_catalog` table — STACK.md]
+    ├──unblocks──> [/explore Trending Watches rail]
+    ├──unblocks──> [/explore "Watches Gaining Traction" rail (differentiator)]
+    ├──unblocks──> [/search Watches tab]
+    ├──unblocks──> [/search Collections by-watch-identity (cross-collection)]
+    └──unblocks──> [/evaluate?catalogId= deep-link from /search]
 
-[Notifications bell in nav]
-    requires --> [notifications table (new v3.0)]
-    requires --> [Unread count query in nav Server Component]
+[/search Watches result row "Evaluate" button]
+    └──requires──> [/evaluate route]
 
-[Follow notification]
-    requires --> [notifications table]
-    triggers from --> [insertFollow Server Action (existing v2.0)]
+[/evaluate verdict "Add to Wishlist" CTA]
+    └──reuses──> [existing addWatch Server Action with status: 'wishlist']
+    └──reuses──> [existing similarity engine]
+    └──reuses──> [existing /api/extract-watch route]
 
-[Watch-overlap notification]
-    requires --> [notifications table]
-    derives from --> [activities table watch_added rows (existing v2.0)]
-    requires --> [brand+model normalize+match fan-out query]
+[Settings Account section: change email]
+    └──requires──> [extend /auth/confirm route handler for type=email_change]
+    └──requires──> [Supabase custom SMTP — STACK.md Resend integration]
 
-[Mark all read]
-    requires --> [notifications table with per-row read_at]
+[Settings Account section: change password]
+    └──requires──> [supabase.auth.updateUser({password}) + reauth dialog]
+    └──optional──> [Supabase "Secure password change" toggle ON]
 
-[People search]
-    requires --> [/search route (new)]
-    uses --> [Common Ground taste overlap (existing v2.0) for ranking]
-    uses --> [FollowButton component (existing v2.0)]
+[Settings Notifications opt-out toggles UI]
+    └──reuses──> [v3.0 Phase 13 backend (notifyOnFollow, notifyOnWatchOverlap fields)]
 
-[WYWT photo post step 1]
-    reuses --> [WatchPickerDialog (existing v2.0 shared component)]
+[Settings Appearance theme switch]
+    └──reuses──> [v3.0 InlineThemeSegmented component]
 
-[WYWT photo post step 2 — photo]
-    requires --> [getUserMedia (camera path) OR file input (upload path)]
-    requires --> [Canvas EXIF strip before upload]
-    requires --> [heic2any for HEIC conversion (planned per PROJECT.md)]
-    requires --> [Supabase Storage bucket + RLS (new infra)]
+[Profile avatar in DesktopTopNav]
+    └──reuses──> [Avatar primitive in src/components/ui/]
+    └──reuses──> [/u/{username} route (v2.0)]
 
-[WYWT photo post step 2 — visibility]
-    requires --> [visibility column on wear_events (new column on existing table)]
-    requires --> [Followers tier rippled through all wear-reading DALs]
-    depends on --> [Two-layer privacy pattern (established v2.0)]
+[Empty-state CTAs across Collection / Wishlist / Worn / Notes]
+    └──depends on──> [Detection of `length === 0` state per surface]
+    └──depends on──> [Voice-aware copy work]
 
-[Wear CTA "done today" state]
-    requires --> [Today's wear events query (existing DAL, extended)]
+[Form feedback polish]
+    └──reuses──> [v3.0 Sonner ThemedToaster]
+    └──reuses──> [v3.0 Phase 999.1 MR-01 pattern (role=alert + aria-live=polite)]
+    └──extends──> [/api/extract-watch route handler with categorized error surface]
 
-[Edit-after-post — add photo later]
-    requires --> [updateWearEvent Server Action (new)]
-    requires --> [Supabase Storage bucket (same as photo post)]
+[/explore "Watches Gaining Traction" rail (differentiator)]
+    └──requires──> [watches_catalog_daily_snapshots table + pg_cron daily insert]
+
+[/explore Trending Watches counts]
+    └──requires──> [pg_cron daily UPDATE watches_catalog SET owners_count = ... — STACK.md]
+
+[/search Collections "Watches in common" badge]
+    └──requires──> [Common Ground intersection (v2.0)]
 ```
+
+### Critical-path dependencies
+
+- **`watches_catalog` is the keystone.** /explore Trending, /search Watches, /search Collections by-watch-identity, and /evaluate?catalogId= all depend on it. Land it first.
+- **Custom SMTP unblocks Account section.** Without it, email-change confirmation links go nowhere. Must precede the Account UI.
+- **`/evaluate` route can ship independently** of catalog (URL-paste path works), but the cross-feature wiring from /search Watches → Evaluate requires catalog.
+- **Settings restructure is independent** of catalog work — could ship in parallel.
+
+### Conflicts (none material)
+
+No anti-feature conflicts identified. The strongest tension is between "search WITHIN collection" (within-profile filter) vs "search ACROSS collections" (the Collections tab) — but Feature 3 resolves this by routing within-profile filtering to the existing `/u/{user}` FilterBar and reserving `/search` for across-collection.
 
 ---
 
-## Phase Sequencing Recommendation
+## MVP Definition (v4.0 — what to launch with)
 
-**Phase 11 — Navigation Shell**
-Build first. Every other surface depends on a correct nav frame. Lowest data dependencies; unblocks all subsequent phases.
-- Mobile bottom nav (sticky, safe-area, elevated Wear CTA, cradle treatment)
-- Desktop top nav (logo, Explore, persistent search, Wear CTA, +Add, notifications bell placeholder, profile dropdown)
-- Slim mobile top bar (logo, search, notifications, settings)
-- Stub `/explore` route
-- Active-state filled icons per tab
+### Launch With (v4.0 core)
 
-**Phase 12 — Notifications Foundation**
-Second. The write-side (fan-out rows) is cheap to add to existing Server Actions. The read-side (inbox, bell badge) closes the loop.
-- `notifications` table with `read_at`
-- Fan-out in `insertFollow` and `addWatch` Server Actions
-- Inbox page + "Mark all read"
-- Unread dot on nav bell (wires bell placeholder from Phase 11)
+Minimum to satisfy the v4.0 milestone goal: finish v3.0-era stubs, expose schema-driven knobs, surface similarity as a first-class flow, and lay catalog foundation.
 
-**Phase 13 — People Search**
-Third. Depends on profiles and follow system (both v2.0 shipped). Taste-overlap ranking is the hardest part; if join is too slow at query time, stub with follower-count ranking and add overlap in a follow-up task.
-- `/search` route with 4 tabs (People populated, others "coming soon")
-- Debounced ILIKE query on username + bio with 2-char minimum
-- Taste overlap % inline on result rows
-- FollowButton inline on result rows
+- [ ] **`watches_catalog` table + nullable FK from `watches.catalog_id` + backfill** — keystone (S–M; STACK.md confirms expand-contract pattern is single-pass safe at v4.0 scale)
+- [ ] **/explore: Popular Collectors rail + Trending Watches rail + sparse-network welcome hero** — table stakes for /explore (M)
+- [ ] **/search Watches tab populated** with thumbnails + owned/wishlist badges + "Evaluate" inline CTA + empty/no-result states (M)
+- [ ] **/search Collections tab populated** with cross-collection by-watch-identity + by-tag-profile + privacy-gated rows + empty state (M)
+- [ ] **/evaluate route** with paste-URL → verdict + three-CTA ladder (Save to Evaluate Later = wishlist / Add to Wishlist / Add to Collection) — reuses existing extract pipeline + similarity engine (M)
+- [ ] **Settings restructure**: vertical tabs / hash-driven, sections in canonical order (Account / Profile / Preferences / Privacy / Notifications / Appearance) (M)
+- [ ] **Settings → Account section: change email + change password** with re-auth flow (M)
+- [ ] **Settings → Preferences UI for `collectionGoal` + `overlapTolerance`** — schema fields exist; expose them (S)
+- [ ] **Settings → Notifications opt-out toggle UI** — backend wired in v3.0 Phase 13; UI is the gap (S)
+- [ ] **Custom SMTP via Resend** + email confirmation ON (config, not code; STACK.md) (S)
+- [ ] **Profile avatar in `DesktopTopNav` (top-right)** + dual affordance (avatar = profile, chevron = menu) (S)
+- [ ] **Empty-state CTAs on Collection / Wishlist / Worn / Notes** with voice-aware copy + single primary CTA (S)
+- [ ] **Form feedback polish**: Sonner toast + inline `aria-live` + categorized URL-extract errors + pending states (S)
+- [ ] **Owner edit surface for `notesPublic` per-note visibility** in WatchForm/WatchDetail (S)
+- [ ] **`isChronometer` toggle in WatchForm + display in WatchDetail** (S)
+- [ ] **WYWT post-submit auto-nav to `/wear/[id]`** (S — v3.0 deferred UX item)
+- [ ] **Remove `price_drop` + `trending_collector` notification stubs** (S — code cleanup)
+- [ ] **Test fixture cleanup** — 9 files referencing removed `wornPublic` (S — chore)
+- [ ] **TEST-04 / TEST-05 / TEST-06** — carried-over test gaps (M total)
 
-**Phase 14 — WYWT Photo Post Flow**
-Last. Most infra-heavy (Supabase Storage, signed URLs, camera API, EXIF strip, new Followers privacy tier ripple). Builds on stable nav (Phase 11) and the wear event model (v2.0).
-- Multi-step modal (WatchPickerDialog step 1 reuse + new step 2)
-- Chooser-first (Take Wrist Shot / Upload / Skip)
-- Camera path with dotted oval overlay + EXIF strip
-- Upload path with heic2any + EXIF strip
-- `visibility` column + Followers tier DAL propagation (two-layer privacy)
-- Supabase Storage bucket + RLS + signed URLs
-- Sonner toast on success
-- Edit-after-post for adding photo to existing wear
+### Add After Validation (v4.x)
+
+- [ ] **/explore "Watches Gaining Traction" rail** (7-day delta — requires `watches_catalog_daily_snapshots`) — only if user feedback says raw popularity is stale-feeling
+- [ ] **/explore "Collectors Like You" personalized rail** — requires `>= 5` watches per viewer to be meaningful
+- [ ] **/search Watches filter facets** (Movement, Case size, Style) — only after catalog exceeds ~30 rows per top-3 query
+- [ ] **/search Collections "Watches in common" badge** — Common Ground reuse, polish item
+- [ ] **/evaluate "Compare with this watch I already own" pairwise drill-down** — power-user surface
+- [ ] **/evaluate shareable verdict URL** (`?shared=true` mode)
+- [ ] **Preferences live preview** — sample similarity verdicts at different settings
+- [ ] **Onboarding-style multi-step empty state** on Collection (Notion-style)
+- [ ] **Sonner `toast.promise()` refactor** — code-cleanliness polish
+- [ ] **Optimistic-update extension** to status toggles + follow buttons
+- [ ] **Undo-toast for destructive mutations** (delete watch, etc)
+- [ ] **Status indicator on profile avatar** (worn-today dot or unread-notifications dot)
+- [ ] **`/u/{user}?q=…` deep-linkable within-profile search** (URL param to FilterBar)
+
+### Future Consideration (v5+)
+
+- [ ] **Taste Clusters visualization** — k-means or hierarchical clustering on preference vectors (STACK.md defers to v5.0)
+- [ ] **Editorial Featured Collection on /explore** — admin-curated weekly highlight; needs admin tooling
+- [ ] **Account section: Delete Account / Wipe Collection** — Danger Zone needs multi-step confirmation flow + soft-delete cron
+- [ ] **Multi-watch Comparison Tool** (`/compare?urls=a,b,c`) — explicit n-way comparison
+- [ ] **Watch-overlap digest emails** (would need `resend` SDK install per STACK.md)
+- [ ] **Saved-search alerts** (notify when collection matches criteria)
+- [ ] **Faceted search on Collections tab** (composition shape facets)
+- [ ] **Realtime updates** (when free-tier 200-WS limit becomes acceptable)
+
+---
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---|---|---|---|
+| `watches_catalog` table + backfill | HIGH (unblocks 4 surfaces) | M | P1 |
+| /explore Popular Collectors rail | HIGH | S | P1 |
+| /explore Trending Watches rail | HIGH | M | P1 |
+| /explore sparse-network hero | MEDIUM | S | P1 |
+| /search Watches tab populated | HIGH | M | P1 |
+| /search Collections cross-collection | HIGH | M | P1 |
+| /evaluate route + verdict + 3-CTA ladder | HIGH (core differentiator surface) | M | P1 |
+| Settings restructure (vertical tabs) | MEDIUM | M | P1 |
+| Settings Account: change email | HIGH (table stakes) | M | P1 |
+| Settings Account: change password | HIGH (table stakes) | M | P1 |
+| Settings Preferences: collectionGoal + overlapTolerance UI | MEDIUM | S | P1 |
+| Settings Notifications opt-out UI | MEDIUM | S | P1 |
+| Custom SMTP + email confirmation ON | MEDIUM | S (config) | P1 |
+| Profile avatar in DesktopTopNav | MEDIUM | S | P1 |
+| Empty-state CTAs (Collection / Wishlist / Worn / Notes) | MEDIUM | S | P1 |
+| Form feedback polish (toast + inline + categorized errors) | MEDIUM | S–M | P1 |
+| `notesPublic` per-note visibility owner edit | LOW–MEDIUM | S | P1 |
+| `isChronometer` toggle in WatchForm | LOW | S | P1 |
+| WYWT post-submit auto-nav to /wear/[id] | MEDIUM | S | P1 |
+| Remove price_drop + trending_collector stubs | LOW (cleanup) | S | P1 |
+| Test fixture cleanup + TEST-04/05/06 | MEDIUM (debt) | M | P1 |
+| /explore "Watches Gaining Traction" (7-day delta) | MEDIUM | M | P2 |
+| /search Watches filter facets | MEDIUM | M | P2 |
+| /evaluate pairwise drill-down | MEDIUM | M | P2 |
+| Preferences live preview | MEDIUM | M | P2 |
+| Sonner toast.promise refactor | LOW (polish) | S | P2 |
+| Onboarding multi-step empty state | LOW–MEDIUM | M | P2 |
+| Status indicator on avatar | LOW | S | P2 |
+| Undo-toast for destructive mutations | LOW–MEDIUM | M | P2 |
+| Taste Clusters viz | HIGH (eventually) | HIGH | P3 |
+| Watch-overlap digest emails | LOW (currently) | M | P3 |
+| Editorial Featured Collection | LOW (currently) | M (with tooling) | P3 |
+| Delete Account / Danger Zone | MEDIUM | M (multi-step + soft-delete) | P3 |
+
+**Priority key:**
+- P1: Must have for v4.0 launch
+- P2: Should have, add in v4.x patch milestones
+- P3: Nice to have, future milestone consideration
+
+---
+
+## Competitor Feature Analysis
+
+| Feature | Letterboxd | Discogs | Goodreads | Are.na | Untappd | Horlo v4.0 |
+|---|---|---|---|---|---|---|
+| Explore: Popular | Films/lists/members rails | Trending Releases + Most Collected | Choice Awards + new releases | Chronological firehose | Top Rated Beers | Popular Collectors + Trending Watches rails |
+| Explore: Personalized | Implicit (recommendations) | Minimal | 20B-data-point engine | None | "What friends are drinking" | Common Ground + sparse-network hero |
+| Catalog search | Global; autocomplete with poster | Top-bar with scope select | Title/author/ISBN; autocomplete | Search blocks | Beer search | Live debounced; 2-char min; thumbnails; owned/wishlist badges |
+| Search filter facets | Genre / decade / rating | Genre / format / style / year | Limited | Tags | Style / ABV | Movement + Case size + Style (P2) |
+| Cross-collection ("who owns X") | "Members enjoying" | "X have this in collection" — first class | Largely missing (frequent user complaint) | N/A | Friends-only | Cross-collection by watch + by tag profile |
+| Save-vs-commit | Watchlist (clock-icon toggle) → Logged | Wantlist → Collection | Want to Read → Currently Reading → Read | Save to channel (no commit hierarchy) | Wishlist → Tried | Save to Evaluate Later (= wishlist) → Wishlist → Owned |
+| Evaluate-without-commit | Watchlist exists; no "is this a fit?" engine | Wantlist; no fit engine | Want-to-Read; basic recommendation | Channels; no fit engine | Recommendations; no fit engine | **/evaluate route — verdict + 3-CTA ladder (differentiator)** |
+| Settings IA | Profile/Account/Privacy/Notifs/Reviews | Account/Marketplace/Privacy/Notifs | Account/Profile/Settings/Email/Apps | Profile/Account/Privacy | Profile/Notifs/Privacy | Account/Profile/Preferences/Privacy/Notifs/Appearance |
+| Profile in nav | Top-right avatar | Top-right avatar | Top-right avatar | Top-right avatar | Top-right avatar (web) | Top-right avatar + chevron split |
+| Empty-state quality | Decent | Minimal | Generic | Excellent (Are.na nails this) | Decent | Voice-aware single-CTA per surface |
+| Form feedback | Toast + inline | Toast | Toast | Toast | Toast + inline | Sonner toast + inline + categorized URL-extract errors |
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Basis |
+|---|---|---|
+| /explore section composition (Popular Collectors + Trending Watches + welcome hero) | MEDIUM | Comparable apps diverge; Letterboxd is editorial, Discogs is community-aggregated, Are.na is firehose. Recommendation synthesizes the two we're closest to (Letterboxd + Discogs) given Horlo's positioning. Sparse-network handling is HIGH confidence (NN/G + Spotify editorial-fallback evidence). |
+| /search Watches table stakes | HIGH | Universal pattern across Letterboxd, Discogs, Goodreads, Spotify; Phase 16 already proved the technical pattern for People |
+| /search Collections cross-collection-by-default | MEDIUM | NN/G "users forget which scope they're in" is HIGH-confidence guidance; the specific feature shape (by-watch-identity + by-tag-profile) is opinionated and could be split differently |
+| /evaluate route (not modal) + 3-CTA ladder | HIGH | STACK.md route-vs-modal argument is solid; 3-CTA ladder maps cleanly to existing `WatchStatus` enum without schema change |
+| Reuse `wishlist` for "save to evaluate later" (vs new `evaluating` status) | MEDIUM | Argument is sound but a senior reviewer might disagree if they want sharper "haven't decided" semantics. Easy to revisit. |
+| Settings IA section ordering | HIGH | GitHub / Vercel / Linear / Discord / Letterboxd all converge on Account → Profile → Privacy → Notifs → Appearance → Danger |
+| Vertical-tabs over per-route Settings sections | HIGH | STACK.md confirms `@base-ui/react` Tabs `orientation="vertical"`; hash-driven state is a clean pattern |
+| Profile avatar top-right in DesktopTopNav | HIGH | Universal across Letterboxd/Mastodon/GitHub/X/Vercel/Linear |
+| Empty-state CTA pattern (single primary CTA + voice-aware copy) | HIGH | NN/G 3-guideline framework is canonical; Linear / Notion / Letterboxd evidence converges |
+| Toast + inline form feedback combination | HIGH | NN/G + GOV.UK + Pencil & Paper all converge; Sonner already in tree; Phase 999.1 MR-01 pattern is established |
+| Categorized URL-extract error copy | MEDIUM | Pattern is correct; the specific category taxonomy (host-403, structured-data-missing, LLM-timeout, etc) is a design choice that should get a final read in the architecture phase |
+| `pg_cron` daily-batch over live triggers for `owners_count` | MEDIUM | STACK.md confirms; live-vs-batch is a tradeoff worth a final read |
 
 ---
 
 ## Sources
 
-- Instagram navigation changes 2025-2026: https://www.inro.social/blog/instagram-tabs-new-layout-2025
-- Bottom nav bar guide (AppMySite 2025): https://blog.appmysite.com/bottom-navigation-bar-in-mobile-apps-heres-all-you-need-to-know/
-- Mobile navigation patterns 2026: https://phone-simulator.com/blog/mobile-navigation-patterns-in-2026
-- Sticky vs fixed navigation (LogRocket): https://blog.logrocket.com/ux-design/sticky-vs-fixed-navigation/
-- iOS env(safe-area-inset-bottom) (MDN): https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/env
-- iOS safe area web app guide: https://jipfr.nl/blog/supporting-ios-web/
-- Notification scaling — per-row vs cursor (DEV Community): https://dev.to/epilot/scaling-notification-systems-how-a-single-timestamp-improved-our-dynamodb-performance-5c84
-- Notification database table structure (DEV Community): https://dev.to/echoeyecodes/database-table-structure-for-different-notification-events-3lbc
-- Notification grouping / batching social apps (SuprSend): https://www.suprsend.com/post/how-to-batch-notifications-for-your-social-media-collaborative-application
-- Strava notification settings: https://support.strava.com/hc/en-us/articles/216918367-Strava-Notifications
-- Strava activity privacy controls (default open, private fallback): https://support.strava.com/hc/en-us/articles/216919377-Activity-Privacy-Controls
-- In-app search UX debounce + instant results: https://koder.ai/blog/instant-in-app-search-ux
-- Search UX debounce 200ms (Algolia): https://www.algolia.com/doc/ui-libraries/autocomplete/guides/debouncing-sources
-- Mobile search UX best practices (Algolia): https://www.algolia.com/blog/ux/mobile-search-ux-best-practices
-- getUserMedia still photos (MDN): https://developer.mozilla.org/en-US/docs/Web/API/Media_Capture_and_Streams_API/Taking_still_photos
-- EXIF data stripping by social platforms (EXIFData.org): https://exifdata.org/blog/do-social-media-sites-strip-exif-data-2025-test
-- PatternFly notification drawer design guidelines: https://www.patternfly.org/components/notification-drawer/design-guidelines/
-- Letterboxd mobile responsive breakpoint: https://letterboxd.com/journal/mobile-site/
+**/explore + discovery patterns:**
+- [Letterboxd Popular films / lists](https://letterboxd.com/films/popular/) and [Popular lists](https://letterboxd.com/lists/popular/)
+- [Letterboxd Welcome](https://letterboxd.com/welcome/) — discovery framing
+- [Discogs Explore navigation guide](https://www.discogs.com/digs/collecting/16-million-releases-cataloged-in-discogs-database/)
+- [Discogs database search](https://support.discogs.com/hc/en-us/articles/360003622014-How-To-Browse-Search-In-The-Database)
+- [Are.na Channels & Explore](https://help.are.na/docs/getting-started/channels) and [Are.na Wikipedia overview](https://en.wikipedia.org/wiki/Are.na)
+- [Goodreads Recommendation Engine announcement](https://www.goodreads.com/blog/show/303-announcing-goodreads-personalized-recommendations)
+- [Untappd discovery](https://untappd.com/) and [Top Rated Beers](https://untappd.com/beer/top_rated)
+- [Spotify editorial-playlist ecosystem (1B streams/week evidence)](https://www.absolutelabelservices.com/news/spotifys-editorial-ecosystem-how-playlists-power-discovery)
+- [Sparse-network handling — content discovery 2026](https://beomniscient.com/blog/content-discovery-tools/)
+
+**Catalog search UX:**
+- [Adobe Commerce Live Search best practices](https://experienceleague.adobe.com/en/docs/commerce/live-search/best-practice)
+- [Faceted Search Best Practices for E-commerce 2026](https://www.brokenrubik.com/blog/faceted-search-best-practices)
+- [Smart autocomplete best practices (Grid Dynamics)](https://blog.griddynamics.com/smart-autocomplete-best-practices/)
+- [Master Search UX in 2026](https://www.designmonks.co/blog/search-ux-best-practices)
+- [Algolia search filter UX](https://www.algolia.com/blog/ux/search-filter-ux-best-practices)
+
+**Save-vs-commit pattern:**
+- [Letterboxd Watchlist vs Lists FAQ](https://letterboxd.zendesk.com/hc/en-us/articles/15179261056143-What-s-the-difference-between-my-lists-and-my-watchlist)
+- [Goodreads exclusive vs nonexclusive shelves](https://help.goodreads.com/s/article/How-do-I-create-custom-shelves-1553870934223)
+- [NN/G — Wishlist or shopping cart](https://www.nngroup.com/articles/wishlist-or-cart/)
+- [Save For Later UX (Ty Maxey case study)](https://medium.com/ty-maxey/save-for-later-f51dc8c22657)
+- [Are.na — Channels and Save](https://www.are.na/about)
+
+**Settings IA / page structure:**
+- [Vercel Account Management](https://vercel.com/docs/accounts)
+- [GitHub Settings IA] (observable across `github.com/settings/profile` etc — direct observation, no single doc URL)
+- [Base UI Tabs (vertical orientation)](https://base-ui.com/react/components/tabs)
+- [shadcn vertical tabs pattern](https://www.shadcn.io/patterns/tabs-layout-1)
+
+**Profile avatar in nav:**
+- [Letterboxd profile avatar / nav](https://mattbusiness.com/update-your-letterboxd-profile/) and [Letterboxd UX redesign analysis](https://medium.com/@khushi.pro/letterboxd-redesign-improving-the-user-experience-of-a-social-film-discovery-platform-1b94a404ae09)
+- [Mastodon profile setup](https://docs.joinmastodon.org/user/profile/)
+
+**Empty states:**
+- [NN/G — Designing Empty States in Complex Applications: 3 Guidelines](https://www.nngroup.com/articles/empty-state-interface-design/)
+- [Carbon Design System — Empty States Pattern](https://carbondesignsystem.com/patterns/empty-states-pattern/)
+- [Pencil & Paper — Empty State UX Examples](https://www.pencilandpaper.io/articles/empty-states)
+- [Smashing Magazine — Empty States in User Onboarding](https://www.smashingmagazine.com/2017/02/user-onboarding-empty-states-mobile-apps/)
+
+**Form feedback:**
+- [NN/G — 10 Design Guidelines for Reporting Errors in Forms](https://www.nngroup.com/articles/errors-forms-design-guidelines/)
+- [Pencil & Paper — Error Message UX](https://www.pencilandpaper.io/articles/ux-pattern-analysis-error-feedback)
+- [Pencil & Paper — Success Message UX](https://www.pencilandpaper.io/articles/success-ux)
+- [LogRocket — Top React toast libraries 2025](https://blog.logrocket.com/react-toast-libraries-compared-2025/)
+- [Replacing Toasts with Accessible User Feedback Patterns](https://dev.to/miasalazar/replacing-toasts-with-accessible-user-feedback-patterns-1p8l)
+- [Sonner Toast docs](https://sonner.emilkowal.ski/toast)
+
+**Scoped vs global search:**
+- [NN/G — Scoped Search: Dangerous, but Sometimes Useful](https://www.nngroup.com/articles/scoped-search/)
+- [UX Movement — Global vs Scoped Search](https://uxmovement.com/navigation/global-vs-scoped-search-which-gives-better-results/)
+- [Discogs collection filter discussion](https://www.discogs.com/forum/thread/735729)
 
 ---
 
-*Feature research for: Horlo v3.0 — Production Nav & Daily Wear Loop*
-*Researched: 2026-04-21*
+*Feature research for: Horlo v4.0 Discovery & Polish*
+*Researched: 2026-04-26*
