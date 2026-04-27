@@ -19,8 +19,8 @@ Canonical `watches_catalog` table — silent infrastructure for v4.0. Unblocks /
 - [ ] **CAT-06**: System provides `upsertCatalogFromUserInput` helper using `ON CONFLICT … DO NOTHING` (typed-input path doesn't enrich catalog spec — too much typo risk)
 - [ ] **CAT-07**: System provides `upsertCatalogFromExtractedUrl` helper using `ON CONFLICT … DO UPDATE SET col = COALESCE(catalog.col, EXCLUDED.col)` per nullable spec column (URL-extracted enrichment never overwrites `admin_curated` rows)
 - [ ] **CAT-08**: `addWatch` Server Action and `/api/extract-watch` route handler both populate `watches_catalog` via the appropriate upsert helper
-- [ ] **CAT-09**: A `pg_cron` daily-batch function refreshes denormalized `owners_count` + `wishlist_count` on `watches_catalog` (prod-only; SECURITY DEFINER with REVOKE FROM PUBLIC/anon/authenticated)
-- [ ] **CAT-10**: A manual `npm run db:refresh-counts` script provides the same refresh path for local dev (vanilla Supabase Docker doesn't ship pg_cron)
+- [x] **CAT-09**: A `pg_cron` daily-batch function refreshes denormalized `owners_count` + `wishlist_count` on `watches_catalog` (prod-only; SECURITY DEFINER with REVOKE FROM PUBLIC/anon/authenticated)
+- [x] **CAT-10**: A manual `npm run db:refresh-counts` script provides the same refresh path for local dev (vanilla Supabase Docker doesn't ship pg_cron)
 - [ ] **CAT-11**: Catalog is authoritative for SPEC fields (movement, case_size, dial_color, complications, etc) at display time via `catalog_id` JOIN; per-user `watches` remains authoritative for OWNERSHIP/PROVENANCE fields (acquisitionDate, notes, status, etc)
 - [ ] **CAT-12**: A `watches_catalog_daily_snapshots` table records `(catalog_id, date, owners_count, wishlist_count)` for 7-day Gaining Traction delta on /explore
 
@@ -205,8 +205,8 @@ Which phases cover which requirements. Populated by the roadmapper on 2026-04-26
 | CAT-06 | Phase 17 — Catalog Foundation | Pending |
 | CAT-07 | Phase 17 — Catalog Foundation | Pending |
 | CAT-08 | Phase 17 — Catalog Foundation | Pending |
-| CAT-09 | Phase 17 — Catalog Foundation | Pending |
-| CAT-10 | Phase 17 — Catalog Foundation | Pending |
+| CAT-09 | Phase 17 — Catalog Foundation | Complete |
+| CAT-10 | Phase 17 — Catalog Foundation | Complete |
 | CAT-11 | Phase 17 — Catalog Foundation | Pending |
 | CAT-12 | Phase 17 — Catalog Foundation | Pending |
 | DISC-03 | Phase 18 — /explore Discovery Surface | Pending |

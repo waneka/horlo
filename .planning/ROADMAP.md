@@ -83,11 +83,11 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   4. `owners_count` and `wishlist_count` on `watches_catalog` refresh daily in production via `pg_cron`, and a developer can refresh them locally with `npm run db:refresh-counts`.
   5. A `watches_catalog_daily_snapshots` row is recorded per catalog row per day, providing the data substrate for the Phase 18 Gaining Traction rail.
 **Plans**: 6 plans
-- [ ] 17-01-PLAN.md — Schema migration (Drizzle column shapes + Supabase migration with RLS, generated columns, NULLS NOT DISTINCT UNIQUE, GIN, CHECK, snapshots, [BLOCKING] local push)
-- [ ] 17-02-PLAN.md — Catalog DAL (`src/data/catalog.ts` upsert helpers + `linkWatchToCatalog` in `src/data/watches.ts` + URL/tag sanitizers + 9 upsert-coalesce tests)
-- [ ] 17-03-PLAN.md — Wire catalog into `addWatch` Server Action and `/api/extract-watch` route (fire-and-forget; resilience test)
-- [ ] 17-04-PLAN.md — Backfill script `scripts/backfill-catalog.ts` + `npm run db:backfill-catalog` + idempotency test
-- [ ] 17-05-PLAN.md — pg_cron SECDEF refresh function + REVOKE/GRANT lockdown + `scripts/refresh-counts.ts` + `npm run db:refresh-counts` + [BLOCKING] local apply + SECDEF tests
+- [x] 17-01-PLAN.md — Schema migration (Drizzle column shapes + Supabase migration with RLS, generated columns, NULLS NOT DISTINCT UNIQUE, GIN, CHECK, snapshots, [BLOCKING] local push)
+- [x] 17-02-PLAN.md — Catalog DAL (`src/data/catalog.ts` upsert helpers + `linkWatchToCatalog` in `src/data/watches.ts` + URL/tag sanitizers + 9 upsert-coalesce tests)
+- [x] 17-03-PLAN.md — Wire catalog into `addWatch` Server Action and `/api/extract-watch` route (fire-and-forget; resilience test)
+- [x] 17-04-PLAN.md — Backfill script `scripts/backfill-catalog.ts` + `npm run db:backfill-catalog` + idempotency test
+- [x] 17-05-PLAN.md — pg_cron SECDEF refresh function + REVOKE/GRANT lockdown + `scripts/refresh-counts.ts` + `npm run db:refresh-counts` + [BLOCKING] local apply + SECDEF tests
 - [ ] 17-06-PLAN.md — docs/deploy-db-setup.md Phase 17 runbook + PROJECT.md Key Decisions + image-provenance round-trip test
 
 ### Phase 18: /explore Discovery Surface
