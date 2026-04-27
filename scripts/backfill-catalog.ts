@@ -6,10 +6,11 @@
  * success are no-ops because the WHERE catalog_id IS NULL filter shrinks to empty.
  *
  * Uses service-role DATABASE_URL via the existing src/db client. NEVER use the anon client.
+ *
+ * Env loading: relies on `--env-file=.env.local` flag passed by `npm run db:backfill-catalog`
+ * (see package.json) — matches sibling `scripts/refresh-counts.ts` pattern. Avoids depending
+ * on a transitively-resolved `dotenv` package.
  */
-import { config } from 'dotenv'
-config({ path: '.env.local' })
-
 // Use relative imports — tsx does not resolve @/* path aliases.
 import { db } from '../src/db'
 import { watches } from '../src/db/schema'

@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:backfill-catalog": "tsx scripts/backfill-catalog.ts",
+    "db:backfill-catalog": "tsx --env-file=.env.local scripts/backfill-catalog.ts",
     "db:refresh-counts": "tsx --env-file=.env.local scripts/refresh-counts.ts"
   },
   "dependencies": {
