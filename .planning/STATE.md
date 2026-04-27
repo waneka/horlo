@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
-status: ready_to_plan
-stopped_at: ""
-last_updated: "2026-04-26T00:00:00.000Z"
-last_activity: 2026-04-26
+status: planning
+stopped_at: Phase 17 context gathered
+last_updated: "2026-04-27T17:15:38.517Z"
+last_activity: 2026-04-26 — v4.0 ROADMAP created; 71 requirements mapped across 10 phases (17–26)
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -48,6 +47,7 @@ v4.0 Discovery & Polish           [ ] in progress (Phase 17 ready to plan)
 The full Key Decisions log lives in `.planning/PROJECT.md` (Key Decisions table) and per-milestone retrospective in `.planning/RETROSPECTIVE.md`. Active todos and tech debt now live in PROJECT.md `### Active`. Milestone archives live in `.planning/milestones/`.
 
 Recent decisions affecting v4.0 work:
+
 - Catalog `catalog_id` is **nullable indefinitely** in v4.0 (NEVER `SET NOT NULL` — defer to v5.0+)
 - Catalog is **silent infrastructure** in v4.0 — `analyzeSimilarity()` is NOT modified (catalog→similarity rewire is v5.0+)
 - Catalog source-of-truth: catalog wins for SPEC fields; per-user `watches` wins for OWNERSHIP fields (CAT-11)
@@ -74,7 +74,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-26T00:00:00.000Z
-Stopped at: v4.0 ROADMAP.md created; 71/71 requirements mapped across Phases 17–26
-Resume file: None
+Last session: 2026-04-27T17:15:38.506Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-catalog-foundation/17-CONTEXT.md
 Next action: `/gsd-plan-phase 17` to begin Phase 17 (Catalog Foundation)
