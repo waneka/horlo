@@ -82,6 +82,8 @@ async function main() {
 
   const elapsedMs = Date.now() - startedAt
   console.log(`[backfill] OK — total linked: ${totalLinked}, unlinked remaining: 0, elapsed: ${elapsedMs}ms`)
+  // postgres.js keeps the connection pool alive; force clean exit so the process terminates.
+  process.exit(0)
 }
 
 main().catch((err) => {
