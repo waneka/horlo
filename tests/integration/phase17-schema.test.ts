@@ -33,7 +33,7 @@ maybe('Phase 17 schema — CAT-01 / CAT-03 / CAT-04 / CAT-12 structural assertio
       SELECT indexname, indexdef
         FROM pg_indexes
        WHERE schemaname = 'public'
-         AND indexname = 'watches_catalog_natural_key_idx'
+         AND indexname = 'watches_catalog_natural_key'
     `)
     const rows = (result as unknown as Array<{ indexname: string; indexdef: string }>) ?? []
     expect(rows).toHaveLength(1)
@@ -55,7 +55,9 @@ maybe('Phase 17 schema — CAT-01 / CAT-03 / CAT-04 / CAT-12 structural assertio
     expect(rows).toHaveLength(2)
     for (const r of rows) {
       expect(r.indexdef).toMatch(/USING gin/i)
-      expect(r.indexdef).toMatch(/extensions\.gin_trgm_ops/)
+      // Postgres normalizes the opclass name when extensions schema is on search_path —
+      // pg_indexes.indexdef may show either bare 'gin_trgm_ops' or 'extensions.gin_trgm_ops'.
+      expect(r.indexdef).toMatch(/(extensions\.)?gin_trgm_ops/)
     }
   })
 

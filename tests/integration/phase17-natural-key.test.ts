@@ -35,13 +35,13 @@ maybe('Phase 17 natural-key dedup — CAT-01 behavior (D-01, D-02, D-03)', () =>
     await db.execute(sql`
       INSERT INTO watches_catalog (id, brand, model, reference, source)
       VALUES (${id1}::uuid, ${'Rolex_' + stamp}, ${'Submariner_' + stamp}, '116610LN', 'user_promoted')
-      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
     `)
     // Insert ROLEX / submariner / 116610LN — same normalized trio
     await db.execute(sql`
       INSERT INTO watches_catalog (id, brand, model, reference, source)
       VALUES (${id2}::uuid, ${'ROLEX_' + stamp}, ${'submariner_' + stamp}, '116610LN', 'user_promoted')
-      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
     `)
 
     const countResult = await db.execute(sql`
@@ -59,12 +59,15 @@ maybe('Phase 17 natural-key dedup — CAT-01 behavior (D-01, D-02, D-03)', () =>
     const brand = 'RolexRef_' + stamp
     const model = 'SubRef_' + stamp
 
-    const refs = ['116610LN_ref', '116610 LN_ref', '116610-LN_ref', '116610.LN_ref']
+    // Note: reference normalization strips ALL non-alphanumeric chars via regexp_replace '[^a-z0-9]+'
+    // '116610LN_ref' → lower → '116610ln_ref' → strip non-alphanum → '116610lnref'
+    // '116610 LN_ref' → '116610lnref', '116610-LN_ref' → '116610lnref', '116610.LN_ref' → '116610lnref'
+    const refs = ['116610LNref', '116610 LNref', '116610-LNref', '116610.LNref']
     for (let i = 0; i < refs.length; i++) {
       await db.execute(sql`
         INSERT INTO watches_catalog (id, brand, model, reference, source)
         VALUES (${ids[i]}::uuid, ${brand}, ${model}, ${refs[i]}, 'user_promoted')
-        ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+        ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
       `)
     }
 
@@ -76,10 +79,11 @@ maybe('Phase 17 natural-key dedup — CAT-01 behavior (D-01, D-02, D-03)', () =>
       GROUP BY reference_normalized
     `)
     const rows = (countResult as unknown as Array<{ cnt: string | number; reference_normalized: string }>) ?? []
-    // All four should collapse to a single row with reference_normalized = '116610ln_ref'
+    // All four should collapse to a single row with reference_normalized = '116610lnref'
+    // (spaces, dashes, dots all stripped by regexp_replace '[^a-z0-9]+')
     expect(rows).toHaveLength(1)
     expect(Number(rows[0].cnt)).toBe(1)
-    expect(rows[0].reference_normalized).toBe('116610ln_ref')
+    expect(rows[0].reference_normalized).toBe('116610lnref')
   })
 
   it('nulls collide (NULLS NOT DISTINCT) — two NULL-reference rows dedup to 1', async () => {
@@ -93,13 +97,13 @@ maybe('Phase 17 natural-key dedup — CAT-01 behavior (D-01, D-02, D-03)', () =>
     await db.execute(sql`
       INSERT INTO watches_catalog (id, brand, model, reference, source)
       VALUES (${id1}::uuid, ${brand}, ${model}, NULL, 'user_promoted')
-      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
     `)
     // Insert second with same brand/model and NULL reference — should collide (NULLS NOT DISTINCT)
     await db.execute(sql`
       INSERT INTO watches_catalog (id, brand, model, reference, source)
       VALUES (${id2}::uuid, ${brand}, ${model}, NULL, 'user_promoted')
-      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
     `)
 
     const countResult = await db.execute(sql`
@@ -124,12 +128,12 @@ maybe('Phase 17 natural-key dedup — CAT-01 behavior (D-01, D-02, D-03)', () =>
     await db.execute(sql`
       INSERT INTO watches_catalog (id, brand, model, reference, source)
       VALUES (${id1}::uuid, ${brand}, ${model}, '116610LN_diff', 'user_promoted')
-      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
     `)
     await db.execute(sql`
       INSERT INTO watches_catalog (id, brand, model, reference, source)
       VALUES (${id2}::uuid, ${brand}, ${model}, '116610LB_diff', 'user_promoted')
-      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key_idx DO NOTHING
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
     `)
 
     const countResult = await db.execute(sql`

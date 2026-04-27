@@ -83,25 +83,36 @@ maybe('Phase 17 catalog RLS — CAT-02 + Pitfall 4 (anon SELECT allowed; anon wr
     })
 
     it('anon write blocked (UPDATE) on watches_catalog', async () => {
+      // Supabase PostgREST returns 204/null-error for UPDATE that RLS blocks (0 rows matched).
+      // The security assertion is: the row must NOT actually be modified in the DB.
       const anon = createClient(url, anonKey, { auth: { persistSession: false } })
-      const { error } = await anon
+      await anon
         .from('watches_catalog')
         .update({ brand: 'AnonUpdated' })
         .eq('id', catalogId)
-      expect(error).not.toBeNull()
-      const errorText = `${error?.code ?? ''} ${error?.message ?? ''}`
-      expect(errorText).toMatch(/42501|RLS|policy|permission|not allowed|insufficient/i)
+      // Verify via service-role Drizzle that the row was NOT changed
+      const result = await db.execute(
+        sql`SELECT brand FROM watches_catalog WHERE id = ${catalogId}::uuid`
+      )
+      const rows = (result as unknown as Array<{ brand: string }>) ?? []
+      expect(rows).toHaveLength(1)
+      expect(rows[0].brand).not.toBe('AnonUpdated')
     })
 
     it('anon write blocked (DELETE) on watches_catalog', async () => {
+      // Supabase PostgREST returns 204/null-error for DELETE that RLS blocks (0 rows matched).
+      // The security assertion is: the row must still exist in the DB.
       const anon = createClient(url, anonKey, { auth: { persistSession: false } })
-      const { error } = await anon
+      await anon
         .from('watches_catalog')
         .delete()
         .eq('id', catalogId)
-      expect(error).not.toBeNull()
-      const errorText = `${error?.code ?? ''} ${error?.message ?? ''}`
-      expect(errorText).toMatch(/42501|RLS|policy|permission|not allowed|insufficient/i)
+      // Verify row still exists via service-role Drizzle
+      const result = await db.execute(
+        sql`SELECT id FROM watches_catalog WHERE id = ${catalogId}::uuid`
+      )
+      const rows = (result as unknown as Array<{ id: string }>) ?? []
+      expect(rows).toHaveLength(1)
     })
   })
 
@@ -132,25 +143,36 @@ maybe('Phase 17 catalog RLS — CAT-02 + Pitfall 4 (anon SELECT allowed; anon wr
     })
 
     it('anon write blocked (UPDATE) on watches_catalog_daily_snapshots', async () => {
+      // Supabase PostgREST returns 204/null-error for UPDATE that RLS blocks (0 rows matched).
+      // Security assertion: the snapshot row must NOT actually be modified.
       const anon = createClient(url, anonKey, { auth: { persistSession: false } })
-      const { error } = await anon
+      await anon
         .from('watches_catalog_daily_snapshots')
         .update({ owners_count: 999 })
         .eq('catalog_id', catalogId)
-      expect(error).not.toBeNull()
-      const errorText = `${error?.code ?? ''} ${error?.message ?? ''}`
-      expect(errorText).toMatch(/42501|RLS|policy|permission|not allowed|insufficient/i)
+      // Verify via service-role Drizzle that owners_count was NOT changed to 999
+      const result = await db.execute(
+        sql`SELECT owners_count FROM watches_catalog_daily_snapshots WHERE catalog_id = ${catalogId}::uuid`
+      )
+      const rows = (result as unknown as Array<{ owners_count: number }>) ?? []
+      expect(rows).toHaveLength(1)
+      expect(rows[0].owners_count).not.toBe(999)
     })
 
     it('anon write blocked (DELETE) on watches_catalog_daily_snapshots', async () => {
+      // Supabase PostgREST returns 204/null-error for DELETE that RLS blocks (0 rows matched).
+      // Security assertion: the snapshot row must still exist in the DB.
       const anon = createClient(url, anonKey, { auth: { persistSession: false } })
-      const { error } = await anon
+      await anon
         .from('watches_catalog_daily_snapshots')
         .delete()
         .eq('catalog_id', catalogId)
-      expect(error).not.toBeNull()
-      const errorText = `${error?.code ?? ''} ${error?.message ?? ''}`
-      expect(errorText).toMatch(/42501|RLS|policy|permission|not allowed|insufficient/i)
+      // Verify row still exists via service-role Drizzle
+      const result = await db.execute(
+        sql`SELECT id FROM watches_catalog_daily_snapshots WHERE catalog_id = ${catalogId}::uuid`
+      )
+      const rows = (result as unknown as Array<{ id: string }>) ?? []
+      expect(rows).toHaveLength(1)
     })
   })
 })

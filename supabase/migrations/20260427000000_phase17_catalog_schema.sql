@@ -84,13 +84,39 @@ ALTER TABLE watches_catalog
          OR image_source_quality IN ('official','retailer','unknown'));
 
 -- ============================================================
--- 3. Natural-key UNIQUE on normalized trio with NULLS NOT DISTINCT (D-01, CAT-01)
+-- 3. Natural-key UNIQUE CONSTRAINT on normalized trio with NULLS NOT DISTINCT (D-01, CAT-01)
 -- ============================================================
 -- Postgres 15+ syntax. Two `(Rolex, Submariner, NULL)` rows must collide.
-DROP INDEX IF EXISTS watches_catalog_natural_key_idx;
-CREATE UNIQUE INDEX watches_catalog_natural_key_idx
-  ON watches_catalog (brand_normalized, model_normalized, reference_normalized)
-  NULLS NOT DISTINCT;
+-- We create a UNIQUE INDEX first (with NULLS NOT DISTINCT), then promote it to a named
+-- CONSTRAINT via ALTER TABLE ... ADD CONSTRAINT ... USING INDEX. This gives a stable
+-- named conflict target for ON CONFLICT ON CONSTRAINT watches_catalog_natural_key.
+-- Idempotent: the DO block handles the case where the constraint already exists.
+DO $$
+BEGIN
+  -- Drop the old bare index name if it somehow survived (e.g. re-run before promotion)
+  DROP INDEX IF EXISTS watches_catalog_natural_key_idx;
+
+  -- Create the UNIQUE INDEX if neither index nor constraint exists yet
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes WHERE indexname = 'watches_catalog_natural_key'
+  ) THEN
+    CREATE UNIQUE INDEX watches_catalog_natural_key
+      ON watches_catalog (brand_normalized, model_normalized, reference_normalized)
+      NULLS NOT DISTINCT;
+  END IF;
+
+  -- Promote the unique index to a named constraint (if not already a constraint)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'watches_catalog'::regclass
+       AND conname = 'watches_catalog_natural_key'
+  ) THEN
+    ALTER TABLE watches_catalog
+      ADD CONSTRAINT watches_catalog_natural_key
+      UNIQUE USING INDEX watches_catalog_natural_key;
+  END IF;
+END
+$$;
 
 -- ============================================================
 -- 4. pg_trgm GIN indexes for sub-200ms search (CAT-03)
@@ -152,7 +178,7 @@ DECLARE
   has_select_policy boolean;
   has_snapshots_select_policy boolean;
 BEGIN
-  SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'watches_catalog_natural_key_idx')
+  SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'watches_catalog'::regclass AND conname = 'watches_catalog_natural_key')
     INTO has_natural_key;
   SELECT (is_generated = 'ALWAYS') FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'watches_catalog' AND column_name = 'brand_normalized'
@@ -163,7 +189,7 @@ BEGIN
     INTO has_snapshots_select_policy;
 
   IF NOT has_natural_key THEN
-    RAISE EXCEPTION 'Phase 17 Mig 1 failed — natural-key UNIQUE missing';
+    RAISE EXCEPTION 'Phase 17 Mig 1 failed — natural-key UNIQUE constraint missing';
   END IF;
   IF NOT brand_is_generated THEN
     RAISE EXCEPTION 'Phase 17 Mig 1 failed — brand_normalized not GENERATED ALWAYS';
