@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchAndExtract } from '@/lib/extractors'
 import { SsrfError } from '@/lib/ssrf'
 import { UnauthorizedError, getCurrentUser } from '@/lib/auth'
+import * as catalogDAL from '@/data/catalog'
 
 export async function POST(request: NextRequest) {
   // AUTH-04 / D-14: auth gate runs FIRST, before URL parsing or SSRF check.
@@ -44,6 +45,34 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await fetchAndExtract(url)
+
+    // CAT-08 — catalog wiring (fire-and-forget)
+    try {
+      if (result.data?.brand && result.data?.model) {
+        await catalogDAL.upsertCatalogFromExtractedUrl({
+          brand: result.data.brand,
+          model: result.data.model,
+          reference: result.data.reference ?? null,
+          movement: result.data.movement ?? null,
+          caseSizeMm: result.data.caseSizeMm ?? null,
+          lugToLugMm: result.data.lugToLugMm ?? null,
+          waterResistanceM: result.data.waterResistanceM ?? null,
+          crystalType: result.data.crystalType ?? null,
+          dialColor: result.data.dialColor ?? null,
+          isChronometer: result.data.isChronometer ?? null,
+          productionYear: null,
+          imageUrl: result.data.imageUrl ?? null,
+          imageSourceUrl: url,
+          imageSourceQuality: 'unknown',
+          styleTags: result.data.styleTags ?? [],
+          designTraits: result.data.designTraits ?? [],
+          roleTags: [],
+          complications: result.data.complications ?? [],
+        })
+      }
+    } catch (err) {
+      console.error('[extract-watch] catalog upsert failed (non-fatal):', err)
+    }
 
     return NextResponse.json({
       success: true,

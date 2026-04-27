@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import * as watchDAL from '@/data/watches'
+import * as catalogDAL from '@/data/catalog'
 import { logActivity } from '@/data/activities'
 import { getCurrentUser } from '@/lib/auth'
 import { logNotification } from '@/lib/notifications/logger'
@@ -64,6 +65,21 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
 
   try {
     const watch = await watchDAL.createWatch(user.id, parsed.data)
+
+    // CAT-08 — catalog wiring (fire-and-forget; mirrors logActivity pattern)
+    try {
+      const catalogId = await catalogDAL.upsertCatalogFromUserInput({
+        brand: parsed.data.brand,
+        model: parsed.data.model,
+        reference: parsed.data.reference ?? null,
+      })
+      if (catalogId) {
+        await watchDAL.linkWatchToCatalog(user.id, watch.id, catalogId)
+      }
+    } catch (err) {
+      console.error('[addWatch] catalog wiring failed (non-fatal):', err)
+    }
+
     // Activity logging (D-05) — fire and forget, failure does not block mutation
     try {
       // Split branches so TypeScript can narrow the discriminated-union overload
