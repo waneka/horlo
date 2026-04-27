@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:backfill-catalog": "tsx scripts/backfill-catalog.ts"
+    "db:backfill-catalog": "tsx scripts/backfill-catalog.ts",
+    "db:refresh-counts": "tsx scripts/refresh-counts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
