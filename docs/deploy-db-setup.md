@@ -230,3 +230,93 @@ If any step fails, see Rollback below.
 ### Need to roll back the deployment entirely
 
 - Vercel Dashboard → Deployments → find the previous good deploy → **Promote to Production**.
+
+## Phase 17 — Catalog Foundation Deploy Steps
+
+Phase 17 adds the canonical `watches_catalog` table and pg_cron daily refresh. Apply migrations, run backfill, verify cron schedule. ~10 minutes operator time.
+
+### Preconditions
+
+- Phase 17 PR is merged to `main`
+- Local DB push is GREEN (Plan 01 Task 4 + Plan 05 Task 4 already passed locally)
+- Supabase CLI linked to prod project (`supabase link --project-ref wdntzsckjaoqodsyscns`)
+- `DATABASE_URL` for prod (session-mode pooler URL — see Footgun T-05-06-IPV6 above) is available
+
+### 17.1 — Apply migrations to prod
+
+```bash
+supabase db push --linked
+```
+
+Expected: CLI applies in this order (lexical filename sort):
+- `20260427000000_phase17_catalog_schema.sql` (table, RLS, generated columns, UNIQUE NULLS NOT DISTINCT, GIN, CHECK, snapshots table, trigger)
+- `20260427000001_phase17_pg_cron.sql` (SECDEF refresh function, REVOKE/GRANT lockdown, cron.schedule)
+
+Each migration ends with `BEGIN ... COMMIT` and embedded `DO $$ ... RAISE EXCEPTION ... END $$` sanity assertions. Failure surfaces as a non-zero CLI exit with the exception text.
+
+Also push the Drizzle column-shape migration:
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  npx drizzle-kit migrate
+```
+Expected: applies `0004_phase17_catalog.sql` (or whatever filename Plan 01 generated). Final message `[checkmark] migrations applied successfully!`. Verify `drizzle.__drizzle_migrations` row count incremented by 1.
+
+### 17.2 — Run the catalog backfill
+
+Once-only, to link existing prod `watches` rows to `watches_catalog`:
+
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  npm run db:backfill-catalog
+```
+
+Expected: `[backfill] OK -- total linked: N, unlinked remaining: 0`
+
+If `unlinked remaining: > 0`, the script exits 1 and dumps every unlinked row via `console.table`. Investigate per-row reason (most likely cause: a NULL brand or model that violates the `NOT NULL` constraint upstream — should be impossible from the existing `addWatch` zod schema, but worth knowing).
+
+Re-run is a no-op (idempotent — `WHERE catalog_id IS NULL` short-circuits). It's safe to re-run if you're not sure whether step 17.2 already happened.
+
+**Footgun T-17-BACKFILL-PROD-DB:** Do NOT run `npm run db:backfill-catalog` against the LOCAL Docker DB by accident. The script reads `DATABASE_URL` from the environment AT INVOCATION; if you forget to override and rely on `.env.local`, you'll backfill the local DB. Symptom: prod still has unlinked rows after you thought you ran the script. Always export `DATABASE_URL=<prod URL>` in the same shell as the npm command (or use `DATABASE_URL=<...> npm run ...` inline).
+
+### 17.3 — Verify pg_cron schedule
+
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  psql "$DATABASE_URL" -c "SELECT jobname, schedule, command FROM cron.job WHERE jobname = 'refresh_watches_catalog_counts_daily';"
+```
+
+Expected: 1 row with `schedule = '0 3 * * *'` and command containing `SELECT public.refresh_watches_catalog_counts()`.
+
+If the row is missing, the migration's `DO $$ IF EXISTS pg_extension WHERE extname = 'pg_cron' ... cron.schedule(...) END $$` guard silently skipped — meaning pg_cron is not installed in prod. Install it: `CREATE EXTENSION pg_cron;` (Supabase prod ships it; this should not be needed, but document the recovery path).
+
+### 17.4 — Verify SECDEF lockdown
+
+```bash
+psql "$DATABASE_URL" -c "
+  SELECT
+    has_function_privilege('anon',          'public.refresh_watches_catalog_counts()', 'EXECUTE') AS anon_can,
+    has_function_privilege('authenticated', 'public.refresh_watches_catalog_counts()', 'EXECUTE') AS authed_can,
+    has_function_privilege('service_role',  'public.refresh_watches_catalog_counts()', 'EXECUTE') AS service_can;
+"
+```
+
+Expected: `anon_can = f`, `authed_can = f`, `service_can = t`.
+
+If any of these is wrong, the migration's embedded RAISE EXCEPTION should have already fired during `supabase db push --linked` — but verify here as defense-in-depth (Phase 11 WR-01 incident showed that prod-only behaviors can drift).
+
+### 17.5 — DO NOT run db:refresh-counts against prod
+
+`npm run db:refresh-counts` is a LOCAL DEV mirror of pg_cron — it lets developers test the refresh path without pg_cron. In production, the pg_cron job at 03:00 UTC handles this automatically.
+
+Running the script against prod is harmless (the function is idempotent) but wastes service-role authentication and confuses the audit trail. The pg_cron `cron.job_run_details` table tracks scheduled runs; manual invocations don't appear there.
+
+Per memory `project_drizzle_supabase_db_mismatch.md`: prod operations use `supabase db push --linked`, NOT local-dev npm scripts.
+
+### 17.6 — Backout plan (if Phase 17 must be reverted post-deploy)
+
+Phase 17 is additive — no destructive changes to existing `watches`/`profiles`/etc. Backout sequence (only if catastrophic discovery post-deploy):
+
+1. Disable the cron job: `psql "$DATABASE_URL" -c "SELECT cron.unschedule('refresh_watches_catalog_counts_daily');"`
+2. Revert the application code change (deploy a build that does NOT call catalogDAL helpers — `addWatch` and `/api/extract-watch` revert).
+3. The DB schema additions (catalog table, snapshots, catalog_id column) can stay — they're inert without the application calls. Or drop them via a follow-up migration.
+4. NEVER drop `watches_catalog` while `watches.catalog_id` references exist — `ON DELETE SET NULL` will null all FK refs, but document this side effect.
