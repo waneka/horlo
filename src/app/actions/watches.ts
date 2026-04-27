@@ -66,18 +66,29 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
   try {
     const watch = await watchDAL.createWatch(user.id, parsed.data)
 
-    // CAT-08 — catalog wiring (fire-and-forget; mirrors logActivity pattern)
+    // CAT-08 — catalog wiring (fire-and-forget; mirrors logActivity pattern).
+    // Split try/catch so the failure mode is identifiable in logs:
+    //   - "catalog upsert failed" leaves the watch unlinked until URL extraction or
+    //     the next nightly backfill creates the catalog row.
+    //   - "catalog link failed" leaves a catalog row that exists but is not linked
+    //     to this watch; the next backfill auto-cures it (idempotent — see
+    //     phase17-backfill-idempotency.test.ts).
+    let catalogId: string | null = null
     try {
-      const catalogId = await catalogDAL.upsertCatalogFromUserInput({
+      catalogId = await catalogDAL.upsertCatalogFromUserInput({
         brand: parsed.data.brand,
         model: parsed.data.model,
         reference: parsed.data.reference ?? null,
       })
-      if (catalogId) {
-        await watchDAL.linkWatchToCatalog(user.id, watch.id, catalogId)
-      }
     } catch (err) {
-      console.error('[addWatch] catalog wiring failed (non-fatal):', err)
+      console.error('[addWatch] catalog upsert failed (non-fatal):', err)
+    }
+    if (catalogId) {
+      try {
+        await watchDAL.linkWatchToCatalog(user.id, watch.id, catalogId)
+      } catch (err) {
+        console.error('[addWatch] catalog link failed (non-fatal):', err)
+      }
     }
 
     // Activity logging (D-05) — fire and forget, failure does not block mutation

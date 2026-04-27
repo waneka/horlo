@@ -108,9 +108,9 @@ describe('addWatch catalog resilience — CAT-08 fire-and-forget (Pitfall 9)', (
       roleTags: [],
     })
 
-    // The non-fatal log must be emitted
+    // The non-fatal log must be emitted (split log: "upsert" or "link" failed)
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/catalog wiring failed/),
+      expect.stringMatching(/catalog (upsert|link) failed/),
       expect.any(Error)
     )
   })
