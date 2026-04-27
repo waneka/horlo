@@ -51,19 +51,15 @@ import type { Watch } from '@/lib/types'
 const viewerUserId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeef'
 const mockWatch: Watch = {
   id: 'w-resilience-01',
-  userId: viewerUserId,
   brand: 'Omega',
   model: 'Seamaster',
-  reference: null,
+  reference: undefined,
   status: 'owned',
   movement: 'automatic',
   complications: [],
   styleTags: [],
   designTraits: [],
   roleTags: [],
-  catalogId: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
 }
 
 describe('addWatch catalog resilience — CAT-08 fire-and-forget (Pitfall 9)', () => {
