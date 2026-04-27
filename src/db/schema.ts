@@ -13,6 +13,10 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
+// NOTE: watchesCatalog is defined after `watches` in this file.
+// watches.catalogId uses a callback reference `() => watchesCatalog.id`
+// so Drizzle resolves it lazily — same pattern as users ← watches.userId.
+
 // ----- Phase 11: wear_visibility enum (WYWT-09) -----
 export const wearVisibilityEnum = pgEnum('wear_visibility', [
   'public',
@@ -42,6 +46,7 @@ export const users = pgTable('users', {
 
 // watches table — maps every field from the Watch domain type in src/lib/types.ts
 // plus userId FK for multi-user isolation (D-10) and Phase 2 additions (D-05).
+// Phase 17: catalogId FK added (nullable, ON DELETE SET NULL) — never SET NOT NULL in v4.0.
 export const watches = pgTable(
   'watches',
   {
@@ -93,10 +98,17 @@ export const watches = pgTable(
     notesUpdatedAt: timestamp('notes_updated_at', { withTimezone: true }),
     imageUrl: text('image_url'),
 
+    // Phase 17: catalog FK — nullable, ON DELETE SET NULL (CAT-04, D-catalog-14: NEVER SET NOT NULL in v4.0)
+    // Forward-reference resolved lazily by Drizzle (watchesCatalog defined below).
+    catalogId: uuid('catalog_id').references(() => watchesCatalog.id, { onDelete: 'set null' }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index('watches_user_id_idx').on(table.userId)],
+  (table) => [
+    index('watches_user_id_idx').on(table.userId),
+    index('watches_catalog_id_idx').on(table.catalogId),
+  ],
 )
 
 // userPreferences table — normalized columns (D-02), one row per user.
@@ -250,4 +262,84 @@ export const notifications = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index('notifications_user_id_idx').on(table.userId)],
+)
+
+// ----- Phase 17: canonical watches catalog (CAT-01, CAT-02, CAT-03, CAT-12) -----
+// Column shapes only. The natural-key UNIQUE NULLS NOT DISTINCT, GENERATED ALWAYS AS
+// columns, CHECK constraints, RLS policies, GIN indexes, and updated_at trigger all
+// live in supabase/migrations/20260427000000_phase17_catalog_schema.sql.
+// This Drizzle definition is the source of truth for column types and type inference only.
+//
+// The Drizzle migration (drizzle/0004_phase17_catalog.sql) carries the column shapes.
+// If drizzle-kit emitted malformed GENERATED DDL, the Supabase migration is authoritative
+// (see Plan 01 Task 2 fallback note and Task 3 DO $$ idempotent clause).
+export const watchesCatalog = pgTable(
+  'watches_catalog',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    brand: text('brand').notNull(),
+    model: text('model').notNull(),
+    reference: text('reference'),
+
+    // GENERATED columns — computed by Postgres, not app code (D-02, D-03).
+    // Drizzle 0.45.2 supports generatedAlwaysAs; if emitted DDL is malformed,
+    // the Supabase migration's DO $$ block re-creates them correctly.
+    brandNormalized: text('brand_normalized').generatedAlwaysAs(
+      sql`lower(trim(brand))`,
+    ),
+    modelNormalized: text('model_normalized').generatedAlwaysAs(
+      sql`lower(trim(model))`,
+    ),
+    referenceNormalized: text('reference_normalized').generatedAlwaysAs(
+      sql`CASE WHEN reference IS NULL THEN NULL ELSE regexp_replace(lower(trim(reference)), '[^a-z0-9]+', '', 'g') END`,
+    ),
+
+    // CHECK constraints on source and image_source_quality are added in raw SQL migration (D-04, D-06).
+    source: text('source').notNull().default('user_promoted'),
+    imageUrl: text('image_url'),
+    imageSourceUrl: text('image_source_url'),
+    imageSourceQuality: text('image_source_quality'),
+
+    movement: text('movement'),
+    caseSizeMm: real('case_size_mm'),
+    lugToLugMm: real('lug_to_lug_mm'),
+    waterResistanceM: integer('water_resistance_m'),
+    crystalType: text('crystal_type'),
+    dialColor: text('dial_color'),
+    isChronometer: boolean('is_chronometer'),
+    productionYear: integer('production_year'),
+    productionYearIsEstimate: boolean('production_year_is_estimate').notNull().default(false),
+
+    // Tag columns mirror watches table shape exactly (D-09)
+    styleTags:    text('style_tags').array().notNull().default(sql`'{}'::text[]`),
+    designTraits: text('design_traits').array().notNull().default(sql`'{}'::text[]`),
+    roleTags:     text('role_tags').array().notNull().default(sql`'{}'::text[]`),
+    complications: text('complications').array().notNull().default(sql`'{}'::text[]`),
+
+    // Denormalized counts refreshed by pg_cron daily batch (CAT-09, D-15)
+    ownersCount:   integer('owners_count').notNull().default(0),
+    wishlistCount: integer('wishlist_count').notNull().default(0),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+)
+
+// ----- Phase 17: daily catalog snapshots (CAT-12) -----
+// Records (catalog_id, snapshot_date, owners_count, wishlist_count) once per day.
+// UNIQUE (catalog_id, snapshot_date) enforced in raw SQL; idempotent on re-run.
+export const watchesCatalogDailySnapshots = pgTable(
+  'watches_catalog_daily_snapshots',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    catalogId: uuid('catalog_id').notNull().references(() => watchesCatalog.id, { onDelete: 'cascade' }),
+    snapshotDate: text('snapshot_date').notNull(),
+    ownersCount: integer('owners_count').notNull(),
+    wishlistCount: integer('wishlist_count').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('watches_catalog_snapshots_unique_per_day').on(table.catalogId, table.snapshotDate),
+    index('watches_catalog_snapshots_date_idx').on(table.snapshotDate, table.catalogId),
+  ],
 )

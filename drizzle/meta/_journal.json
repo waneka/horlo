@@ -29,6 +29,13 @@
       "when": 1776892119117,
       "tag": "0003_phase12_drop_worn_public",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777315439147,
+      "tag": "0004_phase17_catalog",
+      "breakpoints": true
     }
   ]
 }

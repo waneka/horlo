@@ -102,3 +102,35 @@ export interface SimilarityResult {
 }
 
 export type { GapFillResult } from './gapFill'
+
+// Phase 17 — canonical watches catalog (D-04, D-06)
+export type CatalogSource = 'user_promoted' | 'url_extracted' | 'admin_curated'
+export type ImageSourceQuality = 'official' | 'retailer' | 'unknown'
+
+export interface CatalogEntry {
+  id: string
+  brand: string
+  model: string
+  reference: string | null
+  source: CatalogSource
+  imageUrl: string | null
+  imageSourceUrl: string | null
+  imageSourceQuality: ImageSourceQuality | null
+  movement: string | null
+  caseSizeMm: number | null
+  lugToLugMm: number | null
+  waterResistanceM: number | null
+  crystalType: string | null
+  dialColor: string | null
+  isChronometer: boolean | null
+  productionYear: number | null
+  productionYearIsEstimate: boolean
+  styleTags: string[]
+  designTraits: string[]
+  roleTags: string[]
+  complications: string[]
+  ownersCount: number
+  wishlistCount: number
+  createdAt: string
+  updatedAt: string
+}
