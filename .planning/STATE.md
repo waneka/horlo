@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
-status: planning
+status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-04-27T17:15:38.517Z"
-last_activity: 2026-04-26 — v4.0 ROADMAP created; 71 requirements mapped across 10 phases (17–26)
+last_updated: "2026-04-27T18:34:57.766Z"
+last_activity: 2026-04-27 -- Phase 17 execution started
 progress:
   total_phases: 10
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v4.0 Discovery & Polish — Phase 17 (Catalog Foundation) ready to plan.
+**Current focus:** Phase 17 — catalog-foundation
 
 ## Current Position
 
-Phase: 17 of 26 (Catalog Foundation) — first phase of v4.0
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-04-26 — v4.0 ROADMAP created; 71 requirements mapped across 10 phases (17–26)
+Phase: 17 (catalog-foundation) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 17
+Last activity: 2026-04-27 -- Phase 17 execution started
 
 ## Progress Bar
 
