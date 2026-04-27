@@ -8,9 +8,6 @@
  *
  * Service-role-only EXECUTE: this script reads DATABASE_URL (service-role pooler).
  */
-import { config } from 'dotenv'
-config({ path: '.env.local' })
-
 // Use relative import — tsx does not resolve @/* path aliases.
 import { db } from '../src/db'
 import { sql } from 'drizzle-orm'

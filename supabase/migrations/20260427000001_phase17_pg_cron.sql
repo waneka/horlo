@@ -56,7 +56,7 @@ BEGIN
   -- Snapshot row for today -- idempotent on (catalog_id, snapshot_date) UNIQUE (D-15, D-16)
   INSERT INTO watches_catalog_daily_snapshots
     (catalog_id, snapshot_date, owners_count, wishlist_count)
-  SELECT id, (current_date AT TIME ZONE 'UTC')::text, owners_count, wishlist_count
+  SELECT id, current_date::text, owners_count, wishlist_count
     FROM watches_catalog
   ON CONFLICT (catalog_id, snapshot_date) DO UPDATE SET
     owners_count   = EXCLUDED.owners_count,

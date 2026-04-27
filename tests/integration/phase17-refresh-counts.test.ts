@@ -39,8 +39,8 @@ maybe('Phase 17 refresh-counts function -- CAT-09 + CAT-10', () => {
   })
 
   afterAll(async () => {
-    if (seededWatchIds.length > 0) {
-      await db.execute(sql`DELETE FROM watches WHERE id = ANY(${seededWatchIds}::uuid[])`)
+    for (const wid of seededWatchIds) {
+      await db.execute(sql`DELETE FROM watches WHERE id = ${wid}::uuid`)
     }
     await db.execute(sql`DELETE FROM watches_catalog_daily_snapshots WHERE catalog_id = ${catalogId}::uuid`)
     await db.execute(sql`DELETE FROM watches_catalog WHERE id = ${catalogId}::uuid`)
@@ -74,7 +74,9 @@ maybe('Phase 17 refresh-counts function -- CAT-09 + CAT-10', () => {
 
   it('resets counts when watches deleted', async () => {
     if (seededWatchIds.length > 0) {
-      await db.execute(sql`DELETE FROM watches WHERE id = ANY(${seededWatchIds}::uuid[])`)
+      for (const wid of [...seededWatchIds]) {
+        await db.execute(sql`DELETE FROM watches WHERE id = ${wid}::uuid`)
+      }
       seededWatchIds.length = 0   // afterAll cleanup tolerates empty
     }
     await db.execute(sql`SELECT public.refresh_watches_catalog_counts()`)
