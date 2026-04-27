@@ -16,7 +16,31 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 Production navigation frame, three-tier wear privacy, notifications system, photo-first WYWT post flow with `/wear/[id]` detail route, and people search are all live. 51/51 v3.0 requirements satisfied at code level. See `.planning/milestones/v3.0-MILESTONE-AUDIT.md` for the audit (status: `tech_debt` — no blockers, 31 deferred UAT items + ~30 advisory items).
 
-**Next:** Run `/gsd-new-milestone` to scope the next version.
+**Active:** v4.0 Discovery & Polish — see Current Milestone below.
+
+## Current Milestone: v4.0 Discovery & Polish
+
+**Goal:** Finish v3.0-era stubs, expose schema-driven knobs that already exist behind the scenes, surface the similarity engine as a first-class evaluation flow, and lay the canonical watch catalog foundation that unblocks future cross-user features.
+
+**Target features:**
+
+- `/explore` discovery surface (popular collectors, taste clusters, trending watches)
+- `/search` Watches tab backed by a new canonical `watches_catalog` table (per-user `watches` link to it; migration + backfill)
+- `/search` Collections tab — search across collections by tag/role/brand
+- Settings expansion — Account (email/password), Notification opt-out toggles, Appearance — beyond privacy-only today
+- Preferences UI for `collectionGoal` + `overlapTolerance` (drives similarity thresholds; hidden from form today)
+- Owner edit surface for `notesPublic` per-note visibility
+- `isChronometer` toggle in WatchForm + display in WatchDetail
+- Profile prominence — top-nav avatar shortcut, not buried in dropdown
+- Similarity engine resurfacing — dedicated "Evaluate this watch" flow (paste URL → verdict, no commit-to-add)
+- Empty-state CTAs across collection / wishlist / notes / worn
+- WYWT post-submit auto-nav to `/wear/[id]` (celebration moment)
+- Form feedback polish — success toasts, pending states, contextual URL-extract errors
+- Remove `price_drop` + `trending_collector` notification stubs (dead code cleanup)
+- Custom SMTP + email confirmation ON
+- Test fixture cleanup (9 files w/ `wornPublic` references) + TEST-04/05/06
+
+**Out of scope:** WristOverlaySvg geometry redesign, AI recommendation engine, automated price tracking, collection visualization map.
 
 ## Requirements
 
@@ -151,6 +175,8 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-27 after v3.0 milestone — Production Nav & Daily Wear Loop shipped. 7 phases (11, 12, 13, 14, 15, 16, 999.1), 37 plans, 56 tasks, 178 commits over 5 days; 51/51 v3.0 requirements satisfied at code level. Schema + storage foundation, three-tier wear privacy ripple, notifications system, production navigation frame (mobile BottomNav + SlimTopNav + DesktopTopNav with shared PUBLIC_PATHS gate), photo-first WYWT post flow with `/wear/[id]` detail route, and people search with pg_trgm-backed live debounced results all live. Audit status: `tech_debt` — 31 deferred human-verification UAT items + ~30 advisory items, none blocking. See `.planning/milestones/v3.0-MILESTONE-AUDIT.md`. Up next: `/gsd-new-milestone`.*
+*Last updated: 2026-04-26 — v4.0 Discovery & Polish milestone started. Goal: finish v3.0-era stubs (/explore, /search Watches, /search Collections, Settings expansion), expose schema-driven knobs (collectionGoal, overlapTolerance, notesPublic, isChronometer), surface the similarity engine as a first-class "Evaluate this watch" flow, raise profile prominence, ship empty-state CTAs + WYWT auto-nav + form polish, and lay the canonical `watches_catalog` table that unblocks future cross-user features. Carryover: custom SMTP + email confirmation ON, test fixture cleanup, TEST-04/05/06. Cleanup: remove price_drop + trending_collector notification stub dead code. Up next: research → requirements → roadmap.*
+
+*Previous: 2026-04-27 after v3.0 milestone — Production Nav & Daily Wear Loop shipped. 7 phases (11, 12, 13, 14, 15, 16, 999.1), 37 plans, 56 tasks, 178 commits over 5 days; 51/51 v3.0 requirements satisfied at code level. Schema + storage foundation, three-tier wear privacy ripple, notifications system, production navigation frame (mobile BottomNav + SlimTopNav + DesktopTopNav with shared PUBLIC_PATHS gate), photo-first WYWT post flow with `/wear/[id]` detail route, and people search with pg_trgm-backed live debounced results all live. Audit status: `tech_debt` — 31 deferred human-verification UAT items + ~30 advisory items, none blocking. See `.planning/milestones/v3.0-MILESTONE-AUDIT.md`.*
 
 *Previous: 2026-04-24 — Phase 14 (Nav Shell + Explore Stub) complete. Production navigation frame shipped: mobile BottomNav (5-item sticky bar, 80px tall, shrink-0 Wear cradle with 12px natural overflow above the bar, all 5 labels share a bottom baseline); desktop Header delegator split into SlimTopNav (<768px) / DesktopTopNav (≥768px); legacy `MobileNav.tsx` deleted (NAV-12); `/explore` + `/search` stubs close nav-link 404s; `/insights` retired to owner-only profile tab with two-layer P-08 privacy defense; profile dropdown consolidated via `InlineThemeSegmented` (D-17) with base-ui dismissal guard on the theme buttons; Settings routes to `/preferences` as sole v3.0 entry point (D-12); shared `PUBLIC_PATHS` constant + `isPublicPath` predicate unify proxy + nav auth gate (NAV-05 D-21/D-22); IBM Plex Sans + `viewport-fit=cover` metadata added. DEBT-01 regression-locked. 5 human UAT items resolved. 2489 tests pass, 0 regressions. Code review: 0 critical, 3 warnings, 5 info (non-blocking, tracked in 14-REVIEW.md). Up next: Phase 15 (WYWT Photo Post Flow).*

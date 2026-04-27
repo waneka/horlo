@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: (between milestones — v3.0 shipped 2026-04-27)
-status: idle
-stopped_at: v3.0 milestone complete; archived to .planning/milestones/v3.0-*
-last_updated: "2026-04-27T03:30:00.000Z"
-last_activity: 2026-04-27
+milestone: v4.0
+milestone_name: Discovery & Polish
+status: defining_requirements
+stopped_at: ""
+last_updated: "2026-04-26T00:00:00.000Z"
+last_activity: 2026-04-26
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-27 after v3.0 milestone)
+See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Between milestones — run `/gsd-new-milestone` to scope the next version.
+**Current focus:** v4.0 Discovery & Polish — defining requirements.
 
 ## Current Position
 
-Phase: none
-Plan: none
-Status: Idle — v3.0 shipped, awaiting next milestone scope
-Last activity: 2026-04-27
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-26 — Milestone v4.0 started
 
 ## Progress Bar
 
@@ -36,8 +36,9 @@ Last activity: 2026-04-27
 v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
+v4.0 Discovery & Polish           [ ] in progress (defining requirements)
 
-[████████████████████] 3 milestones complete
+[████████████████░░░░] 3 of 4 milestones complete
 ```
 
 ## Accumulated Context
@@ -64,7 +65,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-27T03:30:00.000Z
-Stopped at: v3.0 milestone closed; archived
+Last session: 2026-04-26T00:00:00.000Z
+Stopped at: v4.0 milestone started; defining requirements
 Resume file: None
-Next action: `/gsd-new-milestone` — scope and define the next milestone
+Next action: research decision → REQUIREMENTS.md → ROADMAP.md
