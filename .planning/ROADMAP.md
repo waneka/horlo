@@ -82,7 +82,13 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. Existing `watches` rows from before the migration have non-NULL `catalog_id` after the backfill script runs once — and re-running the script is a no-op.
   4. `owners_count` and `wishlist_count` on `watches_catalog` refresh daily in production via `pg_cron`, and a developer can refresh them locally with `npm run db:refresh-counts`.
   5. A `watches_catalog_daily_snapshots` row is recorded per catalog row per day, providing the data substrate for the Phase 18 Gaining Traction rail.
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 17-01-PLAN.md — Schema migration (Drizzle column shapes + Supabase migration with RLS, generated columns, NULLS NOT DISTINCT UNIQUE, GIN, CHECK, snapshots, [BLOCKING] local push)
+- [ ] 17-02-PLAN.md — Catalog DAL (`src/data/catalog.ts` upsert helpers + `linkWatchToCatalog` in `src/data/watches.ts` + URL/tag sanitizers + 9 upsert-coalesce tests)
+- [ ] 17-03-PLAN.md — Wire catalog into `addWatch` Server Action and `/api/extract-watch` route (fire-and-forget; resilience test)
+- [ ] 17-04-PLAN.md — Backfill script `scripts/backfill-catalog.ts` + `npm run db:backfill-catalog` + idempotency test
+- [ ] 17-05-PLAN.md — pg_cron SECDEF refresh function + REVOKE/GRANT lockdown + `scripts/refresh-counts.ts` + `npm run db:refresh-counts` + [BLOCKING] local apply + SECDEF tests
+- [ ] 17-06-PLAN.md — docs/deploy-db-setup.md Phase 17 runbook + PROJECT.md Key Decisions + image-provenance round-trip test
 
 ### Phase 18: /explore Discovery Surface
 **Goal**: The v3.0 "coming soon" `/explore` stub is replaced with a Server-Component discovery surface that surfaces popular collectors and rising-watch signals, with a welcoming empty-state hero for sparse-network users — and Explore claims its rightful slot in the BottomNav.
@@ -207,7 +213,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v1.0 MVP | 1-5 | 26/26 | ✅ Complete | 2026-04-19 |
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
-| v4.0 Discovery & Polish | 17. Catalog Foundation | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 17. Catalog Foundation | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 20. /evaluate Route + Verdict UI | 0/TBD | Not started | - |
