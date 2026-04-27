@@ -157,6 +157,17 @@ Production navigation frame, three-tier wear privacy, notifications system, phot
 | Shared `PUBLIC_PATHS` constant for proxy + 3 nav surfaces | Single source of truth eliminates drift between auth gate and nav rendering | ✓ Good — shipped in v3.0 Phase 14 |
 | pg_trgm GIN indexes for people search | Cost model picks Seq Scan at <127 rows but Bitmap Index Scan available at production scale (forced-plan EXPLAIN ANALYZE proves indexes are reachable) | ✓ Good — shipped in v3.0 Phase 11 + 16; production trajectory verified |
 
+### v4.0 Phase 17 — Catalog Foundation
+
+| Decision | Rationale | Trade-off |
+|----------|-----------|-----------|
+| Canonical `watches_catalog` table reverses v2.0 "no canonical watch table" decision | v4.0 needs cross-user identity for /search Watches, /explore Trending, /search Collections, /evaluate?catalogId= deep-link | Adds a second source of truth; CAT-11 splits SPEC fields (catalog) vs OWNERSHIP fields (per-user `watches`) at display-JOIN time |
+| `watches.catalog_id` is NULLABLE INDEFINITELY in v4.0 — never `SET NOT NULL` | Backfill safety; URL-extract failures or orphaned data should leave the user's collection intact | Future v5+ phase (CAT-14) will SET NOT NULL after 100% backfill verified across two consecutive deploys |
+| `watches_catalog` deliberate departure from two-layer privacy: public-read RLS, service-role-write ONLY | The catalog is silent infrastructure; per-user privacy is enforced on `watches` rows, not on catalog identity | Asymmetry is intentional and documented; new pattern in this codebase. v5+ admin tooling will be the only other writer. |
+| `analyzeSimilarity()` is NOT modified in v4.0 — catalog is silent infrastructure | Avoids regression risk in the core value prop; current scoring works against per-user `watches` data which is unchanged | Future v5+ phase (CAT-13) migrates similarity engine to JOIN catalog at read time; tag taxonomy audit phase must land first |
+| pg_cron daily refresh at 03:00 UTC + manual `npm run db:refresh-counts` for local dev | Off-peak refresh; local Docker doesn't ship pg_cron | Counts may be up to 24h stale (acceptable for "trending" / "gaining traction" surfaces) |
+| source CHECK constraint NOT pgEnum — avoids ALTER TYPE ADD/DROP VALUE pain | Phase 24 ENUM cleanup proved rename-and-recreate is the costly path | Evolution = ALTER TABLE DROP/ADD CONSTRAINT (cheaper); literal union maintained manually in `src/lib/types.ts` |
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
