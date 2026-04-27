@@ -59,7 +59,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 
 **Milestone Goal:** Finish v3.0-era stubs (`/explore`, `/search` Watches/Collections, Settings expansion), expose schema-driven knobs that already exist behind the scenes (`collectionGoal`, `overlapTolerance`, `notesPublic`, `isChronometer`), surface the similarity engine as a first-class `/evaluate` flow, lay the canonical `watches_catalog` foundation that unblocks future cross-user features, raise profile prominence, and ship empty-state CTAs + WYWT auto-nav + form-feedback polish + dead-stub cleanup.
 
-- [ ] **Phase 17: Catalog Foundation** — `watches_catalog` schema + RLS + nullable FK + idempotent backfill + two upsert helpers + pg_cron daily counts + daily snapshots
+- [x] **Phase 17: Catalog Foundation** — `watches_catalog` schema + RLS + nullable FK + idempotent backfill + two upsert helpers + pg_cron daily counts + daily snapshots (completed 2026-04-27)
 - [ ] **Phase 18: /explore Discovery Surface** — Server Component shell with sparse-network hero + Popular Collectors / Trending / Gaining Traction rails + BottomNav slot wiring
 - [ ] **Phase 19: /search Watches + Collections** — Catalog-backed Watches tab + cross-user Collections tab (two-layer privacy) + All-tab union + tab-aware AbortController
 - [ ] **Phase 20: /evaluate Route + Verdict UI** — Auth-only route, paste-URL flow, shared `<SimilarityVerdictCard>` pure renderer, three-CTA ladder, `?catalogId=` deep-link from /search
@@ -88,7 +88,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 17-03-PLAN.md — Wire catalog into `addWatch` Server Action and `/api/extract-watch` route (fire-and-forget; resilience test)
 - [x] 17-04-PLAN.md — Backfill script `scripts/backfill-catalog.ts` + `npm run db:backfill-catalog` + idempotency test
 - [x] 17-05-PLAN.md — pg_cron SECDEF refresh function + REVOKE/GRANT lockdown + `scripts/refresh-counts.ts` + `npm run db:refresh-counts` + [BLOCKING] local apply + SECDEF tests
-- [ ] 17-06-PLAN.md — docs/deploy-db-setup.md Phase 17 runbook + PROJECT.md Key Decisions + image-provenance round-trip test
+- [x] 17-06-PLAN.md — docs/deploy-db-setup.md Phase 17 runbook + PROJECT.md Key Decisions + image-provenance round-trip test
 
 ### Phase 18: /explore Discovery Surface
 **Goal**: The v3.0 "coming soon" `/explore` stub is replaced with a Server-Component discovery surface that surfaces popular collectors and rising-watch signals, with a welcoming empty-state hero for sparse-network users — and Explore claims its rightful slot in the BottomNav.
