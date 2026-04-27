@@ -171,6 +171,14 @@ export async function upsertCatalogFromExtractedUrl(
   const safeRoleTags = sanitizeTagArray(input.roleTags)
   const safeComplications = sanitizeTagArray(input.complications)
 
+  // postgres.js renders an empty JS array as `()::text[]` which is invalid SQL.
+  // Use the Postgres array literal `'{}'::text[]` for empty arrays; otherwise
+  // use the `sql` helper to emit `ARRAY[$1,$2,...]::text[]` for non-empty arrays.
+  const toTextArraySql = (arr: string[]) =>
+    arr.length === 0
+      ? sql`'{}'::text[]`
+      : sql`ARRAY[${sql.join(arr.map((v) => sql`${v}`), sql`, `)}]::text[]`
+
   const result = await db.execute<{ id: string }>(sql`
     INSERT INTO watches_catalog (
       brand, model, reference, source,
@@ -187,8 +195,8 @@ export async function upsertCatalogFromExtractedUrl(
       ${input.isChronometer ?? null}, ${input.productionYear ?? null},
       ${safeImageUrl}, ${safeImageSourceUrl},
       ${input.imageSourceQuality ?? null},
-      ${safeStyleTags}::text[], ${safeDesignTraits}::text[],
-      ${safeRoleTags}::text[], ${safeComplications}::text[]
+      ${toTextArraySql(safeStyleTags)}, ${toTextArraySql(safeDesignTraits)},
+      ${toTextArraySql(safeRoleTags)}, ${toTextArraySql(safeComplications)}
     )
     ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO UPDATE SET
       source = CASE
