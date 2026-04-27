@@ -83,6 +83,22 @@ ALTER TABLE watches_catalog
   CHECK (image_source_quality IS NULL
          OR image_source_quality IN ('official','retailer','unknown'));
 
+-- Defense-in-depth: enforce http(s) protocol on image URLs at the DB layer.
+-- App-level `sanitizeHttpUrl` is the primary gate (see src/data/catalog.ts), but a
+-- direct INSERT/UPDATE (admin script, psql, future migration) could bypass it.
+-- Mirror the pattern of the source/quality CHECK constraints above.
+ALTER TABLE watches_catalog
+  DROP CONSTRAINT IF EXISTS watches_catalog_image_url_protocol_check;
+ALTER TABLE watches_catalog
+  ADD CONSTRAINT watches_catalog_image_url_protocol_check
+  CHECK (image_url IS NULL OR image_url ~* '^https?://');
+
+ALTER TABLE watches_catalog
+  DROP CONSTRAINT IF EXISTS watches_catalog_image_source_url_protocol_check;
+ALTER TABLE watches_catalog
+  ADD CONSTRAINT watches_catalog_image_source_url_protocol_check
+  CHECK (image_source_url IS NULL OR image_source_url ~* '^https?://');
+
 -- ============================================================
 -- 3. Natural-key UNIQUE CONSTRAINT on normalized trio with NULLS NOT DISTINCT (D-01, CAT-01)
 -- ============================================================
