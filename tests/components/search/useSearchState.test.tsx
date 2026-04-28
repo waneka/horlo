@@ -145,9 +145,9 @@ describe('useSearchState (D-03 / D-04 / D-12 / D-20 / D-28)', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.results.length).toBeGreaterThan(0)
+      expect(result.current.peopleResults.length).toBeGreaterThan(0)
       // Only the second (non-stale) fetch result lands
-      expect(result.current.results[0].userId).toBe('u-bob')
+      expect(result.current.peopleResults[0].userId).toBe('u-bob')
     })
   })
 

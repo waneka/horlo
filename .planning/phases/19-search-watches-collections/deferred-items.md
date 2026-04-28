@@ -1,0 +1,1 @@
+- 2026-04-28 | 19-05 | tests/components/search/useSearchState.test.tsx:261 | TS2578 unused @ts-expect-error directive (pre-existing from Phase 16, line 254 `// @ts-expect-error overriding for spy`); not caused by Plan 05 changes; out of scope.
