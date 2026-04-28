@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { z } from 'zod'
 
 import * as followsDAL from '@/data/follows'
@@ -76,6 +76,15 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
     // cacheLife TTL (30s) expired. Two-arg Next 16 form — Pitfall 4.
     revalidateTag(`viewer:${parsed.data.userId}`, 'max')
 
+    // Phase 18 DISC-04 — invalidate the viewer's own Popular Collectors rail
+    // (read-your-own-writes via updateTag). The just-followed user must drop
+    // off the viewer's /explore Popular Collectors list on next render. Tag
+    // matches the cacheTag in src/components/explore/PopularCollectors.tsx.
+    // RYO semantics: caller is the same viewer whose rail recomputes —
+    // updateTag (single-arg) is the right primitive, NOT revalidateTag.
+    // RESEARCH §Pattern 6.
+    updateTag(`explore:popular-collectors:viewer:${user.id}`)
+
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[followUser] unexpected error:', err)
@@ -107,6 +116,12 @@ export async function unfollowUser(data: unknown): Promise<ActionResult<void>> {
     // FOLL-03 mirror: revalidate the same layout slot on unfollow so counts
     // reconcile on both directions of the toggle.
     revalidatePath('/u/[username]', 'layout')
+
+    // Phase 18 DISC-04 — symmetric invalidation: unfollowed user becomes
+    // re-eligible to surface on the viewer's Popular Collectors rail.
+    // RYO via updateTag — see followUser above for the rationale.
+    updateTag(`explore:popular-collectors:viewer:${user.id}`)
+
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[unfollowUser] unexpected error:', err)
