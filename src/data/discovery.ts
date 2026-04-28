@@ -205,11 +205,13 @@ export async function getGainingTractionCatalogWatches(
   const limit = opts.limit ?? 5
 
   // 1. Discover snapshot age — what is the oldest snapshot date we have?
-  //    Pitfall 3: cast snapshot_date through ::date so MIN + EXTRACT use date
-  //    arithmetic instead of lexicographic TEXT compare.
+  //    Pitfall 3: cast snapshot_date through ::date so MIN does date arithmetic
+  //    instead of lexicographic TEXT compare. `current_date - <date>` returns
+  //    an integer day count directly — no EXTRACT needed (and EXTRACT(DAY FROM
+  //    <integer>) is a function-resolution error in Postgres).
   const oldestRows = await db.execute<{ oldest: string | null; max_age_days: number }>(sql`
     SELECT MIN(snapshot_date::date)::text AS oldest,
-           COALESCE(EXTRACT(DAY FROM (current_date - MIN(snapshot_date::date)))::int, 0) AS max_age_days
+           COALESCE((current_date - MIN(snapshot_date::date))::int, 0) AS max_age_days
       FROM watches_catalog_daily_snapshots
   `)
   const oldest = (oldestRows as unknown as Array<{ oldest: string | null; max_age_days: number }>)[0]
