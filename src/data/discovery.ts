@@ -158,3 +158,126 @@ export async function getTrendingCatalogWatches(
     .limit(limit)
   return rows
 }
+
+export interface GainingTractionWatch {
+  id: string
+  brand: string
+  model: string
+  reference: string | null
+  imageUrl: string | null
+  delta: number
+}
+
+export interface GainingTractionResult {
+  window: number // 0 = no snapshots, 1-6 = partial window, 7 = full week
+  watches: GainingTractionWatch[]
+}
+
+/**
+ * 7-day-delta-vs-oldest-snapshot ranking on watches_catalog rows.
+ *
+ * D-12 partial-window logic + D-15 tie-break (delta DESC, brand_normalized ASC,
+ * model_normalized ASC).
+ *
+ * SQL idiom: DISTINCT ON (catalog_id) ORDER BY catalog_id, snapshot_date ASC
+ *            picks the OLDEST snapshot per catalog row in the [today − window,
+ *            today] range.
+ *
+ * Index reachable: watches_catalog_snapshots_date_idx (snapshot_date,
+ * catalog_id) — Phase 17.
+ *
+ * snapshot_date is stored as TEXT (Pitfall 3). All date math casts through
+ * ::date so Postgres uses date arithmetic, not lexicographic string compare.
+ *
+ * Three windows per D-12:
+ *   - 0 snapshots ever → window=0, watches=[] (deploy-day case, Pitfall 4)
+ *   - 1..6 days of snapshots → window = max-age clamped to [1, 7]
+ *   - 7+ days → window=7
+ *
+ * DISC-06. T-18-01-02 (SQL injection mitigation): all variables interpolated
+ * via Drizzle ${} parameterization (prepared statements); window is
+ * server-computed integer; limit is server-validated `opts.limit ?? 5`. No
+ * string concatenation of any input.
+ */
+export async function getGainingTractionCatalogWatches(
+  opts: { limit?: number } = {},
+): Promise<GainingTractionResult> {
+  const limit = opts.limit ?? 5
+
+  // 1. Discover snapshot age — what is the oldest snapshot date we have?
+  //    Pitfall 3: cast snapshot_date through ::date so MIN + EXTRACT use date
+  //    arithmetic instead of lexicographic TEXT compare.
+  const oldestRows = await db.execute<{ oldest: string | null; max_age_days: number }>(sql`
+    SELECT MIN(snapshot_date::date)::text AS oldest,
+           COALESCE(EXTRACT(DAY FROM (current_date - MIN(snapshot_date::date)))::int, 0) AS max_age_days
+      FROM watches_catalog_daily_snapshots
+  `)
+  const oldest = (oldestRows as unknown as Array<{ oldest: string | null; max_age_days: number }>)[0]
+  if (!oldest || !oldest.oldest) {
+    return { window: 0, watches: [] }
+  }
+
+  // window = clamp(max_age_days, 1, 7) — D-12 cases 2 + 3.
+  const window = Math.max(1, Math.min(oldest.max_age_days ?? 0, 7))
+
+  // 2. Compute delta. Pick OLDEST snapshot per catalog row within last `window`
+  //    days, JOIN to current catalog counts. Score = current − snap; excludes
+  //    non-positive deltas so only "gaining" rows surface.
+  //
+  //    Pitfall 3: snapshot_date::date cast on the WHERE predicate is critical;
+  //    without it the comparison is TEXT against an interval expression and
+  //    Postgres will refuse the implicit coercion or produce wrong results.
+  const rows = await db.execute<{
+    id: string
+    brand: string
+    model: string
+    reference: string | null
+    image_url: string | null
+    delta: number
+  }>(sql`
+    WITH base AS (
+      SELECT DISTINCT ON (s.catalog_id)
+             s.catalog_id,
+             s.owners_count   AS snap_owners,
+             s.wishlist_count AS snap_wishlist
+        FROM watches_catalog_daily_snapshots s
+       WHERE s.snapshot_date::date >= (current_date - ${window} * INTERVAL '1 day')::date
+       ORDER BY s.catalog_id, s.snapshot_date ASC
+    )
+    SELECT wc.id,
+           wc.brand,
+           wc.model,
+           wc.reference,
+           wc.image_url,
+           ROUND(
+             (wc.owners_count + 0.5 * wc.wishlist_count)
+             - (base.snap_owners + 0.5 * base.snap_wishlist)
+           )::int AS delta
+      FROM watches_catalog wc
+      JOIN base ON base.catalog_id = wc.id
+     WHERE (wc.owners_count + 0.5 * wc.wishlist_count)
+           > (base.snap_owners + 0.5 * base.snap_wishlist)
+     ORDER BY delta DESC,
+              wc.brand_normalized ASC,
+              wc.model_normalized ASC
+     LIMIT ${limit}
+  `)
+
+  const watches = (rows as unknown as Array<{
+    id: string
+    brand: string
+    model: string
+    reference: string | null
+    image_url: string | null
+    delta: number
+  }>).map((r) => ({
+    id: r.id,
+    brand: r.brand,
+    model: r.model,
+    reference: r.reference,
+    imageUrl: r.image_url,
+    delta: r.delta,
+  }))
+
+  return { window, watches }
+}

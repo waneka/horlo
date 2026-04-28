@@ -31,7 +31,7 @@ maybe('getMostFollowedCollectors — DAL integration', () => {
   let bob: { id: string; email: string }
   let carol: { id: string; email: string }
   let privateUser: { id: string; email: string }
-  let extras: Array<{ id: string; email: string }> = []
+  const extras: Array<{ id: string; email: string }> = []
   let cleanup: () => Promise<void>
 
   const seedProfile = async (
