@@ -102,7 +102,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   5. The mobile BottomNav shows Explore as one of its 5 slots (Home / Search / Wear / Explore / Profile, per Phase 18 D-01..D-04 — supersedes original DISC-08 wording).
 **Plans**: 5 plans
 - [x] 18-01-PLAN.md — Discovery DAL (getMostFollowedCollectors + getTrendingCatalogWatches + getGainingTractionCatalogWatches + getWearEventsCountByUser; Wave 1)
-- [ ] 18-02-PLAN.md — Discovery components (Hero + 3 cached rails + DiscoveryWatchCard + PopularCollectorRow; Wave 2)
+- [x] 18-02-PLAN.md — Discovery components (Hero + 3 cached rails + DiscoveryWatchCard + PopularCollectorRow; Wave 2)
 - [ ] 18-03-PLAN.md — /explore + /explore/collectors + /explore/watches routes (hero gate + See-all surfaces; Wave 2)
 - [x] 18-04-PLAN.md — BottomNav 5-slot rewrite (Home/Search/Wear/Explore/Profile; Wave 1)
 - [ ] 18-05-PLAN.md — Server-action invalidations (followUser updateTag + addWatch revalidateTag('explore','max'); Wave 2)
