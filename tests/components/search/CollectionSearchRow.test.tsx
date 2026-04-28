@@ -74,8 +74,16 @@ describe('CollectionSearchRow (SRCH-11, SRCH-15, D-11)', () => {
   })
 
   it('Test 3 — falls back to username when displayName is null', () => {
-    render(<CollectionSearchRow result={{ ...baseResult, displayName: null }} q="ty" />)
-    expect(screen.getByText(/tyler/, { selector: 'strong, p' })).toBeInTheDocument()
+    const { container } = render(
+      <CollectionSearchRow result={{ ...baseResult, displayName: null }} q="ty" />,
+    )
+    // q="ty" splits "tyler" via HighlightedText into <strong>ty</strong>ler.
+    // The primary label <p> is the first <p> in the row content; assert the
+    // composed text content matches "tyler" (case-insensitive) so the test
+    // does not over-couple to HighlightedText's split boundaries.
+    const primary = container.querySelector('p.text-sm.font-semibold')
+    expect(primary).toBeTruthy()
+    expect(primary?.textContent?.toLowerCase()).toContain('tyler')
   })
 
   it('Test 4a — match-summary "owns {brand} {model}" for 1 name-match', () => {
