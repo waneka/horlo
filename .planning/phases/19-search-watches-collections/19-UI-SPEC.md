@@ -1,10 +1,11 @@
 ---
 phase: 19
 slug: search-watches-collections
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova / neutral / cssVariables
 created: 2026-04-28
+reviewed_at: 2026-04-28
 ---
 
 # Phase 19 — UI Design Contract
