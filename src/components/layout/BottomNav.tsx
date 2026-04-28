@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Compass, Plus, User } from 'lucide-react'
+import { Home, Search, Compass, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { isPublicPath } from '@/lib/constants/public-paths'
@@ -26,7 +26,7 @@ import type { Watch } from '@/lib/types'
  * Layout:
  *   - Fixed to the viewport bottom with safe-area padding for iOS home
  *     indicator (NAV-03 — paired with `viewport-fit=cover` on the layout).
- *   - 5 flex columns: Home · Explore · Wear · Add · Profile. Each column
+ *   - 5 flex columns: Home · Search · Wear · Explore · Profile. Each column
  *     uses `justify-end gap-1 pb-4` so the icon sits directly above the
  *     label with a 4px gap — all 5 labels share a single bottom baseline
  *     regardless of icon size. The Wear circle (56×56, shrink-0) is
@@ -34,13 +34,17 @@ import type { Watch } from '@/lib/types'
  *     column's content is 92px, exceeding the 80px column) — no transform
  *     needed, and the label stays anchored in its bottom band.
  *
- * Active state (D-04):
+ * Active state (D-04 from Phase 14, preserved per Phase 18 D-01..D-04):
  *   - Non-Wear items flip icon + label color to `text-accent` and bump
  *     `strokeWidth` from 2 → 2.5 so the active tab is visibly heavier
- *     (lucide-react 1.8.0 has no filled variants — RESEARCH §Pattern 2).
+ *     (lucide-react 1.8.0 has no filled variants).
  *   - `aria-current="page"` on the active Link for a11y.
  *   - Profile is active on ANY `/u/{username}` prefix (matches the
  *     common-ground/worn/stats/collection tabs on the profile page).
+ *   - Phase 18 D-01..D-04: slot order is Home / Search / Wear / Explore /
+ *     Profile (Add slot dropped per D-02; Notifications stays in TopNav
+ *     bell per D-04; Profile stays in BottomNav permanently per D-03 —
+ *     this overrides the original NAV-14 wording).
  *
  * Wear button (NAV-09, Pitfall I-2):
  *   - Reuses the shared `NavWearButton` with `appearance="bottom-nav"`.
@@ -101,8 +105,8 @@ export function BottomNav({ username, ownedWatches, viewerId }: BottomNavProps) 
   if (!username) return null
 
   const isHome = pathname === '/'
+  const isSearch = pathname === '/search' || pathname.startsWith('/search/')
   const isExplore = pathname === '/explore' || pathname.startsWith('/explore/')
-  const isAdd = pathname === '/watch/new'
   const isProfile = pathname.startsWith(`/u/${username}`)
 
   const profileHref = `/u/${username}/collection`
@@ -121,10 +125,10 @@ export function BottomNav({ username, ownedWatches, viewerId }: BottomNavProps) 
     >
       <NavLink href="/" icon={Home} label="Home" active={isHome} />
       <NavLink
-        href="/explore"
-        icon={Compass}
-        label="Explore"
-        active={isExplore}
+        href="/search"
+        icon={Search}
+        label="Search"
+        active={isSearch}
       />
       {/*
         Wear column uses NavWearButton's `bottom-nav` appearance, which renders
@@ -137,7 +141,12 @@ export function BottomNav({ username, ownedWatches, viewerId }: BottomNavProps) 
         viewerId={viewerId}
         appearance="bottom-nav"
       />
-      <NavLink href="/watch/new" icon={Plus} label="Add" active={isAdd} />
+      <NavLink
+        href="/explore"
+        icon={Compass}
+        label="Explore"
+        active={isExplore}
+      />
       <NavLink
         href={profileHref}
         icon={User}
