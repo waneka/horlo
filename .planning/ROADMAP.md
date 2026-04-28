@@ -118,7 +118,12 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. Typing a query into `/search?tab=collections` returns matches that satisfy BOTH `profile_public = true` AND `collection_public = true` (verified via two-layer privacy integration test) and excludes the viewer's own collection.
   4. The `/search?tab=all` view surfaces People + Watches + Collections capped at 5 each.
   5. Rapidly switching tabs while typing aborts in-flight requests for the previous tab (per-tab AbortController) and never displays results from the wrong tab.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 19-01-PLAN.md — Types + DAL (SearchCatalogWatchResult/SearchCollectionResult types; searchCatalogWatches DAL with anti-N+1 inArray viewer-state hydration; searchCollections DAL with two-layer privacy + tag-array unnest + tasteOverlap secondary sort; live-DB privacy + trgm reachability integration tests). Wave 1.
+- [ ] 19-02-PLAN.md — Server Actions (searchWatchesAction + searchCollectionsAction with Zod .strict().max(200) + auth gate + generic error copy + 21-test contract suite). Wave 1.
+- [ ] 19-03-PLAN.md — Watches row UI (WatchSearchRow with whole-row Link to /evaluate?catalogId={uuid} + raised inline Evaluate CTA + single contextual pill matrix; WatchSearchResultsSkeleton). Wave 2.
+- [ ] 19-04-PLAN.md — Collections row UI (CollectionSearchRow with matched-watch cluster + matched-tag pills + match-summary copy matrix; CollectionSearchResultsSkeleton). Wave 2.
+- [ ] 19-05-PLAN.md — Integration (extend useSearchState with per-tab slices + tab-aware AbortController + Promise.all on All tab; AllTabResults composer with See-all setTab; replace 2 ComingSoonCard panels in SearchPageClient with real result blocks). Wave 3.
 **UI hint**: yes
 
 ### Phase 20: /evaluate Route + Verdict UI
@@ -220,7 +225,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17. Catalog Foundation | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/5 | Not started | - |
-| v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 20. /evaluate Route + Verdict UI | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 22. Settings Restructure + Account Section | 0/TBD | Not started | - |
