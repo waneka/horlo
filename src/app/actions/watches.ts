@@ -165,6 +165,17 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     }
 
     revalidatePath('/')
+
+    // Phase 18 DISC-05 / DISC-06 — fan out 'explore' tag so the global
+    // Trending + Gaining Traction rails (and the per-viewer Popular Collectors
+    // rail, which also tags 'explore') recompute on next render. Cross-user
+    // semantics via revalidateTag(tag, 'max') — Pitfall 4. Granularity is
+    // intentionally broad (just 'explore') rather than per-rail, per RESEARCH
+    // §Pattern 6 recommendation. Fires once regardless of status because
+    // both Trending (owners + 0.5*wishlist) and Gaining Traction read the
+    // denormalized counts from the catalog.
+    revalidateTag('explore', 'max')
+
     return { success: true, data: watch }
   } catch (err) {
     console.error('[addWatch] unexpected error:', err)
@@ -197,6 +208,15 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
   try {
     const watch = await watchDAL.updateWatch(user.id, watchId, parsed.data)
     revalidatePath('/')
+
+    // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch. editWatch can
+    // change status (owned ↔ wishlist ↔ sold ↔ grail), and each transition
+    // shifts the catalog's denormalized counts (owners_count, wishlist_count)
+    // on the next pg_cron refresh. Even non-status edits (brand/model fixes)
+    // can affect Trending if they re-link the watch to a different catalog
+    // row via the upsert path. Fan-out is the safe default.
+    revalidateTag('explore', 'max')
+
     return { success: true, data: watch }
   } catch (err) {
     console.error('[editWatch] unexpected error:', err)
@@ -220,6 +240,13 @@ export async function removeWatch(watchId: string): Promise<ActionResult<void>> 
   try {
     await watchDAL.deleteWatch(user.id, watchId)
     revalidatePath('/')
+
+    // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch/editWatch.
+    // DELETE on watches table → owners_count or wishlist_count decrements
+    // on next pg_cron refresh, so the rails must recompute to reflect the
+    // removal. Fan-out via revalidateTag(tag, 'max') — Pitfall 4.
+    revalidateTag('explore', 'max')
+
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[removeWatch] unexpected error:', err)
