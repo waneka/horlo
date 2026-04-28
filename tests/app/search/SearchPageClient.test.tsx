@@ -3,13 +3,16 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 // ---------------------------------------------------------------------------
-// Wave 0 RED — SearchPageClient contract per CONTEXT.md D-02 / D-05 / D-06 /
-// D-07 / D-08 / D-09 / D-10 / D-11 / D-12 / D-29.
+// Phase 16 carry-forward suite, updated for Phase 19 Plan 06.
 //
-// 13 tests covering: 4-tab structure, tab gate (Watches/Collections),
-// pre-query suggested-collectors children, no-results state, loading
-// skeleton, All-tab vs People-tab compact-coming-soon footer differential,
-// and D-02 page-level autoFocus on the searchbox.
+// Plan 06 removed <ComingSoonCard> from Watches/Collections/All tabs and
+// replaced them with real result blocks fed by per-tab DAL slices. The
+// Phase 16 SRCH-02 tab-gate behavior (no fetch on Watches/Collections) is
+// also retired — all 3 sub-effects fire on All + their own tab. The
+// affected tests (4, 5, 8, 9, 11) were rewritten to assert Plan 06's
+// contract; the rest of the Phase 16 D-02..D-12/D-29 contract carries
+// forward unchanged (4-tab structure, default tab, URL sync, pre-query
+// suggested children, autofocus, loading skeleton).
 // ---------------------------------------------------------------------------
 
 const mockReplace = vi.fn()
@@ -21,8 +24,13 @@ vi.mock('next/navigation', () => ({
 }))
 
 const mockSearchPeopleAction = vi.fn()
+const mockSearchWatchesAction = vi.fn()
+const mockSearchCollectionsAction = vi.fn()
 vi.mock('@/app/actions/search', () => ({
   searchPeopleAction: (...args: unknown[]) => mockSearchPeopleAction(...args),
+  searchWatchesAction: (...args: unknown[]) => mockSearchWatchesAction(...args),
+  searchCollectionsAction: (...args: unknown[]) =>
+    mockSearchCollectionsAction(...args),
 }))
 
 // Target import — RED until Plan 05 creates it.
@@ -36,6 +44,12 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
   beforeEach(() => {
     mockReplace.mockClear()
     mockSearchPeopleAction.mockReset()
+    mockSearchWatchesAction.mockReset()
+    mockSearchCollectionsAction.mockReset()
+    // Default no-op resolutions so All-tab fan-out doesn't blow up.
+    mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
+    mockSearchWatchesAction.mockResolvedValue({ success: true, data: [] })
+    mockSearchCollectionsAction.mockResolvedValue({ success: true, data: [] })
     mockSearchParams.get.mockReset()
     mockSearchParams.get.mockReturnValue(null)
   })
@@ -92,7 +106,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     })
   })
 
-  it('Test 4 (SRCH-02): clicking Watches does NOT call searchPeopleAction; renders coming-soon copy', async () => {
+  it('Test 4 (Plan 06 — Watches tab pre-query: heading "Watches" + sub-copy; no ComingSoonCard)', async () => {
     const user = userEvent.setup()
     render(
       <SearchPageClient viewerId="me">
@@ -100,12 +114,15 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
       </SearchPageClient>,
     )
     await user.click(screen.getByRole('tab', { name: 'Watches' }))
-    expect(mockSearchPeopleAction).not.toHaveBeenCalled()
-    // Coming-soon copy should mention "coming" / "soon" — assert via case-insensitive regex
-    expect(screen.getByText(/coming/i)).toBeInTheDocument()
+    // Plan 06: Watches tab renders pre-query copy from UI-SPEC, not ComingSoonCard
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
+    expect(screen.queryAllByTestId('coming-soon-card-full')).toHaveLength(0)
+    expect(
+      screen.getByText(/Search by brand, model, or reference number/i),
+    ).toBeInTheDocument()
   })
 
-  it('Test 5 (SRCH-02): clicking Collections does NOT call searchPeopleAction; renders coming-soon copy', async () => {
+  it('Test 5 (Plan 06 — Collections tab pre-query: heading + sub-copy; no ComingSoonCard)', async () => {
     const user = userEvent.setup()
     render(
       <SearchPageClient viewerId="me">
@@ -113,8 +130,13 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
       </SearchPageClient>,
     )
     await user.click(screen.getByRole('tab', { name: 'Collections' }))
-    expect(mockSearchPeopleAction).not.toHaveBeenCalled()
-    expect(screen.getByText(/coming/i)).toBeInTheDocument()
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
+    expect(screen.queryAllByTestId('coming-soon-card-full')).toHaveLength(0)
+    expect(
+      screen.getByText(
+        /Find collectors by the watches they own or their collection style/i,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('Test 6 (SRCH-07 / D-11): pre-query (no ?q=) on All renders suggested-children + "Collectors you might like"', () => {
@@ -138,12 +160,16 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     expect(mockSearchPeopleAction).not.toHaveBeenCalled()
   })
 
-  it('Test 8 (SRCH-06 / D-10): q="zzzznotfound" + 0 results → "No collectors match \\"zzzznotfound\\"" + suggested-children below', async () => {
+  it('Test 8 (SRCH-06 / D-10 — People tab no-results): q="zzzznotfound" + 0 People results → "No collectors match" + suggested-children below', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: false })
     mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
-    mockSearchParams.get.mockImplementation((k: string) =>
-      k === 'q' ? 'zzzznotfound' : null,
-    )
+    // Plan 06: per-tab copy lives on the People panel only. Mount the People
+    // tab so the no-results copy renders the People panel branch.
+    mockSearchParams.get.mockImplementation((k: string) => {
+      if (k === 'q') return 'zzzznotfound'
+      if (k === 'tab') return 'people'
+      return null
+    })
 
     render(
       <SearchPageClient viewerId="me">
@@ -155,8 +181,6 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
       vi.advanceTimersByTime(250)
     })
 
-    // The hook must have fired the search and resolved with [] before assertions.
-    // Use real timers + waitFor with a generous timeout.
     vi.useRealTimers()
     await waitFor(
       () => {
@@ -169,12 +193,14 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     expect(screen.getByTestId('suggested-children')).toBeInTheDocument()
   })
 
-  it('Test 9 (SRCH-06 / D-10): no-results sub-header renders "Try someone you\'d like to follow"', async () => {
+  it('Test 9 (SRCH-06 / D-10 — People tab no-results): sub-header renders "Try someone you\'d like to follow"', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: false })
     mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
-    mockSearchParams.get.mockImplementation((k: string) =>
-      k === 'q' ? 'zzzznotfound' : null,
-    )
+    mockSearchParams.get.mockImplementation((k: string) => {
+      if (k === 'q') return 'zzzznotfound'
+      if (k === 'tab') return 'people'
+      return null
+    })
 
     render(
       <SearchPageClient viewerId="me">
@@ -223,18 +249,19 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     )
   })
 
-  it('Test 11 (D-06): All tab renders 2 compact coming-soon footer cards', () => {
+  it('Test 11 (Plan 06 — All tab renders ZERO ComingSoonCards; replaced by 3-section composer)', () => {
     render(
       <SearchPageClient viewerId="me">
         <SuggestedChildren />
       </SearchPageClient>,
     )
-    expect(
-      screen.getAllByTestId('coming-soon-card-compact'),
-    ).toHaveLength(2)
+    // Plan 06: 2 compact ComingSoonCards retired. The All tab now uses the
+    // <AllTabResults> composer (People / Watches / Collections sections).
+    expect(screen.queryAllByTestId('coming-soon-card-compact')).toHaveLength(0)
+    expect(screen.queryAllByTestId('coming-soon-card-full')).toHaveLength(0)
   })
 
-  it('Test 12 (D-07): People tab renders 0 compact coming-soon footer cards', async () => {
+  it('Test 12 (Plan 06 — People tab also has zero ComingSoonCards)', async () => {
     const user = userEvent.setup()
     render(
       <SearchPageClient viewerId="me">
@@ -243,6 +270,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     )
     await user.click(screen.getByRole('tab', { name: 'People' }))
     expect(screen.queryAllByTestId('coming-soon-card-compact')).toHaveLength(0)
+    expect(screen.queryAllByTestId('coming-soon-card-full')).toHaveLength(0)
   })
 
   it('Test 13 (D-02 autofocus): page-level <input role="searchbox"> is the active element on mount with ?q=foo', async () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, Layers, Watch as WatchIcon } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -8,45 +8,77 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useSearchState } from '@/components/search/useSearchState'
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
-import { ComingSoonCard } from '@/components/search/ComingSoonCard'
-import type { SearchTab } from '@/lib/searchTypes'
+import { WatchSearchRow } from '@/components/search/WatchSearchRow'
+import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
+import { CollectionSearchRow } from '@/components/search/CollectionSearchRow'
+import { CollectionSearchResultsSkeleton } from '@/components/search/CollectionSearchResultsSkeleton'
+import { AllTabResults } from '@/components/search/AllTabResults'
+import type {
+  SearchCatalogWatchResult,
+  SearchCollectionResult,
+  SearchProfileResult,
+  SearchTab,
+} from '@/lib/searchTypes'
 
 interface SearchPageClientProps {
   viewerId: string
-  /** SuggestedCollectors Server Component, rendered into pre-query + no-results states (D-29). */
+  /** SuggestedCollectors Server Component, rendered into pre-query + no-results states (D-29 carry-forward). */
   children: React.ReactNode
 }
 
 const CLIENT_MIN_CHARS = 2 // matches D-20 server gate
 
+const PLACEHOLDER_BY_TAB: Record<SearchTab, string> = {
+  all: 'Search everything…',
+  people: 'Search collectors…',
+  watches: 'Search watches…',
+  collections: 'Search collections…',
+}
+
+const ARIA_BY_TAB: Record<SearchTab, string> = {
+  all: 'Search everything',
+  people: 'Search collectors',
+  watches: 'Search watches',
+  collections: 'Search collections',
+}
+
 /**
- * Phase 16 People Search page body (D-29 Client Component).
+ * Phase 19 /search page body — 4-tab shell wired to per-tab DAL slices.
  *
- * Owns the 4-tab control and the people-search interactive surface; routes the
- * q ↔ URL ↔ fetch trifecta through `useSearchState`. The empty/no-results
- * suggested-collectors block is rendered by the Server Component parent and
- * passed as `children` (D-11, D-10) — keeps the heavy DAL work on the server.
+ * Plan 06 rewrite:
+ *   - Watches + Collections tabs replace the prior coming-soon placeholders
+ *     with real result blocks (skeleton → error → empty → results | footer).
+ *   - All tab composes 3 sections via <AllTabResults> (People → Watches →
+ *     Collections, D-13). Each section shows its own per-section skeleton (D-15)
+ *     and a 'See all' button that calls setTab() (D-14, not router.push).
+ *   - Input placeholder updates per active tab (UI-SPEC lines 220-221).
+ *   - Watches tab shows 'Showing top 20' footer when results.length === 20 (D-04).
+ *   - People-tab pre-query state still renders the suggested-collectors `children`
+ *     Server Component slot (D-29 carry-forward); All-tab pre-query also renders
+ *     it below the empty-section composer for the same effect.
  *
- * Tabs:
- *   - 'all' (default, D-05): mirrors People + 2 compact coming-soon footer
- *     cards for Watches/Collections (D-06)
- *   - 'people': same as All but without footer cards (D-07)
- *   - 'watches' / 'collections': render full-page ComingSoonCard only;
- *     tab gate inside useSearchState ensures searchPeopleAction is NOT
- *     called (SRCH-02)
- *
- * Page-level input (D-25): autofocused on mount (D-02), pre-filled from
- * useSearchState.q (which itself initializes from `?q=` searchParam).
+ * The Phase 16 `results`/`isLoading`/`hasError` backward-compat aliases on the
+ * hook contract are dropped here — this consumer reads per-tab slices directly.
  */
 export function SearchPageClient({ viewerId, children }: SearchPageClientProps) {
-  const { q, setQ, debouncedQ, tab, setTab, results, isLoading, hasError } =
-    useSearchState()
+  const {
+    q,
+    setQ,
+    debouncedQ,
+    tab,
+    setTab,
+    peopleResults,
+    watchesResults,
+    collectionsResults,
+    peopleIsLoading,
+    watchesIsLoading,
+    collectionsIsLoading,
+    peopleHasError,
+    watchesHasError,
+    collectionsHasError,
+  } = useSearchState()
 
-  // D-02 autofocus uses the HTML `autoFocus` attribute below (declarative).
-  // The shadcn <Input> wrapper (src/components/ui/input.tsx) is a function
-  // component without forwardRef, so an imperative ref-based `.focus()`
-  // call would silently no-op. `autoFocus` is forwarded as a plain DOM
-  // attribute through the rest spread and works regardless of ref forwarding.
+  const trimmed = debouncedQ.trim()
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 space-y-6">
@@ -63,17 +95,14 @@ export function SearchPageClient({ viewerId, children }: SearchPageClientProps) 
             name="q"
             value={q}
             onChange={(e) => setQ(e.currentTarget.value)}
-            placeholder="Search collectors…"
-            aria-label="Search collectors"
+            placeholder={PLACEHOLDER_BY_TAB[tab]}
+            aria-label={ARIA_BY_TAB[tab]}
             className="w-full bg-muted/50 border-transparent pl-9 rounded-md focus-visible:bg-background h-10 text-base"
           />
         </div>
       </div>
 
-      <Tabs
-        value={tab}
-        onValueChange={(next) => setTab(next as SearchTab)}
-      >
+      <Tabs value={tab} onValueChange={(next) => setTab(next as SearchTab)}>
         <TabsList className="w-full">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="watches">Watches</TabsTrigger>
@@ -81,61 +110,56 @@ export function SearchPageClient({ viewerId, children }: SearchPageClientProps) 
           <TabsTrigger value="collections">Collections</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-6 mt-6">
-          <PeopleResultsBlock
-            q={debouncedQ}
-            results={results}
-            isLoading={isLoading}
-            hasError={hasError}
+        <TabsContent value="all" className="mt-6 space-y-6">
+          <AllTabResults
+            q={trimmed}
             viewerId={viewerId}
-            childrenSlot={children}
+            peopleResults={peopleResults}
+            watchesResults={watchesResults}
+            collectionsResults={collectionsResults}
+            peopleIsLoading={peopleIsLoading}
+            watchesIsLoading={watchesIsLoading}
+            collectionsIsLoading={collectionsIsLoading}
+            setTab={setTab}
           />
-          {/* D-06: All-tab compact coming-soon footer cards */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ComingSoonCard
-              icon={WatchIcon}
-              heading="Watch search coming soon"
-              copy="Search by brand and model once we normalize the watch catalog across collectors."
-              variant="compact"
-            />
-            <ComingSoonCard
-              icon={Layers}
-              heading="Collection search coming soon"
-              copy="Curated collection surfaces are next on the roadmap."
-              variant="compact"
-            />
-          </div>
+          {/* D-29 carry-forward: when query is empty, surface the suggested
+              collectors Server Component below the empty-section composer. */}
+          {trimmed.length < CLIENT_MIN_CHARS && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold leading-tight text-foreground">
+                Collectors you might like
+              </h2>
+              {children}
+            </section>
+          )}
         </TabsContent>
 
         <TabsContent value="watches" className="mt-6">
-          {/* D-08: Watches tab full-page coming-soon (no fetch fires — tab gate in useSearchState) */}
-          <ComingSoonCard
-            variant="full"
-            icon={WatchIcon}
-            heading="Watches search is coming"
-            copy="We'll surface watches by brand and model once the catalog is normalized across collectors."
+          <WatchesPanel
+            q={trimmed}
+            results={watchesResults}
+            isLoading={watchesIsLoading}
+            hasError={watchesHasError}
           />
         </TabsContent>
 
         <TabsContent value="people" className="mt-6">
-          {/* D-07: People tab — no compact footer cards */}
-          <PeopleResultsBlock
-            q={debouncedQ}
-            results={results}
-            isLoading={isLoading}
-            hasError={hasError}
+          <PeoplePanel
+            q={trimmed}
+            results={peopleResults}
+            isLoading={peopleIsLoading}
+            hasError={peopleHasError}
             viewerId={viewerId}
             childrenSlot={children}
           />
         </TabsContent>
 
         <TabsContent value="collections" className="mt-6">
-          {/* D-08: Collections tab full-page coming-soon */}
-          <ComingSoonCard
-            variant="full"
-            icon={Layers}
-            heading="Collections is coming"
-            copy="A separate product surface that ships after the watch catalog lands."
+          <CollectionsPanel
+            q={trimmed}
+            results={collectionsResults}
+            isLoading={collectionsIsLoading}
+            hasError={collectionsHasError}
           />
         </TabsContent>
       </Tabs>
@@ -143,12 +167,11 @@ export function SearchPageClient({ viewerId, children }: SearchPageClientProps) 
   )
 }
 
-/**
- * Inner block — same People search visuals across All and People tabs.
- * Distilled here to avoid duplicating the 5-state branch logic (loading,
- * error, pre-query, no-results, results) across two TabsContent panels.
- */
-function PeopleResultsBlock({
+/* -------------------------------------------------------------------------- */
+/* Per-tab panels                                                              */
+/* -------------------------------------------------------------------------- */
+
+function PeoplePanel({
   q,
   results,
   isLoading,
@@ -157,29 +180,26 @@ function PeopleResultsBlock({
   childrenSlot,
 }: {
   q: string
-  results: ReturnType<typeof useSearchState>['results']
+  results: SearchProfileResult[]
   isLoading: boolean
   hasError: boolean
   viewerId: string
   childrenSlot: React.ReactNode
 }) {
-  // D-09 loading
   if (isLoading) return <SearchResultsSkeleton />
-
   if (hasError) {
     return (
-      <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3">
+      <div
+        role="alert"
+        className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3"
+      >
         <p className="text-sm text-destructive">
           Couldn&apos;t run search. Try again.
         </p>
       </div>
     )
   }
-
-  const trimmed = q.trim()
-
-  // D-11 pre-query state — render suggested-collectors children below header
-  if (trimmed.length < CLIENT_MIN_CHARS) {
+  if (q.length < CLIENT_MIN_CHARS) {
     return (
       <section className="space-y-4">
         <h2 className="text-xl font-semibold leading-tight text-foreground">
@@ -189,14 +209,12 @@ function PeopleResultsBlock({
       </section>
     )
   }
-
-  // D-10 no-results — same children rendered below the recovery copy
   if (results.length === 0) {
     return (
       <section className="space-y-4">
         <header className="space-y-1">
           <h2 className="text-xl font-semibold leading-tight text-foreground">
-            {`No collectors match "${trimmed}"`}
+            {`No collectors match "${q}"`}
           </h2>
           <p className="text-sm text-muted-foreground">
             Try someone you&apos;d like to follow
@@ -206,17 +224,131 @@ function PeopleResultsBlock({
       </section>
     )
   }
-
-  // Results list
   return (
     <section className="space-y-2">
       {results.map((r) => (
-        <PeopleSearchRow
-          key={r.userId}
-          result={r}
-          q={trimmed}
-          viewerId={viewerId}
-        />
+        <PeopleSearchRow key={r.userId} result={r} q={q} viewerId={viewerId} />
+      ))}
+    </section>
+  )
+}
+
+function WatchesPanel({
+  q,
+  results,
+  isLoading,
+  hasError,
+}: {
+  q: string
+  results: SearchCatalogWatchResult[]
+  isLoading: boolean
+  hasError: boolean
+}) {
+  if (isLoading) return <WatchSearchResultsSkeleton />
+  if (hasError) {
+    return (
+      <div
+        role="alert"
+        className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3"
+      >
+        <p className="text-sm text-destructive">
+          Couldn&apos;t run watch search. Try again.
+        </p>
+      </div>
+    )
+  }
+  if (q.length < CLIENT_MIN_CHARS) {
+    return (
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
+          Watches
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Search by brand, model, or reference number
+        </p>
+      </section>
+    )
+  }
+  if (results.length === 0) {
+    return (
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
+          {`No watches match "${q}"`}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Try a brand name like &lsquo;Rolex&rsquo; or a model like
+          &lsquo;Submariner&rsquo;
+        </p>
+      </section>
+    )
+  }
+  return (
+    <section className="space-y-2">
+      {results.map((r) => (
+        <WatchSearchRow key={r.catalogId} result={r} q={q} />
+      ))}
+      {results.length === 20 && (
+        <p className="text-sm text-muted-foreground text-center py-2">
+          Showing top 20
+        </p>
+      )}
+    </section>
+  )
+}
+
+function CollectionsPanel({
+  q,
+  results,
+  isLoading,
+  hasError,
+}: {
+  q: string
+  results: SearchCollectionResult[]
+  isLoading: boolean
+  hasError: boolean
+}) {
+  if (isLoading) return <CollectionSearchResultsSkeleton />
+  if (hasError) {
+    return (
+      <div
+        role="alert"
+        className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3"
+      >
+        <p className="text-sm text-destructive">
+          Couldn&apos;t run collection search. Try again.
+        </p>
+      </div>
+    )
+  }
+  if (q.length < CLIENT_MIN_CHARS) {
+    return (
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
+          Collections
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Find collectors by the watches they own or their collection style
+        </p>
+      </section>
+    )
+  }
+  if (results.length === 0) {
+    return (
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
+          {`No collectors have "${q}" in their collection`}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Try a brand like &lsquo;Omega&rsquo; or a style tag like
+          &lsquo;tool&rsquo;
+        </p>
+      </section>
+    )
+  }
+  return (
+    <section className="space-y-2">
+      {results.map((r) => (
+        <CollectionSearchRow key={r.userId} result={r} q={q} />
       ))}
     </section>
   )
