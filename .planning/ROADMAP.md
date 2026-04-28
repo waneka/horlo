@@ -118,12 +118,13 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. Typing a query into `/search?tab=collections` returns matches that satisfy BOTH `profile_public = true` AND `collection_public = true` (verified via two-layer privacy integration test) and excludes the viewer's own collection.
   4. The `/search?tab=all` view surfaces People + Watches + Collections capped at 5 each.
   5. Rapidly switching tabs while typing aborts in-flight requests for the previous tab (per-tab AbortController) and never displays results from the wrong tab.
-**Plans**: 5 plans
+**Plans**: 6 plans
 - [ ] 19-01-PLAN.md — Types + DAL (SearchCatalogWatchResult/SearchCollectionResult types; searchCatalogWatches DAL with anti-N+1 inArray viewer-state hydration; searchCollections DAL with two-layer privacy + tag-array unnest + tasteOverlap secondary sort; live-DB privacy + trgm reachability integration tests). Wave 1.
-- [ ] 19-02-PLAN.md — Server Actions (searchWatchesAction + searchCollectionsAction with Zod .strict().max(200) + auth gate + generic error copy + 21-test contract suite). Wave 1.
+- [ ] 19-02-PLAN.md — Server Actions (searchWatchesAction + searchCollectionsAction with Zod .strict().max(200) + auth gate + generic error copy + 21-test contract suite). Wave 2.
 - [ ] 19-03-PLAN.md — Watches row UI (WatchSearchRow with whole-row Link to /evaluate?catalogId={uuid} + raised inline Evaluate CTA + single contextual pill matrix; WatchSearchResultsSkeleton). Wave 2.
 - [ ] 19-04-PLAN.md — Collections row UI (CollectionSearchRow with matched-watch cluster + matched-tag pills + match-summary copy matrix; CollectionSearchResultsSkeleton). Wave 2.
-- [ ] 19-05-PLAN.md — Integration (extend useSearchState with per-tab slices + tab-aware AbortController + Promise.all on All tab; AllTabResults composer with See-all setTab; replace 2 ComingSoonCard panels in SearchPageClient with real result blocks). Wave 3.
+- [ ] 19-05-PLAN.md — Hook extension (useSearchState with per-tab slices + three independent sub-effects, one AbortController per section per RESEARCH.md Q4 path A; Pitfall 9 fix; per-section paint independence). Wave 3.
+- [ ] 19-06-PLAN.md — Composer + page wiring (AllTabResults with defensive 5-cap on each section per checker I-2; SearchPageClient replaces ComingSoonCards with real result blocks; per-tab placeholders + per-tab error/empty/footer copy). Wave 3, depends on Plan 05.
 **UI hint**: yes
 
 ### Phase 20: /evaluate Route + Verdict UI
