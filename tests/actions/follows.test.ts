@@ -26,6 +26,9 @@ vi.mock('next/cache', () => ({
   // followUser now also invalidates the recipient's bell cache, so the
   // Server Action imports revalidateTag from next/cache.
   revalidateTag: vi.fn(),
+  // Phase 18 DISC-04 (Plan 18-05): followUser + unfollowUser invalidate the
+  // viewer's own Popular Collectors rail via updateTag (RYO semantics).
+  updateTag: vi.fn(),
 }))
 
 vi.mock('@/lib/notifications/logger', () => ({
@@ -38,7 +41,7 @@ vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 import { followUser, unfollowUser } from '@/app/actions/follows'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import * as followsDAL from '@/data/follows'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { logNotification } from '@/lib/notifications/logger'
 import { getProfileById } from '@/data/profiles'
 
@@ -156,6 +159,60 @@ describe('followUser Server Action', () => {
     expect(revalidateTag).toHaveBeenCalledWith(`viewer:${targetUserId}`, 'max')
   })
 
+  it('on success invalidates the viewer\'s own Popular Collectors rail tag (Phase 18 DISC-04)', async () => {
+    // Phase 18 Plan 05 — RYO semantics. The viewer (the actor of the follow)
+    // is the same person whose Popular Collectors rail must drop the just-
+    // followed user on next render. updateTag (single-arg, Server-Actions-only)
+    // is the right primitive — see notifications.ts header comment + RESEARCH
+    // §Pattern 6. Tag string MUST match the cacheTag in
+    // src/components/explore/PopularCollectors.tsx.
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
+    ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
+
+    await followUser({ userId: targetUserId })
+
+    expect(updateTag).toHaveBeenCalledWith(`explore:popular-collectors:viewer:${viewerUserId}`)
+  })
+
+  it('does NOT invalidate the bare \'explore\' fan-out tag (per-user action only)', async () => {
+    // T-18-05-03: followUser is a per-user invalidation; firing the bare
+    // 'explore' tag would over-invalidate the global Trending + Gaining
+    // Traction rails for every viewer. The bare tag is reserved for
+    // addWatch / removeWatch (cross-user fan-out) only.
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
+    ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
+
+    await followUser({ userId: targetUserId })
+
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore')
+    expect(updateTag).not.toHaveBeenCalledWith('explore')
+  })
+
+  it('does NOT call updateTag on validation failure (success-path-only invalidation)', async () => {
+    // Tag invalidation runs only after a successful DAL write. Validation
+    // failure must not surface as a refresh signal — would let an attacker
+    // drain cache by spamming malformed payloads.
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+
+    await followUser({ userId: 'not-a-uuid' })
+
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
+  it('does NOT call updateTag on DAL failure (success-path-only invalidation)', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
+    ;(followsDAL.followUser as Mock).mockRejectedValueOnce(new Error('DB exploded'))
+
+    const result = await followUser({ userId: targetUserId })
+
+    expect(result.success).toBe(false)
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
   it('does NOT call logNotification on self-follow rejection (D-24 belt-and-suspenders)', async () => {
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
     await followUser({ userId: viewerUserId })
@@ -247,5 +304,57 @@ describe('unfollowUser Server Action', () => {
     const result = await unfollowUser({ userId: targetUserId, role: 'admin' })
     expect(result).toEqual({ success: false, error: 'Invalid request' })
     expect(followsDAL.unfollowUser).not.toHaveBeenCalled()
+  })
+
+  it('on success invalidates the viewer\'s own Popular Collectors rail tag (Phase 18 DISC-04)', async () => {
+    // Symmetry with followUser: an unfollowed user becomes re-eligible to
+    // surface on the viewer's Popular Collectors rail. RYO via updateTag.
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerUserId,
+      email: 'v@example.com',
+    })
+    ;(followsDAL.unfollowUser as Mock).mockResolvedValueOnce(undefined)
+
+    await unfollowUser({ userId: targetUserId })
+
+    expect(updateTag).toHaveBeenCalledWith(`explore:popular-collectors:viewer:${viewerUserId}`)
+  })
+
+  it('does NOT invalidate the bare \'explore\' fan-out tag (per-user action only)', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerUserId,
+      email: 'v@example.com',
+    })
+    ;(followsDAL.unfollowUser as Mock).mockResolvedValueOnce(undefined)
+
+    await unfollowUser({ userId: targetUserId })
+
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore')
+    expect(updateTag).not.toHaveBeenCalledWith('explore')
+  })
+
+  it('does NOT call updateTag on validation failure', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerUserId,
+      email: 'v@example.com',
+    })
+
+    await unfollowUser({ userId: 'not-a-uuid' })
+
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
+  it('does NOT call updateTag on DAL failure', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({
+      id: viewerUserId,
+      email: 'v@example.com',
+    })
+    ;(followsDAL.unfollowUser as Mock).mockRejectedValueOnce(new Error('DB exploded'))
+
+    const result = await unfollowUser({ userId: targetUserId })
+
+    expect(result.success).toBe(false)
+    expect(updateTag).not.toHaveBeenCalled()
   })
 })
