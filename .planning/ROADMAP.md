@@ -99,8 +99,13 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   2. The viewer sees a Popular Collectors rail showing the most-followed public profiles (excluding self and already-followed) and can navigate to `/explore/collectors` for the full list.
   3. The viewer sees a Trending Watches rail (sorted by `owners_count + wishlist_count * 0.5`) and can navigate to `/explore/watches` for the full list.
   4. The viewer sees a Gaining Traction rail showing 7-day delta from `watches_catalog_daily_snapshots`.
-  5. The mobile BottomNav shows Explore as one of its 5 slots (Home / Search / Wear / Notifications / **Explore**), replacing the previous Discover entry.
-**Plans**: TBD
+  5. The mobile BottomNav shows Explore as one of its 5 slots (Home / Search / Wear / Explore / Profile, per Phase 18 D-01..D-04 — supersedes original DISC-08 wording).
+**Plans**: 5 plans
+- [ ] 18-01-PLAN.md — Discovery DAL (getMostFollowedCollectors + getTrendingCatalogWatches + getGainingTractionCatalogWatches + getWearEventsCountByUser; Wave 1)
+- [ ] 18-02-PLAN.md — Discovery components (Hero + 3 cached rails + DiscoveryWatchCard + PopularCollectorRow; Wave 2)
+- [ ] 18-03-PLAN.md — /explore + /explore/collectors + /explore/watches routes (hero gate + See-all surfaces; Wave 2)
+- [ ] 18-04-PLAN.md — BottomNav 5-slot rewrite (Home/Search/Wear/Explore/Profile; Wave 1)
+- [ ] 18-05-PLAN.md — Server-action invalidations (followUser updateTag + addWatch revalidateTag('explore','max'); Wave 2)
 **UI hint**: yes
 
 ### Phase 19: /search Watches + Collections
@@ -214,7 +219,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17. Catalog Foundation | 0/6 | Not started | - |
-| v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 20. /evaluate Route + Verdict UI | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
