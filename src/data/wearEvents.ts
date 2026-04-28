@@ -405,3 +405,22 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
 
   return { tiles, viewerId }
 }
+
+/**
+ * Cheap COUNT(*) of wear events for a user.
+ * Used by Phase 18 /explore hero render gate (DISC-03).
+ * Mirrors getFollowerCounts (src/data/profiles.ts:83-97) — count()::int cast (Pitfall 2).
+ *
+ * Does NOT filter on wear_events.visibility — the hero gate cares whether the
+ * viewer has EVER posted a wear, regardless of visibility (RESEARCH §State of
+ * the Art row 4). This matches the cross-user-isolation guarantee (T-18-01-04):
+ * the WHERE clause keys on wearEvents.userId only, and userId is server-resolved
+ * via getCurrentUser() at the call site.
+ */
+export async function getWearEventsCountByUser(userId: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(wearEvents)
+    .where(eq(wearEvents.userId, userId))
+  return rows[0]?.count ?? 0
+}
