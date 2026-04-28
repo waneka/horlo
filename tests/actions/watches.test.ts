@@ -185,3 +185,99 @@ describe('addWatch — overlap notification wiring (NOTIF-03)', () => {
     expect(logNotification).not.toHaveBeenCalled()
   })
 })
+
+describe('watches Server Actions — explore fan-out invalidation (Phase 18 DISC-05/06)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('addWatch fires revalidateTag(\'explore\', \'max\') on success', async () => {
+    // Phase 18 Plan 05 — bare 'explore' fan-out tag invalidates Trending +
+    // Gaining Traction + Popular Collectors rails on next render. Two-arg
+    // form per Pitfall 4 — single-arg revalidateTag is legacy.
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.createWatch).mockResolvedValue(
+      { id: 'w-1', ...validWatch, status: 'owned' } as unknown as Watch
+    )
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+
+    const result = await addWatch(validWatch)
+
+    expect(result.success).toBe(true)
+    expect(revalidateTag).toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('addWatch does NOT fire \'explore\' tag on validation error', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+
+    const result = await addWatch({ /* missing required brand/model */ })
+
+    expect(result.success).toBe(false)
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('addWatch does NOT fire \'explore\' tag on DAL failure', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.createWatch).mockRejectedValue(new Error('DB exploded'))
+
+    const result = await addWatch(validWatch)
+
+    expect(result.success).toBe(false)
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('editWatch fires revalidateTag(\'explore\', \'max\') on success', async () => {
+    // editWatch can change status (owned ↔ wishlist) → owners_count and
+    // wishlist_count shift on next pg_cron refresh, so the fan-out is
+    // necessary to keep Trending + Gaining Traction in sync.
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.updateWatch).mockResolvedValue(
+      { id: 'w-1', ...validWatch } as unknown as Watch
+    )
+
+    const result = await editWatch('w-1', { brand: 'Rolex' })
+
+    expect(result.success).toBe(true)
+    expect(revalidateTag).toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('editWatch does NOT fire \'explore\' tag on validation error', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+
+    // brand: '' fails the min(1) requirement
+    const result = await editWatch('w-1', { brand: '' })
+
+    expect(result.success).toBe(false)
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('editWatch does NOT fire \'explore\' tag on DAL failure', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.updateWatch).mockRejectedValue(new Error('DB exploded'))
+
+    const result = await editWatch('w-1', { brand: 'Rolex' })
+
+    expect(result.success).toBe(false)
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('removeWatch fires revalidateTag(\'explore\', \'max\') on success', async () => {
+    // DELETE on watches table → owners_count/wishlist_count both shift on
+    // the next pg_cron refresh — fan-out keeps the rails in sync.
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.deleteWatch).mockResolvedValue(undefined)
+
+    const result = await removeWatch('w-1')
+
+    expect(result.success).toBe(true)
+    expect(revalidateTag).toHaveBeenCalledWith('explore', 'max')
+  })
+
+  it('removeWatch does NOT fire \'explore\' tag on DAL failure', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.deleteWatch).mockRejectedValue(new Error('DB exploded'))
+
+    const result = await removeWatch('w-1')
+
+    expect(result.success).toBe(false)
+    expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+  })
+})
