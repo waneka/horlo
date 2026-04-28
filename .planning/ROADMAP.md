@@ -60,7 +60,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 **Milestone Goal:** Finish v3.0-era stubs (`/explore`, `/search` Watches/Collections, Settings expansion), expose schema-driven knobs that already exist behind the scenes (`collectionGoal`, `overlapTolerance`, `notesPublic`, `isChronometer`), surface the similarity engine as a first-class `/evaluate` flow, lay the canonical `watches_catalog` foundation that unblocks future cross-user features, raise profile prominence, and ship empty-state CTAs + WYWT auto-nav + form-feedback polish + dead-stub cleanup.
 
 - [x] **Phase 17: Catalog Foundation** — `watches_catalog` schema + RLS + nullable FK + idempotent backfill + two upsert helpers + pg_cron daily counts + daily snapshots (completed 2026-04-27)
-- [ ] **Phase 18: /explore Discovery Surface** — Server Component shell with sparse-network hero + Popular Collectors / Trending / Gaining Traction rails + BottomNav slot wiring
+- [x] **Phase 18: /explore Discovery Surface** — Server Component shell with sparse-network hero + Popular Collectors / Trending / Gaining Traction rails + BottomNav slot wiring (completed 2026-04-28)
 - [ ] **Phase 19: /search Watches + Collections** — Catalog-backed Watches tab + cross-user Collections tab (two-layer privacy) + All-tab union + tab-aware AbortController
 - [ ] **Phase 20: /evaluate Route + Verdict UI** — Auth-only route, paste-URL flow, shared `<SimilarityVerdictCard>` pure renderer, three-CTA ladder, `?catalogId=` deep-link from /search
 - [ ] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc
@@ -103,9 +103,9 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 **Plans**: 5 plans
 - [x] 18-01-PLAN.md — Discovery DAL (getMostFollowedCollectors + getTrendingCatalogWatches + getGainingTractionCatalogWatches + getWearEventsCountByUser; Wave 1)
 - [x] 18-02-PLAN.md — Discovery components (Hero + 3 cached rails + DiscoveryWatchCard + PopularCollectorRow; Wave 2)
-- [ ] 18-03-PLAN.md — /explore + /explore/collectors + /explore/watches routes (hero gate + See-all surfaces; Wave 2)
+- [x] 18-03-PLAN.md — /explore + /explore/collectors + /explore/watches routes (hero gate + See-all surfaces; Wave 2)
 - [x] 18-04-PLAN.md — BottomNav 5-slot rewrite (Home/Search/Wear/Explore/Profile; Wave 1)
-- [ ] 18-05-PLAN.md — Server-action invalidations (followUser updateTag + addWatch revalidateTag('explore','max'); Wave 2)
+- [x] 18-05-PLAN.md — Server-action invalidations (followUser updateTag + addWatch revalidateTag('explore','max'); Wave 2)
 **UI hint**: yes
 
 ### Phase 19: /search Watches + Collections
