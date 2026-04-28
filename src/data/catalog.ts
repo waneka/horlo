@@ -2,9 +2,10 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { watchesCatalog } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { watches, watchesCatalog } from '@/db/schema'
+import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import type { CatalogEntry, CatalogSource, ImageSourceQuality } from '@/lib/types'
+import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 // ---------------------------------------------------------------------------
 // Input sanitizers
@@ -237,4 +238,134 @@ export async function getCatalogById(id: string): Promise<CatalogEntry | null> {
   const rows = await db.select().from(watchesCatalog).where(eq(watchesCatalog.id, id)).limit(1)
   if (rows.length === 0) return null
   return mapRowToCatalogEntry(rows[0])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 19 SRCH-09 + SRCH-10: searchCatalogWatches (Watches tab DAL)
+// ---------------------------------------------------------------------------
+
+const SEARCH_WATCHES_TRIM_MIN_LEN = 2
+const SEARCH_WATCHES_CANDIDATE_CAP = 50
+const SEARCH_WATCHES_DEFAULT_LIMIT = 20
+
+/**
+ * Phase 19 Watches tab DAL (SRCH-09).
+ *
+ * Adds an ILIKE OR predicate over the trending body of getTrendingCatalogWatches:
+ *   - brand_normalized ILIKE %lowerQ%
+ *   - model_normalized ILIKE %lowerQ%
+ *   - reference_normalized ILIKE %refQ%   (refQ = lowerQ stripped of non-alphanumerics)
+ *
+ * Score-zero exclusion + popularity-DESC + alphabetical tie-break (D-02 / Phase 18 idiom).
+ * Pre-LIMIT 50 candidates → final slice to limit (D-04 default 20).
+ *
+ * Anti-N+1 viewer-state hydration (SRCH-10 / D-05): a SINGLE batched
+ * inArray(watches.catalogId, topIds) keyed by viewerId — never per-row. 'owned'
+ * wins over 'wishlist' for the same catalogId; 'sold' + 'grail' are NOT badged.
+ *
+ * Pitfall 1 (reference normalization): query string is lower(trim()) +
+ * regexp-stripped to match the generated reference_normalized column. If
+ * the stripped form is empty (e.g. q = '/-'), the reference branch falls
+ * back to sql`false` so the OR predicate stays valid (no ILIKE %% match).
+ *
+ * Pitfall 4 (empty inArray): topIds.length === 0 short-circuits before
+ * the inArray call.
+ *
+ * All `q` interpolations use Drizzle parameterized template binds — never
+ * string-concatenated into SQL text (T-19-01-01 mitigation).
+ */
+export async function searchCatalogWatches({
+  q,
+  viewerId,
+  limit = SEARCH_WATCHES_DEFAULT_LIMIT,
+}: {
+  q: string
+  viewerId: string
+  limit?: number
+}): Promise<SearchCatalogWatchResult[]> {
+  const trimmed = q.trim()
+  if (trimmed.length < SEARCH_WATCHES_TRIM_MIN_LEN) return []
+
+  const lowerQ = trimmed.toLowerCase()
+  const pattern = `%${lowerQ}%`
+  const refNormalized = lowerQ.replace(/[^a-z0-9]+/g, '')
+  const refPattern = refNormalized.length > 0 ? `%${refNormalized}%` : null
+
+  const candidates = await db
+    .select({
+      id: watchesCatalog.id,
+      brand: watchesCatalog.brand,
+      model: watchesCatalog.model,
+      reference: watchesCatalog.reference,
+      imageUrl: watchesCatalog.imageUrl,
+      ownersCount: watchesCatalog.ownersCount,
+      wishlistCount: watchesCatalog.wishlistCount,
+    })
+    .from(watchesCatalog)
+    .where(
+      and(
+        // Score-zero exclusion: matches Phase 18 trending idiom (RESEARCH Pitfall reference).
+        sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount}) > 0`,
+        or(
+          ilike(watchesCatalog.brandNormalized, pattern),
+          ilike(watchesCatalog.modelNormalized, pattern),
+          // Pitfall 1: only run reference branch when stripped query is non-empty.
+          refPattern
+            ? ilike(watchesCatalog.referenceNormalized, refPattern)
+            : sql`false`,
+        ),
+      ),
+    )
+    .orderBy(
+      desc(sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount})`),
+      asc(watchesCatalog.brandNormalized),
+      asc(watchesCatalog.modelNormalized),
+    )
+    .limit(SEARCH_WATCHES_CANDIDATE_CAP)
+
+  if (candidates.length === 0) return []
+
+  const top = candidates.slice(0, limit)
+  const topIds = top.map((r) => r.id)
+
+  // Pitfall 4: length-guard before inArray to skip the degenerate empty IN clause.
+  const stateRows = topIds.length
+    ? await db
+        .select({
+          catalogId: watches.catalogId,
+          status: watches.status,
+        })
+        .from(watches)
+        .where(
+          and(
+            eq(watches.userId, viewerId),
+            inArray(watches.catalogId, topIds),
+          ),
+        )
+    : []
+
+  // D-05 resolution: 'owned' wins over 'wishlist' for the same catalogId.
+  // 'sold' + 'grail' are NOT badged.
+  const stateMap = new Map<string, 'owned' | 'wishlist'>()
+  for (const row of stateRows) {
+    if (!row.catalogId) continue
+    const prior = stateMap.get(row.catalogId)
+    if (row.status === 'owned') {
+      stateMap.set(row.catalogId, 'owned')
+    } else if (row.status === 'wishlist' && prior !== 'owned') {
+      stateMap.set(row.catalogId, 'wishlist')
+    }
+    // 'sold' and 'grail' deliberately fall through — no badge.
+  }
+
+  return top.map((r) => ({
+    catalogId: r.id,
+    brand: r.brand,
+    model: r.model,
+    reference: r.reference,
+    imageUrl: r.imageUrl,
+    ownersCount: r.ownersCount,
+    wishlistCount: r.wishlistCount,
+    viewerState: stateMap.get(r.id) ?? null,
+  }))
 }
