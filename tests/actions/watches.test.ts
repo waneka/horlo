@@ -27,6 +27,21 @@ vi.mock('@/lib/notifications/logger', () => ({
 }))
 vi.mock('@/data/notifications', () => ({ findOverlapRecipients: vi.fn() }))
 vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
+// Phase 19.1 Plan 05: mock catalog DAL taste helpers (fire-and-forget paths)
+vi.mock('@/data/catalog', () => ({
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('cat-id-1'),
+  updateCatalogTaste: vi.fn().mockResolvedValue({ updated: true }),
+  applyUserUploadedPhoto: vi.fn().mockResolvedValue({ applied: true }),
+}))
+// Phase 19.1 Plan 05: mock enricher (fire-and-forget path)
+vi.mock('@/lib/taste/enricher', () => ({
+  enrichTasteAttributes: vi.fn().mockResolvedValue(null),
+}))
+// Phase 19.1 Plan 05: mock storage helper (fire-and-forget path)
+vi.mock('@/lib/storage/catalogSourcePhotos', () => ({
+  getCatalogSourcePhotoSignedUrl: vi.fn().mockResolvedValue(null),
+  uploadCatalogSourcePhoto: vi.fn().mockResolvedValue({ path: 'user/pending/abc.jpg' }),
+}))
 
 import { addWatch, editWatch, removeWatch } from '@/app/actions/watches'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
@@ -279,5 +294,55 @@ describe('watches Server Actions — explore fan-out invalidation (Phase 18 DISC
 
     expect(result.success).toBe(false)
     expect(revalidateTag).not.toHaveBeenCalledWith('explore', 'max')
+  })
+})
+
+describe('addWatch — Phase 19.1 photoSourcePath validation (T-19.1-05-01 + T-19.1-05-05)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('rejects photoSourcePath whose first segment does not match authenticated user (T-19.1-05-05)', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+
+    const result = await addWatch({
+      ...validWatch,
+      // First segment is a different user id
+      photoSourcePath: '99999999-9999-9999-9999-999999999999/pending/aabbccdd-eeff-4011-8022-334455667788.jpg',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/photo path does not match authenticated user/i)
+    // Watch insert must NOT have been called — rejection happens before createWatch
+    expect(watchDAL.createWatch).not.toHaveBeenCalled()
+  })
+
+  it('rejects photoSourcePath that fails the regex pattern (T-19.1-05-01)', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+
+    const result = await addWatch({
+      ...validWatch,
+      // Path has a middle segment that is neither 'pending' nor a UUID
+      photoSourcePath: `${viewerUserId}/invalid-middle/abc.jpg`,
+    })
+
+    // Zod rejects it before the ownership check — still a failure
+    expect(result.success).toBe(false)
+    // Zod error surfaces as "Invalid watch data: photoSourcePath: Invalid photo path"
+    expect(result.error).toMatch(/invalid/i)
+    expect(watchDAL.createWatch).not.toHaveBeenCalled()
+  })
+
+  it('accepts valid photoSourcePath matching the authenticated user', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: viewerUserId, email: 'a@b.co' })
+    vi.mocked(watchDAL.createWatch).mockResolvedValue(
+      { id: 'w-1', ...validWatch } as unknown as Watch,
+    )
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+
+    const result = await addWatch({
+      ...validWatch,
+      photoSourcePath: `${viewerUserId}/pending/aabbccdd-eeff-4011-8022-334455667788.jpg`,
+    })
+
+    expect(result.success).toBe(true)
   })
 })

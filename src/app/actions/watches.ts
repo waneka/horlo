@@ -39,6 +39,13 @@ const insertWatchSchema = z.object({
   isChronometer: z.boolean().optional(),
   notes: z.string().optional(),
   imageUrl: z.string().optional(),
+  // Phase 19.1 D-19: optional bucket path for the user-uploaded reference photo.
+  // Format: "{userId}/{catalogId-or-pending}/{filename}.jpg" — server validates
+  // userId segment matches the authenticated user (T-19.1-05-05).
+  photoSourcePath: z.string()
+    .regex(/^[0-9a-f-]{36}\/(pending|[0-9a-f-]{36})\/[0-9a-f-]+\.jpg$/i, 'Invalid photo path')
+    .max(256)
+    .optional(),
 })
 
 // Partial schema for updates — all fields optional.
@@ -61,6 +68,15 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
       .map(([field, errors]) => `${field}: ${(errors ?? []).join(', ')}`)
       .join('; ')
     return { success: false, error: `Invalid watch data: ${summary}` }
+  }
+
+  // T-19.1-05-05: photoSourcePath ownership check.
+  // The first path segment MUST equal the authenticated user's id.
+  if (parsed.data.photoSourcePath) {
+    const firstSegment = parsed.data.photoSourcePath.split('/')[0]
+    if (firstSegment !== user.id) {
+      return { success: false, error: 'Photo path does not match authenticated user' }
+    }
   }
 
   try {
@@ -88,6 +104,64 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
         await watchDAL.linkWatchToCatalog(user.id, watch.id, catalogId)
       } catch (err) {
         console.error('[addWatch] catalog link failed (non-fatal):', err)
+      }
+    }
+
+    // Phase 19.1 D-08, D-09: catalog taste enrichment (fire-and-forget).
+    // - If photoSourcePath set: write photo through to catalog image_url first (D-21).
+    // - Enricher runs text-mode (no photo) or vision-mode (with photo bucket path).
+    // - All operations are fire-and-forget; failures non-fatal per D-09.
+    // - Await semantics: Option A (synchronous await inside addWatch) per plan recommendation.
+    //   Adds ~1-3s latency but guarantees the enrichment write completes. Acceptable at v4.0 scale.
+    if (catalogId) {
+      const photoPath = parsed.data.photoSourcePath ?? null
+
+      // D-21 photo write-through (only when photo present).
+      if (photoPath) {
+        try {
+          const { getCatalogSourcePhotoSignedUrl } = await import('@/lib/storage/catalogSourcePhotos')
+          // 7-day TTL signed URL for catalog image_url.
+          // Production posture should switch to public-bucket reads or per-request signing.
+          // Documented as deferred polish (Phase 19.1 SUMMARY).
+          const longSignedUrl = await getCatalogSourcePhotoSignedUrl(photoPath, 60 * 60 * 24 * 7)
+          if (longSignedUrl) {
+            await catalogDAL.applyUserUploadedPhoto(catalogId, {
+              imageUrl: longSignedUrl,
+              imageSourceUrl: photoPath,
+            })
+          }
+        } catch (err) {
+          console.error('[addWatch] photo write-through failed (non-fatal):', err)
+        }
+      }
+
+      // D-08 enrichment dispatch — awaited (Option A) for correctness at v4.0 scale.
+      try {
+        const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
+        const taste = await enrichTasteAttributes({
+          catalogId,
+          source: 'manual',
+          spec: {
+            brand: parsed.data.brand,
+            model: parsed.data.model,
+            reference: parsed.data.reference ?? null,
+            movement: parsed.data.movement,
+            caseSizeMm: parsed.data.caseSizeMm ?? null,
+            lugToLugMm: parsed.data.lugToLugMm ?? null,
+            waterResistanceM: parsed.data.waterResistanceM ?? null,
+            crystalType: parsed.data.crystalType ?? null,
+            dialColor: parsed.data.dialColor ?? null,
+            isChronometer: parsed.data.isChronometer ?? null,
+            productionYear: parsed.data.productionYear ?? null,
+            complications: parsed.data.complications ?? [],
+          },
+          photoSourcePath: photoPath,
+        })
+        if (taste) {
+          await catalogDAL.updateCatalogTaste(catalogId, taste)
+        }
+      } catch (err) {
+        console.error('[addWatch] taste enrichment failed (non-fatal):', err)
       }
     }
 
