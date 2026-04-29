@@ -64,8 +64,7 @@ describe('validateAndCleanTaste', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const wire: TasteWire = {
       ...VALID_WIRE,
-      // @ts-expect-error intentionally bad value to test filter
-      primary_archetype: 'BOGUS_ARCH',
+      primary_archetype: 'BOGUS_ARCH', // out-of-vocab; z.string() allows it; vocab filter drops it
     }
     const result = validateAndCleanTaste(wire, CONTEXT)
     expect(result.primaryArchetype).toBeNull()
@@ -82,8 +81,7 @@ describe('validateAndCleanTaste', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const wire: TasteWire = {
       ...VALID_WIRE,
-      // @ts-expect-error intentionally bad value to test filter
-      era_signal: 'BOGUS_ERA',
+      era_signal: 'BOGUS_ERA', // out-of-vocab; z.string() allows it; vocab filter drops it
     }
     const result = validateAndCleanTaste(wire, CONTEXT)
     expect(result.eraSignal).toBeNull()

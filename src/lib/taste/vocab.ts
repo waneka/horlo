@@ -54,8 +54,11 @@ export const TasteSchema = z.object({
   formality:         z.number().min(0).max(1),
   sportiness:        z.number().min(0).max(1),
   heritage_score:    z.number().min(0).max(1),
-  primary_archetype: z.enum(PRIMARY_ARCHETYPES),
-  era_signal:        z.enum(ERA_SIGNALS),
+  // Use z.string() not z.enum() so Zod passes through any string value and
+  // validateAndCleanTaste performs the actual vocab filtering (D-05). The
+  // enricher's strict:true tool schema handles upstream rejection at API level.
+  primary_archetype: z.string(),
+  era_signal:        z.string(),
   design_motifs:     z.array(z.string()).max(8),  // strings here; vocab filter applied post-parse
   confidence:        z.number().min(0).max(1),
 })
