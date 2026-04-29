@@ -105,7 +105,25 @@ export type { GapFillResult } from './gapFill'
 
 // Phase 17 — canonical watches catalog (D-04, D-06)
 export type CatalogSource = 'user_promoted' | 'url_extracted' | 'admin_curated'
-export type ImageSourceQuality = 'official' | 'retailer' | 'unknown'
+export type ImageSourceQuality = 'official' | 'retailer' | 'unknown' | 'user_uploaded'
+
+// Phase 19.1 — catalog taste enrichment attributes (D-01, D-11)
+export type PrimaryArchetype =
+  | 'dress' | 'dive' | 'field' | 'pilot' | 'chrono'
+  | 'gmt' | 'racing' | 'sport' | 'tool' | 'hybrid'
+
+export type EraSignal = 'vintage-leaning' | 'modern' | 'contemporary'
+
+export interface CatalogTasteAttributes {
+  formality: number | null
+  sportiness: number | null
+  heritageScore: number | null
+  primaryArchetype: PrimaryArchetype | null
+  eraSignal: EraSignal | null
+  designMotifs: string[]
+  confidence: number | null
+  extractedFromPhoto: boolean
+}
 
 export interface CatalogEntry {
   id: string
