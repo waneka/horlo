@@ -47,9 +47,10 @@ export async function POST(request: NextRequest) {
     const result = await fetchAndExtract(url)
 
     // CAT-08 — catalog wiring (fire-and-forget)
+    let catalogId: string | null = null
     try {
       if (result.data?.brand && result.data?.model) {
-        await catalogDAL.upsertCatalogFromExtractedUrl({
+        catalogId = await catalogDAL.upsertCatalogFromExtractedUrl({
           brand: result.data.brand,
           model: result.data.model,
           reference: result.data.reference ?? null,
@@ -72,6 +73,42 @@ export async function POST(request: NextRequest) {
       }
     } catch (err) {
       console.error('[extract-watch] catalog upsert failed (non-fatal):', err)
+    }
+
+    // Phase 19.1 D-07 + D-08: second-pass taste enrichment after spec extraction commits.
+    // Fire-and-forget per D-09 — the route response does not block on enrichment result.
+    // URL-extract path is text-only (no photo upload from this surface — D-19 forbids).
+    // D-07 lock: this block does NOT touch src/lib/extractors/llm.ts — only the route handler grows.
+    // Await semantics: Option A (synchronous await) per plan recommendation. Acceptable at v4.0 scale.
+    if (catalogId && result.data?.brand && result.data?.model) {
+      try {
+        const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
+        const { updateCatalogTaste } = await import('@/data/catalog')
+        const taste = await enrichTasteAttributes({
+          catalogId,
+          source: 'url-extract',
+          spec: {
+            brand: result.data.brand,
+            model: result.data.model,
+            reference: result.data.reference ?? null,
+            movement: result.data.movement ?? null,
+            caseSizeMm: result.data.caseSizeMm ?? null,
+            lugToLugMm: result.data.lugToLugMm ?? null,
+            waterResistanceM: result.data.waterResistanceM ?? null,
+            crystalType: result.data.crystalType ?? null,
+            dialColor: result.data.dialColor ?? null,
+            isChronometer: result.data.isChronometer ?? null,
+            productionYear: null,
+            complications: result.data.complications ?? [],
+          },
+          photoSourcePath: null,  // D-19: URL extract does NOT use the photo path
+        })
+        if (taste) {
+          await updateCatalogTaste(catalogId, taste)
+        }
+      } catch (err) {
+        console.error('[extract-watch] taste enrichment failed (non-fatal):', err)
+      }
     }
 
     return NextResponse.json({
