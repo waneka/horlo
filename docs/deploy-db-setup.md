@@ -320,3 +320,124 @@ Phase 17 is additive — no destructive changes to existing `watches`/`profiles`
 2. Revert the application code change (deploy a build that does NOT call catalogDAL helpers — `addWatch` and `/api/extract-watch` revert).
 3. The DB schema additions (catalog table, snapshots, catalog_id column) can stay — they're inert without the application calls. Or drop them via a follow-up migration.
 4. NEVER drop `watches_catalog` while `watches.catalog_id` references exist — `ON DELETE SET NULL` will null all FK refs, but document this side effect.
+
+## Phase 19.1: Catalog Taste Enrichment
+
+Adds 8 LLM-derived taste columns to `watches_catalog` (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence, extracted_from_photo) plus a new `catalog-source-photos` Storage bucket for user-uploaded reference photos. Live enrichment fires fire-and-forget on `addWatch` and `/api/extract-watch`. Existing rows from before the migration get taste only via the post-deploy backfill script (this section).
+
+### Migrations applied
+
+| File | Purpose |
+|------|---------|
+| `drizzle/0005_phase19_1_taste_columns.sql` | 8 column adds (Drizzle-generated) |
+| `supabase/migrations/20260430000000_phase19_1_taste_constraints.sql` | CHECK constraints on `primary_archetype`, `era_signal`, `image_source_quality` |
+| `supabase/migrations/20260430000001_phase19_1_catalog_source_photos_bucket.sql` | New bucket + RLS folder enforcement |
+
+### Production deploy
+
+```bash
+# 1. Push Drizzle column changes to prod
+npx drizzle-kit push --config=drizzle.prod.config.ts
+
+# 2. Push Supabase migrations (CHECK constraints + bucket)
+supabase db push --linked
+```
+
+### Post-deploy backfill (D-16 — gated, NOT auto)
+
+The live enrichment paths skip catalog rows that already have any taste data (D-13 first-write-wins). Existing rows from before the migration need a one-time bulk enrichment.
+
+**Always run --dry-run first to confirm cost.**
+
+```bash
+# Dry-run: count rows + estimate cost (no API calls)
+npm run db:backfill-taste -- --dry-run
+
+# Live run with default batch size (20)
+npm run db:backfill-taste
+
+# Live run with custom batch size
+npm run db:backfill-taste -- --batch-size=10
+```
+
+Expected output (live mode):
+```
+[backfill-taste] pass 1: processed 20 (cumulative success 20, failed 0)
+...
+[backfill-taste] DONE — processed 437, succeeded 432, failed 5, residual NULL 5, elapsed 712451ms
+[backfill-taste] 5 rows still have NULL confidence — re-run later or use db:reenrich-taste --catalog-id=<id> for individual rows.
+```
+
+### Re-enrichment (drift correction)
+
+For rows already enriched but needing a refresh (low confidence, vocab evolution, model upgrade):
+
+```bash
+# Re-run rows with confidence < 0.5 (dry-run first)
+npm run db:reenrich-taste -- --dry-run --confidence-below=0.5
+npm run db:reenrich-taste -- --force --confidence-below=0.5
+
+# Re-run a single catalog row
+npm run db:reenrich-taste -- --force --catalog-id=<uuid>
+```
+
+The script REFUSES to run with `--force` alone (no predicate) — guards against accidental full-catalog re-enrichment.
+
+### Local DB reset workflow
+
+After Phase 19.1 lands, the local reset sequence becomes:
+
+```bash
+# 1. Wipe local DB
+supabase db reset
+
+# 2. Rebuild schema via Drizzle (creates 8 new columns)
+npx drizzle-kit push
+
+# 3. Apply Supabase migrations (multi-statement support via docker exec)
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260413000000_sync_auth_users.sql
+# ... existing migrations ...
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260427000000_phase17_catalog_schema.sql
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260427000001_phase17_pg_cron.sql
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260430000000_phase19_1_taste_constraints.sql
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260430000001_phase19_1_catalog_source_photos_bucket.sql
+```
+
+### Backout plan
+
+If taste enrichment is producing low-quality verdicts and you need to roll back:
+
+1. **Disable live enrichment without revoking the schema:** comment out the `enrichTasteAttributes` calls in `src/app/actions/watches.ts` and `src/app/api/extract-watch/route.ts`. Existing taste data stays in the catalog. Phase 20 verdict copy still reads what's there. No DB changes needed.
+
+2. **Wipe taste data without dropping columns:**
+   ```sql
+   UPDATE watches_catalog SET
+     formality = NULL, sportiness = NULL, heritage_score = NULL,
+     primary_archetype = NULL, era_signal = NULL,
+     design_motifs = '{}'::text[], confidence = NULL, extracted_from_photo = false;
+   ```
+
+3. **Drop the schema entirely** (NOT recommended; data loss):
+   ```sql
+   ALTER TABLE watches_catalog
+     DROP COLUMN formality, DROP COLUMN sportiness, DROP COLUMN heritage_score,
+     DROP COLUMN primary_archetype, DROP COLUMN era_signal,
+     DROP COLUMN design_motifs, DROP COLUMN confidence, DROP COLUMN extracted_from_photo;
+   ```
+
+The bucket can be left in place; if dropped, run:
+```sql
+DELETE FROM storage.objects WHERE bucket_id = 'catalog-source-photos';
+DELETE FROM storage.buckets WHERE id = 'catalog-source-photos';
+```
+
+### Cost notes
+
+- Per text-only call: ~$0.005 (Sonnet 4.6)
+- Per vision call: ~$0.013
+- v4.0 personal-MVP scale (<500 rows): backfill total under $5
+- Each new add-watch (live): adds ~$0.005-$0.013 to that single mutation; cached on catalog row thereafter (zero per-evaluation cost)
+
+### Cross-user image visibility (deferred TOS work)
+
+Per D-21, user-uploaded photos become canonical catalog `image_url`s visible to other authenticated users. This is intentional architecture — catalog is public-read (CAT-02) and the photo provides reference value across users. **A TOS / acceptable-use policy covering this is needed before scaling beyond personal-MVP** — flagged as deferred non-blocking work in the Phase 19.1 CONTEXT. For v4.0 personal-MVP posture, ship as-is.
