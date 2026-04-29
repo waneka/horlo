@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UrlImport } from './UrlImport'
+import { CatalogPhotoUploader } from './CatalogPhotoUploader'
 import { addWatch, editWatch } from '@/app/actions/watches'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import {
@@ -65,6 +66,12 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Phase 19.1 D-19: optional Reference Photo (manual-entry-only).
+  // Stores the EXIF-stripped, ≤1080px JPEG blob in state until form submit.
+  // Plan 05 reads this state in handleSubmit and uploads to catalog-source-photos.
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<FormData>(
     watch
@@ -497,6 +504,19 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Phase 19.1 D-19: Reference Photo (create mode only — UI-SPEC.md §Component Inventory) */}
+      {mode === 'create' && (
+        <CatalogPhotoUploader
+          onPhotoReady={(blob) => {
+            setPhotoBlob(blob)
+            setPhotoError(null)
+          }}
+          onClear={() => setPhotoBlob(null)}
+          onError={(message) => setPhotoError(message)}
+          disabled={isPending}
+        />
+      )}
 
       {/* Notes */}
       <Card>
