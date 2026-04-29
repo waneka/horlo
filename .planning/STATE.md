@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
-stopped_at: Phase 19 UI-SPEC approved
-last_updated: "2026-04-28T21:10:48.061Z"
+stopped_at: Phase 19.1 context gathered
+last_updated: "2026-04-29T19:22:52.048Z"
 last_activity: 2026-04-28
 progress:
-  total_phases: 10
+  total_phases: 12
   completed_phases: 3
   total_plans: 17
   completed_plans: 17
@@ -43,6 +43,10 @@ v4.0 Discovery & Polish           [ ] in progress (Phase 17 ready to plan)
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 19.1 inserted after Phase 19: Catalog Taste Enrichment (URGENT) — LLM-derived structured taste attribute extraction on `watches_catalog` (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs[], crowd_signals[], confidence). Hides `styleTags`/`roleTags`/`designTraits` pickers from `WatchForm`. Adds photo upload + multi-modal vision call on manual entry. Inserted because Phase 20 verdict copy depends on these signals; engine rewire (`analyzeSimilarity` reading catalog taste attrs) deferred to v5.0. Architecture decision in memory at `project_taste_enrichment_arch_2026_04_29.md`.
+
 ### Carried Forward
 
 The full Key Decisions log lives in `.planning/PROJECT.md` (Key Decisions table) and per-milestone retrospective in `.planning/RETROSPECTIVE.md`. Active todos and tech debt now live in PROJECT.md `### Active`. Milestone archives live in `.planning/milestones/`.
@@ -75,7 +79,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-28T19:07:37.627Z
-Stopped at: Phase 19 UI-SPEC approved
-Resume file: .planning/phases/19-search-watches-collections/19-UI-SPEC.md
+Last session: 2026-04-29T19:22:52.037Z
+Stopped at: Phase 19.1 context gathered
+Resume file: .planning/phases/19.1-catalog-taste-enrichment/19.1-CONTEXT.md
 Next action: `/gsd-plan-phase 17` to begin Phase 17 (Catalog Foundation)
