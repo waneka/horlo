@@ -133,10 +133,10 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 **Goal**: Add LLM-derived structured taste attributes (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence, extracted_from_photo) to `watches_catalog`, computed once per row at write time and cached. Hide the styleTags / roleTags / designTraits pickers from `WatchForm` and add an optional reference-photo upload field that becomes the canonical catalog `image_url`. Wire a fire-and-forget enrichment call to both manual entry (`addWatch`) and URL extract (`/api/extract-watch`) — `extractWithLlm()` body remains byte-identical (D-07 lock). No verdict copy, no badge UI, no `analyzeSimilarity()` changes (Phase 20 / v5.0).
 **Depends on**: Phase 19
 **Requirements**: D-01..D-22 (CONTEXT.md decisions; no explicit REQ-IDs in REQUIREMENTS.md — architectural insertion feeding Phase 20 FIT-02)
-**Plans:** 6 plans
-- [ ] 19.1-01-schema-and-bucket-PLAN.md — Drizzle schema + Supabase migrations (8 columns + 3 CHECK constraints + catalog-source-photos bucket with RLS) + [BLOCKING] local push (Wave 1)
-- [ ] 19.1-02-taste-service-module-PLAN.md — src/lib/taste/ (vocab + types + prompt + enricher with claude-sonnet-4-6 tool-use) + mocked-SDK unit tests (Wave 1)
-- [ ] 19.1-03-watchform-surgery-PLAN.md — Hide 3 picker Cards + add Reference Photo Card (4 interaction states per UI-SPEC) + component tests (Wave 1)
+**Plans:** 3/6 plans executed
+- [x] 19.1-01-schema-and-bucket-PLAN.md — Drizzle schema + Supabase migrations (8 columns + 3 CHECK constraints + catalog-source-photos bucket with RLS) + [BLOCKING] local push (Wave 1)
+- [x] 19.1-02-taste-service-module-PLAN.md — src/lib/taste/ (vocab + types + prompt + enricher with claude-sonnet-4-6 tool-use) + mocked-SDK unit tests (Wave 1)
+- [x] 19.1-03-watchform-surgery-PLAN.md — Hide 3 picker Cards + add Reference Photo Card (4 interaction states per UI-SPEC) + component tests (Wave 1)
 - [ ] 19.1-04-dal-and-storage-helpers-PLAN.md — updateCatalogTaste + applyUserUploadedPhoto DAL helpers + catalog-source-photos storage helpers + live-DB integration tests (Wave 2)
 - [ ] 19.1-05-enrichment-wiring-PLAN.md — addWatch + /api/extract-watch + WatchForm.handleSubmit fire-and-forget wiring + D-21 photo write-through integration test (Wave 2)
 - [ ] 19.1-06-backfill-and-runbook-PLAN.md — backfill-taste.ts + reenrich-taste.ts scripts + npm entries + docs/deploy-db-setup.md runbook section (Wave 3)

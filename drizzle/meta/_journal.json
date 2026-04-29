@@ -36,6 +36,13 @@
       "when": 1777315439147,
       "tag": "0004_phase17_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777496917821,
+      "tag": "0005_phase19_1_taste_columns",
+      "breakpoints": true
     }
   ]
 }
