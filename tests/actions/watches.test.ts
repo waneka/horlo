@@ -310,7 +310,9 @@ describe('addWatch — Phase 19.1 photoSourcePath validation (T-19.1-05-01 + T-1
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toMatch(/photo path does not match authenticated user/i)
+    if (!result.success) {
+      expect(result.error).toMatch(/photo path does not match authenticated user/i)
+    }
     // Watch insert must NOT have been called — rejection happens before createWatch
     expect(watchDAL.createWatch).not.toHaveBeenCalled()
   })
@@ -327,7 +329,9 @@ describe('addWatch — Phase 19.1 photoSourcePath validation (T-19.1-05-01 + T-1
     // Zod rejects it before the ownership check — still a failure
     expect(result.success).toBe(false)
     // Zod error surfaces as "Invalid watch data: photoSourcePath: Invalid photo path"
-    expect(result.error).toMatch(/invalid/i)
+    if (!result.success) {
+      expect(result.error).toMatch(/invalid/i)
+    }
     expect(watchDAL.createWatch).not.toHaveBeenCalled()
   })
 

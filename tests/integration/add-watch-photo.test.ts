@@ -200,7 +200,9 @@ maybe('Phase 19.1 Plan 05 — addWatch + photo write-through (D-21 + D-22)', () 
     })
 
     expect(result.success).toBe(false)
-    expect(result.error).toMatch(/photo path does not match authenticated user/i)
+    if (!result.success) {
+      expect(result.error).toMatch(/photo path does not match authenticated user/i)
+    }
   })
 
   it('addWatch without photoSourcePath does not set image_source_quality (D-21 gate)', async () => {
