@@ -47,16 +47,26 @@ Populate the two stub tabs from v3.0 Phase 16. Reuses the 4-tab `SearchPageClien
 - [ ] **SRCH-14**: `useSearchState` hook is extended with AbortController per `(tab, query)` pair for safe rapid-tab-switch behavior
 - [ ] **SRCH-15**: XSS-safe `<HighlightedText>` from Phase 16 is reused across all v4.0 search surfaces
 
-### Evaluate Flow (/evaluate)
+### Collection Fit Surface Polish
 
-Surface the similarity engine — the core value prop — as a first-class flow instead of burying it in watch-detail cards. Auth-only in v4.0 (anonymous redirected to /signin).
+Reframe the similarity engine as "Collection Fit" with richer contextual phrasings, and ensure it lands cleanly at the organic discovery surfaces it already touches (cross-user watch detail, /search row preview). No standalone /evaluate route — URL-paste capability moves to the Add-Watch Flow Rethink (Phase 20.1).
 
-- [ ] **EVAL-01**: User can visit `/evaluate` (auth-only) and reach a Server Component with `<Suspense>`-wrapped auth-gated body; anonymous viewers redirect to /signin
-- [ ] **EVAL-02**: User can paste a watch URL into a Client Component form that POSTs `/api/extract-watch`, runs `analyzeSimilarity()` client-side, and renders the verdict inline
-- [ ] **EVAL-03**: System provides a shared `<SimilarityVerdictCard>` component extracted from `<SimilarityBadge>` as a pure renderer (computation moves to caller)
-- [ ] **EVAL-04**: Verdict surface offers a three-CTA ladder: "Save to Evaluate Later" (reuses `wishlist` status), "Add to Wishlist", "Add to Collection" — rationale stored in `notes`
-- [ ] **EVAL-05**: User sees a meaningful empty state on `/evaluate` when no URL has been provided yet
-- [ ] **EVAL-06**: "Evaluate" inline CTA on /search Watches result rows deep-links to `/evaluate?catalogId={uuid}` and skips the URL-paste step
+- [ ] **FIT-01**: System extracts a pure-renderer `<CollectionFitCard>` component from `<SimilarityBadge>`; computation moves to caller (Server Component or Client Component as appropriate to the surface)
+- [ ] **FIT-02**: Verdict copy expands beyond the 6 fixed `SimilarityLabel` values into richer contextual phrasings — including "fills a hole in your collection", "aligns with your heritage-driven taste", "your collection skews [dominant style] — this is a [contrast]", "overlaps strongly with [specific watch X]"
+- [ ] **FIT-03**: Cross-user `/watch/[id]` (reached via `/u/{username}/collection` → click) renders `<CollectionFitCard>` correctly framed for a watch the viewer doesn't own (verdict computes against viewer's collection + preferences vs. the other collector's watch)
+- [ ] **FIT-04**: `WatchSearchRow` "Evaluate" CTA from Phase 19 is repointed from the dangling `/evaluate?catalogId=` to an inline-expand verdict preview (verdict appears in or below the row without navigation); the `/evaluate` route does not exist
+
+### Add-Watch Flow Rethink
+
+The add-watch flow is reorganized so URL-paste → verdict preview → status decision (wishlist / owned / skip) is a single coherent gesture. The "skip" path covers the lightweight evaluate-only use case (paste a watch found elsewhere; see fit; bail) without requiring a separate /evaluate route. Manual entry stays as a secondary affordance.
+
+- [ ] **ADD-01**: URL-paste flow runs extract → `<CollectionFitCard>` verdict preview → 3-button status decision in a single coherent flow (replaces today's "Apply to Form" intermediate)
+- [ ] **ADD-02**: "Add to Wishlist" CTA from the verdict preview commits a wishlist-status row with extracted fields and optional verdict rationale captured in `notes`
+- [ ] **ADD-03**: "Add to Collection" CTA from the verdict preview commits an owned-status row with extracted fields prefilled (continues to existing form for any final edits)
+- [ ] **ADD-04**: "Skip" CTA from the verdict preview closes the flow with no commit and offers "evaluate another"
+- [ ] **ADD-05**: Manual entry path (no URL) is preserved as a secondary affordance and bypasses the verdict step (rare flow; users typing watches they already own)
+- [ ] **ADD-06**: Catalog deep-link from `/search?tab=watches` Evaluate CTA (FIT-04 inline-expand) offers an "Add to Wishlist / Collection" path that prefills via `catalogId` (not URL extract), reusing the same verdict step
+- [ ] **ADD-07**: Extraction failure inside the new flow shows a fallback that preserves any partially-extracted data and offers manual continuation (no dead-end)
 
 ### Settings Restructure
 
@@ -150,10 +160,10 @@ Acknowledged but deferred to a v4.x patch milestone or v5.0+. Not in v4.0 roadma
 - **SRCH-16**: /search Watches filter facets (Movement / Case size / Style)
 - **SRCH-17**: Within-collection search via `/u/{user}?q=…` URL param
 
-### Evaluate (v4.x)
+### Collection Fit (v4.x)
 
-- **EVAL-07**: "Compare with watch I own" pairwise drill-down on /evaluate
-- **EVAL-08**: Marketing demo path — anonymous /evaluate with "sign up to save" CTA
+- **FIT-05**: "Compare with watch I own" pairwise drill-down inside `<CollectionFitCard>`
+- **FIT-06**: Verdict copy A/B testing infrastructure for the FIT-02 phrasings
 
 ### Settings (v5+)
 
@@ -189,7 +199,6 @@ Explicitly excluded from v4.0. Documented to prevent scope creep.
 | Automated price tracking / market integrations | Requires external scraping infra; future milestone |
 | Collection visualization map (2D dressy↔sporty × affordable↔expensive plot) | Future milestone after data depth grows |
 | Sharing / export to others (CSV, public RSS, etc) | Future milestone |
-| Anonymous /evaluate marketing demo | Auth-only for v4.0 — see EVAL-01; demo path deferred to v4.x |
 
 ## Traceability
 
@@ -222,12 +231,17 @@ Which phases cover which requirements. Populated by the roadmapper on 2026-04-26
 | SRCH-13 | Phase 19 — /search Watches + Collections | Pending |
 | SRCH-14 | Phase 19 — /search Watches + Collections | Pending |
 | SRCH-15 | Phase 19 — /search Watches + Collections | Pending |
-| EVAL-01 | Phase 20 — /evaluate Route + Verdict UI | Pending |
-| EVAL-02 | Phase 20 — /evaluate Route + Verdict UI | Pending |
-| EVAL-03 | Phase 20 — /evaluate Route + Verdict UI | Pending |
-| EVAL-04 | Phase 20 — /evaluate Route + Verdict UI | Pending |
-| EVAL-05 | Phase 20 — /evaluate Route + Verdict UI | Pending |
-| EVAL-06 | Phase 20 — /evaluate Route + Verdict UI | Pending |
+| FIT-01 | Phase 20 — Collection Fit Surface Polish + Verdict Copy | Pending |
+| FIT-02 | Phase 20 — Collection Fit Surface Polish + Verdict Copy | Pending |
+| FIT-03 | Phase 20 — Collection Fit Surface Polish + Verdict Copy | Pending |
+| FIT-04 | Phase 20 — Collection Fit Surface Polish + Verdict Copy | Pending |
+| ADD-01 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
+| ADD-02 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
+| ADD-03 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
+| ADD-04 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
+| ADD-05 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
+| ADD-06 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
+| ADD-07 | Phase 20.1 — Add-Watch Flow Rethink + Verdict-as-Step | Pending |
 | SMTP-01 | Phase 21 — Custom SMTP via Resend | Pending |
 | SMTP-02 | Phase 21 — Custom SMTP via Resend | Pending |
 | SMTP-03 | Phase 21 — Custom SMTP via Resend | Pending |
@@ -270,12 +284,13 @@ Which phases cover which requirements. Populated by the roadmapper on 2026-04-26
 | WYWT-21 | Phase 26 — WYWT Auto-Nav | Pending |
 
 **Coverage:**
-- v4.0 requirements: 71 enumerated (CAT 12 + DISC 6 + SRCH 7 + EVAL 6 + SET 12 + SMTP 6 + FEAT 2 + NAV 3 + UX 8 + WYWT 2 + DEBT 4 + TEST 3 = 71)
-- Mapped to phases: 71 ✓
+- v4.0 requirements: 76 enumerated (CAT 12 + DISC 6 + SRCH 7 + FIT 4 + ADD 7 + SET 12 + SMTP 6 + FEAT 2 + NAV 3 + UX 8 + WYWT 2 + DEBT 4 + TEST 3 = 76)
+- Mapped to phases: 76 ✓
 - Unmapped: 0 ✓
 
-> **Note on count:** The original Coverage block in this file stated 64 total v4.0 requirements, but the explicitly enumerated REQ-IDs sum to 71. The roadmapper has trusted the enumeration (each REQ-ID corresponds to a distinct, observable requirement) and surfaced the discrepancy here for the user to reconcile. No requirements have been silently dropped or merged.
+> **Note on count:** The original Coverage block in this file stated 64 total v4.0 requirements, but the explicitly enumerated REQ-IDs sum to 76 after the 2026-04-29 Phase 20 reshape (EVAL-01..06 removed; FIT-01..04 + ADD-01..07 added). The roadmapper has trusted the enumeration (each REQ-ID corresponds to a distinct, observable requirement). No requirements have been silently dropped or merged.
 
 ---
 *Requirements defined: 2026-04-26*
 *Traceability populated: 2026-04-26 — 71 requirements mapped across Phases 17–26*
+*Phase 20 reshape: 2026-04-29 — EVAL-01..06 removed; FIT-01..04 + ADD-01..07 added; Phase 20.1 inserted (Add-Watch Flow Rethink). Total v4.0 requirements: 76.*

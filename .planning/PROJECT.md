@@ -32,7 +32,7 @@ Production navigation frame, three-tier wear privacy, notifications system, phot
 - Owner edit surface for `notesPublic` per-note visibility
 - `isChronometer` toggle in WatchForm + display in WatchDetail
 - Profile prominence — top-nav avatar shortcut, not buried in dropdown
-- Similarity engine resurfacing — dedicated "Evaluate this watch" flow (paste URL → verdict, no commit-to-add)
+- Collection Fit reframe — richer contextual verdict copy + cross-user surface polish + verdict-as-step inside the rethought add-watch flow (no standalone /evaluate route)
 - Empty-state CTAs across collection / wishlist / notes / worn
 - WYWT post-submit auto-nav to `/wear/[id]` (celebration moment)
 - Form feedback polish — success toasts, pending states, contextual URL-extract errors

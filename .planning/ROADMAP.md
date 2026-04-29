@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-19) — [archive](milestones/v1.0-ROADMAP.md)
 - ✅ **v2.0 Taste Network Foundation** — Phases 6-10 (shipped 2026-04-22) — [archive](milestones/v2.0-ROADMAP.md)
 - ✅ **v3.0 Production Nav & Daily Wear Loop** — Phases 11-16 + 999.1 (shipped 2026-04-27) — [archive](milestones/v3.0-ROADMAP.md)
-- 🚧 **v4.0 Discovery & Polish** — Phases 17-26 (in progress)
+- 🚧 **v4.0 Discovery & Polish** — Phases 17-26 + 20.1 (in progress)
 
 ## Phases
 
@@ -57,12 +57,13 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 
 ### 🚧 v4.0 Discovery & Polish (In Progress)
 
-**Milestone Goal:** Finish v3.0-era stubs (`/explore`, `/search` Watches/Collections, Settings expansion), expose schema-driven knobs that already exist behind the scenes (`collectionGoal`, `overlapTolerance`, `notesPublic`, `isChronometer`), surface the similarity engine as a first-class `/evaluate` flow, lay the canonical `watches_catalog` foundation that unblocks future cross-user features, raise profile prominence, and ship empty-state CTAs + WYWT auto-nav + form-feedback polish + dead-stub cleanup.
+**Milestone Goal:** Finish v3.0-era stubs (`/explore`, `/search` Watches/Collections, Settings expansion), expose schema-driven knobs that already exist behind the scenes (`collectionGoal`, `overlapTolerance`, `notesPublic`, `isChronometer`), reframe the similarity engine as Collection Fit and bake verdict-while-considering into the add-watch flow, lay the canonical `watches_catalog` foundation that unblocks future cross-user features, raise profile prominence, and ship empty-state CTAs + WYWT auto-nav + form-feedback polish + dead-stub cleanup.
 
 - [x] **Phase 17: Catalog Foundation** — `watches_catalog` schema + RLS + nullable FK + idempotent backfill + two upsert helpers + pg_cron daily counts + daily snapshots (completed 2026-04-27)
 - [x] **Phase 18: /explore Discovery Surface** — Server Component shell with sparse-network hero + Popular Collectors / Trending / Gaining Traction rails + BottomNav slot wiring (completed 2026-04-28)
 - [x] **Phase 19: /search Watches + Collections** — Catalog-backed Watches tab + cross-user Collections tab (two-layer privacy) + All-tab union + tab-aware AbortController (completed 2026-04-28)
-- [ ] **Phase 20: /evaluate Route + Verdict UI** — Auth-only route, paste-URL flow, shared `<SimilarityVerdictCard>` pure renderer, three-CTA ladder, `?catalogId=` deep-link from /search
+- [ ] **Phase 20: Collection Fit Surface Polish + Verdict Copy** — Pure-renderer `<CollectionFitCard>`, richer contextual verdict phrasings, cross-user `/watch/[id]` polish, `WatchSearchRow` CTA repointed to inline-expand (no /evaluate route)
+- [ ] **Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step** — URL-paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture; "skip" covers the lightweight evaluate-only use case
 - [ ] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc
 - [ ] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect
 - [ ] **Phase 23: Settings Sections + Schema-Field UI** — Preferences (collectionGoal + overlapTolerance) + Notifications (opt-out toggles) + Privacy (restyled) + Appearance (theme) + WatchForm `notesPublic` per-note + `isChronometer` toggle/display
@@ -127,16 +128,31 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 19-06-PLAN.md — Composer + page wiring (AllTabResults with defensive 5-cap on each section per checker I-2; SearchPageClient replaces ComingSoonCards with real result blocks; per-tab placeholders + per-tab error/empty/footer copy). Wave 3, depends on Plan 05.
 **UI hint**: yes
 
-### Phase 20: /evaluate Route + Verdict UI
-**Goal**: The similarity engine — Horlo's core value prop — is surfaced as a first-class flow at `/evaluate` instead of being buried inside watch-detail cards. Auth-only in v4.0 (anonymous redirect to /signin). Both URL-paste entry and `/search`-deep-link entry are supported.
-**Depends on**: Phase 17 (for `?catalogId=` deep-link path) and Phase 19 (for the inline "Evaluate" CTA on /search Watches results); URL-paste path is independent and could ship earlier
-**Requirements**: EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06
+### Phase 20: Collection Fit Surface Polish + Verdict Copy
+**Goal**: The similarity engine is reframed as "Collection Fit" with richer contextual phrasings and lands cleanly at the organic discovery surfaces it already touches (cross-user watch detail, /search row preview). No standalone /evaluate route — URL-paste capability moves to the Add-Watch Flow Rethink (Phase 20.1).
+**Depends on**: Phase 17 (catalog identity for inline preview), Phase 19 (WatchSearchRow CTA repoint)
+**Requirements**: FIT-01, FIT-02, FIT-03, FIT-04
 **Success Criteria** (what must be TRUE):
-  1. Anonymous viewers visiting `/evaluate` are redirected to `/signin`; authenticated viewers reach a `<Suspense>`-wrapped page body.
-  2. Pasting a watch URL into the form runs `/api/extract-watch` server-side and `analyzeSimilarity()` client-side, then renders the verdict inline without a full-page reload.
-  3. The verdict surface presents three CTAs in a clear ladder — "Save to Evaluate Later" (creates a wishlist row with rationale in `notes`), "Add to Wishlist", "Add to Collection".
-  4. Visiting `/evaluate` with no URL provided shows a meaningful empty-state with copy explaining the flow.
-  5. Clicking "Evaluate" on a /search Watches result row deep-links to `/evaluate?catalogId={uuid}` and skips the URL-paste step entirely.
+  1. `<CollectionFitCard>` is a pure-renderer component; computation moves to caller.
+  2. Verdict copy includes richer contextual phrasings beyond the 6 fixed `SimilarityLabel` values — "fills a hole in your collection", "aligns with your heritage-driven taste", "your collection skews [dominant style] — this is a [contrast]", "overlaps strongly with [specific watch]".
+  3. Cross-user `/watch/[id]` (reached via `/u/{username}/collection` → click) renders `<CollectionFitCard>` correctly framed for a watch the viewer doesn't own.
+  4. `WatchSearchRow` "Evaluate" CTA opens an inline-expand verdict preview (verdict appears in or below the row without navigation); the dangling `/evaluate?catalogId=` link is removed.
+  5. The `/evaluate` route does not exist.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step
+**Goal**: The add-watch flow is reorganized so URL-paste → verdict preview → status decision (wishlist / owned / skip) is a single coherent gesture. The "skip" path covers the lightweight evaluate-only use case (paste a watch found elsewhere; see fit; bail) without requiring a separate /evaluate route. Manual entry stays as a secondary affordance.
+**Depends on**: Phase 20 (consumes `<CollectionFitCard>` + revised verdict copy)
+**Requirements**: ADD-01, ADD-02, ADD-03, ADD-04, ADD-05, ADD-06, ADD-07
+**Success Criteria** (what must be TRUE):
+  1. Pasting a URL into the add-watch flow surfaces the verdict preview before any commit.
+  2. From the verdict preview, the user can commit to wishlist, commit to collection, or skip — all three paths work end-to-end.
+  3. The wishlist commit path optionally captures verdict rationale in `notes`.
+  4. The collection commit path prefills the existing form with extracted fields.
+  5. Manual entry remains accessible and bypasses the verdict step.
+  6. Extraction failure inside the flow preserves any partial data and offers manual continuation (no dead-end).
+  7. Catalog deep-link from `/search?tab=watches` (FIT-04 inline-expand "Add to..." follow-up) routes into this same flow with `catalogId` prefilling.
 **Plans**: TBD
 **UI hint**: yes
 
@@ -216,8 +232,8 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 25 → 26.
-Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in parallel where convenient. Phase 25 must land last (polish needs all surfaces present).
+Phases execute in numeric order: 17 → 18 → 19 → 20 → 20.1 → 21 → 22 → 23 → 24 → 25 → 26.
+Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in parallel where convenient. Phase 25 must land last (polish needs all surfaces present). Phase 20.1 depends on Phase 20 (consumes `<CollectionFitCard>`).
 
 | Milestone | Phase | Plans Complete | Status | Completed |
 |-----------|-------|----------------|--------|-----------|
@@ -227,7 +243,8 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v4.0 Discovery & Polish | 17. Catalog Foundation | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/5 | Not started | - |
-| v4.0 Discovery & Polish | 20. /evaluate Route + Verdict UI | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 20. Collection Fit Surface Polish + Verdict Copy | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 20.1. Add-Watch Flow Rethink + Verdict-as-Step | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 22. Settings Restructure + Account Section | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 23. Settings Sections + Schema-Field UI | 0/TBD | Not started | - |
