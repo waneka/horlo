@@ -4,7 +4,7 @@ import 'server-only'
 import { db } from '@/db'
 import { watches, watchesCatalog } from '@/db/schema'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
-import type { CatalogEntry, CatalogSource, ImageSourceQuality, PrimaryArchetype, EraSignal } from '@/lib/types'
+import type { CatalogEntry, CatalogSource, ImageSourceQuality, PrimaryArchetype, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 // ---------------------------------------------------------------------------
@@ -376,4 +376,103 @@ export async function searchCatalogWatches({
     wishlistCount: r.wishlistCount,
     viewerState: stateMap.get(r.id) ?? null,
   }))
+}
+
+// ---------------------------------------------------------------------------
+// Phase 19.1 D-13 + D-22: updateCatalogTaste — first-write-wins on taste fields
+// (also persists the extracted_from_photo boolean per D-22)
+// ---------------------------------------------------------------------------
+
+/**
+ * Update the 8 taste columns on a watches_catalog row.
+ *
+ * Default mode (D-13 first-write-wins): writes only when `confidence IS NULL`.
+ * Returns `{updated: false}` if the row already has any taste data — the live
+ * enrichment paths (manual entry, URL extract) call default mode.
+ *
+ * Force mode (script path — D-13 + D-15): writes unconditionally. The
+ * `db:reenrich-taste` script passes `{force: true}` after explicit operator
+ * confirmation.
+ *
+ * D-22: writes `extracted_from_photo` from `taste.extractedFromPhoto`. Plan 02's
+ * enricher sets this true when the call ran in vision mode, false otherwise.
+ *
+ * Failure semantics: caller MUST wrap in try/catch — fire-and-forget per D-09.
+ */
+export async function updateCatalogTaste(
+  catalogId: string,
+  taste: CatalogTasteAttributes,
+  options?: { force?: boolean },
+): Promise<{ updated: boolean }> {
+  const force = options?.force === true
+
+  // For empty arrays, postgres.js renders `()::text[]` which is invalid SQL —
+  // emit `'{}'::text[]` literal instead.
+  const motifsSql =
+    taste.designMotifs.length === 0
+      ? sql`'{}'::text[]`
+      : sql`ARRAY[${sql.join(taste.designMotifs.map((v) => sql`${v}`), sql`, `)}]::text[]`
+
+  const result = await db.execute<{ id: string }>(sql`
+    UPDATE watches_catalog
+       SET formality            = ${taste.formality},
+           sportiness           = ${taste.sportiness},
+           heritage_score       = ${taste.heritageScore},
+           primary_archetype    = ${taste.primaryArchetype},
+           era_signal           = ${taste.eraSignal},
+           design_motifs        = ${motifsSql},
+           confidence           = ${taste.confidence},
+           extracted_from_photo = ${taste.extractedFromPhoto},
+           updated_at           = now()
+     WHERE id = ${catalogId}
+       ${force ? sql`` : sql`AND confidence IS NULL`}
+     RETURNING id
+  `)
+  const rows = result as unknown as Array<{ id: string }>
+  return { updated: rows.length > 0 }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 19.1 D-21: applyUserUploadedPhoto — write-through to catalog image_url
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply a user-uploaded reference photo to a catalog row.
+ * Uses COALESCE first-non-null-wins (D-13 / Phase 17 D-13 pattern):
+ *   - image_url            stays if already set; else takes the new signed URL
+ *   - image_source_url     stays if already set; else takes the new bucket path
+ *   - image_source_quality stays if already set; else 'user_uploaded'
+ *
+ * imageUrl: Supabase signed URL OR direct CDN URL — caller decides. We sanitize
+ * via sanitizeHttpUrl (T-19.1-04-04 mitigation).
+ *
+ * Returns `{applied: boolean}` — true when the UPDATE actually changed at least
+ * one of the three image_* columns (i.e., at least one was NULL beforehand).
+ *
+ * Failure semantics: caller wraps in try/catch — fire-and-forget per D-09.
+ */
+export async function applyUserUploadedPhoto(
+  catalogId: string,
+  input: { imageUrl: string; imageSourceUrl: string },
+): Promise<{ applied: boolean }> {
+  const safeImageUrl = sanitizeHttpUrl(input.imageUrl)
+  if (!safeImageUrl) {
+    return { applied: false }
+  }
+  // imageSourceUrl is a bucket path like "{userId}/{catalogId}/{file}.jpg" — NOT a URL.
+  // Skip sanitizeHttpUrl on this; just length-cap defensively.
+  const safeSourceUrl = input.imageSourceUrl.slice(0, 512)
+
+  const result = await db.execute<{ id: string }>(sql`
+    UPDATE watches_catalog
+       SET image_url            = COALESCE(image_url,            ${safeImageUrl}),
+           image_source_url     = COALESCE(image_source_url,     ${safeSourceUrl}),
+           image_source_quality = COALESCE(image_source_quality, 'user_uploaded'),
+           updated_at           = now()
+     WHERE id = ${catalogId}
+       AND (image_url IS NULL OR image_source_url IS NULL OR image_source_quality IS NULL)
+     RETURNING id
+  `)
+  const rows = result as unknown as Array<{ id: string }>
+  return { applied: rows.length > 0 }
 }
