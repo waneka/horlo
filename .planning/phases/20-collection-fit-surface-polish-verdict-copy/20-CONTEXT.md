@@ -63,7 +63,7 @@ The similarity engine is reframed as "Collection Fit" with richer contextual phr
 
 ### `/explore` Cleanup
 
-- **D-10:** `src/components/explore/DiscoveryWatchCard.tsx:14` currently links to dangling `/evaluate?catalogId=`. **Repoint** to cross-user `/watch/[catalogId]` (the new CollectionFitCard surface from FIT-03). Single change per card. Mirrors the rest of v4.0 — catalog watches now have a real detail page.
+- **D-10:** `src/components/explore/DiscoveryWatchCard.tsx:14` currently links to dangling `/evaluate?catalogId=`. **Repoint** to a new catalog-keyed route `/catalog/[catalogId]` (locked 2026-04-29 after research surfaced the routing-shape ambiguity — see RESEARCH.md Pitfall 5 / Open Q4). Implementation: add `src/app/catalog/[catalogId]/page.tsx` that looks up by `watches_catalog.id`, computes the verdict for the authenticated viewer, and renders `<CollectionFitCard>`. Existing `/watch/[id]` (per-user UUID via `getWatchByIdForViewer`) stays byte-untouched — that route is for `watches.id`, the new route is for `watches_catalog.id`. DiscoveryWatchCard and any other catalog-row entry points link to `/catalog/[catalogId]`. Cross-user FIT-03 framing (D-07/D-08) lives on the new `/catalog/[catalogId]` page since that's where viewers land on a watch they may or may not own.
 
 ### Claude's Discretion
 
