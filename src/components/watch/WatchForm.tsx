@@ -19,9 +19,6 @@ import { UrlImport } from './UrlImport'
 import { addWatch, editWatch } from '@/app/actions/watches'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import {
-  STYLE_TAGS,
-  DESIGN_TRAITS,
-  ROLE_TAGS,
   COMPLICATIONS,
   DIAL_COLORS,
   MOVEMENT_TYPES,
@@ -110,13 +107,6 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
     if (!formData.model.trim()) {
       newErrors.model = 'Model is required'
     }
-    if (formData.styleTags.length === 0) {
-      newErrors.styleTags = 'At least one style tag is required'
-    }
-    if (formData.roleTags.length === 0) {
-      newErrors.roleTags = 'At least one role tag is required'
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -502,90 +492,6 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
                   }
                 />
                 <span className="text-sm capitalize">{complication}</span>
-              </label>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Style Tags */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Style *</CardTitle>
-          <CardDescription>
-            What type of watch is this? The functional category it was designed for.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {STYLE_TAGS.map((tag) => (
-              <label
-                key={tag}
-                className="flex items-center space-x-2 cursor-pointer"
-              >
-                <Checkbox
-                  checked={formData.styleTags.includes(tag)}
-                  onCheckedChange={() => toggleArrayItem('styleTags', tag)}
-                />
-                <span className="text-sm capitalize">{tag}</span>
-              </label>
-            ))}
-          </div>
-          {errors.styleTags && (
-            <p className="mt-2 text-sm text-destructive">{errors.styleTags}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Role Tags */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Role *</CardTitle>
-          <CardDescription>
-            How do you use this watch? Your personal use case for it.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {ROLE_TAGS.map((tag) => (
-              <label
-                key={tag}
-                className="flex items-center space-x-2 cursor-pointer"
-              >
-                <Checkbox
-                  checked={formData.roleTags.includes(tag)}
-                  onCheckedChange={() => toggleArrayItem('roleTags', tag)}
-                />
-                <span className="text-sm capitalize">{tag}</span>
-              </label>
-            ))}
-          </div>
-          {errors.roleTags && (
-            <p className="mt-2 text-sm text-destructive">{errors.roleTags}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Design Traits */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Design</CardTitle>
-          <CardDescription>
-            What does it look like? Visual and aesthetic characteristics.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            {DESIGN_TRAITS.map((trait) => (
-              <label
-                key={trait}
-                className="flex items-center space-x-2 cursor-pointer"
-              >
-                <Checkbox
-                  checked={formData.designTraits.includes(trait)}
-                  onCheckedChange={() => toggleArrayItem('designTraits', trait)}
-                />
-                <span className="text-sm capitalize">{trait}</span>
               </label>
             ))}
           </div>
