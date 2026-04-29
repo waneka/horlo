@@ -125,10 +125,45 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
 
     setSubmitError(null)
     startTransition(async () => {
+      // Phase 19.1 D-19: if a photo is staged (create mode only), upload to
+      // catalog-source-photos BEFORE calling addWatch. The bucket path is passed
+      // to addWatch as photoSourcePath; server-side enricher reads the bucket via
+      // signed URL (vision mode per D-08).
+      let photoSourcePath: string | undefined = undefined
+      if (mode === 'create' && photoBlob) {
+        try {
+          // Get the current user id via the browser Supabase client.
+          // Same approach used by the wearPhotos upload helper (Phase 15).
+          const { createSupabaseBrowserClient } = await import('@/lib/supabase/client')
+          const supabase = createSupabaseBrowserClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) {
+            setSubmitError('Authentication expired. Please sign in again.')
+            return
+          }
+
+          const { uploadCatalogSourcePhoto } = await import('@/lib/storage/catalogSourcePhotos')
+          const uploadResult = await uploadCatalogSourcePhoto(user.id, 'pending', photoBlob)
+          if ('path' in uploadResult) {
+            photoSourcePath = uploadResult.path
+          } else {
+            // Photo upload failed — proceed without photo per D-09 fire-and-forget posture.
+            // Watch submission is not blocked by photo upload failure.
+            console.error('[WatchForm] photo upload failed:', uploadResult.error)
+          }
+        } catch (err) {
+          console.error('[WatchForm] photo upload exception (non-fatal):', err)
+        }
+      }
+
+      // Strip client-only blob state from formData before sending to server.
+      // photoSourcePath is a transient submit-only payload extension — not a Watch field.
+      const submitData = { ...formData, ...(photoSourcePath ? { photoSourcePath } : {}) }
+
       const result =
         mode === 'edit' && watch
           ? await editWatch(watch.id, formData)
-          : await addWatch(formData)
+          : await addWatch(submitData)
 
       if (result.success) {
         router.push('/')
