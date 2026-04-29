@@ -128,6 +128,19 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 19-06-PLAN.md — Composer + page wiring (AllTabResults with defensive 5-cap on each section per checker I-2; SearchPageClient replaces ComingSoonCards with real result blocks; per-tab placeholders + per-tab error/empty/footer copy). Wave 3, depends on Plan 05.
 **UI hint**: yes
 
+### Phase 19.1: Catalog Taste Enrichment (INSERTED)
+
+**Goal**: Add LLM-derived structured taste attributes (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence, extracted_from_photo) to `watches_catalog`, computed once per row at write time and cached. Hide the styleTags / roleTags / designTraits pickers from `WatchForm` and add an optional reference-photo upload field that becomes the canonical catalog `image_url`. Wire a fire-and-forget enrichment call to both manual entry (`addWatch`) and URL extract (`/api/extract-watch`) — `extractWithLlm()` body remains byte-identical (D-07 lock). No verdict copy, no badge UI, no `analyzeSimilarity()` changes (Phase 20 / v5.0).
+**Depends on**: Phase 19
+**Requirements**: D-01..D-22 (CONTEXT.md decisions; no explicit REQ-IDs in REQUIREMENTS.md — architectural insertion feeding Phase 20 FIT-02)
+**Plans:** 6 plans
+- [ ] 19.1-01-schema-and-bucket-PLAN.md — Drizzle schema + Supabase migrations (8 columns + 3 CHECK constraints + catalog-source-photos bucket with RLS) + [BLOCKING] local push (Wave 1)
+- [ ] 19.1-02-taste-service-module-PLAN.md — src/lib/taste/ (vocab + types + prompt + enricher with claude-sonnet-4-6 tool-use) + mocked-SDK unit tests (Wave 1)
+- [ ] 19.1-03-watchform-surgery-PLAN.md — Hide 3 picker Cards + add Reference Photo Card (4 interaction states per UI-SPEC) + component tests (Wave 1)
+- [ ] 19.1-04-dal-and-storage-helpers-PLAN.md — updateCatalogTaste + applyUserUploadedPhoto DAL helpers + catalog-source-photos storage helpers + live-DB integration tests (Wave 2)
+- [ ] 19.1-05-enrichment-wiring-PLAN.md — addWatch + /api/extract-watch + WatchForm.handleSubmit fire-and-forget wiring + D-21 photo write-through integration test (Wave 2)
+- [ ] 19.1-06-backfill-and-runbook-PLAN.md — backfill-taste.ts + reenrich-taste.ts scripts + npm entries + docs/deploy-db-setup.md runbook section (Wave 3)
+
 ### Phase 20: Collection Fit Surface Polish + Verdict Copy
 **Goal**: The similarity engine is reframed as "Collection Fit" with richer contextual phrasings and lands cleanly at the organic discovery surfaces it already touches (cross-user watch detail, /search row preview). No standalone /evaluate route — URL-paste capability moves to the Add-Watch Flow Rethink (Phase 20.1).
 **Depends on**: Phase 17 (catalog identity for inline preview), Phase 19 (WatchSearchRow CTA repoint)
@@ -243,6 +256,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v4.0 Discovery & Polish | 17. Catalog Foundation | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/5 | Not started | - |
+| v4.0 Discovery & Polish | 19.1. Catalog Taste Enrichment | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 20. Collection Fit Surface Polish + Verdict Copy | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 20.1. Add-Watch Flow Rethink + Verdict-as-Step | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
