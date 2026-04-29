@@ -4,7 +4,7 @@ import 'server-only'
 import { db } from '@/db'
 import { watches, watchesCatalog } from '@/db/schema'
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
-import type { CatalogEntry, CatalogSource, ImageSourceQuality } from '@/lib/types'
+import type { CatalogEntry, CatalogSource, ImageSourceQuality, PrimaryArchetype, EraSignal } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 // ---------------------------------------------------------------------------
@@ -73,6 +73,14 @@ function mapRowToCatalogEntry(row: CatalogRow): CatalogEntry {
     complications: row.complications,
     ownersCount: row.ownersCount,
     wishlistCount: row.wishlistCount,
+    formality: row.formality !== null ? Number(row.formality) : null,
+    sportiness: row.sportiness !== null ? Number(row.sportiness) : null,
+    heritageScore: row.heritageScore !== null ? Number(row.heritageScore) : null,
+    primaryArchetype: (row.primaryArchetype as PrimaryArchetype | null) ?? null,
+    eraSignal: (row.eraSignal as EraSignal | null) ?? null,
+    designMotifs: row.designMotifs,
+    confidence: row.confidence !== null ? Number(row.confidence) : null,
+    extractedFromPhoto: row.extractedFromPhoto,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -102,7 +110,7 @@ export interface UrlExtractedCatalogInput {
   productionYear?: number | null
   imageUrl?: string | null
   imageSourceUrl?: string | null
-  imageSourceQuality?: 'official' | 'retailer' | 'unknown' | null
+  imageSourceQuality?: 'official' | 'retailer' | 'unknown' | 'user_uploaded' | null
   styleTags?: string[]
   designTraits?: string[]
   roleTags?: string[]

@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  numeric,
   index,
   unique,
 } from 'drizzle-orm/pg-core'
@@ -319,6 +320,16 @@ export const watchesCatalog = pgTable(
     // Denormalized counts refreshed by pg_cron daily batch (CAT-09, D-15)
     ownersCount:   integer('owners_count').notNull().default(0),
     wishlistCount: integer('wishlist_count').notNull().default(0),
+
+    // ----- Phase 19.1 D-01 taste attributes (LLM-derived, cached on catalog row) -----
+    formality:        numeric('formality',        { precision: 3, scale: 2 }),
+    sportiness:       numeric('sportiness',       { precision: 3, scale: 2 }),
+    heritageScore:    numeric('heritage_score',   { precision: 3, scale: 2 }),
+    primaryArchetype: text('primary_archetype'),
+    eraSignal:        text('era_signal'),
+    designMotifs:     text('design_motifs').array().notNull().default(sql`'{}'::text[]`),
+    confidence:       numeric('confidence',       { precision: 3, scale: 2 }),
+    extractedFromPhoto: boolean('extracted_from_photo').notNull().default(false),
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

@@ -105,7 +105,7 @@ export type { GapFillResult } from './gapFill'
 
 // Phase 17 — canonical watches catalog (D-04, D-06)
 export type CatalogSource = 'user_promoted' | 'url_extracted' | 'admin_curated'
-export type ImageSourceQuality = 'official' | 'retailer' | 'unknown'
+export type ImageSourceQuality = 'official' | 'retailer' | 'unknown' | 'user_uploaded'
 
 export interface CatalogEntry {
   id: string
@@ -131,6 +131,37 @@ export interface CatalogEntry {
   complications: string[]
   ownersCount: number
   wishlistCount: number
+  // Phase 19.1 D-01 taste attributes
+  formality: number | null
+  sportiness: number | null
+  heritageScore: number | null
+  primaryArchetype: PrimaryArchetype | null
+  eraSignal: EraSignal | null
+  designMotifs: string[]
+  confidence: number | null
+  extractedFromPhoto: boolean
   createdAt: string
   updatedAt: string
 }
+
+// Phase 19.1 D-01: LLM-derived taste attributes cached on watches_catalog.
+// Per-row, computed once at catalog write time, refreshed only via
+// `npm run db:reenrich-taste --force` (D-13).
+export interface CatalogTasteAttributes {
+  formality: number | null         // 0..1
+  sportiness: number | null        // 0..1
+  heritageScore: number | null     // 0..1
+  primaryArchetype: PrimaryArchetype | null
+  eraSignal: EraSignal | null
+  designMotifs: string[]           // closed vocab from src/lib/taste/vocab.ts (validated at write)
+  confidence: number | null        // 0..1
+  extractedFromPhoto: boolean
+}
+
+// Vocab-aligned literal unions for taste categoricals (D-02).
+// Source of truth: src/lib/taste/vocab.ts (Plan 02). Duplicated here for type-system
+// consumption without circular import; keep in sync.
+export type PrimaryArchetype =
+  | 'dress' | 'dive' | 'field' | 'pilot' | 'chrono'
+  | 'gmt' | 'racing' | 'sport' | 'tool' | 'hybrid'
+export type EraSignal = 'vintage-leaning' | 'modern' | 'contemporary'
