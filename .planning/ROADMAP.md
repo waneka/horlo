@@ -152,9 +152,9 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   4. `WatchSearchRow` "Evaluate" CTA opens an inline-expand verdict preview (verdict appears in or below the row without navigation); the dangling `/evaluate?catalogId=` link is removed.
   5. The `/evaluate` route does not exist.
 **Plans**: 6 plans
-- [ ] 20-01-PLAN.md — Verdict types module + Wave 0 test scaffolds + always-on /evaluate guard (Wave 1)
-- [ ] 20-02-PLAN.md — Verdict module: composer + 12 templates + viewer aggregate taste profile + caller shim + 27 unit tests (Wave 2)
-- [ ] 20-03-PLAN.md — <CollectionFitCard> pure-renderer + <VerdictSkeleton> + 8 RTL tests (Wave 2)
+- [x] 20-01-PLAN.md — Verdict types module + Wave 0 test scaffolds + always-on /evaluate guard (Wave 1)
+- [x] 20-02-PLAN.md — Verdict module: composer + 12 templates + viewer aggregate taste profile + caller shim + 27 unit tests (Wave 2)
+- [x] 20-03-PLAN.md — <CollectionFitCard> pure-renderer + <VerdictSkeleton> + 8 RTL tests (Wave 2)
 - [ ] 20-04-PLAN.md — /watch/[id] page-level compute + WatchDetail migration + delete SimilarityBadge (Wave 3)
 - [ ] 20-05-PLAN.md — getVerdictForCatalogWatch Server Action + WatchSearchRowsAccordion + cache hook + 22 tests (Wave 3)
 - [ ] 20-06-PLAN.md — /catalog/[catalogId] route + DiscoveryWatchCard repoint + /evaluate cleanup sweep (Wave 3)
