@@ -1,19 +1,20 @@
 'use client'
 
 import { ProfileWatchCard } from './ProfileWatchCard'
+import { AddWatchCard } from './AddWatchCard'
 import type { Watch } from '@/lib/types'
 
 interface WishlistTabContentProps {
   watches: Watch[]
   wearDates: Record<string, string>
-  // isOwner accepted for symmetry with other tab content components and future
-  // "Add to Wishlist" affordances. Not currently used.
+  // D-16: end-of-grid AddToWishlist card renders when isOwner+populated.
   isOwner?: boolean
 }
 
 export function WishlistTabContent({
   watches,
   wearDates,
+  isOwner,
 }: WishlistTabContentProps) {
   if (watches.length === 0) {
     return (
@@ -35,6 +36,7 @@ export function WishlistTabContent({
           showWishlistMeta
         />
       ))}
+      {isOwner && <AddWatchCard variant="wishlist" />}
     </div>
   )
 }
