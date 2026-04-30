@@ -17,7 +17,7 @@ import type { ViewerTasteProfile } from '@/lib/verdict/types'
  */
 
 let mockResult: SimilarityResult
-const analyzeSimilaritySpy = vi.fn(() => mockResult)
+const analyzeSimilaritySpy = vi.fn((..._args: unknown[]) => mockResult)
 
 vi.mock('@/lib/similarity', () => ({
   analyzeSimilarity: (...args: unknown[]) => analyzeSimilaritySpy(...args),
