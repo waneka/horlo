@@ -1,0 +1,242 @@
+/**
+ * Phase 20.1 Plan 01 (Wave 0) — RED test scaffold for AddWatchFlow.
+ *
+ * Covers ADD-01, ADD-03, ADD-04, ADD-07 + Pitfall 1 (deep-link prefill).
+ *
+ * RED state: imports `@/components/watch/AddWatchFlow` which does not yet exist
+ * (Plan 04 ships it). Vitest will fail with "Cannot find module" until then.
+ *
+ * Wave 1 plans flip this file GREEN by implementing the component contract
+ * documented in 20.1-01-PLAN.md `<interfaces>`.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+
+// Mock auth/data Server Actions and next/navigation BEFORE component import.
+vi.mock('@/app/actions/verdict', () => ({
+  getVerdictForCatalogWatch: vi.fn(),
+}))
+vi.mock('@/app/actions/watches', () => ({
+  addWatch: vi.fn(),
+}))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
+}))
+vi.mock('next/link', () => ({
+  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}))
+vi.mock('next/image', () => ({
+  default: (p: { src: string; alt: string }) => <img src={p.src} alt={p.alt} />,
+}))
+// Stub the heavy CollectionFitCard to keep tests focused on flow state.
+vi.mock('@/components/insights/CollectionFitCard', () => ({
+  CollectionFitCard: ({ verdict }: { verdict: { headlinePhrasing?: string } }) => (
+    <div data-testid="cfc">{verdict.headlinePhrasing}</div>
+  ),
+}))
+
+// IMPORT UNDER TEST — this module does not exist yet (Plan 04). RED until then.
+import { AddWatchFlow } from '@/components/watch/AddWatchFlow'
+
+import type { VerdictBundleFull } from '@/lib/verdict/types'
+import type { ExtractedWatchData } from '@/lib/extractors/types'
+
+const fixtureFullVerdict: VerdictBundleFull = {
+  framing: 'cross-user',
+  label: 'core-fit',
+  headlinePhrasing: 'Core Fit',
+  contextualPhrasings: ['Lines up cleanly with your established taste.'],
+  mostSimilar: [],
+  roleOverlap: false,
+}
+
+const fixtureExtracted: ExtractedWatchData = {
+  brand: 'Omega',
+  model: 'Speedmaster',
+  imageUrl: 'https://example.com/spd.jpg',
+}
+
+describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Reset global fetch each test so per-test mockResolvedValue is isolated.
+    global.fetch = vi.fn() as unknown as typeof fetch
+  })
+
+  it('ADD-01 happy path — paste URL → extracting → verdict-ready with 3 buttons', async () => {
+    const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: 'cat-uuid',
+        data: fixtureExtracted,
+        source: 'merged',
+        confidence: 'high',
+        fieldsExtracted: ['brand', 'model'],
+        llmUsed: false,
+      }),
+    } as Response)
+    vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
+      success: true,
+      data: fixtureFullVerdict,
+    } as never)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText(/Paste a product page URL/i)
+    fireEvent.change(input, { target: { value: 'https://example.com/spd' } })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    // Working... copy renders during extracting state (D-07).
+    expect(await screen.findByText(/Working/i)).toBeInTheDocument()
+
+    // After extraction + verdict resolves, verdict-ready renders 3 buttons.
+    expect(await screen.findByText('Add to Wishlist')).toBeInTheDocument()
+    expect(screen.getByText('Add to Collection')).toBeInTheDocument()
+    expect(screen.getByText('Skip')).toBeInTheDocument()
+  })
+
+  it('ADD-03 Collection path — clicking "Add to Collection" advances to form-prefill with status=owned locked', async () => {
+    const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: 'cat-uuid',
+        data: fixtureExtracted,
+        source: 'merged',
+        confidence: 'high',
+        fieldsExtracted: ['brand', 'model'],
+        llmUsed: false,
+      }),
+    } as Response)
+    vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
+      success: true,
+      data: fixtureFullVerdict,
+    } as never)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/spd' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    await waitFor(() => screen.getByText('Add to Collection'))
+    fireEvent.click(screen.getByText('Add to Collection'))
+
+    // form-prefill state: WatchForm renders with brand prefilled.
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Omega')).toBeInTheDocument()
+    })
+    // ADD-03 truth: status is locked to 'owned' — no <select> with status options visible.
+    // We assert no element with role="combobox" and accessible name "Status" is offered.
+    expect(screen.queryByRole('combobox', { name: /^Status$/i })).not.toBeInTheDocument()
+  })
+
+  it('ADD-04 Skip path — clicking Skip resets to idle and adds chip to recently-evaluated rail', async () => {
+    const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: 'cat-uuid',
+        data: fixtureExtracted,
+        source: 'merged',
+        confidence: 'high',
+        fieldsExtracted: ['brand', 'model'],
+        llmUsed: false,
+      }),
+    } as Response)
+    vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
+      success: true,
+      data: fixtureFullVerdict,
+    } as never)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/spd' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    await waitFor(() => screen.getByText('Skip'))
+    fireEvent.click(screen.getByText('Skip'))
+
+    // Reset to idle: paste input visible again with cleared value.
+    await waitFor(() => {
+      const reset = screen.getByPlaceholderText(/Paste a product page URL/i) as HTMLInputElement
+      expect(reset.value).toBe('')
+    })
+    // D-14: "Recently evaluated" chip with brand+model copy appears under input.
+    expect(screen.getByText(/Omega Speedmaster/)).toBeInTheDocument()
+  })
+
+  it('ADD-07 extraction-failed — failure preserves message and offers manual continuation', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Failed to extract watch data from URL.' }),
+    } as Response)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/broken' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    expect(await screen.findByText("Extraction didn't work")).toBeInTheDocument()
+    expect(screen.getByText('Continue manually')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('Pitfall 1 deep-link prefill — initialCatalogId + initialIntent="owned" + initialCatalogPrefill goes straight to form-prefill', async () => {
+    render(
+      <AddWatchFlow
+        collectionRevision={1}
+        initialCatalogId="cat-deep"
+        initialIntent="owned"
+        initialCatalogPrefill={{ brand: 'Rolex', model: 'Submariner' }}
+      />,
+    )
+
+    // Mounts directly into form-prefill: paste section hidden, WatchForm shows brand prefilled.
+    expect(screen.queryByPlaceholderText(/Paste a product page URL/i)).not.toBeInTheDocument()
+    expect(await screen.findByDisplayValue('Rolex')).toBeInTheDocument()
+  })
+})
