@@ -101,7 +101,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. The viewer sees a Trending Watches rail (sorted by `owners_count + wishlist_count * 0.5`) and can navigate to `/explore/watches` for the full list.
   4. The viewer sees a Gaining Traction rail showing 7-day delta from `watches_catalog_daily_snapshots`.
   5. The mobile BottomNav shows Explore as one of its 5 slots (Home / Search / Wear / Explore / Profile, per Phase 18 D-01..D-04 — supersedes original DISC-08 wording).
-**Plans**: 5 plans
+**Plans**: 8 plans (3 added in gap-closure pass)
 - [x] 18-01-PLAN.md — Discovery DAL (getMostFollowedCollectors + getTrendingCatalogWatches + getGainingTractionCatalogWatches + getWearEventsCountByUser; Wave 1)
 - [x] 18-02-PLAN.md — Discovery components (Hero + 3 cached rails + DiscoveryWatchCard + PopularCollectorRow; Wave 2)
 - [x] 18-03-PLAN.md — /explore + /explore/collectors + /explore/watches routes (hero gate + See-all surfaces; Wave 2)
@@ -178,6 +178,9 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 20.1-03-PLAN.md — Atomic flow leaves: flowTypes.ts + PasteSection + VerdictStep + WishlistRationalePanel + RecentlyEvaluatedRail (Wave 1)
 - [x] 20.1-04-PLAN.md — WatchForm lockedStatus prop + UrlImport deletion + AddWatchFlow orchestrator + /watch/new Server Component rewire (Wave 2)
 - [x] 20.1-05-PLAN.md — D-04 WatchSearchRowsAccordion inline 3 CTAs (stopPropagation Pitfall 2) + D-05 CatalogPageActions Client Component on /catalog/[catalogId] (Wave 3)
+- [x] 20.1-06-PLAN.md — Gap closure (UAT gaps 1+2+3): VerdictStep hasCollection prop + AddWatchFlow rail-on-empty-catalogId + extract-watch catalogIdError observability (Wave 1)
+- [x] 20.1-07-PLAN.md — Gap closure (UAT gap 5 blocker): Accordion.Panel data-[open]: selectors fix + WatchSearchRow chevron-led affordance + human verification checkpoint (Wave 1)
+- [x] 20.1-08-PLAN.md — Gap closure (UAT gap 4): Cancel-back affordance inside manual-entry render branch wired to existing handleStartOver (Wave 2, depends on 20.1-06)
 **UI hint**: yes
 
 ### Phase 21: Custom SMTP via Resend

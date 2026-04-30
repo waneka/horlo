@@ -4,14 +4,14 @@ milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
 stopped_at: Phase 20.1 UI-SPEC approved
-last_updated: "2026-04-30T14:52:04.465Z"
-last_activity: 2026-04-30 -- Phase 20.1 execution started
+last_updated: "2026-04-30T20:03:01.584Z"
+last_activity: 2026-04-30
 progress:
   total_phases: 12
-  completed_phases: 5
-  total_plans: 34
-  completed_plans: 29
-  percent: 85
+  completed_phases: 6
+  total_plans: 37
+  completed_plans: 37
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 ## Current Position
 
-Phase: 20.1 (add-watch-flow-rethink-verdict-as-step) — EXECUTING
-Plan: 1 of 5
+Phase: 21
+Plan: Not started
 Status: Executing Phase 20.1
-Last activity: 2026-04-30 -- Phase 20.1 execution started
+Last activity: 2026-04-30
 
 ## Progress Bar
 
