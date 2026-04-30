@@ -53,6 +53,13 @@ vi.mock('@/components/insights/CollectionFitCard', () => ({
 vi.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => `<img src="${src}" alt="${alt}" />`,
 }))
+// Phase 20.1 Plan 05 D-05 — CatalogPageActions Client Component renders the 3
+// CTAs (Add to Wishlist / Add to Collection / Skip) below CollectionFitCard
+// in non-self-via-cross-user framing.
+vi.mock('@/components/watch/CatalogPageActions', () => ({
+  CatalogPageActions: (props: { framing?: string }) =>
+    `<CatalogPageActions data-testid="cpa" data-framing="${props.framing}" />`,
+}))
 
 import CatalogPage from '@/app/catalog/[catalogId]/page'
 
@@ -138,5 +145,42 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     const rendered = JSON.stringify(result)
     expect(rendered).toMatch(/\/watch\/per-user-uuid-abc/)
     expect(rendered).not.toMatch(new RegExp(`/watch/${validCatalogId}`))  // not catalog UUID
+  })
+
+  // -------------------------------------------------------------------------
+  // Phase 20.1 Plan 05 D-05 — render 3 CTAs below CollectionFitCard in
+  // cross-user framing; hide them in self-via-cross-user; hide when no verdict.
+  // RED until Plan 05 wires `<CatalogPageActions>` into the page.
+  // -------------------------------------------------------------------------
+  it('D-05 — renders 3 CTAs (CatalogPageActions) when framing is cross-user', async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
+    mockDbLimit.mockResolvedValue([])  // viewer does NOT own this catalog ref
+    const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    const rendered = JSON.stringify(result)
+    expect(rendered).toMatch(/CatalogPageActions/)
+    expect(rendered).toMatch(/data-framing="cross-user"/)
+  })
+
+  it('D-05 — does NOT render CTAs when framing is self-via-cross-user', async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
+    mockDbLimit.mockResolvedValue([{
+      id: 'per-user-uuid-abc',
+      acquisitionDate: '2026-04-12',
+      createdAt: new Date('2026-04-12T00:00:00.000Z'),
+    }])
+    const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    const rendered = JSON.stringify(result)
+    expect(rendered).not.toMatch(/CatalogPageActions/)
+  })
+
+  it('D-05 — does NOT render CTAs when collection is empty (no verdict per D-07)', async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([])  // empty collection
+    mockDbLimit.mockResolvedValue([])  // not owned
+    const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    const rendered = JSON.stringify(result)
+    expect(rendered).not.toMatch(/CatalogPageActions/)
   })
 })
