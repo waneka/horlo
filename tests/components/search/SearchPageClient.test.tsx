@@ -88,6 +88,16 @@ vi.mock('@/components/profile/FollowButton', () => ({
   }) => <button data-testid="follow-button">{`Follow ${targetDisplayName}`}</button>,
 }))
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
 import { SearchPageClient } from '@/components/search/SearchPageClient'
 
 function resetMockState() {
