@@ -38,6 +38,13 @@ interface CatalogPageProps {
  */
 export default async function CatalogPage({ params }: CatalogPageProps) {
   const { catalogId } = await params
+  // Defense-in-depth: validate UUID format before any DB query so malformed
+  // URLs (e.g. /catalog/not-a-uuid) collapse cleanly to 404 instead of bubbling
+  // up Postgres "invalid input syntax for uuid" as a 500 error boundary.
+  // Mirrors src/app/watch/new/page.tsx's catalogId regex check (Phase 20.1).
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(catalogId)) {
+    notFound()
+  }
   const user = await getCurrentUser()
 
   const [catalogEntry, collection, preferences, viewerOwnedRow] = await Promise.all([
