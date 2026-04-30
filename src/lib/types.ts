@@ -53,6 +53,10 @@ export interface Watch {
   notesPublic?: boolean       // Per-note visibility (D-13). Defaults to true server-side.
   notesUpdatedAt?: string     // ISO timestamp string for the most recent notes change.
   imageUrl?: string
+
+  // Phase 17: FK to watches_catalog (CAT-08). Nullable — backfill not guaranteed on all rows.
+  // Used by Phase 20 composer to look up catalog taste attributes for the verdict bundle.
+  catalogId?: string | null
 }
 
 /** Watch with computed wear data from wear_events table */
