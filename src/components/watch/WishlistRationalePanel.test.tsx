@@ -30,10 +30,14 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
   })
 
   it('ADD-02 — textarea pre-fills from verdict.contextualPhrasings copy', () => {
+    // Per Pitfall 5 contract (RESEARCH §Pitfall 5): pre-fill happens on render
+    // ONLY when no explicit initialNotes is supplied. `initialNotes=""` would
+    // mean "user explicitly chose blank" (e.g. re-opening a previously cleared
+    // entry from the rail), and must NOT regenerate verdict copy on top of it.
+    // Omit initialNotes here so verdict-derived copy fills the textarea.
     render(
       <WishlistRationalePanel
         verdict={verdictWithCopy}
-        initialNotes=""
         onConfirm={() => {}}
         onCancel={() => {}}
         pending={false}
@@ -45,10 +49,12 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
 
   it('Pitfall 5 — clearing the textarea preserves blank: onConfirm called with empty string, NOT verdict copy', () => {
     const onConfirm = vi.fn()
+    // Render WITHOUT initialNotes so the textarea pre-fills with verdict copy;
+    // the user then clears it via fireEvent.change (the simulated blank step).
+    // Pitfall 5 dictates the cleared blank commits verbatim, not verdict copy.
     render(
       <WishlistRationalePanel
         verdict={verdictWithCopy}
-        initialNotes=""
         onConfirm={onConfirm}
         onCancel={() => {}}
         pending={false}
@@ -65,7 +71,6 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
     render(
       <WishlistRationalePanel
         verdict={verdictWithCopy}
-        initialNotes=""
         onConfirm={onConfirm}
         onCancel={() => {}}
         pending={false}
@@ -82,7 +87,6 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
     render(
       <WishlistRationalePanel
         verdict={verdictWithCopy}
-        initialNotes=""
         onConfirm={() => {}}
         onCancel={onCancel}
         pending={false}
