@@ -8,8 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useSearchState } from '@/components/search/useSearchState'
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
-import { WatchSearchRow } from '@/components/search/WatchSearchRow'
 import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
+import { WatchSearchRowsAccordion } from '@/components/search/WatchSearchRowsAccordion'
 import { CollectionSearchRow } from '@/components/search/CollectionSearchRow'
 import { CollectionSearchResultsSkeleton } from '@/components/search/CollectionSearchResultsSkeleton'
 import { AllTabResults } from '@/components/search/AllTabResults'
@@ -22,6 +22,8 @@ import type {
 
 interface SearchPageClientProps {
   viewerId: string
+  /** Plan 20 D-06: viewer collection length used as cache-invalidation key for verdict cache. */
+  collectionRevision: number
   /** SuggestedCollectors Server Component, rendered into pre-query + no-results states (D-29 carry-forward). */
   children: React.ReactNode
 }
@@ -60,7 +62,7 @@ const ARIA_BY_TAB: Record<SearchTab, string> = {
  * The Phase 16 `results`/`isLoading`/`hasError` backward-compat aliases on the
  * hook contract are dropped here — this consumer reads per-tab slices directly.
  */
-export function SearchPageClient({ viewerId, children }: SearchPageClientProps) {
+export function SearchPageClient({ viewerId, collectionRevision, children }: SearchPageClientProps) {
   const {
     q,
     setQ,
@@ -140,6 +142,7 @@ export function SearchPageClient({ viewerId, children }: SearchPageClientProps) 
             results={watchesResults}
             isLoading={watchesIsLoading}
             hasError={watchesHasError}
+            collectionRevision={collectionRevision}
           />
         </TabsContent>
 
@@ -238,11 +241,13 @@ function WatchesPanel({
   results,
   isLoading,
   hasError,
+  collectionRevision,
 }: {
   q: string
   results: SearchCatalogWatchResult[]
   isLoading: boolean
   hasError: boolean
+  collectionRevision: number
 }) {
   if (isLoading) return <WatchSearchResultsSkeleton />
   if (hasError) {
@@ -284,9 +289,12 @@ function WatchesPanel({
   }
   return (
     <section className="space-y-2">
-      {results.map((r) => (
-        <WatchSearchRow key={r.catalogId} result={r} q={q} />
-      ))}
+      {/* FIT-04 D-05/D-06: Accordion shell with lazy Server Action + verdict cache */}
+      <WatchSearchRowsAccordion
+        results={results}
+        q={q}
+        collectionRevision={collectionRevision}
+      />
       {results.length === 20 && (
         <p className="text-sm text-muted-foreground text-center py-2">
           Showing top 20
