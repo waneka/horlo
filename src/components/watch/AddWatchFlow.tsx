@@ -158,7 +158,12 @@ export function AddWatchFlow({
       setState({ kind: 'verdict-ready', catalogId, extracted, verdict: bundle })
     } catch (err) {
       console.error('[AddWatchFlow] extract failed:', err)
-      setState({ kind: 'extraction-failed', partial: null, reason: String(err) })
+      // Strip leading "Error:" prefix from String(err) so the surfaced reason
+      // reads as user-facing copy rather than a debug toString.
+      const reason = err instanceof Error
+        ? err.message
+        : String(err).replace(/^Error:\s*/i, '')
+      setState({ kind: 'extraction-failed', partial: null, reason })
     }
   }
 
@@ -365,6 +370,11 @@ export function AddWatchFlow({
             <p className="text-sm text-muted-foreground">
               Fill in manually using any details below.
             </p>
+            {state.reason && (
+              <p className="text-xs text-destructive" role="status">
+                {state.reason}
+              </p>
+            )}
             {state.partial && (
               <div className="text-sm space-y-1">
                 {state.partial.brand && (
