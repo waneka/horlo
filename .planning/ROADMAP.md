@@ -172,7 +172,12 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   5. Manual entry remains accessible and bypasses the verdict step.
   6. Extraction failure inside the flow preserves any partial data and offers manual continuation (no dead-end).
   7. Catalog deep-link from `/search?tab=watches` (FIT-04 inline-expand "Add to..." follow-up) routes into this same flow with `catalogId` prefilling.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 20.1-01-PLAN.md — Wave 0 RED test scaffolds (10 test files: 8 NEW + 2 EXTEND) covering ADD-01..ADD-07 + Pitfalls 1, 2, 3, 5
+- [ ] 20.1-02-PLAN.md — D-08 /api/extract-watch response shape (catalogId field) + D-15 AddWatchCard variant prop + D-16 WishlistTabContent end-of-grid card (Wave 1)
+- [ ] 20.1-03-PLAN.md — Atomic flow leaves: flowTypes.ts + PasteSection + VerdictStep + WishlistRationalePanel + RecentlyEvaluatedRail (Wave 1)
+- [ ] 20.1-04-PLAN.md — WatchForm lockedStatus prop + UrlImport deletion + AddWatchFlow orchestrator + /watch/new Server Component rewire (Wave 2)
+- [ ] 20.1-05-PLAN.md — D-04 WatchSearchRowsAccordion inline 3 CTAs (stopPropagation Pitfall 2) + D-05 CatalogPageActions Client Component on /catalog/[catalogId] (Wave 3)
 **UI hint**: yes
 
 ### Phase 21: Custom SMTP via Resend
@@ -264,7 +269,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 19.1. Catalog Taste Enrichment | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 20. Collection Fit Surface Polish + Verdict Copy | 0/6 | Not started | - |
-| v4.0 Discovery & Polish | 20.1. Add-Watch Flow Rethink + Verdict-as-Step | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 20.1. Add-Watch Flow Rethink + Verdict-as-Step | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 22. Settings Restructure + Account Section | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 23. Settings Sections + Schema-Field UI | 0/TBD | Not started | - |

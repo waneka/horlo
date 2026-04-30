@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
-stopped_at: Phase 20.1 context gathered
-last_updated: "2026-04-30T05:20:54.870Z"
-last_activity: 2026-04-30
+stopped_at: Phase 20.1 UI-SPEC approved
+last_updated: "2026-04-30T14:52:04.465Z"
+last_activity: 2026-04-30 -- Phase 20.1 execution started
 progress:
   total_phases: 12
   completed_phases: 5
-  total_plans: 29
+  total_plans: 34
   completed_plans: 29
-  percent: 100
+  percent: 85
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 20 — collection-fit-surface-polish-verdict-copy
+**Current focus:** Phase 20.1 — add-watch-flow-rethink-verdict-as-step
 
 ## Current Position
 
-Phase: 20.1
-Plan: Not started
-Status: Executing Phase 20
-Last activity: 2026-04-30
+Phase: 20.1 (add-watch-flow-rethink-verdict-as-step) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 20.1
+Last activity: 2026-04-30 -- Phase 20.1 execution started
 
 ## Progress Bar
 
@@ -79,7 +79,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-30T05:20:54.862Z
-Stopped at: Phase 20.1 context gathered
-Resume file: .planning/phases/20.1-add-watch-flow-rethink-verdict-as-step/20.1-CONTEXT.md
+Last session: 2026-04-30T05:33:23.840Z
+Stopped at: Phase 20.1 UI-SPEC approved
+Resume file: .planning/phases/20.1-add-watch-flow-rethink-verdict-as-step/20.1-UI-SPEC.md
 Next action: `/gsd-plan-phase 17` to begin Phase 17 (Catalog Foundation)
