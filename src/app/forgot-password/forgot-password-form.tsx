@@ -17,7 +17,10 @@ export function ForgotPasswordForm() {
     setLoading(true)
     const supabase = createSupabaseBrowserClient()
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      // Land directly on /reset-password after Supabase's verify endpoint sets the recovery session.
+      // Path-only URL (no query string) sidesteps allowlist matching nuances; /auth/callback
+      // expects token_hash which Supabase's verify flow does not pass through to the redirect target.
+      redirectTo: `${window.location.origin}/reset-password`,
     })
     // Always show the same success state regardless of whether the email exists (no enumeration)
     setSent(true)
