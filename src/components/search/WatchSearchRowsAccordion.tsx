@@ -1,19 +1,28 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Accordion } from '@base-ui/react/accordion'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { WatchSearchRow } from '@/components/search/WatchSearchRow'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
 import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
 import { getVerdictForCatalogWatch } from '@/app/actions/verdict'
+import { addWatch } from '@/app/actions/watches'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 /**
  * Phase 20 FIT-04 / D-05 + D-06 — Accordion shell wrapping search rows with
  * lazy-compute Server Action + per-mount cache keyed by collectionRevision.
+ *
+ * Phase 20.1 D-04 — adds 3 inline CTAs (Add to Wishlist / Add to Collection /
+ * Hide) inside Accordion.Panel below the verdict card. Pitfall 2: every onClick
+ * starts with `e.stopPropagation()` so the click never bubbles up to the
+ * Accordion.Trigger ancestor and collapses the panel.
  *
  * Pitfall 6: Accordion.Trigger absorbs the whole-row click.
  *
@@ -27,6 +36,14 @@ import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
  *   - Server Action error → toast.error + collapse panel
  *   - Tab keyboard navigation handled by base-ui Accordion natively
  *   - ESC key handled via onKeyDown on the Accordion.Root (collapses open panel)
+ *
+ *   Phase 20.1 D-04 wiring:
+ *   - Add to Wishlist → addWatch (status='wishlist') + toast.success + collapse
+ *     + router.refresh (Pitfall 3 — bumps collectionRevision so cache drops)
+ *   - Add to Collection → router.push('/watch/new?catalogId=X&intent=owned'),
+ *     does NOT call addWatch (Open Q1 recommendation b — navigate to prefilled
+ *     form so user can enter ownership-only fields like pricePaid)
+ *   - Hide → setOpenValues([]) (collapse-as-skip semantic)
  *
  * Implementation note on label toggle: isOpen prop is passed to WatchSearchRow
  * so it can toggle "Evaluate"/"Hide" label and rotate ChevronDown. This is
@@ -47,6 +64,9 @@ export function WatchSearchRowsAccordion({
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const cache = useWatchSearchVerdictCache(collectionRevision)
+  const router = useRouter()
+  const [committingId, setCommittingId] = useState<string | null>(null)
+  const [committingTarget, setCommittingTarget] = useState<'wishlist' | 'collection' | null>(null)
 
   const openId = openValues[0] ?? null
 
@@ -76,6 +96,58 @@ export function WatchSearchRowsAccordion({
     }
   }
 
+  // Phase 20.1 D-04 — Wishlist commit handler.
+  // SearchCatalogWatchResult only carries identity fields (brand, model, reference,
+  // imageUrl) plus counts + viewerState — it does NOT carry spec fields. The
+  // /search inline path is the FAST commit; richer spec gets enriched by the
+  // catalog upsert pipeline inside addWatch (catalog upserter + taste enricher).
+  // movement defaults to 'automatic' — the addWatch Zod schema requires it,
+  // and the catalog enricher backfills the real value on the catalog row.
+  const handleAddToWishlist = (r: SearchCatalogWatchResult) => {
+    if (committingId) return
+    setCommittingId(r.catalogId)
+    setCommittingTarget('wishlist')
+    startTransition(async () => {
+      // Pitfall 6: NEVER set photoSourcePath from /search surface.
+      // No notes — D-13 verdict-rationale UX is /watch/new only;
+      // /search inline commit is the fast path (no rationale prompt).
+      const payload = {
+        brand: r.brand,
+        model: r.model,
+        reference: r.reference ?? undefined,
+        status: 'wishlist' as const,
+        movement: 'automatic' as const,
+        complications: [],
+        styleTags: [],
+        designTraits: [],
+        roleTags: [],
+        imageUrl: r.imageUrl ?? undefined,
+      }
+      const result = await addWatch(payload)
+      if (result.success) {
+        toast.success('Added to wishlist')
+        setOpenValues([]) // collapse panel as success cue
+        router.refresh() // Pitfall 3: bump collectionRevision so cache drops
+      } else {
+        toast.error(result.error)
+      }
+      setCommittingId(null)
+      setCommittingTarget(null)
+    })
+  }
+
+  const handleAddToCollection = (r: SearchCatalogWatchResult) => {
+    // D-04 / Open Q1 recommendation b: navigate to /watch/new prefilled-form
+    // path so the user can enter ownership-only fields (pricePaid,
+    // acquisitionDate). Plan 04 page reads searchParams and advances flow to
+    // form-prefill.
+    router.push(`/watch/new?catalogId=${encodeURIComponent(r.catalogId)}&intent=owned`)
+  }
+
+  const handleHide = () => {
+    setOpenValues([])
+  }
+
   return (
     <Accordion.Root
       value={openValues}
@@ -102,6 +174,58 @@ export function WatchSearchRowsAccordion({
                   const cached = cache.get(r.catalogId)
                   return cached ? <CollectionFitCard verdict={cached} /> : null
                 })()
+              )}
+              {/* Phase 20.1 D-04 — inline 3 CTAs below verdict. Pitfall 2:
+                  stopPropagation prevents click bubbling up to Accordion.Trigger
+                  and collapsing the panel. */}
+              {loadingId !== r.catalogId && (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3">
+                  <Button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleAddToWishlist(r)
+                    }}
+                    disabled={committingId !== null}
+                    className="w-full sm:w-auto sm:flex-1"
+                    aria-label="Add to Wishlist"
+                  >
+                    {committingId === r.catalogId && committingTarget === 'wishlist' ? (
+                      <>
+                        <Loader2 className="size-4 mr-2 animate-spin" aria-hidden="true" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Add to Wishlist'
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleAddToCollection(r)
+                    }}
+                    disabled={committingId !== null}
+                    className="w-full sm:w-auto sm:flex-1"
+                    aria-label="Add to Collection"
+                  >
+                    Add to Collection
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleHide()
+                    }}
+                    disabled={committingId !== null}
+                    className="w-full sm:w-auto"
+                    aria-label="Hide"
+                  >
+                    Hide
+                  </Button>
+                </div>
               )}
             </Accordion.Panel>
           </Accordion.Item>
