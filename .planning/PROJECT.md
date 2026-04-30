@@ -77,6 +77,7 @@ Phase 20 had a partial run interrupted by a computer crash mid-Wave 3; recovery 
 - ✓ Cloud persistence — Supabase Postgres via Drizzle ORM, server-only DAL, Server Actions — v1.0 (DATA-01/02/03/04/05)
 - ✓ Similarity engine props — receives collection + preferences as props, not Zustand reads — v1.0 (DATA-05)
 - ✓ Prod deploy runbook — verified `docs/deploy-db-setup.md` with 6 footgun fixes — v1.0 (OPS-01)
+- ✓ Phase completion checklist — `docs/phase-completion-checklist.md` covers drizzle↔supabase parity, prod DB push, prod code push — v4.0
 - ✓ Test foundation — Vitest + React Testing Library + MSW configured — v1.0 (TEST-01)
 - ✓ Similarity tests — all six SimilarityLabel outputs covered including preference-aware paths — v1.0 (TEST-02)
 - ✓ Extractor pipeline tests — structured, HTML, merge logic with fixture HTML — v1.0 (TEST-03)
