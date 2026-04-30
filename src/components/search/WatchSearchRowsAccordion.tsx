@@ -71,6 +71,7 @@ export function WatchSearchRowsAccordion({
   const openId = openValues[0] ?? null
 
   const handleValueChange = (next: string[]) => {
+    console.log('[accordion] handleValueChange', next) // TODO(20.1-07): remove after gap 5 verification
     setOpenValues(next)
     const nextId = next[0] ?? null
     if (nextId && !cache.get(nextId)) {

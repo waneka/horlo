@@ -111,4 +111,54 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
       expect(screen.queryByRole('button', { name: 'Add to Wishlist' })).toBeNull()
     })
   })
+
+  it('UAT gap 5 — clicking row sets data-open attribute on Accordion.Panel (asserts base-ui DOM contract)', async () => {
+    const { container } = render(
+      <WatchSearchRowsAccordion
+        results={[fixtureRow]}
+        q=""
+        collectionRevision={1}
+      />,
+    )
+    // Pre-click: Accordion.Panel (identified by aria-labelledby — distinct from
+    // the Accordion.Root wrapper which also has role="region" but no aria-labelledby)
+    // is not yet mounted by base-ui; only the Root wrapper exists.
+    const panelBefore = container.querySelector('[role="region"][aria-labelledby]')
+    expect(panelBefore).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    await waitFor(() => screen.getByTestId('cfc'))
+
+    // Post-click: base-ui mounts AccordionPanel with data-open="" (no value attribute)
+    const panelAfter = container.querySelector('[role="region"][aria-labelledby]')
+    expect(panelAfter).not.toBeNull()
+    expect(panelAfter?.hasAttribute('data-open')).toBe(true)
+  })
+
+  it('UAT gap 5 — Accordion.Panel className uses data-[open]: selectors (NOT data-[state=open]:)', async () => {
+    // Reads the raw className from a rendered panel and confirms the selectors
+    // match base-ui's actual data attribute. This guards against re-introducing
+    // the data-[state=open]: selectors that never matched.
+    // Panel only mounts AFTER trigger click — base-ui lazy-mounts the panel.
+    const { container } = render(
+      <WatchSearchRowsAccordion
+        results={[fixtureRow]}
+        q=""
+        collectionRevision={1}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    await waitFor(() => screen.getByTestId('cfc'))
+
+    const panel = container.querySelector(
+      '[role="region"][aria-labelledby]',
+    ) as HTMLElement | null
+    expect(panel).not.toBeNull()
+    const cls = panel?.className ?? ''
+    // Anti-regression — these selectors do NOT exist in base-ui's data attribute set
+    expect(cls).not.toMatch(/data-\[state=open\]/)
+    expect(cls).not.toMatch(/data-\[state=closed\]/)
+    // The new selector format DOES exist on base-ui
+    expect(cls).toMatch(/data-\[open\]|not-data-\[open\]/)
+  })
 })
