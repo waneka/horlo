@@ -92,4 +92,75 @@ maybe('Phase 17 Plan 03 — /api/extract-watch wiring → catalog row created (C
     expect(catalogRows[0]!.source).toBe('url_extracted')
     expect(catalogRows[0]!.case_size_mm).toBe(40)
   })
+
+  it('D-08 — response shape includes catalogId field (Phase 20.1)', async () => {
+    const { fetchAndExtract } = await import('@/lib/extractors')
+    const stamp = `${STAMP}-d08-uuid`
+    vi.mocked(fetchAndExtract).mockResolvedValue({
+      data: {
+        brand: `${mockedBrand}-d08`,
+        model: 'M-d08',
+        movement: 'automatic' as const,
+        caseSizeMm: 40,
+        styleTags: [],
+        designTraits: [],
+        complications: [],
+      },
+      source: 'merged' as const,
+      confidence: 'high' as const,
+      fieldsExtracted: ['brand', 'model'],
+      llmUsed: false,
+    })
+
+    const { POST } = await import('@/app/api/extract-watch/route')
+    const request = new NextRequest('http://localhost/api/extract-watch', {
+      method: 'POST',
+      body: JSON.stringify({ url: `https://example.com/watch/${stamp}` }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(200)
+    const body = await response.json()
+
+    // D-08: response includes catalogId field, must be a UUID string when brand+model present
+    expect(body).toHaveProperty('catalogId')
+    expect(typeof body.catalogId).toBe('string')
+    expect(body.catalogId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+
+    // Cleanup
+    await db.execute(
+      sql`DELETE FROM watches_catalog WHERE brand_normalized = lower(trim(${`${mockedBrand}-d08`}))`,
+    )
+  })
+
+  it('D-08 — response.catalogId is null when extraction has no brand or model (Phase 20.1)', async () => {
+    const { fetchAndExtract } = await import('@/lib/extractors')
+    vi.mocked(fetchAndExtract).mockResolvedValue({
+      data: {
+        // brand and model intentionally omitted (undefined) — D-08 null path
+        styleTags: [],
+        designTraits: [],
+        complications: [],
+      },
+      source: 'merged' as const,
+      confidence: 'low' as const,
+      fieldsExtracted: [],
+      llmUsed: false,
+    })
+
+    const { POST } = await import('@/app/api/extract-watch/route')
+    const request = new NextRequest('http://localhost/api/extract-watch', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://example.com/watch/no-brand' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(200)
+    const body = await response.json()
+
+    expect(body).toHaveProperty('catalogId')
+    expect(body.catalogId).toBeNull()
+  })
 })

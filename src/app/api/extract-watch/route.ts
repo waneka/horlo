@@ -111,8 +111,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Phase 20.1 D-08: include catalogId so the Add-Watch Flow can call
+    // getVerdictForCatalogWatch immediately on extraction success.
+    // catalogId is null when brand/model were not extracted (no catalog upsert).
     return NextResponse.json({
       success: true,
+      catalogId,
       ...result,
     })
   } catch (error) {
