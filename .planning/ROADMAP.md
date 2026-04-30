@@ -188,12 +188,14 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 **Depends on**: Nothing (independent of catalog work; long DNS lead-time means this can ship in parallel with Phase 17)
 **Requirements**: SMTP-01, SMTP-02, SMTP-03, SMTP-04, SMTP-05, SMTP-06
 **Success Criteria** (what must be TRUE):
-  1. The `horlo.app` domain shows "Verified ✓" in Resend (SPF + DKIM + bounce MX records propagated and confirmed BEFORE any code/config change downstream).
-  2. Supabase Dashboard → Auth → SMTP Settings is wired to `smtp.resend.com:465` with the Resend-issued password, and a Supabase Auth test email round-trips successfully.
+  1. The `mail.horlo.app` subdomain shows "Verified ✓" in Resend (SPF + DKIM + DMARC `p=none` + bounce MX records propagated and confirmed BEFORE any code/config change downstream).
+  2. Supabase Dashboard → Auth → SMTP Settings is wired to `smtp.resend.com:465` with the Resend-issued password, the D-07 round-trip gate (Invite-User Inbox-not-Spam AND real Gmail signup Inbox-not-Spam) passes, and the signup-form code change (D-10) is merged BEFORE the toggle flip.
   3. The Supabase "Confirm email" + "Secure password change" + "Secure email change" toggles are all ON in production (only after step 2 passes).
-  4. `mail.staging.horlo.app` (staging) and `mail.horlo.app` (prod) are separated so a staging deliverability incident cannot tank production sender reputation.
-  5. `docs/deploy-db-setup.md` has a backout-plan section documenting how to revert to Supabase hosted SMTP if DKIM fails post-flip.
-**Plans**: TBD
+  4. SMTP-06 (`mail.staging.horlo.app` separation) is marked Deferred — pending staging Supabase project (D-01); Phase 21 wires prod-only.
+  5. `docs/deploy-db-setup.md` has a backout-plan section using the existing **Footgun T-XX-...:** pattern (T-21-PREVIEWMAIL) documenting how to revert to Supabase hosted SMTP if DKIM fails post-flip.
+**Plans**: 2 plans
+- [ ] 21-01-PLAN.md — DNS submit (SPF + DKIM + DMARC + bounce MX at mail.horlo.app) + signup-form.tsx D-10 amend (Wave 1)
+- [ ] 21-02-PLAN.md — Resend Verified ✓ → Supabase SMTP wire → D-07 round-trip [BLOCKING] gate → flip three toggles → backout doc + PROJECT.md + REQUIREMENTS.md SMTP-06 deferral (Wave 2, depends on 21-01)
 
 ### Phase 22: Settings Restructure + Account Section
 **Goal**: The v3.0 stub `/settings` page (privacy-only with "other sections coming soon") is replaced with a base-ui vertical-tabs shell in canonical SaaS order, and the Account section ships email/password change wired to Supabase `updateUser` with the correct re-auth + dual-confirmation UX.
@@ -273,7 +275,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v4.0 Discovery & Polish | 19.1. Catalog Taste Enrichment | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 20. Collection Fit Surface Polish + Verdict Copy | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 20.1. Add-Watch Flow Rethink + Verdict-as-Step | 0/5 | Not started | - |
-| v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/2 | Not started | - |
 | v4.0 Discovery & Polish | 22. Settings Restructure + Account Section | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 23. Settings Sections + Schema-Field UI | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 24. Notification Stub Cleanup + Test Fixture & Carryover | 0/TBD | Not started | - |

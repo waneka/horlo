@@ -620,32 +620,39 @@ Any signup from a preview URL sends a real Resend email at production sender rep
 | A9 | The "Send Invitation" flow exercises the full SMTP path equivalently to a hypothetical "Send test email" | "Send Test Email" Reality | Verified architecturally (both go through Auth's email sender). Risk = developer thinks invite isn't a "real" test and doubts the result. Mitigation: D-07 step 2 (real signup) is the second clause. LOW risk. |
 | A10 | The `dmarc@horlo.app` mailbox doesn't exist (no apex MX configured) | DMARC Posture | If user has Google Workspace at `horlo.app`, the mailbox might exist or be addable. Plan should ASK user, not assume. MEDIUM risk if assumed wrong; LOW if asked. |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All five questions raised during research were resolved before plan-checker exit. Resolutions are mirrored in CONTEXT.md (D-10, D-11) and in plan task design (Plan 21-01 Task 1, Plan 21-02 Task 1, Task 5). Inline `RESOLVED:` markers below are the canonical decision-trace.
 
 1. **Is `horlo.app` DNS at Vercel?**
    - What we know: `.vercel/project.json` exists; project is on Vercel.
    - What's unclear: whether the domain's nameservers point to Vercel DNS or a third-party DNS provider.
    - Recommendation: Plan 21-01 Task 1 runs `dig NS horlo.app +short` and pivots based on result.
+   - **RESOLVED:** Plan 21-01 Task 1 runs `dig NS horlo.app +short` at execution time and pivots instructions based on the detected provider (no static assumption baked into the plan).
 
 2. **Does the user want DMARC at this phase?**
    - What we know: Industry recommends it; Gmail prefers it; CONTEXT.md is silent.
    - What's unclear: User comfort with adding another DNS record + whether they have a destination for `rua` reports.
    - Recommendation: Planner asks user before Plan 21-01 Wave 2; default = `v=DMARC1; p=none;` (no rua) if user prefers minimum-friction.
+   - **RESOLVED:** D-11 locked in CONTEXT.md (2026-04-30) — publish `_dmarc.mail.horlo.app` TXT = `v=DMARC1; p=none;` (monitor-only, no `rua=`) alongside SPF/DKIM in Plan 21-01 Task 2.
 
 3. **Should signup-form.tsx be amended in Phase 21, or should the Confirm-email flip defer to Phase 22?** [CRITICAL — Pitfall #1]
    - What we know: Existing form unconditionally `router.push('/')` after `signUp()`; this breaks when Confirm-email is ON and signUp returns no session.
    - What's unclear: Whether user wants to (A) take a small in-phase code change, (B) defer the toggle to Phase 22, or (C) accept brief broken-signup UX.
    - Recommendation: Planner escalates to user. Default suggestion: option (B) — defer Confirm-email flip to Phase 22 — because Phase 22 is doing related auth UX work and a 1-2 week deferral matters less than splitting auth-UX work across two phases.
+   - **RESOLVED:** D-10 locked in CONTEXT.md (2026-04-30) — option (A): amend `src/app/signup/signup-form.tsx` in Plan 21-01 Task 3 to detect `data.session === null`, render an in-card "Check your email to confirm your account" success state, and preserve the existing immediate-session `router.push('/')` redirect path for backward safety. Plan 21-02 Task 4 verifies the merge before flipping toggles.
 
 4. **Number of DKIM records Resend issues for a subdomain in 2026?**
    - What we know: Sources gave conflicting signals (1 vs 2-3).
    - What's unclear: The actual count.
    - Recommendation: Plan task says "enumerate ALL records the Resend dashboard shows" — count doesn't matter operationally if you transcribe what you see.
+   - **RESOLVED:** Plan 21-01 Task 2 instructs the executor to transcribe ALL DKIM records the Resend dashboard shows (1, 2, or 3). No hardcoded count assumption. Task 1 acceptance criteria capture the issued record set into `evidence/resend-record-set.png` for audit.
 
 5. **Does Phase 21 update `supabase/config.toml` to mirror prod?**
    - What we know: `config.toml` lines 220, 213-218 control local-dev rate limits and toggle defaults. Local dev uses Inbucket (no real SMTP). Prod toggles are dashboard-only.
    - What's unclear: Whether the team wants local config to mirror prod state for testing parity.
    - Recommendation: NO config.toml changes in Phase 21. Local dev keeps `enable_confirmations = false` because Inbucket can't send real emails anyway, and changing the local default only blocks local signup testing without benefit. Document this in the plan as an explicit non-change.
+   - **RESOLVED:** No `supabase/config.toml` changes in Phase 21 — local dev uses Inbucket (no real SMTP path); changing local defaults only blocks local signup testing without benefit. Plans do NOT modify `supabase/config.toml`.
 
 ## Environment Availability
 
