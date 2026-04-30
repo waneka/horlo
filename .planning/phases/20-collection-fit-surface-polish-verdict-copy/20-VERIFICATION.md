@@ -1,13 +1,25 @@
 ---
 phase: 20-collection-fit-surface-polish-verdict-copy
 verified: 2026-04-29T19:05:00Z
-status: gaps_found
-score: 6/7 must-haves verified (1 build-blocker gap)
+revisited: 2026-04-29T19:25:00Z
+status: passed
+score: 7/7 must-haves verified (gaps closed inline 2026-04-29T19:24Z)
 overrides_applied: 0
+gap_closure:
+  mode: inline
+  commits:
+    - "9796b32 fix(20): correct PrimaryArchetype/EraSignal import in viewerTasteProfile"
+    - "b62f31f fix(20): tighten analyzeSimilarity spy signature in verdict tests"
+    - "446135b fix(20): add collectionRevision={0} to SearchPageClient test renders"
+  reverification_evidence:
+    - "npm run build → ✓ Compiled successfully in 4.3s, 27/27 static pages generated"
+    - "npx tsc --noEmit → no errors in Phase 20-owned files (remaining 7 errors are pre-existing tech debt in DesktopTopNav / PreferencesClient / useSearchState / phase17-extract-route-wiring tests, unchanged by Phase 20)"
+    - "Phase 20 vitest suite: 72/72 green (verdict module 27 + verdict tests 13 + watch-page 4 + catalog-page 5 + accordion 10 + verdict-cache 4 + WatchSearchRow 12)"
 gaps:
   - truth: "Production build (`npm run build`) succeeds — Next.js TypeScript validation passes for all Phase 20-owned source files"
-    status: failed
+    status: resolved
     reason: "src/lib/verdict/viewerTasteProfile.ts imports PrimaryArchetype and EraSignal from @/lib/verdict/types, but those names are only privately imported in types.ts and never re-exported. Next.js build fails with TS2459 on this file. Vitest does not surface this because it does not run tsc; tests pass at runtime."
+    closed_by: "9796b32 — split import: PrimaryArchetype/EraSignal from @/lib/types, ViewerTasteProfile from @/lib/verdict/types. Verified by `npm run build` → ✓ Compiled successfully."
     artifacts:
       - path: "src/lib/verdict/viewerTasteProfile.ts"
         issue: "Line 6: `import type { ViewerTasteProfile, PrimaryArchetype, EraSignal } from '@/lib/verdict/types'` — PrimaryArchetype and EraSignal are not exported from that module. They live in @/lib/types."
