@@ -167,7 +167,10 @@ export function WatchSearchRowsAccordion({
                 <WatchSearchRow result={r} q={q} isOpen={isOpen} />
               </Accordion.Trigger>
             </Accordion.Header>
-            <Accordion.Panel className="px-2 pt-2 pb-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-150">
+            {/* base-ui's AccordionPanel exposes data-open (no value) — NOT a data-state attribute.
+                See node_modules/@base-ui/react/accordion/panel/AccordionPanelDataAttributes.js.
+                UAT gap 5 fix: previous Tailwind selectors keyed off data-state never matched, animations never ran. */}
+            <Accordion.Panel className="overflow-hidden px-2 pt-2 pb-4 data-[open]:animate-in data-[open]:fade-in-0 data-[ending-style]:animate-out data-[ending-style]:fade-out-0 duration-150">
               {loadingId === r.catalogId ? (
                 <VerdictSkeleton />
               ) : (

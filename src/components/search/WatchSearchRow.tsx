@@ -2,7 +2,6 @@ import Image from 'next/image'
 import { Watch as WatchIcon, ChevronDown } from 'lucide-react'
 
 import { HighlightedText } from '@/components/search/HighlightedText'
-import { buttonVariants } from '@/components/ui/button'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 /**
@@ -67,16 +66,20 @@ export function WatchSearchRow({
           Wishlist
         </span>
       )}
+      {/* UAT gap 5 fix: chevron-led "Tap to evaluate" affordance — no longer
+          styled like a button (the previous outline-button styling was removed).
+          pointer-events-none kept so the click bubbles to the Accordion.Trigger
+          ancestor (the entire row is the click target). aria-hidden on the
+          wrapping span — the Trigger button already exposes
+          aria-label="Evaluate {brand} {model}" to screen readers. */}
       <span
-        className={
-          buttonVariants({ variant: 'outline', size: 'sm' }) +
-          ' relative inline-flex items-center gap-1 pointer-events-none'
-        }
+        className="relative inline-flex items-center gap-1 text-sm text-muted-foreground pointer-events-none"
+        aria-hidden="true"
       >
-        {isOpen ? 'Hide' : 'Evaluate'}
+        {isOpen ? 'Hide' : 'Tap to evaluate'}
         <ChevronDown
           className={`size-4 transition-transform${isOpen ? ' rotate-180' : ''}`}
-          aria-hidden
+          aria-hidden="true"
         />
       </span>
     </div>
