@@ -62,7 +62,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] **Phase 17: Catalog Foundation** — `watches_catalog` schema + RLS + nullable FK + idempotent backfill + two upsert helpers + pg_cron daily counts + daily snapshots (completed 2026-04-27)
 - [x] **Phase 18: /explore Discovery Surface** — Server Component shell with sparse-network hero + Popular Collectors / Trending / Gaining Traction rails + BottomNav slot wiring (completed 2026-04-28)
 - [x] **Phase 19: /search Watches + Collections** — Catalog-backed Watches tab + cross-user Collections tab (two-layer privacy) + All-tab union + tab-aware AbortController (completed 2026-04-28)
-- [ ] **Phase 20: Collection Fit Surface Polish + Verdict Copy** — Pure-renderer `<CollectionFitCard>`, richer contextual verdict phrasings, cross-user `/watch/[id]` polish, `WatchSearchRow` CTA repointed to inline-expand (no /evaluate route)
+- [x] **Phase 20: Collection Fit Surface Polish + Verdict Copy** — Pure-renderer `<CollectionFitCard>`, richer contextual verdict phrasings, cross-user `/watch/[id]` polish, `WatchSearchRow` CTA repointed to inline-expand (no /evaluate route) (completed 2026-04-30)
 - [ ] **Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step** — URL-paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture; "skip" covers the lightweight evaluate-only use case
 - [ ] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc
 - [ ] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect
@@ -155,9 +155,9 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 20-01-PLAN.md — Verdict types module + Wave 0 test scaffolds + always-on /evaluate guard (Wave 1)
 - [x] 20-02-PLAN.md — Verdict module: composer + 12 templates + viewer aggregate taste profile + caller shim + 27 unit tests (Wave 2)
 - [x] 20-03-PLAN.md — <CollectionFitCard> pure-renderer + <VerdictSkeleton> + 8 RTL tests (Wave 2)
-- [ ] 20-04-PLAN.md — /watch/[id] page-level compute + WatchDetail migration + delete SimilarityBadge (Wave 3)
-- [ ] 20-05-PLAN.md — getVerdictForCatalogWatch Server Action + WatchSearchRowsAccordion + cache hook + 22 tests (Wave 3)
-- [ ] 20-06-PLAN.md — /catalog/[catalogId] route + DiscoveryWatchCard repoint + /evaluate cleanup sweep (Wave 3)
+- [x] 20-04-PLAN.md — /watch/[id] page-level compute + WatchDetail migration + delete SimilarityBadge (Wave 3)
+- [x] 20-05-PLAN.md — getVerdictForCatalogWatch Server Action + WatchSearchRowsAccordion + cache hook + 22 tests (Wave 3)
+- [x] 20-06-PLAN.md — /catalog/[catalogId] route + DiscoveryWatchCard repoint + /evaluate cleanup sweep (Wave 3)
 **UI hint**: yes
 
 ### Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step
