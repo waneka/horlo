@@ -8,14 +8,15 @@
 
 Move Supabase Auth's transactional emails (signup confirm, password reset, email-change confirm) off Supabase's hosted SMTP (2/h free-tier cap) onto Resend with a verified DKIM-signed `mail.horlo.app` subdomain, then flip **Confirm email**, **Secure email change**, and **Secure password change** to ON in production — only after a documented round-trip test passes.
 
-This is an **ops + config + docs phase**. No application code changes. The deliverables are:
-1. DNS records at the registrar (SPF/DKIM/MX) for `mail.horlo.app`.
-2. Resend domain verified ✓ + a Resend SMTP password issued.
+This is primarily an **ops + config + docs phase** with **one targeted code change** (the signup-form UX must handle the no-session-on-signup case before Confirm-email is flipped ON — see D-10). The deliverables are:
+1. DNS records at the registrar (SPF/DKIM/DMARC/bounce-MX) for `mail.horlo.app` — DMARC posture per D-11.
+2. Resend domain verified ✓ + a Resend SMTP password (= API key) issued.
 3. Supabase Dashboard → Auth → SMTP wired to `smtp.resend.com:465`.
-4. Three Auth toggles flipped ON in prod.
-5. A backout-plan section appended to `docs/deploy-db-setup.md`.
-6. PROJECT.md Key Decisions row updated (`Email confirmation OFF` → `ON`).
-7. REQUIREMENTS.md note that SMTP-06 (staging sender separation) is deferred until a staging Supabase project exists.
+4. **Signup-form amended** (`src/app/signup/signup-form.tsx`) to render a "Check your email" success state when `signUp()` returns `{ session: null }` — prerequisite for step 5.
+5. Three Auth toggles flipped ON in prod (only after the D-07 round-trip gate passes AND step 4 is shipped).
+6. A backout-plan section appended to `docs/deploy-db-setup.md`.
+7. PROJECT.md Key Decisions row updated (`Email confirmation OFF` → `ON`).
+8. REQUIREMENTS.md note that SMTP-06 (staging sender separation) is deferred until a staging Supabase project exists.
 
 Anything beyond this list (branded HTML templates, bounce/complaint webhooks, monitoring dashboards, staging Supabase project) belongs in other phases.
 
@@ -42,6 +43,12 @@ Anything beyond this list (branded HTML templates, bounce/complaint webhooks, mo
   Both must pass before flipping Confirm-email ON. Dashboard test alone catches credential errors; end-to-end signup catches link/template/site-URL errors.
 - **D-08:** Minimum receiver gate = **Gmail must inbox (not spam)**. iCloud / Outlook are nice-to-have signal but not blockers for SMTP-03.
 - **D-09:** **If the test email lands in spam, block the flip.** Investigate DKIM/SPF/DMARC alignment first. Spam-foldering on a fresh-verified Resend domain almost always means a misconfigured DNS record or missing DMARC policy — fix root cause, then retry the gate. Do not "flip and monitor" as the recovery strategy.
+
+### Signup-Form UX Update (added 2026-04-30 after research surfaced breakage)
+- **D-10:** **Amend `src/app/signup/signup-form.tsx` in Phase 21** before flipping Confirm-email ON. The current handler unconditionally calls `router.push('/')` after `supabase.auth.signUp()` (line 30-32) — that path works only because Confirm-email is OFF (Supabase returns a session). With Confirm-email ON, `signUp()` succeeds with `{ user, session: null }` and the redirect silently bounces the user. The amended form must: (1) detect the no-session case and show a "Check your email to confirm your account" success state in the existing card (do not redirect), (2) leave the existing immediate-session path intact for backward safety / staging projects, (3) keep the neutral error copy already in place. This is the ONLY application-code change in Phase 21; treat it as a prerequisite blocker for SMTP-03 (toggle flip).
+
+### DMARC Posture (added 2026-04-30 after research)
+- **D-11:** **Publish DMARC at this phase.** `_dmarc.mail.horlo.app` TXT = `v=DMARC1; p=none;` (monitor-only, no `rua=` reporting endpoint). Submit alongside SPF + DKIM in the SMTP-01 DNS task — same propagation window, same registrar UI, no extra lead-time cost. Rationale: Gmail's spam classifier scores unauthenticated mail lower at all volumes, and a fresh-verified Resend domain with no DMARC posture is the highest-likelihood path into the D-09 "spam folder blocks the flip" scenario. `p=none` is the cheapest insurance: zero impact on legitimate sends, monitor-only, can ramp to `p=quarantine` later if reporting is added.
 
 ### Claude's Discretion
 - **Backout-plan structure** — User did not select this gray area for discussion. Planner has discretion. Sensible defaults: backout doc lives as a new subsection in `docs/deploy-db-setup.md` (likely after Step 0 since that's where the email-confirmation footgun is documented today). Triggers should include: (1) DKIM verify regresses, (2) Resend account suspended/throttled, (3) deliverability incident on `mail.horlo.app`. Revert procedure: toggle Confirm-email OFF in Supabase Dashboard, restore Supabase hosted SMTP creds, communicate via PROJECT.md Key Decisions update.
