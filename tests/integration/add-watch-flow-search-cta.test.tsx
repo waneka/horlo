@@ -88,7 +88,7 @@ describe('Phase 20.1 Plan 05 — /search accordion Wishlist commit + Pitfall 2',
       />,
     )
     // Expand the accordion row.
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     // Wait for verdict mock to resolve and CFC to render.
     await waitFor(() => screen.getByTestId('cfc'))
 
@@ -115,7 +115,7 @@ describe('Phase 20.1 Plan 05 — /search accordion Wishlist commit + Pitfall 2',
         collectionRevision={1}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     await waitFor(() => screen.getByTestId('cfc'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to Collection' }))
@@ -138,7 +138,7 @@ describe('Phase 20.1 Plan 05 — /search accordion Wishlist commit + Pitfall 2',
       />,
     )
     // Expand the accordion row.
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     await waitFor(() => screen.getByTestId('cfc'))
 
     // Click the inline Wishlist CTA.

@@ -54,6 +54,18 @@ vi.mock('@/components/profile/FollowButton', () => ({
   }) => <button data-testid="follow-button">{`Follow ${targetDisplayName}`}</button>,
 }))
 
+// AllTabResults now mounts WatchSearchRowsAccordion for the watches section,
+// which pulls next/navigation router + verdict/addWatch actions on click.
+// Mocks below keep render() side-effect-free.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}))
+vi.mock('@/app/actions/verdict', () => ({
+  getVerdictForCatalogWatch: vi.fn(),
+}))
+vi.mock('@/app/actions/watches', () => ({ addWatch: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
 import type {
   SearchProfileResult,
   SearchCatalogWatchResult,
@@ -64,6 +76,7 @@ import { AllTabResults } from '@/components/search/AllTabResults'
 const baseProps = {
   q: 'rolex',
   viewerId: 'v1',
+  collectionRevision: 1,
   peopleResults: [] as SearchProfileResult[],
   watchesResults: [] as SearchCatalogWatchResult[],
   collectionsResults: [] as SearchCollectionResult[],
@@ -215,10 +228,10 @@ describe('AllTabResults (SRCH-13, D-13, D-14, I-2 defensive cap)', () => {
       .filter((t) => /^P\d+$/.test(t.trim()))
     expect(peopleNamesUnique.length).toBeLessThanOrEqual(5)
 
-    // Watch rows: WatchSearchRow renders 2 anchors per row (absolute-inset Link
-    // + Evaluate Link) both pointing at /evaluate?catalogId=. Cap → ≤10.
-    const watchesLinks = container.querySelectorAll('a[href^="/evaluate?catalogId="]')
-    expect(watchesLinks.length).toBeLessThanOrEqual(10)
+    // Watch rows: WatchSearchRow renders one anchor per row to /catalog/[id].
+    // Cap → ≤5.
+    const watchesLinks = container.querySelectorAll('a[href^="/catalog/"]')
+    expect(watchesLinks.length).toBeLessThanOrEqual(5)
 
     // Collection rows render an anchor to /u/{username}/collection.
     // People rows ALSO render /u/{username}/collection. With 5 each capped,

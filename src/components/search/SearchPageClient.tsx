@@ -116,6 +116,7 @@ export function SearchPageClient({ viewerId, collectionRevision, children }: Sea
           <AllTabResults
             q={trimmed}
             viewerId={viewerId}
+            collectionRevision={collectionRevision}
             peopleResults={peopleResults}
             watchesResults={watchesResults}
             collectionsResults={collectionsResults}

@@ -88,30 +88,36 @@ describe('WatchSearchRow (FIT-04, SRCH-09, SRCH-15, D-05)', () => {
     expect(evaluateLinks.length).toBe(0)
   })
 
-  it('Test 5 — renders brand+model in plain text (no anchor wrapper)', () => {
-    render(<WatchSearchRow result={baseResult} q="Sub" />)
-    // Brand+model text should appear inside a <p>, not wrapped in an <a>
+  it('Test 5 — wraps brand+model in <Link> to /catalog/[catalogId] (gap-5 follow-up — primary action is detail-page nav)', () => {
+    const { container } = render(<WatchSearchRow result={baseResult} q="Sub" />)
     const p = screen.getByText(/Rolex/, { selector: 'p' })
-    expect(p).toBeInTheDocument()
-    expect(p.closest('a')).toBeNull()
+    const anchor = p.closest('a')
+    expect(anchor).not.toBeNull()
+    expect(anchor?.getAttribute('href')).toBe('/catalog/cat-uuid-123')
+    // No legacy /evaluate hrefs anywhere
+    expect(container.querySelector('a[href*="/evaluate"]')).toBeNull()
   })
 
-  it("Test 6 — renders 'Evaluate' label by default (isOpen not set)", () => {
-    render(<WatchSearchRow result={baseResult} q="Sub" />)
-    expect(screen.getByText('Evaluate')).toBeInTheDocument()
+  it('Test 6 — does NOT render its own chevron / "Evaluate" / "Hide" text (chevron now owned by parent via trigger slot)', () => {
+    const { container } = render(<WatchSearchRow result={baseResult} q="Sub" />)
+    expect(screen.queryByText('Evaluate')).toBeNull()
+    expect(screen.queryByText('Hide')).toBeNull()
+    expect(screen.queryByText(/Tap to evaluate/i)).toBeNull()
+    // No SVG when trigger slot is empty (image fallback only renders when imageUrl is null;
+    // in this fixture imageUrl IS null so the fallback Watch icon is present — that's fine).
+    // What we're asserting: there's no trigger button rendered inside the row by default.
+    expect(container.querySelector('button')).toBeNull()
   })
 
-  it("Test 7 — renders 'Hide' label when isOpen=true", () => {
-    render(<WatchSearchRow result={baseResult} q="Sub" isOpen={true} />)
-    expect(screen.getByText('Hide')).toBeInTheDocument()
-    expect(screen.queryByText('Evaluate')).not.toBeInTheDocument()
-  })
-
-  it('Test 8 — renders chevron-down SVG icon', () => {
-    const { container } = render(
-      <WatchSearchRow result={baseResult} q="Sub" />,
+  it('Test 7 — renders the trigger slot when provided', () => {
+    render(
+      <WatchSearchRow
+        result={baseResult}
+        q="Sub"
+        trigger={<button type="button" aria-label="external trigger" />}
+      />,
     )
-    expect(container.querySelector('svg')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'external trigger' })).toBeInTheDocument()
   })
 
   it('Test 9 — Owned pill renders with bg-primary classes (D-05)', () => {

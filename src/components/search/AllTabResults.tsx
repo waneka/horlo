@@ -3,7 +3,7 @@
 import { ChevronRight } from 'lucide-react'
 
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
-import { WatchSearchRow } from '@/components/search/WatchSearchRow'
+import { WatchSearchRowsAccordion } from '@/components/search/WatchSearchRowsAccordion'
 import { CollectionSearchRow } from '@/components/search/CollectionSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
 import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
@@ -20,6 +20,7 @@ const ALL_TAB_SECTION_CAP = 5
 interface AllTabResultsProps {
   q: string
   viewerId: string
+  collectionRevision: number
   peopleResults: SearchProfileResult[]
   watchesResults: SearchCatalogWatchResult[]
   collectionsResults: SearchCollectionResult[]
@@ -52,6 +53,7 @@ interface AllTabResultsProps {
 export function AllTabResults({
   q,
   viewerId,
+  collectionRevision,
   peopleResults,
   watchesResults,
   collectionsResults,
@@ -101,11 +103,11 @@ export function AllTabResults({
         ) : watchesCapped.length === 0 ? (
           <p className="text-sm text-muted-foreground">No matches</p>
         ) : (
-          <div className="space-y-2">
-            {watchesCapped.map((r) => (
-              <WatchSearchRow key={r.catalogId} result={r} q={q} />
-            ))}
-          </div>
+          <WatchSearchRowsAccordion
+            results={watchesCapped}
+            q={q}
+            collectionRevision={collectionRevision}
+          />
         )}
       </Section>
 

@@ -1,10 +1,11 @@
 /**
- * Phase 20.1 Plan 01 (Wave 0) — RED test scaffold for WatchSearchRowsAccordion CTAs.
+ * Phase 20.1 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2 + UAT gap 5).
  *
- * Covers ADD-06 unit-level: 3 CTAs render inside Accordion.Panel after verdict
- * resolves; Hide button collapses the panel; Pitfall 2 stopPropagation on CTAs.
- *
- * RED until Plan 05 modifies WatchSearchRowsAccordion to render the CTAs.
+ * Post-gap-5 follow-up:
+ *   - Trigger is the right-edge chevron only (not the whole row).
+ *     aria-label = "Toggle fit for {brand} {model}".
+ *   - Row body is a <Link> to /catalog/[catalogId] (primary action).
+ *   - "Hide" CTA removed — collapsing is handled by clicking the chevron again.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -13,6 +14,40 @@ const { mockGetVerdict, mockAddWatch, mockRouterPush } = vi.hoisted(() => ({
   mockGetVerdict: vi.fn(),
   mockAddWatch: vi.fn(),
   mockRouterPush: vi.fn(),
+}))
+
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    className,
+  }: {
+    href: string
+    children: React.ReactNode
+    className?: string
+  }) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  ),
+}))
+
+vi.mock('next/image', () => ({
+  default: ({
+    src,
+    alt,
+    className,
+    width,
+    height,
+  }: {
+    src: string
+    alt: string
+    className?: string
+    width?: number
+    height?: number
+  }) => (
+    <img src={src} alt={alt} className={className} width={width} height={height} />
+  ),
 }))
 
 vi.mock('@/app/actions/verdict', () => ({ getVerdictForCatalogWatch: mockGetVerdict }))
@@ -32,7 +67,6 @@ vi.mock('@/components/insights/VerdictSkeleton', () => ({
   VerdictSkeleton: () => <div data-testid="vskel" />,
 }))
 
-// IMPORT UNDER TEST — Plan 05 will add the 3 CTAs inside Accordion.Panel.
 import { WatchSearchRowsAccordion } from '@/components/search/WatchSearchRowsAccordion'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
@@ -56,14 +90,14 @@ const fixtureVerdictCrossUser = {
   roleOverlap: false,
 }
 
-describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
+describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetVerdict.mockResolvedValue({ success: true, data: fixtureVerdictCrossUser })
     mockAddWatch.mockResolvedValue({ success: true, data: { id: 'w-new' } })
   })
 
-  it('renders all 3 CTAs (Add to Wishlist, Add to Collection, Hide) inside Accordion.Panel after verdict resolves', async () => {
+  it('renders 2 CTAs (Add to Wishlist, Add to Collection) inside Accordion.Panel after verdict resolves; no Hide button', async () => {
     render(
       <WatchSearchRowsAccordion
         results={[fixtureRow]}
@@ -71,12 +105,12 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
         collectionRevision={1}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     await waitFor(() => screen.getByTestId('cfc'))
 
     expect(screen.getByRole('button', { name: 'Add to Wishlist' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add to Collection' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Hide' })).toBeNull()
   })
 
   it('Pitfall 2 — clicking "Add to Wishlist" does NOT close the accordion panel (stopPropagation)', async () => {
@@ -87,15 +121,14 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
         collectionRevision={1}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     await waitFor(() => screen.getByTestId('cfc'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to Wishlist' }))
-    // Panel still rendered → CFC mock still in DOM.
     expect(screen.getByTestId('cfc')).toBeInTheDocument()
   })
 
-  it('"Hide" button collapses the panel — CTAs and CollectionFitCard disappear from DOM', async () => {
+  it('chevron toggle — clicking the trigger again collapses the panel (CTAs disappear)', async () => {
     render(
       <WatchSearchRowsAccordion
         results={[fixtureRow]}
@@ -103,16 +136,17 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
         collectionRevision={1}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    const trigger = screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i })
+    fireEvent.click(trigger)
     await waitFor(() => screen.getByTestId('cfc'))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
+    fireEvent.click(trigger)
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Add to Wishlist' })).toBeNull()
     })
   })
 
-  it('UAT gap 5 — clicking row sets data-open attribute on Accordion.Panel (asserts base-ui DOM contract)', async () => {
+  it('UAT gap 5 — clicking trigger sets data-open attribute on Accordion.Panel (asserts base-ui DOM contract)', async () => {
     const { container } = render(
       <WatchSearchRowsAccordion
         results={[fixtureRow]}
@@ -120,26 +154,18 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
         collectionRevision={1}
       />,
     )
-    // Pre-click: Accordion.Panel (identified by aria-labelledby — distinct from
-    // the Accordion.Root wrapper which also has role="region" but no aria-labelledby)
-    // is not yet mounted by base-ui; only the Root wrapper exists.
     const panelBefore = container.querySelector('[role="region"][aria-labelledby]')
     expect(panelBefore).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     await waitFor(() => screen.getByTestId('cfc'))
 
-    // Post-click: base-ui mounts AccordionPanel with data-open="" (no value attribute)
     const panelAfter = container.querySelector('[role="region"][aria-labelledby]')
     expect(panelAfter).not.toBeNull()
     expect(panelAfter?.hasAttribute('data-open')).toBe(true)
   })
 
   it('UAT gap 5 — Accordion.Panel className uses data-[open]: selectors (NOT data-[state=open]:)', async () => {
-    // Reads the raw className from a rendered panel and confirms the selectors
-    // match base-ui's actual data attribute. This guards against re-introducing
-    // the data-[state=open]: selectors that never matched.
-    // Panel only mounts AFTER trigger click — base-ui lazy-mounts the panel.
     const { container } = render(
       <WatchSearchRowsAccordion
         results={[fixtureRow]}
@@ -147,7 +173,7 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
         collectionRevision={1}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: /Evaluate Omega Speedmaster/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
     await waitFor(() => screen.getByTestId('cfc'))
 
     const panel = container.querySelector(
@@ -155,10 +181,20 @@ describe('Phase 20.1 Plan 05 — WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall
     ) as HTMLElement | null
     expect(panel).not.toBeNull()
     const cls = panel?.className ?? ''
-    // Anti-regression — these selectors do NOT exist in base-ui's data attribute set
     expect(cls).not.toMatch(/data-\[state=open\]/)
     expect(cls).not.toMatch(/data-\[state=closed\]/)
-    // The new selector format DOES exist on base-ui
     expect(cls).toMatch(/data-\[open\]|not-data-\[open\]/)
+  })
+
+  it('row body navigates to /catalog/[catalogId] (split affordance — link is separate from chevron trigger)', () => {
+    const { container } = render(
+      <WatchSearchRowsAccordion
+        results={[fixtureRow]}
+        q=""
+        collectionRevision={1}
+      />,
+    )
+    const link = container.querySelector('a[href="/catalog/cat-row-uuid"]')
+    expect(link).not.toBeNull()
   })
 })
