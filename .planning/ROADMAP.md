@@ -151,7 +151,13 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. Cross-user `/watch/[id]` (reached via `/u/{username}/collection` → click) renders `<CollectionFitCard>` correctly framed for a watch the viewer doesn't own.
   4. `WatchSearchRow` "Evaluate" CTA opens an inline-expand verdict preview (verdict appears in or below the row without navigation); the dangling `/evaluate?catalogId=` link is removed.
   5. The `/evaluate` route does not exist.
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 20-01-PLAN.md — Verdict types module + Wave 0 test scaffolds + always-on /evaluate guard (Wave 1)
+- [ ] 20-02-PLAN.md — Verdict module: composer + 12 templates + viewer aggregate taste profile + caller shim + 27 unit tests (Wave 2)
+- [ ] 20-03-PLAN.md — <CollectionFitCard> pure-renderer + <VerdictSkeleton> + 8 RTL tests (Wave 2)
+- [ ] 20-04-PLAN.md — /watch/[id] page-level compute + WatchDetail migration + delete SimilarityBadge (Wave 3)
+- [ ] 20-05-PLAN.md — getVerdictForCatalogWatch Server Action + WatchSearchRowsAccordion + cache hook + 22 tests (Wave 3)
+- [ ] 20-06-PLAN.md — /catalog/[catalogId] route + DiscoveryWatchCard repoint + /evaluate cleanup sweep (Wave 3)
 **UI hint**: yes
 
 ### Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step
@@ -257,7 +263,7 @@ Phases 21 (SMTP DNS lead-time) and 24 (cleanup) are independent and may ship in 
 | v4.0 Discovery & Polish | 18. /explore Discovery Surface | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 19. /search Watches + Collections | 0/5 | Not started | - |
 | v4.0 Discovery & Polish | 19.1. Catalog Taste Enrichment | 0/6 | Not started | - |
-| v4.0 Discovery & Polish | 20. Collection Fit Surface Polish + Verdict Copy | 0/TBD | Not started | - |
+| v4.0 Discovery & Polish | 20. Collection Fit Surface Polish + Verdict Copy | 0/6 | Not started | - |
 | v4.0 Discovery & Polish | 20.1. Add-Watch Flow Rethink + Verdict-as-Step | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 21. Custom SMTP via Resend | 0/TBD | Not started | - |
 | v4.0 Discovery & Polish | 22. Settings Restructure + Account Section | 0/TBD | Not started | - |
