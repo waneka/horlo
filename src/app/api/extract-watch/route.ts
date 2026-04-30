@@ -46,8 +46,12 @@ export async function POST(request: NextRequest) {
 
     const result = await fetchAndExtract(url)
 
-    // CAT-08 — catalog wiring (fire-and-forget)
+    // CAT-08 — catalog wiring (fire-and-forget per route response, but SYNC awaited
+    // for correctness). Phase 20.1 UAT gap 1 fix: surface upsert errors in the
+    // response so the client can distinguish "extraction succeeded but cataloging
+    // failed" from "extraction failed entirely".
     let catalogId: string | null = null
+    let catalogIdError: string | null = null
     try {
       if (result.data?.brand && result.data?.model) {
         catalogId = await catalogDAL.upsertCatalogFromExtractedUrl({
@@ -70,9 +74,22 @@ export async function POST(request: NextRequest) {
           roleTags: [],
           complications: result.data.complications ?? [],
         })
+        // Even when the upsert helper does not throw, it CAN return null when
+        // the SQL execution shape doesn't yield a row id (per debug session
+        // 2026-04-30T18:30:00Z). Mark this case explicitly.
+        if (!catalogId) {
+          catalogIdError = 'catalog upsert returned null id'
+        }
+      } else {
+        catalogIdError = 'brand/model missing from extraction'
       }
     } catch (err) {
       console.error('[extract-watch] catalog upsert failed (non-fatal):', err)
+      // Sanitize the error message before sending to the client — never leak DB
+      // internals or stack traces. Just surface a short reason code.
+      catalogIdError = err instanceof Error
+        ? `catalog upsert threw: ${err.message.slice(0, 200)}`
+        : 'catalog upsert threw'
     }
 
     // Phase 19.1 D-07 + D-08: second-pass taste enrichment after spec extraction commits.
@@ -117,6 +134,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       catalogId,
+      // Phase 20.1 UAT gap 1 observability — null on success / non-null when
+      // upsert failed or could not run. Consumed by AddWatchFlow.handleExtract
+      // via console.warn for diagnostic visibility into silent null-catalogId paths.
+      catalogIdError,
       ...result,
     })
   } catch (error) {

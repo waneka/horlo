@@ -26,6 +26,11 @@ import type { VerdictBundle } from '@/lib/verdict/types'
  *
  * Search rows are always non-owned candidates → framing is hardcoded to
  * 'cross-user'. Self-via-cross-user (D-08) is owned by Plan 06's catalog page.
+ *
+ * Phase 20.1 UAT gap 1 observability contract: error strings on the failure
+ * path are STABLE — AddWatchFlow.handleExtract logs them via console.warn so
+ * silent verdict-null paths surface during reproduction. Do not collapse
+ * specific errors to a generic 'failed' string without updating the consumer.
  */
 const verdictSchema = z.object({ catalogId: z.string().uuid() }).strict()
 

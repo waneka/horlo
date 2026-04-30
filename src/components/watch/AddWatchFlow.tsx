@@ -133,9 +133,15 @@ export function AddWatchFlow({
       }
       const extracted: ExtractedWatchData = data.data ?? {}
       const catalogId: string | null = data.catalogId ?? null
+      // Phase 20.1 UAT gap 1 observability: route surfaces an explicit error
+      // indicator whenever the catalog upsert path could not produce a real id.
+      const catalogIdError: string | null = data.catalogIdError ?? null
 
       // Pitfall 8: empty collection → skip verdict compute entirely.
       if (collectionRevision === 0) {
+        // UAT gap 1 observability — distinguish empty-collection short-circuit
+        // from upstream silent failures.
+        console.warn('[AddWatchFlow] verdict=null path: collection-empty', { catalogId, catalogIdError })
         setState({
           kind: 'verdict-ready',
           catalogId: catalogId ?? '',
@@ -147,6 +153,11 @@ export function AddWatchFlow({
       if (!catalogId) {
         // Brand+model missing OR catalog upsert failed; render verdict-ready
         // without verdict so the user can still pick Wishlist/Collection/Skip.
+        // UAT gap 1 observability — surfaces which sub-case fired:
+        //   - "brand/model missing from extraction" (extractor-side)
+        //   - "catalog upsert threw: <msg>" (DB-side)
+        //   - "catalog upsert returned null id" (DAL-side, possibly RETURNING shape)
+        console.warn('[AddWatchFlow] verdict=null path: catalogId-missing', { catalogIdError })
         setState({ kind: 'verdict-ready', catalogId: '', extracted, verdict: null })
         return
       }
@@ -159,6 +170,10 @@ export function AddWatchFlow({
       // Compute verdict.
       const v = await getVerdictForCatalogWatch({ catalogId })
       const bundle: VerdictBundle | null = v.success ? v.data : null
+      if (!v.success) {
+        // UAT gap 1 observability — surfaces the Server Action error string.
+        console.warn('[AddWatchFlow] verdict=null path: verdict-failed', { catalogId, error: v.error })
+      }
       if (bundle) cache.set(catalogId, bundle)
       setState({ kind: 'verdict-ready', catalogId, extracted, verdict: bundle })
     } catch (err) {

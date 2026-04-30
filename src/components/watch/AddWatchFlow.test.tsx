@@ -343,4 +343,47 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
     expect(screen.getByText(/Couldn't compute fit/i)).toBeInTheDocument()
     expect(screen.queryByText(/collection is empty/i)).not.toBeInTheDocument()
   })
+
+  it('UAT gap 1 observability — emits console.warn when verdict=null path fires', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: null,
+        catalogIdError: 'brand/model missing from extraction',
+        data: { brand: 'Omega', model: 'Speedmaster' },
+        source: 'merged',
+        confidence: 'high',
+        fieldsExtracted: ['brand', 'model'],
+        llmUsed: false,
+      }),
+    } as Response)
+    vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
+      success: false,
+      error: 'should not be called',
+    } as never)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/spd' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    await waitFor(() => screen.getByText('Skip'))
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[AddWatchFlow] verdict=null path: catalogId-missing',
+      expect.objectContaining({ catalogIdError: 'brand/model missing from extraction' }),
+    )
+    warnSpy.mockRestore()
+  })
 })
