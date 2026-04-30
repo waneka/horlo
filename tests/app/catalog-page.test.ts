@@ -56,6 +56,18 @@ vi.mock('next/image', () => ({
 // Phase 20.1 Plan 05 D-05 — CatalogPageActions Client Component renders the 3
 // CTAs (Add to Wishlist / Add to Collection / Skip) below CollectionFitCard
 // in non-self-via-cross-user framing.
+//
+// Plan 05 deviation (Rule 1 — bug): Plan 01's RED scaffold mocked
+// CatalogPageActions to a template-literal string and asserted via
+// `JSON.stringify(result).toMatch(/CatalogPageActions/)`. JSON.stringify of a
+// React JSX element only serializes plain props — the `type` field (a function
+// reference) is dropped, so a regex against the component name can never
+// match. The fix is to assert against unique props that only CatalogPageActions
+// receives at the page tree level — `catalogId` (a string-uuid prop), `spec`
+// (an object prop), and `framing="cross-user"` (the discriminator).
+//
+// Mock kept as a no-op render so the type identity is unique in vi.mock
+// resolution. Test assertions updated below to match props.
 vi.mock('@/components/watch/CatalogPageActions', () => ({
   CatalogPageActions: (props: { framing?: string }) =>
     `<CatalogPageActions data-testid="cpa" data-framing="${props.framing}" />`,
@@ -158,8 +170,12 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     mockDbLimit.mockResolvedValue([])  // viewer does NOT own this catalog ref
     const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
     const rendered = JSON.stringify(result)
-    expect(rendered).toMatch(/CatalogPageActions/)
-    expect(rendered).toMatch(/data-framing="cross-user"/)
+    // CatalogPageActions is the only child receiving both `catalogId` and `spec`
+    // props at the page tree level. Match the discriminator props (function
+    // `type` references don't survive JSON.stringify — see deviation note).
+    expect(rendered).toMatch(/"catalogId":"00000000-0000-4000-8000-000000000000"/)
+    expect(rendered).toMatch(/"spec":\{/)
+    expect(rendered).toMatch(/"framing":"cross-user"/)
   })
 
   it('D-05 — does NOT render CTAs when framing is self-via-cross-user', async () => {
@@ -172,7 +188,9 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     }])
     const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
     const rendered = JSON.stringify(result)
-    expect(rendered).not.toMatch(/CatalogPageActions/)
+    // CatalogPageActions discriminator (the `spec` prop only ever appears on
+    // CatalogPageActions in this page) must NOT be in the tree.
+    expect(rendered).not.toMatch(/"spec":\{/)
   })
 
   it('D-05 — does NOT render CTAs when collection is empty (no verdict per D-07)', async () => {
@@ -181,6 +199,6 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     mockDbLimit.mockResolvedValue([])  // not owned
     const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
     const rendered = JSON.stringify(result)
-    expect(rendered).not.toMatch(/CatalogPageActions/)
+    expect(rendered).not.toMatch(/"spec":\{/)
   })
 })

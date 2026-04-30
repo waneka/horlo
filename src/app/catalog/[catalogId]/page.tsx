@@ -10,9 +10,10 @@ import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
+import { CatalogPageActions, type CatalogActionsSpec } from '@/components/watch/CatalogPageActions'
 import { db } from '@/db'
 import { watches as watchesTable } from '@/db/schema'
-import type { Watch } from '@/lib/types'
+import type { Watch, MovementType, CrystalType } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
 interface CatalogPageProps {
@@ -49,6 +50,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   if (!catalogEntry) notFound()
 
   let verdict: VerdictBundle | null = null
+  let actionsSpec: CatalogActionsSpec | null = null
 
   if (viewerOwnedRow) {
     // D-08 — viewer already owns this catalog ref; swap to "You own this" framing.
@@ -57,6 +59,8 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
       ownedAtIso: viewerOwnedRow.acquisitionDate ?? new Date().toISOString(),
       ownerHref: `/watch/${viewerOwnedRow.id}`,
     }
+    // Phase 20.1 D-05 — self-via-cross-user keeps existing 'You own this' UI;
+    // do NOT render CatalogPageActions.
   } else if (collection.length > 0) {
     // D-03/D-07 — cross-user framing, full verdict.
     const profile = await computeViewerTasteProfile(collection)
@@ -69,8 +73,29 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
       profile,
       framing: 'cross-user',
     })
+    // Phase 20.1 D-05 — cross-user framing with non-empty collection → render
+    // CatalogPageActions. strapType is per-user (catalog table doesn't carry
+    // it) so we set it to null literally.
+    actionsSpec = {
+      brand: catalogEntry.brand,
+      model: catalogEntry.model,
+      reference: catalogEntry.reference,
+      movement: catalogEntry.movement as MovementType | null,
+      caseSizeMm: catalogEntry.caseSizeMm,
+      lugToLugMm: catalogEntry.lugToLugMm,
+      waterResistanceM: catalogEntry.waterResistanceM,
+      strapType: null,
+      crystalType: catalogEntry.crystalType as CrystalType | null,
+      dialColor: catalogEntry.dialColor,
+      isChronometer: catalogEntry.isChronometer,
+      complications: catalogEntry.complications ?? [],
+      styleTags: catalogEntry.styleTags ?? [],
+      designTraits: catalogEntry.designTraits ?? [],
+      imageUrl: catalogEntry.imageUrl,
+    }
   }
-  // else: collection.length === 0 → verdict stays null → no card (D-07)
+  // else: collection.length === 0 → verdict stays null AND actionsSpec stays
+  // null → no card, no CTAs (D-05 + D-07 empty-collection rule)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
@@ -103,6 +128,18 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
       </div>
 
       {verdict && <CollectionFitCard verdict={verdict} />}
+
+      {/* Phase 20.1 D-05 — 3 CTAs only when in cross-user framing with non-empty
+          collection. actionsSpec is null in self-via-cross-user (D-05 keeps
+          "You own this") AND in empty-collection case (no actionable verdict
+          context). */}
+      {actionsSpec && (
+        <CatalogPageActions
+          catalogId={catalogId}
+          spec={actionsSpec}
+          framing="cross-user"
+        />
+      )}
     </div>
   )
 }
