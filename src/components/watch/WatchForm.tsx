@@ -15,10 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { UrlImport } from './UrlImport'
 import { CatalogPhotoUploader } from './CatalogPhotoUploader'
 import { addWatch, editWatch } from '@/app/actions/watches'
-import type { ExtractedWatchData } from '@/lib/extractors'
 import {
   COMPLICATIONS,
   DIAL_COLORS,
@@ -32,6 +30,10 @@ import type { Watch, WatchStatus, MovementType, StrapType, CrystalType } from '@
 interface WatchFormProps {
   watch?: Watch
   mode: 'create' | 'edit'
+  /** Phase 20.1 D-12: when set, the status field is locked to this value
+   *  and rendered as a read-only chip (no Select). The verdict step's
+   *  3-button decision IS the status decision in this flow. */
+  lockedStatus?: WatchStatus
 }
 
 type FormData = Omit<Watch, 'id'>
@@ -62,7 +64,7 @@ const initialFormData: FormData = {
   imageUrl: '',
 }
 
-export function WatchForm({ watch, mode }: WatchFormProps) {
+export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -79,7 +81,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
           brand: watch.brand,
           model: watch.model,
           reference: watch.reference ?? '',
-          status: watch.status,
+          status: lockedStatus ?? watch.status,
           pricePaid: watch.pricePaid,
           targetPrice: watch.targetPrice,
           marketPrice: watch.marketPrice,
@@ -100,7 +102,7 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
           notes: watch.notes ?? '',
           imageUrl: watch.imageUrl ?? '',
         }
-      : initialFormData
+      : { ...initialFormData, status: lockedStatus ?? initialFormData.status }
   )
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -158,7 +160,13 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
 
       // Strip client-only blob state from formData before sending to server.
       // photoSourcePath is a transient submit-only payload extension — not a Watch field.
-      const submitData = { ...formData, ...(photoSourcePath ? { photoSourcePath } : {}) }
+      // Phase 20.1 D-12 defense: ensure lockedStatus wins even if formData.status drifted (e.g., HMR).
+      const finalStatus: WatchStatus = lockedStatus ?? formData.status
+      const submitData = {
+        ...formData,
+        status: finalStatus,
+        ...(photoSourcePath ? { photoSourcePath } : {}),
+      }
 
       const result =
         mode === 'edit' && watch
@@ -185,37 +193,10 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
     }))
   }
 
-  const handleUrlImport = (data: ExtractedWatchData) => {
-    setFormData((prev) => ({
-      ...prev,
-      brand: data.brand || prev.brand,
-      model: data.model || prev.model,
-      reference: data.reference || prev.reference,
-      movement: data.movement || prev.movement,
-      complications: data.complications?.length ? data.complications : prev.complications,
-      caseSizeMm: data.caseSizeMm ?? prev.caseSizeMm,
-      lugToLugMm: data.lugToLugMm ?? prev.lugToLugMm,
-      waterResistanceM: data.waterResistanceM ?? prev.waterResistanceM,
-      strapType: data.strapType || prev.strapType,
-      crystalType: data.crystalType || prev.crystalType,
-      dialColor: data.dialColor || prev.dialColor,
-      styleTags: data.styleTags?.length ? data.styleTags : prev.styleTags,
-      designTraits: data.designTraits?.length ? data.designTraits : prev.designTraits,
-      isChronometer: data.isChronometer ?? prev.isChronometer,
-      marketPrice: data.marketPrice ?? prev.marketPrice,
-      imageUrl: data.imageUrl || prev.imageUrl,
-    }))
-  }
-
   const isOwned = formData.status === 'owned'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* URL Import - only show in create mode */}
-      {mode === 'create' && (
-        <UrlImport onDataExtracted={handleUrlImport} />
-      )}
-
       {/* Basic Info */}
       <Card>
         <CardHeader>
@@ -266,24 +247,36 @@ export function WatchForm({ watch, mode }: WatchFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="status">Status *</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => {
-                if (!value) return
-                setFormData((prev) => ({ ...prev, status: value as WatchStatus }))
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {WATCH_STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    <span className="capitalize">{status}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {lockedStatus ? (
+              // Phase 20.1 D-12: status decision was made in the verdict step;
+              // render a read-only chip rather than a Select.
+              <div
+                id="status"
+                aria-readonly="true"
+                className="flex h-9 items-center rounded-md border border-input bg-muted px-3 text-sm capitalize"
+              >
+                {lockedStatus}
+              </div>
+            ) : (
+              <Select
+                value={formData.status}
+                onValueChange={(value) => {
+                  if (!value) return
+                  setFormData((prev) => ({ ...prev, status: value as WatchStatus }))
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {WATCH_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      <span className="capitalize">{status}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">
