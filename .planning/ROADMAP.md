@@ -176,7 +176,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 20.1-01-PLAN.md — Wave 0 RED test scaffolds (10 test files: 8 NEW + 2 EXTEND) covering ADD-01..ADD-07 + Pitfalls 1, 2, 3, 5
 - [x] 20.1-02-PLAN.md — D-08 /api/extract-watch response shape (catalogId field) + D-15 AddWatchCard variant prop + D-16 WishlistTabContent end-of-grid card (Wave 1)
 - [x] 20.1-03-PLAN.md — Atomic flow leaves: flowTypes.ts + PasteSection + VerdictStep + WishlistRationalePanel + RecentlyEvaluatedRail (Wave 1)
-- [ ] 20.1-04-PLAN.md — WatchForm lockedStatus prop + UrlImport deletion + AddWatchFlow orchestrator + /watch/new Server Component rewire (Wave 2)
+- [x] 20.1-04-PLAN.md — WatchForm lockedStatus prop + UrlImport deletion + AddWatchFlow orchestrator + /watch/new Server Component rewire (Wave 2)
 - [ ] 20.1-05-PLAN.md — D-04 WatchSearchRowsAccordion inline 3 CTAs (stopPropagation Pitfall 2) + D-05 CatalogPageActions Client Component on /catalog/[catalogId] (Wave 3)
 **UI hint**: yes
 
