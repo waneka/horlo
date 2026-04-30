@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
-stopped_at: Phase 20.1 UI-SPEC approved
-last_updated: "2026-04-30T20:03:01.584Z"
+stopped_at: Phase 21 context gathered
+last_updated: "2026-04-30T20:30:35.846Z"
 last_activity: 2026-04-30
 progress:
   total_phases: 12
@@ -79,7 +79,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-30T05:33:23.840Z
-Stopped at: Phase 20.1 UI-SPEC approved
-Resume file: .planning/phases/20.1-add-watch-flow-rethink-verdict-as-step/20.1-UI-SPEC.md
+Last session: 2026-04-30T20:30:35.843Z
+Stopped at: Phase 21 context gathered
+Resume file: .planning/phases/21-custom-smtp-via-resend/21-CONTEXT.md
 Next action: `/gsd-plan-phase 17` to begin Phase 17 (Catalog Foundation)
