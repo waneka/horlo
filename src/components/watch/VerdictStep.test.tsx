@@ -119,7 +119,9 @@ describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {
       />,
     )
     // Wishlist button copy reflects pending state (D-13 standard pending pattern).
-    expect(screen.getByRole('button', { name: /Saving/i })).toBeInTheDocument()
+    // The aria-label stays "Add to Wishlist" so screen readers identify the action;
+    // the visible text changes to "Saving..." — match by visible text content.
+    expect(screen.getByText(/Saving/i)).toBeInTheDocument()
     // All 3 buttons are disabled when any is pending.
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThanOrEqual(3)
