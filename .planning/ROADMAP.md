@@ -63,7 +63,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] **Phase 18: /explore Discovery Surface** — Server Component shell with sparse-network hero + Popular Collectors / Trending / Gaining Traction rails + BottomNav slot wiring (completed 2026-04-28)
 - [x] **Phase 19: /search Watches + Collections** — Catalog-backed Watches tab + cross-user Collections tab (two-layer privacy) + All-tab union + tab-aware AbortController (completed 2026-04-28)
 - [x] **Phase 20: Collection Fit Surface Polish + Verdict Copy** — Pure-renderer `<CollectionFitCard>`, richer contextual verdict phrasings, cross-user `/watch/[id]` polish, `WatchSearchRow` CTA repointed to inline-expand (no /evaluate route) (completed 2026-04-30)
-- [ ] **Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step** — URL-paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture; "skip" covers the lightweight evaluate-only use case
+- [x] **Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step** — URL-paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture; "skip" covers the lightweight evaluate-only use case (completed 2026-04-30)
 - [ ] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc
 - [ ] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect
 - [ ] **Phase 23: Settings Sections + Schema-Field UI** — Preferences (collectionGoal + overlapTolerance) + Notifications (opt-out toggles) + Privacy (restyled) + Appearance (theme) + WatchForm `notesPublic` per-note + `isChronometer` toggle/display
@@ -177,7 +177,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] 20.1-02-PLAN.md — D-08 /api/extract-watch response shape (catalogId field) + D-15 AddWatchCard variant prop + D-16 WishlistTabContent end-of-grid card (Wave 1)
 - [x] 20.1-03-PLAN.md — Atomic flow leaves: flowTypes.ts + PasteSection + VerdictStep + WishlistRationalePanel + RecentlyEvaluatedRail (Wave 1)
 - [x] 20.1-04-PLAN.md — WatchForm lockedStatus prop + UrlImport deletion + AddWatchFlow orchestrator + /watch/new Server Component rewire (Wave 2)
-- [ ] 20.1-05-PLAN.md — D-04 WatchSearchRowsAccordion inline 3 CTAs (stopPropagation Pitfall 2) + D-05 CatalogPageActions Client Component on /catalog/[catalogId] (Wave 3)
+- [x] 20.1-05-PLAN.md — D-04 WatchSearchRowsAccordion inline 3 CTAs (stopPropagation Pitfall 2) + D-05 CatalogPageActions Client Component on /catalog/[catalogId] (Wave 3)
 **UI hint**: yes
 
 ### Phase 21: Custom SMTP via Resend
