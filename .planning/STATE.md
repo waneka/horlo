@@ -4,14 +4,14 @@ milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
 stopped_at: Phase 19.1 UI-SPEC approved
-last_updated: "2026-04-29T22:13:18.036Z"
-last_activity: 2026-04-29
+last_updated: "2026-04-30T01:27:42.524Z"
+last_activity: 2026-04-30 -- Phase 20 execution started
 progress:
   total_phases: 12
   completed_phases: 4
-  total_plans: 23
-  completed_plans: 23
-  percent: 100
+  total_plans: 29
+  completed_plans: 26
+  percent: 90
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 19.1 — catalog-taste-enrichment
+**Current focus:** Phase 20 — collection-fit-surface-polish-verdict-copy
 
 ## Current Position
 
-Phase: 20
-Plan: Not started
-Status: Executing Phase 19.1
-Last activity: 2026-04-29
+Phase: 20 (collection-fit-surface-polish-verdict-copy) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 20
+Last activity: 2026-04-30 -- Phase 20 execution started
 
 ## Progress Bar
 
