@@ -96,3 +96,26 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('Phase 20.1 gap-closure regression guard — UAT gap 2', () => {
+  it('pre-fills textarea with verdict.contextualPhrasings[0] when verdict is a full bundle', () => {
+    const fullVerdict: VerdictBundleFull = {
+      framing: 'cross-user',
+      label: 'core-fit',
+      headlinePhrasing: 'Core Fit',
+      contextualPhrasings: ['Foo'],  // explicit pre-fill content
+      mostSimilar: [],
+      roleOverlap: false,
+    }
+    render(
+      <WishlistRationalePanel
+        verdict={fullVerdict}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+        pending={false}
+      />,
+    )
+    const textarea = screen.getByLabelText(/Add a note/i) as HTMLTextAreaElement
+    expect(textarea.value).toBe('Foo')
+  })
+})

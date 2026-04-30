@@ -48,6 +48,7 @@ describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {
       <VerdictStep
         extracted={fixtureExtracted}
         verdict={fixtureVerdict}
+        hasCollection={true}
         pending={false}
         pendingTarget={null}
         onWishlist={() => {}}
@@ -67,6 +68,7 @@ describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {
       <VerdictStep
         extracted={fixtureExtracted}
         verdict={null}
+        hasCollection={false}
         pending={false}
         pendingTarget={null}
         onWishlist={() => {}}
@@ -91,6 +93,7 @@ describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {
       <VerdictStep
         extracted={fixtureExtracted}
         verdict={fixtureVerdict}
+        hasCollection={true}
         pending={false}
         pendingTarget={null}
         onWishlist={onWishlist}
@@ -111,6 +114,7 @@ describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {
       <VerdictStep
         extracted={fixtureExtracted}
         verdict={fixtureVerdict}
+        hasCollection={true}
         pending={true}
         pendingTarget="wishlist"
         onWishlist={() => {}}
@@ -126,5 +130,65 @@ describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBeGreaterThanOrEqual(3)
     buttons.forEach((b) => expect(b).toBeDisabled())
+  })
+})
+
+/**
+ * Phase 20.1 Plan 06 — UAT gap 1 RED tests.
+ *
+ * Codify the empty-vs-failed-fit copy split: when verdict is null we must
+ * distinguish "viewer has no collection yet" (D-06 honest empty state) from
+ * "verdict computation failed but viewer's collection is non-empty" (silent
+ * upstream failure surfaced honestly per Pitfall 8).
+ */
+describe('VerdictStep — empty-vs-failed-fit copy split (UAT gap 1)', () => {
+  it('renders empty-collection copy when verdict=null AND hasCollection=false', () => {
+    render(
+      <VerdictStep
+        extracted={fixtureExtracted}
+        verdict={null}
+        hasCollection={false}
+        pending={false}
+        pendingTarget={null}
+        onWishlist={() => {}}
+        onCollection={() => {}}
+        onSkip={() => {}}
+      />,
+    )
+    expect(screen.getByText(/collection is empty/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Couldn't compute fit/i)).not.toBeInTheDocument()
+  })
+
+  it("renders 'Couldn't compute fit' copy when verdict=null AND hasCollection=true", () => {
+    render(
+      <VerdictStep
+        extracted={fixtureExtracted}
+        verdict={null}
+        hasCollection={true}
+        pending={false}
+        pendingTarget={null}
+        onWishlist={() => {}}
+        onCollection={() => {}}
+        onSkip={() => {}}
+      />,
+    )
+    expect(screen.getByText(/Couldn't compute fit/i)).toBeInTheDocument()
+    expect(screen.queryByText(/collection is empty/i)).not.toBeInTheDocument()
+  })
+
+  it('renders CollectionFitCard when verdict is non-null (regardless of hasCollection)', () => {
+    render(
+      <VerdictStep
+        extracted={fixtureExtracted}
+        verdict={fixtureVerdict}
+        hasCollection={true}
+        pending={false}
+        pendingTarget={null}
+        onWishlist={() => {}}
+        onCollection={() => {}}
+        onSkip={() => {}}
+      />,
+    )
+    expect(screen.getByTestId('cfc')).toBeInTheDocument()
   })
 })

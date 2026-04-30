@@ -240,3 +240,107 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
     expect(await screen.findByDisplayValue('Rolex')).toBeInTheDocument()
   })
 })
+
+/**
+ * Phase 20.1 Plan 06 — gap-closure RED tests.
+ *
+ * UAT gaps 1 + 3 share a single upstream cause: state.verdict===null and/or
+ * state.catalogId==='' on verdict-ready when viewer has a non-empty collection.
+ *
+ * Test gap 3: Skip with empty catalogId still pushes a chip to the rail.
+ * Test gap 1: non-empty collection + null catalogId surfaces "Couldn't compute fit"
+ *   copy (NOT the empty-collection copy).
+ */
+describe('Phase 20.1 gap-closure — Plan 06', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn() as unknown as typeof fetch
+  })
+
+  it("UAT gap 3 — Skip with null catalogId still pushes a chip to Recently evaluated rail", async () => {
+    const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: null,  // <-- silent catalog upsert failure path
+        data: { brand: 'Omega', model: 'Speedmaster', imageUrl: 'https://example.com/spd.jpg' },
+        source: 'merged',
+        confidence: 'high',
+        fieldsExtracted: ['brand', 'model'],
+        llmUsed: false,
+      }),
+    } as Response)
+    // verdict action will not be reached since catalogId is null; safety mock
+    vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
+      success: false,
+      error: 'should not be called',
+    } as never)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/spd' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    // Wait until verdict-ready (Skip button visible)
+    await waitFor(() => screen.getByText('Skip'))
+    fireEvent.click(screen.getByText('Skip'))
+
+    // Rail chip with brand+model is now visible — NOT silently no-op'd
+    await waitFor(() => {
+      expect(screen.getByText(/Omega Speedmaster/)).toBeInTheDocument()
+    })
+  })
+
+  it("UAT gap 1 — non-empty collection + null catalogId surfaces 'Couldn't compute fit' copy (NOT empty-collection copy)", async () => {
+    const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: null,
+        data: { brand: 'Omega', model: 'Speedmaster' },
+        source: 'merged',
+        confidence: 'high',
+        fieldsExtracted: ['brand', 'model'],
+        llmUsed: false,
+      }),
+    } as Response)
+    vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
+      success: false,
+      error: 'should not be called',
+    } as never)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}  // non-empty
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/spd' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    // Wait for verdict-ready (Skip button as anchor)
+    await waitFor(() => screen.getByText('Skip'))
+
+    // Correct copy — NOT the empty-collection copy
+    expect(screen.getByText(/Couldn't compute fit/i)).toBeInTheDocument()
+    expect(screen.queryByText(/collection is empty/i)).not.toBeInTheDocument()
+  })
+})
