@@ -43,6 +43,8 @@ function mapRowToWatch(row: WatchRow): Watch {
     notesPublic: row.notesPublic ?? true,
     notesUpdatedAt: row.notesUpdatedAt?.toISOString() ?? undefined,
     imageUrl: row.imageUrl ?? undefined,
+    // Phase 17 catalog FK — preserve null to let callers distinguish "not linked" from "not fetched"
+    catalogId: row.catalogId ?? null,
   }
 }
 

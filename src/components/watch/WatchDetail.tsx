@@ -22,10 +22,11 @@ import {
 } from '@/components/ui/dialog'
 import { editWatch, removeWatch } from '@/app/actions/watches'
 import { markAsWorn } from '@/app/actions/wearEvents'
-import { SimilarityBadge } from '@/components/insights/SimilarityBadge'
+import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
 import type { Watch, UserPreferences } from '@/lib/types'
+import type { VerdictBundle } from '@/lib/verdict/types'
 
 interface WatchDetailProps {
   watch: Watch
@@ -39,6 +40,12 @@ interface WatchDetailProps {
    * getWatchByIdForViewer so non-owners never see these controls.
    */
   viewerCanEdit?: boolean
+  /**
+   * Phase 20 D-03/D-04: precomputed VerdictBundle from /watch/[id]/page.tsx.
+   * `null` means D-07 fired (viewer collection is empty) — render no card slot.
+   * `undefined` means a defensive default for any non-Plan-04 caller; treat as null.
+   */
+  verdict?: VerdictBundle | null
 }
 
 function formatDate(dateStr?: string): string {
@@ -60,7 +67,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -421,12 +428,8 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
         </Card>
       )}
 
-      {/* Collection Fit Analysis */}
-      <SimilarityBadge
-        watch={watch}
-        collection={collection}
-        preferences={preferences}
-      />
+      {/* Phase 20 FIT-01/D-04: pure-render card; computation happens in /watch/[id]/page.tsx (D-03 Server Component compute) */}
+      {verdict && <CollectionFitCard verdict={verdict} />}
 
       {/* Notes */}
       {watch.notes && (
