@@ -77,6 +77,11 @@ export function AddWatchFlow({
   const [, startTransition] = useTransition()
   const [rail, setRail] = useState<RailEntry[]>([])
   const cache = useWatchSearchVerdictCache(collectionRevision)
+  // UAT gap 1 (Plan 06): drives the VerdictStep fallback copy split. Threaded
+  // into every VerdictStep render call site so a null verdict on a non-empty
+  // collection surfaces "Couldn't compute fit" instead of the misleading
+  // empty-collection copy.
+  const hasCollection = collectionRevision > 0
 
   // Auto-focus URL input on transitions back to idle (D-14 skip behavior).
   useEffect(() => {
@@ -183,22 +188,33 @@ export function AddWatchFlow({
     setState({ kind: 'form-prefill', catalogId: state.catalogId, extracted: state.extracted })
   }
 
+  // -- Skip handler — UAT gap 3 fix --
+  // Previously guarded with `if (state.catalogId)` which silently no-op'd the
+  // rail push when catalogId was empty (silent catalog upsert failure path).
+  // Now always pushes; synthesizes id from brand|model when catalogId missing.
   const handleSkip = () => {
     if (state.kind !== 'verdict-ready') return
-    // D-14: append rail entry, FIFO cap at 5, dedupe by catalogId.
-    if (state.catalogId) {
-      const entry: RailEntry = {
-        catalogId: state.catalogId,
-        brand: state.extracted.brand ?? 'Unknown',
-        model: state.extracted.model ?? '',
-        imageUrl: state.extracted.imageUrl ?? null,
-        extracted: state.extracted,
-        verdict: state.verdict,
-      }
-      setRail((prev) =>
-        [entry, ...prev.filter((r) => r.catalogId !== entry.catalogId)].slice(0, RAIL_MAX),
-      )
+    // UAT gap 3 fix: ALWAYS push a rail entry. When state.catalogId is empty
+    // (upstream catalog upsert silently failed OR brand/model missing), synthesize
+    // a stable id from brand|model so the chip still renders. Cache lookup on
+    // synthesized ids will miss intentionally — re-clicking the chip restores the
+    // previously-stored verdict (which may be null) without re-extracting.
+    const brand = state.extracted.brand ?? 'Unknown'
+    const model = state.extracted.model ?? ''
+    const railId = state.catalogId
+      ? state.catalogId
+      : `synth:${brand.trim().toLowerCase()}|${model.trim().toLowerCase()}`
+    const entry: RailEntry = {
+      catalogId: railId,
+      brand,
+      model,
+      imageUrl: state.extracted.imageUrl ?? null,
+      extracted: state.extracted,
+      verdict: state.verdict,
     }
+    setRail((prev) =>
+      [entry, ...prev.filter((r) => r.catalogId !== entry.catalogId)].slice(0, RAIL_MAX),
+    )
     setUrl('')
     setState({ kind: 'idle' })
   }
@@ -311,6 +327,7 @@ export function AddWatchFlow({
         <VerdictStep
           extracted={state.extracted}
           verdict={state.verdict}
+          hasCollection={hasCollection}
           pending={false}
           pendingTarget={null}
           onWishlist={handleWishlist}
@@ -326,6 +343,7 @@ export function AddWatchFlow({
           <VerdictStep
             extracted={state.extracted}
             verdict={state.verdict}
+            hasCollection={hasCollection}
             pending={state.kind === 'submitting-wishlist'}
             pendingTarget={state.kind === 'submitting-wishlist' ? 'wishlist' : null}
             onWishlist={() => {}}

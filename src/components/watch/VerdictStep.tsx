@@ -15,7 +15,9 @@ import type { PendingTarget } from './flowTypes'
  * Pure presentation. Three sections rendered in order:
  *   1. Spec preview (brand / model / image / reference + headline specs)
  *   2. <CollectionFitCard verdict={verdict} /> — byte-locked Phase 20 component
- *      OR D-06 empty-collection notice when verdict===null
+ *      OR contextual fallback when verdict===null:
+ *        - hasCollection=false → empty-collection notice (D-06)
+ *        - hasCollection=true → "Couldn't compute fit" message (UAT gap 1 fix)
  *   3. 3-button row (Wishlist primary, Collection secondary, Skip tertiary per D-11)
  *
  * Pending behavior: when pendingTarget !== null, all 3 buttons disable; the
@@ -28,6 +30,12 @@ interface VerdictStepProps {
   extracted: ExtractedWatchData
   /** null = D-06 empty-collection edge OR enrichment-failure (D-09 fixed-label fallback also produces a non-null verdict — null specifically means "no verdict computed"). */
   verdict: VerdictBundle | null
+  /**
+   * UAT gap 1 (Plan 06): drives the verdict-null fallback copy split.
+   *   - false → empty-collection copy (existing D-06 behavior)
+   *   - true  → "Couldn't compute fit" copy (silent upstream failure surfaced honestly)
+   */
+  hasCollection: boolean
   pending: boolean
   pendingTarget: PendingTarget
   onWishlist: () => void
@@ -38,6 +46,7 @@ interface VerdictStepProps {
 export function VerdictStep({
   extracted,
   verdict,
+  hasCollection,
   pending,
   pendingTarget,
   onWishlist,
@@ -73,9 +82,15 @@ export function VerdictStep({
         </CardContent>
       </Card>
 
-      {/* Verdict OR empty-collection notice */}
+      {/* Verdict OR contextual fallback. UAT gap 1: do NOT conflate "no verdict computed"
+          with "empty collection". The latter is real (Pitfall 8 / D-06); the former is
+          an upstream silent failure we surface honestly. */}
       {verdict ? (
         <CollectionFitCard verdict={verdict} />
+      ) : hasCollection ? (
+        <p className="text-sm text-muted-foreground">
+          Couldn&apos;t compute fit right now — you can still add this to wishlist or collection.
+        </p>
       ) : (
         <p className="text-sm text-muted-foreground">
           Your collection is empty — fit score not available yet.
