@@ -387,3 +387,93 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
     warnSpy.mockRestore()
   })
 })
+
+/**
+ * Phase 20.1 Plan 08 — gap-closure RED tests.
+ *
+ * UAT gap 4 (minor severity): Once the user clicks "or enter manually" (or
+ * "Continue manually" after extraction failure), there is no in-page exit
+ * back to the URL extract flow — refresh required.
+ *
+ * Plan 08 adds a quiet "Cancel — paste a URL instead" back-link inside the
+ * manual-entry render branch, wired to the existing handleStartOver.
+ */
+describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    global.fetch = vi.fn() as unknown as typeof fetch
+  })
+
+  it('UAT gap 4 — back-link from direct manual-entry returns to idle and clears URL', async () => {
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    // Enter some text, then bail to manual-entry
+    const inputBefore = screen.getByPlaceholderText(/Paste a product page URL/i) as HTMLInputElement
+    fireEvent.change(inputBefore, { target: { value: 'https://example.com/abandoned' } })
+    fireEvent.click(screen.getByRole('button', { name: /or enter manually/i }))
+
+    // We're in manual-entry — paste input is gone, WatchForm Brand input is visible
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/Paste a product page URL/i)).not.toBeInTheDocument()
+    })
+
+    // Find and click the new back affordance
+    const backBtn = screen.getByRole('button', { name: /Cancel.*paste a URL/i })
+    fireEvent.click(backBtn)
+
+    // Back to idle — paste input visible AND value is empty (handleStartOver cleared it)
+    await waitFor(() => {
+      const inputAfter = screen.getByPlaceholderText(/Paste a product page URL/i) as HTMLInputElement
+      expect(inputAfter).toBeInTheDocument()
+      expect(inputAfter.value).toBe('')
+    })
+  })
+
+  it('UAT gap 4 — back-link from post-failure manual-entry returns to idle and clears URL', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Failed to extract watch data from URL.' }),
+    } as Response)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/broken' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    await screen.findByText("Extraction didn't work")
+    fireEvent.click(screen.getByRole('button', { name: /Continue manually/i }))
+
+    // We're in post-failure manual-entry — paste input is gone
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/Paste a product page URL/i)).not.toBeInTheDocument()
+    })
+
+    // Click back affordance
+    const backBtn = screen.getByRole('button', { name: /Cancel.*paste a URL/i })
+    fireEvent.click(backBtn)
+
+    // Back to idle, URL cleared
+    await waitFor(() => {
+      const inputAfter = screen.getByPlaceholderText(/Paste a product page URL/i) as HTMLInputElement
+      expect(inputAfter).toBeInTheDocument()
+      expect(inputAfter.value).toBe('')
+    })
+  })
+})
