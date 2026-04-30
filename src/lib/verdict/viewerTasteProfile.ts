@@ -2,8 +2,8 @@ import 'server-only'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { watches, watchesCatalog } from '@/db/schema'
-import type { Watch } from '@/lib/types'
-import type { ViewerTasteProfile, PrimaryArchetype, EraSignal } from '@/lib/verdict/types'
+import type { Watch, PrimaryArchetype, EraSignal } from '@/lib/types'
+import type { ViewerTasteProfile } from '@/lib/verdict/types'
 
 /**
  * D-02 + Pitfall 4: catalog rows with confidence < 0.5 are too noisy to count
