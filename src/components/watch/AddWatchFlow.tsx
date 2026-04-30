@@ -383,14 +383,27 @@ export function AddWatchFlow({
         />
       )}
 
-      {/* Manual-entry (D-03 + D-18): WatchForm without lockedStatus */}
+      {/* Manual-entry (D-03 + D-18): WatchForm without lockedStatus.
+          UAT gap 4 fix (Plan 08): prepend a quiet "Cancel — paste a URL instead"
+          back affordance wired to the existing handleStartOver. Both ingress paths
+          (direct via PasteSection "or enter manually" + post-failure via
+          "Continue manually") share this exit. */}
       {state.kind === 'manual-entry' && (
-        <WatchForm
-          mode="create"
-          watch={
-            state.partial ? extractedToPartialWatch(state.partial, 'wishlist') : undefined
-          }
-        />
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
+          >
+            ← Cancel — paste a URL instead
+          </button>
+          <WatchForm
+            mode="create"
+            watch={
+              state.partial ? extractedToPartialWatch(state.partial, 'wishlist') : undefined
+            }
+          />
+        </div>
       )}
 
       {/* Extraction-failed (D-18): unified fallback */}
