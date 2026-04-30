@@ -1,10 +1,11 @@
 ---
 phase: 20
 slug: collection-fit-surface-polish-verdict-copy
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-04-29
+reviewed_at: 2026-04-29
 ---
 
 # Phase 20 — UI Design Contract
