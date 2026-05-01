@@ -441,3 +441,32 @@ DELETE FROM storage.buckets WHERE id = 'catalog-source-photos';
 ### Cross-user image visibility (deferred TOS work)
 
 Per D-21, user-uploaded photos become canonical catalog `image_url`s visible to other authenticated users. This is intentional architecture — catalog is public-read (CAT-02) and the photo provides reference value across users. **A TOS / acceptable-use policy covering this is needed before scaling beyond personal-MVP** — flagged as deferred non-blocking work in the Phase 19.1 CONTEXT. For v4.0 personal-MVP posture, ship as-is.
+
+## Phase 21 — Custom SMTP via Resend Backout
+
+Phase 21 wired Supabase Auth to Resend SMTP for `mail.horlo.app` and flipped Confirm email + Secure email change + Secure password change ON in prod (`wdntzsckjaoqodsyscns`). DKIM + SPF + DMARC (`p=none`) are published at Cloudflare; the D-07 round-trip gate passed (Gmail Inbox + From=`Horlo <noreply@mail.horlo.app>` + reset link round-trips through prod). All five auth email templates (Confirm signup, Reset Password, Change Email) route through `/auth/callback?token_hash={{ .TokenHash }}&type=...&next=...` so `verifyOtp` server-side establishes the session before redirect.
+
+If DKIM regresses, deliverability tanks, or the Resend account is suspended, follow this procedure to restore Supabase hosted SMTP. Estimated downtime: ~5 min from incident detection to restoration.
+
+**Footgun T-21-PREVIEWMAIL:** [D-02] Vercel preview deployments share prod Supabase. Any signup from a preview URL (e.g. `horlo-git-feature-branch.vercel.app`) sends a real Resend email at production sender reputation cost. If a preview deploy triggers spam complaints, this Phase 21's flip can be regressed (see Backout triggers below). Operationally: developers should use `+suffix` Gmail aliases for preview testing (per Step 4 footgun) and treat preview signups as "real" sends.
+
+**Footgun T-21-WWWALLOWLIST:** Vercel canonicalizes apex `horlo.app` traffic to `www.horlo.app`. The Supabase URL Configuration redirect-URL allowlist must include BOTH `https://horlo.app/**` AND `https://www.horlo.app/**`, otherwise `redirectTo` values from `forgot-password-form.tsx` and similar flows are silently dropped to bare Site URL. Do not remove the `www` allowlist entry without first picking a single canonical domain at Vercel + updating Site URL + adjusting all client-side `redirectTo` calls.
+
+### Backout triggers
+- DKIM "Verified ✓" regresses to "Pending" in Resend dashboard
+- Resend account suspended/throttled (notification from Resend support)
+- Bulk spam complaints on `mail.horlo.app`
+- > 10% bounce rate over 24h (visible in Resend dashboard)
+
+### Backout procedure
+1. Supabase Dashboard → Authentication → Sign In/Providers → Email → toggle "Confirm email" OFF (incoming signups land without confirmation; existing confirmed users unaffected)
+2. Supabase Dashboard → Authentication → Emails → SMTP Settings → toggle "Enable Custom SMTP" OFF (reverts to Supabase hosted SMTP, 2/h cap restored — acceptable during incident response since Confirm-email is OFF)
+3. Supabase Dashboard → Authentication → Sign In/Providers → Email → leave "Secure password change" ON, leave "Secure email change" ON (these don't depend on Resend SMTP being healthy — they're stored flags exercised by Phase 22 UI)
+4. Update `.planning/PROJECT.md` Key Decisions: `Email confirmation ON → OFF (regressed YYYY-MM-DD due to <reason>)`
+5. Investigate Resend dashboard → Domain → DNS records (typical regression cause: DNS provider changed records; re-confirm against Resend's expected values per Plan 21-01 evidence)
+
+### Backout footgun (context, not an action)
+The Resend API key remains valid after Supabase SMTP is disabled. To fully sever the integration, delete the API key at `resend.com/api-keys`. For incident-response posture, leave the key in place (faster rollback to ON when issue resolved).
+
+### Recovery (after incident resolves)
+Re-run Plan 21-02 from Task 1 (Verified ✓ confirmation) onward. Site URL audit and SMTP wiring values are unchanged; only the toggles need to flip back ON in order: Confirm email → smoke-test → restore.

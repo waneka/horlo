@@ -94,7 +94,7 @@ Move off Supabase's hosted SMTP (2/hour free-tier limit) to Resend before flippi
 - [ ] **SMTP-03**: Supabase "Confirm email" toggle is ON (only after SMTP-01 + SMTP-02 land and a Supabase Auth test email round-trips successfully)
 - [ ] **SMTP-04**: Supabase "Secure password change" + "Secure email change" toggles are ON
 - [ ] **SMTP-05**: A backout-plan section in `docs/deploy-db-setup.md` documents how to revert to Supabase hosted SMTP if DKIM fails post-flip
-- [ ] **SMTP-06**: `mail.staging.horlo.app` (staging) and `mail.horlo.app` (prod) are separated for sender-reputation isolation
+- [ ] **SMTP-06**: `mail.staging.horlo.app` (staging) and `mail.horlo.app` (prod) are separated for sender-reputation isolation — **Deferred — pending staging Supabase project (see Phase 21 21-CONTEXT.md D-01)**
 
 ### Watch Field UI Exposure
 
@@ -247,7 +247,7 @@ Which phases cover which requirements. Populated by the roadmapper on 2026-04-26
 | SMTP-03 | Phase 21 — Custom SMTP via Resend | Pending |
 | SMTP-04 | Phase 21 — Custom SMTP via Resend | Pending |
 | SMTP-05 | Phase 21 — Custom SMTP via Resend | Pending |
-| SMTP-06 | Phase 21 — Custom SMTP via Resend | Pending |
+| SMTP-06 | Phase 21 — Custom SMTP via Resend | Deferred — pending staging Supabase project (see Phase 21 21-CONTEXT.md D-01) |
 | SET-01 | Phase 22 — Settings Restructure + Account Section | Pending |
 | SET-02 | Phase 22 — Settings Restructure + Account Section | Pending |
 | SET-03 | Phase 22 — Settings Restructure + Account Section | Pending |
