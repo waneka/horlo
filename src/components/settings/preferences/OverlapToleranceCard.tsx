@@ -66,7 +66,7 @@ export function OverlapToleranceCard({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent alignItemWithTrigger={false}>
               <SelectItem value="low">Low — Flag any overlap</SelectItem>
               <SelectItem value="medium">
                 Medium — Flag significant overlap
