@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
-stopped_at: Phase 22 context gathered
-last_updated: "2026-05-01T01:33:36.004Z"
-last_activity: 2026-05-01
+stopped_at: Phase 22 UI-SPEC approved
+last_updated: "2026-05-01T02:24:45.779Z"
+last_activity: 2026-05-01 -- Phase 22 execution started
 progress:
   total_phases: 12
   completed_phases: 7
-  total_plans: 39
+  total_plans: 44
   completed_plans: 39
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 21 — custom-smtp-via-resend
+**Current focus:** Phase 22 — Settings Restructure + Account Section
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
-Status: Executing Phase 21
-Last activity: 2026-05-01
+Phase: 22 (Settings Restructure + Account Section) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 22
+Last activity: 2026-05-01 -- Phase 22 execution started
 
 ## Progress Bar
 
@@ -79,7 +79,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-01T01:33:35.994Z
-Stopped at: Phase 22 context gathered
-Resume file: .planning/phases/22-settings-restructure-account-section/22-CONTEXT.md
+Last session: 2026-05-01T02:03:05.424Z
+Stopped at: Phase 22 UI-SPEC approved
+Resume file: .planning/phases/22-settings-restructure-account-section/22-UI-SPEC.md
 Next action: `/gsd-plan-phase 17` to begin Phase 17 (Catalog Foundation)
