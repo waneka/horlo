@@ -6,13 +6,6 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { savePreferences } from '@/app/actions/preferences'
 import {
   STYLE_TAGS,
@@ -20,7 +13,7 @@ import {
   COMPLICATIONS,
   DIAL_COLORS,
 } from '@/lib/constants'
-import type { OverlapTolerance, CollectionGoal, UserPreferences } from '@/lib/types'
+import type { UserPreferences } from '@/lib/types'
 
 // Narrow to only those keys of UserPreferences whose value type is a
 // string array. A refactor adding a string-valued field will no longer
@@ -33,9 +26,21 @@ type StringArrayKeys = NonNullable<
 
 interface PreferencesClientProps {
   preferences: UserPreferences
+  /**
+   * Phase 23 D-04 — when true, suppresses the page-chrome (outer container,
+   * <h1>Preferences</h1>, subtitle paragraph) so this client can be embedded
+   * inside <PreferencesSection> on the Settings tab. Default false preserves
+   * the byte-identical render path for the standalone /preferences route
+   * (Phase 22 D-15 redirect makes that hypothetical, but the prop default
+   * protects future intent).
+   */
+  embedded?: boolean
 }
 
-export function PreferencesClient({ preferences: initialPreferences }: PreferencesClientProps) {
+export function PreferencesClient({
+  preferences: initialPreferences,
+  embedded = false,
+}: PreferencesClientProps) {
   // Local mirror of preferences for responsive UI. Every mutation calls the
   // savePreferences Server Action, which upserts the row and revalidates
   // '/preferences'. The Server Component re-renders with fresh data on next
@@ -75,16 +80,8 @@ export function PreferencesClient({ preferences: initialPreferences }: Preferenc
   const clampCaseSize = (n: number) =>
     Math.max(CASE_SIZE_MIN, Math.min(CASE_SIZE_MAX, n))
 
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl md:text-4xl text-foreground">Preferences</h1>
-        <p className="text-muted-foreground mt-2">
-          Configure your collecting taste to get personalized insights.
-        </p>
-      </div>
-
-      <div className="space-y-8">
+  const inner = (
+    <div className="space-y-8">
         {saveError && (
           <p role="alert" className="text-sm text-destructive">
             Couldn&apos;t save preferences: {saveError}
@@ -384,65 +381,9 @@ export function PreferencesClient({ preferences: initialPreferences }: Preferenc
           </CardContent>
         </Card>
 
-        {/* Collection Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Collection Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2 w-full sm:max-w-xs">
-              <Label htmlFor="overlapTolerance">Overlap Tolerance</Label>
-              <Select
-                value={preferences.overlapTolerance}
-                onValueChange={(value) => {
-                  if (value) {
-                    updatePreferences({ overlapTolerance: value as OverlapTolerance })
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">
-                    Low - Flag any overlap
-                  </SelectItem>
-                  <SelectItem value="medium">
-                    Medium - Flag significant overlap
-                  </SelectItem>
-                  <SelectItem value="high">
-                    High - Only flag major overlap
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 w-full sm:max-w-xs">
-              <Label htmlFor="collectionGoal">Collection Goal</Label>
-              <Select
-                value={preferences.collectionGoal ?? ''}
-                onValueChange={(value) => {
-                  updatePreferences({ collectionGoal: (value || undefined) as CollectionGoal | undefined })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a goal..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="balanced">
-                    Balanced - Diverse collection
-                  </SelectItem>
-                  <SelectItem value="specialist">
-                    Specialist - Deep in one area
-                  </SelectItem>
-                  <SelectItem value="variety-within-theme">
-                    Variety within theme
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Phase 23 D-02: the engine-knob Selects were lifted to two
+            dedicated top-of-tab Cards inside <PreferencesSection> so they
+            sit above the taste-tag pickers per SET-07 / SET-08. */}
 
         {/* Notes */}
         <Card>
@@ -462,6 +403,19 @@ export function PreferencesClient({ preferences: initialPreferences }: Preferenc
           </CardContent>
         </Card>
       </div>
+    )
+
+  if (embedded) return inner
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="mb-8">
+        <h1 className="font-serif text-3xl md:text-4xl text-foreground">Preferences</h1>
+        <p className="text-muted-foreground mt-2">
+          Configure your collecting taste to get personalized insights.
+        </p>
+      </div>
+      {inner}
     </div>
   )
 }
