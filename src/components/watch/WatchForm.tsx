@@ -26,6 +26,7 @@ import {
   WATCH_STATUSES,
 } from '@/lib/constants'
 import type { Watch, WatchStatus, MovementType, StrapType, CrystalType } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface WatchFormProps {
   watch?: Watch
@@ -60,7 +61,9 @@ const initialFormData: FormData = {
   acquisitionDate: undefined,
   productionYear: undefined,
   isFlaggedDeal: undefined,
+  isChronometer: false,    // Phase 23 D-09 — default unchecked for new watches
   notes: '',
+  notesPublic: true,       // Phase 23 D-13/D-16 — matches DB default; non-negotiable
   imageUrl: '',
 }
 
@@ -99,7 +102,9 @@ export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
           acquisitionDate: watch.acquisitionDate,
           productionYear: watch.productionYear,
           isFlaggedDeal: watch.isFlaggedDeal,
+          isChronometer: watch.isChronometer ?? false,    // Phase 23 D-09
           notes: watch.notes ?? '',
+          notesPublic: watch.notesPublic ?? true,         // Phase 23 D-13 — defensive ?? true defends legacy rows
           imageUrl: watch.imageUrl ?? '',
         }
       : { ...initialFormData, status: lockedStatus ?? initialFormData.status }
@@ -505,6 +510,22 @@ export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Phase 23 FEAT-08 — Chronometer certification (D-10).
+              Full-width row spanning all grid columns at every breakpoint. */}
+          <div className="space-y-2 sm:col-span-2 lg:col-span-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={formData.isChronometer === true}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, isChronometer: checked === true }))
+                }
+              />
+              <span className="text-sm">
+                Chronometer-certified <span className="text-muted-foreground">(COSC or equivalent)</span>
+              </span>
+            </label>
+          </div>
         </CardContent>
       </Card>
 
@@ -551,7 +572,7 @@ export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
         <CardHeader>
           <CardTitle>Notes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Textarea
             value={formData.notes}
             onChange={(e) =>
@@ -560,6 +581,34 @@ export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
             placeholder="Any additional notes about this watch..."
             rows={4}
           />
+          {/* Phase 23 FEAT-07 — note visibility pill (D-13/D-14/D-16).
+              Mirrors NoteVisibilityPill styling exactly; uses local form state
+              (deferred-commit, not optimistic). Default Public (D-16). */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Visibility:</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.notesPublic === true}
+              aria-label={
+                formData.notesPublic === true
+                  ? 'Note is public, click to make private'
+                  : 'Note is private, click to make public'
+              }
+              onClick={() =>
+                setFormData((prev) => ({ ...prev, notesPublic: !(prev.notesPublic === true) }))
+              }
+              className={cn(
+                'rounded-full px-2.5 py-0.5 text-xs font-normal transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                formData.notesPublic === true
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70',
+              )}
+            >
+              {formData.notesPublic === true ? 'Public' : 'Private'}
+            </button>
+          </div>
         </CardContent>
       </Card>
 
