@@ -1,21 +1,26 @@
-import { Palette } from 'lucide-react'
 import { SettingsSection } from './SettingsSection'
+import { InlineThemeSegmented } from '@/components/layout/InlineThemeSegmented'
 
 /**
- * Phase 22 — Coming-soon stub per UI-SPEC visual spec (lines 432-440).
- * SET-10 (theme switch lifted from <InlineThemeSegmented>) ships in Phase 23.
+ * Phase 23 SET-10 (D-05 / D-07) — the Appearance tab houses the theme
+ * switch. <InlineThemeSegmented> is reused byte-identical from UserMenu;
+ * both surfaces stay in sync via the horlo-theme cookie + useTheme() context
+ * (D-06 — duplicate-by-design).
  *
- * Server Component — no client logic required for the static stub.
+ * STAYS a Server Component. <InlineThemeSegmented> owns its own 'use client'
+ * boundary; mounting a Client child as a JSX node from a Server parent is
+ * the canonical Next.js 16 pattern (see node_modules/next/dist/docs/01-app/
+ * 01-getting-started/05-server-and-client-components.md). Matches the
+ * <PrivacySection> / <NotificationsSection> pattern of Server-renders-
+ * <PrivacyToggleRow>-Client-child.
+ *
+ * No <CardDescription>: D-05 mandates "no extra explanatory copy". The
+ * Light/Dark/System icon labels carry the meaning.
  */
 export function AppearanceSection() {
   return (
-    <SettingsSection title="Appearance">
-      <div className="flex items-center gap-3 py-2">
-        <Palette className="size-4 text-muted-foreground" aria-hidden />
-        <p className="text-sm text-muted-foreground">
-          Theme and visual preferences are coming in the next update.
-        </p>
-      </div>
+    <SettingsSection title="Theme">
+      <InlineThemeSegmented />
     </SettingsSection>
   )
 }
