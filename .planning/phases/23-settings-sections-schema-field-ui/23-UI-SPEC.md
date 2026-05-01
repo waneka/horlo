@@ -1,10 +1,11 @@
 ---
 phase: 23
 slug: settings-sections-schema-field-ui
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-01
+reviewed_at: 2026-05-01
 ---
 
 # Phase 23 — UI Design Contract
