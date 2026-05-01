@@ -53,6 +53,12 @@ export async function savePreferences(data: unknown): Promise<ActionResult<UserP
   try {
     const prefs = await preferencesDAL.upsertPreferences(user.id, parsed.data)
     revalidatePath('/preferences')
+    // FG-3 (Phase 22 UI-SPEC): /preferences now redirects to
+    // /settings#preferences (Plan 22-02 D-15); the live preferences surface
+    // is the Preferences tab inside /settings, so revalidate that path too
+    // — without this the tab would show stale data after a save until the
+    // next full-page navigation.
+    revalidatePath('/settings')
     return { success: true, data: prefs }
   } catch (err) {
     console.error('[savePreferences] unexpected error:', err)

@@ -20,7 +20,8 @@ export function PrivacyToggleRow({
 }: PrivacyToggleRowProps) {
   // useOptimistic returns the optimistic value plus a setter that is only
   // valid inside a transition. Initial value comes from the server-rendered
-  // ProfileSettings row passed by SettingsClient.
+  // ProfileSettings row passed by the parent section component
+  // (PrivacySection / NotificationsSection in Phase 22+).
   const [optimisticValue, setOptimistic] = useOptimistic(initialValue)
   const [pending, startTransition] = useTransition()
 

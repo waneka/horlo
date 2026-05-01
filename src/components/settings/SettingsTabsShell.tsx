@@ -5,6 +5,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { User, IdCard, SlidersHorizontal, Lock, Bell, Palette } from 'lucide-react'
 import { StatusToastHandler } from './StatusToastHandler'
 import { AppearanceSection } from './AppearanceSection'
+import { AccountSection } from './AccountSection'
+import { ProfileSection } from './ProfileSection'
+import { PreferencesSection } from './PreferencesSection'
+import { PrivacySection } from './PrivacySection'
+import { NotificationsSection } from './NotificationsSection'
 import type { UserPreferences } from '@/lib/types'
 import type { ProfileSettings } from '@/data/profiles'
 
@@ -54,9 +59,11 @@ interface SettingsTabsShellProps {
  * D-17: default tab is `#account` when hash is empty (replaceState to keep URL
  * shareable). D-18: hashchange listener handles browser back/forward.
  *
- * Plans 03/04/05 wire AccountSection / ProfileSection / PrivacySection /
- * NotificationsSection / PreferencesSection into the panel slots; until then,
- * placeholders render with a forward-pointer to Plan 05.
+ * Plan 22-05 wave 3: all 6 panels now render real section components
+ * (AccountSection composes EmailChangeForm + PasswordChangeForm; remaining
+ * sections migrated from legacy SettingsClient.tsx). AppearanceSection
+ * remains a coming-soon stub; Phase 23 SET-10 replaces with the real theme
+ * switch.
  */
 export function SettingsTabsShell(props: SettingsTabsShellProps) {
   const [activeTab, setActiveTab] = useState<SectionId>('account')
@@ -128,27 +135,27 @@ export function SettingsTabsShell(props: SettingsTabsShellProps) {
 
         <div className="min-w-0 flex-1">
           <TabsContent value="account">
-            {/* PLACEHOLDER — Plan 05 wires <AccountSection> here, which will
-                in turn render <EmailChangeForm> (Plan 03) +
-                <PasswordChangeForm> (Plan 04). */}
-            <PanelPlaceholder label="Account" planRef="22-05" />
+            <AccountSection
+              currentEmail={props.currentEmail}
+              pendingNewEmail={props.pendingNewEmail}
+              lastSignInAt={props.lastSignInAt}
+            />
           </TabsContent>
           <TabsContent value="profile">
-            {/* PLACEHOLDER — Plan 05 wires <ProfileSection> (D-19 stub) here. */}
-            <PanelPlaceholder label="Profile" planRef="22-05" />
+            <ProfileSection
+              username={props.username}
+              displayName={props.displayName}
+              avatarUrl={props.avatarUrl}
+            />
           </TabsContent>
           <TabsContent value="preferences">
-            {/* PLACEHOLDER — Plan 05 wires <PreferencesSection>
-                (PreferencesClient embed) here. */}
-            <PanelPlaceholder label="Preferences" planRef="22-05" />
+            <PreferencesSection preferences={props.preferences} />
           </TabsContent>
           <TabsContent value="privacy">
-            {/* PLACEHOLDER — Plan 05 wires <PrivacySection> here. */}
-            <PanelPlaceholder label="Privacy" planRef="22-05" />
+            <PrivacySection settings={props.settings} />
           </TabsContent>
           <TabsContent value="notifications">
-            {/* PLACEHOLDER — Plan 05 wires <NotificationsSection> here. */}
-            <PanelPlaceholder label="Notifications" planRef="22-05" />
+            <NotificationsSection settings={props.settings} />
           </TabsContent>
           <TabsContent value="appearance">
             <AppearanceSection />
@@ -156,19 +163,5 @@ export function SettingsTabsShell(props: SettingsTabsShellProps) {
         </div>
       </Tabs>
     </>
-  )
-}
-
-function PanelPlaceholder({
-  label,
-  planRef,
-}: {
-  label: string
-  planRef: string
-}) {
-  return (
-    <p className="text-sm text-muted-foreground">
-      {label} section content lands in Plan {planRef}.
-    </p>
   )
 }
