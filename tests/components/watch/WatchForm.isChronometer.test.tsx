@@ -1,18 +1,31 @@
-// Phase 23 Plan 01 — Wave 0 RED scaffold for FEAT-08.
+// Phase 23 Plan 01 — Wave 0 RED scaffold for FEAT-08 (now GREEN post-Plan 04).
 //
 // Asserts that <WatchForm> renders a Chronometer-certified Checkbox at the
 // bottom of the Specifications card (D-09/D-10): defaults unchecked,
 // hydrates from `watch.isChronometer === true` in edit mode, and submits
 // isChronometer in the addWatch payload.
-//
-// This file MUST FAIL today: WatchForm has no Chronometer Checkbox in the
-// Specifications card. Plan 04 makes this GREEN by adding the locked-copy
-// Checkbox row.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Watch } from '@/lib/types'
+
+// jsdom does not implement PointerEvent, which base-ui's Checkbox dispatches
+// via `new PointerEvent('click', ...)` on internal click. Polyfill it to
+// MouseEvent so the userEvent.click path can reach `onCheckedChange` without
+// throwing a ReferenceError. Mirrors tests/components/preferences/PreferencesClient.debt01.test.tsx.
+if (typeof globalThis.PointerEvent === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(globalThis as any).PointerEvent = class extends MouseEvent {
+    pointerId: number
+    pointerType: string
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init)
+      this.pointerId = init.pointerId ?? 0
+      this.pointerType = init.pointerType ?? 'mouse'
+    }
+  }
+}
 
 // Mock next/navigation — WatchForm calls useRouter().
 const mockRouterPush = vi.fn()
