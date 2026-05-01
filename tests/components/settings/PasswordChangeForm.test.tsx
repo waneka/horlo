@@ -9,8 +9,15 @@ import { AuthError } from '@supabase/supabase-js'
 // last_sign_in_at is the primary client signal; 401 catch is the safety net.
 // ---------------------------------------------------------------------------
 
-const updateUserMock = vi.fn(async () => ({ error: null }))
-const signInMock = vi.fn(async () => ({ error: null }))
+// Widen the resolved-value type so a real AuthError can be returned in the
+// defense-in-depth 401 test below (otherwise TS narrows to `error: null`).
+type UpdateUserResult = { error: AuthError | null }
+const updateUserMock = vi.fn(
+  async (): Promise<UpdateUserResult> => ({ error: null }),
+)
+const signInMock = vi.fn(
+  async (): Promise<UpdateUserResult> => ({ error: null }),
+)
 
 vi.mock('@/lib/supabase/client', () => ({
   createSupabaseBrowserClient: vi.fn(() => ({
