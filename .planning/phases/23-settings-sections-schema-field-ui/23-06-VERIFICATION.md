@@ -109,3 +109,68 @@ Evidence (grep -n 'AccountSection|ProfileSection|PreferencesSection|PrivacySecti
 ```
 
 Verdict: All 6 sections imported and rendered.
+
+***
+
+## D-20 Cleanup Sweep (Phase 22 leftovers)
+
+Targets: Delete Account, Coming soon, New Note Visibility, SettingsClient
+
+### "Delete Account" sweep
+
+Command: grep -rn "Delete Account" src/ --include="*.ts" --include="*.tsx"
+
+Output:
+```
+(empty — no matches)
+```
+
+Classification: empty — zero references in production code. Phase 22 D-04 deletion clean.
+
+### "Coming soon" sweep
+
+Command: grep -rn "Coming soon\|coming soon" src/ --include="*.ts" --include="*.tsx"
+
+Output:
+```
+src/components/search/ComingSoonCard.tsx:30: *   - All-tab footer (compact, Watches): "Watch search coming soon"
+src/components/search/ComingSoonCard.tsx:31: *   - All-tab footer (compact, Collections): "Collection search coming soon"
+```
+
+Classification: JSDoc historical reference (not orphan). Both matches are inside the `/** ... */` block comment (lines 5-34) of `ComingSoonCard.tsx` documenting the component's per-call-site copy contract. The component itself is Phase 16 production infrastructure for the `/search` All/Watches/Collections tabs (NOT a Phase 22 settings stub) — copy strings are passed via props at call sites (Plan 05 from Phase 16). The literal "Coming soon" text does NOT appear in any rendered JSX inside this file. Phase 22's deleted "Coming soon" Settings tab stubs were entirely separate (`SettingsClient.tsx` legacy panels) and are gone.
+
+### "New Note Visibility" sweep
+
+Command: grep -rn "New Note Visibility" src/ --include="*.ts" --include="*.tsx"
+
+Output:
+```
+(empty — no matches)
+```
+
+Classification: empty — zero references in production code. Phase 22 D-04 deletion of the disabled Select clean.
+
+### "SettingsClient" sweep
+
+Command: grep -rn "SettingsClient" src/ --include="*.ts" --include="*.tsx"
+
+Output:
+```
+src/components/settings/SettingsTabsShell.tsx:64: * sections migrated from legacy SettingsClient.tsx). AppearanceSection
+src/components/settings/PrivacySection.tsx:14: * from the legacy SettingsClient.tsx into the new tabs frame. Behavior
+src/components/settings/NotificationsSection.tsx:12: * SettingsClient.tsx. Phase 23 SET-09 owns the visual restyle pass.
+```
+
+Classification: JSDoc historical reference (not orphan) — all three matches are inside `/** ... */` block comments documenting the Phase 22 migration history (text "from the legacy SettingsClient.tsx"). Production code does NOT import, call, or reference `SettingsClient` as a runtime entity. Confirmed:
+
+- `SettingsTabsShell.tsx:64` — inside the JSDoc block at lines 32-67 above the `export function SettingsTabsShell(...)` declaration.
+- `PrivacySection.tsx:14` — inside the JSDoc block at lines 12-17 above the `export function PrivacySection(...)` declaration.
+- `NotificationsSection.tsx:12` — inside the JSDoc block at lines 9-13 above the `export function NotificationsSection(...)` declaration.
+
+These are documentation comments tracking the Phase 22 migration provenance. They are NOT imports, JSX elements, function calls, or live string literals.
+
+***
+
+## D-20 Verdict
+
+ZERO orphans found. All matches across the four target greps are either empty (Delete Account, New Note Visibility) or JSDoc historical references (Coming soon in `ComingSoonCard.tsx` documenting per-call-site copy contract for Phase 16 search component; SettingsClient in three Phase 22 migration-target files documenting provenance). No production-code orphan imports, no dead JSX, no orphan function calls. Phase 22 D-04 deletions are clean.
