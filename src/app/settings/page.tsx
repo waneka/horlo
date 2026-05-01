@@ -1,18 +1,23 @@
 import { redirect } from 'next/navigation'
-import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import type { User } from '@supabase/supabase-js'
+import { getCurrentUserFull, UnauthorizedError } from '@/lib/auth'
 import { getProfileById, getProfileSettings } from '@/data/profiles'
 import { getPreferencesByUser } from '@/data/preferences'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { SettingsTabsShell } from '@/components/settings/SettingsTabsShell'
 
 export default async function SettingsPage() {
   // redirect() throws NEXT_REDIRECT — keep it OUTSIDE try/catch so the
   // framework can propagate it (Pitfall 7). Only set a flag from the
   // catch block.
-  let user: { id: string; email: string } | null = null
+  //
+  // Use getCurrentUserFull() (one auth.getUser() round-trip) so we can
+  // expose new_email (SET-04 banner gate, Plan 03) + last_sign_in_at
+  // (SET-05 / RECONCILED D-08 freshness signal, Plan 04) to the client
+  // shell without a second redundant auth.getUser() call.
+  let fullUser: User | null = null
   let needsLogin = false
   try {
-    user = await getCurrentUser()
+    fullUser = await getCurrentUserFull()
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       needsLogin = true
@@ -20,23 +25,20 @@ export default async function SettingsPage() {
       throw err
     }
   }
-  if (needsLogin || !user) {
+  if (needsLogin || !fullUser) {
+    // TODO: Server-side redirect cannot preserve location.hash — deep-link to
+    // a non-default tab will land on #account post-login. Acceptable for v1
+    // (rare path).
     redirect('/login?next=/settings')
   }
 
-  // Read full Supabase User to expose new_email (SET-04 banner gate, Plan 03)
-  // + last_sign_in_at (SET-05 / RECONCILED D-08 freshness signal, Plan 04)
-  // to the client shell. getCurrentUser() only returns { id, email } — the
-  // pending-email + freshness fields require the full User object.
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user: fullUser },
-  } = await supabase.auth.getUser()
+  const userId = fullUser.id
+  const userEmail = fullUser.email!
 
   const [profile, settings, preferences] = await Promise.all([
-    getProfileById(user.id),
-    getProfileSettings(user.id),
-    getPreferencesByUser(user.id),
+    getProfileById(userId),
+    getProfileSettings(userId),
+    getPreferencesByUser(userId),
   ])
 
   return (
@@ -52,9 +54,9 @@ export default async function SettingsPage() {
         displayName={profile?.displayName ?? null}
         avatarUrl={profile?.avatarUrl ?? null}
         profilePublic={settings.profilePublic}
-        currentEmail={user.email}
-        pendingNewEmail={fullUser?.new_email ?? null}
-        lastSignInAt={fullUser?.last_sign_in_at ?? null}
+        currentEmail={userEmail}
+        pendingNewEmail={fullUser.new_email ?? null}
+        lastSignInAt={fullUser.last_sign_in_at ?? null}
         settings={settings}
         preferences={preferences}
       />
