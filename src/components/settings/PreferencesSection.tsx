@@ -1,3 +1,5 @@
+import { CollectionGoalCard } from './preferences/CollectionGoalCard'
+import { OverlapToleranceCard } from './preferences/OverlapToleranceCard'
 import { PreferencesClient } from '@/components/preferences/PreferencesClient'
 import type { UserPreferences } from '@/lib/types'
 
@@ -6,21 +8,28 @@ interface PreferencesSectionProps {
 }
 
 /**
- * Phase 22 D-01 + D-15 — the Preferences tab is the primary surface for
- * taste preferences. /preferences is a server-side redirect to
- * /settings#preferences (Plan 02). PreferencesClient is embedded unchanged
- * to preserve the D-01 "no functional regression" guarantee.
+ * Phase 23 SET-07 / SET-08 — Preferences tab structure (D-01..D-04).
  *
- * UI-SPEC FG-2: PreferencesClient owns its own outer
- * `container mx-auto px-4 py-8 max-w-3xl` wrapper. Phase 22 keeps it
- * byte-identical; the inner padding currently coexists with the tab frame
- * and reads as intentional breathing room. If the UI checker flags
- * double-padding in production, address with a follow-up commit.
+ * Renders two new top Cards (Collection goal, Overlap tolerance) lifted
+ * from PreferencesClient's now-deleted Collection Settings Card, then a
+ * "Taste preferences" divider, then the embedded PreferencesClient with
+ * its taste-tag pickers (Style/Design/Complication/Dial Color/Case Size/Notes).
  *
- * No outer card wrapper here — PreferencesClient already renders its own
- * Card primitives per section, and double-wrapping would create a
- * card-inside-card visual.
+ * Server Component — only the two top Cards are Client Components; the
+ * divider is static; PreferencesClient is itself a Client Component but
+ * mounts via JSX as a child (Next.js 16 § Server-Client interleaving).
  */
 export function PreferencesSection({ preferences }: PreferencesSectionProps) {
-  return <PreferencesClient preferences={preferences} />
+  return (
+    <div className="space-y-6">
+      <CollectionGoalCard initialGoal={preferences.collectionGoal} />
+      <OverlapToleranceCard initialTolerance={preferences.overlapTolerance} />
+      <div className="border-t border-border pt-6">
+        <p className="mb-4 text-xs font-normal uppercase tracking-wide text-muted-foreground">
+          Taste preferences
+        </p>
+        <PreferencesClient embedded preferences={preferences} />
+      </div>
+    </div>
+  )
 }
