@@ -4,14 +4,14 @@ milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
 stopped_at: Phase 21 context gathered
-last_updated: "2026-04-30T21:06:46.502Z"
-last_activity: 2026-04-30 -- Phase 21 planning complete
+last_updated: "2026-05-01T00:43:19.910Z"
+last_activity: 2026-05-01
 progress:
   total_phases: 12
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 39
-  completed_plans: 37
-  percent: 95
+  completed_plans: 39
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 20.1 — add-watch-flow-rethink-verdict-as-step
+**Current focus:** Phase 21 — custom-smtp-via-resend
 
 ## Current Position
 
-Phase: 21
+Phase: 22
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-30 -- Phase 21 planning complete
+Status: Executing Phase 21
+Last activity: 2026-05-01
 
 ## Progress Bar
 

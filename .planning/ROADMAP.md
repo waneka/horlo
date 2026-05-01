@@ -64,7 +64,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] **Phase 19: /search Watches + Collections** — Catalog-backed Watches tab + cross-user Collections tab (two-layer privacy) + All-tab union + tab-aware AbortController (completed 2026-04-28)
 - [x] **Phase 20: Collection Fit Surface Polish + Verdict Copy** — Pure-renderer `<CollectionFitCard>`, richer contextual verdict phrasings, cross-user `/watch/[id]` polish, `WatchSearchRow` CTA repointed to inline-expand (no /evaluate route) (completed 2026-04-30)
 - [x] **Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step** — URL-paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture; "skip" covers the lightweight evaluate-only use case (completed 2026-04-30)
-- [ ] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc
+- [x] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc (completed 2026-05-01)
 - [ ] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect
 - [ ] **Phase 23: Settings Sections + Schema-Field UI** — Preferences (collectionGoal + overlapTolerance) + Notifications (opt-out toggles) + Privacy (restyled) + Appearance (theme) + WatchForm `notesPublic` per-note + `isChronometer` toggle/display
 - [ ] **Phase 24: Notification Stub Cleanup + Test Fixture/Carryover** — Pre-flight zero-row assertion + ENUM rename+recreate + Drizzle update + dead-code deletion + 9-file `wornPublic` fixture cleanup + TEST-04/05/06
@@ -194,8 +194,8 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   4. SMTP-06 (`mail.staging.horlo.app` separation) is marked Deferred — pending staging Supabase project (D-01); Phase 21 wires prod-only.
   5. `docs/deploy-db-setup.md` has a backout-plan section using the existing **Footgun T-XX-...:** pattern (T-21-PREVIEWMAIL) documenting how to revert to Supabase hosted SMTP if DKIM fails post-flip.
 **Plans**: 2 plans
-- [ ] 21-01-PLAN.md — DNS submit (SPF + DKIM + DMARC + bounce MX at mail.horlo.app) + signup-form.tsx D-10 amend (Wave 1)
-- [ ] 21-02-PLAN.md — Resend Verified ✓ → Supabase SMTP wire → D-07 round-trip [BLOCKING] gate → flip three toggles → backout doc + PROJECT.md + REQUIREMENTS.md SMTP-06 deferral (Wave 2, depends on 21-01)
+- [x] 21-01-PLAN.md — DNS submit (SPF + DKIM + DMARC + bounce MX at mail.horlo.app) + signup-form.tsx D-10 amend (Wave 1)
+- [x] 21-02-PLAN.md — Resend Verified ✓ → Supabase SMTP wire → D-07 round-trip [BLOCKING] gate → flip three toggles → backout doc + PROJECT.md + REQUIREMENTS.md SMTP-06 deferral (Wave 2, depends on 21-01)
 
 ### Phase 22: Settings Restructure + Account Section
 **Goal**: The v3.0 stub `/settings` page (privacy-only with "other sections coming soon") is replaced with a base-ui vertical-tabs shell in canonical SaaS order, and the Account section ships email/password change wired to Supabase `updateUser` with the correct re-auth + dual-confirmation UX.
