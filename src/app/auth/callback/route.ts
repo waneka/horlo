@@ -46,10 +46,19 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next')
 
-  // Same-origin guard — preserved from prior implementation. Open-redirect
-  // protection (Pitfall 8 / T-22-S6).
+  // Same-origin guard — Open-redirect protection (Pitfall 8 / T-22-S6).
+  //
+  // Tightened from the prior `startsWith('/') && !startsWith('//')` check to
+  // also reject backslash and CRLF/tab control chars. URL decoding by
+  // `searchParams.get` means a `next=%0d%0aSet-Cookie:...` value would, after
+  // decode, contain raw `\r\n`. Node's HTTP layer already rejects header
+  // values with control chars at runtime, but explicit validation up-front is
+  // defense-in-depth and clearer than relying on the throw.
+  //
+  // Allowed shape: starts with `/`, second char is NOT `/` (rejects
+  // `//evil.com`), and the remainder contains no backslash or control chars.
   const safeNext =
-    next && next.startsWith('/') && !next.startsWith('//') ? next : null
+    next && /^\/(?!\/)[^\\\r\n\t]*$/.test(next) ? next : null
 
   if (!token_hash || !type) {
     return NextResponse.redirect(new URL('/login?error=invalid_link', origin))
@@ -75,18 +84,11 @@ export async function GET(request: NextRequest) {
   const destination =
     safeNext && NEXT_OVERRIDABLE.has(normalizedType) ? safeNext : typeDefault
 
-  // For destinations carrying a hash + querystring (the non-standard
-  // `#account?status=email_changed` shape from D-16), `new URL(...)` reorders
-  // the fragment after the query and would emit `/settings?status=email_changed#account`.
-  // Construct the Location header directly to preserve the byte-identical
-  // shape the browser then hands back to <SettingsTabsShell>'s parseHash.
-  if (destination.includes('#') && destination.includes('?')) {
-    const absolute = `${origin}${destination}`
-    return new NextResponse(null, {
-      status: 307,
-      headers: { location: absolute },
-    })
-  }
-
+  // WHATWG URL preserves the `#fragment?query` shape from D-16 verbatim — the
+  // entire post-`#` substring is opaque fragment data, so the `?status=` lives
+  // inside the fragment and round-trips byte-identical to what
+  // <SettingsTabsShell>'s parseHash and <StatusToastHandler>'s hash parser
+  // expect. Verified: `new URL('/settings#account?status=email_changed', origin)`
+  // emits `https://origin/settings#account?status=email_changed`.
   return NextResponse.redirect(new URL(destination, origin))
 }
