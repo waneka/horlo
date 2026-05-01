@@ -2,11 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 
 // ---------------------------------------------------------------------------
-// Phase 22 D-13/D-14 — StatusToastHandler.
-// D-13: Sonner toast on ?status=email_changed (and other status values).
-// D-14: When stripping ?status= via router.replace, MUST preserve the hash
-// (e.g., #account) — naive router.replace(pathname) drops the fragment and
-// kicks the user back to the default tab.
+// Phase 22 D-13/D-14/D-16 — StatusToastHandler.
+// D-13: Sonner toast on status=email_changed (read from hash-internal query).
+// D-14: When stripping status= from the hash, MUST preserve the active tab
+// portion (e.g., #account) — naive router.replace(pathname) drops the
+// fragment and kicks the user back to the default tab.
+// D-16: status= lives INSIDE the hash (`#account?status=email_changed`), not
+// in location.search, because the SET-06 callback redirect uses the
+// non-standard hash-with-querystring shape. The handler parses the hash
+// directly: `hash.slice(1).split('?', 2)` then `URLSearchParams(query)`.
 // ---------------------------------------------------------------------------
 
 const toastSuccess = vi.fn()
@@ -18,31 +22,39 @@ vi.mock('sonner', () => ({
 }))
 
 let routerReplaceMock = vi.fn()
-let mockSearchParams = new URLSearchParams('')
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: routerReplaceMock }),
   usePathname: () => '/settings',
-  useSearchParams: () => mockSearchParams,
 }))
 
 // Import AFTER mocks.
 import { StatusToastHandler } from '@/components/settings/StatusToastHandler'
 
-describe('StatusToastHandler — Phase 22 D-13/D-14', () => {
+function setHash(hash: string, pathname = '/settings') {
+  // jsdom does not parse query inside the fragment — the hash IS the entire
+  // post-`#` string, including any internal `?key=value`. Set hash + pathname
+  // deliberately so the handler's `window.location.hash` read returns the
+  // exact D-16 shape produced by the SET-06 callback.
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    writable: true,
+    value: { ...window.location, hash, pathname },
+  })
+}
+
+describe('StatusToastHandler — Phase 22 D-13/D-14/D-16', () => {
   beforeEach(() => {
     toastSuccess.mockReset()
     routerReplaceMock = vi.fn()
-    mockSearchParams = new URLSearchParams('')
-    window.history.replaceState(null, '', '/settings')
+    setHash('', '/settings')
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('fires toast.success on ?status=email_changed', () => {
-    mockSearchParams = new URLSearchParams('status=email_changed')
-    window.history.replaceState(null, '', '/settings#account?status=email_changed')
+  it('fires toast.success on #account?status=email_changed (D-16 hash-internal query)', () => {
+    setHash('#account?status=email_changed')
 
     render(<StatusToastHandler />)
 
@@ -50,41 +62,42 @@ describe('StatusToastHandler — Phase 22 D-13/D-14', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Email changed successfully')
   })
 
-  it('strips status param preserving hash (D-14 — router.replace(pathname + hash) NOT router.replace(pathname))', () => {
-    mockSearchParams = new URLSearchParams('status=email_changed')
-    // Set the hash on the test environment so the handler's
-    // window.location.hash read returns #account.
-    window.history.replaceState(
-      null,
-      '',
-      '/settings#account?status=email_changed',
-    )
-    // jsdom does not treat the part after `#` as a query — the hash is the
-    // entire fragment. We need to set the hash deliberately.
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: { ...window.location, hash: '#account', pathname: '/settings' },
-    })
+  it('strips status from the hash preserving the active tab (D-14 — replace target = /settings#account)', () => {
+    setHash('#account?status=email_changed')
 
     render(<StatusToastHandler />)
 
     expect(routerReplaceMock).toHaveBeenCalledTimes(1)
     const target = routerReplaceMock.mock.calls[0][0]
     expect(target).toBe('/settings#account')
-    // Critical: target MUST end with #account (the hash) and MUST NOT
+    // Critical: target MUST end with #account (the tab) and MUST NOT
     // contain status=email_changed.
     expect(target).not.toContain('status=email_changed')
   })
 
   it('does not fire toast on unknown status value', () => {
-    mockSearchParams = new URLSearchParams('status=unknown_value')
+    setHash('#account?status=unknown_value')
     render(<StatusToastHandler />)
     expect(toastSuccess).not.toHaveBeenCalled()
+    expect(routerReplaceMock).not.toHaveBeenCalled()
+  })
+
+  it('does not fire toast when hash has no status param', () => {
+    setHash('#account')
+    render(<StatusToastHandler />)
+    expect(toastSuccess).not.toHaveBeenCalled()
+    expect(routerReplaceMock).not.toHaveBeenCalled()
+  })
+
+  it('does not fire toast when hash is empty', () => {
+    setHash('')
+    render(<StatusToastHandler />)
+    expect(toastSuccess).not.toHaveBeenCalled()
+    expect(routerReplaceMock).not.toHaveBeenCalled()
   })
 
   it('uses ref guard to prevent Strict-Mode double-fire (FG-5)', () => {
-    mockSearchParams = new URLSearchParams('status=email_changed')
+    setHash('#account?status=email_changed')
 
     const { rerender } = render(<StatusToastHandler />)
     expect(toastSuccess).toHaveBeenCalledTimes(1)
@@ -92,5 +105,16 @@ describe('StatusToastHandler — Phase 22 D-13/D-14', () => {
     // Re-render with the same props — the ref guard MUST prevent a second toast.
     rerender(<StatusToastHandler />)
     expect(toastSuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves additional hash-query params when stripping status', () => {
+    setHash('#preferences?status=email_changed&other=keep')
+
+    render(<StatusToastHandler />)
+
+    expect(toastSuccess).toHaveBeenCalledTimes(1)
+    expect(routerReplaceMock).toHaveBeenCalledTimes(1)
+    const target = routerReplaceMock.mock.calls[0][0]
+    expect(target).toBe('/settings#preferences?other=keep')
   })
 })

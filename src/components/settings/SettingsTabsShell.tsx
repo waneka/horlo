@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { User, IdCard, SlidersHorizontal, Lock, Bell, Palette } from 'lucide-react'
 import { StatusToastHandler } from './StatusToastHandler'
@@ -97,11 +97,9 @@ export function SettingsTabsShell(props: SettingsTabsShellProps) {
 
   return (
     <>
-      {/* D-13 status toast handler — Suspense per Pitfall 3 (useSearchParams
-          without Suspense bails Next.js 16 prerender). */}
-      <Suspense fallback={null}>
-        <StatusToastHandler />
-      </Suspense>
+      {/* D-13 status toast handler — reads location.hash directly (D-16 shape),
+          no useSearchParams dependency, so no Suspense boundary needed. */}
+      <StatusToastHandler />
 
       <Tabs
         orientation="vertical"
