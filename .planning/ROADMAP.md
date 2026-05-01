@@ -239,7 +239,15 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. Render branches and stub UI for `price_drop` + `trending_collector` are deleted across `src/`, `tests/`, `scripts/`, and `seed/`.
   4. The 9 test files that reference the removed `wornPublic` column are updated to use the `wear_visibility` enum, and the test suite is fully green again.
   5. `watchStore` filter reducer has unit tests with `beforeEach` reset (TEST-04), POST `/api/extract-watch` has integration coverage (TEST-05), and `WatchForm` / `FilterBar` / `WatchCard` have component tests (TEST-06).
-**Plans**: TBD
+**Plans**: 8 plans
+- [ ] 24-01-PLAN.md — Standalone preflight script + npm script entry (DEBT-03; Wave 1)
+- [ ] 24-02-PLAN.md — Rename+recreate migration SQL with whitelist DO $$ preflight + post-rename verification + integration test (DEBT-04; Wave 2)
+- [ ] 24-03-PLAN.md — [BLOCKING] [autonomous: false] Apply migration to prod via supabase db push --linked + append Footgun T-24-PRODAPPLY runbook (DEBT-04; Wave 2)
+- [ ] 24-04-PLAN.md — Drizzle pgEnum narrow + render-branch deletion + type narrowing + stub-test deletion (DEBT-05; Wave 3, depends on 24-03)
+- [ ] 24-05-PLAN.md — wornPublic test fixture rewrite (4 files) with privacy-semantics regression-lock (DEBT-06; Wave 3)
+- [ ] 24-06-PLAN.md — TEST-04 tests/store/watchStore.test.ts (filter reducer with Zustand v5 reset) (TEST-04; Wave 4)
+- [ ] 24-07-PLAN.md — TEST-05 tests/api/extract-watch.test.ts (route integration coverage past auth gate; no Zod) (TEST-05; Wave 4)
+- [ ] 24-08-PLAN.md — TEST-06 component tests (WatchCard NEW + FilterBar NEW + WatchForm augmentation; PointerEvent polyfill lifted to setup) (TEST-06; Wave 4)
 
 ### Phase 25: Profile Nav Prominence + Empty States + Form Polish
 **Goal**: Profile graduates from "buried in dropdown" to first-class top-right affordance on every screen; collection / wishlist / worn / notes empty states get single-primary-CTA welcomes; URL-extract failures get categorized recovery copy; every Server Action surfaces success and pending states consistently.
