@@ -50,7 +50,6 @@ created: 2026-05-01
 | TBD | 02 | 1 | SET-08 | — | N/A | unit | RTL render `<OverlapToleranceCard>` and assert all 3 SelectItems | ❌ W0 | ⬜ pending |
 | TBD | 02 | 1 | SET-07/08 | — | savePreferences round-trips both fields | integration | `npm test tests/actions/preferences.test.ts -t "collectionGoal\|overlapTolerance"` | partial | ⬜ pending |
 | TBD | 02 | 1 | SET-07/08 | — | `<PreferencesClient embedded>` suppresses h1 + outer container | unit | RTL assert no `<h1>Preferences</h1>` when `embedded={true}` | ❌ W0 | ⬜ pending |
-| TBD | 02 | 1 | SET-10 | — | `<AppearanceSection>` renders `<InlineThemeSegmented>` inside `<SettingsSection title="Theme">` | unit | RTL assert by-role + by-label | ❌ W0 | ⬜ pending |
 | TBD | 03 | 1 | SET-10 | — | `<AppearanceSection>` mounts `<InlineThemeSegmented>` inside `<SettingsSection title="Theme">` | unit | RTL render, assert by-role + by-label | ❌ W0 | ⬜ pending |
 | TBD | 04 | 1 | FEAT-08 | — | WatchForm checkbox respects `watch.isChronometer` in edit mode | unit | RTL assert checkbox checked when prop is true | ❌ W0 | ⬜ pending |
 | TBD | 04 | 1 | FEAT-08 | — | WatchForm submits `isChronometer` through addWatch/editWatch | integration | mock action, RTL submit, assert payload includes field | ❌ W0 | ⬜ pending |
