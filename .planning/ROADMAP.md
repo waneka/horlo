@@ -65,7 +65,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] **Phase 20: Collection Fit Surface Polish + Verdict Copy** — Pure-renderer `<CollectionFitCard>`, richer contextual verdict phrasings, cross-user `/watch/[id]` polish, `WatchSearchRow` CTA repointed to inline-expand (no /evaluate route) (completed 2026-04-30)
 - [x] **Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step** — URL-paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture; "skip" covers the lightweight evaluate-only use case (completed 2026-04-30)
 - [x] **Phase 21: Custom SMTP via Resend** — DNS verify + Supabase SMTP wire + Confirm-email/Secure-change toggles ON + staging/prod sender split + backout-plan doc (completed 2026-05-01)
-- [ ] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect
+- [x] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect (completed 2026-05-01)
 - [ ] **Phase 23: Settings Sections + Schema-Field UI** — Preferences (collectionGoal + overlapTolerance) + Notifications (opt-out toggles) + Privacy (restyled) + Appearance (theme) + WatchForm `notesPublic` per-note + `isChronometer` toggle/display
 - [ ] **Phase 24: Notification Stub Cleanup + Test Fixture/Carryover** — Pre-flight zero-row assertion + ENUM rename+recreate + Drizzle update + dead-code deletion + 9-file `wornPublic` fixture cleanup + TEST-04/05/06
 - [ ] **Phase 25: Profile Nav Prominence + Empty States + Form Polish** — DesktopTopNav/SlimTopNav avatar dual-affordance + 4 empty-state CTAs + categorized URL-extract errors + Sonner+aria-live hybrid + Server Action pending states + profile-edit success toast
@@ -208,11 +208,11 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   4. The viewer can change password from Account; sessions older than 24h trigger a re-auth dialog before the change applies.
   5. Clicking the email-change confirmation link routes through `/auth/confirm/route.ts` (extended to switch on `type`) and lands on `/settings#account?status=email_changed` with a success toast; the legacy `/preferences` route redirects to `/settings#preferences`.
 **Plans**: 5 plans
-- [ ] 22-01-PLAN.md — Wave 0 test scaffolds (14 RED skeletons + lastSignInAt helper) + retire stale SettingsClient.test.tsx
-- [ ] 22-02-PLAN.md — Settings shell foundation: SettingsTabsShell + StatusToastHandler + AppearanceSection stub + auth-callback 5-type redirect map + /preferences server redirect + page rewrite
-- [ ] 22-03-PLAN.md — Email change UI: EmailChangeForm + EmailChangePendingBanner (T-22-S4 mitigation, locked SET-04 copy) (Wave 2 parallel with 22-04)
-- [ ] 22-04-PLAN.md — Password change UI: PasswordChangeForm + PasswordReauthDialog (RECONCILED D-08 Option C — last_sign_in_at + 401 defense-in-depth) (Wave 2 parallel with 22-03)
-- [ ] 22-05-PLAN.md — Section migration: AccountSection / ProfileSection / PrivacySection / NotificationsSection / PreferencesSection + wire into shell + delete legacy SettingsClient.tsx + revalidatePath('/settings') on savePreferences
+- [x] 22-01-PLAN.md — Wave 0 test scaffolds (14 RED skeletons + lastSignInAt helper) + retire stale SettingsClient.test.tsx
+- [x] 22-02-PLAN.md — Settings shell foundation: SettingsTabsShell + StatusToastHandler + AppearanceSection stub + auth-callback 5-type redirect map + /preferences server redirect + page rewrite
+- [x] 22-03-PLAN.md — Email change UI: EmailChangeForm + EmailChangePendingBanner (T-22-S4 mitigation, locked SET-04 copy) (Wave 2 parallel with 22-04)
+- [x] 22-04-PLAN.md — Password change UI: PasswordChangeForm + PasswordReauthDialog (RECONCILED D-08 Option C — last_sign_in_at + 401 defense-in-depth) (Wave 2 parallel with 22-03)
+- [x] 22-05-PLAN.md — Section migration: AccountSection / ProfileSection / PrivacySection / NotificationsSection / PreferencesSection + wire into shell + delete legacy SettingsClient.tsx + revalidatePath('/settings') on savePreferences
 
 **UI hint**: yes
 
