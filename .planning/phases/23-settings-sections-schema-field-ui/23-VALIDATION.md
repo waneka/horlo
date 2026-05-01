@@ -51,16 +51,17 @@ created: 2026-05-01
 | TBD | 02 | 1 | SET-07/08 | — | savePreferences round-trips both fields | integration | `npm test tests/actions/preferences.test.ts -t "collectionGoal\|overlapTolerance"` | partial | ⬜ pending |
 | TBD | 02 | 1 | SET-07/08 | — | `<PreferencesClient embedded>` suppresses h1 + outer container | unit | RTL assert no `<h1>Preferences</h1>` when `embedded={true}` | ❌ W0 | ⬜ pending |
 | TBD | 02 | 1 | SET-10 | — | `<AppearanceSection>` renders `<InlineThemeSegmented>` inside `<SettingsSection title="Theme">` | unit | RTL assert by-role + by-label | ❌ W0 | ⬜ pending |
-| TBD | 03 | 1 | FEAT-08 | — | WatchForm checkbox respects `watch.isChronometer` in edit mode | unit | RTL assert checkbox checked when prop is true | ❌ W0 | ⬜ pending |
-| TBD | 03 | 1 | FEAT-08 | — | WatchForm submits `isChronometer` through addWatch/editWatch | integration | mock action, RTL submit, assert payload includes field | ❌ W0 | ⬜ pending |
-| TBD | 03 | 1 | FEAT-08 | — | WatchDetail renders only-if-true Certification row | unit | RTL render with `isChronometer: true` then `false`, assert presence/absence | ❌ W0 | ⬜ pending |
-| TBD | 03 | 1 | FEAT-07 | — | WatchForm pill toggles between Public/Private and submits | unit | RTL click pill, assert state, assert payload | ❌ W0 | ⬜ pending |
-| TBD | 03 | 1 | FEAT-07 | — | WatchForm pill defaults to Public for new watches | unit | RTL render new-mode form, assert pill aria-pressed=true | ❌ W0 | ⬜ pending |
-| TBD | 04 | 2 | FEAT-07 | — | `addWatch` Zod accepts `notesPublic` | integration | `tests/actions/watches.test.ts` payload-shape test | ❌ W0 | ⬜ pending |
-| TBD | 04 | 2 | FEAT-07 | — | `editWatch` Zod accepts `notesPublic` | integration | `tests/actions/watches.test.ts` payload-shape test | ❌ W0 | ⬜ pending |
-| TBD | 04 | 2 | FEAT-07 | — | `addWatch`/`editWatch` revalidate `/u/[username]` layout | integration | mock `revalidatePath`, assert called with `'/u/[username]', 'layout'` | ❌ W0 | ⬜ pending |
-| TBD | 05 | 2 | SET-09/SET-11/SET-12 | — | Verification only — Phase 22 already shipped | manual | grep + page-render check | n/a | ⬜ pending |
-| TBD | 05 | 2 | D-20 | — | Cleanup grep sweep returns zero orphans for "Delete Account", "Coming soon", "New Note Visibility", "SettingsClient" in `src/` | manual | bash grep | n/a | ⬜ pending |
+| TBD | 03 | 1 | SET-10 | — | `<AppearanceSection>` mounts `<InlineThemeSegmented>` inside `<SettingsSection title="Theme">` | unit | RTL render, assert by-role + by-label | ❌ W0 | ⬜ pending |
+| TBD | 04 | 1 | FEAT-08 | — | WatchForm checkbox respects `watch.isChronometer` in edit mode | unit | RTL assert checkbox checked when prop is true | ❌ W0 | ⬜ pending |
+| TBD | 04 | 1 | FEAT-08 | — | WatchForm submits `isChronometer` through addWatch/editWatch | integration | mock action, RTL submit, assert payload includes field | ❌ W0 | ⬜ pending |
+| TBD | 04 | 1 | FEAT-08 | — | WatchDetail renders only-if-true Certification row | unit | RTL render with `isChronometer: true` then `false`, assert presence/absence | ❌ W0 | ⬜ pending |
+| TBD | 04 | 1 | FEAT-07 | — | WatchForm pill toggles between Public/Private and submits | unit | RTL click pill, assert state, assert payload | ❌ W0 | ⬜ pending |
+| TBD | 04 | 1 | FEAT-07 | — | WatchForm pill defaults to Public for new watches | unit | RTL render new-mode form, assert pill aria-pressed=true | ❌ W0 | ⬜ pending |
+| TBD | 05 | 2 | FEAT-07 | — | `addWatch` Zod accepts `notesPublic` | integration | `tests/actions/watches.test.ts` payload-shape test | ❌ W0 | ⬜ pending |
+| TBD | 05 | 2 | FEAT-07 | — | `editWatch` Zod accepts `notesPublic` | integration | `tests/actions/watches.test.ts` payload-shape test | ❌ W0 | ⬜ pending |
+| TBD | 05 | 2 | FEAT-07 | — | `addWatch`/`editWatch` revalidate `/u/[username]` layout | integration | mock `revalidatePath`, assert called with `'/u/[username]', 'layout'` | ❌ W0 | ⬜ pending |
+| TBD | 06 | 2 | SET-09/SET-11/SET-12 | — | Verification only — Phase 22 already shipped | manual | grep + page-render check | n/a | ⬜ pending |
+| TBD | 06 | 2 | D-20 | — | Cleanup grep sweep returns zero orphans for "Delete Account", "Coming soon", "New Note Visibility", "SettingsClient" in `src/` | manual | bash grep | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

@@ -719,27 +719,27 @@ export function PreferencesClient({ preferences: initialPreferences, embedded = 
 
 **If this table has 4 entries:** Each one is documented and has Low risk. The planner should still surface A1 to the user as "we recommend Option A but we'll defer if you want minimal diff." A2 should override the UI-SPEC's Server-vs-Client guidance (the UI-SPEC has a documentation bug). A3 and A4 are pure code-read confirmations.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Option A vs. Option B for top Card factoring?**
    - What we know: UI-SPEC § Component Mapping line 459 says "Option A (recommended)" — separate `<CollectionGoalCard>` + `<OverlapToleranceCard>` files. UI-SPEC also notes "Both options satisfy the design contract."
    - What's unclear: Whether the user prefers minimal diff (Option B) or cleaner separation (Option A).
-   - Recommendation: Default to Option A. The planner can still ship one consolidated PR; the planner should call this out in the plan as a single decision point that takes ~10 minutes to switch if requested.
+   - **RESOLVED: Option A — separate files** under `src/components/settings/preferences/`. Plan 02 implements this. Confirmed by both UI-SPEC and CLAUDE.md "components are grouped by domain" convention. The ~10-minute escape hatch to inline (Option B) remains available if reviewer prefers a smaller diff.
 
 2. **Where do `<CollectionGoalCard>`/`<OverlapToleranceCard>` live in the file tree?**
    - What we know: CONTEXT.md `<code_context>` line 174 says "New file(s) created under `src/components/settings/preferences/` (planner's call on file factoring)."
    - What's unclear: Whether to add an index.ts barrel or import the components directly.
-   - Recommendation: Direct imports (no barrel) — matches the CLAUDE.md convention "No barrel files (no `index.ts` re-exports from component folders)."
+   - **RESOLVED: Direct imports, no barrel.** Plans 02/03 import via `@/components/settings/preferences/CollectionGoalCard` directly. Matches the CLAUDE.md convention "No barrel files (no `index.ts` re-exports from component folders)."
 
 3. **Should the `embedded` prop default be `true` or `false`?**
    - What we know: D-04 says default `false` to "preserve byte-identical render path if `/preferences/page.tsx` is ever re-mounted as a standalone page."
    - What's unclear: Whether re-mounting `/preferences/page.tsx` as a standalone page is a real future requirement or just defensive.
-   - Recommendation: Follow D-04 — default `false`. Low cost; protects future intent.
+   - **RESOLVED: `embedded?: boolean = false`** (D-04 default). Plan 02 implements. `<PreferencesSection>` passes `embedded={true}` explicitly. Defensive default protects the unmounted standalone page if a future caller resurrects it.
 
 4. **Should `addWatch` also call `revalidatePath('/u/[username]', 'layout')`?**
    - What we know: D-19 says "`editWatch` / `addWatch` MUST revalidate the per-row note surface ... when `notesPublic` changes." Both Server Actions are mentioned.
    - What's unclear: Whether `addWatch`'s creation of a new row affects the per-row note surface (a brand-new note appears at `/u/{username}/notes` immediately after creation).
-   - Recommendation: Yes — add to both. The new row IS a new note that should appear on the user's notes tab. Adding revalidation is one line and prevents the "new watch added but doesn't show in /u/{username}/notes until refresh" bug.
+   - **RESOLVED: Yes — add to BOTH `addWatch` and `editWatch`.** Plan 05 wires both. A newly-created row with a note IS a new entry that must appear on the user's notes tab without a hard refresh. One line per action; prevents "new watch added but doesn't show in /u/{username}/notes" UX regression.
 
 ## Sources
 
