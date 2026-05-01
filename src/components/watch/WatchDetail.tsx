@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Watch as WatchIcon } from 'lucide-react'
+import { Check, Watch as WatchIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -282,6 +282,18 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
                 <div>
                   <dt className="text-muted-foreground">Production year</dt>
                   <dd className="font-semibold">{watch.productionYear}</dd>
+                </div>
+              )}
+              {/* Phase 23 FEAT-08 — Chronometer certification (D-11).
+                  Strict-equal `=== true` is deliberate: the column is boolean | null;
+                  legacy rows may surface as null and must NOT render this row. */}
+              {watch.isChronometer === true && (
+                <div>
+                  <dt className="text-muted-foreground">Certification</dt>
+                  <dd className="font-semibold flex items-center gap-1">
+                    <Check className="size-4 text-foreground" aria-hidden />
+                    <span>Chronometer</span>
+                  </dd>
                 </div>
               )}
             </dl>
