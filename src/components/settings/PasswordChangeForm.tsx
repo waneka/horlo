@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AuthError } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,11 +87,9 @@ export function PasswordChangeForm({
     // RECONCILED D-08 Option C defense-in-depth: any 401 from updateUser
     // re-opens the re-auth dialog with clarifying copy. Covers timing edges
     // where last_sign_in_at proxy and server session.created_at disagree.
-    if (
-      updErr &&
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (updErr as any).status === 401
-    ) {
+    // AuthError from @supabase/supabase-js exposes a typed `status: number |
+    // undefined` field; instanceof narrowing keeps the check type-safe.
+    if (updErr instanceof AuthError && updErr.status === 401) {
       setReauth({
         open: true,
         pendingNewPassword: password,

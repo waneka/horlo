@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AuthError } from '@supabase/supabase-js'
 
 // ---------------------------------------------------------------------------
 // Phase 22 SET-05 D-08/D-10 (RECONCILED Option C) — Password change form.
@@ -115,9 +116,10 @@ describe('PasswordChangeForm — Phase 22 SET-05 D-08/D-10 (RECONCILED Option C)
 
   it('server 401 reopens dialog (RECONCILED D-08 Option C defense-in-depth)', async () => {
     // RECONCILED D-08 Option C: client thinks fresh but server returns 401.
+    // Use a real AuthError instance so the form's `instanceof AuthError`
+    // narrowing matches Supabase runtime behavior.
     updateUserMock.mockResolvedValueOnce({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      error: { name: 'AuthError', message: 'reauth required', status: 401 } as any,
+      error: new AuthError('reauth required', 401),
     })
     render(
       <PasswordChangeForm
