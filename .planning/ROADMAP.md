@@ -259,7 +259,13 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
   3. URL-extract failures surface categorized errors with recovery copy: `host-403`, `structured-data-missing`, `LLM-timeout`, `quota-exceeded`, `generic-network`.
   4. Form submissions across the app surface success via Sonner toast AND an inline `aria-live="polite"` banner (hybrid pattern from Phase 999.1 MR-01); the profile edit form fires a success toast on save (today there is no confirmation visible).
   5. Every Server Action submit button (preferences, notifications, settings sections, profile edit, mark-all-read) displays a pending state during transition.
-**Plans**: TBD
+**Plans**: 6 plans
+- [ ] 25-01-PLAN.md — useFormFeedback hook + FormStatusBanner shared primitive (UX-06 foundation; Wave 1)
+- [ ] 25-02-PLAN.md — ExtractErrorCard component (UX-05 foundation; Wave 1)
+- [ ] 25-03-PLAN.md — Avatar dual-affordance in DesktopTopNav + SlimTopNav (NAV-13/14/15; Wave 1)
+- [ ] 25-05-PLAN.md — Empty-state CTAs across 4 tabs + AddWatchFlow ?manual=1/?status=wishlist plumbing (UX-01/02/03/04; Wave 1)
+- [ ] 25-04-PLAN.md — URL-extract error taxonomy + ExtractErrorCard wiring (UX-05; Wave 2; depends on 25-02 + 25-05)
+- [ ] 25-06-PLAN.md — Form feedback hybrid rollout + MarkAllReadButton + profile-edit toast (UX-06/07/08; Wave 2; depends on 25-01)
 **UI hint**: yes
 
 ### Phase 26: WYWT Auto-Nav
