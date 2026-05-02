@@ -1,8 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { ProfileWatchCard } from './ProfileWatchCard'
 import { FilterChips } from './FilterChips'
 import { AddWatchCard } from './AddWatchCard'
@@ -12,12 +20,17 @@ interface CollectionTabContentProps {
   watches: Watch[]
   wearDates: Record<string, string> // watchId -> YYYY-MM-DD
   isOwner: boolean
+  /** Phase 25 D-09: when false (ANTHROPIC_API_KEY unset), the owner empty state
+   *  shows a two-button fallback (disabled "Add by URL" + tooltip + "Add manually")
+   *  instead of the standard AddWatchCard. Server-derived in [tab]/page.tsx. */
+  hasUrlExtract: boolean
 }
 
 export function CollectionTabContent({
   watches,
   wearDates,
   isOwner,
+  hasUrlExtract,
 }: CollectionTabContentProps) {
   // Derive role-tag chips dynamically (D-07): "All" + each unique role tag in collection,
   // capped at the most common 6 to keep the bar readable.
@@ -58,6 +71,52 @@ export function CollectionTabContent({
 
   if (watches.length === 0) {
     if (isOwner) {
+      // Phase 25 D-09 branch: when ANTHROPIC_API_KEY is unset, show two
+      // side-by-side primary buttons (disabled "Add by URL" + enabled "Add
+      // manually") instead of the existing AddWatchCard. Both buttons stay
+      // primary-weighted (NOT outline) per CONTEXT §specifics — disabled
+      // state alone signals the unavailable path. The <span> wrapper around
+      // the disabled Button is required for Safari (Anti-Pattern #14 / FG-3:
+      // disabled buttons swallow pointer events; the span lets the tooltip
+      // still trigger on hover).
+      if (!hasUrlExtract) {
+        return (
+          <div className="rounded-xl border bg-card p-12 text-center">
+            <p className="text-base font-semibold">Nothing here yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add your first watch to start building your collection.
+            </p>
+            <div className="mx-auto mt-6 grid max-w-md gap-3 sm:grid-cols-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="inline-block">
+                        <Button
+                          variant="default"
+                          disabled
+                          className="w-full cursor-not-allowed opacity-60"
+                          aria-label="Add by URL (unavailable)"
+                        >
+                          Add by URL
+                        </Button>
+                      </span>
+                    }
+                  />
+                  <TooltipContent>
+                    URL extraction unavailable — ANTHROPIC_API_KEY not set
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button variant="default" render={<Link href="/watch/new?manual=1" />}>
+                Add manually
+              </Button>
+            </div>
+          </div>
+        )
+      }
+      // Default owner branch: ANTHROPIC_API_KEY present, use the existing
+      // AddWatchCard inside the standard mx-auto mt-6 max-w-xs wrapper.
       return (
         <div className="rounded-xl border bg-card p-12 text-center">
           <p className="text-base font-semibold">Nothing here yet.</p>

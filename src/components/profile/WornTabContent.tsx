@@ -8,10 +8,13 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { WywtPostDialog } from '@/components/wywt/WywtPostDialog'
 import { ViewTogglePill } from './ViewTogglePill'
 import { WornTimeline } from './WornTimeline'
 import { WornCalendar } from './WornCalendar'
 import { LogTodaysWearButton } from './LogTodaysWearButton'
+import type { Watch } from '@/lib/types'
 
 interface WatchSummary {
   id: string
@@ -31,6 +34,16 @@ interface WornTabContentProps {
   events: WearEventLite[]
   watchMap: Record<string, WatchSummary>
   isOwner: boolean
+  /** Phase 25 D-10: non-owner empty-state copy "{username} hasn't logged any
+   *  wears yet." Threaded from [tab]/page.tsx (profile.username). */
+  username: string
+  /** Phase 25 D-06: passed to WywtPostDialog mounted in the owner empty state.
+   *  null when viewer is anonymous (the dialog only renders inside the
+   *  isOwner && viewerId branch — non-owner branch never reads this). */
+  viewerId: string | null
+  /** Phase 25 D-06: WywtPostDialog needs the owner's owned-status watches for
+   *  the picker step. Server-derived in [tab]/page.tsx. */
+  ownedWatches: Watch[]
 }
 
 const VIEW_OPTIONS = [
@@ -42,9 +55,16 @@ export function WornTabContent({
   events,
   watchMap,
   isOwner,
+  username,
+  viewerId,
+  ownedWatches,
 }: WornTabContentProps) {
   const [view, setView] = useState<'timeline' | 'calendar'>('timeline')
   const [filterWatchId, setFilterWatchId] = useState<string>('all')
+  // Phase 25 D-06: local state for WywtPostDialog mounted in the owner empty
+  // state. Declared before the early return to comply with the Rules of Hooks
+  // (the file already places hooks before the early return).
+  const [wywtOpen, setWywtOpen] = useState(false)
 
   const watchOptions = useMemo(
     () =>
@@ -63,17 +83,45 @@ export function WornTabContent({
     [events, filterWatchId],
   )
 
-  // Phase 12 (WYWT-10): per-row visibility means an empty events array is the
-  // correct empty state for non-owners who can't see any wears. The LockedTabCard
-  // worn branch was removed from the page; this empty state handles zero-visibility
-  // gracefully for both owners with no wear history and non-owners with no visible wears.
+  // Phase 25 D-06/D-10: replaces the old border-dashed shape with the locked
+  // empty-state Card shape. Owner branch (with viewerId) gets the "Log a wear"
+  // CTA which opens WywtPostDialog. Non-owner branch (and anonymous viewers,
+  // since viewerId is null then) sees owner-aware copy with NO CTA.
   // Note: this check is placed after hooks to comply with React's Rules of Hooks.
   if (events.length === 0) {
+    if (isOwner && viewerId) {
+      return (
+        <>
+          <div className="rounded-xl border bg-card p-12 text-center">
+            <p className="text-base font-semibold">No wears logged yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Track which watch you wore on which day.
+            </p>
+            <div className="mx-auto mt-6 max-w-xs">
+              <Button
+                variant="default"
+                className="w-full"
+                onClick={() => setWywtOpen(true)}
+              >
+                Log a wear
+              </Button>
+            </div>
+          </div>
+          <WywtPostDialog
+            open={wywtOpen}
+            onOpenChange={setWywtOpen}
+            ownedWatches={ownedWatches}
+            viewerId={viewerId}
+          />
+        </>
+      )
+    }
     return (
-      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        {isOwner
-          ? 'No wear events yet — log your first wear from the Collection tab.'
-          : 'No public wear events to show.'}
+      <div className="rounded-xl border bg-card p-12 text-center">
+        <p className="text-base font-semibold">Nothing here yet.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {username} hasn&apos;t logged any wears yet.
+        </p>
       </div>
     )
   }
