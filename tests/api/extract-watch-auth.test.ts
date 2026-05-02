@@ -11,7 +11,13 @@ vi.mock('@/lib/auth', () => ({
   getCurrentUser: vi.fn(),
 }))
 vi.mock('@/lib/extractors', () => ({
-  fetchAndExtract: vi.fn().mockResolvedValue({ name: 'mock' }),
+  // Phase 25 Plan 04: D-12 post-extract gate flips empty extractions to a
+  // structured-data-missing 422 — the success-path tests below need a mock
+  // shape with brand+model populated so the route reaches the success branch.
+  fetchAndExtract: vi.fn().mockResolvedValue({
+    name: 'mock',
+    data: { brand: 'Omega', model: 'Speedmaster' },
+  }),
 }))
 
 import { POST } from '@/app/api/extract-watch/route'
