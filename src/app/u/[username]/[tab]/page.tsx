@@ -65,6 +65,13 @@ export default async function ProfileTabPage({
   const displayName = profile.displayName ?? null
   const ownerDisplayLabel = profile.displayName ?? `@${profile.username}`
 
+  // Phase 25 D-09: server-side env-presence check. Only the resolved Boolean
+  // crosses the server/client boundary — the API key value itself never does.
+  // Used by CollectionTabContent to branch the empty-state CTA between the
+  // existing AddWatchCard (key present) and the two-button manual fallback
+  // (key missing). T-25-05-06 mitigation per threat register.
+  const hasUrlExtract = Boolean(process.env.ANTHROPIC_API_KEY?.trim())
+
   // Common Ground tab — handled first, same gate as the layout's hero band
   // (single-sourced in common-ground-gate.ts). On any gate failure or empty
   // overlap, emit a 404 per D-02 / D-17 — the tab is never "locked", only
@@ -142,13 +149,20 @@ export default async function ProfileTabPage({
       profile.id,
       watches.map((w) => w.id),
     )
+    // Phase 25 D-08: collectionCount drives Notes empty-state branching
+    // (>0 → picker; 0 → "Add a watch first" CTA). Same array we already
+    // loaded — no extra DB round-trip. T-25-05-03: server-derived; non-owner
+    // never reaches the count-dependent branch (D-10 short-circuits first).
+    const ownedWatches = watches.filter((w) => w.status === 'owned')
+    const collectionCount = ownedWatches.length
 
     if (tab === 'collection') {
       return (
         <CollectionTabContent
-          watches={watches.filter((w) => w.status === 'owned')}
+          watches={ownedWatches}
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
+          hasUrlExtract={hasUrlExtract}
         />
       )
     }
@@ -160,6 +174,7 @@ export default async function ProfileTabPage({
           )}
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
+          username={profile.username}
         />
       )
     }
@@ -169,7 +184,15 @@ export default async function ProfileTabPage({
         Boolean(w.notes && w.notes.trim()) &&
         (isOwner || w.notesPublic !== false),
     )
-    return <NotesTabContent watches={notedWatches} isOwner={isOwner} />
+    return (
+      <NotesTabContent
+        watches={notedWatches}
+        isOwner={isOwner}
+        username={profile.username}
+        collectionCount={collectionCount}
+        ownedWatches={ownedWatches}
+      />
+    )
   }
 
   if (tab === 'worn') {
@@ -198,6 +221,9 @@ export default async function ProfileTabPage({
         }))}
         watchMap={watchMap}
         isOwner={isOwner}
+        username={profile.username}
+        viewerId={viewerId}
+        ownedWatches={watches.filter((w) => w.status === 'owned')}
       />
     )
   }

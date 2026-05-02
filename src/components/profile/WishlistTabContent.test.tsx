@@ -62,6 +62,7 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
         watches={[buildWatch('w1'), buildWatch('w2')]}
         wearDates={{}}
         isOwner={true}
+        username="alice"
       />,
     )
     // The 2 fixture watches render via mocked ProfileWatchCard.
@@ -78,14 +79,24 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
         watches={[buildWatch('w1'), buildWatch('w2')]}
         wearDates={{}}
         isOwner={false}
+        username="alice"
       />,
     )
     expect(screen.queryByText('Add to Wishlist')).toBeNull()
   })
 
-  it('empty wishlist + isOwner=true — empty-state still renders, NO end-of-grid CTA (Phase 25 owns empty-state CTAs)', () => {
-    render(<WishlistTabContent watches={[]} wearDates={{}} isOwner={true} />)
-    expect(screen.getByText(/Your wishlist is empty/)).toBeInTheDocument()
+  it('empty wishlist + isOwner=true — Phase 25 D-05 owner empty state ("No wishlist watches yet." + "Add a wishlist watch" CTA) supersedes the prior end-of-grid CTA', () => {
+    render(
+      <WishlistTabContent
+        watches={[]}
+        wearDates={{}}
+        isOwner={true}
+        username="alice"
+      />,
+    )
+    expect(screen.getByText(/No wishlist watches yet/)).toBeInTheDocument()
+    // Phase 25 CTA replaces the prior empty-state "Add to Wishlist" copy.
     expect(screen.queryByText('Add to Wishlist')).toBeNull()
+    expect(screen.getByText('Add a wishlist watch')).toBeInTheDocument()
   })
 })

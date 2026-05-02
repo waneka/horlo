@@ -53,6 +53,14 @@ interface AddWatchFlowProps {
   initialIntent: 'owned' | null
   /** Server-fetched ExtractedWatchData synthesized from a catalog row when initialCatalogId is set. */
   initialCatalogPrefill: ExtractedWatchData | null
+  /** Phase 25 D-09: when true (from `?manual=1` server-whitelisted), the flow
+   *  starts in `manual-entry` and skips the paste step entirely. Used by the
+   *  Collection no-key fallback CTA + the Wishlist empty-state CTA. */
+  initialManual: boolean
+  /** Phase 25 D-05: when set (from `?status=wishlist` server-whitelisted), the
+   *  manual-entry WatchForm opens with status pre-set to this value (still
+   *  user-editable; uses WatchForm's `defaultStatus` prop, not `lockedStatus`). */
+  initialStatus: 'wishlist' | null
 }
 
 const RAIL_MAX = 5
@@ -62,15 +70,23 @@ export function AddWatchFlow({
   initialCatalogId,
   initialIntent,
   initialCatalogPrefill,
+  initialManual,
+  initialStatus,
 }: AddWatchFlowProps) {
   const router = useRouter()
 
   // Pitfall 1 deep-link short-circuit: if catalogId+intent='owned'+prefill all
   // present, jump straight to form-prefill (skip paste + verdict).
+  // Phase 25 D-09: else if `?manual=1` is set, skip paste and jump straight to
+  // manual-entry. The order of precedence is form-prefill > manual-entry > idle
+  // because catalog deep-links carry full extracted data and shouldn't be
+  // overridden by a stray manual=1 query string.
   const initialState: FlowState =
     initialCatalogId && initialIntent === 'owned' && initialCatalogPrefill
       ? { kind: 'form-prefill', catalogId: initialCatalogId, extracted: initialCatalogPrefill }
-      : { kind: 'idle' }
+      : initialManual
+        ? { kind: 'manual-entry', partial: null }
+        : { kind: 'idle' }
 
   const [state, setState] = useState<FlowState>(initialState)
   const [url, setUrl] = useState('')
@@ -387,7 +403,10 @@ export function AddWatchFlow({
           UAT gap 4 fix (Plan 08): prepend a quiet "Cancel — paste a URL instead"
           back affordance wired to the existing handleStartOver. Both ingress paths
           (direct via PasteSection "or enter manually" + post-failure via
-          "Continue manually") share this exit. */}
+          "Continue manually") share this exit.
+          Phase 25 D-05: when initialStatus='wishlist' was threaded from
+          `?status=wishlist`, pass it as `defaultStatus` (NOT `lockedStatus`)
+          so the form opens pre-set to wishlist but the user can still change. */}
       {state.kind === 'manual-entry' && (
         <div className="space-y-4">
           <button
@@ -399,8 +418,11 @@ export function AddWatchFlow({
           </button>
           <WatchForm
             mode="create"
+            defaultStatus={initialStatus ?? undefined}
             watch={
-              state.partial ? extractedToPartialWatch(state.partial, 'wishlist') : undefined
+              state.partial
+                ? extractedToPartialWatch(state.partial, initialStatus ?? 'wishlist')
+                : undefined
             }
           />
         </div>
