@@ -2,10 +2,10 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getNotificationsForViewer } from '@/data/notifications'
-import { markAllNotificationsRead } from '@/app/actions/notifications'
 import { NotificationsInbox } from '@/components/notifications/NotificationsInbox'
 import { NotificationsEmptyState } from '@/components/notifications/NotificationsEmptyState'
 import { MarkNotificationsSeenOnMount } from '@/components/notifications/MarkNotificationsSeenOnMount'
+import { MarkAllReadButton } from '@/components/notifications/MarkAllReadButton'
 
 /**
  * /notifications page — NOTIF-05 inbox surface.
@@ -21,8 +21,11 @@ import { MarkNotificationsSeenOnMount } from '@/components/notifications/MarkNot
  * forbids revalidateTag during render (node_modules/next/dist/server/web/spec-extension/
  * revalidate.js:113-119 throws E7 when workUnitStore.phase === 'render').
  *
- * Mark all read is a form-submit Server Action button; on success the action
- * calls revalidateTag (src/app/actions/notifications.ts).
+ * Mark all read is delivered by <MarkAllReadButton /> (Phase 25 D-20) — a
+ * Client Component using useFormStatus for pending state ('Marking…') that
+ * fires toast.success('Notifications cleared') on resolution. The Server
+ * Action call there still triggers revalidateTag (src/app/actions/
+ * notifications.ts), so this Server Component re-renders with rows updated.
  */
 export default async function NotificationsPage() {
   let user: { id: string; email: string } | null = null
@@ -45,21 +48,7 @@ export default async function NotificationsPage() {
       <MarkNotificationsSeenOnMount />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">Notifications</h1>
-        {rows.length > 0 && (
-          <form
-            action={async () => {
-              'use server'
-              await markAllNotificationsRead()
-            }}
-          >
-            <button
-              type="submit"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              Mark all read
-            </button>
-          </form>
-        )}
+        {rows.length > 0 && <MarkAllReadButton />}
       </div>
       <Suspense fallback={null}>
         {rows.length === 0 ? (
