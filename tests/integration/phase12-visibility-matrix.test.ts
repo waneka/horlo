@@ -26,7 +26,7 @@
  * surface that wear (Of does not follow V).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import {
   users,
@@ -95,8 +95,7 @@ maybe('Phase 12 visibility matrix', () => {
     }
 
     // Settings — Pp has profile_public=false; everyone else true.
-    // wornPublic column dropped in Phase 12 Plan 06 (WYWT-11) — the three-tier
-    // visibility column on wear_events is the sole gate after Phase 12.
+    // The wear_events.visibility column is the sole per-row gate after Phase 12.
     await db.update(profileSettings).set({
       profilePublic: false, collectionPublic: true, wishlistPublic: true,
     }).where(eq(profileSettings.userId, ids.Pp))
@@ -184,9 +183,8 @@ maybe('Phase 12 visibility matrix', () => {
   })
 
   it('G-4 outer gate: visibility=public wear by profile_public=false actor invisible to non-owner', async () => {
-    // Even though Pp's wear is visibility='public' and wornPublic=true on
-    // profileSettings, Pp.profilePublic=false means no non-owner viewer should
-    // see Pp's wears. This is the G-4 outer gate.
+    // Even though Pp's wear is visibility='public', Pp.profilePublic=false means
+    // no non-owner viewer should see Pp's wears. This is the G-4 outer gate.
     const events = await getWearEventsForViewer(ids.V, ids.Pp)
     expect(events.some((e) => e.id === wearIds.publicPrivateProfile)).toBe(false)
   })
@@ -224,7 +222,7 @@ maybe('Phase 12 visibility matrix', () => {
 
   it('WYWT rail: stranger does NOT see followed-by-V followers wear (rail self+followed only)', async () => {
     // S follows nobody, so S's rail should not contain Of's tile even if
-    // Of has a visibility='followers' wear with wornPublic=true on profileSettings.
+    // Of has a visibility='followers' wear; the follow-relationship gate excludes S.
     const { tiles } = await getWearRailForViewer(ids.S)
     expect(tiles.some((t) => t.userId === ids.Of)).toBe(false)
   })
@@ -308,23 +306,4 @@ maybe('Phase 12 visibility matrix', () => {
     }
   })
 
-  // ===========================================================================
-  // WYWT-11 COLUMN DROP — final cell; EXPECTED TO FAIL until Plan 06 lands
-  // ===========================================================================
-
-  it('WYWT-11: profile_settings.worn_public column dropped post-migration', async () => {
-    // This test queries information_schema to verify the worn_public column was
-    // dropped. It FAILS until Plan 06 runs the DROP COLUMN migration — that is
-    // the design. The red state here is intentional.
-    const result = await db.execute(sql`
-      SELECT column_name FROM information_schema.columns
-      WHERE table_schema='public'
-        AND table_name='profile_settings'
-        AND column_name='worn_public'
-    `)
-    // Drizzle's postgres driver returns rows directly as an array (not wrapped in
-    // { rows }). Expect zero rows after Plan 06 drops the column.
-    const rows = result as unknown as Array<{ column_name: string }>
-    expect(rows.length).toBe(0)
-  })
 })
