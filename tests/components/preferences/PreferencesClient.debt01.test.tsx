@@ -101,10 +101,13 @@ describe('PreferencesClient — DEBT-01 regression lock (Phase 14 D-25)', () => 
     const trigger = findFirstPrefCheckbox()
     fireEvent.click(trigger)
 
+    // Phase 25 / UX-06 (D-16/D-17): error banner now renders via the shared
+    // <FormStatusBanner> component driven by useFormFeedback. The banner has
+    // role="alert" and contains the bare error message (the hook surfaces
+    // result.error verbatim — no "Couldn't save preferences:" prefix).
     await waitFor(() => {
       const alert = screen.getByRole('alert')
       expect(alert).toBeInTheDocument()
-      expect(alert.textContent).toContain("Couldn't save preferences")
       expect(alert.textContent).toContain('Database unavailable')
     })
   })
@@ -117,6 +120,10 @@ describe('PreferencesClient — DEBT-01 regression lock (Phase 14 D-25)', () => 
     render(<PreferencesClient preferences={basePrefs} />)
     fireEvent.click(findFirstPrefCheckbox())
 
+    // Phase 25 / UX-06: <FormStatusBanner state="error"> renders
+    // border-l-destructive + text-destructive (per UI-SPEC §FormStatusBanner
+    // Component Contract). DEBT-01's destructive-styling lock continues to
+    // hold via the new component path.
     await waitFor(() => {
       const alert = screen.getByRole('alert')
       expect(alert.className).toContain('text-destructive')
@@ -135,20 +142,28 @@ describe('PreferencesClient — DEBT-01 regression lock (Phase 14 D-25)', () => 
     // an element that has never been inserted (avoids false-positive
     // passes on unrelated test timing).
     await new Promise((resolve) => setTimeout(resolve, 0))
+    // Phase 25: success path renders <FormStatusBanner state="success"> with
+    // role="status" — NOT role="alert". The DEBT-01 lock that no
+    // role="alert" element appears on success continues to hold.
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('rendered JSX contains aria-live="polite" for Saving hint (structural lock)', () => {
-    render(<PreferencesClient preferences={basePrefs} />)
-    // The aria-live element only appears while isSaving=true, but we can
-    // assert the JSX template still includes it by reading the source
-    // file. This guards against a refactor that deletes the attribute.
+  it('renders the shared <FormStatusBanner> primitive (Phase 25 hybrid pattern lock)', () => {
+    // DEBT-01's original "rendered JSX contains aria-live=polite" lock was a
+    // structural guard against refactors that delete the polite-live caption.
+    // Phase 25 / UX-06 (D-17) generalizes that caption into the shared
+    // FormStatusBanner + useFormFeedback hook, so the structural assertion
+    // moves: PreferencesClient must still IMPORT and RENDER FormStatusBanner.
+    // The banner's own implementation (src/components/ui/FormStatusBanner.tsx)
+    // owns the aria-live="polite" attribute and is regression-locked by
+    // src/lib/hooks/useFormFeedback.test.tsx Test 5.
     const fs = require('node:fs')
     const source = fs.readFileSync(
       'src/components/preferences/PreferencesClient.tsx',
       'utf8',
     )
-    expect(source).toContain('aria-live="polite"')
-    expect(source).toContain('Saving')
+    expect(source).toContain("from '@/components/ui/FormStatusBanner'")
+    expect(source).toContain('<FormStatusBanner')
+    expect(source).toContain('useFormFeedback')
   })
 })
