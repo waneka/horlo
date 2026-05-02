@@ -128,8 +128,8 @@ Empty states across the app, form feedback consistency, contextual error messagi
 
 Carryover from v3.0 — celebration moment after logging a wear. After both upload AND server action resolve, route to `/wear/[id]`.
 
-- [ ] **WYWT-20**: After a successful WYWT post submission, the dialog closes and the user is auto-navigated to `/wear/{wearEventId}` (router.push fires after BOTH `uploadResult` AND `logWearWithPhoto` resolve, inside the `useTransition` callback)
-- [ ] **WYWT-21**: `/wear/[wearEventId]` page wraps the photo render in `<Suspense fallback={<PhotoSkeleton />}>` to cover the 200–800ms storage-CDN propagation window before the signed URL is reachable
+- [x] **WYWT-20**: After a successful WYWT post submission, the dialog closes and the user is auto-navigated to `/wear/{wearEventId}` (router.push fires after BOTH `uploadResult` AND `logWearWithPhoto` resolve, inside the `useTransition` callback)
+- [x] **WYWT-21**: `/wear/[wearEventId]` page wraps the photo render in `<Suspense fallback={<PhotoSkeleton />}>` to cover the 200–800ms storage-CDN propagation window before the signed URL is reachable
 
 ### Cleanup (Notification Stubs + Test Fixtures)
 
@@ -280,8 +280,8 @@ Which phases cover which requirements. Populated by the roadmapper on 2026-04-26
 | UX-06 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
 | UX-07 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
 | UX-08 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| WYWT-20 | Phase 26 — WYWT Auto-Nav | Pending |
-| WYWT-21 | Phase 26 — WYWT Auto-Nav | Pending |
+| WYWT-20 | Phase 26 — WYWT Auto-Nav | Complete (2026-05-02) |
+| WYWT-21 | Phase 26 — WYWT Auto-Nav | Complete (2026-05-02) |
 
 **Coverage:**
 - v4.0 requirements: 76 enumerated (CAT 12 + DISC 6 + SRCH 7 + FIT 4 + ADD 7 + SET 12 + SMTP 6 + FEAT 2 + NAV 3 + UX 8 + WYWT 2 + DEBT 4 + TEST 3 = 76)
