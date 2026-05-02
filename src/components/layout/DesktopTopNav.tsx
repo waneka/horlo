@@ -16,6 +16,8 @@ interface DesktopTopNavProps {
   ownedWatches: Watch[]
   /** Pre-resolved NotificationBell element (shared by reference with SlimTopNav). */
   bell: React.ReactNode
+  /** Server-loaded avatar URL (Phase 25 NAV-13 — threaded through to UserMenu). */
+  avatarUrl: string | null
 }
 
 /**
@@ -42,6 +44,7 @@ export function DesktopTopNav({
   username,
   ownedWatches,
   bell,
+  avatarUrl,
 }: DesktopTopNavProps) {
   const pathname = usePathname() ?? ''
   if (isPublicPath(pathname)) return null
@@ -100,7 +103,7 @@ export function DesktopTopNav({
               {bell}
             </>
           )}
-          <UserMenu user={user} username={username} />
+          <UserMenu user={user} username={username} avatarUrl={avatarUrl} />
         </div>
       </div>
     </header>

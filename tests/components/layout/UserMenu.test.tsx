@@ -45,7 +45,7 @@ vi.mock('@/components/layout/InlineThemeSegmented', () => ({
 
 describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
   it('Test 1 — when user is null, renders a /login link with "Sign in"', () => {
-    render(<UserMenu user={null} username={null} />)
+    render(<UserMenu user={null} username={null} avatarUrl={null} />)
     const signIn = screen.getByRole('link', { name: /sign in/i })
     expect(signIn.getAttribute('href')).toBe('/login')
     expect(screen.getByText(/sign in/i)).toBeInTheDocument()
@@ -56,6 +56,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     expect(screen.getByRole('button', { name: 'AL' })).toBeInTheDocument()
@@ -66,6 +67,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     const content = screen.getByTestId('dropdown-content')
@@ -87,6 +89,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     const profile = screen.getByRole('link', { name: /profile/i })
@@ -98,6 +101,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     const settings = screen.getByRole('link', { name: /settings/i })
@@ -109,6 +113,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     expect(screen.getByText('Theme')).toBeInTheDocument()
@@ -119,6 +124,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     expect(screen.getByTestId('inline-theme')).toBeInTheDocument()
@@ -129,6 +135,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username="alice"
+        avatarUrl={null}
       />,
     )
     const signOut = screen.getByRole('button', { name: 'Sign out' })
@@ -144,6 +151,7 @@ describe('UserMenu (Phase 14 NAV-08 D-17)', () => {
       <UserMenu
         user={{ id: 'u1', email: 'alice@example.com' }}
         username={null}
+        avatarUrl={null}
       />,
     )
     expect(screen.queryByRole('link', { name: /profile/i })).toBeNull()

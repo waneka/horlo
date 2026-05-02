@@ -15,9 +15,11 @@ import { InlineThemeSegmented } from '@/components/layout/InlineThemeSegmented'
 export function UserMenu({
   user,
   username,
+  avatarUrl: _avatarUrl,
 }: {
   user: { id: string; email: string } | null
   username: string | null
+  avatarUrl: string | null
 }) {
   if (!user) {
     return (
