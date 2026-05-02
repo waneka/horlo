@@ -91,6 +91,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -133,6 +135,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -179,6 +183,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -212,6 +218,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -232,6 +240,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogId="cat-deep"
         initialIntent="owned"
         initialCatalogPrefill={{ brand: 'Rolex', model: 'Submariner' }}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -284,6 +294,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -328,6 +340,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -372,6 +386,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
     fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
@@ -411,6 +427,8 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 
@@ -449,6 +467,8 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
         initialCatalogId={null}
         initialIntent={null}
         initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
       />,
     )
 

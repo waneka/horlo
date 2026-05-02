@@ -35,6 +35,11 @@ interface WatchFormProps {
    *  and rendered as a read-only chip (no Select). The verdict step's
    *  3-button decision IS the status decision in this flow. */
   lockedStatus?: WatchStatus
+  /** Phase 25 D-05: when set (and `lockedStatus` is NOT set), this value
+   *  seeds the initial status field but the user can still change it.
+   *  Used by the manual-entry path coming from `/watch/new?status=wishlist`
+   *  so the form opens pre-set to wishlist. */
+  defaultStatus?: WatchStatus
 }
 
 type FormData = Omit<Watch, 'id'>
@@ -67,7 +72,7 @@ const initialFormData: FormData = {
   imageUrl: '',
 }
 
-export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
+export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -84,7 +89,7 @@ export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
           brand: watch.brand,
           model: watch.model,
           reference: watch.reference ?? '',
-          status: lockedStatus ?? watch.status,
+          status: lockedStatus ?? defaultStatus ?? watch.status,
           pricePaid: watch.pricePaid,
           targetPrice: watch.targetPrice,
           marketPrice: watch.marketPrice,
@@ -107,7 +112,10 @@ export function WatchForm({ watch, mode, lockedStatus }: WatchFormProps) {
           notesPublic: watch.notesPublic ?? true,         // Phase 23 D-13 — defensive ?? true defends legacy rows
           imageUrl: watch.imageUrl ?? '',
         }
-      : { ...initialFormData, status: lockedStatus ?? initialFormData.status }
+      : {
+          ...initialFormData,
+          status: lockedStatus ?? defaultStatus ?? initialFormData.status,
+        }
   )
 
   const [errors, setErrors] = useState<Record<string, string>>({})

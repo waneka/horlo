@@ -25,7 +25,15 @@ import type { MovementType, CrystalType } from '@/lib/types'
  * canonical async access pattern.
  */
 interface NewWatchPageProps {
-  searchParams: Promise<{ catalogId?: string; intent?: string }>
+  searchParams: Promise<{
+    catalogId?: string
+    intent?: string
+    /** Phase 25 D-09: literal-match whitelisted to '1'; skips paste in AddWatchFlow. */
+    manual?: string
+    /** Phase 25 D-05: literal-match whitelisted to 'wishlist'; presets the
+     *  manual-entry WatchForm's status field (still user-editable). */
+    status?: string
+  }>
 }
 
 export default async function NewWatchPage({ searchParams }: NewWatchPageProps) {
@@ -43,6 +51,13 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
 
   // Whitelist intent (Security T-20.1-04-01): only literal 'owned' is allowed.
   const initialIntent: 'owned' | null = sp.intent === 'owned' ? 'owned' : null
+
+  // Phase 25 T-25-05-01 mitigation: literal-match whitelist for `manual` and
+  // `status`. Both flow into AddWatchFlow as local FlowState only — NEVER used
+  // to construct a URL. Defense-in-depth: server whitelist + client typing both
+  // reject anything else.
+  const initialManual: boolean = sp.manual === '1'
+  const initialStatus: 'wishlist' | null = sp.status === 'wishlist' ? 'wishlist' : null
 
   // Validate catalogId is a UUID-shaped string before fetching (defense-in-depth
   // for T-20.1-04-02 — getCatalogById uses Drizzle parameterized queries so SQL
@@ -69,6 +84,8 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         initialCatalogId={catalogId}
         initialIntent={initialIntent}
         initialCatalogPrefill={catalogPrefill}
+        initialManual={initialManual}
+        initialStatus={initialStatus}
       />
     </div>
   )
