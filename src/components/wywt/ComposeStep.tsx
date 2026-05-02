@@ -7,7 +7,7 @@ import {
   useState,
   useTransition,
 } from 'react'
-import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -63,9 +63,9 @@ import type { WearVisibility } from '@/lib/wearVisibility'
  *      removed — Pitfall 5 (uniform EXIF strip on all paths) is satisfied
  *      upstream since BOTH entry points pipe through stripAndResize.
  *   2. logWearWithPhoto({wearEventId, watchId, note, visibility, hasPhoto}) →
- *      Plan 03a Server Action. On success → toast.success('Wear logged')
- *      (Plan 02 Toaster) → onSubmitted() to close the dialog. On failure →
- *      inline role="alert" with the exact server error string; no toast.
+ *      Plan 03a Server Action. On success → router.push(`/wear/${wearEventId}`)
+ *      (Phase 26 D-04) → dialog closes. On failure →
+ *      inline role="alert" with the exact server error string.
  *
  * Pitfall 1 (iOS gesture rule, threat T-15-01): getUserMedia is the FIRST
  * await in handleTapCamera / handleRetake. No setState / prop access / fetch
@@ -102,6 +102,7 @@ export function ComposeStep({
   onSubmitted: () => void
 }) {
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [photoSource, setPhotoSource] = useState<'camera' | 'upload' | null>(
@@ -268,9 +269,12 @@ export function ComposeStep({
           setError(result.error)
           return
         }
-        // H-2: toast fires from Client Component only. Plan 03a Server
-        // Action does NOT import sonner.
-        toast.success('Wear logged')
+        // D-04 (Phase 26): standard router.push so browser back returns
+        // to the trigger page. D-07 ordering is LOCKED — both awaits
+        // (uploadWearPhoto + logWearWithPhoto) must succeed before this
+        // fires; otherwise the user lands on /wear/{id} before the row
+        // exists and sees a 404.
+        router.push(`/wear/${wearEventId}`)
         onSubmitted()
       } catch (err) {
         console.error('[ComposeStep] submit error:', err)
