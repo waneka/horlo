@@ -2,21 +2,32 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, Settings } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { isPublicPath } from '@/lib/constants/public-paths'
+import { UserMenu } from '@/components/layout/UserMenu'
 
 interface SlimTopNavProps {
   /** Whether viewer is authenticated — controls bell rendering */
   hasUser: boolean
   /** Pre-resolved NotificationBell Server Component element (or null when !hasUser) */
   bell: React.ReactNode
+  /** Authenticated user (or null on public surfaces) — passed to UserMenu */
+  user: { id: string; email: string } | null
+  /** Viewer username (or null when unset) — drives the avatar Link href in UserMenu */
+  username: string | null
+  /** Server-loaded avatar URL (Phase 25 NAV-15 — rendered by UserMenu's AvatarDisplay) */
+  avatarUrl: string | null
 }
 
 /**
  * SlimTopNav — mobile top chrome (<768px) per CONTEXT.md D-11.
  *
  * Composition (left → right):
- *   Horlo wordmark · Search icon · NotificationBell · Settings cog
+ *   Horlo wordmark · Search icon · NotificationBell · UserMenu (avatar+chevron)
+ *
+ * Phase 25 (NAV-15 / D-03): the legacy Settings cog at the right edge is replaced
+ * with the same `<UserMenu>` dual-affordance used by DesktopTopNav. Settings is
+ * still reachable via the dropdown's Settings item — no functional loss.
  *
  * The `bell` prop is pre-constructed upstream in Header.tsx so that one
  * NotificationBell React element is shared by reference between SlimTopNav
@@ -26,7 +37,13 @@ interface SlimTopNavProps {
  * Gated by `isPublicPath(pathname)` — returns null on /login, /signup, etc.
  * to prevent leaking authenticated nav chrome (T-14-04-01).
  */
-export function SlimTopNav({ hasUser, bell }: SlimTopNavProps) {
+export function SlimTopNav({
+  hasUser,
+  bell,
+  user,
+  username,
+  avatarUrl,
+}: SlimTopNavProps) {
   const pathname = usePathname() ?? ''
   if (isPublicPath(pathname)) return null
 
@@ -45,13 +62,7 @@ export function SlimTopNav({ hasUser, bell }: SlimTopNavProps) {
             <Search className="h-5 w-5" aria-hidden />
           </Link>
           {hasUser && bell}
-          <Link
-            href="/settings"
-            aria-label="Settings"
-            className="inline-flex h-11 w-11 items-center justify-center"
-          >
-            <Settings className="h-5 w-5" aria-hidden />
-          </Link>
+          <UserMenu user={user} username={username} avatarUrl={avatarUrl} />
         </div>
       </div>
     </header>

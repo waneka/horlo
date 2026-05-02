@@ -28,6 +28,7 @@ function userProps(extra: Record<string, unknown> = {}) {
     username: 'alice',
     ownedWatches: [] as never[],
     bell: bellStub,
+    avatarUrl: null,
     ...extra,
   }
 }
@@ -88,6 +89,7 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
         username={null}
         ownedWatches={[]}
         bell={bellStub}
+        avatarUrl={null}
       />,
     )
     expect(screen.queryByTestId('bell')).toBeNull()
@@ -100,6 +102,7 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
         username={null}
         ownedWatches={[]}
         bell={bellStub}
+        avatarUrl={null}
       />,
     )
     expect(screen.queryByTestId('nav-wear')).toBeNull()

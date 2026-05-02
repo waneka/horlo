@@ -31,6 +31,7 @@ export async function Header() {
   }
 
   let username: string | null = null
+  let avatarUrl: string | null = null
   let ownedWatches: Watch[] = []
   if (user) {
     try {
@@ -39,6 +40,7 @@ export async function Header() {
         getWatchesByUser(user.id),
       ])
       username = profile?.username ?? null
+      avatarUrl = profile?.avatarUrl ?? null
       ownedWatches = watches.filter((w) => w.status === 'owned')
     } catch (err) {
       console.error('[Header] failed to resolve user data:', err)
@@ -56,12 +58,19 @@ export async function Header() {
 
   return (
     <>
-      <SlimTopNav hasUser={!!user} bell={bell} />
+      <SlimTopNav
+        hasUser={!!user}
+        bell={bell}
+        user={user}
+        username={username}
+        avatarUrl={avatarUrl}
+      />
       <DesktopTopNav
         user={user}
         username={username}
         ownedWatches={ownedWatches}
         bell={bell}
+        avatarUrl={avatarUrl}
       />
     </>
   )
