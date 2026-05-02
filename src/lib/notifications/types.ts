@@ -2,8 +2,8 @@
  * Notification payload types — discriminated union over notification_type.
  *
  * Shapes locked by CONTEXT.md D-20 (stub copy) + <specifics> §"payload jsonb shape".
- * Phase 13 only WRITES follow and watch_overlap; price_drop and trending are rendered
- * (NotificationRow handles all 4 types) but their write-paths live in future phases.
+ * Phase 13 writes follow and watch_overlap only.
+ * Phase 24 (DEBT-05): PriceDropPayload and TrendingPayload removed — stubs deleted.
  */
 
 export interface FollowPayload {
@@ -21,18 +21,4 @@ export interface WatchOverlapPayload {
   watch_model_normalized: string // LOWER(TRIM(model))
 }
 
-export interface PriceDropPayload {
-  watchModel: string
-  newPrice: string
-}
-
-export interface TrendingPayload {
-  watchModel: string
-  actorCount: number
-}
-
-export type NotificationPayload =
-  | FollowPayload
-  | WatchOverlapPayload
-  | PriceDropPayload
-  | TrendingPayload
+export type NotificationPayload = FollowPayload | WatchOverlapPayload

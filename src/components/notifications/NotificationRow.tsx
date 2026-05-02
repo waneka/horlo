@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
  */
 export interface NotificationRowData {
   id: string
-  type: 'follow' | 'watch_overlap' | 'price_drop' | 'trending_collector'
+  type: 'follow' | 'watch_overlap'
   payload: Record<string, unknown>
   readAt: Date | null
   createdAt: Date | string
@@ -47,12 +47,7 @@ export function NotificationRow({ row }: NotificationRowProps) {
 
   // B-8: unknown types render null — silent no-op, never a broken card.
   // AFTER hooks so Rules of Hooks are honored.
-  if (
-    row.type !== 'follow' &&
-    row.type !== 'watch_overlap' &&
-    row.type !== 'price_drop' &&
-    row.type !== 'trending_collector'
-  ) {
+  if (row.type !== 'follow' && row.type !== 'watch_overlap') {
     return null
   }
 
@@ -65,15 +60,10 @@ export function NotificationRow({ row }: NotificationRowProps) {
   const href = resolveHref(row)
   const copy = resolveCopy(row, actorName, actorCount, isUnread)
 
-  // Stub types (price_drop, trending_collector) have no real DB row to mark read
-  // per D-19/D-20 (Phase 13 never inserts these). They still render and still
-  // navigate (to '#') but skip the SA call.
-  const isStubType = row.type === 'price_drop' || row.type === 'trending_collector'
-
   function activate() {
     if (pending) return
     startTransition(async () => {
-      if (isUnread && !isStubType) {
+      if (isUnread) {
         setOptimisticReadAt(new Date())
         // Fire-and-await the SA but do NOT block navigation on failure —
         // router.push runs regardless. If the SA fails the next render of
@@ -135,9 +125,9 @@ function resolveHref(row: NotificationRowData): string {
     const watchId = p.watch_id ?? ''
     return `/u/${username}?focusWatch=${watchId}`
   }
-  // Stub types (price_drop, trending_collector): UI-SPEC says "TBD" — route to #
-  // so rows render but click is a safe no-op until wiring phase ships.
-  return '#'
+  // Exhaustive: type is 'follow' or 'watch_overlap'; both handled above.
+  const _exhaustive: never = row.type
+  throw new Error(`Unhandled notification type in resolveHref: ${String(_exhaustive)}`)
 }
 
 function resolveCopy(
@@ -180,34 +170,7 @@ function resolveCopy(
     )
   }
 
-  if (row.type === 'price_drop') {
-    const p = row.payload as { watchModel?: string; newPrice?: string }
-    return (
-      <>
-        <span>Your </span>
-        <span className="font-semibold text-foreground">
-          {p.watchModel ?? 'watch'}
-        </span>
-        <span> wishlist watch dropped to </span>
-        <span className="font-semibold text-foreground">
-          {p.newPrice ?? '—'}
-        </span>
-      </>
-    )
-  }
-
-  // trending_collector
-  const p = row.payload as { watchModel?: string; actorCount?: number }
-  return (
-    <>
-      <span className="font-semibold text-foreground">
-        {p.actorCount ?? 0} collectors
-      </span>
-      <span> in your taste cluster added a </span>
-      <span className="font-semibold text-foreground">
-        {p.watchModel ?? 'watch'}
-      </span>
-      <span> this week</span>
-    </>
-  )
+  // Exhaustive: type is 'follow' or 'watch_overlap'; both handled above.
+  const _exhaustive: never = row.type
+  throw new Error(`Unhandled notification type in resolveCopy: ${String(_exhaustive)}`)
 }

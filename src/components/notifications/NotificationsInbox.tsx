@@ -68,7 +68,7 @@ export function NotificationsInbox({ rows, now = new Date() }: NotificationsInbo
  * (brand_normalized, model_normalized, calendar day). The most-recent row
  * wins for actor display (avatar + name); actor_count is the group size.
  *
- * Non-overlap rows (follow, price_drop, trending) pass through unchanged.
+ * Non-overlap rows (follow) pass through unchanged.
  *
  * Pitfall 7: rows are already viewer-scoped by DAL WHERE user_id = viewerId,
  * so the group key does NOT need recipientUserId.

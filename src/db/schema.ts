@@ -26,14 +26,11 @@ export const wearVisibilityEnum = pgEnum('wear_visibility', [
 ])
 
 // ----- Phase 11: notification_type enum (NOTIF-01, D-09) -----
-// All four values defined upfront even though `price_drop` and `trending_collector`
-// have no write-path in v3.0 (they're stubs per NOTIF-07). Pre-populating avoids
-// ALTER TYPE ADD VALUE in a later phase (non-transactional on Postgres).
+// Narrowed to 2 values in Phase 24 (DEBT-05) after prod migration applied.
+// Stub values with no write-path removed (see Phase 24 migration for history).
 export const notificationTypeEnum = pgEnum('notification_type', [
   'follow',
   'watch_overlap',
-  'price_drop',
-  'trending_collector',
 ])
 
 // Shadow users table for FK integrity.
