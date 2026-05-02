@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
 status: executing
-stopped_at: Phase 25 context gathered
+stopped_at: Phase 25 UI-SPEC approved
 last_updated: "2026-05-02T00:00:00.000Z"
-last_activity: 2026-05-02 -- Phase 25 context gathered (4 areas discussed, 21 decisions captured); ready to plan
+last_activity: 2026-05-02 -- Phase 25 UI-SPEC approved (6/6 dimensions PASS, all 21 CONTEXT decisions encoded); ready to plan
 progress:
   total_phases: 12
   completed_phases: 9
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 25 — Profile Nav Prominence + Empty States + Form Polish (ready to plan)
+**Current focus:** Phase 25 — Profile Nav Prominence + Empty States + Form Polish (UI-SPEC approved; ready to plan)
 
 ## Current Position
 
-Phase: 25 (Profile Nav Prominence + Empty States + Form Polish) — CONTEXT GATHERED
+Phase: 25 (Profile Nav Prominence + Empty States + Form Polish) — UI-SPEC APPROVED
 Plan: 0 of TBD
-Status: Phase 25 context complete (21 decisions across 4 areas); ready to plan
-Last activity: 2026-05-02 -- Phase 25 context gathered (avatar dual-affordance, empty-state CTAs, URL-extract error taxonomy, form feedback hybrid)
+Status: Phase 25 UI-SPEC approved (6/6 dimensions PASS, 21 CONTEXT decisions encoded); ready to plan
+Last activity: 2026-05-02 -- Phase 25 UI-SPEC verified (avatar dual-affordance geometry, 4-tab empty-state CTAs, ExtractErrorCard category contract, FormStatusBanner+useFormFeedback hybrid)
 
 ## Progress Bar
 
