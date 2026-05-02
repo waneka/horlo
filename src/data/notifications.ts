@@ -13,7 +13,7 @@ export interface NotificationRow {
   id: string
   userId: string
   actorId: string | null
-  type: 'follow' | 'watch_overlap' | 'price_drop' | 'trending_collector'
+  type: 'follow' | 'watch_overlap'
   payload: Record<string, unknown>
   readAt: Date | null
   createdAt: Date

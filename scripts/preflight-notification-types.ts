@@ -7,10 +7,8 @@
  * type value outside the new whitelist {follow, watch_overlap}.
  *
  * Whitelist phrasing (D-01 reconciled per 24-RESEARCH.md A6): the predicate is
- * `type::text NOT IN ('follow','watch_overlap')` rather than the original
- * blacklist `IN ('price_drop','trending_collector')`. Same coverage for the
- * known stub values, PLUS catches any unexpected/corrupt values that may have
- * slipped in (Pitfall 2).
+ * `type::text NOT IN ('follow','watch_overlap')` — whitelist over blacklist —
+ * so any unexpected/corrupt values are also caught (Pitfall 2).
  *
  * Defense-in-depth: this script is layer 1 (CI-time gate). The migration's
  * in-migration `DO $$ ... RAISE EXCEPTION` block (plan 24-02) is layer 2 (last

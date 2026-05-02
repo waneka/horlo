@@ -159,44 +159,6 @@ describe('NotificationRow', () => {
     })
   })
 
-  describe('price_drop type', () => {
-    it('renders price drop stub copy', () => {
-      const { container } = render(
-        <NotificationRow
-          row={makeRow({
-            type: 'price_drop',
-            payload: { watchModel: 'Aqua Terra', newPrice: '$4,200' },
-            actorUsername: null,
-            actorDisplayName: null,
-          })}
-        />,
-      )
-      const text = getNotifCopyText(container)
-      expect(text).toContain('Aqua Terra')
-      expect(text).toContain('wishlist watch dropped to')
-      expect(text).toContain('$4,200')
-    })
-  })
-
-  describe('trending_collector type', () => {
-    it('renders trending stub copy', () => {
-      const { container } = render(
-        <NotificationRow
-          row={makeRow({
-            type: 'trending_collector',
-            payload: { watchModel: 'Datejust', actorCount: 5 },
-            actorUsername: null,
-            actorDisplayName: null,
-          })}
-        />,
-      )
-      const text = getNotifCopyText(container)
-      expect(text).toContain('5 collectors')
-      expect(text).toContain('in your taste cluster added a')
-      expect(text).toContain('Datejust')
-    })
-  })
-
   describe('unknown type (B-8 guard)', () => {
     it('renders null for unknown type', () => {
       const { container } = render(
@@ -324,20 +286,5 @@ describe('NotificationRow', () => {
       expect(mockPush).toHaveBeenCalled()
     })
 
-    it('price_drop row click does NOT call markNotificationRead (stub type)', async () => {
-      const row = makeRow({
-        type: 'price_drop',
-        readAt: null,
-        id: 'abc-6',
-        payload: { watchModel: 'Speedmaster', newPrice: '$5,000' },
-      })
-      render(<NotificationRow row={row} />)
-      const link = screen.getByRole('link', { name: /notification/i })
-      await act(async () => {
-        fireEvent.click(link)
-      })
-      expect(markNotificationRead).not.toHaveBeenCalled()
-      // Navigation still happens (to '#'); that's fine.
-    })
   })
 })
