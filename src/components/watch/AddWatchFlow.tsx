@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -9,9 +9,8 @@ import { VerdictStep } from './VerdictStep'
 import { WishlistRationalePanel } from './WishlistRationalePanel'
 import { RecentlyEvaluatedRail } from './RecentlyEvaluatedRail'
 import { WatchForm } from './WatchForm'
+import { ExtractErrorCard, type ExtractErrorCategory } from './ExtractErrorCard'
 import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
 import { getVerdictForCatalogWatch } from '@/app/actions/verdict'
 import { addWatch } from '@/app/actions/watches'
@@ -140,10 +139,16 @@ export function AddWatchFlow({
       })
       const data = await res.json()
       if (!res.ok) {
+        // Phase 25 Plan 04 (UX-05 / D-11..D-15): server emits category as part
+        // of the error response. Defensive fallback to 'generic-network' per
+        // T-25-04-03 (handles unexpected server shapes / future build skew).
+        const category: ExtractErrorCategory =
+          (data?.category as ExtractErrorCategory | undefined) ?? 'generic-network'
         setState({
           kind: 'extraction-failed',
           partial: null,
           reason: data?.error ?? 'Extraction failed',
+          category,
         })
         return
       }
@@ -199,7 +204,14 @@ export function AddWatchFlow({
       const reason = err instanceof Error
         ? err.message
         : String(err).replace(/^Error:\s*/i, '')
-      setState({ kind: 'extraction-failed', partial: null, reason })
+      // Phase 25 Plan 04: client-side thrown errors (network unreachable,
+      // fetch failure, JSON parse failure) all map to generic-network.
+      setState({
+        kind: 'extraction-failed',
+        partial: null,
+        reason,
+        category: 'generic-network',
+      })
     }
   }
 
@@ -295,20 +307,33 @@ export function AddWatchFlow({
     })
   }
 
-  // -- Manual entry (D-03) + extraction-failed continue --
+  // -- Manual entry (D-03) — kept as-is for PasteSection's "or enter manually"
+  // link (in-flow transition; user can change their mind without leaving the
+  // page). The post-failure in-flow manual transition is gone in Phase 25
+  // Plan 04: ExtractErrorCard's "Add manually" CTA navigates to
+  // /watch/new?manual=1 instead (per D-14 LITERAL).
   const handleManualEntry = () => {
     setState({ kind: 'manual-entry', partial: null })
-  }
-
-  const handleContinueManually = () => {
-    if (state.kind !== 'extraction-failed') return
-    setState({ kind: 'manual-entry', partial: state.partial })
   }
 
   const handleStartOver = () => {
     setUrl('')
     setState({ kind: 'idle' })
   }
+
+  // -- Phase 25 Plan 04 (UX-05 / D-14): stable callbacks for ExtractErrorCard.
+  // T-25-04-04 mitigation: useCallback prevents identity churn that could
+  // otherwise drive effect-loops in any future consumer that observes the
+  // props. retryAction reuses handleStartOver semantics (clear URL, idle);
+  // manualAction routes to /watch/new?manual=1 per D-14 LITERAL (matches the
+  // 25-05 Collection no-key fallback CTA semantics).
+  const retryAction = useCallback(() => {
+    setUrl('')
+    setState({ kind: 'idle' })
+  }, [])
+  const manualAction = useCallback(() => {
+    router.push('/watch/new?manual=1')
+  }, [router])
 
   // -- Rail click → re-open verdict from cache or stored entry --
   const handleRailSelect = (entry: RailEntry) => {
@@ -401,9 +426,11 @@ export function AddWatchFlow({
 
       {/* Manual-entry (D-03 + D-18): WatchForm without lockedStatus.
           UAT gap 4 fix (Plan 08): prepend a quiet "Cancel — paste a URL instead"
-          back affordance wired to the existing handleStartOver. Both ingress paths
-          (direct via PasteSection "or enter manually" + post-failure via
-          "Continue manually") share this exit.
+          back affordance wired to the existing handleStartOver. The direct
+          ingress path is PasteSection's "or enter manually" link; the post-
+          failure ingress is now via ExtractErrorCard's "Add manually" CTA
+          which routes to /watch/new?manual=1 (rather than transitioning
+          in-flow as the legacy fallback did).
           Phase 25 D-05: when initialStatus='wishlist' was threaded from
           `?status=wishlist`, pass it as `defaultStatus` (NOT `lockedStatus`)
           so the form opens pre-set to wishlist but the user can still change. */}
@@ -428,45 +455,19 @@ export function AddWatchFlow({
         </div>
       )}
 
-      {/* Extraction-failed (D-18): unified fallback */}
+      {/* Extraction-failed (Phase 25 Plan 04 — UX-05 / D-14):
+          <ExtractErrorCard> renders the locked D-15 recovery copy + locked
+          D-14 dual CTAs ("Add manually" / "Try a different URL"). The card
+          is mounted UNDER the visible PasteSection (above) so the URL input
+          stays editable in place per UI-SPEC §"Where it mounts inside
+          AddWatchFlow". */}
       {state.kind === 'extraction-failed' && (
-        <Card role="alert">
-          <CardHeader>
-            <CardTitle>Extraction didn&apos;t work</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Fill in manually using any details below.
-            </p>
-            {state.reason && (
-              <p className="text-xs text-destructive" role="status">
-                {state.reason}
-              </p>
-            )}
-            {state.partial && (
-              <div className="text-sm space-y-1">
-                {state.partial.brand && (
-                  <p>
-                    <span className="text-muted-foreground">Brand:</span> {state.partial.brand}
-                  </p>
-                )}
-                {state.partial.model && (
-                  <p>
-                    <span className="text-muted-foreground">Model:</span> {state.partial.model}
-                  </p>
-                )}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button type="button" onClick={handleContinueManually}>
-                Continue manually
-              </Button>
-              <Button type="button" variant="outline" onClick={handleStartOver}>
-                Try another URL
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ExtractErrorCard
+          category={state.category}
+          message={state.reason}
+          retryAction={retryAction}
+          manualAction={manualAction}
+        />
       )}
 
       {/* Rail visible in idle / extracting / verdict-ready / extraction-failed

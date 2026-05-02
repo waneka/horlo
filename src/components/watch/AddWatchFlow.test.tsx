@@ -237,15 +237,17 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
 
     // ExtractErrorCard renders inside an alert region with the locked
     // generic-network heading + body (D-15) + the locked dual CTAs (D-14).
+    // The dev-only `message` prop may also render the same body string in a
+    // tertiary <p>, so use getAllByText for the body assertion.
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(
       screen.getByText("Couldn't reach that URL", { selector: 'p' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(
+      screen.getAllByText(
         "Couldn't reach that URL. Check the link and try again.",
-      ),
-    ).toBeInTheDocument()
+      ).length,
+    ).toBeGreaterThanOrEqual(1)
     expect(
       screen.getByRole('button', { name: /Add manually/i }),
     ).toBeInTheDocument()
@@ -322,11 +324,13 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
     expect(
       await screen.findByText('This site blocks data extraction'),
     ).toBeInTheDocument()
+    // dev-only `message` prop may render the same body string a second time;
+    // assert at-least-one match instead of exactly-one.
     expect(
-      screen.getByText(
+      screen.getAllByText(
         "This site doesn't allow data extraction. Try entering manually.",
-      ),
-    ).toBeInTheDocument()
+      ).length,
+    ).toBeGreaterThanOrEqual(1)
   })
 
   it('Pitfall 1 deep-link prefill — initialCatalogId + initialIntent="owned" + initialCatalogPrefill goes straight to form-prefill', async () => {

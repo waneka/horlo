@@ -1,5 +1,6 @@
 import type { ExtractedWatchData } from '@/lib/extractors'
 import type { VerdictBundle } from '@/lib/verdict/types'
+import type { ExtractErrorCategory } from './ExtractErrorCard'
 
 /**
  * Phase 20.1 D-01: state machine over the add-watch flow.
@@ -22,7 +23,10 @@ export type FlowState =
   | { kind: 'submitting-collection'; catalogId: string; extracted: ExtractedWatchData }
   | { kind: 'form-prefill'; catalogId: string; extracted: ExtractedWatchData }
   | { kind: 'manual-entry'; partial?: ExtractedWatchData | null }
-  | { kind: 'extraction-failed'; partial: ExtractedWatchData | null; reason: string }
+  // Phase 25 Plan 04 (UX-05 / D-11..D-15): `category` carries the
+  // server-emitted (or client-derived) error category that drives the
+  // <ExtractErrorCard> render branch in AddWatchFlow.
+  | { kind: 'extraction-failed'; partial: ExtractedWatchData | null; reason: string; category: ExtractErrorCategory }
 
 /**
  * D-14: in-session "Recently evaluated" chip rail. Capped at 5 entries
