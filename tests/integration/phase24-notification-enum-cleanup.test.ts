@@ -49,4 +49,22 @@ maybe('Phase 24 — notification_type enum cleanup (DEBT-04)', () => {
     const count = (rows as unknown as Array<{ count: number }>)[0]?.count ?? 0
     expect(count).toBe(0)
   })
+
+  // Regression lock for T-24-PARTIDX. Phase 11 created a UNIQUE partial index
+  // `notifications_watch_overlap_dedup WHERE type = 'watch_overlap'`. When the
+  // enum is renamed during the rename+recreate dance, the index's predicate
+  // binds to the old type's OID and Postgres cannot rewrite the column. The
+  // migration must drop and recreate this index. If a future edit ever removes
+  // that dance, both the in-migration post-check and this test fire.
+  it('notifications_watch_overlap_dedup partial index exists and binds to the new enum', async () => {
+    const rows = await db.execute<{ indexdef: string }>(sql`
+      SELECT indexdef FROM pg_indexes
+       WHERE schemaname = 'public'
+         AND tablename = 'notifications'
+         AND indexname = 'notifications_watch_overlap_dedup'
+    `)
+    const def = (rows as unknown as Array<{ indexdef: string }>)[0]?.indexdef ?? ''
+    expect(def).toContain('UNIQUE INDEX')
+    expect(def).toMatch(/type = 'watch_overlap'::notification_type/)
+  })
 })

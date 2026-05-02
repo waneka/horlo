@@ -33,6 +33,28 @@ BEGIN
 END $$;
 
 -- =========================================================================
+-- DEPENDENT-INDEX SURGERY (T-24-PARTIDX)
+-- =========================================================================
+-- The Phase 11 migration (20260423000002_phase11_notifications.sql) created
+-- a UNIQUE partial index `notifications_watch_overlap_dedup` whose predicate
+-- references the enum literal `'watch_overlap'::notification_type`. Postgres
+-- binds the predicate to the type's OID at index creation. After step 1
+-- (RENAME), that predicate is now bound to `notification_type_old`, and the
+-- ALTER COLUMN TYPE in step 3 fails with `operator does not exist:
+-- notification_type = notification_type_old` because Postgres cannot
+-- re-evaluate the predicate against the new type during column rewrite.
+--
+-- Drop the index BEFORE the rename and recreate AFTER the type swap. This
+-- is safe because we are inside a single transaction holding AccessExclusive
+-- lock on `notifications` — no concurrent writes can race the dedup gap.
+--
+-- The index is defined ONLY in the Phase 11 supabase migration (not in
+-- src/db/schema.ts), which is why drizzle-kit-push-based local testing
+-- did not catch this. See `project_drizzle_supabase_db_mismatch.md` and
+-- the Footgun T-24-PARTIDX entry in docs/deploy-db-setup.md.
+DROP INDEX IF EXISTS public.notifications_watch_overlap_dedup;
+
+-- =========================================================================
 -- ENUM RENAME + RECREATE — atomic with the assertion above.
 -- =========================================================================
 
@@ -52,6 +74,19 @@ ALTER TABLE notifications
 
 -- 4. Drop the old type. No rows or columns reference it after step 3.
 DROP TYPE notification_type_old;
+
+-- 5. Recreate the partial index against the NEW enum type. Identical shape
+--    to the Phase 11 definition — same column tuple, same UTC-day bucket,
+--    same `WHERE type = 'watch_overlap'` predicate (now bound to the new
+--    `notification_type` OID).
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_watch_overlap_dedup
+  ON notifications (
+    user_id,
+    (payload->>'watch_brand_normalized'),
+    (payload->>'watch_model_normalized'),
+    ((created_at AT TIME ZONE 'UTC')::date)
+  )
+  WHERE type = 'watch_overlap';
 
 -- =========================================================================
 -- POST-MIGRATION ASSERTION — Phase 11 / Phase 13 precedent
@@ -79,6 +114,18 @@ BEGIN
        AND udt_name = 'notification_type'
   ) THEN
     RAISE EXCEPTION 'Phase 24 post-check: notifications.type column does not reference notification_type';
+  END IF;
+
+  -- Verify the partial dedup index was recreated and is bound to the new enum.
+  -- Without this check we'd silently lose dedup enforcement if step 5 was ever
+  -- removed in a future edit (T-24-PARTIDX defense in depth).
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+     WHERE schemaname = 'public'
+       AND tablename = 'notifications'
+       AND indexname = 'notifications_watch_overlap_dedup'
+  ) THEN
+    RAISE EXCEPTION 'Phase 24 post-check: notifications_watch_overlap_dedup partial index was not recreated';
   END IF;
 END $$;
 
