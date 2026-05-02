@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { savePreferences } from '@/app/actions/preferences'
+import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
+import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import {
   STYLE_TAGS,
   DESIGN_TRAITS,
@@ -47,24 +49,19 @@ export function PreferencesClient({
   // navigation — this local state only bridges the gap between input change
   // and server confirmation.
   const [preferences, setLocalPreferences] = useState<UserPreferences>(initialPreferences)
-  const [isSaving, startTransition] = useTransition()
-  const [saveError, setSaveError] = useState<string | null>(null)
+  // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17). Hook
+  // owns the transition; consumers MUST NOT keep their own (FG-8).
+  const { pending, state, message, run } = useFormFeedback()
 
   const updatePreferences = (patch: Partial<UserPreferences>) => {
     const next = { ...preferences, ...patch }
     setLocalPreferences(next)
-    setSaveError(null)
-    startTransition(async () => {
-      // Inspect the returned ActionResult so save failures are not silently swallowed (MR-01).
-      // We do NOT roll back the local optimistic update here — the Server Component's
-      // revalidatePath('/preferences') in savePreferences runs only on success, so the next
-      // navigation naturally reconciles local state with server truth. A visible error banner
-      // is enough to warn the user that their most recent edit did not persist.
-      const result = await savePreferences(patch)
-      if (!result.success) {
-        setSaveError(result.error)
-      }
-    })
+    // Inspect the returned ActionResult so save failures are not silently swallowed (MR-01).
+    // We do NOT roll back the local optimistic update here — the Server Component's
+    // revalidatePath('/preferences') in savePreferences runs only on success, so the next
+    // navigation naturally reconciles local state with server truth. The hook surfaces
+    // a Sonner toast + inline FormStatusBanner on either outcome (D-16/D-18).
+    run(() => savePreferences(patch), { successMessage: 'Preferences saved' })
   }
 
   const toggleArrayItem = (field: StringArrayKeys, item: string) => {
@@ -82,16 +79,13 @@ export function PreferencesClient({
 
   const inner = (
     <div className="space-y-8">
-        {saveError && (
-          <p role="alert" className="text-sm text-destructive">
-            Couldn&apos;t save preferences: {saveError}
-          </p>
-        )}
-        {isSaving && !saveError && (
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            Saving…
-          </p>
-        )}
+        {/* Phase 25 UX-06 — hybrid toast + aria-live banner (D-16/D-17). The
+            hook's `pending` is the canonical in-flight signal; resolved
+            success/error states flow through `state`. */}
+        <FormStatusBanner
+          state={pending ? 'pending' : state}
+          message={message ?? undefined}
+        />
         {/* Style Preferences */}
         <Card>
           <CardHeader>
