@@ -8,6 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton'
  */
 export function PhotoSkeleton() {
   return (
-    <Skeleton className="w-full aspect-[4/5] md:rounded-lg md:max-w-[600px] md:mx-auto" />
+    <Skeleton
+      role="status"
+      aria-label="Loading photo"
+      className="w-full aspect-[4/5] rounded-none md:rounded-lg md:max-w-[600px] md:mx-auto"
+    />
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { PhotoSkeleton } from './PhotoSkeleton'
 
@@ -50,6 +50,16 @@ export function WearPhotoClient({
 }) {
   const [status, setStatus] = useState<'pending' | 'loaded' | 'failed'>('pending')
   const [retryCount, setRetryCount] = useState(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current !== null) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = null
+      }
+    }
+  }, [])
 
   if (status === 'failed') {
     // Fall through to the parent's existing fallback chain.
@@ -99,7 +109,11 @@ export function WearPhotoClient({
             setStatus('failed')
             return
           }
-          setTimeout(() => {
+          if (retryTimerRef.current !== null) {
+            clearTimeout(retryTimerRef.current)
+          }
+          retryTimerRef.current = setTimeout(() => {
+            retryTimerRef.current = null
             setRetryCount((n) => n + 1)
           }, RETRY_DELAY_MS)
         }}
