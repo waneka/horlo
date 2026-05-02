@@ -205,11 +205,18 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
     expect(screen.getByText(/Omega Speedmaster/)).toBeInTheDocument()
   })
 
-  it('ADD-07 extraction-failed — failure preserves message and offers manual continuation', async () => {
+  it('ADD-07 / UX-05 extraction-failed — renders <ExtractErrorCard> with locked D-15 copy + locked CTAs', async () => {
+    // Phase 25 Plan 04: server now returns { success: false, error: <D-15>, category }
+    // and AddWatchFlow renders <ExtractErrorCard> instead of the legacy
+    // "Extraction didn't work" Card. Assert the new locked copy + locked CTAs.
     vi.mocked(global.fetch).mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({ error: 'Failed to extract watch data from URL.' }),
+      json: async () => ({
+        success: false,
+        error: "Couldn't reach that URL. Check the link and try again.",
+        category: 'generic-network',
+      }),
     } as Response)
 
     render(
@@ -228,9 +235,98 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
 
-    expect(await screen.findByText("Extraction didn't work")).toBeInTheDocument()
-    expect(screen.getByText('Continue manually')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    // ExtractErrorCard renders inside an alert region with the locked
+    // generic-network heading + body (D-15) + the locked dual CTAs (D-14).
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByText("Couldn't reach that URL", { selector: 'p' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "Couldn't reach that URL. Check the link and try again.",
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Add manually/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Try a different URL/i }),
+    ).toBeInTheDocument()
+    // The legacy "Extraction didn't work" / "Continue manually" / "Try
+    // another URL" surfaces are gone (replaced by ExtractErrorCard).
+    expect(screen.queryByText("Extraction didn't work")).not.toBeInTheDocument()
+    expect(screen.queryByText('Continue manually')).not.toBeInTheDocument()
+    expect(screen.queryByText('Try another URL')).not.toBeInTheDocument()
+  })
+
+  it('UX-05 extraction-failed — defaults to generic-network category when server omits the field (defensive fallback)', async () => {
+    // T-25-04-03 mitigation: defensive fallback for unexpected server shapes.
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ success: false, error: 'something' }),
+    } as Response)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://example.com/broken' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    // Falls back to generic-network — the WifiOff/"Couldn't reach that URL"
+    // branch — even when the server omits the category field.
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByText("Couldn't reach that URL", { selector: 'p' }),
+    ).toBeInTheDocument()
+  })
+
+  it('UX-05 extraction-failed — server-emitted category drives the rendered branch (host-403)', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({
+        success: false,
+        error:
+          "This site doesn't allow data extraction. Try entering manually.",
+        category: 'host-403',
+      }),
+    } as Response)
+
+    render(
+      <AddWatchFlow
+        collectionRevision={3}
+        initialCatalogId={null}
+        initialIntent={null}
+        initialCatalogPrefill={null}
+        initialManual={false}
+        initialStatus={null}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
+      target: { value: 'https://blocking-site.example' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
+
+    expect(
+      await screen.findByText('This site blocks data extraction'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "This site doesn't allow data extraction. Try entering manually.",
+      ),
+    ).toBeInTheDocument()
   })
 
   it('Pitfall 1 deep-link prefill — initialCatalogId + initialIntent="owned" + initialCatalogPrefill goes straight to form-prefill', async () => {
@@ -454,11 +550,21 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
     })
   })
 
-  it('UAT gap 4 — back-link from post-failure manual-entry returns to idle and clears URL', async () => {
+  it('UAT gap 4 / UX-05 — "Try a different URL" CTA on ExtractErrorCard resets to idle and clears URL', async () => {
+    // Phase 25 Plan 04: the post-failure surface is now ExtractErrorCard, which
+    // exposes "Try a different URL" (resets to idle) and "Add manually"
+    // (router.push to /watch/new?manual=1). The legacy "Continue manually"
+    // in-flow transition no longer exists. This test exercises the secondary
+    // CTA — semantically equivalent to the old "go back, paste a different URL"
+    // recovery path.
     vi.mocked(global.fetch).mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({ error: 'Failed to extract watch data from URL.' }),
+      json: async () => ({
+        success: false,
+        error: "Couldn't reach that URL. Check the link and try again.",
+        category: 'generic-network',
+      }),
     } as Response)
 
     render(
@@ -472,27 +578,24 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
-      target: { value: 'https://example.com/broken' },
-    })
+    const urlInput = screen.getByPlaceholderText(
+      /Paste a product page URL/i,
+    ) as HTMLInputElement
+    fireEvent.change(urlInput, { target: { value: 'https://example.com/broken' } })
     fireEvent.click(screen.getByRole('button', { name: /Extract Watch/i }))
 
-    await screen.findByText("Extraction didn't work")
-    fireEvent.click(screen.getByRole('button', { name: /Continue manually/i }))
+    // ExtractErrorCard appears
+    await screen.findByRole('alert')
 
-    // We're in post-failure manual-entry — paste input is gone
+    // Click "Try a different URL" — resets state to idle + clears URL
+    fireEvent.click(screen.getByRole('button', { name: /Try a different URL/i }))
+
+    // ExtractErrorCard is gone; URL input value is cleared
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText(/Paste a product page URL/i)).not.toBeInTheDocument()
-    })
-
-    // Click back affordance
-    const backBtn = screen.getByRole('button', { name: /Cancel.*paste a URL/i })
-    fireEvent.click(backBtn)
-
-    // Back to idle, URL cleared
-    await waitFor(() => {
-      const inputAfter = screen.getByPlaceholderText(/Paste a product page URL/i) as HTMLInputElement
-      expect(inputAfter).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      const inputAfter = screen.getByPlaceholderText(
+        /Paste a product page URL/i,
+      ) as HTMLInputElement
       expect(inputAfter.value).toBe('')
     })
   })
