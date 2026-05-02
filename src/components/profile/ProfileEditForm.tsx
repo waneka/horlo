@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { updateProfile } from '@/app/actions/profile'
+import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
 
 interface ProfileEditFormProps {
   initial: {
@@ -20,12 +21,15 @@ export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
   const [displayName, setDisplayName] = useState(initial.displayName ?? '')
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl ?? '')
   const [bio, setBio] = useState(initial.bio ?? '')
-  const [error, setError] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
+  // Phase 25 / UX-08 (D-21) — toast-only feedback via hook in dialogMode:true
+  // (D-19). The dialog dismounts on success so no inline banner is rendered;
+  // the toast IS the user-visible confirmation. Errors still surface via the
+  // hook's `message` field rendered as the existing inline alert paragraph,
+  // because toast.error auto-dismisses and the user may still need to read it.
+  const { pending, message, run } = useFormFeedback({ dialogMode: true })
 
   function handleSave() {
-    setError(null)
-    startTransition(async () => {
+    run(async () => {
       // Send only the fields the Server Action's strict schema accepts.
       // Empty trimmed values become null (clears the field).
       const trimmedAvatar = avatarUrl.trim()
@@ -34,12 +38,13 @@ export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
         avatarUrl: trimmedAvatar === '' ? null : trimmedAvatar,
         bio: bio.trim() || null,
       })
-      if (!result.success) {
-        setError(result.error)
-        return
+      if (result.success) {
+        // Close the dialog — toast.success('Profile updated') fires from the
+        // hook and persists across the dialog dismount via Sonner's portal.
+        onDone()
       }
-      onDone()
-    })
+      return result
+    }, { successMessage: 'Profile updated' })
   }
 
   return (
@@ -77,9 +82,12 @@ export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
         />
         <span className="text-xs text-muted-foreground">{bio.length}/500</span>
       </div>
-      {error && (
+      {/* D-19 dialogMode carve-out: NO inline banner. Errors still need a
+          surface (toast.error auto-dismisses), so render the hook's message
+          when not pending. */}
+      {message && !pending && (
         <p role="alert" className="text-sm text-destructive">
-          {error}
+          {message}
         </p>
       )}
       <div className="flex justify-end gap-2">

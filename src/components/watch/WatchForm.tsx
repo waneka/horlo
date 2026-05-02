@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CatalogPhotoUploader } from './CatalogPhotoUploader'
 import { addWatch, editWatch } from '@/app/actions/watches'
+import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
+import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import {
   COMPLICATIONS,
   DIAL_COLORS,
@@ -74,8 +76,11 @@ const initialFormData: FormData = {
 
 export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFormProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17). Hook
+  // owns the transition; consumers MUST NOT keep their own (FG-8). The hook's
+  // `message` carries the error string when a Server Action returns
+  // ActionResult.success === false (replaces the prior local error state).
+  const { pending, state, message, run } = useFormFeedback()
 
   // Phase 19.1 D-19: optional Reference Photo (manual-entry-only).
   // Stores the EXIF-stripped, ≤1080px JPEG blob in state until form submit.
@@ -138,8 +143,15 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
 
     if (!validate()) return
 
-    setSubmitError(null)
-    startTransition(async () => {
+    // LOCKED per UI-SPEC §Default copy contract — both literals are
+    // referenced by SUMMARY grep gates; split onto separate lines so each
+    // gate matches its own occurrence.
+    const successMessage =
+      mode === 'edit'
+        ? 'Watch updated'
+        : 'Watch added'
+
+    run(async () => {
       // Phase 19.1 D-19: if a photo is staged (create mode only), upload to
       // catalog-source-photos BEFORE calling addWatch. The bucket path is passed
       // to addWatch as photoSourcePath; server-side enricher reads the bucket via
@@ -153,8 +165,10 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
           const supabase = createSupabaseBrowserClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (!user) {
-            setSubmitError('Authentication expired. Please sign in again.')
-            return
+            return {
+              success: false as const,
+              error: 'Authentication expired. Please sign in again.',
+            }
           }
 
           const { uploadCatalogSourcePhoto } = await import('@/lib/storage/catalogSourcePhotos')
@@ -187,11 +201,15 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
           : await addWatch(submitData)
 
       if (result.success) {
+        // router.push fires before run() resolves; the hook's setState happens
+        // on the next tick + Sonner's portal-mounted toast persists across the
+        // navigation, so the user sees `successMessage` after landing on `/`.
+        // The form unmounts mid-nav, so the inline FormStatusBanner does NOT
+        // render post-nav — toast is the canonical post-add affordance here.
         router.push('/')
-      } else {
-        setSubmitError(result.error)
       }
-    })
+      return result
+    }, { successMessage })
   }
 
   const toggleArrayItem = (
@@ -571,7 +589,7 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
           }}
           onClear={() => setPhotoBlob(null)}
           onError={(message) => setPhotoError(message)}
-          disabled={isPending}
+          disabled={pending}
         />
       )}
 
@@ -621,20 +639,25 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
       </Card>
 
       {/* Actions */}
-      {submitError && (
-        <p className="text-sm text-destructive text-right">{submitError}</p>
-      )}
+      {/* Phase 25 UX-06 — hybrid feedback (D-16/D-17). Banner mounted ABOVE
+          the submit row so error copy stays visible while the user retries.
+          On success, navigation unmounts the form — toast is the canonical
+          post-add/edit affordance. */}
+      <FormStatusBanner
+        state={pending ? 'pending' : state}
+        message={message ?? undefined}
+      />
       <div className="flex justify-end gap-4">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.back()}
-          disabled={isPending}
+          disabled={pending}
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isPending}>
-          {isPending
+        <Button type="submit" disabled={pending}>
+          {pending
             ? mode === 'create'
               ? 'Adding...'
               : 'Saving...'

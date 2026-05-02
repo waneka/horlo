@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import {
   Card,
   CardHeader,
@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { savePreferences } from '@/app/actions/preferences'
+import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
+import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import type { CollectionGoal } from '@/lib/types'
 
 interface CollectionGoalCardProps {
@@ -34,15 +36,14 @@ interface CollectionGoalCardProps {
  */
 export function CollectionGoalCard({ initialGoal }: CollectionGoalCardProps) {
   const [goal, setGoal] = useState<CollectionGoal | undefined>(initialGoal)
-  const [isSaving, startTransition] = useTransition()
-  const [saveError, setSaveError] = useState<string | null>(null)
+  // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17). Hook
+  // owns the transition; consumers MUST NOT keep their own (FG-8).
+  const { pending, state, message, run } = useFormFeedback()
 
   function updateGoal(next: CollectionGoal | undefined) {
     setGoal(next)
-    setSaveError(null)
-    startTransition(async () => {
-      const result = await savePreferences({ collectionGoal: next })
-      if (!result.success) setSaveError(result.error)
+    run(() => savePreferences({ collectionGoal: next }), {
+      successMessage: 'Goal saved',
     })
   }
 
@@ -80,19 +81,11 @@ export function CollectionGoalCard({ initialGoal }: CollectionGoalCardProps) {
               </SelectItem>
             </SelectContent>
           </Select>
-          {isSaving && (
-            <p
-              className="text-xs text-muted-foreground"
-              aria-live="polite"
-            >
-              Saving…
-            </p>
-          )}
-          {saveError && (
-            <p role="alert" className="text-sm text-destructive">
-              Couldn&apos;t save preferences: {saveError}
-            </p>
-          )}
+          {/* Phase 25 UX-06 — hybrid feedback (D-16/D-17). */}
+          <FormStatusBanner
+            state={pending ? 'pending' : state}
+            message={message ?? undefined}
+          />
         </div>
       </CardContent>
     </Card>
