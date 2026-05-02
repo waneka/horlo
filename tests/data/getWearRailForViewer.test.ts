@@ -4,7 +4,7 @@ import type { WywtTile } from '@/lib/wywtTypes'
 // ---------------------------------------------------------------------------
 // PART A — Unit tests (always run): mock Drizzle to assert the SQL shape
 // built by getWearRailForViewer. Verifies JOIN targets, 48h cutoff predicate,
-// self-or-wornPublic privacy gate, single WHERE clause, ordering.
+// wear_visibility per-row privacy gate, single WHERE clause, ordering.
 // ---------------------------------------------------------------------------
 
 type Call = { op: string; args: unknown[] }
@@ -121,7 +121,6 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
         username: 'alice',
         displayName: 'Alice',
         avatarUrl: null,
-        wornPublic: true,
         brand: 'Rolex',
         model: 'GMT',
         imageUrl: null,
@@ -136,7 +135,6 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
         username: 'alice',
         displayName: 'Alice',
         avatarUrl: null,
-        wornPublic: true,
         brand: 'Rolex',
         model: 'Sub',
         imageUrl: null,
@@ -161,7 +159,7 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
         username: 'me',
         displayName: null,
         avatarUrl: null,
-        wornPublic: false, // private, but self-rule admits it
+        visibility: 'private', // private, but self-rule admits it
         brand: 'Seiko',
         model: 'SKX007',
         imageUrl: null,
@@ -185,7 +183,6 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
         username: 'bob',
         displayName: 'Bob',
         avatarUrl: 'av.png',
-        wornPublic: true,
         visibility: 'public',
         brand: 'Omega',
         model: 'Speedmaster',
@@ -262,9 +259,8 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
     expect(result.tiles[0].photoUrl).toBeNull()
   })
 
-  // Phase 12 — new tests asserting the updated SQL shape after the visibility
-  // ripple lands. These FAIL in current code (which still uses wornPublic and
-  // has no leftJoin) and PASS after Plan 02 rewrites getWearRailForViewer.
+  // Phase 12 — tests asserting the updated SQL shape after the visibility
+  // ripple landed. The per-row wear_visibility gate is enforced via leftJoin + WHERE.
 
   it('Unit 9 (Phase 12): wear query attaches exactly one leftJoin against follows', async () => {
     await getWearRailForViewer(VIEWER)
@@ -272,65 +268,12 @@ describe('getWearRailForViewer — SQL shape (unit)', () => {
     expect(leftJoinOps).toHaveLength(1)
   })
 
-  it('Unit 10 (Phase 12): where clause contains no reference to wornPublic', async () => {
-    await getWearRailForViewer(VIEWER)
-    const whereCall = calls.find((c) => c.op === 'wear.where')
-    expect(whereCall).toBeDefined()
-    // Collect all Drizzle column `name` values (the SQL column names) from the
-    // WHERE args to check that worn_public is not referenced. Drizzle column
-    // objects carry their SQL name in `.name`; we walk the args tree skipping
-    // circular refs to collect all `.name` strings.
-    const columnNames = new Set<string>()
-    const seen = new WeakSet()
-    function collectNames(val: unknown): void {
-      if (!val || typeof val !== 'object') return
-      if (seen.has(val as object)) return
-      seen.add(val as object)
-      const obj = val as Record<string, unknown>
-      if (typeof obj.name === 'string' && typeof obj.columnType === 'string') {
-        columnNames.add(obj.name as string)
-      }
-      for (const v of Object.values(obj)) collectNames(v)
-    }
-    collectNames(whereCall!.args)
-    expect(columnNames.has('worn_public')).toBe(false)
-  })
-
-  it('Unit 11 (Phase 12): select projection contains no wornPublic field', async () => {
-    await getWearRailForViewer(VIEWER)
-    // The second select() call is the wear query (first is the follows resolution).
-    const selects = calls.filter((c) => c.op === 'select')
-    const wearSelect = selects[1]
-    expect(wearSelect).toBeDefined()
-    // Collect SQL column names from the select projection args.
-    const columnNames = new Set<string>()
-    const seen = new WeakSet()
-    function collectNames(val: unknown): void {
-      if (!val || typeof val !== 'object') return
-      if (seen.has(val as object)) return
-      seen.add(val as object)
-      const obj = val as Record<string, unknown>
-      if (typeof obj.name === 'string' && typeof obj.columnType === 'string') {
-        columnNames.add(obj.name as string)
-      }
-      for (const v of Object.values(obj)) collectNames(v)
-    }
-    collectNames(wearSelect.args)
-    // The JS key in the select object is 'wornPublic'; the SQL column name is
-    // 'worn_public'. Both are prohibited in the new select projection.
-    // We check the JS projection keys too (from the select arg shape).
-    const projectionKeys = Object.keys(
-      (wearSelect.args[0] as Record<string, unknown>) ?? {},
-    )
-    expect(projectionKeys).not.toContain('wornPublic')
-    expect(columnNames.has('worn_public')).toBe(false)
-  })
 })
 
 // ---------------------------------------------------------------------------
 // PART B — Integration tests (run only against a live local Supabase stack):
 // seeds real profiles + follows + wear events, asserts the 48h window,
-// worn_public privacy gate, self-include rule, and non-follow exclusion.
+// wear_events.visibility per-row gate, self-include rule, and non-follow exclusion.
 // Mirrors the precedent in tests/data/getFeedForUser.test.ts.
 // ---------------------------------------------------------------------------
 
@@ -359,8 +302,6 @@ maybe('getWearRailForViewer — integration', () => {
   const seedProfile = async (
     u: { id: string; email: string },
     username: string,
-    // wornPublic param retained for call-site compatibility but unused — column dropped Phase 12.
-    _wornPublic = true,
   ) => {
     await dbModule.db.insert(schema.users).values({ id: u.id, email: u.email }).onConflictDoNothing()
     await dbModule.db
@@ -397,10 +338,11 @@ maybe('getWearRailForViewer — integration', () => {
     watchId: string,
     wornDate: string,
     createdAt?: Date,
+    visibility?: 'public' | 'followers' | 'private',
   ) => {
     const [row] = await dbModule.db
       .insert(schema.wearEvents)
-      .values({ userId, watchId, wornDate, createdAt: createdAt ?? new Date() })
+      .values({ userId, watchId, wornDate, createdAt: createdAt ?? new Date(), ...(visibility ? { visibility } : {}) })
       .returning()
     return row
   }
@@ -444,10 +386,10 @@ maybe('getWearRailForViewer — integration', () => {
       await admin.auth.admin.deleteUser(charlie.id)
     }
 
-    // Seed profiles: viewer public, alice public, bob worn_public=false, charlie public
+    // Seed profiles: viewer public, alice public, bob public, charlie public
     await seedProfile(viewer, `wywt-viewer-${Date.now()}`)
     await seedProfile(alice, `wywt-alice-${Date.now()}`)
-    await seedProfile(bob, `wywt-bob-${Date.now()}`, false)
+    await seedProfile(bob, `wywt-bob-${Date.now()}`)
     await seedProfile(charlie, `wywt-charlie-${Date.now()}`)
 
     // Follow graph: viewer -> alice, viewer -> bob. (NOT following charlie.)
@@ -529,17 +471,19 @@ maybe('getWearRailForViewer — integration', () => {
     expect(aliceTiles[0].watchId).toBe(watchA)
   })
 
-  it('Test 4: followed user worn_public=false — their wear is OMITTED', async () => {
+  it('Test 4: followed user with visibility=private wear — their wear is OMITTED from viewer rail', async () => {
+    // The per-row visibility gate on wear_events.visibility determines whether a wear
+    // appears in the rail. A private wear from a followed user must not surface.
     const watchBob = await seedWatch(bob.id, 'Omega', 'Speedy')
-    await seedWear(bob.id, watchBob, today())
+    await seedWear(bob.id, watchBob, today(), undefined, 'private')
     const result = await dal.getWearRailForViewer(viewer.id)
     const bobTiles = result.tiles.filter((t) => t.userId === bob.id)
     expect(bobTiles).toHaveLength(0)
   })
 
-  it('Test 5: viewer self wear is always included (wornPublic column removed Phase 12 — visibility is per wear_events.visibility)', async () => {
-    // wornPublic column dropped Phase 12; per-wear visibility (public/followers/private) now
-    // lives on wear_events.visibility. Self-include is unconditional (viewer sees own wear).
+  it('Test 5: viewer self wear is always included (G-5 self-bypass — visibility gate does not apply to own wear)', async () => {
+    // Per-wear visibility (public/followers/private) lives on wear_events.visibility.
+    // Self-include is unconditional (viewer always sees their own wear regardless of visibility).
     const result = await dal.getWearRailForViewer(viewer.id)
     const selfTile = result.tiles.find((t) => t.userId === viewer.id)
     expect(selfTile).toBeDefined()
@@ -555,7 +499,6 @@ maybe('getWearRailForViewer — integration', () => {
   })
 
   it('Test 7: wear from 50h ago is EXCLUDED (outside 48h window)', async () => {
-    // wornPublic column removed Phase 12; visibility now per wear_events.visibility.
     // Bob's wear events default to 'public' visibility, so the 48h window gate is
     // the only gate being tested here.
     const { eq: eqFn } = await import('drizzle-orm')
