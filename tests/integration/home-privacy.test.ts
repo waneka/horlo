@@ -7,8 +7,7 @@
  * Scenario graph (seeded in beforeAll):
  *   - V (viewer)
  *   - A (followed, all public)                     — watch_added + watch_worn
- *   - B (followed, collection_public=false,
- *        worn_public=true)                         — watch_added + watch_worn
+ *   - B (followed, collection_public=false)          — watch_added + watch_worn
  *   - C (followed, profile_public=false — lockdown) — watch_added + watch_worn
  *   - D (NOT followed, all public)                 — watch_added + watch_worn
  *   - E (NOT followed, profile_public=false)       — used only for suggestions exclusion
@@ -97,14 +96,14 @@ maybe('Phase 10 home privacy end-to-end', () => {
     // per-user privacy mix this suite exercises.
     const privacyByUser: Record<
       string,
-      { profilePublic: boolean; collectionPublic: boolean; wishlistPublic: boolean; wornPublic: boolean }
+      { profilePublic: boolean; collectionPublic: boolean; wishlistPublic: boolean }
     > = {
-      [ids.V]: { profilePublic: true, collectionPublic: true, wishlistPublic: true, wornPublic: true },
-      [ids.A]: { profilePublic: true, collectionPublic: true, wishlistPublic: true, wornPublic: true },
-      [ids.B]: { profilePublic: true, collectionPublic: false, wishlistPublic: true, wornPublic: true },
-      [ids.C]: { profilePublic: false, collectionPublic: true, wishlistPublic: true, wornPublic: true },
-      [ids.D]: { profilePublic: true, collectionPublic: true, wishlistPublic: true, wornPublic: true },
-      [ids.E]: { profilePublic: false, collectionPublic: true, wishlistPublic: true, wornPublic: true },
+      [ids.V]: { profilePublic: true, collectionPublic: true, wishlistPublic: true },
+      [ids.A]: { profilePublic: true, collectionPublic: true, wishlistPublic: true },
+      [ids.B]: { profilePublic: true, collectionPublic: false, wishlistPublic: true },
+      [ids.C]: { profilePublic: false, collectionPublic: true, wishlistPublic: true },
+      [ids.D]: { profilePublic: true, collectionPublic: true, wishlistPublic: true },
+      [ids.E]: { profilePublic: false, collectionPublic: true, wishlistPublic: true },
     }
     for (const [userId, settings] of Object.entries(privacyByUser)) {
       await db.update(profileSettings).set(settings).where(eq(profileSettings.userId, userId))
