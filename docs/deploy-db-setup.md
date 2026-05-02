@@ -470,3 +470,80 @@ The Resend API key remains valid after Supabase SMTP is disabled. To fully sever
 
 ### Recovery (after incident resolves)
 Re-run Plan 21-02 from Task 1 (Verified ✓ confirmation) onward. Site URL audit and SMTP wiring values are unchanged; only the toggles need to flip back ON in order: Confirm email → smoke-test → restore.
+
+## Phase 24 — notification_type ENUM cleanup runbook
+
+The Phase 24 migration (`20260501000000_phase24_notification_enum_cleanup.sql`) removes the never-written `'price_drop'` and `'trending_collector'` values from the `notification_type` enum via the rename+recreate pattern (Postgres has no `ALTER TYPE … DROP VALUE`).
+
+### Sequencing (D-05 from 24-CONTEXT.md)
+
+1. **Preflight script** — `npm run db:preflight-notification-cleanup` against prod. Must exit 0.
+2. **Apply migration to prod** — `supabase db push --linked`. The in-migration `DO $$` whitelist preflight is the second layer of defense.
+3. **Verify enum shape via psql** — expect exactly two rows: `follow`, `watch_overlap`.
+4. **THEN merge plan 24-04** — the Drizzle pgEnum narrow + render-branch deletion + type narrowing.
+
+If steps 1–3 are skipped or run out of order, plan 24-04 may land first → Drizzle's narrower enum rejects the wider prod reality → app boot or query failures in prod.
+
+### Footgun T-24-PRODAPPLY: Drizzle leads SQL → mismatched type system
+
+**What goes wrong:** Plan 24-04 (Drizzle pgEnum update from 4 values to 2) ships and is deployed BEFORE `supabase db push --linked` actually runs against prod. The deployed app boots, Drizzle reads the type definitions from `src/db/schema.ts` (narrow), the live DB still has the wider enum — runtime type assertions misalign.
+
+**Why it happens:** D-05 sequencing is documented but not enforced — a developer pushing fast can swap step 2 and step 4. Build/type checks pass without the prod push because Drizzle types come from source code, not the live DB.
+
+**How to recover:**
+1. **If plan 24-04 was merged AFTER plan 24-02 but BEFORE step 2:** Run `npm run db:preflight-notification-cleanup` immediately. If clean, run `supabase db push --linked` to bring prod into alignment. Verify with step 3.
+2. **If preflight fails (rows have stub types in prod):** STOP. Do NOT apply the migration. Investigate the rows — they should not exist in v3.0 (no write-path was ever wired). Most likely a corruption/data-injection event; route through user before deletion.
+3. **If you've already deployed plan 24-04 and need to rollback the Drizzle pgEnum:** Revert the `src/db/schema.ts` change to 4 values, redeploy. The app will boot correctly against the wider prod enum. Then re-run step 2 cleanly.
+
+### Footgun T-24-PARTIDX: enum-bound partial index blocks ALTER COLUMN TYPE
+
+**What goes wrong:** `supabase db push --linked` aborts at step 3 (the `ALTER COLUMN type TYPE` line) with `ERROR: operator does not exist: notification_type = notification_type_old (SQLSTATE 42883)` even though the layer-1 and layer-2 preflights both passed clean.
+
+**Why it happens:** A partial index defined in an earlier migration uses `WHERE type = 'watch_overlap'::notification_type` (or any enum literal). Postgres binds the literal to the enum's OID at index creation. After step 1 (`RENAME TO notification_type_old`), the predicate is now bound to `notification_type_old`. During step 3's column rewrite, Postgres tries to re-evaluate the predicate against the new type and fails because there is no equality operator across the two distinct enum types. The single-transaction wrap rolls everything back cleanly, so prod is left in its pre-migration state — but the migration cannot proceed without surgery.
+
+**Why local testing missed it:** `drizzle-kit push` rebuilds the schema from `src/db/schema.ts`, which does NOT contain the Phase 11 partial index `notifications_watch_overlap_dedup`. The index lives only in the original `supabase/migrations/*.sql` file, so a local apply based on `drizzle-kit push` runs against a schema that has no enum-bound dependents — false-OK. (See `project_drizzle_supabase_db_mismatch.md`.)
+
+**How to recover:** The Phase 24 migration as committed already has this surgery. If you hit T-24-PARTIDX in a future enum cleanup, the pattern is:
+
+1. **Diagnose what depends on the enum** — query `pg_depend` directly:
+   ```sql
+   SELECT d.classid::regclass, d.objid, d.deptype
+   FROM pg_depend d
+   WHERE d.refobjid = 'public.<your_enum>'::regtype;
+   ```
+   Anything besides the column itself (`pg_class | <table> (r) | objsubid=N`) is a dependent that may need surgery.
+
+2. **DROP each enum-bound dependent BEFORE the rename** and **CREATE it AFTER the column type swap**, with the same shape. For partial indexes this is `DROP INDEX IF EXISTS <name>` + `CREATE UNIQUE INDEX <name> ... WHERE <predicate>`. Stays inside the same transaction — single-transaction wrap means no concurrent writes can race the gap.
+
+3. **Add a post-check in the migration** that asserts the dependent was recreated. The Phase 24 migration's `DO $$ … END $$` post-check raises an exception if `notifications_watch_overlap_dedup` is missing after the swap.
+
+4. **Add a regression test** asserting the dependent's predicate is bound to the new type. See `tests/integration/phase24-notification-enum-cleanup.test.ts` for the pattern (`SELECT indexdef FROM pg_indexes` + assert it contains the new type's name).
+
+### Backout (revert prod to 4-value enum)
+
+If the migration applies correctly but a downstream issue forces a revert AND plan 24-04 has not yet been deployed, the migration is fully reversible:
+
+1. Hand-write a reverse migration:
+   ```sql
+   BEGIN;
+   DROP INDEX IF EXISTS public.notifications_watch_overlap_dedup;
+   ALTER TYPE notification_type RENAME TO notification_type_v24;
+   CREATE TYPE notification_type AS ENUM ('follow', 'watch_overlap', 'price_drop', 'trending_collector');
+   ALTER TABLE notifications
+     ALTER COLUMN type TYPE notification_type
+     USING type::text::notification_type;
+   DROP TYPE notification_type_v24;
+   CREATE UNIQUE INDEX IF NOT EXISTS notifications_watch_overlap_dedup
+     ON notifications (
+       user_id,
+       (payload->>'watch_brand_normalized'),
+       (payload->>'watch_model_normalized'),
+       ((created_at AT TIME ZONE 'UTC')::date)
+     )
+     WHERE type = 'watch_overlap';
+   COMMIT;
+   ```
+2. Apply via `supabase db push --linked`.
+3. Revert plan 24-04's pgEnum narrow + render-branch deletion in a follow-up commit.
+
+If plan 24-04 has ALREADY shipped, follow Footgun T-24-PRODAPPLY recovery step 3 first (revert source-code enum), then run the SQL above.
