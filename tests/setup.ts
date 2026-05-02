@@ -1,6 +1,26 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
+// PointerEvent polyfill — required for base-ui Checkbox / Slider clicks under jsdom.
+// base-ui dispatches `new PointerEvent('click', ...)` internally; jsdom does not implement
+// PointerEvent, causing a ReferenceError when these components are exercised via userEvent.
+// Polyfill it to MouseEvent so the userEvent.click path can reach onCheckedChange / onValueChange.
+// Per RESEARCH.md Pitfall 6: lifted here from WatchForm.isChronometer.test.tsx so all
+// component tests benefit without needing per-file polyfills.
+if (typeof window !== 'undefined' && !('PointerEvent' in window)) {
+  class PointerEventPolyfill extends MouseEvent {
+    pointerId: number
+    pointerType: string
+    constructor(type: string, props: PointerEventInit = {}) {
+      super(type, props)
+      this.pointerId = props.pointerId ?? 0
+      this.pointerType = props.pointerType ?? 'mouse'
+    }
+  }
+  // @ts-expect-error attach polyfill
+  window.PointerEvent = PointerEventPolyfill
+}
+
 // React Testing Library's `waitFor` auto-advances Jest fake timers by checking
 // `typeof jest !== 'undefined'`. Vitest's `vi.useFakeTimers()` does set
 // `setTimeout.clock` (which RTL also checks), but `jest` is undefined so RTL
