@@ -6,7 +6,8 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
+import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
+import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import { SettingsSection } from './SettingsSection'
 import { EmailChangePendingBanner } from './EmailChangePendingBanner'
 
@@ -47,28 +48,33 @@ export function EmailChangeForm({
 }: EmailChangeFormProps) {
   const router = useRouter()
   const [newEmail, setNewEmail] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17/D-18).
+  // EmailChangeForm is INLINE-PAGE (Account settings tab), NOT a dialog, so
+  // dialogMode: false → banner appears below the submit row alongside the
+  // toast. The supabase.auth.updateUser call returns {data, error} (NOT
+  // ActionResult), so we adapt it inside the run() callback.
+  const { pending, state, message, run } = useFormFeedback({ dialogMode: false })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
-    setError(null)
-    const supabase = createSupabaseBrowserClient()
-    const { error: err } = await supabase.auth.updateUser({ email: newEmail })
-    setSubmitting(false)
-    if (err) {
-      // UI-SPEC server error fallback copy — locked.
-      setError('Could not update email. Please try again.')
-      return
-    }
-    toast.success('Confirmation sent. Check your inbox.')
-    setNewEmail('')
-    // Force the parent Server Component to re-fetch user.new_email so the
-    // banner appears on the next render. D-07: a second submit while pending
-    // silently overwrites the prior pending change — no client guard, native
-    // Supabase semantics.
-    router.refresh()
+    run(async () => {
+      const supabase = createSupabaseBrowserClient()
+      const { error: err } = await supabase.auth.updateUser({ email: newEmail })
+      if (err) {
+        // UI-SPEC server error fallback copy — locked.
+        return {
+          success: false as const,
+          error: 'Could not update email. Please try again.',
+        }
+      }
+      setNewEmail('')
+      // Force the parent Server Component to re-fetch user.new_email so the
+      // banner appears on the next render. D-07: a second submit while pending
+      // silently overwrites the prior pending change — no client guard, native
+      // Supabase semantics.
+      router.refresh()
+      return { success: true as const, data: undefined }
+    }, { successMessage: 'Confirmation sent. Check your inbox.' })
   }
 
   return (
@@ -104,16 +110,22 @@ export function EmailChangeForm({
             onChange={(e) => setNewEmail(e.target.value)}
           />
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex justify-end">
           <Button
             type="submit"
             variant="default"
-            disabled={submitting || !newEmail || newEmail === currentEmail}
+            disabled={pending || !newEmail || newEmail === currentEmail}
           >
-            {submitting ? 'Updating…' : 'Update email'}
+            {pending ? 'Updating…' : 'Update email'}
           </Button>
         </div>
+        {/* Phase 25 UX-06 — hybrid feedback (D-16/D-17/D-18). Banner mounts
+            below the submit row so it doesn't visually compete with the
+            EmailChangePendingBanner above the form. */}
+        <FormStatusBanner
+          state={pending ? 'pending' : state}
+          message={message ?? undefined}
+        />
       </form>
     </SettingsSection>
   )

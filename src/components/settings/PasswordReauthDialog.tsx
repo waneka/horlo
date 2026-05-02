@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { toast } from 'sonner'
+import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
 
 interface PasswordReauthDialogProps {
   open: boolean
@@ -64,53 +64,61 @@ export function PasswordReauthDialog({
   onSuccess,
 }: PasswordReauthDialogProps) {
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  // Phase 25 / UX-06 — hybrid hook in dialogMode:true (D-19). Dialog
+  // dismounts on success so no inline banner is rendered; toast.success
+  // ('Password updated') fires from the hook and persists across the
+  // dismount via Sonner's portal. The hook's `message` carries the error
+  // string when either supabase call fails — surfaced via the inline alert
+  // paragraph (errors need to remain readable; toast.error auto-dismisses).
+  const { pending, message, run, reset: resetFeedback } = useFormFeedback({
+    dialogMode: true,
+  })
 
-  function reset() {
+  function resetField() {
     setPassword('')
-    setError(null)
-    setLoading(false)
   }
 
   function handleOpenChange(next: boolean) {
-    if (!next) reset()
+    if (!next) {
+      resetField()
+      resetFeedback()
+    }
     onOpenChange(next)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
-    setError(null)
-    const supabase = createSupabaseBrowserClient()
+    run(async () => {
+      const supabase = createSupabaseBrowserClient()
 
-    const { error: signInErr } = await supabase.auth.signInWithPassword({
-      email: currentEmail,
-      password,
-    })
-    if (signInErr) {
-      // D-09 neutral copy — locked. The email is the user's own, so user
-      // enumeration concern is moot, but neutral copy preserves consistency
-      // with the login-form pattern.
-      setError('Password incorrect.')
-      setLoading(false)
-      return
-    }
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: currentEmail,
+        password,
+      })
+      if (signInErr) {
+        // D-09 neutral copy — locked. The email is the user's own, so user
+        // enumeration concern is moot, but neutral copy preserves consistency
+        // with the login-form pattern.
+        return { success: false as const, error: 'Password incorrect.' }
+      }
 
-    const { error: updErr } = await supabase.auth.updateUser({
-      password: pendingNewPassword,
-    })
-    if (updErr) {
-      // UI-SPEC server error fallback copy.
-      setError('Could not update password.')
-      setLoading(false)
-      return
-    }
+      const { error: updErr } = await supabase.auth.updateUser({
+        password: pendingNewPassword,
+      })
+      if (updErr) {
+        // UI-SPEC server error fallback copy.
+        return { success: false as const, error: 'Could not update password.' }
+      }
 
-    toast.success('Password updated')
-    reset()
-    onOpenChange(false)
-    onSuccess()
+      // On success: clear the password field, close the dialog, and let the
+      // parent know. The hook fires toast.success('Password updated') after
+      // the action resolves; Sonner's portal keeps it visible across the
+      // dialog dismount (D-19 carve-out).
+      resetField()
+      onOpenChange(false)
+      onSuccess()
+      return { success: true as const, data: undefined }
+    }, { successMessage: 'Password updated' })
   }
 
   return (
@@ -135,19 +143,25 @@ export function PasswordReauthDialog({
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {/* D-19 dialogMode carve-out: NO inline banner. The hook's message
+              still carries the error string after a failed supabase call, so
+              render it as the prior inline alert paragraph (toast.error
+              auto-dismisses too quickly to be the sole error surface). */}
+          {message && !pending && (
+            <p className="text-sm text-destructive">{message}</p>
+          )}
 
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={loading}
+              disabled={pending}
             >
               Cancel
             </Button>
-            <Button type="submit" variant="default" disabled={loading || !password}>
-              {loading ? 'Confirming…' : 'Confirm'}
+            <Button type="submit" variant="default" disabled={pending || !password}>
+              {pending ? 'Confirming…' : 'Confirm'}
             </Button>
           </DialogFooter>
         </form>
