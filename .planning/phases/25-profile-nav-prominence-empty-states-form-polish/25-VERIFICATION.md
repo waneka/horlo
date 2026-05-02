@@ -1,9 +1,19 @@
 ---
 phase: 25-profile-nav-prominence-empty-states-form-polish
 verified: 2026-05-02T17:39:33Z
-status: human_needed
-score: 11/11 must-haves verified (3 awaiting human UAT)
+human_uat_completed: 2026-05-02T22:50:00Z
+status: passed
+score: 11/11 must-haves verified + 4/4 human UAT items approved (mobile, prod commit 7132ac0)
 overrides_applied: 0
+human_uat_results:
+  - test: "Plan 25-03 Task 3 — Avatar dual-affordance"
+    result: pass
+  - test: "Plan 25-04 Task 3 — URL-extract error rendering"
+    result: pass
+  - test: "Plan 25-05 Task 4 — Empty-state CTAs (4 tabs + non-owner)"
+    result: pass
+  - test: "Plan 25-06 Task 4 — Hybrid form feedback (7 forms)"
+    result: pass
 human_verification:
   - test: "Plan 25-03 Task 3 — Avatar dual-affordance visual UAT"
     expected: "Desktop ≥768px: avatar circle + chevron with 4px gap top-right. Click avatar → /u/{username}/collection. Click chevron → dropdown (Profile / Settings / Theme / Sign out). Tab order yields two focus stops. Mobile <768px: Search · Bell · Avatar+chevron (no Settings cog). Avatar fallback renders accent-tan circle + initial. BottomNav still 5 slots."
@@ -23,9 +33,9 @@ human_verification:
 
 **Phase Goal:** Profile graduates from "buried in dropdown" to first-class top-right affordance on every screen; collection / wishlist / worn / notes empty states get single-primary-CTA welcomes; URL-extract failures get categorized recovery copy; every Server Action surfaces success and pending states consistently.
 
-**Verified:** 2026-05-02T17:39:33Z
-**Status:** human_needed (all code-level truths VERIFIED; 4 visual UAT checkpoints pending per plan design)
-**Re-verification:** No — initial verification
+**Verified:** 2026-05-02T17:39:33Z (code-level) · 2026-05-02T22:50Z (human UAT — all 4 passed on prod, mobile)
+**Status:** PASSED — 11/11 must_haves + 4/4 human UAT items
+**Re-verification:** Yes — UAT walkthrough on prod (`https://www.horlo.app`, commit 7132ac0) approved all 4 visual/interactive checkpoints (Avatar, URL-extract errors, Empty-state CTAs, Hybrid form feedback)
 
 ## Goal Achievement
 

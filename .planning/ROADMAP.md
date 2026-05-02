@@ -68,7 +68,7 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] **Phase 22: Settings Restructure + Account Section** — base-ui vertical-tabs shell with hash routing + canonical SaaS section order + email/password change with re-auth + `/auth/confirm` type-switched redirect map + `/preferences` redirect (completed 2026-05-01)
 - [x] **Phase 23: Settings Sections + Schema-Field UI** — Preferences (collectionGoal + overlapTolerance) + Notifications (opt-out toggles) + Privacy (restyled) + Appearance (theme) + WatchForm `notesPublic` per-note + `isChronometer` toggle/display (completed 2026-05-01)
 - [x] **Phase 24: Notification Stub Cleanup + Test Fixture/Carryover** — Pre-flight zero-row assertion + ENUM rename+recreate (with T-24-PARTIDX partial-index surgery) + Drizzle update + dead-code deletion + 4-file `wornPublic` fixture cleanup + TEST-04/05/06 (completed 2026-05-01)
-- [ ] **Phase 25: Profile Nav Prominence + Empty States + Form Polish** — DesktopTopNav/SlimTopNav avatar dual-affordance + 4 empty-state CTAs + categorized URL-extract errors + Sonner+aria-live hybrid + Server Action pending states + profile-edit success toast
+- [x] **Phase 25: Profile Nav Prominence + Empty States + Form Polish** — DesktopTopNav/SlimTopNav avatar dual-affordance + 4 empty-state CTAs + categorized URL-extract errors + Sonner+aria-live hybrid + Server Action pending states + profile-edit success toast (completed 2026-05-02)
 - [x] **Phase 26: WYWT Auto-Nav** — Post-submit `router.push(/wear/{id})` after both upload + server-action resolve + `<Suspense fallback={<PhotoSkeleton />}>` for storage-CDN propagation window (completed 2026-05-02)
 
 ## Phase Details

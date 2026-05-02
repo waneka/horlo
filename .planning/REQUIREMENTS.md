@@ -107,22 +107,22 @@ Schema fields that exist in `watches` / `notes` today but have no user-facing ed
 
 Surface profile in the top-right of every desktop screen instead of burying it behind UserMenu only. BottomNav stays at 5 slots — Profile does NOT enter BottomNav (universal social-app convention; muscle-memory risk too high).
 
-- [ ] **NAV-13**: `DesktopTopNav` exposes a top-right avatar with dual affordance: clicking the avatar navigates to `/u/{username}`; clicking the chevron opens the existing UserMenu dropdown
-- [ ] **NAV-14**: BottomNav remains 5 slots: Home / Search / **Wear** / Notifications / **Explore** (Explore replaces previous Discover slot per DISC-08)
-- [ ] **NAV-15**: `SlimTopNav` (mobile <768px) exposes the same profile avatar shortcut in its top-right
+- [x] **NAV-13**: `DesktopTopNav` exposes a top-right avatar with dual affordance: clicking the avatar navigates to `/u/{username}`; clicking the chevron opens the existing UserMenu dropdown
+- [x] **NAV-14**: BottomNav remains 5 slots: Home / Search / **Wear** / Notifications / **Explore** (Explore replaces previous Discover slot per DISC-08)
+- [x] **NAV-15**: `SlimTopNav` (mobile <768px) exposes the same profile avatar shortcut in its top-right
 
 ### UX Polish
 
 Empty states across the app, form feedback consistency, contextual error messaging.
 
-- [ ] **UX-01**: Collection empty state has a single primary "Add your first watch" CTA + an "Add manually" fallback when `ANTHROPIC_API_KEY` is unset (so the CTA always works)
-- [ ] **UX-02**: Wishlist empty state has a CTA to add the first wishlist watch
-- [ ] **UX-03**: Worn tab empty state has a CTA to log the first wear
-- [ ] **UX-04**: Notes empty state has a CTA to add the first note
-- [ ] **UX-05**: URL-extract failures surface categorized errors with recovery copy: `host-403`, `structured-data-missing`, `LLM-timeout`, `quota-exceeded`, `generic-network`
-- [ ] **UX-06**: Form submissions surface success via Sonner toast AND an inline `aria-live="polite"` banner (hybrid pattern from Phase 999.1 MR-01)
-- [ ] **UX-07**: All Server Action submit buttons display a pending state during transition (preferences, notifications, settings sections, profile edit, mark-all-read)
-- [ ] **UX-08**: Profile edit form fires a success toast on save (today there's no confirmation visible)
+- [x] **UX-01**: Collection empty state has a single primary "Add your first watch" CTA + an "Add manually" fallback when `ANTHROPIC_API_KEY` is unset (so the CTA always works)
+- [x] **UX-02**: Wishlist empty state has a CTA to add the first wishlist watch
+- [x] **UX-03**: Worn tab empty state has a CTA to log the first wear
+- [x] **UX-04**: Notes empty state has a CTA to add the first note
+- [x] **UX-05**: URL-extract failures surface categorized errors with recovery copy: `host-403`, `structured-data-missing`, `LLM-timeout`, `quota-exceeded`, `generic-network`
+- [x] **UX-06**: Form submissions surface success via Sonner toast AND an inline `aria-live="polite"` banner (hybrid pattern from Phase 999.1 MR-01)
+- [x] **UX-07**: All Server Action submit buttons display a pending state during transition (preferences, notifications, settings sections, profile edit, mark-all-read)
+- [x] **UX-08**: Profile edit form fires a success toast on save (today there's no confirmation visible)
 
 ### WYWT Auto-Nav
 
@@ -269,17 +269,17 @@ Which phases cover which requirements. Populated by the roadmapper on 2026-04-26
 | TEST-04 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
 | TEST-05 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
 | TEST-06 | Phase 24 — Notification Stub Cleanup + Test Fixture & Carryover | Pending |
-| NAV-13 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| NAV-14 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| NAV-15 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-01 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-02 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-03 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-04 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-05 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-06 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-07 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
-| UX-08 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Pending |
+| NAV-13 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| NAV-14 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| NAV-15 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-01 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-02 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-03 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-04 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-05 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-06 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-07 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
+| UX-08 | Phase 25 — Profile Nav Prominence + Empty States + Form Polish | Complete (2026-05-02) |
 | WYWT-20 | Phase 26 — WYWT Auto-Nav | Complete (2026-05-02) |
 | WYWT-21 | Phase 26 — WYWT Auto-Nav | Complete (2026-05-02) |
 
