@@ -2,33 +2,31 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Discovery & Polish
-status: completed
-stopped_at: Phase 26 context gathered
-last_updated: "2026-05-02T23:02:10.441Z"
-last_activity: 2026-05-02 -- Phase 26 marked complete
+status: shipped
+last_updated: "2026-05-03T00:00:00.000Z"
+last_activity: 2026-05-03 -- v4.0 milestone archived
 progress:
   total_phases: 12
-  completed_phases: 11
-  total_plans: 66
+  completed_phases: 12
+  total_plans: 65
   completed_plans: 65
-  percent: 98
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-26 — v4.0 milestone started)
+See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 26 — WYWT Auto-Nav
+**Current focus:** Planning next milestone (v5.0 candidates: catalog → similarity rewire, search facets, FIT-05 pairwise compare, branded email templates, staging Supabase project)
 
 ## Current Position
 
-Phase: 26 — COMPLETE
-Plan: 1 of 2
-Status: Phase 26 complete
-Last activity: 2026-05-02 -- Phase 26 marked complete
+Milestone: v4.0 — SHIPPED 2026-05-03
+Status: archived; ready to plan next milestone
+Last activity: 2026-05-03 -- v4.0 milestone archived via /gsd-complete-milestone
 
 ## Progress Bar
 
@@ -36,50 +34,35 @@ Last activity: 2026-05-02 -- Phase 26 marked complete
 v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
-v4.0 Discovery & Polish           [x] complete (12 phases — Phase 26 marked complete 2026-05-02; ready to archive)
+v4.0 Discovery & Polish           [x] shipped 2026-05-03
+v5.0+ (next)                      [ ] not yet scoped
 
-[████████████████████] 4 of 4 milestones complete (v4.0 pending archive)
+[████████████████████] 4 milestones shipped
 ```
 
 ## Accumulated Context
 
-### Roadmap Evolution
-
-- Phase 19.1 inserted after Phase 19: Catalog Taste Enrichment (URGENT) — LLM-derived structured taste attribute extraction on `watches_catalog` (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs[], crowd_signals[], confidence). Hides `styleTags`/`roleTags`/`designTraits` pickers from `WatchForm`. Adds photo upload + multi-modal vision call on manual entry. Inserted because Phase 20 verdict copy depends on these signals; engine rewire (`analyzeSimilarity` reading catalog taste attrs) deferred to v5.0. Architecture decision in memory at `project_taste_enrichment_arch_2026_04_29.md`.
-
 ### Carried Forward
 
-The full Key Decisions log lives in `.planning/PROJECT.md` (Key Decisions table) and per-milestone retrospective in `.planning/RETROSPECTIVE.md`. Active todos and tech debt now live in PROJECT.md `### Active`. Milestone archives live in `.planning/milestones/`.
-
-Recent decisions affecting v4.0 work:
-
-- Catalog `catalog_id` is **nullable indefinitely** in v4.0 (NEVER `SET NOT NULL` — defer to v5.0+)
-- Catalog is **silent infrastructure** in v4.0 — `analyzeSimilarity()` is NOT modified (catalog→similarity rewire is v5.0+)
-- Catalog source-of-truth: catalog wins for SPEC fields; per-user `watches` wins for OWNERSHIP fields (CAT-11)
-- /evaluate is **auth-only** in v4.0 (anonymous redirect to /signin); demo path deferred to v4.x
-- BottomNav stays at 5 slots (Profile is top-right NOT bottom-nav per universal convention)
-- DKIM verification MUST complete BEFORE flipping "Confirm email" toggle ON (Phase 21 ordering gate)
-- ENUM cleanup uses rename + recreate (`ALTER TYPE … DROP VALUE` does not exist in Postgres)
-
-### Todos
-
-See `.planning/PROJECT.md` `## Requirements` → `### Active` for the carried-forward backlog (test debt + custom SMTP + v3.0 deferred items). Most items are now scheduled into v4.0 phases (TEST-04/05/06 → Phase 24; SMTP → Phase 21; WYWT auto-nav → Phase 26; `wornPublic` fixture cleanup → Phase 24).
+The full Key Decisions log lives in `.planning/PROJECT.md` (Key Decisions table). Per-milestone retrospective in `.planning/RETROSPECTIVE.md`. Active todos and tech debt now live in PROJECT.md `## Requirements → ### Active`. Milestone archives in `.planning/milestones/`.
 
 ### Blockers
 
 None.
 
-### Quick Tasks Completed (during v3.0)
+### Deferred to v5.0+
 
-| # | Description | Date | Commit |
-|---|-------------|------|--------|
-| 260421-rdb | Fix 404 on watch detail pages for watches owned by other users | 2026-04-22 | 0604e09 |
-| 260421-srx | Wrap follower/following counts in `<Link>` on ProfileHeader | 2026-04-22 | 3919d9e |
-| 260424-nk2 | Fix WYWT rail and overlay showing watch catalog photo instead of wrist shot | 2026-04-24 | 19a7b32 |
+Most v4.0 deferred items are documented in `.planning/milestones/v4.0-MILESTONE-AUDIT.md` and `.planning/milestones/v4.0-REQUIREMENTS.md` (Future Requirements section). Highlights:
+
+- Phase 23 + Phase 24 phase-level VERIFICATION.md backfill (verification asymmetry)
+- ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23
+- CAT-13 catalog → similarity engine rewire
+- CAT-14 `SET NOT NULL` on `watches.catalog_id` after 100% backfill verified across two consecutive deploys
+- SMTP-06 staging-prod sender split (`mail.staging.horlo.app`) — pending staging Supabase project
+- DISC-09/10, SRCH-16/17, FIT-05/06, SET-13/14, UX-09/10/11 — see milestones/v4.0-REQUIREMENTS.md Future Requirements
 
 ## Session Continuity
 
-Last session: 2026-05-02T19:04:27.014Z
-Stopped at: Phase 26 context gathered
-Resume file: .planning/phases/26-wywt-auto-nav/26-CONTEXT.md
-Next action: `/clear` then `/gsd-plan-phase 25` to plan Phase 25
+Last session: 2026-05-03T00:00:00Z
+Stopped at: v4.0 milestone archived
+Next action: `/clear` then `/gsd-new-milestone` to start v5.0 (or higher) planning

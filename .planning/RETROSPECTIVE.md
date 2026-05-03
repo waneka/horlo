@@ -152,6 +152,74 @@
 
 ---
 
+## Milestone: v4.0 — Discovery & Polish
+
+**Shipped:** 2026-05-03
+**Phases:** 12 (17, 18, 19, 19.1, 20, 20.1, 21, 22, 23, 24, 25, 26) | **Plans:** 65
+**Timeline:** 6 days (2026-04-27 → 2026-05-02)
+**Codebase:** 472 files changed, +97,147 / −1,959 lines, 62,322 LOC TypeScript, 430 commits
+
+### What Was Built
+- Catalog Foundation laid silently underneath per-user `watches` with `pg_trgm` GIN indexes, NULLS-NOT-DISTINCT natural-key UNIQUE, public-read RLS, idempotent batched backfill, two upsert helpers, daily SECDEF pg_cron count refresh + daily snapshots
+- LLM-derived taste enrichment: 8 columns on `watches_catalog` via Anthropic Sonnet strict tool-use, fire-and-forget enrichment from both write paths, optional reference-photo upload to new bucket, vocab validation with console.warn drops, first-write-wins semantics
+- /explore discovery surface with sparse-network welcome hero + 3 cached rails (Popular Collectors per-viewer, Trending global, Gaining Traction with three-window logic)
+- /search Watches + Collections populated with anti-N+1 single-batch viewer-state hydration and two-layer-privacy AND-locked Collections; All-tab union with three independent sub-effects each with own AbortController
+- Collection Fit verdict reframe: pure-renderer `<CollectionFitCard>` (engine no-import static guard), 12-template composer with confidence gating reading Phase 19.1 taste attrs via Drizzle aggregate, eliminated `/evaluate` route
+- Add-Watch Flow Rethink: URL paste → verdict preview → 3-button decision (wishlist / owned / skip) as one coherent gesture with state machine + atomic flow leaves; deep-link from `/search?tab=watches` and `/catalog/[catalogId]` short-circuits to form-prefill
+- Custom Resend SMTP on `mail.horlo.app` with DKIM/SPF/DMARC verified, D-07 round-trip gate (Invite + real Gmail Inbox-not-Spam) before Confirm-email toggle flip; all three Auth email templates standardized on canonical `/auth/callback?token_hash=…&type=…&next=…` PKCE+SSR pattern
+- Settings restructured into `@base-ui/react` vertical-tabs shell with hash-driven state via `pushState` (NOT `router.push`); Account section ships email change with pending banner + password change with 24h staleness re-auth dialog
+- Schema-driven knobs surfaced: `collectionGoal` + `overlapTolerance` Selects (Brand Loyalist option), per-note `notesPublic` pill, `isChronometer` Checkbox/Certification row
+- Notification stub cleanup via rename+recreate enum (with T-24-PARTIDX partial-index surgery for enum-bound dependents); 4 wornPublic test fixtures rewritten; three v1.0-carryover test suites finally landed (TEST-04/05/06)
+- Profile Nav Prominence with avatar dual-affordance (avatar Link + chevron dropdown) on TopNav surfaces; 4 empty-state CTAs across collection/wishlist/worn/notes (Collection has API-key-aware "Add manually" fallback)
+- 5-category URL-extract error taxonomy with locked copy + lucide icons; hybrid Sonner + `aria-live="polite"` form feedback rolled across 7 forms via shared `useFormFeedback` + `<FormStatusBanner>`
+- WYWT auto-nav with Suspense-wrapped photo render + retry-with-cache-buster onError + `useRef`-based setTimeout cleanup
+
+### What Worked
+- **Inline gap-closure plans for UAT findings (20.1-06/07/08, 26-inline 4212a08, 20-inline 9796b32)** — when verifier or UAT surfaced gaps, the answer was always "close inline before the phase exits" rather than "defer to next phase." 20.1's three-plan gap-closure pass closed 5 user-reported bugs from a single upstream cause in one sitting.
+- **`tests/no-evaluate-route.test.ts` + `tests/static/CollectionFitCard.no-engine.test.ts` static guards** — preventing reintroduction of deleted code via filesystem assertion is cheap and catches regressions that grep alone misses (e.g., a future plan adding `/evaluate` back even with a stub `page.tsx`).
+- **D-07 round-trip gate for Phase 21 caught 2 latent auth bugs** — forgot-password redirectTo silent-drop + apex/www allowlist mismatch were both pre-existing pre-Phase-21 but only surfaced when running an end-to-end signup against live SMTP. The "verify ordering BEFORE flipping the toggle" pattern paid off.
+- **Architectural prop-borne `collectionRevision`** — passing the revision as a prop instead of reading it from a hook inside `'use cache'` scope kept the verdict cache invalidation correct across `<AddWatchFlow>`, `<WatchSearchRowsAccordion>`, and `<CatalogPageActions>`. Same pattern as v2.0 viewerId prop discipline.
+- **Locked-copy contracts in PLAN.md / UI-SPEC.md** — Phase 22 had verbatim copy locks like "Confirmation sent to **old@** and **new@**" reproduced in the test as exact strings, not regexes. Caught one mid-phase paste-error where a developer typed "Confirmation sent to old@ AND new@" (capitalized AND); test failed; fixed in the same commit.
+- **Phase 23 + 24 parallelization via worktrees** — Phase 23 ran 6 plans in 2 waves with parallel worktrees on independent files; Phase 24 had 8 plans across 4 waves with the prod-apply checkpoint cleanly serialized via `autonomous: false`. Wall-clock cost was a fraction of sequential.
+- **Code-review → REVIEW-FIX inline pipeline** — Phase 22's CR-01 (StatusToastHandler reading querystring instead of hash) was caught and fixed in commit `89d6322` before the phase exited; comment-only `useSearchParams` reference left as a paper trail. Same hygiene for Phase 20 viewerTasteProfile import.
+
+### What Was Inefficient
+- **Phase 23 + Phase 24 shipped without phase-level VERIFICATION.md** — both phases have implementation evidence in plan-level SUMMARY files, but no goal-backward verifier audit was run. The milestone audit caught this as `tech_debt`. Pattern: when a phase's last plan is a "verify-only doc" (like 23-06), executors sometimes treat the sub-plan VERIFICATION as the phase verification. Workflow should require an explicit `/gsd-verify-work {N}` step OR auto-derive a phase-level VERIFICATION from sub-plan evidence at phase close.
+- **Phase 23 Plan 5 worktree reset** — Plan 5 implementation (notesPublic Zod + revalidatePath) was lost to a worktree reset; the bug was caught by 23-REVIEW.md (CR-01 critical) and the fix shipped via commit `4d362ff`, but the structured plan SUMMARY.md was never produced. Plan 6 explicitly documents this: "leftover work from a parallel-executor plan that did not commit its work before the worktree reset."
+- **Phase 20 build-blocker (TS2459 viewerTasteProfile import) slipped past every plan's self-check** — vitest doesn't run tsc; `npm run build` does. Plan-level `<verify>` scripts only ran `npx vitest run` and never `npm run build` or full-project `npx tsc --noEmit`. Should be a milestone-wide convention: every plan's verify block must include `npm run build` (or some structural-typecheck equivalent) before declaring success.
+- **Computer crash mid-Phase-20 Wave 3 surfaced a workflow `git reset --soft` bug** — the orchestrator's worktree-base detection produced a 43k-line destructive first commit on the 20-05 branch when the recovery attempted to extract the intended files. Caught and rolled back; intended files extracted surgically into `411339a`. Workflow has a known recovery hole.
+- **20.1 had 5 UAT debug entries from a single upstream cause** — `verdict-empty-collection-message` + `wishlist-textarea-not-prefilled` + `recently-evaluated-rail-missing` were all consequences of `state.verdict === null` (silent catalog upsert failure or empty `collectionRevision`). The diagnosis-only mode caught the shared root cause, but if the verifier had run a fuller end-to-end test against a live DB instead of relying on mocks, this single root cause might have surfaced before user UAT instead of through it.
+- **REQUIREMENTS.md traceability table drift** — same issue as v2.0 + v3.0. Phase-complete updates only the current phase's rows; sister-phase rows stay "Pending" through subsequent phases. Audit caught it; `/gsd-complete-milestone` regenerates. Three milestones in a row, this is a workflow gap not a phase miss.
+- **Phase 999.1 directory carried from v3.0** — leftover in `.planning/phases/` instead of archived to `milestones/v3.0-phases/`. Cosmetic, but suggests `/gsd-complete-milestone` should explicitly handle leftover phase directories during phase archival decision.
+- **Nyquist `nyquist_compliant: true + wave_0_complete: true` only reached by 3/12 phases** — most have draft VALIDATION.md files. Phases 25 + 26 have no VALIDATION.md at all. The Wave 0 testing happened (lots of RED→GREEN); the frontmatter just wasn't kept in sync. Same pattern as v3.0.
+
+### Patterns Established
+- **Catalog as silent infrastructure pattern** — separate per-user authoritative data (`watches`) from canonical-spec data (`watches_catalog`); join at display time; `analyzeSimilarity()` byte-locked across the entire milestone. Establishes the path for v5.0+ engine rewire.
+- **First-write-wins LLM enrichment with `--force` re-run script** — `updateCatalogTaste` skips rows with non-null confidence by default; explicit `reenrich-taste.ts --force` flag + `--dry-run` preview for operator-controlled re-enrichment. Prevents accidentally clobbering hand-curated taste signals.
+- **3-button verdict gesture** (wishlist / owned / skip) as canonical evaluation surface — replaces "navigate to /evaluate" with "verdict-as-step in the existing add-watch flow." Skip path covers the lightweight evaluate-only use case.
+- **`useFormFeedback` hook + `<FormStatusBanner>` primitive** for hybrid Sonner toast + `aria-live="polite"` banner. Standardizes pending state, success message, error message, and dialogMode flag across 7 forms. Pattern is reusable for any future Server Action surface.
+- **Locked categorical error copy** (5-category URL-extract taxonomy) with `CONTRACT_BY_CATEGORY` map + parameterized tests. Specific recovery CTAs per category beat generic "extraction failed" copy.
+- **`@base-ui/react` vertical-tabs with `window.history.pushState`** — hash-driven SPA tab state without re-running the page Server Component loader. URL fragment shareable, back-button friendly. Replaces `router.push` for tab switching.
+- **Email-template + auth-callback PKCE+SSR standardization** — all auth flows route through one canonical `/auth/callback?token_hash=…&type=…&next=…` shape with `verifyOtp({ type, token_hash })` server-side. Eliminated 3 different template patterns into 1.
+- **`isSessionStale` + chained `signInWithPassword` → `updateUser`** for sensitive-op re-auth. 24h threshold + 401 catch reopen-dialog as defense-in-depth.
+- **Postgres enum cleanup via rename+recreate (with partial-index surgery for enum-bound dependents)** — `ALTER TYPE … DROP VALUE` does not exist; the costly path is the only path. T-24-PARTIDX documented in deploy runbook as canonical pattern.
+
+### Key Lessons
+1. **Static guards that assert filesystem absence are cheap and reliable.** `tests/no-evaluate-route.test.ts` (3 lines, asserts the route doesn't exist) is more durable than a grep across `src/`.
+2. **Plan-level `<verify>` scripts must include the production build step.** Vitest passing is necessary but not sufficient. The Phase 20 build-blocker would have been caught by any plan's verify block running `npm run build`.
+3. **Inline gap-closure beats deferring to a next phase.** Phase 20 (1 fix), Phase 26 (1 fix), Phase 20.1 (3 plans = 5 bugs) all chose to close inline before exiting. The cost is a single re-verification round; the benefit is no carry-over debt to next milestone.
+4. **D-07 ordering gates pay for themselves.** Verifying DKIM/SPF/DMARC + round-trip end-to-end before flipping the Confirm-email toggle caught 2 latent bugs and gave the operator decision authority to STOP if anything looked off. Pattern transfers to any external-dependency rollout.
+5. **Phase-level VERIFICATION.md needs explicit ownership in the workflow.** Two phases (23 + 24) shipped without one this milestone. Either the workflow should auto-prompt `/gsd-verify-work` at phase close, or the executors need a checklist gate.
+6. **Worktree-based parallelization is a 4-6x wall-clock win** when plans target independent files. 12 phases / 65 plans / 6 days is only possible with aggressive parallelization. The cost is recovery complexity when worktrees fail (Phase 23 Plan 5 reset).
+7. **REQUIREMENTS.md traceability drift is a workflow problem, not a phase problem.** Three milestones in a row this has been audit-time cleanup. The phase-complete tool should auto-update sister-phase rows when their evidence appears in another phase's SUMMARY.
+
+### Cost Observations
+- Model mix: ~70% Sonnet (executor agents + verification + code review), ~30% Opus (orchestration, planner, integration checker, audit)
+- Sessions: 6-7 major sessions across 6 days, with parallel sub-agents for code review + verification + audit + UAT
+- Notable: Phase 19 (6 plans / 116 tests / 2 live-DB integration tests) and Phase 25 (6 plans / 11 requirements / 4 UAT items) both completed in single Sonnet sessions with Opus orchestration, including code review and verification cycles. Phase 17 (6 plans + prod migration apply) and Phase 21 (2 plans + DNS lead-time + D-07 gate + 4 toggle flip) had operator-attested checkpoint pauses for prod-touching ops.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -161,6 +229,7 @@
 | v1.0 | 5 days | 5/6 | First milestone — established GSD workflow patterns |
 | v2.0 | 3 days | 5/5 | Added wave-based parallelization, two-layer privacy pattern, cacheComponents, integration-gated test strategy |
 | v3.0 | 5 days | 7/7 | Added Wave 0 RED-test discipline, code-review-fix pipeline at phase close, architectural prop-acquisition for browser APIs, three-tier privacy enum pattern, EXPLAIN ANALYZE forced-plan evidence for index proofs |
+| v4.0 | 6 days | 12/12 | Added inline gap-closure pattern (3 phases used it), filesystem-absence static guards, D-07-style ordering gates for external-dependency rollouts, hybrid form-feedback (`useFormFeedback` + `FormStatusBanner`), worktree-based plan parallelization at scale (65 plans / 6 days), catalog-as-silent-infrastructure separation, LLM-derived structured taste enrichment with first-write-wins semantics, Postgres enum rename+recreate for cleanup, `@base-ui/react` vertical-tabs with `pushState` hash-routing |
 
 ### Cumulative Quality
 
@@ -169,11 +238,15 @@
 | v1.0 | 697 | Not configured | TEST-04/05/06 deferred |
 | v2.0 | 2070+ (unit + integration-gated) | Not configured | Phase 999.1 backlog (v1.0 code review follow-ups); UAT automation |
 | v3.0 | 2813+ (87+ test files; 152 env-gated) | Not configured | 31 deferred human-verification UAT items; WristOverlaySvg redesign (user owns); 9 test files with stale `wornPublic` references; pre-existing `LayoutProps` TS error; Nyquist VALIDATION.md frontmatter drift |
+| v4.0 | ~3000+ (unit + RTL + integration-gated; TEST-04/05/06 finally landed; live-DB tests across phase 17/19/19.1/20/22/24) | Not configured | 2 phases without phase-level VERIFICATION.md (23, 24); ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23; Nyquist coverage partial (3/12 fully compliant; Phases 25 + 26 have no VALIDATION.md); REQUIREMENTS.md DISC-08/NAV-14 wording drift; pre-existing `LayoutProps` + tests/no-raw-palette + tests/app/explore failures |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Run production runbooks manually before declaring them verified — the gap between "looks correct" and "actually works" is always larger than expected.
-2. Two-layer defenses (RLS + DAL, hooks + tests, grep gates + types) consistently catch what single-layer defenses miss. Cost of the second layer is small; cost of a single-layer breach is large.
-3. Scope expansions should land with their requirement entry in the same phase. Deferring the REQUIREMENTS.md update creates traceability drift that audits then have to reconcile.
+2. Two-layer defenses (RLS + DAL, hooks + tests, grep gates + types, ordering gates + verification) consistently catch what single-layer defenses miss. Cost of the second layer is small; cost of a single-layer breach is large.
+3. Scope expansions should land with their requirement entry in the same phase. Deferring the REQUIREMENTS.md update creates traceability drift that audits then have to reconcile. **Workflow gap: this is now a 4-milestone-running issue.**
 4. `human_needed` verification status is the natural close state for UI/social features. Build UAT batching into the milestone-close ritual rather than treating these as exceptions.
 5. Pre-existing errors in deferred-items.md across multiple phases need an explicit owner. The audit workflow should promote orphans to action items rather than letting them recur.
+6. **(v4.0)** Plan-level verify scripts must include the production build step, not just vitest. The cost is one extra command; the benefit is catching tsc-only errors before phase exit.
+7. **(v4.0)** Inline gap-closure (a follow-up plan within the same phase) beats deferring to next phase. Three phases used this pattern in v4.0 (Phase 20, 20.1, 26) and all closed cleanly. The cost is one re-verification round; the benefit is zero carry-over.
+8. **(v4.0)** Static guards that assert filesystem absence (e.g., "this route doesn't exist") are cheaper and more durable than greps over `src/`. Use them whenever a deletion needs to be enforced going forward.

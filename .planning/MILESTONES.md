@@ -1,5 +1,40 @@
 # Milestones
 
+## v4.0 Discovery & Polish (Shipped: 2026-05-03)
+
+**Phases completed:** 12 phases (17, 18, 19, 19.1, 20, 20.1, 21, 22, 23, 24, 25, 26), 65 plans
+**Timeline:** 6 days (2026-04-27 → 2026-05-02)
+**Scope:** 472 files changed, +97,147 / −1,959 lines, 62,322 LOC TypeScript in src/+tests/+scripts/
+**Git range:** 430 commits (c573ad4 → 7132ac0)
+**Audit:** `tech_debt` — 75/75 actionable requirements satisfied + 1 deferred (SMTP-06); 2 phases shipped without phase-level VERIFICATION.md (23, 24); ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23
+
+**Key accomplishments:**
+
+1. **Catalog foundation + LLM taste enrichment (Phase 17 + 19.1)** — Canonical `watches_catalog` table laid silently underneath per-user `watches` with public-read RLS, service-role-only writes, `pg_trgm` GIN indexes, NULLS-NOT-DISTINCT natural-key UNIQUE, idempotent batched backfill, daily SECURITY DEFINER pg_cron count refresh + `watches_catalog_daily_snapshots` for the Gaining Traction rail. Phase 19.1 layered 8 LLM-derived taste columns (formality / sportiness / heritage_score / primary_archetype / era_signal / design_motifs / confidence / extracted_from_photo) via Anthropic Sonnet strict tool-use, fire-and-forget enrichment from both manual entry and URL extract, optional reference-photo upload to a new `catalog-source-photos` Supabase bucket. `analyzeSimilarity()` byte-locked across both phases (silent infrastructure)
+2. **Discovery surface live (Phase 18)** — `/explore` Server Component shell shipped with sparse-network welcome hero (gated on `followingCount < 3 && wearEventsCount < 1`) + Popular Collectors / Trending Watches / Gaining Traction rails (per-viewer + global cacheLife with explicit `updateTag` for read-your-own-writes and `revalidateTag('explore', 'max')` for SWR fan-out). BottomNav reshaped to 5 slots: Home / Search / Wear / Explore / Profile (D-03/D-04 amend original DISC-08 wording). See-all routes at `/explore/collectors` (50-row cap) and `/explore/watches` (stacked Trending+Gaining at limit:50 each)
+3. **Search Watches + Collections (Phase 19)** — Two stub tabs from v3.0 populated with anti-N+1 catalog watch search (single `inArray` viewer-state batch keyed by viewerId) and two-layer-privacy collection search (BOTH `profile_public` AND `collection_public` + viewer self-exclusion). All-tab union capped at 5 each via three independent sub-effects with per-section AbortController for safe rapid-tab-switch
+4. **Collection Fit verdict reframe + Add-Watch Flow Rethink (Phase 20 + 20.1)** — Pure-renderer `<CollectionFitCard>` (no engine imports — static guard locked) replaces `<SimilarityBadge>` (deleted) across `/watch/[id]`, `/search` row inline-expand accordion, and new `/catalog/[catalogId]` route. 12-template composer (4 roadmap-mandated + 8 supporting) with confidence gating at 0.5 / 0.7 thresholds reads Phase 19.1 taste attributes via `viewerTasteProfile` Drizzle aggregate. `/evaluate` route eliminated — URL-paste capability moved into the Add-Watch Flow as `verdict-as-step`. Pasting a URL → verdict preview → 3-button decision (wishlist / owned / skip) is a single coherent gesture. Catalog deep-link from `/search?tab=watches` → `/watch/new?catalogId=X&intent=owned` short-circuits to form-prefill. Manual entry preserved as secondary affordance
+5. **Custom SMTP via Resend (Phase 21)** — `mail.horlo.app` verified at Resend with SPF + DKIM + DMARC `p=none` + bounce MX records published via Cloudflare auto-configure. Supabase Auth wired to `smtp.resend.com:465` with `Horlo <noreply@mail.horlo.app>` sender. D-07 round-trip gate (Invite-User Inbox + real Gmail signup Inbox) passed before flipping toggles. Confirm email + Secure email change + Secure password change toggles all flipped ON in production. All three Auth email templates (Confirm signup / Reset Password / Change Email) standardized on canonical `/auth/callback?token_hash={{ .TokenHash }}&type=...&next=...` PKCE+SSR pattern (preempting SET-04 in Phase 22). Backout-plan section in `docs/deploy-db-setup.md` with **T-21-PREVIEWMAIL** + **T-21-WWWALLOWLIST** footguns
+6. **Settings restructure + schema-field UI (Phase 22 + 23)** — `@base-ui/react` vertical-tabs shell at `/settings` with 6 sections in canonical SaaS order (Account / Profile / Preferences / Privacy / Notifications / Appearance), hash-driven via `window.history.pushState` (NOT `router.push`) so tab switching doesn't re-run the page Server Component loader. Account section ships email change with pending banner ("Confirmation sent to BOTH old@ AND new@"; T-22-S4 mitigation never displays new email as current pre-confirmation) and password change with 24h staleness `isSessionStale` re-auth dialog. `/auth/confirm/route.ts` extended to switch on `type` (5 EmailOtpType values). `/preferences` redirects to `/settings#preferences`. Preferences exposes `collectionGoal` + `overlapTolerance` Selects as dedicated top Cards. Privacy/Notifications/Appearance restyled. WatchForm exposes per-note `notesPublic` Public/Private pill + `isChronometer` Checkbox; WatchDetail renders only-if-true Certification row
+7. **Notification stub cleanup + test debt paydown + polish (Phase 24 + 25 + 26)** — Pre-flight zero-row assertion + `notification_type` enum rename+recreate (with T-24-PARTIDX partial-index surgery for enum-bound dependents) eliminated `price_drop` + `trending_collector` dead code across src/, tests/, scripts/, seed/. 4 `wornPublic` test fixture files rewritten to `wear_visibility` enum. Three v1.0-carryover test suites finally landed: `watchStore` filter reducer, `/api/extract-watch` route integration, `WatchForm`/`FilterBar`/`WatchCard` component tests. Profile graduates to first-class top-right affordance — DesktopTopNav + SlimTopNav avatar dual-affordance (Link to /u/{username}, chevron to UserMenu). 4 empty-state CTAs across collection/wishlist/worn/notes (with API-key-aware Add-manually fallback). 5-category URL-extract error taxonomy (`host-403`, `structured-data-missing`, `LLM-timeout`, `quota-exceeded`, `generic-network`) with locked copy + lucide icons. Hybrid Sonner toast + inline `aria-live="polite"` form feedback rolled across 7 forms via shared `useFormFeedback` hook + `FormStatusBanner`. WYWT auto-nav with Suspense-wrapped photo render covering the 200–800ms storage-CDN propagation window. Phase 25 + 26 received UAT approval on prod commit 7132ac0
+
+**Tech debt deferred:**
+
+- 2 phases shipped without phase-level VERIFICATION.md (Phase 23 only has sub-plan 23-06; Phase 24 has none — implementation evidence in plan-level SUMMARYs)
+- ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23 (visual / interactive / live-network behaviors; Phase 25 + 26 UAT approved on prod)
+- Nyquist VALIDATION.md drift — only 3/12 phases reached `nyquist_compliant: true` + `wave_0_complete: true` (Phases 19, 19.1, 21); Phases 25 + 26 have no VALIDATION.md
+- SMTP-06 staging-prod sender split (`mail.staging.horlo.app`) — pending staging Supabase project per Phase 21 CONTEXT D-01
+- REQUIREMENTS.md DISC-08 / NAV-14 wording drift (still references "Notifications" slot; Phase 18 D-03 / D-04 amended to "Profile") — implementation matches amendment, doc string never updated
+- Phase 999.1 directory still in `.planning/phases/` (v3.0 archival miss)
+- WatchForm.tsx CardDescription / photoError unused imports flagged in plan summaries
+- Pre-existing test failures: `tests/no-raw-palette.test.ts` × 2 (font-medium UI-SPEC vs lint conflict), `tests/app/explore.test.tsx` × 3 (Phase 14 stub copy superseded by Phase 18) — pre-existing, not v4.0 fallout
+- Pre-existing `LayoutProps` TS error in `src/app/u/[username]/layout.tsx:21` — carried from v3.0
+- 5 Phase 20.1 UAT debug entries closed by gap-closure plans 20.1-06/07/08 — moved to `.planning/debug/resolved/` at milestone close
+
+See `.planning/milestones/v4.0-MILESTONE-AUDIT.md` for the full audit detail.
+
+---
+
 ## v3.0 Production Nav & Daily Wear Loop (Shipped: 2026-04-27)
 
 **Phases completed:** 7 phases (11, 12, 13, 14, 15, 16, 999.1), 37 plans, 56 tasks
