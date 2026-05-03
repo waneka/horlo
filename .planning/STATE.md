@@ -36,9 +36,9 @@ Last activity: 2026-05-02 -- Phase 26 marked complete
 v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
-v4.0 Discovery & Polish           [ ] in progress (Phase 17 ready to plan)
+v4.0 Discovery & Polish           [x] complete (12 phases — Phase 26 marked complete 2026-05-02; ready to archive)
 
-[████████████████░░░░] 3 of 4 milestones complete
+[████████████████████] 4 of 4 milestones complete (v4.0 pending archive)
 ```
 
 ## Accumulated Context
