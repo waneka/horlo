@@ -3,7 +3,7 @@ import 'server-only'
 
 import { db } from '@/db'
 import { watches, profileSettings } from '@/db/schema'
-import { eq, and, or, sql } from 'drizzle-orm'
+import { eq, and, or, asc, desc, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Watch } from '@/lib/types'
 
 // Row type inferred from the Drizzle schema — used for mapping only.
@@ -45,6 +45,8 @@ function mapRowToWatch(row: WatchRow): Watch {
     imageUrl: row.imageUrl ?? undefined,
     // Phase 17 catalog FK — preserve null to let callers distinguish "not linked" from "not fetched"
     catalogId: row.catalogId ?? null,
+    // Phase 27 — sort_order for wishlist drag-reorder (D-01).
+    sortOrder: row.sortOrder,
   }
 }
 
@@ -82,14 +84,28 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   if ('notesPublic' in data && data.notesPublic !== undefined) row.notesPublic = data.notesPublic
   if ('imageUrl' in data) row.imageUrl = data.imageUrl ?? null
 
+  // Phase 27 — sort_order is mappable from the domain layer so server
+  // actions can pass `{ sortOrder: maxSort + 1 }` for D-03/D-04 bumps.
+  if ('sortOrder' in data && data.sortOrder !== undefined) row.sortOrder = data.sortOrder
+
   return row
 }
 
 /**
- * Return all watches for a user, ordered by creation date descending.
+ * Return all watches for a user.
+ *
+ * Phase 27: ORDER BY sort_order ASC, created_at DESC (D-01).
+ *   - Primary: sort_order ASC — owner's chosen wishlist order.
+ *   - Tiebreaker: created_at DESC — defends against any rows sharing a
+ *     sort_order; post-migration there should be no ties (DO $$ assertion
+ *     in 20260504120000_phase27_sort_order.sql verifies), but cheap safety.
  */
 export async function getWatchesByUser(userId: string): Promise<Watch[]> {
-  const rows = await db.select().from(watches).where(eq(watches.userId, userId))
+  const rows = await db
+    .select()
+    .from(watches)
+    .where(eq(watches.userId, userId))
+    .orderBy(asc(watches.sortOrder), desc(watches.createdAt))
   return rows.map(mapRowToWatch)
 }
 
@@ -230,4 +246,73 @@ export async function linkWatchToCatalog(
     .update(watches)
     .set({ catalogId })
     .where(and(eq(watches.id, watchId), eq(watches.userId, userId)))
+}
+
+/**
+ * Phase 27 (D-03, D-04) — Returns max(sort_order) across the user's
+ * wishlist+grail set, or -1 if empty.
+ *
+ * Used by:
+ *   - addWatch Server Action: when status='wishlist'|'grail', new watch lands
+ *     at end of list with sort_order = max + 1.
+ *   - editWatch Server Action: when status transitions INTO wishlist|grail
+ *     from another status, bump sort_order to max + 1.
+ */
+export async function getMaxWishlistSortOrder(userId: string): Promise<number> {
+  const rows = await db
+    .select({ maxSort: sql<number>`coalesce(max(${watches.sortOrder}), -1)::int` })
+    .from(watches)
+    .where(
+      and(
+        eq(watches.userId, userId),
+        inArray(watches.status, ['wishlist', 'grail']),
+      ),
+    )
+  return rows[0]?.maxSort ?? -1
+}
+
+/**
+ * Phase 27 (WISH-01, D-09, D-10, T-27-01, T-27-02) — Bulk-update sort_order
+ * for the user's wishlist+grail set in a single round-trip via UPDATE … CASE WHEN.
+ *
+ * Defense-in-depth (per RESEARCH Pitfall 5 + Pattern 5):
+ *   1. WHERE clause includes user_id (T-27-01: cross-tenant reorder)
+ *   2. WHERE clause includes status IN ('wishlist','grail') (T-27-02: status-confused reorder)
+ *   3. WHERE clause includes inArray(id, orderedIds)
+ *   4. Post-update count check: if updated.length !== orderedIds.length,
+ *      throw "Owner mismatch" — caller (Server Action) maps to ActionResult.failure.
+ *
+ * At v4.1 scale (<500 watches/user) a single CASE WHEN UPDATE is the right
+ * shape; lexorank gap-positioning is not needed (CONTEXT D-09).
+ */
+export async function bulkReorderWishlist(
+  userId: string,
+  orderedIds: string[],
+): Promise<void> {
+  if (orderedIds.length === 0) return
+
+  const chunks: SQL[] = [sql`(case`]
+  orderedIds.forEach((id, idx) => {
+    chunks.push(sql`when ${watches.id} = ${id} then ${idx}`)
+  })
+  chunks.push(sql`end)`)
+  const caseExpr = sql.join(chunks, sql.raw(' '))
+
+  const updated = await db
+    .update(watches)
+    .set({ sortOrder: caseExpr, updatedAt: new Date() })
+    .where(
+      and(
+        eq(watches.userId, userId),
+        inArray(watches.id, orderedIds),
+        inArray(watches.status, ['wishlist', 'grail']),
+      ),
+    )
+    .returning({ id: watches.id })
+
+  if (updated.length !== orderedIds.length) {
+    throw new Error(
+      `Owner mismatch: expected ${orderedIds.length} rows, updated ${updated.length}`,
+    )
+  }
 }
