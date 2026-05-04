@@ -291,9 +291,11 @@ export async function bulkReorderWishlist(
 ): Promise<void> {
   if (orderedIds.length === 0) return
 
+  // Postgres infers text type for CASE WHEN parameters by default; cast each
+  // ordinal to int4 so the assignment to integer column "sort_order" succeeds.
   const chunks: SQL[] = [sql`(case`]
   orderedIds.forEach((id, idx) => {
-    chunks.push(sql`when ${watches.id} = ${id} then ${idx}`)
+    chunks.push(sql`when ${watches.id} = ${id} then ${idx}::int4`)
   })
   chunks.push(sql`end)`)
   const caseExpr = sql.join(chunks, sql.raw(' '))
