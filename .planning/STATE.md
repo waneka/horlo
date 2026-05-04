@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: Phase 27 planned (5 plans, 4 waves); ready to execute
+status: executing
 stopped_at: Phase 27 plans verified — awaiting `/gsd-execute-phase 27`
-last_updated: "2026-05-03T00:00:00.000Z"
-last_activity: 2026-05-03 — Phase 27 planned (5 plans verified; checker passed iteration 2)
+last_updated: "2026-05-04T07:33:57.873Z"
+last_activity: 2026-05-04 -- Phase 27 execution started
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
   completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v4.1 Polish & Patch — bug fixes, UX tweaks, small features + Phase 23/24 VERIFICATION.md backfill (clears v4.0 carryover before v5.0 Discovery North Star)
+**Current focus:** Phase 27 — watch-card-collection-render-polish
 
 ## Current Position
 
-Phase: 27 — Watch Card & Collection Render Polish (planned, ready to execute)
-Plan: 5 plans across 4 waves (Wave 1: tests; Wave 2: schema+card; Wave 3: action; Wave 4: DnD wiring)
-Status: Phase 27 planned (5 plans, 4 waves); ready to execute
-Last activity: 2026-05-03 — Phase 27 planned (5 plans verified; checker passed iteration 2)
+Phase: 27 (watch-card-collection-render-polish) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 27
+Last activity: 2026-05-04 -- Phase 27 execution started
 
 ## Progress Bar
 

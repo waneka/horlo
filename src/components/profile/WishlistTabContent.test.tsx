@@ -35,6 +35,16 @@ vi.mock('@/components/profile/ProfileWatchCard', () => ({
   ProfileWatchCard: () => <div data-testid="pwc" />,
 }))
 
+// Phase 27 additions — owner DnD path mocks. Hoisted alongside the existing
+// vi.mock calls so the new describe block at end-of-file resolves cleanly.
+vi.mock('@/app/actions/wishlist', () => ({ reorderWishlist: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
+vi.mock('@/components/profile/SortableProfileWatchCard', () => ({
+  SortableProfileWatchCard: ({ id }: { id: string }) => (
+    <div data-testid="sortable-pwc" data-id={id} aria-roledescription="sortable" />
+  ),
+}))
+
 // IMPORT UNDER TEST — current file exists; Plan 02 modifies it.
 import { WishlistTabContent } from '@/components/profile/WishlistTabContent'
 import type { Watch } from '@/lib/types'
@@ -98,5 +108,60 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
     // Phase 25 CTA replaces the prior empty-state "Add to Wishlist" copy.
     expect(screen.queryByText('Add to Wishlist')).toBeNull()
     expect(screen.getByText('Add a wishlist watch')).toBeInTheDocument()
+  })
+})
+
+describe('Phase 27 — WishlistTabContent owner DnD path (WISH-01 + VIS-07)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('isOwner=true — wraps owner-draggable cards with aria-roledescription="sortable" (>=2 sortable nodes for 2 watches)', () => {
+    const { container } = render(
+      <WishlistTabContent
+        watches={[buildWatch('w1'), buildWatch('w2')]}
+        wearDates={{}}
+        isOwner={true}
+        username="alice"
+      />,
+    )
+    const sortables = container.querySelectorAll('[aria-roledescription="sortable"]')
+    expect(sortables.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('isOwner=false — plain ProfileWatchCard list, no element has aria-roledescription="sortable"', () => {
+    const { container } = render(
+      <WishlistTabContent
+        watches={[buildWatch('w1'), buildWatch('w2')]}
+        wearDates={{}}
+        isOwner={false}
+        username="alice"
+      />,
+    )
+    expect(container.querySelector('[aria-roledescription="sortable"]')).toBeNull()
+  })
+
+  it('grid wrapper className contains grid-cols-2 (BOTH owner and non-owner branches)', () => {
+    // Non-owner branch
+    const { container: nonOwner } = render(
+      <WishlistTabContent
+        watches={[buildWatch('w1')]}
+        wearDates={{}}
+        isOwner={false}
+        username="alice"
+      />,
+    )
+    expect(nonOwner.querySelector('.grid.grid-cols-2')).not.toBeNull()
+
+    // Owner branch
+    const { container: owner } = render(
+      <WishlistTabContent
+        watches={[buildWatch('w1')]}
+        wearDates={{}}
+        isOwner={true}
+        username="alice"
+      />,
+    )
+    expect(owner.querySelector('.grid.grid-cols-2')).not.toBeNull()
   })
 })
