@@ -38,6 +38,23 @@ export function ProfileWatchCard({
   // First role tag (preferred) or style tag for the small pill (UI-SPEC: single tag pill).
   const tag = watch.roleTags?.[0] ?? watch.styleTags?.[0]
 
+  // Phase 27 (VIS-08, D-15..D-21) — status-driven price line.
+  // Replaces the legacy wishlist-only `Target: $X` block (was at lines 85-89).
+  // Single rendering path for all card variants:
+  //   - owned/sold (paid bucket) → "Paid: $X" if pricePaid, else "Market: $X" if marketPrice, else hide
+  //   - wishlist/grail (target bucket) → "Target: $X" if targetPrice, else "Market: $X" if marketPrice, else hide
+  // marketPrice is ONLY surfaced as a fallback (D-20) — v6.0 Market Value owns
+  // first-class market display.
+  const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
+  const primary = isWishlistLike ? watch.targetPrice : watch.pricePaid
+  const primaryLabel = isWishlistLike ? 'Target' : 'Paid'
+  const priceLine =
+    primary != null
+      ? `${primaryLabel}: $${primary.toLocaleString()}`
+      : watch.marketPrice != null
+        ? `Market: $${watch.marketPrice.toLocaleString()}`
+        : null
+
   return (
     <Link href={`/watch/${watch.id}`}>
       <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
@@ -47,7 +64,7 @@ export function ProfileWatchCard({
               src={safeUrl}
               alt={`${watch.brand} ${watch.model}`}
               fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
               className="object-cover"
             />
           ) : (
@@ -82,9 +99,9 @@ export function ProfileWatchCard({
             </Badge>
           )}
           <p className="mt-2 text-xs text-muted-foreground">{lastWornLabel}</p>
-          {showWishlistMeta && watch.targetPrice != null && (
-            <p className="mt-1 text-xs text-foreground">
-              Target: ${watch.targetPrice.toLocaleString()}
+          {priceLine && (
+            <p className="mt-1 text-xs font-normal text-foreground">
+              {priceLine}
             </p>
           )}
           {showWishlistMeta && watch.notes && (
