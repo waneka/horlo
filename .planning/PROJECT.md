@@ -22,10 +22,12 @@ See `.planning/milestones/v4.0-MILESTONE-AUDIT.md` for the full audit (status: `
 
 **Goal:** Clear v4.0 carryover with bug fixes, UX tweaks, and small features so v5.0 (Discovery North Star) starts clean.
 
+**Phase 27 complete (2026-05-04):** WISH-01 + VIS-07 + VIS-08 satisfied. `watches.sort_order` column + index live, `bulkReorderWishlist` + `reorderWishlist` Server Action with set-completeness check, full @dnd-kit DnD wiring on Wishlist (mouse 150ms / touch 250ms / keyboard sensors, optimistic + Sonner rollback), status-driven price line in ProfileWatchCard (Owned/Sold→Paid→Market; Wishlist/Grail→Target→Market), `grid-cols-2` mobile grid on both Collection and Wishlist. Code review: 2 BLOCKERs + 5 WARNINGs all fixed inline. UAT approved across desktop + iOS Safari.
+
 **Target features (small but real):**
-- Reorder wishlist (drag-drop on desktop, long-press on mobile) — needs `sort_order` column
-- 2-column mobile grid for collection/wishlist
-- Price on watch card (paid for owned, target for wishlist)
+- ~~Reorder wishlist (drag-drop on desktop, long-press on mobile)~~ — Phase 27 ✓
+- ~~2-column mobile grid for collection/wishlist~~ — Phase 27 ✓
+- ~~Price on watch card (paid for owned, target for wishlist)~~ — Phase 27 ✓
 - "Added to collection/wishlist" toast with link to profile tab — extends Phase 25 `useFormFeedback` hook
 
 **Bug fixes:**
@@ -239,7 +241,7 @@ This document evolves at phase transitions and milestone boundaries.
 *2026-05-01 — Phase 23 (Settings Sections + Schema-Field UI) complete. SET-07/08/09/10/11/12 + FEAT-07/08 satisfied: collectionGoal + overlapTolerance lifted to top of Preferences tab as dedicated Cards (Brand Loyalist option added with locked em-dash copy); PreferencesClient gains embedded prop suppressing page chrome inside Settings tab; AppearanceSection mounts InlineThemeSegmented in SettingsSection title="Theme" (Server-renders-Client child per Next.js 16; UserMenu retains its segmented control — both sync via horlo-theme cookie); WatchForm exposes isChronometer Checkbox and notesPublic Public/Private pill below Notes textarea; WatchDetail renders only-if-true Certification row with text-foreground Check icon (Anti-Pattern 9 honored); addWatch/editWatch Zod accepts notesPublic and revalidates /u/[username] layout for cross-page sync (D-19); SET-09/SET-11/SET-12 verified-no-change via Phase 22 D-01/D-15; D-20 cleanup grep ZERO orphans. Zero schema changes, zero new DAL functions; 6 plans in 2 worktree-parallelized waves; 5 manual UAT items approved. Up next: Phase 24 (Notification Stub Cleanup + Test Fixture & Carryover).*</details>
 
 ---
-*Last updated: 2026-05-03 after v4.0 milestone — Discovery & Polish shipped. 12 phases (17–26 + 19.1 + 20.1), 65 plans, 430 commits over 6 days; 75/75 actionable requirements satisfied + 1 deferred (SMTP-06). Catalog Foundation laid silently with LLM taste enrichment, /explore + /search shipped, Collection Fit verdict reframe + Add-Watch Flow Rethink, custom Resend SMTP wired with Confirm-email ON in prod, Settings restructured into vertical-tabs frame with Account section + 5 schema-field surfaces, notification enum cleanup, profile nav prominence + 4 empty-state CTAs + 5-category URL-extract error taxonomy + hybrid form feedback, WYWT auto-nav. Audit status: `tech_debt` — 2 phases without phase-level VERIFICATION.md (Phase 23 + 24), ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23, Nyquist coverage partial. Phase 25 + 26 received UAT approval on prod commit 7132ac0. See `.planning/milestones/v4.0-MILESTONE-AUDIT.md`.*
+*Last updated: 2026-05-04 after Phase 27 — Watch Card & Collection Render Polish (5 plans, 4 waves) shipped: WISH-01 + VIS-07 + VIS-08 satisfied. v4.0 milestone — Discovery & Polish shipped 2026-05-03 (12 phases (17–26 + 19.1 + 20.1), 65 plans, 430 commits over 6 days; 75/75 actionable requirements satisfied + 1 deferred (SMTP-06)). Catalog Foundation laid silently with LLM taste enrichment, /explore + /search shipped, Collection Fit verdict reframe + Add-Watch Flow Rethink, custom Resend SMTP wired with Confirm-email ON in prod, Settings restructured into vertical-tabs frame with Account section + 5 schema-field surfaces, notification enum cleanup, profile nav prominence + 4 empty-state CTAs + 5-category URL-extract error taxonomy + hybrid form feedback, WYWT auto-nav. Audit status: `tech_debt` — 2 phases without phase-level VERIFICATION.md (Phase 23 + 24), ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23, Nyquist coverage partial. Phase 25 + 26 received UAT approval on prod commit 7132ac0. See `.planning/milestones/v4.0-MILESTONE-AUDIT.md`.*
 
 *Previous: 2026-04-28 — Phase 19 (/search Watches + Collections) complete. 7/7 SRCH requirements satisfied; 116 unit + RTL tests green + 2 live-DB integration tests green; 8 advisory findings in 19-REVIEW.md (3 warning + 5 info, all sub-Critical and non-blocking).*
 
