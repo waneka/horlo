@@ -10,12 +10,12 @@
 
 ### Wishlist UX
 
-- [ ] **WISH-01**: User can reorder wishlist items via drag-and-drop on desktop and long-press on mobile. Order persists across sessions via a new `sort_order` column on `watches`. Reordering is owner-only; public profile views render in the owner's chosen order.
+- [x] **WISH-01**: User can reorder wishlist items via drag-and-drop on desktop and long-press on mobile. Order persists across sessions via a new `sort_order` column on `watches`. Reordering is owner-only; public profile views render in the owner's chosen order.
 
 ### Visual Polish
 
-- [ ] **VIS-07**: Collection and wishlist grids render in 2 columns on mobile viewports (<768px). Desktop layout unchanged.
-- [ ] **VIS-08**: Watch card displays a price line — `paid_price` for owned watches, `target_price` for wishlist watches. Hidden when the relevant value is null.
+- [x] **VIS-07**: Collection and wishlist grids render in 2 columns on mobile viewports (<768px). Desktop layout unchanged.
+- [x] **VIS-08**: Watch card displays a price line — `paid_price` for owned watches, `target_price` for wishlist watches. Hidden when the relevant value is null.
 
 ### Form Feedback (Phase 25 useFormFeedback extension)
 
@@ -76,9 +76,9 @@ Captured here for traceability; not v4.1 scope.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| WISH-01 | Phase 27 | Pending |
-| VIS-07 | Phase 27 | Pending |
-| VIS-08 | Phase 27 | Pending |
+| WISH-01 | Phase 27 | Complete |
+| VIS-07 | Phase 27 | Complete |
+| VIS-08 | Phase 27 | Complete |
 | UX-09 | Phase 28 | Pending |
 | FIT-06 | Phase 28 | Pending |
 | ADD-08 | Phase 28 | Pending |
