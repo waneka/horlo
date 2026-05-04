@@ -191,12 +191,14 @@ export async function reorderWishlist(
   try {
     await bulkReorderWishlist(user.id, parsed.data.orderedIds)
 
-    // 'page' segment scope — wishlist tab is /u/[username]/[tab].
-    // Pattern matches addToWishlistFromWearEvent's revalidatePath('/').
-    // The dynamic [username]/[tab] form means revalidatePath strips the
-    // params; the second arg 'page' invalidates the entire page-level
+    // BR-02 fix — actual Next.js route is /u/[username]/[tab], NOT
+    // /u/[username]/wishlist. revalidatePath matches against the route
+    // definition; passing a non-matching path silently no-ops.
+    // Use the dynamic [tab] placeholder so all wishlist tab variants
+    // (and the collection tab, since they share the same route file)
+    // invalidate. The 'page' second arg invalidates the page-level
     // render for that route.
-    revalidatePath('/u/[username]/wishlist', 'page')
+    revalidatePath('/u/[username]/[tab]', 'page')
 
     return { success: true, data: undefined }
   } catch (err) {
