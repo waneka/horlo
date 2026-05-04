@@ -97,7 +97,27 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
   2. Each watch card shows a price line — `paid_price` for owned, `target_price` for wishlist — and the line is hidden when the relevant value is null.
   3. The owner can reorder Wishlist items via drag-and-drop on desktop and long-press-and-drag on mobile, and the new order persists across sessions and across devices.
   4. A non-owner viewing a public Wishlist sees the watches in the order the owner chose.
-**Plans**: TBD
+**Plans**: 5 plans across 4 waves
+
+**Wave 1**
+- [ ] 27-01-PLAN.md — Wave 0 RED test scaffolds (7 new + 1 extend)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 27-02-PLAN.md — Schema column + drizzle/supabase migrations + DAL helpers + addWatch/editWatch sort_order; `[BLOCKING]` local drizzle-kit push
+- [ ] 27-04-PLAN.md — ProfileWatchCard status-driven price line + Image sizes attr; CollectionTabContent grid-cols-2
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 27-03-PLAN.md — reorderWishlist Server Action (Zod .strict, owner-only, ActionResult)
+
+**Wave 4** *(blocked on Wave 3 completion; manual UAT checkpoint at end)*
+- [ ] 27-05-PLAN.md — Drag UX: install @dnd-kit/*, SortableProfileWatchCard with drop-indicator, WishlistTabContent DnD wiring + grid-cols-2; manual UAT
+
+**Cross-cutting constraints** (appear in 2+ plans):
+- Mobile `grid-cols-2` breakpoint (D-11, VIS-07) — Plans 01, 04, 05
+- Owner-only enforcement at DAL + Action layers (D-10, T-27-01) — Plans 02, 03
+- Status-driven price line bucket logic (D-15..D-21, VIS-08) — Plans 01, 04
+- `[BLOCKING]` local drizzle-kit push gates Wave 3 (T-27-LOCAL: drizzle-kit push is LOCAL ONLY; prod uses `supabase db push --linked` at deploy time)
+
 **UI hint**: yes
 
 ### Phase 28: Add-Watch Flow & Verdict Copy Polish
@@ -157,7 +177,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Watch Card & Collection Render Polish | 0/0 | Not started | — |
+| 27. Watch Card & Collection Render Polish | 0/5 | Ready to execute | — |
 | 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |

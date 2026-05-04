@@ -881,27 +881,31 @@ export async function getMaxWishlistSortOrder(userId: string): Promise<number> {
 | A5 | dnd-kit's `KeyboardSensor` + `sortableKeyboardCoordinates` handles 2-column grid arrow keys (left/right + up/down) without custom coordinate logic | Standard Stack §sensors + Pattern 2 | Docs confirm "supports grids" for the sortable preset but don't fully spec arrow-key behavior in a 2-col layout. Planner should manually verify keyboard reorder feels right; if not, custom `coordinateGetter` is the escape hatch. |
 | A6 | Two-tab last-write-wins reorder is acceptable to the user and doesn't need OCC / version-column conflict resolution | Pitfall 8 | CONTEXT D-09 explicitly says this is acceptable. Re-confirmed against locked decisions; not assumed. **Removed from risk** — this is now [VERIFIED: CONTEXT.md D-09]. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Bundle size at the wire**
    - What we know: ~1.4 MB unpacked across all dnd-kit packages. Industry rule of thumb suggests 140–200 KB gzipped, but unverified.
    - What's unclear: Real-world gzipped size when shipping only `DndContext`, `MouseSensor`, `TouchSensor`, `KeyboardSensor`, `DragOverlay`, `SortableContext`, `useSortable`, `arrayMove`, `rectSortingStrategy`, `sortableKeyboardCoordinates`, `CSS`. Tree-shaking may reduce this significantly.
    - Recommendation: Planner can run `npx next build` after the install and check `.next/static/chunks/*` for the wishlist tab island size. If larger than budget, defer or move to dynamic import (`const DndContext = dynamic(...)`).
+   - **RESOLVED via Plan 05 Task 1 (npm install) — verify bundle delta with `next build` post-install; flag if >200KB gzipped.**
 
 2. **Click-through vs. drag dispatch on the wrapped `<Link>`**
    - What we know: dnd-kit calls `event.preventDefault()` on the activating pointer event when the activation threshold elapses. A quick tap (below threshold) does NOT call preventDefault and the click bubbles.
    - What's unclear: Whether the existing `<Link>` wrapping ALL of `ProfileWatchCard` interferes with the dnd-kit listeners attached to `SortableProfileWatchCard`'s outer div. Specifically: does a successful drag still fire a click on the `<Link>` after `onDragEnd`?
    - Recommendation: Explicit test in Wave 0 (or first task) — manual + automated. If click-through fires alongside drag, restructure `ProfileWatchCard` so that the `<Link>` is rendered conditionally (not wrapped) when the parent is a `SortableProfileWatchCard`. Cleanest solution: factor `ProfileWatchCard` into `ProfileWatchCardInner` (no link) + `ProfileWatchCard` (wraps in link). The sortable wrapper renders `Inner`.
+   - **RESOLVED via Plan 05 Task 4 (manual UAT checkpoint) — explicit click-through verification on desktop + iOS Safari listed in UAT script.**
 
 3. **AddWatchCard placement in the grid post-reorder**
    - What we know: D-12 says `AddWatchCard` continues to render as the final grid cell. UI-SPEC says it's NOT in `SortableContext.items`.
    - What's unclear: When `optimisticIds` array is reordered, where does `AddWatchCard` render? After the SortableContext children, presumably. But the grid-cols-2 layout means it could end up in a non-final visual position depending on item count parity.
    - Recommendation: Render `AddWatchCard` AFTER the `SortableContext` `children` in the JSX. It naturally lands in the last grid cell. If item count is odd, it sits to the right of the last sortable card; if even, it's on a new row. This matches today's behavior and is fine.
+   - **RESOLVED via Plan 05 Task 3 — AddWatchCard renders OUTSIDE `<SortableContext items={...}>` and AFTER children in JSX so it lands in the last grid cell without becoming sortable.**
 
 4. **Backfill order semantics for owned/sold watches**
    - What we know: D-02 says owned/sold can be backfilled the same way OR left at default. CONTEXT says "either is acceptable since Collection reorder UX is not in this phase."
    - What's unclear: The migration SQL above only backfills wishlist+grail. Should owned/sold also get a per-user createdAt-DESC ranking, since the column exists for them too?
    - Recommendation: Backfill owned+sold separately with the same ROW_NUMBER pattern (different PARTITION BY scope to ensure owned and sold share a sort_order space, OR each has its own — D-04 says "owned+sold are separate" so they could share). Simplest: backfill all rows with `ROW_NUMBER() OVER (PARTITION BY user_id, status ORDER BY created_at DESC)`. Costs nothing at this scale and leaves Collection-tab reorder ready to wire in a future phase.
+   - **RESOLVED via Plan 02 Task 1 — backfill SQL uses `ROW_NUMBER() OVER (PARTITION BY user_id, status ORDER BY created_at DESC)` to assign sort_order across ALL statuses for forward compatibility with deferred Collection-tab reorder.**
 
 ## Environment Availability
 
