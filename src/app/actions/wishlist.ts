@@ -7,7 +7,7 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { wearEvents, watches, profileSettings, follows } from '@/db/schema'
 import { getCurrentUser } from '@/lib/auth'
-import { createWatch } from '@/data/watches'
+import { createWatch, bulkReorderWishlist } from '@/data/watches'
 import { logActivity } from '@/data/activities'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { MovementType } from '@/lib/types'
@@ -145,5 +145,65 @@ export async function addToWishlistFromWearEvent(
   } catch (err) {
     console.error('[addToWishlistFromWearEvent] unexpected error:', err)
     return { success: false, error: "Couldn't save to wishlist." }
+  }
+}
+
+// Phase 27 (WISH-01) — bulk reorder of the authenticated user's wishlist+grail
+// sort_order set in a single round-trip. Owner-only at three layers:
+//   1. Zod .strict() — payload must contain only `orderedIds`; userId NEVER
+//      taken from the client (mass-assignment defense, T-27-01).
+//   2. getCurrentUser() — userId always sourced from session.
+//   3. DAL WHERE clause + count check — bulkReorderWishlist throws
+//      "Owner mismatch" if any input id is foreign or not in the wishlist+grail
+//      set (T-27-01 + T-27-02). Status filter inside the DAL also defends
+//      against owned/sold ids slipping in (T-27-02).
+//
+// T-27-03 (DoS via mass row enumeration): .max(500) caps the array.
+// <500 watches per user is the v4.1 scale ceiling (project constraint), so
+// 500 is a generous upper bound that still bounds memory and SQL plan size.
+//
+// Returns ActionResult<void> — never throws across the boundary (matches
+// the addToWishlistFromWearEvent shape above and the watches.ts addWatch
+// contract). The drag UX (Plan 05) wraps this in startTransition with
+// useOptimistic; on { success: false } it surfaces a Sonner toast and the
+// optimistic order auto-reverts when the transition resolves (D-09).
+const reorderWishlistSchema = z
+  .object({
+    orderedIds: z.array(z.string().uuid()).min(1).max(500),
+  })
+  .strict()
+
+export async function reorderWishlist(
+  data: unknown,
+): Promise<ActionResult<void>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = reorderWishlistSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  try {
+    await bulkReorderWishlist(user.id, parsed.data.orderedIds)
+
+    // 'page' segment scope — wishlist tab is /u/[username]/[tab].
+    // Pattern matches addToWishlistFromWearEvent's revalidatePath('/').
+    // The dynamic [username]/[tab] form means revalidatePath strips the
+    // params; the second arg 'page' invalidates the entire page-level
+    // render for that route.
+    revalidatePath('/u/[username]/wishlist', 'page')
+
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[reorderWishlist] unexpected error:', err)
+    if (err instanceof Error && err.message.startsWith('Owner mismatch')) {
+      return { success: false, error: 'Some watches do not belong to you.' }
+    }
+    return { success: false, error: "Couldn't save new order." }
   }
 }

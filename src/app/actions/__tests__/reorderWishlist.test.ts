@@ -26,7 +26,11 @@ import { reorderWishlist } from '@/app/actions/wishlist'
 import { getCurrentUser } from '@/lib/auth'
 import { bulkReorderWishlist } from '@/data/watches'
 
-const VALID_UUID = '11111111-1111-1111-1111-111111111111'
+// RFC 4122 strict UUID v4 (Zod 4's z.string().uuid() enforces version 1-8 +
+// variant bits per the v4 strict regex shipped in zod@^4.3). The all-1s
+// fixture used during Plan 01 RED scaffolding fails validation in Zod 4 —
+// version digit must be 1-8 and variant digit must be 8/9/a/b. Rule 1 fix.
+const VALID_UUID = '11111111-1111-4111-8111-111111111111'
 
 describe('Phase 27 — reorderWishlist Server Action surface (WISH-01)', () => {
   beforeEach(() => {
