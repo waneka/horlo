@@ -107,7 +107,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 - [x] 27-04-PLAN.md — ProfileWatchCard status-driven price line + Image sizes attr; CollectionTabContent grid-cols-2
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 27-03-PLAN.md — reorderWishlist Server Action (Zod .strict, owner-only, ActionResult)
+- [x] 27-03-PLAN.md — reorderWishlist Server Action (Zod .strict, owner-only, ActionResult)
 
 **Wave 4** *(blocked on Wave 3 completion; manual UAT checkpoint at end)*
 - [ ] 27-05-PLAN.md — Drag UX: install @dnd-kit/*, SortableProfileWatchCard with drop-indicator, WishlistTabContent DnD wiring + grid-cols-2; manual UAT
@@ -177,7 +177,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Watch Card & Collection Render Polish | 3/5 | In Progress|  |
+| 27. Watch Card & Collection Render Polish | 4/5 | In Progress|  |
 | 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
