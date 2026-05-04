@@ -149,15 +149,31 @@ function OwnerWishlistGrid({
   )
 
   function handleDragEnd(event: DragEndEvent) {
-    setActiveId(null)
+    // WR-03 fix — DO NOT clear activeId outside the transition. Doing so
+    // forces a synchronous re-render with activeId=null + the OLD
+    // optimisticIds order, which on slow hardware causes a visible
+    // snap-back flicker before the transition's first render with
+    // setOptimistic(newOrder). Defer setActiveId(null) into the
+    // transition (or the early-return paths below) so React batches the
+    // overlay clear with the optimistic update for a single render.
     const { active, over } = event
-    if (!over || active.id === over.id) return
+    if (!over || active.id === over.id) {
+      setActiveId(null)
+      return
+    }
     const oldIdx = optimisticIds.indexOf(active.id as string)
     const newIdx = optimisticIds.indexOf(over.id as string)
-    if (oldIdx < 0 || newIdx < 0) return
+    if (oldIdx < 0 || newIdx < 0) {
+      setActiveId(null)
+      return
+    }
     const newOrder = arrayMove(optimisticIds, oldIdx, newIdx)
     startTransition(async () => {
       setOptimistic(newOrder)
+      // setActiveId is a regular useState setter (NOT useOptimistic) so
+      // calling it inside startTransition still schedules the update —
+      // React batches it with setOptimistic for a single render.
+      setActiveId(null)
       const result = await reorderWishlist({ orderedIds: newOrder })
       if (!result.success) {
         // UI-SPEC line 116. useOptimistic auto-reverts when transition ends
