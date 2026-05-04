@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: Roadmap created; awaiting `/gsd-plan-phase 27`
-stopped_at: Phase 27 context gathered
-last_updated: "2026-05-04T05:36:13.675Z"
-last_activity: 2026-05-04 — v4.1 roadmap created (5 phases, 27-31)
+status: Phase 27 UI-SPEC approved; awaiting `/gsd-plan-phase 27`
+stopped_at: Phase 27 UI-SPEC approved
+last_updated: "2026-05-03T00:00:00.000Z"
+last_activity: 2026-05-03 — Phase 27 UI-SPEC approved (6/6 dimensions PASS)
 progress:
   total_phases: 5
   completed_phases: 0
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 ## Current Position
 
-Phase: 27 — Watch Card & Collection Render Polish (not started)
+Phase: 27 — Watch Card & Collection Render Polish (UI-SPEC approved)
 Plan: —
-Status: Roadmap created; awaiting `/gsd-plan-phase 27`
-Last activity: 2026-05-04 — v4.1 roadmap created (5 phases, 27-31)
+Status: Phase 27 UI-SPEC approved; awaiting `/gsd-plan-phase 27`
+Last activity: 2026-05-03 — Phase 27 UI-SPEC approved (6/6 dimensions PASS)
 
 ## Progress Bar
 
@@ -80,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-04T05:36:13.672Z
-Stopped at: Phase 27 context gathered
-Next action: `/gsd-plan-phase 27` to begin Watch Card & Collection Render Polish
+Last session: 2026-05-03T00:00:00.000Z
+Stopped at: Phase 27 UI-SPEC approved
+Next action: `/gsd-plan-phase 27` to plan Watch Card & Collection Render Polish (UI-SPEC.md is design context input)
