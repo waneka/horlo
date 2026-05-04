@@ -80,7 +80,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 ### v4.1 Polish & Patch (active)
 
-- [ ] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card
+- [x] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card (completed 2026-05-04)
 - [ ] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink
 - [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only
 - [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
@@ -110,7 +110,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 - [x] 27-03-PLAN.md — reorderWishlist Server Action (Zod .strict, owner-only, ActionResult)
 
 **Wave 4** *(blocked on Wave 3 completion; manual UAT checkpoint at end)*
-- [ ] 27-05-PLAN.md — Drag UX: install @dnd-kit/*, SortableProfileWatchCard with drop-indicator, WishlistTabContent DnD wiring + grid-cols-2; manual UAT
+- [x] 27-05-PLAN.md — Drag UX: install @dnd-kit/*, SortableProfileWatchCard with drop-indicator, WishlistTabContent DnD wiring + grid-cols-2; manual UAT
 
 **Cross-cutting constraints** (appear in 2+ plans):
 - Mobile `grid-cols-2` breakpoint (D-11, VIS-07) — Plans 01, 04, 05
@@ -177,7 +177,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Watch Card & Collection Render Polish | 4/5 | In Progress|  |
+| 27. Watch Card & Collection Render Polish | 5/5 | Complete   | 2026-05-04 |
 | 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
