@@ -66,14 +66,15 @@ completed: 2026-05-04
 
 # Phase 27 Plan 05: Drag Reorder UX (Wishlist) Summary
 
-**Three @dnd-kit packages installed; SortableProfileWatchCard wrapper shipped with UI-SPEC line 153 drop indicator; WishlistTabContent rewired for DnD on owner branch + grid-cols-2 on both branches. Plan 01's Phase 27 owner-DnD test (3 cases) GREEN; pre-existing Phase 20.1 D-16 cases (3) GREEN; legacy test contract drift handled inline. Implementation complete — Task 4 (manual UAT on real desktop + iOS) PENDING.**
+**Three @dnd-kit packages installed; SortableProfileWatchCard wrapper shipped with UI-SPEC line 153 drop indicator; WishlistTabContent rewired for DnD on owner branch + grid-cols-2 on both branches. Plan 01's Phase 27 owner-DnD test (3 cases) GREEN; pre-existing Phase 20.1 D-16 cases (3) GREEN; legacy test contract drift handled inline. Implementation complete and Task 4 manual UAT APPROVED.**
 
 ## Performance
 
-- **Duration:** ~8 min for Tasks 1-3 (Task 4 manual UAT pending — orchestrator/user owns)
+- **Duration:** ~8 min for Tasks 1-3, Task 4 manual UAT approved 2026-05-04
 - **Started:** 2026-05-04T08:21:58Z
 - **Tasks 1-3 completed:** 2026-05-04T08:30:09Z
-- **Tasks:** 4 (3 type=auto complete; 1 type=checkpoint:human-verify pending)
+- **Task 4 UAT approved:** 2026-05-04
+- **Tasks:** 4 (3 type=auto complete; 1 type=checkpoint:human-verify approved)
 - **Files modified:** 4 (1 created + 3 modified)
 - **Commits:** 3
 
@@ -88,7 +89,7 @@ completed: 2026-05-04
 1. **Task 1 — Install @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities** — `5aa7b30` (chore)
 2. **Task 2 — Add SortableProfileWatchCard wrapper with drop indicator** — `524dd93` (feat)
 3. **Task 3 — Wire DnD reorder + grid-cols-2 onto WishlistTabContent** — `2b20a7d` (feat)
-4. **Task 4 — Manual UAT** — PENDING (checkpoint:human-verify; user/orchestrator owns)
+4. **Task 4 — Manual UAT** — APPROVED 2026-05-04 by user (twwaneka@gmail.com); 8 sub-tests covered (desktop + iOS Safari + non-owner + failure path + click-through). No regressions reported.
 
 ## Files Created / Modified
 
