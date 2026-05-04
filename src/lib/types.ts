@@ -57,6 +57,12 @@ export interface Watch {
   // Phase 17: FK to watches_catalog (CAT-08). Nullable — backfill not guaranteed on all rows.
   // Used by Phase 20 composer to look up catalog taste attributes for the verdict bundle.
   catalogId?: string | null
+
+  // Phase 27 — sort_order for wishlist drag-reorder (D-01).
+  // Optional in domain type; DB-side default 0 ensures it's always present
+  // post-migration. Used by getWatchesByUser ORDER BY and the WishlistTabContent
+  // optimistic state in Plan 05.
+  sortOrder?: number
 }
 
 /** Watch with computed wear data from wear_events table */

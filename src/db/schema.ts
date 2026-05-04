@@ -100,12 +100,19 @@ export const watches = pgTable(
     // Forward-reference resolved lazily by Drizzle (watchesCatalog defined below).
     catalogId: uuid('catalog_id').references(() => watchesCatalog.id, { onDelete: 'set null' }),
 
+    // Phase 27 — sort_order for wishlist drag-reorder (D-01).
+    // Default 0; backfilled per-user in createdAt DESC order via parallel
+    // supabase migration. Universal column on every row regardless of status.
+    sortOrder: integer('sort_order').notNull().default(0),
+
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index('watches_user_id_idx').on(table.userId),
     index('watches_catalog_id_idx').on(table.catalogId),
+    // Phase 27 — composite index for getWatchesByUser ORDER BY (D-01).
+    index('watches_user_sort_idx').on(table.userId, table.sortOrder),
   ],
 )
 
