@@ -59,14 +59,24 @@ export function SortableProfileWatchCard({
   }
 
   // UI-SPEC line 153: 2px line in bg-ring color, full-width of the slot,
-  // in the gap BEFORE the target slot. Show when this slot is the over-target
-  // and the active item is moving toward it from an earlier index.
-  const showDropIndicator =
+  // in the gap that the dragged item will occupy on drop.
+  //
+  // WR-02 fix — render symmetrically. arrayMove(items, activeIndex, overIndex)
+  // lands the active item AT overIndex, which means:
+  //   - When moving UP (activeIndex > overIndex), the drop slot is the gap
+  //     BEFORE the over-target — render the indicator before this card.
+  //   - When moving DOWN (activeIndex < overIndex), the drop slot is the gap
+  //     AFTER the over-target — render the indicator after this card.
+  // Without symmetry, upward drags had no visual cue at all, and downward
+  // drags showed the indicator at the wrong gap (UI-SPEC ambiguity).
+  const showDropIndicatorBefore =
+    isOver && activeIndex >= 0 && activeIndex > overIndex
+  const showDropIndicatorAfter =
     isOver && activeIndex >= 0 && activeIndex < overIndex
 
   return (
     <>
-      {showDropIndicator && (
+      {showDropIndicatorBefore && (
         <div
           className="h-0.5 w-full bg-ring rounded-full"
           aria-hidden="true"
@@ -87,6 +97,12 @@ export function SortableProfileWatchCard({
           showWishlistMeta={showWishlistMeta}
         />
       </div>
+      {showDropIndicatorAfter && (
+        <div
+          className="h-0.5 w-full bg-ring rounded-full"
+          aria-hidden="true"
+        />
+      )}
     </>
   )
 }
