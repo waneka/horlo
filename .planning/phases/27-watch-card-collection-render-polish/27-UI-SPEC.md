@@ -1,10 +1,11 @@
 ---
 phase: 27
 slug: watch-card-collection-render-polish
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-04
+reviewed_at: 2026-05-03
 ---
 
 # Phase 27 — UI Design Contract
