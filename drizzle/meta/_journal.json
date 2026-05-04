@@ -43,6 +43,13 @@
       "when": 1777496917821,
       "tag": "0005_phase19_1_taste_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777881351359,
+      "tag": "0006_phase27_sort_order",
+      "breakpoints": true
     }
   ]
 }

@@ -62,6 +62,28 @@ maybe(`Phase 27 backfill — sort_order ROW_NUMBER ranking per user (WISH-01) [$
         })
       }
     }
+
+    // Phase 27 Plan 02 — re-execute the migration's per-user backfill CTE so
+    // newly-seeded test rows participate in the same row_number() ranking the
+    // production migration applied at deploy time. Scoped to the seeded users
+    // only, so concurrent test data is unaffected. Mirrors the SQL in
+    // supabase/migrations/20260504120000_phase27_sort_order.sql.
+    await db.execute(sql`
+      WITH ranked AS (
+        SELECT id,
+               row_number() OVER (
+                 PARTITION BY user_id
+                 ORDER BY created_at DESC
+               ) - 1 AS rn
+          FROM watches
+         WHERE status IN ('wishlist', 'grail')
+           AND user_id IN (${userIdA}::uuid, ${userIdB}::uuid)
+      )
+      UPDATE watches
+         SET sort_order = ranked.rn
+        FROM ranked
+       WHERE watches.id = ranked.id
+    `)
   }, 30_000)
 
   afterAll(async () => {
@@ -112,10 +134,13 @@ maybe(`Phase 27 backfill — sort_order ROW_NUMBER ranking per user (WISH-01) [$
   it('no duplicate (user_id, sort_order) tuples in wishlist+grail post-backfill', async () => {
     // Mirrors the supabase migration's own DO $$ assertion at the test level.
     // PARTITION BY user_id ORDER BY created_at DESC should never produce ties.
+    // Scoped to seeded users so concurrent parallel test runs (vitest threads)
+    // don't cross-pollinate seed data into a shared global SELECT.
     const result = await db.execute(sql`
       SELECT user_id, sort_order, count(*) c
         FROM watches
        WHERE status IN ('wishlist', 'grail')
+         AND user_id IN (${userIdA}::uuid, ${userIdB}::uuid)
        GROUP BY user_id, sort_order
        HAVING count(*) > 1
     `)
