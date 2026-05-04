@@ -100,7 +100,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 **Plans**: 5 plans across 4 waves
 
 **Wave 1**
-- [ ] 27-01-PLAN.md — Wave 0 RED test scaffolds (7 new + 1 extend)
+- [x] 27-01-PLAN.md — Wave 0 RED test scaffolds (7 new + 1 extend)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 27-02-PLAN.md — Schema column + drizzle/supabase migrations + DAL helpers + addWatch/editWatch sort_order; `[BLOCKING]` local drizzle-kit push
@@ -177,7 +177,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Watch Card & Collection Render Polish | 0/5 | Ready to execute | — |
+| 27. Watch Card & Collection Render Polish | 1/5 | In Progress|  |
 | 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
