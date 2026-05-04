@@ -272,6 +272,40 @@ export async function getMaxWishlistSortOrder(userId: string): Promise<number> {
 }
 
 /**
+ * Phase 27 typed error (WR-04 fix) — thrown when the WHERE-clause-bounded
+ * UPDATE in bulkReorderWishlist returns fewer rows than orderedIds. Indicates
+ * one of: foreign id in payload, owned/sold-status id in payload, or stale
+ * id (deleted by another tab between fetch and reorder). The Server Action
+ * uses `instanceof OwnerMismatchError` to map this to a stable user-facing
+ * message without coupling to the wording of the message string.
+ *
+ * Message preserves the legacy "Owner mismatch: expected N rows, updated M"
+ * wording for back-compat with integration tests in
+ * tests/integration/phase27-bulk-reorder.test.ts (regex /Owner mismatch/).
+ */
+export class OwnerMismatchError extends Error {
+  constructor(public expected: number, public got: number) {
+    super(`Owner mismatch: expected ${expected} rows, updated ${got}`)
+    this.name = 'OwnerMismatchError'
+  }
+}
+
+/**
+ * Phase 27 typed error (BR-01 + WR-04) — thrown when orderedIds is a strict
+ * subset of the user's wishlist+grail set. A partial set submission (e.g.,
+ * stale client racing a concurrent add in another tab) would leave the
+ * unsent rows with their pre-existing sort_order, colliding with the
+ * freshly-assigned 0..N-1 range. Reject the submission so the client can
+ * refetch and retry against current state.
+ */
+export class SetMismatchError extends Error {
+  constructor(public expected: number, public got: number) {
+    super(`Set mismatch: user has ${expected} wishlist/grail watches, received ${got}`)
+    this.name = 'SetMismatchError'
+  }
+}
+
+/**
  * Phase 27 (WISH-01, D-09, D-10, T-27-01, T-27-02) — Bulk-update sort_order
  * for the user's wishlist+grail set in a single round-trip via UPDATE … CASE WHEN.
  *
@@ -280,7 +314,14 @@ export async function getMaxWishlistSortOrder(userId: string): Promise<number> {
  *   2. WHERE clause includes status IN ('wishlist','grail') (T-27-02: status-confused reorder)
  *   3. WHERE clause includes inArray(id, orderedIds)
  *   4. Post-update count check: if updated.length !== orderedIds.length,
- *      throw "Owner mismatch" — caller (Server Action) maps to ActionResult.failure.
+ *      throw OwnerMismatchError — every submitted id is owner-owned and in
+ *      the wishlist+grail set.
+ *   5. (BR-01) Set-completeness check: orderedIds.length must equal the
+ *      user's TOTAL wishlist+grail row count. Without this, a partial-set
+ *      submission (race with concurrent add/remove in another tab) leaves
+ *      unsent rows with stale sort_order that collides with 0..N-1.
+ *      Combined with (4) this is a full bidirectional set-equality proof:
+ *      every submitted id is in the set (4) AND no set row is missing (5).
  *
  * At v4.1 scale (<500 watches/user) a single CASE WHEN UPDATE is the right
  * shape; lexorank gap-positioning is not needed (CONTEXT D-09).
@@ -290,6 +331,25 @@ export async function bulkReorderWishlist(
   orderedIds: string[],
 ): Promise<void> {
   if (orderedIds.length === 0) return
+
+  // BR-01 — set-completeness check. Compute the user's total wishlist+grail
+  // row count and require orderedIds.length to match. This blocks stale
+  // clients that race a concurrent add/remove in another tab and submit a
+  // strict subset of the current set. Cheap: COUNT(*) with the user_id +
+  // status filter is index-supported by watches_user_sort_idx.
+  const totalRows = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(watches)
+    .where(
+      and(
+        eq(watches.userId, userId),
+        inArray(watches.status, ['wishlist', 'grail']),
+      ),
+    )
+  const total = totalRows[0]?.c ?? 0
+  if (total !== orderedIds.length) {
+    throw new SetMismatchError(total, orderedIds.length)
+  }
 
   // Postgres infers text type for CASE WHEN parameters by default; cast each
   // ordinal to int4 so the assignment to integer column "sort_order" succeeds.
@@ -313,8 +373,6 @@ export async function bulkReorderWishlist(
     .returning({ id: watches.id })
 
   if (updated.length !== orderedIds.length) {
-    throw new Error(
-      `Owner mismatch: expected ${orderedIds.length} rows, updated ${updated.length}`,
-    )
+    throw new OwnerMismatchError(orderedIds.length, updated.length)
   }
 }

@@ -19,12 +19,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 
 vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }))
-vi.mock('@/data/watches', () => ({ bulkReorderWishlist: vi.fn() }))
+// WR-04 — module mock must export the typed error classes too. The action
+// uses `instanceof OwnerMismatchError` / `SetMismatchError` to discriminate;
+// preserving the real class identities keeps the discrimination working when
+// the test rejects with `new OwnerMismatchError(...)`.
+vi.mock('@/data/watches', async () => {
+  const actual = await vi.importActual<typeof import('@/data/watches')>('@/data/watches')
+  return {
+    bulkReorderWishlist: vi.fn(),
+    OwnerMismatchError: actual.OwnerMismatchError,
+    SetMismatchError: actual.SetMismatchError,
+  }
+})
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 import { reorderWishlist } from '@/app/actions/wishlist'
 import { getCurrentUser } from '@/lib/auth'
-import { bulkReorderWishlist } from '@/data/watches'
+import {
+  bulkReorderWishlist,
+  OwnerMismatchError,
+  SetMismatchError,
+} from '@/data/watches'
 
 // RFC 4122 strict UUID v4 (Zod 4's z.string().uuid() enforces version 1-8 +
 // variant bits per the v4 strict regex shipped in zod@^4.3). The all-1s
@@ -67,12 +82,27 @@ describe('Phase 27 — reorderWishlist Server Action surface (WISH-01)', () => {
   it('owner-mismatch from DAL → action returns "Some watches do not belong to you."', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-id' } as any)
+    // WR-04 — typed error class; action uses `instanceof OwnerMismatchError`
+    // to discriminate (no longer string-matches the message).
     vi.mocked(bulkReorderWishlist).mockRejectedValue(
-      new Error('Owner mismatch: expected 3 rows, updated 2'),
+      new OwnerMismatchError(3, 2),
     )
     const result = await reorderWishlist({ orderedIds: [VALID_UUID] })
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('Some watches do not belong to you.')
+  })
+
+  it('BR-01 — set-mismatch from DAL → action returns refresh-and-retry copy', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-id' } as any)
+    vi.mocked(bulkReorderWishlist).mockRejectedValue(
+      new SetMismatchError(5, 3),
+    )
+    const result = await reorderWishlist({ orderedIds: [VALID_UUID] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Your wishlist changed in another tab. Refresh and try again.')
+    }
   })
 
   it('happy path: returns {success:true, data:undefined}', async () => {

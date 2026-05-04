@@ -7,7 +7,12 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '@/db'
 import { wearEvents, watches, profileSettings, follows } from '@/db/schema'
 import { getCurrentUser } from '@/lib/auth'
-import { createWatch, bulkReorderWishlist } from '@/data/watches'
+import {
+  createWatch,
+  bulkReorderWishlist,
+  OwnerMismatchError,
+  SetMismatchError,
+} from '@/data/watches'
 import { logActivity } from '@/data/activities'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { MovementType } from '@/lib/types'
@@ -203,8 +208,18 @@ export async function reorderWishlist(
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[reorderWishlist] unexpected error:', err)
-    if (err instanceof Error && err.message.startsWith('Owner mismatch')) {
+    // WR-04 fix — instanceof discrimination instead of brittle string match.
+    if (err instanceof OwnerMismatchError) {
       return { success: false, error: 'Some watches do not belong to you.' }
+    }
+    // BR-01 fix — partial-set submission (stale client racing another tab).
+    // Different user-facing copy: ask the user to refresh rather than implying
+    // an ownership problem.
+    if (err instanceof SetMismatchError) {
+      return {
+        success: false,
+        error: 'Your wishlist changed in another tab. Refresh and try again.',
+      }
     }
     return { success: false, error: "Couldn't save new order." }
   }
