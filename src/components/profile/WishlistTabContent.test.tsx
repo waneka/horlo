@@ -66,7 +66,7 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
     vi.clearAllMocks()
   })
 
-  it('isOwner=true with watches — renders ProfileWatchCard rows AND exactly one end-of-grid "Add to Wishlist" CTA card', () => {
+  it('isOwner=true with watches — renders sortable card rows AND exactly one end-of-grid "Add to Wishlist" CTA card', () => {
     render(
       <WishlistTabContent
         watches={[buildWatch('w1'), buildWatch('w2')]}
@@ -75,9 +75,12 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
         username="alice"
       />,
     )
-    // The 2 fixture watches render via mocked ProfileWatchCard.
-    expect(screen.getAllByTestId('pwc')).toHaveLength(2)
-    // D-16 end-of-grid card text + aria-label.
+    // Phase 27: owner branch swapped from ProfileWatchCard to
+    // SortableProfileWatchCard (still wraps the same presentational card).
+    // The 2 fixture watches render via the mocked SortableProfileWatchCard.
+    expect(screen.getAllByTestId('sortable-pwc')).toHaveLength(2)
+    // D-16 end-of-grid card text + aria-label (rendered as final grid cell
+    // OUTSIDE SortableContext per Phase 27 RESEARCH Open Q #3).
     const ctas = screen.getAllByText('Add to Wishlist')
     expect(ctas).toHaveLength(1)
     expect(screen.getByLabelText('Add to Wishlist')).toBeInTheDocument()

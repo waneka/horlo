@@ -1,9 +1,31 @@
 'use client'
 
+import { useOptimistic, useTransition, useState, useMemo } from 'react'
 import Link from 'next/link'
+import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ProfileWatchCard } from './ProfileWatchCard'
+import { SortableProfileWatchCard } from './SortableProfileWatchCard'
 import { AddWatchCard } from './AddWatchCard'
+import { reorderWishlist } from '@/app/actions/wishlist'
 import type { Watch } from '@/lib/types'
 
 interface WishlistTabContentProps {
@@ -22,6 +44,7 @@ export function WishlistTabContent({
   isOwner,
   username,
 }: WishlistTabContentProps) {
+  // EMPTY STATE — PRESERVED VERBATIM (UI-SPEC line 110-114)
   if (watches.length === 0) {
     if (isOwner) {
       // Phase 25 D-05 owner empty state — primary CTA → /watch/new?status=wishlist.
@@ -53,17 +76,160 @@ export function WishlistTabContent({
       </div>
     )
   }
+
+  // POPULATED — non-owner branch (no DnD; grid-cols-2 per VIS-07)
+  if (!isOwner) {
+    return (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {watches.map((watch) => (
+          <ProfileWatchCard
+            key={watch.id}
+            watch={watch}
+            lastWornDate={wearDates[watch.id] ?? null}
+            showWishlistMeta
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // POPULATED — owner branch (DnD wired; grid-cols-2 per VIS-07).
+  // Delegated to a sub-component so the hooks below this branch don't violate
+  // React rules-of-hooks (would otherwise run conditionally after early returns).
+  return <OwnerWishlistGrid watches={watches} wearDates={wearDates} />
+}
+
+/**
+ * Phase 27 (WISH-01) — Owner-only wishlist grid with drag-reorder.
+ *
+ * Hooks (useOptimistic / useTransition / useState / useMemo / useSensors) are
+ * gated behind the empty-state and isOwner branches in WishlistTabContent;
+ * they live here as a sub-component to satisfy React rules-of-hooks.
+ *
+ * Optimistic UI pattern (CONTEXT D-09; RESEARCH Pitfall 9):
+ *   1. drag end → arrayMove → setOptimistic(newOrder) → reorderWishlist(...)
+ *   2. happy path → server revalidatePath fires → fresh server state replaces
+ *      the optimistic state → UI is silently consistent
+ *   3. failure path → server does NOT revalidatePath → optimistic state
+ *      auto-reverts when the transition resolves → toast.error fires
+ */
+function OwnerWishlistGrid({
+  watches,
+  wearDates,
+}: {
+  watches: Watch[]
+  wearDates: Record<string, string>
+}) {
+  const watchesById = useMemo(
+    () => Object.fromEntries(watches.map((w) => [w.id, w])),
+    [watches],
+  )
+  const initialIds = useMemo(() => watches.map((w) => w.id), [watches])
+
+  const [optimisticIds, setOptimistic] = useOptimistic<string[], string[]>(
+    initialIds,
+    (_state, newOrder) => newOrder,
+  )
+  const [, startTransition] = useTransition()
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  // CONTEXT D-06 (desktop 150ms) / D-07 (mobile 250ms).
+  // Activation constraints are mutually exclusive on a single sensor —
+  // separate Mouse + Touch sensors are required (RESEARCH Anti-Patterns).
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = optimisticIds.indexOf(active.id as string)
+    const newIdx = optimisticIds.indexOf(over.id as string)
+    if (oldIdx < 0 || newIdx < 0) return
+    const newOrder = arrayMove(optimisticIds, oldIdx, newIdx)
+    startTransition(async () => {
+      setOptimistic(newOrder)
+      const result = await reorderWishlist({ orderedIds: newOrder })
+      if (!result.success) {
+        // UI-SPEC line 116. useOptimistic auto-reverts when transition ends
+        // because server didn't revalidatePath on failure (RESEARCH Pitfall 9).
+        toast.error("Couldn't save new order. Reverted.")
+      }
+    })
+  }
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {watches.map((watch) => (
-        <ProfileWatchCard
-          key={watch.id}
-          watch={watch}
-          lastWornDate={wearDates[watch.id] ?? null}
-          showWishlistMeta
-        />
-      ))}
-      {isOwner && <AddWatchCard variant="wishlist" />}
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      accessibility={{
+        announcements: {
+          onDragStart({ active }) {
+            const w = watchesById[active.id as string]
+            return `Picked up ${w?.brand ?? ''} ${w?.model ?? ''}. Use arrow keys to move, space to drop, escape to cancel.`
+          },
+          onDragEnd({ active, over }) {
+            const w = watchesById[active.id as string]
+            if (!over) {
+              return `Reorder canceled. ${w?.brand ?? ''} ${w?.model ?? ''} returned to original position.`
+            }
+            const newIdx = optimisticIds.indexOf(over.id as string)
+            return `Dropped ${w?.brand ?? ''} ${w?.model ?? ''} at position ${newIdx + 1} of ${optimisticIds.length}.`
+          },
+          onDragCancel({ active }) {
+            const w = watchesById[active.id as string]
+            return `Reorder canceled. ${w?.brand ?? ''} ${w?.model ?? ''} returned to original position.`
+          },
+          onDragOver: () => undefined,
+          onDragMove: () => undefined,
+        },
+      }}
+      onDragStart={(e: DragStartEvent) => {
+        setActiveId(e.active.id as string)
+        // UI-SPEC line 169-172 — single 10ms tick on drag start.
+        // navigator.vibrate is no-op on non-touch contexts; safe.
+        navigator.vibrate?.(10)
+      }}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={optimisticIds} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {optimisticIds.map((id) => (
+            <SortableProfileWatchCard
+              key={id}
+              id={id}
+              watch={watchesById[id]}
+              lastWornDate={wearDates[id] ?? null}
+              showWishlistMeta
+            />
+          ))}
+          {/* AddWatchCard intentionally OUTSIDE SortableContext.items
+              AND rendered AFTER the SortableContext children block —
+              it's an action affordance, not sortable, and must land as
+              the final grid cell (UI-SPEC line 236-237; RESEARCH Open Q #3). */}
+          <AddWatchCard variant="wishlist" />
+        </div>
+      </SortableContext>
+      <DragOverlay>
+        {activeId && watchesById[activeId] ? (
+          <div className="scale-105 shadow-xl">
+            <ProfileWatchCard
+              watch={watchesById[activeId]}
+              lastWornDate={wearDates[activeId] ?? null}
+              showWishlistMeta
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   )
 }
