@@ -103,8 +103,8 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 - [x] 27-01-PLAN.md — Wave 0 RED test scaffolds (7 new + 1 extend)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 27-02-PLAN.md — Schema column + drizzle/supabase migrations + DAL helpers + addWatch/editWatch sort_order; `[BLOCKING]` local drizzle-kit push
-- [ ] 27-04-PLAN.md — ProfileWatchCard status-driven price line + Image sizes attr; CollectionTabContent grid-cols-2
+- [x] 27-02-PLAN.md — Schema column + drizzle/supabase migrations + DAL helpers + addWatch/editWatch sort_order; `[BLOCKING]` local drizzle-kit push
+- [x] 27-04-PLAN.md — ProfileWatchCard status-driven price line + Image sizes attr; CollectionTabContent grid-cols-2
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 27-03-PLAN.md — reorderWishlist Server Action (Zod .strict, owner-only, ActionResult)
@@ -177,7 +177,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 27. Watch Card & Collection Render Polish | 1/5 | In Progress|  |
+| 27. Watch Card & Collection Render Polish | 3/5 | In Progress|  |
 | 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
