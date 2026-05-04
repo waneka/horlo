@@ -6,6 +6,7 @@
 - ✅ **v2.0 Taste Network Foundation** — Phases 6-10 (shipped 2026-04-22) — [archive](milestones/v2.0-ROADMAP.md)
 - ✅ **v3.0 Production Nav & Daily Wear Loop** — Phases 11-16 + 999.1 (shipped 2026-04-27) — [archive](milestones/v3.0-ROADMAP.md)
 - ✅ **v4.0 Discovery & Polish** — Phases 17-26 + 19.1 + 20.1 (shipped 2026-05-03) — [archive](milestones/v4.0-ROADMAP.md)
+- 🚧 **v4.1 Polish & Patch** — Phases 27-31 (in progress)
 
 ## Phases
 
@@ -77,6 +78,71 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 </details>
 
+### v4.1 Polish & Patch (active)
+
+- [ ] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card
+- [ ] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink
+- [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only
+- [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
+- [ ] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
+
+## Phase Details
+
+### Phase 27: Watch Card & Collection Render Polish
+**Goal**: Collection and wishlist owners can see and reorder their watches in a denser, price-aware grid that reflects the order they care about.
+**Depends on**: v4.0 (WatchCard, Collection/Wishlist tabs, watches table schema)
+**Requirements**: WISH-01, VIS-07, VIS-08
+**Success Criteria** (what must be TRUE):
+  1. On a mobile viewport (<768px), Collection and Wishlist tabs render watches in a 2-column grid (desktop layout unchanged).
+  2. Each watch card shows a price line — `paid_price` for owned, `target_price` for wishlist — and the line is hidden when the relevant value is null.
+  3. The owner can reorder Wishlist items via drag-and-drop on desktop and long-press-and-drag on mobile, and the new order persists across sessions and across devices.
+  4. A non-owner viewing a public Wishlist sees the watches in the order the owner chose.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 28: Add-Watch Flow & Verdict Copy Polish
+**Goal**: Adding a watch lands the user back where they started, gives them a clear next-step link, and the verdict copy reads coherently both as a verdict and as the wishlist-note auto-fill.
+**Depends on**: Phase 27 (no hard dependency, but Phase 27 ships the price/grid surface UX-09's success toast links into); v4.0 Phases 20, 20.1, 25 (CollectionFitCard composer, Add-Watch Flow state machine, useFormFeedback hook)
+**Requirements**: FIT-06, ADD-08, UX-09
+**Success Criteria** (what must be TRUE):
+  1. After adding a watch from any entry point (Add-Watch Flow, /search row 3-CTA accordion, /catalog/[id] 3-CTA), the user sees a success toast that includes a link to the corresponding profile collection or wishlist tab.
+  2. After completing or canceling the Add-Watch Flow, the user is returned to the entry point they came from (collection, wishlist, search, /catalog, etc.) — not unconditionally to home — via a `?returnTo=` parameter validated against an allow-list of internal paths.
+  3. The "unusual for your collection" verdict reads coherently to the user on `/watch/[id]`, the `/search` accordion, and `/catalog/[id]`.
+  4. The wishlist note auto-fill, when populated from a verdict, reads as the user's own first-person rationale (not as a verdict-to-user message), and the source of that auto-fill text is intentional rather than incidentally `contextualPhrasings[0]`.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 29: Nav & Profile Chrome Cleanup
+**Goal**: The UserMenu and profile tab strip are tight and predictable — no duplicate Profile affordance, no surprise vertical scroll on the tab strip.
+**Depends on**: v4.0 Phase 25 (avatar dual-affordance shipped Profile as primary path)
+**Requirements**: NAV-16, PROF-10
+**Success Criteria** (what must be TRUE):
+  1. The UserMenu dropdown no longer shows a "Profile" item; the avatar Link remains the primary path to `/u/{username}`. UserMenu still exposes Settings, Theme segmented control, and Sign out.
+  2. On `/u/[username]`, the profile tab strip scrolls horizontally only when its tabs overflow — no vertical scroll-bar appears, no vertical-scroll gesture is consumed by the tab strip on touch or trackpad.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 30: WYWT Capture Alignment Fix
+**Goal**: When a user aligns their wrist with the WYWT camera overlay, the saved photo crops the wrist where the overlay said it would be — not lower in the frame.
+**Depends on**: v3.0 Phase 15 (CameraCaptureView, WristOverlaySvg, photo capture pipeline)
+**Requirements**: WYWT-22
+**Success Criteria** (what must be TRUE):
+  1. The WYWT capture overlay's geometric center (or anchor point) corresponds to the same pixel coordinates in the saved JPEG that it visually occupies in the live preview.
+  2. The capture pipeline either crops the preview to match the capture frame, or shifts the overlay to the capture coordinate space, so a user who aligns their wrist with the on-screen guide sees the same alignment in the resulting `/wear/[id]` photo.
+  3. WristOverlaySvg geometry (canonical 10:10 + arm spacing) is unchanged — out of scope for this phase per requirement note.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 31: v4.0 Verification Backfill
+**Goal**: Phase 23 and Phase 24 each have a phase-level VERIFICATION.md that goal-backward-audits the shipped code, closing the v4.0 verification asymmetry recorded in the milestone audit.
+**Depends on**: v4.0 Phase 23 + Phase 24 (already shipped; this phase audits them retroactively)
+**Requirements**: DEBT-07, DEBT-08
+**Success Criteria** (what must be TRUE):
+  1. `.planning/milestones/v4.0-phases/23-phase-23-settings-sections-and-schema-field-ui/VERIFICATION.md` (or equivalent path under the v4.0 milestone archive) exists and audits Phase 23's success criteria against shipped code.
+  2. `.planning/milestones/v4.0-phases/24-phase-24-notification-stub-cleanup-and-test-fixture-carryover/VERIFICATION.md` (or equivalent) exists and audits Phase 24's success criteria against shipped code.
+  3. The v4.0 milestone audit status note recording the missing VERIFICATION.md files is updated (or amended with a closure note) to reflect the backfill.
+**Plans**: TBD
+
 ## Progress
 
 | Milestone | Phases | Plans Complete | Status | Completed |
@@ -85,3 +151,14 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
+| v4.1 Polish & Patch | 27-31 | 0/0 | 🚧 Planning | — |
+
+### v4.1 Phase Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 27. Watch Card & Collection Render Polish | 0/0 | Not started | — |
+| 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
+| 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
+| 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
+| 31. v4.0 Verification Backfill | 0/0 | Not started | — |

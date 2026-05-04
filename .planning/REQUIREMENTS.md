@@ -76,20 +76,22 @@ Captured here for traceability; not v4.1 scope.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| WISH-01 | TBD (roadmapper) | Pending |
-| VIS-07 | TBD | Pending |
-| VIS-08 | TBD | Pending |
-| UX-09 | TBD | Pending |
-| FIT-06 | TBD | Pending |
-| ADD-08 | TBD | Pending |
-| NAV-16 | TBD | Pending |
-| PROF-10 | TBD | Pending |
-| WYWT-22 | TBD | Pending |
-| DEBT-07 | TBD | Pending |
-| DEBT-08 | TBD | Pending |
+| WISH-01 | Phase 27 | Pending |
+| VIS-07 | Phase 27 | Pending |
+| VIS-08 | Phase 27 | Pending |
+| UX-09 | Phase 28 | Pending |
+| FIT-06 | Phase 28 | Pending |
+| ADD-08 | Phase 28 | Pending |
+| NAV-16 | Phase 29 | Pending |
+| PROF-10 | Phase 29 | Pending |
+| WYWT-22 | Phase 30 | Pending |
+| DEBT-07 | Phase 31 | Pending |
+| DEBT-08 | Phase 31 | Pending |
 
-*Roadmapper fills this table when phases are created.*
+Coverage: 11/11 requirements mapped to exactly one phase.
 
 ---
 
-*Last updated: 2026-05-04 — milestone initialized via `/gsd-new-milestone`. Research skipped (polish/patch milestone, no new domain). 11 requirements across 9 categories. All extend existing v4.0 patterns.*
+*Last updated: 2026-05-04 — roadmap created via `/gsd-roadmap`. 11 requirements mapped to 5 phases (27-31). Research skipped (polish/patch milestone, no new domain). All items extend existing v4.0 patterns.*
+
+*Previous: 2026-05-04 — milestone initialized via `/gsd-new-milestone`. 11 requirements across 9 categories.*
