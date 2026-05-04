@@ -20,7 +20,9 @@ v5.0 is the milestone where Horlo's North Star — Rdio-style click-driven disco
 - Home/Explore consolidation (decided by audit; do not lock scope before audit ships)
 - Discovery surface polish based on audit findings
 - **CAT-13 catalog → similarity engine rewire** — belongs in v5.0 because rewiring the engine to read catalog taste at JOIN time IS a discovery feature: better verdicts → better evaluative discovery
-- **Phase 23 + Phase 24 phase-level VERIFICATION.md backfill** — close the v4.0 verification asymmetry retroactively
+
+**NOT in v5.0 (moved to v4.1):**
+- Phase 23 + Phase 24 phase-level VERIFICATION.md backfill — landed in v4.1 Polish & Patch as part of v4.0 carryover cleanup
 
 ## Why This Matters
 
@@ -52,7 +54,6 @@ v5.0 is the milestone where Horlo's North Star — Rdio-style click-driven disco
 - Phase 2: Home/Explore consolidation (decided by audit; may be a no-op if audit says "they're correctly distinct")
 - Phase 3: Discovery surface polish — wherever the audit flags dead ends, missing affordances, or overlap
 - Phase 4: CAT-13 catalog → similarity engine rewire — engine reads `watches_catalog.{formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence}` at JOIN time
-- Phase 5: Phase 23 + 24 VERIFICATION.md backfill (paperwork; close the v4.0 verification asymmetry)
 
 ## Breadcrumbs
 

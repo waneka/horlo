@@ -18,17 +18,42 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 See `.planning/milestones/v4.0-MILESTONE-AUDIT.md` for the full audit (status: `tech_debt` — 2 phases without phase-level VERIFICATION.md, ~33 deferred human UAT items, Nyquist coverage partial; none blocking). Phase 25 + 26 received UAT approval on prod commit 7132ac0.
 
-**Next Milestone Goals (v5.0 candidates — not yet scoped):**
+## Current Milestone: v4.1 Polish & Patch
 
-- **Catalog → similarity engine rewire** (CAT-13) — migrate `analyzeSimilarity()` to read from canonical catalog at JOIN time; tag taxonomy audit phase must land first
-- **`SET NOT NULL` on `watches.catalog_id`** (CAT-14) — after 100% backfill verified across two consecutive deploys
-- **Phase 23 + 24 phase-level VERIFICATION.md backfill** — close the v4.0 verification asymmetry retroactively
-- **/explore Editorial Featured Collection** (DISC-09) — admin tooling required
-- **Search facets** (SRCH-16) — Movement / Case size / Style filter facets on /search Watches
-- **FIT-05 pairwise drill-down** — "Compare with watch I own" inside CollectionFitCard
-- **Account → Delete Account / Wipe Collection** (SET-13) — Danger Zone with multi-step confirm + soft-delete cron
-- **Branded HTML email templates** (SET-14) — currently using Supabase defaults via Resend
-- **Staging Supabase project + SMTP-06 sender split** — unblocks staging-prod sender reputation isolation
+**Goal:** Clear v4.0 carryover with bug fixes, UX tweaks, and small features so v5.0 (Discovery North Star) starts clean.
+
+**Target features (small but real):**
+- Reorder wishlist (drag-drop on desktop, long-press on mobile) — needs `sort_order` column
+- 2-column mobile grid for collection/wishlist
+- Price on watch card (paid for owned, target for wishlist)
+- "Added to collection/wishlist" toast with link to profile tab — extends Phase 25 `useFormFeedback` hook
+
+**Bug fixes:**
+- Verdict copy "unusual for your collection" rewrite + rethink whether `contextualPhrasings[0]` is the right rationale-fill source for wishlist auto-fill notes
+- Return-to-context after add-watch (`?returnTo=…` capture entry point)
+- Remove redundant Profile from UserMenu dropdown (Phase 25 made avatar→profile primary)
+- Profile tabs vertical-scroll → horizontal-only
+- WYWT capture alignment — SVG overlay positioned against preview frame, not capture frame; shift overlay to capture coords
+
+**v4.0 carryover cleanup:**
+- Phase 23 + Phase 24 phase-level VERIFICATION.md backfill — close the v4.0 verification asymmetry retroactively
+
+**Looking ahead (planted as seeds, NOT v4.1):**
+
+- SEED-004 — v5.0 Discovery North Star (Rdio click-driven; audit-first; CAT-13 anchor)
+- SEED-005 — v6.0 Market Value (Watch Charts integration; market_prices keyed on catalog_id)
+- SEED-006 — Premium features audit (`/gsd-explore` between v4.1 close and v5.0 start)
+- SEED-007 — Market pricing API spike (`/gsd-spike` between v5.0 close and v6.0 start)
+
+**Deferred items not in v4.1:**
+- CAT-13 catalog → similarity rewire — v5.0 (SEED-004)
+- CAT-14 `SET NOT NULL` on `watches.catalog_id` — after 100% backfill verified across two consecutive deploys
+- DISC-09 /explore Editorial Featured Collection — admin tooling required
+- SRCH-16 Search facets (Movement / Case size / Style) — v5.0 candidate
+- FIT-05 pairwise drill-down — v5.0 candidate
+- SET-13 Account → Delete / Wipe Collection — v5.0 candidate
+- SET-14 Branded HTML email templates — v5.0 candidate
+- SMTP-06 staging-prod sender split — pending staging Supabase project
 
 ## Requirements
 
