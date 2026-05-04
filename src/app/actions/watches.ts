@@ -39,6 +39,11 @@ const insertWatchSchema = z.object({
   isChronometer: z.boolean().optional(),
   notes: z.string().optional(),
   imageUrl: z.string().optional(),
+  // Phase 27 (D-03/D-04) — accepted in the schema so the action can pass it
+  // through after computing maxSort + 1 server-side. Client-supplied values
+  // are silently overwritten by addWatch/editWatch when status enters the
+  // wishlist+grail group; clients have no path to forge their own sort_order.
+  sortOrder: z.number().int().optional(),
   // Phase 19.1 D-19: optional bucket path for the user-uploaded reference photo.
   // Format: "{userId}/{catalogId-or-pending}/{filename}.jpg" — server validates
   // userId segment matches the authenticated user (T-19.1-05-05).
@@ -80,7 +85,18 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
   }
 
   try {
-    const watch = await watchDAL.createWatch(user.id, parsed.data)
+    // Phase 27 D-03 — new wishlist/grail watch lands at end of the user's
+    // wishlist+grail list. Universal column on every row, but we only assign
+    // an explicit value when the new watch enters the wishlist+grail set.
+    // For owned/sold the DB-side default 0 is fine (Collection-tab reorder
+    // is deferred per CONTEXT). Server-side overwrites any client sortOrder.
+    let createPayload: typeof parsed.data = parsed.data
+    if (parsed.data.status === 'wishlist' || parsed.data.status === 'grail') {
+      const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
+      createPayload = { ...parsed.data, sortOrder: maxSort + 1 }
+    }
+
+    const watch = await watchDAL.createWatch(user.id, createPayload)
 
     // CAT-08 — catalog wiring (fire-and-forget; mirrors logActivity pattern).
     // Split try/catch so the failure mode is identifiable in logs:
@@ -280,7 +296,27 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
   }
 
   try {
-    const watch = await watchDAL.updateWatch(user.id, watchId, parsed.data)
+    // Phase 27 D-04 — status transition resets sort_order in the destination
+    // group. Wishlist+grail share one group; owned+sold are a separate group
+    // (Collection-tab reorder is deferred per CONTEXT, so we do not bump on
+    // owned/sold transitions today). Only bump when:
+    //   - parsed.data.status is 'wishlist' or 'grail', AND
+    //   - the watch's CURRENT status is NOT wishlist/grail (transition INTO).
+    // Within-group changes (wishlist ↔ grail) keep their slot — wishlist+grail
+    // share the same sort_order space (D-05) so a within-group swap doesn't
+    // change the bucket.
+    let updatePayload: typeof parsed.data = parsed.data
+    if (parsed.data.status === 'wishlist' || parsed.data.status === 'grail') {
+      const currentRow = await watchDAL.getWatchById(user.id, watchId)
+      const wasInWishlistGroup =
+        currentRow?.status === 'wishlist' || currentRow?.status === 'grail'
+      if (!wasInWishlistGroup) {
+        const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
+        updatePayload = { ...parsed.data, sortOrder: maxSort + 1 }
+      }
+    }
+
+    const watch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
     revalidatePath('/')
 
     // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch. editWatch can
