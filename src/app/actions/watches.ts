@@ -89,11 +89,21 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     // wishlist+grail list. Universal column on every row, but we only assign
     // an explicit value when the new watch enters the wishlist+grail set.
     // For owned/sold the DB-side default 0 is fine (Collection-tab reorder
-    // is deferred per CONTEXT). Server-side overwrites any client sortOrder.
-    let createPayload: typeof parsed.data = parsed.data
-    if (parsed.data.status === 'wishlist' || parsed.data.status === 'grail') {
+    // is deferred per CONTEXT).
+    //
+    // WR-01 fix — strip client-supplied sortOrder unconditionally before
+    // passing to the DAL. The schema accepts the field (back-compat) but
+    // the server is the SOLE source of truth for sortOrder values.
+    // Without this, a malicious client could set sortOrder: -999999 to
+    // force their watch to the top of their own list, bypassing the
+    // bulkReorderWishlist 500-id cap.
+    const { sortOrder: _ignoredSortOrder, ...cleanData } = parsed.data
+    void _ignoredSortOrder
+    // Payload type widens cleanData to allow re-adding sortOrder server-side.
+    let createPayload: typeof parsed.data = cleanData
+    if (cleanData.status === 'wishlist' || cleanData.status === 'grail') {
       const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
-      createPayload = { ...parsed.data, sortOrder: maxSort + 1 }
+      createPayload = { ...cleanData, sortOrder: maxSort + 1 }
     }
 
     const watch = await watchDAL.createWatch(user.id, createPayload)
@@ -305,14 +315,24 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     // Within-group changes (wishlist ↔ grail) keep their slot — wishlist+grail
     // share the same sort_order space (D-05) so a within-group swap doesn't
     // change the bucket.
-    let updatePayload: typeof parsed.data = parsed.data
-    if (parsed.data.status === 'wishlist' || parsed.data.status === 'grail') {
+    //
+    // WR-01 fix — strip client-supplied sortOrder unconditionally. The schema
+    // accepts the field (back-compat) but the server is the SOLE source of
+    // truth. Without this strip, a malicious client could clobber a
+    // server-assigned slot during a within-group edit (the prior code only
+    // bumped on TRANSITIONS into the group, leaving same-group edits to pass
+    // sortOrder through untouched).
+    const { sortOrder: _ignoredSortOrder, ...cleanData } = parsed.data
+    void _ignoredSortOrder
+    // Payload type widens cleanData to allow re-adding sortOrder server-side.
+    let updatePayload: typeof parsed.data = cleanData
+    if (cleanData.status === 'wishlist' || cleanData.status === 'grail') {
       const currentRow = await watchDAL.getWatchById(user.id, watchId)
       const wasInWishlistGroup =
         currentRow?.status === 'wishlist' || currentRow?.status === 'grail'
       if (!wasInWishlistGroup) {
         const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
-        updatePayload = { ...parsed.data, sortOrder: maxSort + 1 }
+        updatePayload = { ...cleanData, sortOrder: maxSort + 1 }
       }
     }
 
