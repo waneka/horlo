@@ -122,14 +122,25 @@ skipped: 0
   reason: "User reported: clicking the 'add to collection' from a watch on /search, it navigates to /watch/new but the form is completely empty - should be prefilled with the data from the watch"
   severity: major
   test: 10
-  artifacts: []
-  missing: []
+  classification: phase-29-regression
+  root_cause: "The useLayoutEffect cleanup added in Plan 29-04 commit d51dad3 (lines 137-143 of AddWatchFlow.tsx) calls setState({kind:'idle'}), setUrl(''), setRail([]) on cleanup. Under React StrictMode (Next.js 16 dev default), the mount → cleanup → mount cycle runs on initial render — the cleanup fires AFTER initialState derives the form-prefill state from URL params, clobbering the prefill before the user ever sees it. /search and /catalog/[id] CTA wiring is correct (WatchSearchRowsAccordion.tsx:124-127, CatalogPageActions.tsx:128-130 both emit `/watch/new?intent=...&catalogId=...&returnTo=...`). The page Server Component (page.tsx) reads catalogId from searchParams and passes it correctly. The bug is purely in AddWatchFlow.tsx's StrictMode-unsafe cleanup."
+  artifacts:
+    - src/components/watch/AddWatchFlow.tsx (lines 137-143 — the StrictMode-unsafe cleanup)
+  missing:
+    - vitest StrictMode wrapper (vitest.config.ts / tests/setup.ts) — gap that let this regression through CI
+  fix_strategy: "Rework Layer 2 back-nav defense to be StrictMode-safe AND not clobber initial-mount prefill. Options: (a) skip cleanup if it's the first cleanup call via a mounted-ref pattern; (b) drop the useLayoutEffect cleanup entirely and rely solely on Layer 1 (key prop) — verify back-nav case works under Activity-preservation in production build; (c) replace useLayoutEffect with a different mechanism (e.g., key bust on pathname change). Planner picks. Must also add StrictMode wrapper to test setup so the regression test for /search prefill catches future strict-mode bugs."
 
 - truth: "useWatchSearchVerdictCache survives AddWatchFlow remount; pasting the same URL on re-entry returns a cached verdict bundle near-instantly without firing /api/extract-watch (CONTEXT D-15: 'The contract is cache survives entry')"
   status: failed
   reason: "User reported: fail - clicking extract on the same url that i just extracted is not instant. i confirmed that http://localhost:3000/api/extract-watch fires and takes some time to resolve"
   severity: major
   test: 8
-  artifacts: []
-  missing: []
-  root_cause_hint: "Plan 29-04 picked Option B (let cache reset per remount) but the cache lives inside AddWatchFlow as useState. The `key` prop on <AddWatchFlow> nukes the cache on every entry. Fix: hoist useWatchSearchVerdictCache above the key boundary (Option A) — either via a Client Component wrapper that owns the cache and passes get/set down as props, OR migrate to a module-level / Zustand store that survives React tree remounts."
+  classification: phase-29-regression
+  root_cause: "Plan 29-04 picked Option B (let cache reset per remount) on D-15 'Claude's Discretion' — but the cache hook useWatchSearchVerdictCache is useState-based and lives INSIDE AddWatchFlow.tsx:114, below the `<AddWatchFlow key={flowKey}>` boundary in page.tsx:110. The crypto.randomUUID() nonce regenerates per request, every navigation back to /watch/new remounts AddWatchFlow, useState lazy-initializer runs again with new Map(), prior verdict bundles are gone. Option B literally cannot honor D-15's 'cache survives entry' contract — only Option A (hoist above the key boundary) can. Plan 29-04's Phase 20 D-06 'regression check' gave a false PASS because those tests only validate same-mount cache hits + collectionRevision invalidation — never the remount survival case D-15 actually requires."
+  artifacts:
+    - src/components/search/useWatchSearchVerdictCache.ts (the useState-based cache hook)
+    - src/components/watch/AddWatchFlow.tsx:114 (where the hook is called — INSIDE the key boundary)
+    - src/app/watch/new/page.tsx:110 (the `<AddWatchFlow key={flowKey}>` boundary)
+  missing:
+    - regression test in tests/components/watch/AddWatchFlow.test.tsx — rerender with new `key` prop, paste same URL, assert /api/extract-watch was NOT called twice
+  fix_strategy: "Migrate useWatchSearchVerdictCache.ts from useState-backed Map to module-scoped Map<string, VerdictBundle> with a module-scoped revision counter. On revision change in render, clear the module Map. Hook public API ({revision, get, set}) stays identical. AddWatchFlow + WatchForm + tests untouched. Single-file change; smallest blast radius compared to a Client wrapper hoist."
