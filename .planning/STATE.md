@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
 stopped_at: "Phase 29 Plans 05 + 06 + Quick Task FORM-04 Gap 3 complete. Quick Task (commits 03667a5, 8de2382, 726f2ed, 0815c96) added `src/components/watch/useUrlExtractCache.ts` — module-scoped `Map<url, ExtractCacheEntry>` mirroring 29-05's primitive but with no `collectionRevision` keying (URL → scraped data is stable across collection state). `AddWatchFlow.handleExtract` now consults `urlCache.get(trimmedUrl)` BEFORE the fetch; on hit, skips `/api/extract-watch` entirely and reuses cached `{catalogId, extracted, catalogIdError}` for the downstream collectionRevision/verdict-cache branching. On a successful fetch with non-null catalogId, `urlCache.set` caches the entry. Failures (catalogId=null, !res.ok, network throw) intentionally NOT cached so user can retry malformed URLs. Test additions: 4-test hook unit suite + 1-test AddWatchFlow remount regression asserting `fetchSpy === 1` across remount + same-URL re-paste (the strongest assertion in the FORM-04 gap suite — 29-05's cacheRemount test could only assert on the verdict server action because fetch was uncached at the time). 79/79 cross-suite green (watch + UserMenu + ProfileTabs). Closes the user-observable bottleneck behind UAT Test 8 — verdict cache survived remount per 29-05 but extract API call still fired; this closes that gap."
-last_updated: "2026-05-05T20:47:11.691Z"
-last_activity: 2026-05-05 -- Phase 30 planning complete
+last_updated: "2026-05-05T20:48:47.120Z"
+last_activity: 2026-05-05 -- Phase 30 execution started
 progress:
   total_phases: 5
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 30 — wywt-capture-alignment-fix
+**Current focus:** Phase 30 — WYWT Capture Alignment Fix
 
 ## Current Position
 
-Phase: 30 (wywt-capture-alignment-fix) — CONTEXT GATHERED
-Plan: 0 of TBD — ready for /gsd-plan-phase 30
-Status: Ready to execute
-Last activity: 2026-05-05 -- Phase 30 planning complete
+Phase: 30 (WYWT Capture Alignment Fix) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 30
+Last activity: 2026-05-05 -- Phase 30 execution started
 
 ## Progress Bar
 
