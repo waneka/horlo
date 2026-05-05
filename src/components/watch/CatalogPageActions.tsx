@@ -122,7 +122,12 @@ export function CatalogPageActions({
 
   const handleCollection = () => {
     // D-05 + D-12: navigate to prefilled form (Plan 04 page handles the deep link).
-    router.push(`/watch/new?catalogId=${encodeURIComponent(catalogId)}&intent=owned`)
+    // Phase 28 D-08 — capture entry pathname (no query — /catalog/[id] does
+    // not carry searchParams).
+    const returnTo = encodeURIComponent(window.location.pathname)
+    router.push(
+      `/watch/new?catalogId=${encodeURIComponent(catalogId)}&intent=owned&returnTo=${returnTo}`,
+    )
   }
 
   const handleSkip = () => {
