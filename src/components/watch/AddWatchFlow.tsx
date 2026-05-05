@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -125,6 +125,22 @@ export function AddWatchFlow({
       el?.focus()
     }
   }, [state.kind])
+
+  // FORM-04 — Activity-hide reset (back-button defense). When the user
+  // navigates AWAY from /watch/new, Next.js's <Activity> wrapper sets this
+  // route's mode to "hidden". React runs effect cleanup at that boundary
+  // (per node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md).
+  // This cleanup resets local state to idle so when the user later navigates
+  // BACK (within the 3-route Activity window), the un-hidden tree is already
+  // fresh — even though the Server Component does NOT re-run on back-nav and
+  // the `key` prop value is therefore unchanged.
+  useLayoutEffect(() => {
+    return () => {
+      setState({ kind: 'idle' })
+      setUrl('')
+      setRail([])
+    }
+  }, [])
 
   // -- Extract handler (D-07 sync wait + D-08 single round-trip) --
   // Plain async (no startTransition) — the extract path needs the
@@ -320,8 +336,17 @@ export function AddWatchFlow({
         // Verified safe: /u/[username]/[tab]/page.tsx is a Server Component
         // that re-fetches getWatchesByUser(profile.id) on every render. The
         // next visit to /watch/new will compute collectionRevision fresh.
+        //
+        // Phase 29 FORM-04 D-14 — defense-in-depth state reset BEFORE router.push.
+        // Activity preserves React state across navigation; without this reset,
+        // a return visit to /watch/new (within the 3-route Activity window)
+        // could briefly paint stale state before the useLayoutEffect cleanup
+        // resolves. The key prop on <AddWatchFlow> is the primary fix; this
+        // reset closes the post-commit gap.
+        setUrl('')
+        setRail([])
+        setState({ kind: 'idle' })
         router.push(dest)
-        // setUrl + setState({kind:'idle'}) intentionally NOT called — mid-nav unmount handles cleanup.
       } else {
         toast.error(result.error)
         // Roll back to wishlist-rationale-open so user can retry.
