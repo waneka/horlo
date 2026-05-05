@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
-stopped_at: Phase 28 planned — 5 plans across 3 waves; ready to execute
-last_updated: "2026-05-04T23:55:00.000Z"
-last_activity: 2026-05-04
+stopped_at: Phase 28 complete — verifier passed all 4 success criteria
+last_updated: "2026-05-05T02:35:00.000Z"
+last_activity: 2026-05-05
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 5
-  percent: 50
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 ## Current Position
 
 Phase: 28
-Plan: Not started
-Status: Ready to execute — 5 plans (3 waves) verified
-Last activity: 2026-05-04
+Plan: All complete (5/5)
+Status: Phase complete — all success criteria verified; ready for /gsd-verify-work UAT
+Last activity: 2026-05-05
 
 ## Progress Bar
 
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-04
-Stopped at: Phase 28 planned — 5 plans across 3 waves verified; ready to execute
-Next action: `/gsd-execute-phase 28` — Wave 1 runs Plans 01/02/03 in parallel (verdict copy + speech-act split, useFormFeedback successAction, /watch/new returnTo whitelist + destinations.ts). Wave 2 runs Plan 04 (inline-commit toast wiring at /search + /catalog). Wave 3 runs Plan 05 (callsite append + AddWatchFlow/WatchForm rewrites + router.refresh removal). Plan 01 ships all 24+ planner-drafted copy strings verbatim for user review during execution.
+Last session: 2026-05-05
+Stopped at: Phase 28 complete — verifier passed all 4 success criteria
+Next action: `/gsd-verify-work 28` for UAT, or `/gsd-discuss-phase 29` to start the next phase. Phase 28 shipped Sonner action-slot toast wiring across 4 commit sites, ?returnTo= validated round-trip across 8 entry-points (BottomNav phantom skipped, NotesTabContent fallback to default), AddWatchFlow router.refresh removed (Pitfall 3 closed), Phase 25 LOCKED successMessage block superseded with Phase 28 D-21, 25 literal copy strings + speech-act-split verdict bundle (rationalePhrasings lockstep with contextualPhrasings), and WishlistRationalePanel auto-fill source switched to rationalePhrasings[0]. composer.test.ts:226 literal-lock removed per Pitfall 4. All 22 D-decisions implemented. Full suite 50 failed / 4187 passed — 1 better than baseline; all failures pre-existing in unrelated files.

@@ -132,15 +132,15 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 **Plans**: 5 plans across 3 waves
 
 **Wave 1** *(parallel-safe — zero file overlap)*
-- [ ] 28-01-PLAN.md — FIT-06: verdict copy rewrite + speech-act split
-- [ ] 28-02-PLAN.md — UX-09 hook foundation: useFormFeedback successAction extension
-- [ ] 28-03-PLAN.md — ADD-08 server foundation: /watch/new returnTo whitelist + shared destinations.ts module
+- [x] 28-01-PLAN.md — FIT-06: verdict copy rewrite + speech-act split
+- [x] 28-02-PLAN.md — UX-09 hook foundation: useFormFeedback successAction extension
+- [x] 28-03-PLAN.md — ADD-08 server foundation: /watch/new returnTo whitelist + shared destinations.ts module
 
 **Wave 2** *(blocked on Wave 1)*
-- [ ] 28-04-PLAN.md — UX-09 inline-commit wiring: /search + /catalog/[id] Wishlist commits switch to Sonner action-slot
+- [x] 28-04-PLAN.md — UX-09 inline-commit wiring: /search + /catalog/[id] Wishlist commits switch to Sonner action-slot
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 28-05-PLAN.md — ADD-08 callsite append + UX-09 nav-on-commit: 8 entry-points + AddWatchFlow/WatchForm rewrites
+- [x] 28-05-PLAN.md — ADD-08 callsite append + UX-09 nav-on-commit: 8 entry-points + AddWatchFlow/WatchForm rewrites
 
 **Cross-cutting constraints** (appear in 2+ plans):
 - Sonner action-slot toast contract (D-01/D-02/D-03) — Plans 02, 04, 05
