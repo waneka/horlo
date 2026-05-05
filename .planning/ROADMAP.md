@@ -163,7 +163,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 **Wave 1** *(parallel-safe — zero file overlap)*
 - [x] 29-01-PLAN.md — FORM-04 Wave 0: NEW tests/components/watch/AddWatchFlow.test.tsx (key-change + useLayoutEffect cleanup) + extend tests/components/watch/WatchForm.test.tsx with reset-on-key-change test (completed 2026-05-05)
 - [x] 29-02-PLAN.md — NAV-16: delete Profile DropdownMenuItem from UserMenu.tsx (preserve BOTH surrounding separators per UI-SPEC D-01 wording precision); rewrite UserMenu.test.tsx Test 3, delete Test 4 (completed 2026-05-05)
-- [ ] 29-03-PLAN.md — PROF-10: append `overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to ProfileTabs.tsx:65 TabsList className; assert all 4 utilities in ProfileTabs.test.tsx
+- [x] 29-03-PLAN.md — PROF-10: append `overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to ProfileTabs.tsx:65 TabsList className; assert all 4 utilities in ProfileTabs.test.tsx (completed 2026-05-05)
 
 **Wave 2** *(blocked on Wave 1 — Plan 01 test scaffolds gate Plan 04 verify)*
 - [ ] 29-04-PLAN.md — FORM-04 implementation: per-request `crypto.randomUUID()` nonce as `<AddWatchFlow key={flowKey}>` in /watch/new/page.tsx; `useLayoutEffect` cleanup-on-hide in AddWatchFlow.tsx (back-nav defense per RESEARCH Pitfall 4); explicit state reset in `handleWishlistConfirm` BEFORE `router.push(dest)` (D-14 defense-in-depth); cache hoisting strategy = Option B (accept reset)
@@ -206,7 +206,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | 12/14 | 🚧 In progress | — |
+| v4.1 Polish & Patch | 27-31 | 13/14 | 🚧 In progress | — |
 
 ### v4.1 Phase Progress
 

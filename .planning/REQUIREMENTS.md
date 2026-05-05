@@ -35,7 +35,7 @@
 
 ### Profile Tabs
 
-- [ ] **PROF-10**: Profile tab strip on `/u/[username]` scrolls only horizontally; vertical scroll is disabled (currently has unwanted vertical-scroll behavior on overflow).
+- [x] **PROF-10**: Profile tab strip on `/u/[username]` scrolls only horizontally; vertical scroll is disabled (currently has unwanted vertical-scroll behavior on overflow).
 
 ### Add-Watch Form Reset (Phase 20.1 follow-up)
 
@@ -87,7 +87,7 @@ Captured here for traceability; not v4.1 scope.
 | FIT-06 | Phase 28 | Pending |
 | ADD-08 | Phase 28 | Pending |
 | NAV-16 | Phase 29 | Complete |
-| PROF-10 | Phase 29 | Pending |
+| PROF-10 | Phase 29 | Complete |
 | FORM-04 | Phase 29 | Pending |
 | WYWT-22 | Phase 30 | Pending |
 | DEBT-07 | Phase 31 | Pending |
@@ -97,7 +97,7 @@ Coverage: 12/12 requirements mapped to exactly one phase.
 
 ---
 
-*Last updated: 2026-05-05 — FORM-04 added during Phase 29 discuss-phase. Add-Watch form reset bug surfaced by user during discuss-phase scoping; folded into Phase 29 alongside NAV-16 + PROF-10. 12 requirements mapped to 5 phases (27-31).*
+*Last updated: 2026-05-05 — PROF-10 marked complete (Phase 29 Plan 03 shipped). FORM-04 added during Phase 29 discuss-phase. Add-Watch form reset bug surfaced by user during discuss-phase scoping; folded into Phase 29 alongside NAV-16 + PROF-10. 12 requirements mapped to 5 phases (27-31).*
 
 *Previous: 2026-05-04 — roadmap created via `/gsd-roadmap`. 11 requirements mapped to 5 phases (27-31). Research skipped (polish/patch milestone, no new domain). All items extend existing v4.0 patterns.*
 
