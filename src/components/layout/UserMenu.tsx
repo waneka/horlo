@@ -22,8 +22,7 @@ import { AvatarDisplay } from '@/components/profile/AvatarDisplay'
  *   1. `<Link>` wrapping `<AvatarDisplay size={40}>` — navigates to the
  *      viewer's own profile (`/u/{username}/collection`). 44×44 hit target.
  *   2. Chevron `<Button size="icon-xs">` — opens the existing dropdown
- *      (Profile / Settings / Theme / Sign out — content unchanged from
- *      pre-Phase-25).
+ *      (Settings / Theme / Sign out — per Phase 29 NAV-16 dropdown content).
  *
  * Edge cases:
  *   - `!user`            → "Sign in" link (unchanged from pre-Phase-25).
@@ -66,11 +65,6 @@ export function UserMenu({
           <div className="truncate text-sm">{user.email}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {username && (
-          <DropdownMenuItem
-            render={<Link href={`/u/${username}/collection`}>Profile</Link>}
-          />
-        )}
         <DropdownMenuItem render={<Link href="/settings">Settings</Link>} />
         <DropdownMenuSeparator />
         <div className="px-2 py-1.5">
