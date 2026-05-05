@@ -2,7 +2,7 @@
 
 **Goal:** Clear v4.0 carryover with bug fixes, UX tweaks, and small features so v5.0 (Discovery North Star) starts clean.
 
-**Scope posture:** Polish/patch. No new domain. All items extend existing v4.0 patterns (WatchCard, useFormFeedback, UserMenu, UI tabs, WYWT capture pipeline, Phase 25/26 verification process).
+**Scope posture:** Polish/patch. No new domain. All items extend existing v4.0 patterns (WatchCard, useFormFeedback, UserMenu, UI tabs, WYWT capture pipeline, Phase 25/26 verification process, AddWatchFlow state machine).
 
 ---
 
@@ -36,6 +36,10 @@
 ### Profile Tabs
 
 - [ ] **PROF-10**: Profile tab strip on `/u/[username]` scrolls only horizontally; vertical scroll is disabled (currently has unwanted vertical-scroll behavior on overflow).
+
+### Add-Watch Form Reset (Phase 20.1 follow-up)
+
+- [ ] **FORM-04**: Every entry to `/watch/new` (from any CTA, browser back/forward, refresh, or post-commit re-navigation) renders the Add-Watch flow in a fresh state. AddWatchFlow's `state` (FlowState), `url` paste-input, and `rail` reset; WatchForm's `formData`, `photoBlob`, `photoError`, and `errors` reset to defaults. Within-flow Skip/Cancel paths and the verdict cache (`useWatchSearchVerdictCache`, intentionally cross-session) are NOT affected. Currently the form retains stale data from a prior session because `useState` lazy-init only fires on the first mount and Next.js 16 router cache replays the cached tree on re-entry.
 
 ### WYWT Capture (Phase 15 follow-up)
 
@@ -84,14 +88,17 @@ Captured here for traceability; not v4.1 scope.
 | ADD-08 | Phase 28 | Pending |
 | NAV-16 | Phase 29 | Pending |
 | PROF-10 | Phase 29 | Pending |
+| FORM-04 | Phase 29 | Pending |
 | WYWT-22 | Phase 30 | Pending |
 | DEBT-07 | Phase 31 | Pending |
 | DEBT-08 | Phase 31 | Pending |
 
-Coverage: 11/11 requirements mapped to exactly one phase.
+Coverage: 12/12 requirements mapped to exactly one phase.
 
 ---
 
-*Last updated: 2026-05-04 — roadmap created via `/gsd-roadmap`. 11 requirements mapped to 5 phases (27-31). Research skipped (polish/patch milestone, no new domain). All items extend existing v4.0 patterns.*
+*Last updated: 2026-05-05 — FORM-04 added during Phase 29 discuss-phase. Add-Watch form reset bug surfaced by user during discuss-phase scoping; folded into Phase 29 alongside NAV-16 + PROF-10. 12 requirements mapped to 5 phases (27-31).*
+
+*Previous: 2026-05-04 — roadmap created via `/gsd-roadmap`. 11 requirements mapped to 5 phases (27-31). Research skipped (polish/patch milestone, no new domain). All items extend existing v4.0 patterns.*
 
 *Previous: 2026-05-04 — milestone initialized via `/gsd-new-milestone`. 11 requirements across 9 categories.*

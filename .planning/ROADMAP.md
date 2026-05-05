@@ -82,7 +82,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 - [x] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card (completed 2026-05-04)
 - [x] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink (completed 2026-05-05)
-- [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only
+- [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry
 - [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
 - [ ] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
 
@@ -151,14 +151,24 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 **UI hint**: yes
 
 ### Phase 29: Nav & Profile Chrome Cleanup
-**Goal**: The UserMenu and profile tab strip are tight and predictable — no duplicate Profile affordance, no surprise vertical scroll on the tab strip.
-**Depends on**: v4.0 Phase 25 (avatar dual-affordance shipped Profile as primary path)
-**Requirements**: NAV-16, PROF-10
+**Goal**: The UserMenu, profile tab strip, and Add-Watch flow are tight and predictable — no duplicate Profile affordance, no surprise vertical scroll on the tab strip, and a fresh Add-Watch form on every entry instead of stale data from the prior session.
+**Depends on**: v4.0 Phase 25 (avatar dual-affordance shipped Profile as primary path), Phase 20.1 (AddWatchFlow state machine)
+**Requirements**: NAV-16, PROF-10, FORM-04
 **Success Criteria** (what must be TRUE):
   1. The UserMenu dropdown no longer shows a "Profile" item; the avatar Link remains the primary path to `/u/{username}`. UserMenu still exposes Settings, Theme segmented control, and Sign out.
   2. On `/u/[username]`, the profile tab strip scrolls horizontally only when its tabs overflow — no vertical scroll-bar appears, no vertical-scroll gesture is consumed by the tab strip on touch or trackpad.
+  3. Every entry to `/watch/new` (CTA click, browser back/forward, refresh, post-commit re-navigation) renders the Add-Watch flow in a fresh state — paste URL empty, FlowState idle (or driven by current URL params), rail empty, WatchForm fields/photo/errors at defaults. The verdict cache (`useWatchSearchVerdictCache`, intentionally cross-session) is unaffected. Within-flow Skip / Cancel paths still loop back to idle inside the same mount; only entry to the route triggers the reset.
 **Plans**: TBD
 **UI hint**: yes
+**Canonical refs**:
+- `src/components/layout/UserMenu.tsx` (NAV-16 — drop the Profile DropdownMenuItem at lines 69-73)
+- `src/components/profile/ProfileTabs.tsx` (PROF-10 — TabsList overflow class at line 65)
+- `src/components/ui/tabs.tsx` (PROF-10 — shared TabsList primitive; DO NOT modify, fix is local to ProfileTabs per scope decision)
+- `src/components/watch/AddWatchFlow.tsx` (FORM-04 — useState lazy-init at lines 110-113)
+- `src/components/watch/WatchForm.tsx` (FORM-04 — useState lazy-init at lines 98-101, 136)
+- `src/app/watch/new/page.tsx` (FORM-04 — page-level reset key candidate)
+- `tests/components/layout/UserMenu.test.tsx` (NAV-16 — Tests 3 + 4 reference the Profile dropdown row; need updates)
+- `tests/components/profile/ProfileTabs.test.tsx` (PROF-10 — verify horizontal-only scroll behavior)
 
 ### Phase 30: WYWT Capture Alignment Fix
 **Goal**: When a user aligns their wrist with the WYWT camera overlay, the saved photo crops the wrist where the overlay said it would be — not lower in the frame.
