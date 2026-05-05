@@ -50,6 +50,7 @@ export function CameraCaptureView({
   disabled,
 }: CameraCaptureViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [busy, setBusy] = useState(false)
 
   // Wire the stream into <video> on mount; stop all tracks + null
@@ -65,20 +66,33 @@ export function CameraCaptureView({
 
   async function handleCapture() {
     const video = videoRef.current
-    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+    const wrapper = wrapperRef.current
+    if (!video || !wrapper || video.videoWidth === 0 || video.videoHeight === 0) {
       onError('Camera not ready — please try again.')
       return
     }
     setBusy(true)
     try {
-      // Step 1: capture the current frame to a JPEG blob.
-      // Common Operation 2.
+      // Step 1: capture the current frame to a JPEG blob, cropping to the
+      // visible wrapper rect (WYSIWYG). With <video class="object-cover"> the
+      // browser scales the stream so its short edge fills the square wrapper
+      // and clips the long-edge overflow. The capture canvas reproduces that
+      // exact visible region by reading only the source rect that maps to
+      // the wrapper, so the saved JPEG matches what the user saw under the
+      // wrist overlay (WYWT-22; D-01, D-02, D-05).
+      const { width: wrapperW, height: wrapperH } = wrapper.getBoundingClientRect()
+      const { sx, sy, sw, sh } = computeObjectCoverSourceRect(
+        video.videoWidth,
+        video.videoHeight,
+        wrapperW,
+        wrapperH,
+      )
       const captureCanvas = document.createElement('canvas')
-      captureCanvas.width = video.videoWidth
-      captureCanvas.height = video.videoHeight
+      captureCanvas.width = wrapperW
+      captureCanvas.height = wrapperH
       const ctx = captureCanvas.getContext('2d')
       if (!ctx) throw new Error('Canvas 2D context unavailable')
-      ctx.drawImage(video, 0, 0)
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, wrapperW, wrapperH)
       const captured = await new Promise<Blob | null>((resolve) =>
         captureCanvas.toBlob(resolve, 'image/jpeg', 0.85),
       )
@@ -103,7 +117,10 @@ export function CameraCaptureView({
           inset-0 maps to the video bounds, not the buttons strip below. Keeps
           the wrist-overlay SVG centered over the actual camera frame regardless
           of stream aspect ratio. */}
-      <div className="relative w-full overflow-hidden rounded-md bg-black">
+      <div
+        ref={wrapperRef}
+        className="relative w-full aspect-square overflow-hidden rounded-md bg-black"
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -135,4 +152,31 @@ export function CameraCaptureView({
       </div>
     </div>
   )
+}
+
+/**
+ * Pure helper — exported for testing.
+ *
+ * Maps the visible, object-cover-cropped wrapper rect back to stream
+ * coordinates. With `object-cover`, the stream scales so its short edge fills
+ * the wrapper, the long edge overflows, and the centered slice is what the
+ * user sees. The source rect (sx, sy, sw, sh) is the slice in stream coords;
+ * passing it to ctx.drawImage's 9-argument form draws exactly that region.
+ *
+ * Phase 30 D-07 contract — see tests/components/wywt/CameraCaptureView.test.tsx
+ * for the four math assertions this satisfies (1920×1080, 1280×720, 1080×1080,
+ * bounds check) at ±1px tolerance.
+ */
+export function computeObjectCoverSourceRect(
+  streamW: number,
+  streamH: number,
+  wrapperW: number,
+  wrapperH: number,
+): { sx: number; sy: number; sw: number; sh: number } {
+  const videoScale = Math.max(wrapperW / streamW, wrapperH / streamH)
+  const sw = wrapperW / videoScale
+  const sh = wrapperH / videoScale
+  const sx = (streamW - sw) / 2
+  const sy = (streamH - sh) / 2
+  return { sx, sy, sw, sh }
 }
