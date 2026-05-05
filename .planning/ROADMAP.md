@@ -82,7 +82,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 - [x] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card (completed 2026-05-04)
 - [x] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink (completed 2026-05-05)
-- [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry
+- [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry (6/6 plans complete; ready for re-verification post FORM-04 gap closure)
 - [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
 - [ ] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
 
@@ -169,8 +169,8 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 - [x] 29-04-PLAN.md — FORM-04 implementation: per-request `crypto.randomUUID()` nonce as `<AddWatchFlow key={flowKey}>` in /watch/new/page.tsx; `useLayoutEffect` cleanup-on-hide in AddWatchFlow.tsx (back-nav defense per RESEARCH Pitfall 4); explicit state reset in `handleWishlistConfirm` BEFORE `router.push(dest)` (D-14 defense-in-depth); cache hoisting strategy = Option B (accept reset)
 
 **Wave 3** *(gap closure — UAT-1 closed two FORM-04 regressions; parallel-safe — zero file overlap)*
-- [ ] 29-05-PLAN.md — FORM-04 Gap 1: migrate useWatchSearchVerdictCache.ts to module-scoped Map (smallest-blast-radius variant of Option A); revises Plan 04 hoisting decision (Option B literally cannot honor D-15 cache-survives-entry contract); adds remount-cache-hit regression test
-- [ ] 29-06-PLAN.md — FORM-04 Gap 2: StrictMode-safe useLayoutEffect cleanup (ref-guarded skip cases for initial idle + form-prefill) so D-16 deep-link prefill survives Next.js 16 dev StrictMode mount/cleanup/mount; rename tests/setup.ts → tests/setup.tsx + global RTL render() StrictMode wrapper (test-infra gap that let Plan 04 regression slip through CI); adds form-prefill survives StrictMode regression test
+- [x] 29-05-PLAN.md — FORM-04 Gap 1: migrate useWatchSearchVerdictCache.ts to module-scoped Map (smallest-blast-radius variant of Option A); revises Plan 04 hoisting decision (Option B literally cannot honor D-15 cache-survives-entry contract); adds remount-cache-hit regression test (completed 2026-05-05)
+- [x] 29-06-PLAN.md — FORM-04 Gap 2: StrictMode-safe useLayoutEffect cleanup (ref-guarded skip cases for initial idle + form-prefill) so D-16 deep-link prefill survives Next.js 16 dev StrictMode mount/cleanup/mount; rename tests/setup.ts → tests/setup.tsx + global RTL render() StrictMode wrapper (test-infra gap that let Plan 04 regression slip through CI); adds form-prefill survives StrictMode regression test (completed 2026-05-05)
 
 **Cross-cutting constraints** (appear in 2+ plans):
 - Pitfall 8 (`key` MUST be at JSX level, NOT in spread) — Plans 01, 04

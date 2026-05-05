@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: verifying
-stopped_at: Phase 29 Plan 04 complete (FORM-04 implementation; phase ready for verification)
-last_updated: "2026-05-05T07:40:56.095Z"
-last_activity: 2026-05-05 -- Phase 29 Plan 04 (FORM-04 implementation: per-request UUID nonce + useLayoutEffect cleanup + commit-time reset) shipped
+stopped_at: Phase 29 Plans 05-06 complete (FORM-04 gap closure; phase ready for re-verification)
+last_updated: "2026-05-05T10:55:00.000Z"
+last_activity: 2026-05-05 -- Phase 29 Plans 05 (verdict cache module-scope) + 06 (StrictMode-safe cleanup) shipped — FORM-04 gap closure
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 16
+  completed_plans: 16
   percent: 100
 ---
 
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 ## Current Position
 
-Phase: 29 (nav-profile-chrome-cleanup) — READY FOR VERIFICATION
-Plan: 4 of 4 complete
-Status: Phase complete — ready for verification
-Last activity: 2026-05-05 -- Phase 29 Plan 04 (FORM-04 implementation) shipped
+Phase: 29 (nav-profile-chrome-cleanup) — READY FOR RE-VERIFICATION
+Plan: 6 of 6 complete (4 originals + 2 gap-closure plans 29-05, 29-06)
+Status: Phase complete with gap closure — ready for re-verification
+Last activity: 2026-05-05 -- Phase 29 Plans 05 + 06 (FORM-04 gap closure: cache module-scope + StrictMode-safe cleanup) shipped
 
 ## Progress Bar
 
@@ -37,7 +37,7 @@ v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
-v4.1 Polish & Patch               [ ] in progress (14/14 plans complete; 100%; Phase 29 ready for verification)
+v4.1 Polish & Patch               [ ] in progress (16/16 plans complete; 100%; Phase 29 ready for re-verification)
 v5.0 Discovery North Star         [ ] planted (SEED-004)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-05T07:40:50.874Z
-Stopped at: Phase 29 Plan 04 complete (Phase 29 ready for verification)
-Next action: Run Phase 29 verification + UAT. Manual UAT items deferred to phase-end: (1) navigate /watch/new → paste URL → router.push to collection → click Add Watch CTA → assert paste empty; (2) navigate /watch/new → paste URL → browser-back from /u/.../collection → /watch/new → assert paste empty AND state.kind===idle (Pitfall 4 — Activity-preservation back-nav case carried by useLayoutEffect cleanup); (3) WatchForm field reset on parent key change; (4) verdict cache survival under Option B hoisting (one-time re-fetch on first re-paste post-remount; collectionRevision-keyed re-fetch is fast). Plan 04 shipped FORM-04 three-layer defense (commits 6b4546b + d51dad3): Layer 1 — `const flowKey = crypto.randomUUID()` in /watch/new/page.tsx Server Component + `<AddWatchFlow key={flowKey}>` (key at JSX level per Pitfall 8; Pitfall 2 inline 'DO NOT add use cache' guard present); Layer 2 — `useLayoutEffect(() => () => { setState({kind:'idle'}); setUrl(''); setRail([]) }, [])` after the existing focus useEffect (D-17 preserved); Layer 3 — handleWishlistConfirm success branch `setUrl/setRail/setState BEFORE router.push(dest)` (D-14 defense-in-depth; replaces contradicted Phase 28 trailing comment). 37/37 unit tests green across UserMenu (12) + ProfileTabs (8) + AddWatchFlow (2) + WatchForm (11) + useWatchSearchVerdictCache (4); Phase 20 D-06 verdict-cache regression check passed (Option B hoisting accepted). Hoisting strategy = Option B (accept the verdict cache reset; cache repopulates fast via collectionRevision-keyed re-fetch).
+Last session: 2026-05-05T10:55:00.000Z
+Stopped at: Phase 29 Plans 05 + 06 complete (FORM-04 gap closure; phase ready for re-verification). Plan 29-05 (commits e3f691d, 61f0820, a11061f) migrated `useWatchSearchVerdictCache` to module-scoped `Map` + revision counter — public hook API `{revision, get, set}` byte-identical, both consumers (`AddWatchFlow.tsx`, `WatchSearchRowsAccordion.tsx`) zero-diff. Closes UAT Gap 1 (CONTEXT D-15 "cache survives entry"); regression test `tests/components/watch/AddWatchFlow.cacheRemount.test.tsx` proves `mockGetVerdict` called exactly once across remount + same-URL re-paste. `__resetVerdictCacheForTests` helper insulates the 4 D-06 tests against test-order leaks. Plan 29-06 (commits 7b5c98f, 3e7d20a, 881d6fb, dd2e147) added ref-guarded `useLayoutEffect` cleanup in `AddWatchFlow.tsx`: skip when (a) state is fully idle (`url===''`, `rail===[]`, `state.kind==='idle'`) — covers StrictMode mount-cleanup-mount cycle on initial render, OR (b) `state.kind==='form-prefill'` — initialState-derived deep-link prefill (CONTEXT D-16) is NOT user-accumulated state. Real Activity-hide back-nav reset (UAT Test 6) preserved. Test infra: `tests/setup.ts` → `tests/setup.tsx` (git mv), `vitest.config.ts` setupFiles updated, global `vi.mock('@testing-library/react', ...)` injects `<StrictMode>` wrapper so future regressions of this class are caught in CI before manual UAT. Regression test `tests/components/watch/AddWatchFlow.strictModePrefill.test.tsx` (2/2 green) proves form-prefill survives StrictMode. Post-merge cross-plan integration check: 49 failures observed are 100% pre-existing baseline (verified at SHA 0ef4a3c) — zero new failures introduced by either plan. 7/7 targeted gap-closure tests green (4 D-06 + 1 cache remount + 2 strict-mode prefill). 39/39 Phase 29 unit sweep green.
+Next action: Re-run Phase 29 UAT focused on Gap 1 + Gap 2 closure: (1) UAT Test 5 (forward-nav reset) — should still PASS; (2) UAT Test 6 (back-nav reset) — should still PASS (cleanup body still fires when state has user input); (3) UAT Test 7 (post-commit reset) — should still PASS; (4) NEW Gap 1 check — paste catalog URL → pull-to-refresh / re-enter → re-paste same URL → assert NO second `/api/extract-watch` call (cache survives entry per CONTEXT D-15); (5) NEW Gap 2 check — Add to Collection CTA from /search → /watch/new?catalogId=...&intent=owned → assert WatchForm prefilled with brand/model/reference (CONTEXT D-16 deep-link prefill survives StrictMode mount/cleanup/mount). Then run /gsd-verify-work to update VERIFICATION.md. Phase 29 plan tally now 6/6 (originals + 2 gap-closure).
