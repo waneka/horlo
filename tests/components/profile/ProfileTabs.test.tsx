@@ -116,3 +116,24 @@ describe('ProfileTabs — isOwner-gated Insights tab (Phase 14 D-13 P-08)', () =
     expect(container.querySelector('[data-tab-id="insights"]')).toBeNull()
   })
 })
+
+describe('ProfileTabs — PROF-10 horizontal-only scroll className override', () => {
+  it('TabsList has overflow-x-auto AND overflow-y-hidden + scrollbar-hiding utilities + pb-2', () => {
+    const { container } = render(<ProfileTabs username="tyler" />)
+    // The TabsList is the parent of all [data-tab-id] triggers.
+    const firstTrigger = container.querySelector('[data-tab-id]')
+    const tabsList = firstTrigger?.parentElement
+    expect(tabsList).toBeTruthy()
+    const cls = tabsList!.className
+    // Preserved utilities (Phase 14 lock):
+    expect(cls).toContain('w-full')
+    expect(cls).toContain('justify-start')
+    expect(cls).toContain('gap-2')
+    expect(cls).toContain('overflow-x-auto')
+    // PROF-10 additions (CONTEXT D-06/D-07/D-08):
+    expect(cls).toContain('overflow-y-hidden')
+    expect(cls).toContain('pb-2')
+    expect(cls).toContain('[scrollbar-width:none]')
+    expect(cls).toContain('[&::-webkit-scrollbar]:hidden')
+  })
+})
