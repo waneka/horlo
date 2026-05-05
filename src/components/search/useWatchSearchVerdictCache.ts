@@ -1,50 +1,57 @@
 'use client'
 
-import { useState } from 'react'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
 /**
- * Phase 20 D-06: per-mount verdict cache for the FIT-04 search-row inline expand.
+ * Phase 20 D-06 + Phase 29 FORM-04 gap closure: cross-mount verdict cache.
  *
- * Keyed by viewer's collection-revision. The revision is passed as a prop from
- * the server (Plan 05 wires src/app/search/page.tsx to pass viewer.collection.length).
- * When the revision changes (viewer added/removed/edited a watch and the page
- * re-rendered), the cache is replaced with an empty Map. Cache only persists
- * across renders WITHIN the same revision — and across navigation away/back, the
- * SearchPageClient unmounts and the cache is fresh anyway.
+ * Storage is MODULE-SCOPED (not React useState) so the cache survives
+ * AddWatchFlow remounts triggered by the per-request UUID `key` prop on
+ * /watch/new. The hook is a thin readout over the module variables.
  *
- * Why a snapshot integer instead of a fancier counter: the server page has the
- * truth; client-side only-cares-about-changed (not the absolute value).
+ * Keyed by viewer's collection-revision (passed as prop from the server).
+ * When the revision changes, the module Map is replaced with an empty Map
+ * and the moduleRevision counter is updated. The clear-on-revision-change
+ * is performed inline in render (React docs: "Storing information from
+ * previous renders" pattern; setState-in-render guidance does NOT apply
+ * here because we are not calling setState — we are mutating module state).
  *
- * Trade-off (documented per plan): edits that don't change collection length
- * won't invalidate the cache automatically. Users can navigate away and back to
- * refresh. When add-watch flow lands, router.refresh() + count change will
- * naturally invalidate.
+ * Public API ({revision, get, set}) is byte-identical to the pre-fix hook
+ * so AddWatchFlow.tsx:114 and WatchSearchRowsAccordion.tsx:47 call sites
+ * are UNCHANGED.
  */
-export function useWatchSearchVerdictCache(collectionRevision: number) {
-  const [state, setState] = useState<{ rev: number; map: Map<string, VerdictBundle> }>(
-    () => ({ rev: collectionRevision, map: new Map() }),
-  )
 
-  // Drop cache when revision changes. setState in render is acceptable here
-  // (React docs: "Storing information from previous renders" pattern).
-  if (state.rev !== collectionRevision) {
-    setState({ rev: collectionRevision, map: new Map() })
+let moduleCache: Map<string, VerdictBundle> = new Map()
+let moduleRevision = 0
+
+/**
+ * Test-only: reset module state. Call from `beforeEach()` in any test that
+ * exercises the cache to keep tests deterministic regardless of execution
+ * order. Production code MUST NOT call this — it bypasses revision-keyed
+ * invalidation semantics.
+ */
+export function __resetVerdictCacheForTests(): void {
+  moduleCache = new Map()
+  moduleRevision = 0
+}
+
+export function useWatchSearchVerdictCache(collectionRevision: number) {
+  // Drop cache when revision changes. This is intentional sync mutation in
+  // render (NOT setState) — module state has no React-tracked subscribers,
+  // so this is a deterministic same-render reset.
+  if (moduleRevision !== collectionRevision) {
+    moduleCache = new Map()
+    moduleRevision = collectionRevision
   }
 
   return {
-    revision: state.rev,
-    get: (id: string): VerdictBundle | undefined => state.map.get(id),
+    revision: moduleRevision,
+    get: (id: string): VerdictBundle | undefined => moduleCache.get(id),
     set: (id: string, bundle: VerdictBundle): void => {
-      setState((prev) => {
-        if (prev.rev !== collectionRevision) {
-          // Stale write attempted; ignore (revision moved).
-          return prev
-        }
-        const next = new Map(prev.map)
-        next.set(id, bundle)
-        return { rev: prev.rev, map: next }
-      })
+      // Stale-write guard: if revision moved during an in-flight verdict
+      // compute, ignore the set (mirrors pre-fix Phase 20 D-06 behavior).
+      if (moduleRevision !== collectionRevision) return
+      moduleCache.set(id, bundle)
     },
   }
 }

@@ -1,6 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
+import {
+  useWatchSearchVerdictCache,
+  __resetVerdictCacheForTests,
+} from '@/components/search/useWatchSearchVerdictCache'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
 const fakeBundle: VerdictBundle = {
@@ -14,6 +17,10 @@ const fakeBundle: VerdictBundle = {
 }
 
 describe('D-06 useWatchSearchVerdictCache (Plan 05)', () => {
+  beforeEach(() => {
+    __resetVerdictCacheForTests()
+  })
+
   it('get() returns undefined for a never-set catalogId', () => {
     const { result } = renderHook(() => useWatchSearchVerdictCache(3))
     expect(result.current.get('unknown')).toBeUndefined()
