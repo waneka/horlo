@@ -32,10 +32,14 @@ export function WatchSearchRowsAccordion({
   results,
   q,
   collectionRevision,
+  viewerUsername,
 }: {
   results: SearchCatalogWatchResult[]
   q: string
   collectionRevision: number
+  /** Phase 28 D-02 — viewer's profile username for the View toast destination.
+   *  Null is a soft alarm — toast body still fires but action slot is omitted. */
+  viewerUsername: string | null
 }) {
   const [openValues, setOpenValues] = useState<string[]>([])
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -89,7 +93,21 @@ export function WatchSearchRowsAccordion({
       }
       const result = await addWatch(payload)
       if (result.success) {
-        toast.success('Added to wishlist')
+        // Phase 28 D-01/D-02/D-03 — Sonner action-slot toast.
+        // D-05 row 5: this surface stays on /search after commit, so the
+        // post-commit page never equals /u/{viewerUsername}/wishlist;
+        // toast ALWAYS fires here. When viewerUsername is null (soft alarm),
+        // the body still renders but the action slot is omitted.
+        if (viewerUsername) {
+          toast.success('Saved to your wishlist', {
+            action: {
+              label: 'View',
+              onClick: () => router.push(`/u/${viewerUsername}/wishlist`),
+            },
+          })
+        } else {
+          toast.success('Saved to your wishlist')
+        }
         setOpenValues([])
         router.refresh()
       } else {

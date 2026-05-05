@@ -77,6 +77,7 @@ const baseProps = {
   q: 'rolex',
   viewerId: 'v1',
   collectionRevision: 1,
+  viewerUsername: null as string | null,
   peopleResults: [] as SearchProfileResult[],
   watchesResults: [] as SearchCatalogWatchResult[],
   collectionsResults: [] as SearchCollectionResult[],
