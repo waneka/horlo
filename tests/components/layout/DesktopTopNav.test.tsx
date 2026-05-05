@@ -50,10 +50,20 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
     expect(screen.getByTestId('user-menu')).toBeInTheDocument()
   })
 
-  it('Test 10 — Add icon link has href="/watch/new"', () => {
+  it('Test 10 — Add icon link points at /watch/new with Phase 28 ?returnTo= capture', () => {
     render(<DesktopTopNav {...userProps()} />)
     const add = screen.getByRole('link', { name: /add watch/i })
-    expect(add.getAttribute('href')).toBe('/watch/new')
+    // Phase 28 D-08 — Add link now appends ?returnTo=ENC(pathname). The
+    // mocked usePathname() returns '/' (default in this test file), so the
+    // returnTo encodes to %2F.
+    const href = add.getAttribute('href') ?? ''
+    expect(href.startsWith('/watch/new?returnTo=')).toBe(true)
+    // Decoded value MUST match a same-origin path that the /watch/new
+    // server-side validator accepts (validateReturnTo in destinations.ts).
+    const url = new URL(href, 'http://localhost')
+    const decoded = url.searchParams.get('returnTo')
+    expect(decoded).toBeTruthy()
+    expect(decoded!.startsWith('/')).toBe(true)
   })
 
   it('Test 11 — Search input is a form/input targeting /search on submit', () => {

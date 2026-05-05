@@ -95,7 +95,10 @@ export function DesktopTopNav({
           {user && (
             <>
               <NavWearButton ownedWatches={ownedWatches} viewerId={user.id} />
-              <Link href="/watch/new" aria-label="Add watch">
+              <Link
+                href={`/watch/new?returnTo=${encodeURIComponent(pathname || '/')}`}
+                aria-label="Add watch"
+              >
                 <Button variant="ghost" size="icon">
                   <Plus className="h-5 w-5" aria-hidden />
                 </Button>
