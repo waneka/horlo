@@ -643,22 +643,22 @@ describe('AddWatchFlow — FORM-04 key-change remount (CONTEXT D-19)', () => {
 
 **If this table grows during planning:** decisions tagged `[ASSUMED]` should be confirmed in `/gsd-discuss-phase` before plan-checker locks them.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the `useLayoutEffect` cleanup live in AddWatchFlow alone, or also in WatchForm?**
    - What we know: `key` on `<AddWatchFlow>` causes WatchForm to remount automatically when AddWatchFlow remounts. So forward-nav coverage is fine without a WatchForm-side cleanup.
    - What's unclear: Back-nav case. If the user navigates from `/watch/new` (with WatchForm rendered in `manual-entry` or `form-prefill`) to another route and back, AddWatchFlow's `useLayoutEffect` cleanup resets `state` to `{ kind: 'idle' }`. WatchForm is no longer rendered in idle. So formData reset is implicit. Should be OK.
-   - Recommendation: Cleanup in AddWatchFlow only. WatchForm stays as-is. Verify in manual UAT (D-19) — type into manual-entry brand field, navigate away, navigate back, click "manual entry" again — assert brand is empty.
+   - RESOLVED: Cleanup in AddWatchFlow only. WatchForm stays as-is. Verify in manual UAT (D-19) — type into manual-entry brand field, navigate away, navigate back, click "manual entry" again — assert brand is empty. Implemented in Plan 29-04 Task 2.
 
 2. **Does Phase 20 D-06 test suite still pass with the verdict cache hoisted into a wrapper?**
    - What we know: The cache is keyed on `collectionRevision` and intentionally cross-session.
    - What's unclear: Phase 20 D-06 tests may make assumptions about the cache being co-located with AddWatchFlow.
-   - Recommendation: Plan task should include a "run Phase 20 D-06 tests after wrapper introduction; if any fail, fall back to Option B (let the cache reset per remount) and re-validate."
+   - RESOLVED: Plan 29-04 picks **Option B (accept the cache reset per remount)** per CONTEXT D-15 "Claude's Discretion." Phase 20 D-06 cache regression is part of Plan 29-04's verify acceptance criteria. Option A (Client wrapper hoisting) is deferred to a v5.0+ refactor candidate if UAT shows the reset is observable.
 
 3. **Will `crypto.randomUUID()` be available in all deployment environments?**
    - What we know: Node ≥ 16 and Edge runtime support `crypto.randomUUID()` natively (Web Crypto). Next.js 16 requires Node ≥ 20.
    - What's unclear: Nothing — the project's Node version is not pinned (no .nvmrc) but Next 16 enforces ≥ 20 at install time.
-   - Recommendation: No action. Document the requirement in source comment.
+   - RESOLVED: No action needed. Plan 29-04 Task 1 documents the runtime requirement in an inline source comment alongside the nonce generation.
 
 ## Environment Availability
 
