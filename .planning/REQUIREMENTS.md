@@ -31,7 +31,7 @@
 
 ### Navigation (Phase 25 follow-up)
 
-- [ ] **NAV-16**: Remove the redundant Profile link from the UserMenu dropdown. Phase 25 made avatar→profile the primary path (dual-affordance); the dropdown row is now duplicate. UserMenu retains Settings, Theme segmented, and Sign out.
+- [x] **NAV-16**: Remove the redundant Profile link from the UserMenu dropdown. Phase 25 made avatar→profile the primary path (dual-affordance); the dropdown row is now duplicate. UserMenu retains Settings, Theme segmented, and Sign out.
 
 ### Profile Tabs
 
@@ -86,7 +86,7 @@ Captured here for traceability; not v4.1 scope.
 | UX-09 | Phase 28 | Pending |
 | FIT-06 | Phase 28 | Pending |
 | ADD-08 | Phase 28 | Pending |
-| NAV-16 | Phase 29 | Pending |
+| NAV-16 | Phase 29 | Complete |
 | PROF-10 | Phase 29 | Pending |
 | FORM-04 | Phase 29 | Pending |
 | WYWT-22 | Phase 30 | Pending |

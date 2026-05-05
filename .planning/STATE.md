@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
-stopped_at: Phase 29 Plan 01 complete
-last_updated: "2026-05-05T07:19:22.000Z"
-last_activity: 2026-05-05 -- Phase 29 Plan 01 (FORM-04 test scaffold) shipped
+stopped_at: Phase 29 Plan 02 complete
+last_updated: "2026-05-05T07:25:19.000Z"
+last_activity: 2026-05-05 -- Phase 29 Plan 02 (NAV-16 UserMenu Profile row removal) shipped
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
-  percent: 79
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 ## Current Position
 
 Phase: 29 (nav-profile-chrome-cleanup) — EXECUTING
-Plan: 2 of 4
-Status: Executing Phase 29 (Plan 01 shipped)
-Last activity: 2026-05-05 -- Phase 29 Plan 01 (FORM-04 test scaffold) shipped
+Plan: 3 of 4
+Status: Executing Phase 29 (Plans 01 + 02 shipped)
+Last activity: 2026-05-05 -- Phase 29 Plan 02 (NAV-16 UserMenu Profile row removal) shipped
 
 ## Progress Bar
 
@@ -37,7 +37,7 @@ v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
-v4.1 Polish & Patch               [ ] in progress (roadmap created)
+v4.1 Polish & Patch               [ ] in progress (12/14 plans complete; 86%)
 v5.0 Discovery North Star         [ ] planted (SEED-004)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-05T07:19:22.000Z
-Stopped at: Phase 29 Plan 01 complete
-Next action: Execute Phase 29 Plan 02 (NAV-16 — UserMenu Profile row removal). Plan 01 shipped FORM-04 Wave 0 test scaffolds: NEW tests/components/watch/AddWatchFlow.test.tsx with two describe blocks (key-change remount + useLayoutEffect cleanup-on-hide sanity) and an appended FORM-04 reset-on-key-change describe block in tests/components/watch/WatchForm.test.tsx. All 13 tests across both files pass. Note: AddWatchFlow Test 1 was predicted to be RED at Plan 01 close but passes — RTL's rerender triggers React's key-prop remount semantics natively. Plan 04's value is in the production-runtime behavior (Next.js Activity-preservation) that jsdom does not simulate.
+Last session: 2026-05-05T07:25:19.000Z
+Stopped at: Phase 29 Plan 02 complete
+Next action: Execute Phase 29 Plan 03 (PROF-10 — ProfileTabs horizontal-only scroll className override) or Plan 04 (FORM-04 implementation; depends on Plan 01 test scaffolds, which are shipped). Plans 03 and 04 are independent surfaces; either can run next, or both in parallel since their files do not overlap. Plan 02 shipped NAV-16 UserMenu Profile-row removal (commits 9c2b72c + 37e0aa1): deleted the `{username && <DropdownMenuItem render={<Link href="/u/${username}/collection">Profile</Link>} />}` block from UserMenu.tsx (4 lines + 1 JSDoc adjustment); preserved BOTH surrounding `<DropdownMenuSeparator />` instances per UI-SPEC §"Visual Diff Contract — NAV-16 D-01 wording precision"; rewrote tests/components/layout/UserMenu.test.tsx Test 3 to assert email→Settings→Theme→Sign out ordering with explicit not.toMatch(/Profile/) negative; deleted Test 4 (avatar Link assertion in Test 2 covers the deleted dropdown link's navigation path); Test 9 (null-username branch) preserved verbatim — its `queryByRole(/^profile$/i) → null` assertion is now globally true. 12/12 UserMenu tests pass. Phase 25 D-04 dual-affordance lock relaxed minimally per NAV-16 D-02; avatar Link → /u/{username}/collection remains the canonical path to profile.
