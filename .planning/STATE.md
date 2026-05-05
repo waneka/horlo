@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: executing
-stopped_at: Phase 29 Plan 03 complete
-last_updated: "2026-05-05T07:31:09.000Z"
-last_activity: 2026-05-05 -- Phase 29 Plan 03 (PROF-10 ProfileTabs horizontal-only scroll className override) shipped
+status: verifying
+stopped_at: Phase 29 Plan 04 complete (FORM-04 implementation; phase ready for verification)
+last_updated: "2026-05-05T07:40:56.095Z"
+last_activity: 2026-05-05 -- Phase 29 Plan 04 (FORM-04 implementation: per-request UUID nonce + useLayoutEffect cleanup + commit-time reset) shipped
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 93
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 ## Current Position
 
-Phase: 29 (nav-profile-chrome-cleanup) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 29 (Plans 01 + 02 + 03 shipped)
-Last activity: 2026-05-05 -- Phase 29 Plan 03 (PROF-10 ProfileTabs horizontal-only scroll className override) shipped
+Phase: 29 (nav-profile-chrome-cleanup) — READY FOR VERIFICATION
+Plan: 4 of 4 complete
+Status: Phase complete — ready for verification
+Last activity: 2026-05-05 -- Phase 29 Plan 04 (FORM-04 implementation) shipped
 
 ## Progress Bar
 
@@ -37,7 +37,7 @@ v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
-v4.1 Polish & Patch               [ ] in progress (13/14 plans complete; 93%)
+v4.1 Polish & Patch               [ ] in progress (14/14 plans complete; 100%; Phase 29 ready for verification)
 v5.0 Discovery North Star         [ ] planted (SEED-004)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-05T07:31:09.000Z
-Stopped at: Phase 29 Plan 03 complete
-Next action: Execute Phase 29 Plan 04 (FORM-04 implementation): per-request `crypto.randomUUID()` nonce as `<AddWatchFlow key={flowKey}>` in /watch/new/page.tsx; `useLayoutEffect` cleanup-on-hide in AddWatchFlow.tsx; explicit state reset in `handleWishlistConfirm` BEFORE `router.push(dest)` (D-14 defense-in-depth); cache hoisting strategy = Option B (accept reset). Wave 0 test scaffolds from Plan 01 will go RED → GREEN as Plan 04 lands. Plan 03 shipped PROF-10 ProfileTabs horizontal-only scroll override (commits d6c24cb + f359b72): appended `overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to ProfileTabs.tsx:65 TabsList className (locked literal per CONTEXT D-06/D-07/D-08); preserved 4 original utilities (`w-full justify-start gap-2 overflow-x-auto`); appended new describe block to ProfileTabs.test.tsx asserting all 4 PROF-10 additions + 4 preserved utilities (D-11 — non-modifying); 8/8 ProfileTabs tests pass; src/components/ui/tabs.tsx UNCHANGED (Pitfall 7 / D-09 enforced); first use of Tailwind 4 arbitrary-variant scrollbar-hiding utilities in this codebase. Vertical-scroll-passthrough (D-10) is manual UAT only — JSDOM cannot simulate touch/trackpad gesture forwarding.
+Last session: 2026-05-05T07:40:50.874Z
+Stopped at: Phase 29 Plan 04 complete (Phase 29 ready for verification)
+Next action: Run Phase 29 verification + UAT. Manual UAT items deferred to phase-end: (1) navigate /watch/new → paste URL → router.push to collection → click Add Watch CTA → assert paste empty; (2) navigate /watch/new → paste URL → browser-back from /u/.../collection → /watch/new → assert paste empty AND state.kind===idle (Pitfall 4 — Activity-preservation back-nav case carried by useLayoutEffect cleanup); (3) WatchForm field reset on parent key change; (4) verdict cache survival under Option B hoisting (one-time re-fetch on first re-paste post-remount; collectionRevision-keyed re-fetch is fast). Plan 04 shipped FORM-04 three-layer defense (commits 6b4546b + d51dad3): Layer 1 — `const flowKey = crypto.randomUUID()` in /watch/new/page.tsx Server Component + `<AddWatchFlow key={flowKey}>` (key at JSX level per Pitfall 8; Pitfall 2 inline 'DO NOT add use cache' guard present); Layer 2 — `useLayoutEffect(() => () => { setState({kind:'idle'}); setUrl(''); setRail([]) }, [])` after the existing focus useEffect (D-17 preserved); Layer 3 — handleWishlistConfirm success branch `setUrl/setRail/setState BEFORE router.push(dest)` (D-14 defense-in-depth; replaces contradicted Phase 28 trailing comment). 37/37 unit tests green across UserMenu (12) + ProfileTabs (8) + AddWatchFlow (2) + WatchForm (11) + useWatchSearchVerdictCache (4); Phase 20 D-06 verdict-cache regression check passed (Option B hoisting accepted). Hoisting strategy = Option B (accept the verdict cache reset; cache repopulates fast via collectionRevision-keyed re-fetch).
