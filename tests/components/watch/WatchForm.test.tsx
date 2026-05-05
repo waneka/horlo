@@ -231,3 +231,26 @@ describe('WatchForm — TEST-06 form flow', () => {
     expect(screen.getByText('wishlist')).toBeInTheDocument()
   })
 })
+
+// ─── Phase 29 FORM-04 D-19 (reset on parent key change) ──────────────────────
+
+describe('WatchForm — FORM-04 reset on parent key change (CONTEXT D-19)', () => {
+  it('formData returns to initialFormData defaults after re-mount with a new key', async () => {
+    const user = userEvent.setup()
+    // Pitfall 8 (RESEARCH): key MUST appear at JSX level, NOT inside an object spread.
+    const { rerender } = render(<WatchForm key="a" mode="create" />)
+
+    // Type into brand + model — formData is now non-default.
+    await user.type(screen.getByLabelText(/brand/i), 'Omega')
+    await user.type(screen.getByLabelText(/^model/i), 'Speedmaster')
+    expect(screen.getByLabelText(/brand/i)).toHaveValue('Omega')
+    expect(screen.getByLabelText(/^model/i)).toHaveValue('Speedmaster')
+
+    // Re-mount via key change (Pitfall 8: key MUST be at JSX level, NOT in spread).
+    rerender(<WatchForm key="b" mode="create" />)
+
+    // After remount, useState lazy-initializer runs again; formData = initialFormData.
+    expect(screen.getByLabelText(/brand/i)).toHaveValue('')
+    expect(screen.getByLabelText(/^model/i)).toHaveValue('')
+  })
+})
