@@ -60,10 +60,14 @@ const fixtureExtracted: ExtractedWatchData = {
 }
 
 describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     // Reset global fetch each test so per-test mockResolvedValue is isolated.
     global.fetch = vi.fn() as unknown as typeof fetch
+    // FORM-04 Gap 3 — module-scoped URL extract cache leaks across tests
+    // when the same URL is pasted in multiple tests. Reset between tests.
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    __resetUrlExtractCacheForTests()
   })
 
   it('ADD-01 happy path — paste URL → extracting → verdict-ready with 3 buttons', async () => {

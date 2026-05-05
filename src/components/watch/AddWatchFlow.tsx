@@ -12,6 +12,7 @@ import { WatchForm } from './WatchForm'
 import { ExtractErrorCard, type ExtractErrorCategory } from './ExtractErrorCard'
 import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
 import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
+import { useUrlExtractCache } from './useUrlExtractCache'
 import { getVerdictForCatalogWatch } from '@/app/actions/verdict'
 import { addWatch } from '@/app/actions/watches'
 import { canonicalize, defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
@@ -112,6 +113,10 @@ export function AddWatchFlow({
   const [, startTransition] = useTransition()
   const [rail, setRail] = useState<RailEntry[]>([])
   const cache = useWatchSearchVerdictCache(collectionRevision)
+  // FORM-04 Gap 3 — sibling cache for the upstream extract step. Mirrors 29-05's
+  // module-scope pattern; survives the same per-request UUID `key` boundary.
+  // Skips /api/extract-watch entirely on re-paste of an already-extracted URL.
+  const urlCache = useUrlExtractCache()
   // UAT gap 1 (Plan 06): drives the VerdictStep fallback copy split. Threaded
   // into every VerdictStep render call site so a null verdict on a non-empty
   // collection surfaces "Couldn't compute fit" instead of the misleading
@@ -183,7 +188,8 @@ export function AddWatchFlow({
   // commit still uses startTransition because its post-commit work
   // (toast + router.refresh) IS legitimately deferrable.
   const handleExtract = async () => {
-    if (!url.trim()) return
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) return
     setState({ kind: 'extracting', url })
     // Yield via requestAnimationFrame so the 'extracting' render commits and
     // is observable (e.g. the "Working..." copy + VerdictSkeleton) before we
@@ -199,6 +205,35 @@ export function AddWatchFlow({
         setTimeout(resolve, 16)
       }
     })
+
+    // FORM-04 Gap 3 — URL-keyed extract cache check BEFORE the fetch.
+    // On hit, skip /api/extract-watch entirely and reuse the cached
+    // {catalogId, extracted, catalogIdError}. Only successful previous
+    // extracts with a non-null catalogId are cached, so the !catalogId
+    // branch below is unreachable on this path.
+    const cachedExtract = urlCache.get(trimmedUrl)
+    if (cachedExtract) {
+      const { catalogId, extracted, catalogIdError } = cachedExtract
+      if (collectionRevision === 0) {
+        console.warn('[AddWatchFlow] verdict=null path: collection-empty (url-cache hit)', { catalogId, catalogIdError })
+        setState({ kind: 'verdict-ready', catalogId, extracted, verdict: null })
+        return
+      }
+      const cachedVerdict = cache.get(catalogId)
+      if (cachedVerdict) {
+        setState({ kind: 'verdict-ready', catalogId, extracted, verdict: cachedVerdict })
+        return
+      }
+      const v = await getVerdictForCatalogWatch({ catalogId })
+      const bundle: VerdictBundle | null = v.success ? v.data : null
+      if (!v.success) {
+        console.warn('[AddWatchFlow] verdict=null path: verdict-failed (url-cache hit)', { catalogId, error: v.error })
+      }
+      if (bundle) cache.set(catalogId, bundle)
+      setState({ kind: 'verdict-ready', catalogId, extracted, verdict: bundle })
+      return
+    }
+
     try {
       const res = await fetch('/api/extract-watch', {
         method: 'POST',
@@ -225,6 +260,13 @@ export function AddWatchFlow({
       // Phase 20.1 UAT gap 1 observability: route surfaces an explicit error
       // indicator whenever the catalog upsert path could not produce a real id.
       const catalogIdError: string | null = data.catalogIdError ?? null
+
+      // FORM-04 Gap 3 — only cache fully-successful extracts with a real
+      // catalogId. Failures (catalogId=null, !res.ok, network throws) are
+      // intentionally NOT cached so the user can retry.
+      if (catalogId) {
+        urlCache.set(trimmedUrl, { catalogId, extracted, catalogIdError })
+      }
 
       // Pitfall 8: empty collection → skip verdict compute entirely.
       if (collectionRevision === 0) {
