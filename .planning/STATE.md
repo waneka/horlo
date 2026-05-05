@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: completed
-stopped_at: "Phase 29 Plans 05 + 06 + Quick Task FORM-04 Gap 3 complete. Quick Task (commits 03667a5, 8de2382, 726f2ed, 0815c96) added `src/components/watch/useUrlExtractCache.ts` — module-scoped `Map<url, ExtractCacheEntry>` mirroring 29-05's primitive but with no `collectionRevision` keying (URL → scraped data is stable across collection state). `AddWatchFlow.handleExtract` now consults `urlCache.get(trimmedUrl)` BEFORE the fetch; on hit, skips `/api/extract-watch` entirely and reuses cached `{catalogId, extracted, catalogIdError}` for the downstream collectionRevision/verdict-cache branching. On a successful fetch with non-null catalogId, `urlCache.set` caches the entry. Failures (catalogId=null, !res.ok, network throw) intentionally NOT cached so user can retry malformed URLs. Test additions: 4-test hook unit suite + 1-test AddWatchFlow remount regression asserting `fetchSpy === 1` across remount + same-URL re-paste (the strongest assertion in the FORM-04 gap suite — 29-05's cacheRemount test could only assert on the verdict server action because fetch was uncached at the time). 79/79 cross-suite green (watch + UserMenu + ProfileTabs). Closes the user-observable bottleneck behind UAT Test 8 — verdict cache survived remount per 29-05 but extract API call still fired; this closes that gap."
-last_updated: "2026-05-05T22:29:44.461Z"
-last_activity: 2026-05-05 -- Phase 30 marked complete
+stopped_at: "Phase 29 marked complete after re-verified UAT (10/10 pass). All three FORM-04 gaps closed across 29-05 (verdict cache module-scope), 29-06 (StrictMode-safe cleanup + global vitest StrictMode wrapper), and Quick Task FORM-04 Gap 3 (useUrlExtractCache module-scope). 29-VERIFICATION.md status=passed, re-verified 2026-05-05. Next phase to address: 31 (v4.0 Verification Backfill, DEBT-07/DEBT-08) — last remaining v4.1 phase before milestone completion."
+last_updated: "2026-05-05T23:00:00.000Z"
+last_activity: 2026-05-05 -- Phase 29 marked complete
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 18
   completed_plans: 18
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 30 — WYWT Capture Alignment Fix
+**Current focus:** Phase 31 — v4.0 Verification Backfill
 
 ## Current Position
 
-Phase: 30 — COMPLETE
-Plan: 1 of 2
-Status: Phase 30 complete
-Last activity: 2026-05-05 -- Phase 30 marked complete
+Phase: 31 — Ready to plan
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-05 -- Phase 29 marked complete
 
 ## Progress Bar
 
@@ -37,7 +37,7 @@ v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
-v4.1 Polish & Patch               [ ] in progress (16/16 plans complete; 100%; Phase 29 ready for re-verification)
+v4.1 Polish & Patch               [ ] in progress (18/18 plans complete; Phase 31 next — v4.0 verification backfill)
 v5.0 Discovery North Star         [ ] planted (SEED-004)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
@@ -87,8 +87,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-05T12:25:00.000Z
-Stopped at: Phase 29 Plans 05 + 06 + Quick Task FORM-04 Gap 3 complete. Quick Task (commits 03667a5, 8de2382, 726f2ed, 0815c96) added `src/components/watch/useUrlExtractCache.ts` — module-scoped `Map<url, ExtractCacheEntry>` mirroring 29-05's primitive but with no `collectionRevision` keying (URL → scraped data is stable across collection state). `AddWatchFlow.handleExtract` now consults `urlCache.get(trimmedUrl)` BEFORE the fetch; on hit, skips `/api/extract-watch` entirely and reuses cached `{catalogId, extracted, catalogIdError}` for the downstream collectionRevision/verdict-cache branching. On a successful fetch with non-null catalogId, `urlCache.set` caches the entry. Failures (catalogId=null, !res.ok, network throw) intentionally NOT cached so user can retry malformed URLs. Test additions: 4-test hook unit suite + 1-test AddWatchFlow remount regression asserting `fetchSpy === 1` across remount + same-URL re-paste (the strongest assertion in the FORM-04 gap suite — 29-05's cacheRemount test could only assert on the verdict server action because fetch was uncached at the time). 79/79 cross-suite green (watch + UserMenu + ProfileTabs). Closes the user-observable bottleneck behind UAT Test 8 — verdict cache survived remount per 29-05 but extract API call still fired; this closes that gap.
-
-Earlier today: Plan 29-05 (commits e3f691d, 61f0820, a11061f) migrated `useWatchSearchVerdictCache` to module-scoped `Map` + revision counter — public hook API `{revision, get, set}` byte-identical, both consumers (`AddWatchFlow.tsx`, `WatchSearchRowsAccordion.tsx`) zero-diff. Closes UAT Gap 1 (CONTEXT D-15 "cache survives entry"); regression test `tests/components/watch/AddWatchFlow.cacheRemount.test.tsx` proves `mockGetVerdict` called exactly once across remount + same-URL re-paste. `__resetVerdictCacheForTests` helper insulates the 4 D-06 tests against test-order leaks. Plan 29-06 (commits 7b5c98f, 3e7d20a, 881d6fb, dd2e147) added ref-guarded `useLayoutEffect` cleanup in `AddWatchFlow.tsx`: skip when (a) state is fully idle (`url===''`, `rail===[]`, `state.kind==='idle'`) — covers StrictMode mount-cleanup-mount cycle on initial render, OR (b) `state.kind==='form-prefill'` — initialState-derived deep-link prefill (CONTEXT D-16) is NOT user-accumulated state. Real Activity-hide back-nav reset (UAT Test 6) preserved. Test infra: `tests/setup.ts` → `tests/setup.tsx` (git mv), `vitest.config.ts` setupFiles updated, global `vi.mock('@testing-library/react', ...)` injects `<StrictMode>` wrapper so future regressions of this class are caught in CI before manual UAT. Regression test `tests/components/watch/AddWatchFlow.strictModePrefill.test.tsx` (2/2 green) proves form-prefill survives StrictMode. Post-merge cross-plan integration check: 49 failures observed are 100% pre-existing baseline (verified at SHA 0ef4a3c) — zero new failures introduced by either plan. Plan 29-05 (commits e3f691d, 61f0820, a11061f) migrated `useWatchSearchVerdictCache` to module-scoped `Map` + revision counter — public hook API `{revision, get, set}` byte-identical, both consumers (`AddWatchFlow.tsx`, `WatchSearchRowsAccordion.tsx`) zero-diff. Closes UAT Gap 1 (CONTEXT D-15 "cache survives entry"); regression test `tests/components/watch/AddWatchFlow.cacheRemount.test.tsx` proves `mockGetVerdict` called exactly once across remount + same-URL re-paste. `__resetVerdictCacheForTests` helper insulates the 4 D-06 tests against test-order leaks. Plan 29-06 (commits 7b5c98f, 3e7d20a, 881d6fb, dd2e147) added ref-guarded `useLayoutEffect` cleanup in `AddWatchFlow.tsx`: skip when (a) state is fully idle (`url===''`, `rail===[]`, `state.kind==='idle'`) — covers StrictMode mount-cleanup-mount cycle on initial render, OR (b) `state.kind==='form-prefill'` — initialState-derived deep-link prefill (CONTEXT D-16) is NOT user-accumulated state. Real Activity-hide back-nav reset (UAT Test 6) preserved. Test infra: `tests/setup.ts` → `tests/setup.tsx` (git mv), `vitest.config.ts` setupFiles updated, global `vi.mock('@testing-library/react', ...)` injects `<StrictMode>` wrapper so future regressions of this class are caught in CI before manual UAT. Regression test `tests/components/watch/AddWatchFlow.strictModePrefill.test.tsx` (2/2 green) proves form-prefill survives StrictMode. Post-merge cross-plan integration check: 49 failures observed are 100% pre-existing baseline (verified at SHA 0ef4a3c) — zero new failures introduced by either plan. 7/7 targeted gap-closure tests green (4 D-06 + 1 cache remount + 2 strict-mode prefill). 39/39 Phase 29 unit sweep green.
-Next action: User to manually re-test UAT Test 8 in browser — paste catalog URL → re-enter `/watch/new` (CTA or back-nav) → re-paste SAME URL → DevTools Network: `/api/extract-watch` should fire ONLY ONCE total. If pass, mark Test 8 result=pass in 29-UAT.md and proceed to Test 10 re-test (deep-link prefill from /search → `/watch/new?catalogId=…&intent=owned` shows prefilled brand/model/reference). All three FORM-04 gaps now closed in code + tests; only browser confirmation remains.
+Last session: 2026-05-05T23:00:00.000Z
+Stopped at: Phase 29 marked complete after re-verified UAT — 10/10 tests passed (29-UAT.md status=complete, 29-VERIFICATION.md status=passed re-verified 2026-05-05). All three FORM-04 gaps closed across 29-05 (verdict cache module-scope), 29-06 (StrictMode-safe useLayoutEffect cleanup + global vitest StrictMode wrapper), and Quick Task FORM-04 Gap 3 (useUrlExtractCache module-scope). v4.1 milestone now 4/5 phases complete (27, 28, 29, 30); only Phase 31 (v4.0 Verification Backfill — DEBT-07/DEBT-08) remains before milestone completion.
+Resume file: None
+Next action: Plan and execute Phase 31 — `/gsd-discuss-phase 31` (or `/gsd-plan-phase 31` if context already clear). Phase 31 backfills phase-level VERIFICATION.md for Phases 23 and 24, closing the v4.0 verification asymmetry recorded in the milestone audit.

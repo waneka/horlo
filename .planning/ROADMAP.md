@@ -82,7 +82,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 
 - [x] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card (completed 2026-05-04)
 - [x] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink (completed 2026-05-05)
-- [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry (6/6 plans complete; ready for re-verification post FORM-04 gap closure)
+- [x] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry (completed 2026-05-05)
 - [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
 - [ ] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
 
@@ -222,7 +222,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | 14/16 | 🚧 In progress | — |
+| v4.1 Polish & Patch | 27-31 | 18/18 | 🚧 In progress | — |
 
 ### v4.1 Phase Progress
 
@@ -230,6 +230,6 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 |-------|----------------|--------|-----------|
 | 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
 | 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
-| 29. Nav & Profile Chrome Cleanup | 4/6 | In progress | — |
+| 29. Nav & Profile Chrome Cleanup | 6/6 | Complete    | 2026-05-05 |
 | 30. WYWT Capture Alignment Fix | 2/2 | Complete    | 2026-05-05 |
 | 31. v4.0 Verification Backfill | 0/0 | Not started | — |
