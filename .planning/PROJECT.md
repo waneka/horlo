@@ -134,6 +134,7 @@ See `.planning/milestones/v4.0-MILESTONE-AUDIT.md` for the full audit (status: `
 - [ ] SMTP-06 staging-prod sender split — pending staging Supabase project per Phase 21 CONTEXT D-01
 - [ ] CAT-13 catalog → similarity engine rewire — deferred to v5.0+
 - [ ] CAT-14 `SET NOT NULL` on `watches.catalog_id` — after 100% backfill verified across two consecutive deploys
+- [ ] DEBT-09: Phase 17 Supabase migrations missing from local DB resets — `watches_catalog_natural_key` UNIQUE constraint, `refresh_watches_catalog_counts()` SECDEF function, and pg_cron schedule (`supabase/migrations/20260427000000_phase17_catalog_schema.sql` + `20260427000001_phase17_pg_cron.sql`) are not applied by `drizzle-kit push`. Effect: every `addWatch` call hits `ON CONFLICT ON CONSTRAINT watches_catalog_natural_key` and silently throws (caught + console.error in `src/app/actions/watches.ts:125`); 0 catalog rows get created locally; `/search` Watches tab shows nothing because of the score-zero filter at `src/data/catalog.ts:316`. Per memory `project_local_db_reset.md` — extend the post-`supabase db reset` script with `docker exec psql` apply for these two migrations. Surfaced during Phase 28 UAT 2026-05-05.
 
 ### Out of Scope
 
