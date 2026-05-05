@@ -25,7 +25,7 @@ vi.mock('@/lib/similarity', () => ({
 }))
 
 import { computeVerdictBundle } from './composer'
-import { HEADLINE_FOR_LABEL, DESCRIPTION_FOR_LABEL } from './templates'
+import { HEADLINE_FOR_LABEL, DESCRIPTION_FOR_LABEL, RATIONALE_FOR_LABEL } from './templates'
 
 function defaultPrefs(): UserPreferences {
   return {
@@ -223,7 +223,6 @@ describe('FIT-02 composer (Plan 02)', () => {
       framing: 'same-user',
     })
     expect(out.contextualPhrasings).toEqual([DESCRIPTION_FOR_LABEL['core-fit']])
-    expect(out.contextualPhrasings).toEqual(['Highly aligned with your taste'])
   })
 
   it('hedges phrasing prefix ("Possibly ") when 0.5 ≤ entry.confidence < 0.7', () => {
@@ -295,5 +294,80 @@ describe('FIT-02 composer (Plan 02)', () => {
       })
       expect(out.headlinePhrasing).toBe(HEADLINE_FOR_LABEL[label])
     }
+  })
+
+  // ── Phase 28 D-19 / D-22 — rationalePhrasings lockstep + fallback ─────────
+
+  it('rationalePhrasings.length === contextualPhrasings.length on every code path', () => {
+    // Cover three branches: fallback (low confidence), template-fired, no-template-fired.
+    const cases: Array<{ label: SimilarityLabel; confidence: number; profile: ViewerTasteProfile; mostSimilar: Array<{ watch: Watch; score: number }> }> = [
+      { label: 'core-fit', confidence: 0.3, profile: buildProfile(), mostSimilar: [] }, // isFallback path
+      { label: 'taste-expansion', confidence: 0.8, profile: buildProfile({ dominantArchetype: 'dive' }), mostSimilar: [] }, // template fires (fills-a-hole)
+      { label: 'familiar-territory', confidence: 0.8, profile: buildProfile({ dominantArchetype: 'dive' }), mostSimilar: [] }, // no template fires
+    ]
+    for (const c of cases) {
+      mockResult = buildResult({ label: c.label, mostSimilarWatches: c.mostSimilar })
+      const out = computeVerdictBundle({
+        candidate: buildWatch('c1'),
+        catalogEntry: buildCatalogEntry({ confidence: c.confidence, primaryArchetype: c.label === 'taste-expansion' ? 'dress' : null, heritageScore: 0, formality: null, sportiness: null }),
+        collection: [],
+        preferences: defaultPrefs(),
+        profile: c.profile,
+        framing: 'same-user',
+      })
+      expect(out.rationalePhrasings.length).toBe(out.contextualPhrasings.length)
+    }
+  })
+
+  it('falls through to RATIONALE_FOR_LABEL[label] when entry.confidence < 0.5', () => {
+    mockResult = buildResult({ label: 'core-fit' })
+    const out = computeVerdictBundle({
+      candidate: buildWatch('c1'),
+      catalogEntry: buildCatalogEntry({ confidence: 0.3 }),
+      collection: [],
+      preferences: defaultPrefs(),
+      profile: buildProfile(),
+      framing: 'same-user',
+    })
+    expect(out.rationalePhrasings).toEqual([RATIONALE_FOR_LABEL['core-fit']])
+  })
+
+  it('applies "Possibly " hedge prefix to rationalePhrasings when 0.5 ≤ entry.confidence < 0.7', () => {
+    mockResult = buildResult({ label: 'core-fit' })
+    const out = computeVerdictBundle({
+      candidate: buildWatch('c1'),
+      catalogEntry: buildCatalogEntry({
+        confidence: 0.6,
+        heritageScore: 0.85,
+      }),
+      collection: [],
+      preferences: defaultPrefs(),
+      profile: buildProfile({ meanHeritageScore: 0.75 }),
+      framing: 'same-user',
+    })
+    // The aligns-with-heritage rationaleTemplate is "Heritage-driven, like the rest of what I am drawn to."
+    // After hedge: lowercases first letter and prepends "Possibly ".
+    expect(out.rationalePhrasings).toContain(
+      'Possibly heritage-driven, like the rest of what I am drawn to.',
+    )
+  })
+
+  it('rationalePhrasings[i] is filled in lockstep with contextualPhrasings[i] (same template fires both)', () => {
+    // Force the fills-a-hole template to fire (taste-expansion + novel archetype + confidence ≥ 0.7).
+    mockResult = buildResult({ label: 'taste-expansion' })
+    const out = computeVerdictBundle({
+      candidate: buildWatch('c1'),
+      catalogEntry: buildCatalogEntry({
+        confidence: 0.8,
+        primaryArchetype: 'dress',
+      }),
+      collection: [],
+      preferences: defaultPrefs(),
+      profile: buildProfile({ dominantArchetype: 'dive' }),
+      framing: 'same-user',
+    })
+    // contextualPhrasings contains the verdict-voice copy; rationalePhrasings the rationale-voice copy.
+    expect(out.contextualPhrasings).toContain('Fills a hole in your collection — your first dress.')
+    expect(out.rationalePhrasings).toContain('My first dress — fills a real hole in what I own.')
   })
 })
