@@ -94,12 +94,20 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
   ])
   const viewerUsername = viewerProfile?.username ?? null
 
+  // FORM-04 — per-request nonce as React key on AddWatchFlow. Forces remount
+  // on every entry to /watch/new (CONTEXT D-12, D-13). Safe to call here
+  // because the page is already dynamic via the await searchParams above
+  // (Request-time API). DO NOT add 'use cache' to this file; the nonce must
+  // be per-request, not per-build (RESEARCH Pitfall 2).
+  const flowKey = crypto.randomUUID()
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-8">
         Add a watch — or just evaluate one
       </h1>
       <AddWatchFlow
+        key={flowKey}
         collectionRevision={collection.length}
         initialCatalogId={catalogId}
         initialIntent={initialIntent}
