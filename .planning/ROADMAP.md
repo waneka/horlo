@@ -189,7 +189,19 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
   1. The WYWT capture overlay's geometric center (or anchor point) corresponds to the same pixel coordinates in the saved JPEG that it visually occupies in the live preview.
   2. The capture pipeline either crops the preview to match the capture frame, or shifts the overlay to the capture coordinate space, so a user who aligns their wrist with the on-screen guide sees the same alignment in the resulting `/wear/[id]` photo.
   3. WristOverlaySvg geometry (canonical 10:10 + arm spacing) is unchanged — out of scope for this phase per requirement note.
-**Plans**: TBD
+**Plans**: 2 plans across 2 waves
+
+**Wave 1**
+- [ ] 30-01-PLAN.md — D-07 RED test scaffold: create tests/components/wywt/CameraCaptureView.test.tsx with 4 pure-math assertions on the not-yet-exported computeObjectCoverSourceRect helper
+
+**Wave 2** *(blocked on Wave 1 — RED test must exist before GREEN implementation)*
+- [ ] 30-02-PLAN.md — Implement WYSIWYG fix in src/components/wywt/CameraCaptureView.tsx: wrapperRef + aspect-square wrapper class + computeObjectCoverSourceRect named export + extended readiness guard + 9-arg drawImage capture math; followed by iOS Safari manual UAT (D-08)
+
+**Cross-cutting constraints** (appear in 2+ plans):
+- Plan 01 RED → Plan 02 GREEN handoff (math contract encoded as test before production export exists)
+- Single src/ file edited (D-01 through D-13 lock everything outside src/components/wywt/CameraCaptureView.tsx)
+- D-10/D-11/D-12/D-13 NO-EDIT files: WristOverlaySvg.tsx, ComposeStep.tsx, src/lib/exif/strip.ts (referenced read-only by both plans, never modified)
+- stripAndResize pipeline preserved (D-12) — cropped blob still pipes through the existing helper at line 91
 **UI hint**: yes
 
 ### Phase 31: v4.0 Verification Backfill
@@ -219,5 +231,5 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
 | 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
 | 29. Nav & Profile Chrome Cleanup | 4/6 | In progress | — |
-| 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
+| 30. WYWT Capture Alignment Fix | 0/2 | In progress | — |
 | 31. v4.0 Verification Backfill | 0/0 | Not started | — |
