@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -126,16 +126,48 @@ export function AddWatchFlow({
     }
   }, [state.kind])
 
-  // FORM-04 — Activity-hide reset (back-button defense). When the user
-  // navigates AWAY from /watch/new, Next.js's <Activity> wrapper sets this
-  // route's mode to "hidden". React runs effect cleanup at that boundary
-  // (per node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md).
+  // FORM-04 — Activity-hide reset (back-button defense), StrictMode-safe.
+  //
+  // When the user navigates AWAY from /watch/new, Next.js's <Activity>
+  // wrapper sets this route's mode to "hidden". React runs effect cleanup
+  // at that boundary (per node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md).
   // This cleanup resets local state to idle so when the user later navigates
-  // BACK (within the 3-route Activity window), the un-hidden tree is already
-  // fresh — even though the Server Component does NOT re-run on back-nav and
-  // the `key` prop value is therefore unchanged.
+  // BACK (within the 3-route Activity window), the un-hidden tree is fresh —
+  // even though the Server Component does NOT re-run on back-nav and the
+  // `key` prop value is therefore unchanged.
+  //
+  // StrictMode safety (Phase 29 Plan 06 — closes UAT Gap 2):
+  //   Next.js 16 dev wraps the tree in <StrictMode>. StrictMode runs every
+  //   effect with a mount → cleanup → mount cycle on initial render. The
+  //   first cleanup fires SYNCHRONOUSLY before any user interaction. If
+  //   the cleanup unconditionally resets state, it clobbers the
+  //   initialState-derived `form-prefill` state (deep-link from /search
+  //   with ?catalogId=X&intent=owned) — breaking CONTEXT D-16.
+  //
+  // Guard: read latest state via refs and only run the reset body when
+  // there is actual user-accumulated state to clean up. The two skip cases:
+  //   (1) Initial idle (state.kind === 'idle' && url === '' && rail empty)
+  //       — no user activity has happened yet (StrictMode spurious cycle
+  //       OR a fresh forward-nav Activity-hide before any interaction).
+  //   (2) form-prefill (state.kind === 'form-prefill') — derived from
+  //       URL params (D-16 deep-link). NOT user-accumulated state; must
+  //       survive the StrictMode spurious cycle so the WatchForm renders
+  //       with brand/model populated from the catalog row.
+  const stateRef = useRef(state)
+  const urlRef = useRef(url)
+  const railRef = useRef(rail)
+  stateRef.current = state
+  urlRef.current = url
+  railRef.current = rail
   useLayoutEffect(() => {
     return () => {
+      const s = stateRef.current
+      // Skip case 2: form-prefill is initialState-derived from URL params.
+      // Must survive StrictMode mount/cleanup/mount.
+      if (s.kind === 'form-prefill') return
+      // Skip case 1: nothing user-accumulated to reset.
+      if (s.kind === 'idle' && urlRef.current === '' && railRef.current.length === 0) return
+      // Real Activity-hide / unmount: user has accumulated state. Reset.
       setState({ kind: 'idle' })
       setUrl('')
       setRail([])
