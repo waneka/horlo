@@ -62,7 +62,7 @@ export function ProfileTabs({
     <Tabs value={activeTab} className="w-full">
       <TabsList
         variant="line"
-        className="w-full justify-start gap-2 overflow-x-auto"
+        className="w-full justify-start gap-2 overflow-x-auto overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((tab) => (
           <TabsTrigger
