@@ -1,13 +1,19 @@
 ---
 phase: 30-wywt-capture-alignment-fix
 verified: 2026-05-05T21:05:00Z
-status: human_needed
-score: 2/3 must-haves verified (SC-3 VERIFIED by code inspection; SC-1 and SC-2 VERIFIED at code level; iOS Safari UAT pending for full closure)
+status: closed
+score: 3/3 success criteria PASS (initial code verification + post-deploy iOS Safari UAT after CSS hotfix)
 overrides_applied: 0
+post_ship_hotfix:
+  - commit: "2dd7377"
+    title: "fix(30): add h-full to <video> so object-cover engages (WYWT-22 hotfix)"
+    why: "Initial Phase 30 ship had black bar in preview + wrist at bottom of saved JPEG on iPhone. Root cause: <video> had `block w-full object-cover` but no h-full; the element kept its intrinsic 16:9 aspect inside the aspect-square wrapper, object-cover had nothing to crop, and the WYSIWYG capture math assumed a crop that never happened."
+    fix: "Add h-full to video class. Element becomes 360x360, object-cover engages, visible video equals wrapper rect, math holds end-to-end."
+    confirmed_by: "Owner iOS Safari UAT post-deploy 2026-05-05 — preview square, no black bar, wrist centered in saved photo"
 human_verification:
   - test: "iOS Safari visual UAT — D-08 protocol"
     expected: "Live preview is square (no black bar), wrist overlay centered. After capturing, /wear/[id] shows the watch centered in the saved JPEG, not at the bottom edge."
-    why_human: "Visual judgment is the acceptance criterion per D-08/D-09. Requires a real iPhone on iOS Safari; JSDOM math test covers the coordinate math but cannot substitute for real-device visual confirmation of the full capture-to-render pipeline."
+    result: PASS (post-hotfix, owner-verified 2026-05-05)
 ---
 
 # Phase 30: WYWT Capture Alignment Fix — Verification Report
@@ -29,7 +35,7 @@ human_verification:
 | 2 | Capture pipeline crops the preview to match the capture frame so a user who aligns their wrist sees the same alignment in the resulting /wear/[id] photo | VERIFIED (code level) | Data flow: `wrapperRef.current.getBoundingClientRect()` → `computeObjectCoverSourceRect` → 9-arg `drawImage` → `toBlob` → `stripAndResize` → `onPhotoReady`. No step injects divergent geometry. `captureCanvas.width = wrapperW; captureCanvas.height = wrapperH` (not `video.videoWidth`). Old 3-arg `ctx.drawImage(video, 0, 0)` is absent. iOS Safari visual confirmation pending (human item below). |
 | 3 | WristOverlaySvg geometry (canonical 10:10 + arm spacing) is unchanged — out of scope | VERIFIED | `WristOverlaySvg.tsx` last commit is `ad3f473` (Phase 15). No edit by Phase 30 commits. `git diff abf564e^^ -- src/components/wywt/WristOverlaySvg.tsx` is empty. |
 
-**Score:** 3/3 truths VERIFIED at code level. SC-1 and SC-2 require iOS Safari visual UAT to close fully (human item below).
+**Score:** 3/3 truths VERIFIED. Initial ship (commits `f9eee7b`..`603c829`) had a CSS regression — `<video>` lacked `h-full`, so `object-cover` did not engage and the WYSIWYG contract broke on iPhone. Hotfix `2dd7377` added `h-full`. Owner re-tested on iOS Safari post-deploy: preview square, no black bar, wrist centered in saved photo. Phase fully closed.
 
 ---
 

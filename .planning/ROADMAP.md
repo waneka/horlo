@@ -231,5 +231,5 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
 | 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
 | 29. Nav & Profile Chrome Cleanup | 4/6 | In progress | — |
-| 30. WYWT Capture Alignment Fix | 0/2 | In progress | — |
+| 30. WYWT Capture Alignment Fix | 2/2 | Complete    | 2026-05-05 |
 | 31. v4.0 Verification Backfill | 0/0 | Not started | — |
