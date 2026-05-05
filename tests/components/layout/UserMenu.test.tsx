@@ -72,29 +72,20 @@ describe('UserMenu (Phase 14 NAV-08 D-17 + Phase 25 NAV-13 dual-affordance)', ()
     expect(chevronButton).toBeInTheDocument()
   })
 
-  it('Test 3 — dropdown contains all sections in order: Email / Profile / Settings / Theme / Sign out', () => {
+  it('Test 3 — dropdown contains all sections in order: Email / Settings / Theme / Sign out (NAV-16)', () => {
     render(<UserMenu {...aliceProps} />)
     const content = screen.getByTestId('dropdown-content')
     const text = content.textContent ?? ''
     const emailIdx = text.indexOf('alice@example.com')
-    const profileIdx = text.indexOf('Profile')
     const settingsIdx = text.indexOf('Settings')
     const themeIdx = text.indexOf('Theme')
     const signOutIdx = text.indexOf('Sign out')
     expect(emailIdx).toBeGreaterThanOrEqual(0)
-    expect(profileIdx).toBeGreaterThan(emailIdx)
-    expect(settingsIdx).toBeGreaterThan(profileIdx)
+    expect(settingsIdx).toBeGreaterThan(emailIdx)
     expect(themeIdx).toBeGreaterThan(settingsIdx)
     expect(signOutIdx).toBeGreaterThan(themeIdx)
-  })
-
-  it('Test 4 — Profile dropdown item links to /u/${username}/collection', () => {
-    render(<UserMenu {...aliceProps} />)
-    // Two links named ~"profile" exist now: the avatar Link
-    // (aria-label "Go to alice's profile") AND the dropdown's Profile item.
-    // Filter by accessible name === "Profile" exactly.
-    const profile = screen.getByRole('link', { name: /^profile$/i })
-    expect(profile.getAttribute('href')).toBe('/u/alice/collection')
+    // NAV-16: Profile row removed; assertion is no longer present.
+    expect(text).not.toMatch(/Profile/)
   })
 
   it('Test 5 — Settings item links to /settings', () => {
