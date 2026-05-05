@@ -158,7 +158,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
   1. The UserMenu dropdown no longer shows a "Profile" item; the avatar Link remains the primary path to `/u/{username}`. UserMenu still exposes Settings, Theme segmented control, and Sign out.
   2. On `/u/[username]`, the profile tab strip scrolls horizontally only when its tabs overflow — no vertical scroll-bar appears, no vertical-scroll gesture is consumed by the tab strip on touch or trackpad.
   3. Every entry to `/watch/new` (CTA click, browser back/forward, refresh, post-commit re-navigation) renders the Add-Watch flow in a fresh state — paste URL empty, FlowState idle (or driven by current URL params), rail empty, WatchForm fields/photo/errors at defaults. The verdict cache (`useWatchSearchVerdictCache`, intentionally cross-session) is unaffected. Within-flow Skip / Cancel paths still loop back to idle inside the same mount; only entry to the route triggers the reset.
-**Plans**: 4 plans across 2 waves
+**Plans**: 6 plans across 3 waves
 
 **Wave 1** *(parallel-safe — zero file overlap)*
 - [x] 29-01-PLAN.md — FORM-04 Wave 0: NEW tests/components/watch/AddWatchFlow.test.tsx (key-change + useLayoutEffect cleanup) + extend tests/components/watch/WatchForm.test.tsx with reset-on-key-change test (completed 2026-05-05)
@@ -166,13 +166,17 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 - [x] 29-03-PLAN.md — PROF-10: append `overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to ProfileTabs.tsx:65 TabsList className; assert all 4 utilities in ProfileTabs.test.tsx (completed 2026-05-05)
 
 **Wave 2** *(blocked on Wave 1 — Plan 01 test scaffolds gate Plan 04 verify)*
-- [ ] 29-04-PLAN.md — FORM-04 implementation: per-request `crypto.randomUUID()` nonce as `<AddWatchFlow key={flowKey}>` in /watch/new/page.tsx; `useLayoutEffect` cleanup-on-hide in AddWatchFlow.tsx (back-nav defense per RESEARCH Pitfall 4); explicit state reset in `handleWishlistConfirm` BEFORE `router.push(dest)` (D-14 defense-in-depth); cache hoisting strategy = Option B (accept reset)
+- [x] 29-04-PLAN.md — FORM-04 implementation: per-request `crypto.randomUUID()` nonce as `<AddWatchFlow key={flowKey}>` in /watch/new/page.tsx; `useLayoutEffect` cleanup-on-hide in AddWatchFlow.tsx (back-nav defense per RESEARCH Pitfall 4); explicit state reset in `handleWishlistConfirm` BEFORE `router.push(dest)` (D-14 defense-in-depth); cache hoisting strategy = Option B (accept reset)
+
+**Wave 3** *(gap closure — UAT-1 closed two FORM-04 regressions; parallel-safe — zero file overlap)*
+- [ ] 29-05-PLAN.md — FORM-04 Gap 1: migrate useWatchSearchVerdictCache.ts to module-scoped Map (smallest-blast-radius variant of Option A); revises Plan 04 hoisting decision (Option B literally cannot honor D-15 cache-survives-entry contract); adds remount-cache-hit regression test
+- [ ] 29-06-PLAN.md — FORM-04 Gap 2: StrictMode-safe useLayoutEffect cleanup (ref-guarded skip cases for initial idle + form-prefill) so D-16 deep-link prefill survives Next.js 16 dev StrictMode mount/cleanup/mount; rename tests/setup.ts → tests/setup.tsx + global RTL render() StrictMode wrapper (test-infra gap that let Plan 04 regression slip through CI); adds form-prefill survives StrictMode regression test
 
 **Cross-cutting constraints** (appear in 2+ plans):
 - Pitfall 8 (`key` MUST be at JSX level, NOT in spread) — Plans 01, 04
 - Plan 01 Test 1 RED → GREEN handoff to Plan 04 (key-change remount test)
 - `src/components/ui/tabs.tsx` LOCKED READ-ONLY (Pitfall 7 / D-09) — referenced by Plan 03, never modified
-- `src/components/search/useWatchSearchVerdictCache.ts` LOCKED READ-ONLY (Plan 04 picks Option B; primitive untouched)
+- `src/components/search/useWatchSearchVerdictCache.ts` LOCKED READ-ONLY for Plans 04, 02, 03 (Plan 04 picks Option B; primitive untouched). RELAXED for Plan 05 — UAT-1 proved Option B cannot honor D-15 cache-survives-entry contract; Plan 05 migrates to module-scoped Map
 - Phase 25 D-04 dropdown byte-identity lock RELAXED minimally (Plan 02 NAV-16 D-02 — Profile-row removal + JSDoc adjustment only)
 
 **UI hint**: yes
@@ -206,7 +210,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | 13/14 | 🚧 In progress | — |
+| v4.1 Polish & Patch | 27-31 | 14/16 | 🚧 In progress | — |
 
 ### v4.1 Phase Progress
 
@@ -214,6 +218,6 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 |-------|----------------|--------|-----------|
 | 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
 | 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
-| 29. Nav & Profile Chrome Cleanup | 2/4 | In progress | — |
+| 29. Nav & Profile Chrome Cleanup | 4/6 | In progress | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
 | 31. v4.0 Verification Backfill | 0/0 | Not started | — |
