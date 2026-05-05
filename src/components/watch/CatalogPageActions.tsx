@@ -51,12 +51,16 @@ interface CatalogPageActionsProps {
   catalogId: string
   spec: CatalogActionsSpec
   framing: 'cross-user' | 'same-user'
+  /** Phase 28 D-02 — viewer's profile username for the View toast destination.
+   *  Null is a soft alarm — toast body still fires but action slot is omitted. */
+  viewerUsername: string | null
 }
 
 export function CatalogPageActions({
   catalogId,
   spec,
   framing,
+  viewerUsername,
 }: CatalogPageActionsProps) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
@@ -90,7 +94,21 @@ export function CatalogPageActions({
       }
       const result = await addWatch(payload)
       if (result.success) {
-        toast.success('Added to wishlist')
+        // Phase 28 D-01/D-02/D-03 — Sonner action-slot toast.
+        // D-05 row 6: this surface stays on /catalog/[id] after commit, so
+        // the post-commit page never equals /u/{viewerUsername}/wishlist;
+        // toast ALWAYS fires here. When viewerUsername is null (soft alarm),
+        // the body still renders but the action slot is omitted.
+        if (viewerUsername) {
+          toast.success('Saved to your wishlist', {
+            action: {
+              label: 'View',
+              onClick: () => router.push(`/u/${viewerUsername}/wishlist`),
+            },
+          })
+        } else {
+          toast.success('Saved to your wishlist')
+        }
         // Pitfall 3: refresh so the page re-renders with viewerOwnedRow detection
         // (now that the wishlist row exists, the framing might switch on next visit).
         router.refresh()
