@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 import type { ActionResult } from '@/lib/actionTypes'
 
 /**
@@ -54,7 +55,15 @@ export interface UseFormFeedbackReturn<T> {
   dialogMode: boolean
   run: (
     action: () => Promise<ActionResult<T>>,
-    opts?: { successMessage?: string; errorMessage?: string },
+    opts?: {
+      successMessage?: string
+      errorMessage?: string
+      /** Phase 28 D-04 — additive opt; wiring lands in Task 2. When set,
+       *  Task 2 will render Sonner's built-in action slot with `label` and an
+       *  internally-wired `onClick: () => router.push(href)`. Caller passes
+       *  declarative `{ label, href }`; hook owns the router.push. */
+      successAction?: { label: string; href: string }
+    },
   ) => Promise<void>
   reset: () => void
 }
@@ -65,6 +74,7 @@ export function useFormFeedback<T = unknown>(
   options?: UseFormFeedbackOptions,
 ): UseFormFeedbackReturn<T> {
   const dialogMode = options?.dialogMode ?? false
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [state, setState] = useState<'idle' | 'pending' | 'success' | 'error'>(
     'idle',
@@ -103,7 +113,11 @@ export function useFormFeedback<T = unknown>(
   const run = useCallback(
     async (
       action: () => Promise<ActionResult<T>>,
-      opts?: { successMessage?: string; errorMessage?: string },
+      opts?: {
+        successMessage?: string
+        errorMessage?: string
+        successAction?: { label: string; href: string }
+      },
     ) => {
       // D-16: "Both clear on next form interaction." reset() clears any pending
       // 5s success timer AND wipes prior state/message before the new run.
@@ -163,7 +177,7 @@ export function useFormFeedback<T = unknown>(
         // No timeout scheduled — error persists until next run() (D-16).
       }
     },
-    [reset],
+    [reset, router],
   )
 
   return {

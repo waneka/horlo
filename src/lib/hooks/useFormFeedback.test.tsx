@@ -20,6 +20,18 @@ vi.mock('sonner', () => ({
   },
 }))
 
+const pushMock = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: pushMock,
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
 import { toast } from 'sonner'
 import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
@@ -83,6 +95,7 @@ describe('useFormFeedback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
+    pushMock.mockClear()
   })
 
   afterEach(() => {
@@ -107,7 +120,7 @@ describe('useFormFeedback', () => {
   it('Test 7: run(okAction) transitions to success and fires toast.success("Saved")', async () => {
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     expect(result.current.message).toBe('Saved')
@@ -130,7 +143,7 @@ describe('useFormFeedback', () => {
     expect(result.current.dialogMode).toBe(true)
     // dialogMode does NOT change state transitions — toast still fires, state still goes to success.
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     expect(toast.success).toHaveBeenCalledWith('Saved')
@@ -151,7 +164,7 @@ describe('useFormFeedback', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     act(() => {
@@ -179,13 +192,13 @@ describe('useFormFeedback', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     // Mid-success-window, fire run() again. reset() should clear the prior timeout
     // so the success window restarts cleanly.
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     // Advance partial-window — should still be success (NOT idle) because reset
@@ -205,7 +218,7 @@ describe('useFormFeedback', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     act(() => {
