@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: discussing
-stopped_at: Phase 30 context gathered — WYWT capture alignment fix (WYSIWYG crop, aspect-square wrapper); ready for /gsd-plan-phase 30
-last_updated: "2026-05-05T13:30:00.000Z"
-last_activity: 2026-05-05 -- Phase 30 discuss-phase complete; 13 decisions captured across 4 areas (fix strategy, saved-photo aspect, verification, out-of-scope); resume file = .planning/phases/30-wywt-capture-alignment-fix/30-CONTEXT.md
+status: executing
+stopped_at: "Phase 29 Plans 05 + 06 + Quick Task FORM-04 Gap 3 complete. Quick Task (commits 03667a5, 8de2382, 726f2ed, 0815c96) added `src/components/watch/useUrlExtractCache.ts` — module-scoped `Map<url, ExtractCacheEntry>` mirroring 29-05's primitive but with no `collectionRevision` keying (URL → scraped data is stable across collection state). `AddWatchFlow.handleExtract` now consults `urlCache.get(trimmedUrl)` BEFORE the fetch; on hit, skips `/api/extract-watch` entirely and reuses cached `{catalogId, extracted, catalogIdError}` for the downstream collectionRevision/verdict-cache branching. On a successful fetch with non-null catalogId, `urlCache.set` caches the entry. Failures (catalogId=null, !res.ok, network throw) intentionally NOT cached so user can retry malformed URLs. Test additions: 4-test hook unit suite + 1-test AddWatchFlow remount regression asserting `fetchSpy === 1` across remount + same-URL re-paste (the strongest assertion in the FORM-04 gap suite — 29-05's cacheRemount test could only assert on the verdict server action because fetch was uncached at the time). 79/79 cross-suite green (watch + UserMenu + ProfileTabs). Closes the user-observable bottleneck behind UAT Test 8 — verdict cache survived remount per 29-05 but extract API call still fired; this closes that gap."
+last_updated: "2026-05-05T20:47:11.691Z"
+last_activity: 2026-05-05 -- Phase 30 planning complete
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 16
+  total_plans: 18
   completed_plans: 16
-  percent: 100
+  percent: 89
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 Phase: 30 (wywt-capture-alignment-fix) — CONTEXT GATHERED
 Plan: 0 of TBD — ready for /gsd-plan-phase 30
-Status: Discuss complete; 13 decisions captured across 4 areas; CONTEXT.md + DISCUSSION-LOG.md committed
-Last activity: 2026-05-05 -- Phase 30 discuss-phase complete (WYSIWYG capture-crop strategy, 1:1 aspect lock via aspect-square wrapper + object-cover, JSDOM math test + iOS Safari visual UAT, four no-touch items locked)
+Status: Ready to execute
+Last activity: 2026-05-05 -- Phase 30 planning complete
 
 ## Progress Bar
 

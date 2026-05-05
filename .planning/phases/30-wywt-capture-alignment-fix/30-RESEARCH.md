@@ -549,17 +549,17 @@ describe('computeObjectCoverSourceRect — D-07 math assertions', () => {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Helper function export for testing**
+1. **Helper function export for testing** *(resolved in 30-01-PLAN.md / 30-02-PLAN.md — named export from `CameraCaptureView.tsx`)*
    - What we know: The pure `computeObjectCoverSourceRect` function must be testable without DOM setup.
    - What's unclear: Whether to export it as a named export from `CameraCaptureView.tsx` or to place it in a shared `src/lib/wywt/` util.
    - Recommendation: Named export from `CameraCaptureView.tsx` (no new directory, no planner scope creep). Prefix with `_` or add a comment noting it is exported for testing only.
 
-2. **iOS 1280×960 front-camera stream**
+2. **iOS 1280×960 front-camera stream** *(resolved — D-07 minimum of 3 fixtures satisfied; 4th fixture deferred per Claude's Discretion)*
    - What we know: CONTEXT.md Claude's Discretion mentions this as a potential edge case.
    - What's unclear: Whether front-camera crops would produce a different failure mode.
-   - Recommendation: Add as a fourth test fixture (1280×960 + 360×360). The formula handles non-16:9 streams identically — the `max()` picks the height scale, and the horizontal crop is more aggressive. Centerpoint still equals stream center.
+   - Recommendation: Add as a fourth test fixture (1280×960 + 360×360). The formula handles non-16:9 streams identically — the `max()` picks the height scale, and the horizontal crop is more aggressive. Centerpoint still equals stream center. *(Plan 01 ships the three D-07 baseline fixtures plus a bounds-check across all three; the front-camera 1280×960 case is a deferred discretionary follow-up if needed.)*
 
 ---
 
