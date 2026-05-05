@@ -212,7 +212,20 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
   1. `.planning/milestones/v4.0-phases/23-phase-23-settings-sections-and-schema-field-ui/VERIFICATION.md` (or equivalent path under the v4.0 milestone archive) exists and audits Phase 23's success criteria against shipped code.
   2. `.planning/milestones/v4.0-phases/24-phase-24-notification-stub-cleanup-and-test-fixture-carryover/VERIFICATION.md` (or equivalent) exists and audits Phase 24's success criteria against shipped code.
   3. The v4.0 milestone audit status note recording the missing VERIFICATION.md files is updated (or amended with a closure note) to reflect the backfill.
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1** *(parallel — disjoint archive directories)*
+- [ ] 31-01-PLAN.md — Write phase-level 23-VERIFICATION.md (Phase 23 goal-backward audit; FEAT-07 GAP framing; 5 UAT carryover; sub-plan citation for SET-09/11/12)
+- [ ] 31-02-PLAN.md — Write phase-level 24-VERIFICATION.md (Phase 24 goal-backward audit; 5/5 success criteria PASS; 7 REQ-IDs SATISFIED; 51 tests across 5 files)
+
+**Wave 2** *(blocked on Wave 1 completion — reads scores from both new VERIFICATION.md files)*
+- [ ] 31-03-PLAN.md — Append `## Closure` section to v4.0-MILESTONE-AUDIT.md (cite both new VERIFICATION.md files; preserve audit body byte-equal per D-09/D-10)
+
+**Cross-cutting constraints:**
+- Append-only edit pattern (D-08/D-09/D-10) — pre-existing audit body MUST remain byte-equal pre/post Phase 31; verified by `git diff` zero-deletion gate.
+- Canonical Phase 22-VERIFICATION.md format (D-05) — frontmatter + Goal Achievement + Required Artifacts + Key Link Verification + Behavioral Spot-Checks; reference at `git show 2918e95:.planning/phases/22-settings-restructure-account-section/22-VERIFICATION.md`.
+- Evidence-cell shape (D-06) — every Observable Truth row cites src+lines, grep+result, or test+pass count; no prose-only evidence.
+- Nyquist Dimension 8 N/A — documentation-only phase; recorded in 31-VALIDATION.md and each plan's `must_haves.truths`.
 
 ## Progress
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: planning
-stopped_at: Phase 31 context gathered
-last_updated: "2026-05-05T23:10:51.143Z"
-last_activity: 2026-05-05 -- Phase 29 marked complete
+status: ready_to_execute
+stopped_at: Phase 31 planned (3 plans, 2 waves)
+last_updated: "2026-05-05T23:30:00.000Z"
+last_activity: 2026-05-05 -- Phase 31 planned (3 plans)
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 18
+  total_plans: 21
   completed_plans: 18
-  percent: 100
+  percent: 86
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 ## Current Position
 
-Phase: 31 — Ready to plan
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-05 -- Phase 29 marked complete
+Phase: 31 — Ready to execute
+Plan: 3 plans in 2 waves (31-01 + 31-02 parallel; 31-03 depends on both)
+Status: Ready to execute
+Last activity: 2026-05-05 -- Phase 31 planned (3 plans)
 
 ## Progress Bar
 
