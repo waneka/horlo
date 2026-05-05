@@ -93,6 +93,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -137,6 +139,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -185,6 +189,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -227,6 +233,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -277,6 +285,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -313,6 +323,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -342,6 +354,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialCatalogPrefill={{ brand: 'Rolex', model: 'Submariner' }}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -396,6 +410,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -442,6 +458,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -488,6 +506,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
     fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
@@ -529,6 +549,8 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 
@@ -579,6 +601,8 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
         initialCatalogPrefill={null}
         initialManual={false}
         initialStatus={null}
+        initialReturnTo={null}
+        viewerUsername={null}
       />,
     )
 

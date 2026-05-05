@@ -60,6 +60,16 @@ interface AddWatchFlowProps {
    *  manual-entry WatchForm opens with status pre-set to this value (still
    *  user-editable; uses WatchForm's `defaultStatus` prop, not `lockedStatus`). */
   initialStatus: 'wishlist' | null
+  /** Phase 28 D-11/D-12 — validated server-side at /watch/new. Null when
+   *  invalid or absent. AddWatchFlow holds this as a one-way "where to go on
+   *  commit" parameter; consumed by handleWishlistConfirm + WatchForm submit
+   *  in Plan 05. AddWatchFlow does NOT push it back into the URL bar. */
+  initialReturnTo: string | null
+  /** Phase 28 D-02 / D-06 — viewer's profile username, resolved server-side
+   *  at /watch/new via getProfileById(user.id). Used for the D-13 default
+   *  destination + the D-06 /u/me/... canonicalization. Null is a soft alarm
+   *  — flow falls back to no-toast + '/' default. */
+  viewerUsername: string | null
 }
 
 const RAIL_MAX = 5
@@ -71,8 +81,15 @@ export function AddWatchFlow({
   initialCatalogPrefill,
   initialManual,
   initialStatus,
+  initialReturnTo,
+  viewerUsername,
 }: AddWatchFlowProps) {
   const router = useRouter()
+  // Phase 28 — initialReturnTo + viewerUsername are validated server-side
+  // and threaded through here. Plan 05 wires handleWishlistConfirm + the
+  // WatchForm prop pass-through; this plan only lands the props.
+  void initialReturnTo
+  void viewerUsername
 
   // Pitfall 1 deep-link short-circuit: if catalogId+intent='owned'+prefill all
   // present, jump straight to form-prefill (skip paste + verdict).
