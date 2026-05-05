@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
-stopped_at: Phase 28 complete — verifier passed all 4 success criteria
-last_updated: "2026-05-05T02:35:00.000Z"
+stopped_at: Phase 28 complete — UAT 12/12 passed, security 21/21 closed; ready to plan Phase 29
+last_updated: "2026-05-05T05:05:00.000Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 5
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 28 — add-watch-flow-verdict-copy-polish
+**Current focus:** Phase 29 — nav-and-profile-chrome-cleanup
 
 ## Current Position
 
-Phase: 28
-Plan: All complete (5/5)
-Status: Phase complete — all success criteria verified; ready for /gsd-verify-work UAT
+Phase: 29
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-05
 
 ## Progress Bar
@@ -82,5 +82,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-05
-Stopped at: Phase 28 complete — verifier passed all 4 success criteria
-Next action: `/gsd-verify-work 28` for UAT, or `/gsd-discuss-phase 29` to start the next phase. Phase 28 shipped Sonner action-slot toast wiring across 4 commit sites, ?returnTo= validated round-trip across 8 entry-points (BottomNav phantom skipped, NotesTabContent fallback to default), AddWatchFlow router.refresh removed (Pitfall 3 closed), Phase 25 LOCKED successMessage block superseded with Phase 28 D-21, 25 literal copy strings + speech-act-split verdict bundle (rationalePhrasings lockstep with contextualPhrasings), and WishlistRationalePanel auto-fill source switched to rationalePhrasings[0]. composer.test.ts:226 literal-lock removed per Pitfall 4. All 22 D-decisions implemented. Full suite 50 failed / 4187 passed — 1 better than baseline; all failures pre-existing in unrelated files.
+Stopped at: Phase 28 complete — UAT 12/12 passed, security 21/21 closed, transition done. Ready to plan Phase 29.
+Next action: `/gsd-discuss-phase 29` to gather context for Nav & Profile Chrome Cleanup (NAV-16, PROF-10), then `/gsd-plan-phase 29`. Phase 28 shipped Sonner action-slot toast wiring across 4 commit sites, ?returnTo= validated round-trip across 8 entry-points (BottomNav phantom skipped, NotesTabContent fallback to default), AddWatchFlow router.refresh removed (Pitfall 3 closed), Phase 25 LOCKED successMessage block superseded with Phase 28 D-21, 25 literal copy strings + speech-act-split verdict bundle (rationalePhrasings lockstep with contextualPhrasings), and WishlistRationalePanel auto-fill source switched to rationalePhrasings[0]. UAT confirmed all 12 user-observable behaviors pass; security audit closed all 21 declared threats.

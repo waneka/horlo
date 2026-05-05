@@ -81,7 +81,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 ### v4.1 Polish & Patch (active)
 
 - [x] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card (completed 2026-05-04)
-- [ ] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink
+- [x] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink (completed 2026-05-05)
 - [ ] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only
 - [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
 - [ ] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
@@ -189,14 +189,14 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | 0/0 | 🚧 Planning | — |
+| v4.1 Polish & Patch | 27-31 | 10/10 | 🚧 In progress | — |
 
 ### v4.1 Phase Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
-| 28. Add-Watch Flow & Verdict Copy Polish | 0/5 | Plans created | — |
+| 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
 | 31. v4.0 Verification Backfill | 0/0 | Not started | — |
