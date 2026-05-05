@@ -168,3 +168,48 @@ if (
     configurable: true,
   })
 }
+
+// ─── Phase 29 Plan 06 (FORM-04 Gap 2) — wrap all RTL render() in StrictMode ──
+//
+// React StrictMode runs every effect with a mount → cleanup → mount cycle on
+// initial render. Wrapping render() under StrictMode here means EVERY RTL test
+// exercises the same lifecycle that Next.js 16 dev runs in real browsers.
+//
+// This is the test-infra gap that let the Plan 29-04 cleanup regression slip
+// through CI: the cleanup clobbered initialState-derived form-prefill, but
+// without StrictMode in tests, the bug only surfaced in dev manual UAT.
+//
+// Implementation: re-route @testing-library/react's render() through a wrapper
+// that mounts the UI under <StrictMode>. The standard pattern is to override
+// render via the `wrapper` option, but doing it once globally requires either
+// (a) a vi.mock of '@testing-library/react' or (b) a custom render export
+// imported by every test file.
+//
+// We use (a) here — global vi.mock — because there are existing tests that
+// import `render` directly and would otherwise need to be touched. The mock
+// preserves all other exports (screen, waitFor, fireEvent, renderHook,
+// userEvent integration, act, cleanup) and only intercepts `render` to
+// inject the StrictMode wrapper.
+import { StrictMode, type ReactElement } from 'react'
+import * as RTL from '@testing-library/react'
+
+vi.mock('@testing-library/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof RTL>()
+  return {
+    ...actual,
+    render: (ui: ReactElement, options?: Parameters<typeof actual.render>[1]) => {
+      const StrictModeWrapper = ({ children }: { children: React.ReactNode }) => (
+        <StrictMode>{children}</StrictMode>
+      )
+      const ExistingWrapper = options?.wrapper
+      const Wrapper = ExistingWrapper
+        ? ({ children }: { children: React.ReactNode }) => (
+            <StrictMode>
+              <ExistingWrapper>{children}</ExistingWrapper>
+            </StrictMode>
+          )
+        : StrictModeWrapper
+      return actual.render(ui, { ...options, wrapper: Wrapper })
+    },
+  }
+})
