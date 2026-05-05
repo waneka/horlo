@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: verifying
-stopped_at: Phase 29 Plans 05-06 + Quick Task FORM-04 Gap 3 complete (URL extract cache; phase ready for re-verification)
-last_updated: "2026-05-05T12:25:00.000Z"
-last_activity: 2026-05-05 -- Quick Task FORM-04 Gap 3 (useUrlExtractCache module-scoped) shipped — closes the user-observable bottleneck where /api/extract-watch re-fired on remount despite verdict cache surviving
+stopped_at: Phase 29 UAT re-verified — 10/10 passed, 0 issues; ready for /gsd-verify-work or milestone advance
+last_updated: "2026-05-05T12:35:00.000Z"
+last_activity: 2026-05-05 -- Phase 29 UAT re-verification complete (Tests 8 + 10 both PASS in browser); FORM-04 fully closed across 3 ships (29-05 verdict cache, 29-06 StrictMode-safe cleanup, Quick Gap 3 URL extract cache)
 progress:
   total_phases: 5
   completed_phases: 3
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 ## Current Position
 
-Phase: 29 (nav-profile-chrome-cleanup) — READY FOR RE-VERIFICATION
-Plan: 6 of 6 complete (4 originals + 2 gap-closure plans 29-05, 29-06)
-Status: Phase complete with gap closure — ready for re-verification
-Last activity: 2026-05-05 -- Quick Task FORM-04 Gap 3 (useUrlExtractCache) shipped on top of Plans 05 + 06 — closes user-observable extract re-fire bottleneck
+Phase: 29 (nav-profile-chrome-cleanup) — UAT COMPLETE (10/10 pass)
+Plan: 6 of 6 complete (4 originals + 2 gap-closure plans 29-05, 29-06) + Quick Task FORM-04 Gap 3
+Status: Phase complete + UAT re-verified — ready for /gsd-verify-work or milestone advance
+Last activity: 2026-05-05 -- Phase 29 UAT re-verified in browser (Tests 8 + 10 both PASS); FORM-04 closed across 3 ships
 
 ## Progress Bar
 
