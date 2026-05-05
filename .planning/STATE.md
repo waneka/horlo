@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
-stopped_at: Phase 27 plans verified — awaiting `/gsd-execute-phase 27`
+stopped_at: Phase 28 context gathered — awaiting `/gsd-plan-phase 28`
 last_updated: "2026-05-04T22:43:40.127Z"
 last_activity: 2026-05-04
 progress:
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 27 — watch-card-collection-render-polish
+**Current focus:** Phase 28 — add-watch-flow-verdict-copy-polish
 
 ## Current Position
 
 Phase: 28
 Plan: Not started
-Status: Executing Phase 27
+Status: Phase 28 context gathered — awaiting plan-phase
 Last activity: 2026-05-04
 
 ## Progress Bar
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-03T00:00:00.000Z
-Stopped at: Phase 27 plans verified — awaiting `/gsd-execute-phase 27`
-Next action: `/gsd-execute-phase 27` to run all 5 plans (Wave 1 RED tests → Wave 2 schema+card → Wave 3 action → Wave 4 DnD wiring + manual UAT checkpoint)
+Last session: 2026-05-04
+Stopped at: Phase 28 context gathered — awaiting `/gsd-plan-phase 28`
+Next action: `/gsd-plan-phase 28` — context locks Sonner action-slot toast (suppressed when post-commit landing == destination tab), explicit `?returnTo=` callsite capture with auth-callback regex + self-loop guard, and a structural FIT-06 fix (parallel `rationaleTemplate` slot per Template + `rationalePhrasings: string[]` on the verdict bundle, with WishlistRationalePanel rewired to read it). All 6 DESCRIPTION_FOR_LABEL strings are rewritten + 12 rationaleTemplate slots + 6 RATIONALE_FOR_LABEL fallbacks; planner drafts copy in PLAN.md for plan-check review.
