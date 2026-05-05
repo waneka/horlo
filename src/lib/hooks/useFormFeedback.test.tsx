@@ -20,6 +20,18 @@ vi.mock('sonner', () => ({
   },
 }))
 
+const pushMock = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: pushMock,
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}))
+
 import { toast } from 'sonner'
 import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
@@ -83,6 +95,7 @@ describe('useFormFeedback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
+    pushMock.mockClear()
   })
 
   afterEach(() => {
@@ -107,11 +120,11 @@ describe('useFormFeedback', () => {
   it('Test 7: run(okAction) transitions to success and fires toast.success("Saved")', async () => {
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     expect(result.current.message).toBe('Saved')
-    expect(toast.success).toHaveBeenCalledWith('Saved')
+    expect(toast.success).toHaveBeenCalledWith('Saved', undefined)
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -122,7 +135,7 @@ describe('useFormFeedback', () => {
     })
     expect(result.current.state).toBe('success')
     expect(result.current.message).toBe('Profile updated')
-    expect(toast.success).toHaveBeenCalledWith('Profile updated')
+    expect(toast.success).toHaveBeenCalledWith('Profile updated', undefined)
   })
 
   it('Test 9: dialogMode: true exposes dialogMode flag (consumer suppresses banner)', async () => {
@@ -130,10 +143,10 @@ describe('useFormFeedback', () => {
     expect(result.current.dialogMode).toBe(true)
     // dialogMode does NOT change state transitions — toast still fires, state still goes to success.
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
-    expect(toast.success).toHaveBeenCalledWith('Saved')
+    expect(toast.success).toHaveBeenCalledWith('Saved', undefined)
   })
 
   it('Test 10: run(failAction) transitions to error, message=server error, fires toast.error', async () => {
@@ -151,7 +164,7 @@ describe('useFormFeedback', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     act(() => {
@@ -179,13 +192,13 @@ describe('useFormFeedback', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     // Mid-success-window, fire run() again. reset() should clear the prior timeout
     // so the success window restarts cleanly.
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     // Advance partial-window — should still be success (NOT idle) because reset
@@ -205,7 +218,7 @@ describe('useFormFeedback', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useFormFeedback())
     await act(async () => {
-      await result.current.run(okAction)
+      await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
     act(() => {
@@ -248,5 +261,49 @@ describe('useFormFeedback', () => {
     })
     expect(errorSpy).not.toHaveBeenCalled()
     errorSpy.mockRestore()
+  })
+
+  it('Test 16: successAction option wires Sonner action slot and onClick fires router.push(href)', async () => {
+    const { result } = renderHook(() => useFormFeedback())
+    await act(async () => {
+      await result.current.run(okAction, {
+        successMessage: 'Saved to your wishlist',
+        successAction: { label: 'View', href: '/u/twwaneka/wishlist' },
+      })
+    })
+    expect(toast.success).toHaveBeenCalledWith(
+      'Saved to your wishlist',
+      expect.objectContaining({
+        action: expect.objectContaining({
+          label: 'View',
+          onClick: expect.any(Function),
+        }),
+      }),
+    )
+    // Fire the action onClick — should call router.push with the href.
+    const call = (toast.success as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]
+    const sonnerOpts = call[1] as { action: { onClick: () => void } }
+    sonnerOpts.action.onClick()
+    expect(pushMock).toHaveBeenCalledWith('/u/twwaneka/wishlist')
+  })
+
+  it('Test 17: omitting successAction produces toast.success(msg, undefined) — second arg undefined', async () => {
+    const { result } = renderHook(() => useFormFeedback())
+    await act(async () => {
+      await result.current.run(okAction, { successMessage: 'Watch added' })
+    })
+    expect(toast.success).toHaveBeenCalledWith('Watch added', undefined)
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  it('Test 18: when neither successMessage nor successAction is set, toast.success is NOT called (D-05 suppress)', async () => {
+    const { result } = renderHook(() => useFormFeedback())
+    await act(async () => {
+      await result.current.run(okAction) // both opts omitted
+    })
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(result.current.state).toBe('success')
+    expect(result.current.message).toBe('Saved')
   })
 })
