@@ -11,8 +11,8 @@ import type { VerdictBundle } from '@/lib/verdict/types'
 /**
  * Phase 20.1 D-13 — wishlist-rationale inline expand.
  *
- * Pre-fills the textarea with the verdict's headline phrasing
- * (verdict.contextualPhrasings[0] when available; empty string when
+ * Pre-fills the textarea with the verdict's user-self rationale
+ * (verdict.rationalePhrasings[0] when available — Phase 28 D-20; empty string when
  * verdict is null per D-06 empty-collection edge or D-09 enrichment fail).
  *
  * Pitfall 5: the user can blank the textarea entirely; that BLANK is what
@@ -34,15 +34,17 @@ interface WishlistRationalePanelProps {
 }
 
 /**
- * Compute the default textarea value.
- * - If verdict is a Full bundle, use the first contextual phrasing (the headline).
+ * Compute the default textarea value (Phase 28 D-20).
+ * - If verdict is a Full bundle, use the first rationale phrasing — the user-self
+ *   voice version of the verdict, intentionally chosen as the auto-fill source
+ *   instead of contextualPhrasings[0] (which is verdict-to-user voice).
  * - Otherwise (self-via-cross-user OR null), default to empty.
  * Caller may override via initialNotes (e.g., for re-open semantics).
  */
 function defaultRationale(verdict: VerdictBundle | null): string {
   if (!verdict) return ''
   if (verdict.framing === 'self-via-cross-user') return ''
-  return verdict.contextualPhrasings[0] ?? ''
+  return verdict.rationalePhrasings[0] ?? ''
 }
 
 export function WishlistRationalePanel({
@@ -82,7 +84,7 @@ export function WishlistRationalePanel({
             aria-describedby="wishlist-notes-hint"
           />
           <p id="wishlist-notes-hint" className="text-xs text-muted-foreground">
-            Pre-filled from the fit verdict. Edit or clear as you like.
+            Pre-filled with why this watch fits — written as if you wrote it. Edit to make it yours, or clear it.
           </p>
         </div>
         <div className="flex gap-2 justify-end">

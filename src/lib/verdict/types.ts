@@ -26,6 +26,10 @@ export interface VerdictBundleFull {
   headlinePhrasing: string
   /** Composer-generated phrasings (D-01 templates); falls back to single fixed-label description when confidence < 0.5. */
   contextualPhrasings: string[]
+  /** Phase 28 D-19 — 1st-person rationale-voice strings, lockstep with contextualPhrasings.
+   *  rationalePhrasings.length === contextualPhrasings.length and
+   *  rationalePhrasings[i] is the rationale-voice version of contextualPhrasings[i]. */
+  rationalePhrasings: string[]
   mostSimilar: VerdictMostSimilar[]
   roleOverlap: boolean
 }
@@ -80,4 +84,6 @@ export interface Template {
     candidateTaste: CandidateTasteSnapshot,
   ) => Record<string, string> | null
   template: string
+  /** Phase 28 D-17 — 1st-person rationale-voice template; same `${slot}` grammar as `template`. */
+  rationaleTemplate: string
 }

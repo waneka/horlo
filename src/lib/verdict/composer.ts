@@ -11,6 +11,7 @@ import {
   TEMPLATES,
   HEADLINE_FOR_LABEL,
   DESCRIPTION_FOR_LABEL,
+  RATIONALE_FOR_LABEL,
 } from '@/lib/verdict/templates'
 
 /**
@@ -56,19 +57,29 @@ export function computeVerdictBundle(args: ComposeArgs): VerdictBundleFull {
   const isHedged = !isFallback && conf < FULL_CONFIDENCE_THRESHOLD
 
   let contextualPhrasings: string[]
+  let rationalePhrasings: string[]
   if (isFallback) {
     contextualPhrasings = [DESCRIPTION_FOR_LABEL[result.label]]
+    rationalePhrasings = [RATIONALE_FOR_LABEL[result.label]]
   } else {
     const phrasings: string[] = []
+    const rationales: string[] = []
     for (const t of TEMPLATES) {
       const slots = t.predicate(result, profile, candidate, candidateTaste)
       if (!slots) continue
       let copy = fillTemplate(t.template, slots)
-      if (isHedged) copy = applyHedge(copy)
+      let rationale = fillTemplate(t.rationaleTemplate, slots)
+      if (isHedged) {
+        copy = applyHedge(copy)
+        rationale = applyHedge(rationale)
+      }
       phrasings.push(copy)
+      rationales.push(rationale)
     }
     contextualPhrasings =
       phrasings.length > 0 ? phrasings : [DESCRIPTION_FOR_LABEL[result.label]]
+    rationalePhrasings =
+      rationales.length > 0 ? rationales : [RATIONALE_FOR_LABEL[result.label]]
   }
 
   return {
@@ -76,6 +87,7 @@ export function computeVerdictBundle(args: ComposeArgs): VerdictBundleFull {
     label: result.label,
     headlinePhrasing: HEADLINE_FOR_LABEL[result.label],
     contextualPhrasings,
+    rationalePhrasings,
     mostSimilar: result.mostSimilarWatches.map(({ watch, score }) => ({
       watch,
       score,

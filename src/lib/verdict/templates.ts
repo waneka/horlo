@@ -22,6 +22,7 @@ export const TEMPLATES: Template[] = [
       return { archetype: taste.primaryArchetype }
     },
     template: 'Fills a hole in your collection — your first ${archetype}.',
+    rationaleTemplate: 'My first ${archetype} — fills a real hole in what I own.',
   },
   {
     id: 'aligns-with-heritage',
@@ -32,6 +33,7 @@ export const TEMPLATES: Template[] = [
       return {}
     },
     template: 'Aligns with your heritage-driven taste.',
+    rationaleTemplate: 'Heritage-driven, like the rest of what I am drawn to.',
   },
   {
     id: 'collection-skews-contrast',
@@ -42,6 +44,7 @@ export const TEMPLATES: Template[] = [
       return { dominant: profile.dominantArchetype, contrast: taste.primaryArchetype }
     },
     template: 'Your collection skews ${dominant} — this is a ${contrast}.',
+    rationaleTemplate: 'My collection leans ${dominant}; this gives me a ${contrast} to balance it.',
   },
   {
     id: 'overlaps-with-specific',
@@ -52,6 +55,7 @@ export const TEMPLATES: Template[] = [
       return { specific: `${top.watch.brand} ${top.watch.model}` }
     },
     template: 'Overlaps strongly with your ${specific}.',
+    rationaleTemplate: 'Plays in the same space as my ${specific}.',
   },
   // ── 8 SUPPORTING TEMPLATES (Claude's Discretion starting set) ──────────────
   {
@@ -63,16 +67,19 @@ export const TEMPLATES: Template[] = [
       return {}
     },
     template: 'First watch in your collection — no comparison yet.',
+    rationaleTemplate: 'My first watch — no collection to compare against yet.',
   },
   {
     id: 'core-fit-confirmed',
     predicate: (result) => (result.label === 'core-fit' ? {} : null),
     template: 'Lines up cleanly with your established taste.',
+    rationaleTemplate: 'Lines up cleanly with the taste I have already built.',
   },
   {
     id: 'role-duplicate-warning',
     predicate: (result) => (result.roleOverlap ? {} : null),
     template: 'Competes for wrist time with watches you already own.',
+    rationaleTemplate: 'Would compete for wrist time with watches I already own.',
   },
   {
     id: 'archetype-echo',
@@ -82,6 +89,7 @@ export const TEMPLATES: Template[] = [
       return { archetype: taste.primaryArchetype }
     },
     template: 'Another ${archetype} — your dominant style.',
+    rationaleTemplate: 'Another ${archetype} — leaning further into my dominant style.',
   },
   {
     id: 'era-echo',
@@ -92,6 +100,7 @@ export const TEMPLATES: Template[] = [
       return null
     },
     template: 'Echoes the ${era} era of your collection.',
+    rationaleTemplate: 'Echoes the ${era} era I keep coming back to.',
   },
   {
     id: 'formality-aligned',
@@ -101,6 +110,7 @@ export const TEMPLATES: Template[] = [
       return {}
     },
     template: 'Matches the formality range of your favourites.',
+    rationaleTemplate: 'Matches the formality range of the watches I wear most.',
   },
   {
     id: 'sportiness-contrast',
@@ -110,11 +120,13 @@ export const TEMPLATES: Template[] = [
       return {}
     },
     template: 'Shifts the sport/dress balance of your collection.',
+    rationaleTemplate: 'Would shift the sport/dress balance of what I own.',
   },
   {
     id: 'hard-mismatch-stated',
     predicate: (result) => (result.label === 'hard-mismatch' ? {} : null),
     template: 'Conflicts with the styles you said you avoid.',
+    rationaleTemplate: 'Conflicts with styles I said I avoid — if I want it, I want it for a reason.',
   },
 ]
 
@@ -128,10 +140,19 @@ export const HEADLINE_FOR_LABEL: Record<SimilarityLabel, string> = {
 }
 
 export const DESCRIPTION_FOR_LABEL: Record<SimilarityLabel, string> = {
-  'core-fit': 'Highly aligned with your taste',
-  'familiar-territory': 'Similar to what you like',
-  'role-duplicate': 'May compete for wrist time',
-  'taste-expansion': 'New but still aligned',
-  'outlier': 'Unusual for your collection',
-  'hard-mismatch': 'Conflicts with stated dislikes',
+  'core-fit': 'Lines up cleanly with what you already like.',
+  'familiar-territory': "Sits in territory you've already explored.",
+  'role-duplicate': "Plays a role you've already filled in your collection.",
+  'taste-expansion': "Stretches your taste in a direction it's already leaning.",
+  'outlier': "Stands apart from your collection but doesn't conflict.",
+  'hard-mismatch': 'Conflicts with styles you said you avoid.',
+}
+
+export const RATIONALE_FOR_LABEL: Record<SimilarityLabel, string> = {
+  'core-fit': 'Lines up cleanly with what I already like.',
+  'familiar-territory': "Sits in territory I've already explored.",
+  'role-duplicate': "Plays a role I've already filled in my collection.",
+  'taste-expansion': "Stretches my taste in a direction it's already leaning.",
+  'outlier': "Stands apart from my collection but doesn't conflict.",
+  'hard-mismatch': 'Conflicts with styles I said I avoid — if I want it, I want it for a reason.',
 }
