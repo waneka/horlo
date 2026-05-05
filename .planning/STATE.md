@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: executing
-stopped_at: Phase 28 complete — UAT 12/12 passed, security 21/21 closed; ready to plan Phase 29
-last_updated: "2026-05-05T05:05:00.000Z"
+status: planning
+stopped_at: Phase 29 context gathered
+last_updated: "2026-05-05T05:33:36.670Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 5
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-05
-Stopped at: Phase 28 complete — UAT 12/12 passed, security 21/21 closed, transition done. Ready to plan Phase 29.
+Last session: 2026-05-05T05:33:36.659Z
+Stopped at: Phase 29 context gathered
 Next action: `/gsd-discuss-phase 29` to gather context for Nav & Profile Chrome Cleanup (NAV-16, PROF-10), then `/gsd-plan-phase 29`. Phase 28 shipped Sonner action-slot toast wiring across 4 commit sites, ?returnTo= validated round-trip across 8 entry-points (BottomNav phantom skipped, NotesTabContent fallback to default), AddWatchFlow router.refresh removed (Pitfall 3 closed), Phase 25 LOCKED successMessage block superseded with Phase 28 D-21, 25 literal copy strings + speech-act-split verdict bundle (rationalePhrasings lockstep with contextualPhrasings), and WishlistRationalePanel auto-fill source switched to rationalePhrasings[0]. UAT confirmed all 12 user-observable behaviors pass; security audit closed all 21 declared threats.
