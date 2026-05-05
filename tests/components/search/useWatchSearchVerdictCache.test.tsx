@@ -8,6 +8,7 @@ const fakeBundle: VerdictBundle = {
   label: 'core-fit',
   headlinePhrasing: 'Core Fit',
   contextualPhrasings: ['ok'],
+  rationalePhrasings: ['ok'],
   mostSimilar: [],
   roleOverlap: false,
 }

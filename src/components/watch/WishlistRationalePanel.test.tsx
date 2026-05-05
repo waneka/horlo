@@ -18,6 +18,10 @@ const verdictWithCopy: VerdictBundleFull = {
   label: 'core-fit',
   headlinePhrasing: 'Core Fit',
   contextualPhrasings: [
+    'Aligns with your heritage-driven taste — overlaps strongly with your Submariner',
+  ],
+  // Phase 28 D-20: pre-fill source switched from contextualPhrasings to rationalePhrasings.
+  rationalePhrasings: [
     'Aligns with my heritage-driven taste — overlaps strongly with Submariner',
   ],
   mostSimilar: [],
@@ -29,12 +33,13 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
     vi.clearAllMocks()
   })
 
-  it('ADD-02 — textarea pre-fills from verdict.contextualPhrasings copy', () => {
+  it('ADD-02 — textarea pre-fills from verdict.rationalePhrasings copy (Phase 28 D-20)', () => {
     // Per Pitfall 5 contract (RESEARCH §Pitfall 5): pre-fill happens on render
     // ONLY when no explicit initialNotes is supplied. `initialNotes=""` would
     // mean "user explicitly chose blank" (e.g. re-opening a previously cleared
     // entry from the rail), and must NOT regenerate verdict copy on top of it.
     // Omit initialNotes here so verdict-derived copy fills the textarea.
+    // Phase 28 D-20: source is now rationalePhrasings (1st-person user-self voice).
     render(
       <WishlistRationalePanel
         verdict={verdictWithCopy}
@@ -97,13 +102,14 @@ describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', (
   })
 })
 
-describe('Phase 20.1 gap-closure regression guard — UAT gap 2', () => {
-  it('pre-fills textarea with verdict.contextualPhrasings[0] when verdict is a full bundle', () => {
+describe('Phase 20.1 gap-closure regression guard — UAT gap 2 (Phase 28 D-20 migrated)', () => {
+  it('pre-fills textarea with verdict.rationalePhrasings[0] when verdict is a full bundle', () => {
     const fullVerdict: VerdictBundleFull = {
       framing: 'cross-user',
       label: 'core-fit',
       headlinePhrasing: 'Core Fit',
-      contextualPhrasings: ['Foo'],  // explicit pre-fill content
+      contextualPhrasings: ['Verdict-voice copy'],
+      rationalePhrasings: ['Foo'],  // explicit pre-fill content (Phase 28 D-20)
       mostSimilar: [],
       roleOverlap: false,
     }

@@ -24,6 +24,7 @@ const baseFullVerdict: VerdictBundle = {
   label: 'core-fit',
   headlinePhrasing: 'Core Fit',
   contextualPhrasings: ['Lines up cleanly with your established taste.'],
+  rationalePhrasings: ['Lines up cleanly with the taste I have already built.'],
   mostSimilar: [],
   roleOverlap: false,
 }
