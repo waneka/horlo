@@ -124,14 +124,26 @@ No alternative syntax (`aspect-[1/1]`, inline style) is needed.
 
 ### Video Element
 
-`<video>` class string is unchanged:
+`<video>` class string (Phase 30 hotfix — `h-full` is **required**, see below):
 ```
-block w-full object-cover
+block h-full w-full object-cover
 ```
 
 `object-cover` semantics: the stream (e.g., 1920×1080) scales up so its SHORT edge
 fills the square wrapper. The long-edge overflow is clipped. This is the visual crop
 the user sees, and it is exactly what the capture canvas must reproduce.
+
+**Why `h-full` is mandatory (post-ship hotfix):** `object-cover` only crops content
+that overflows the *element's box*. Without `h-full`, the `<video>` element keeps its
+intrinsic 16:9 aspect (~360×202 inside a 360×360 wrapper), so the box matches the
+stream's shape and `object-cover` has nothing to crop. The video collapses to ~56% of
+the wrapper height, leaving the bottom 44% as a black bar (the wrapper's `bg-black`).
+The capture math then assumes a crop that never happened — the saved JPEG ends up
+showing the centered slice of the stream while the user was actually looking at the
+full stream squished into the top half. With `h-full`, the video element matches the
+square wrapper, `object-cover` engages, the visible video equals the wrapper rect,
+and `computeObjectCoverSourceRect` produces a saved JPEG that matches what the user
+saw under the overlay.
 
 ### SVG Overlay
 

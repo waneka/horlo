@@ -127,7 +127,14 @@ export function CameraCaptureView({
           playsInline
           muted
           aria-label="Camera preview"
-          className="block w-full object-cover"
+          // h-full is REQUIRED for object-cover to engage. Without it, the
+          // <video> element keeps its intrinsic 16:9 aspect inside the
+          // aspect-square wrapper, leaving a black bar at the bottom and
+          // breaking the WYSIWYG capture contract — the math in
+          // computeObjectCoverSourceRect assumes the visible video rect
+          // equals the wrapper rect, which is only true when object-cover
+          // actually crops to fill. (Phase 30 hotfix; D-05.)
+          className="block h-full w-full object-cover"
         />
         <WristOverlaySvg className="pointer-events-none absolute inset-0" />
       </div>
