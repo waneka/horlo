@@ -14,6 +14,7 @@ import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
 import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
 import { getVerdictForCatalogWatch } from '@/app/actions/verdict'
 import { addWatch } from '@/app/actions/watches'
+import { canonicalize, defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 
 import type { FlowState, RailEntry } from './flowTypes'
 import type { ExtractedWatchData } from '@/lib/extractors'
@@ -33,8 +34,11 @@ import type { VerdictBundle } from '@/lib/verdict/types'
  *   - Pitfall 1: searchParams Promise — handled in page.tsx; here we just
  *     short-circuit to form-prefill when initialCatalogId+intent+prefill
  *     are all set
- *   - Pitfall 3: router.refresh() after Wishlist commit so the next render
- *     gets the bumped collectionRevision and the verdict cache invalidates
+ *   - Pitfall 3 (resolved Phase 28 D-15): router.refresh() removed from
+ *     Wishlist commit. The new nav-on-commit pattern (router.push to
+ *     /u/{username}/{tab} or returnTo) lands on a different route whose
+ *     Server Component re-fetches getWatchesByUser fresh; on next visit to
+ *     /watch/new the collectionRevision reflects the just-added row.
  *   - Pitfall 5: textarea blank passes through to addWatch verbatim — the
  *     WishlistRationalePanel sends notes literal; we forward as-is
  *   - Pitfall 6: photoSourcePath is NEVER set on the URL-extract surface
@@ -85,11 +89,10 @@ export function AddWatchFlow({
   viewerUsername,
 }: AddWatchFlowProps) {
   const router = useRouter()
-  // Phase 28 — initialReturnTo + viewerUsername are validated server-side
-  // and threaded through here. Plan 05 wires handleWishlistConfirm + the
-  // WatchForm prop pass-through; this plan only lands the props.
-  void initialReturnTo
-  void viewerUsername
+  // Phase 28 D-12 — initialReturnTo + viewerUsername are validated server-side
+  // and threaded through here. Consumed by handleWishlistConfirm (suppress +
+  // nav-on-commit) + WatchForm prop pass-through (form-prefill / manual-entry
+  // commit branches).
 
   // Pitfall 1 deep-link short-circuit: if catalogId+intent='owned'+prefill all
   // present, jump straight to form-prefill (skip paste + verdict).
@@ -296,11 +299,29 @@ export function AddWatchFlow({
       const payload = buildAddWatchPayload(captured.extracted, 'wishlist', notes)
       const result = await addWatch(payload)
       if (result.success) {
-        toast.success('Added to wishlist')
-        // Pitfall 3: refresh so collectionRevision bumps and verdict cache drops.
-        router.refresh()
-        setUrl('')
-        setState({ kind: 'idle' })
+        // Phase 28 D-13 default + D-14 returnTo: where to go on commit.
+        const dest = initialReturnTo ?? defaultDestinationForStatus('wishlist', viewerUsername)
+        // Phase 28 D-02 — toast destination when not suppressed.
+        const actionHref = viewerUsername ? `/u/${viewerUsername}/wishlist` : null
+        // Phase 28 D-05/D-06 — suppress when post-commit landing equals action target.
+        const suppress =
+          actionHref === null ||
+          canonicalize(dest, viewerUsername) === canonicalize(actionHref, viewerUsername)
+        if (!suppress && actionHref !== null) {
+          // Phase 28 D-01/D-03 — Sonner action-slot toast. Locked UI-SPEC body.
+          toast.success('Saved to your wishlist', {
+            action: {
+              label: 'View',
+              onClick: () => router.push(actionHref),
+            },
+          })
+        }
+        // Phase 28 D-15 — REMOVED router.refresh().
+        // Verified safe: /u/[username]/[tab]/page.tsx is a Server Component
+        // that re-fetches getWatchesByUser(profile.id) on every render. The
+        // next visit to /watch/new will compute collectionRevision fresh.
+        router.push(dest)
+        // setUrl + setState({kind:'idle'}) intentionally NOT called — mid-nav unmount handles cleanup.
       } else {
         toast.error(result.error)
         // Roll back to wishlist-rationale-open so user can retry.
@@ -349,8 +370,13 @@ export function AddWatchFlow({
     setState({ kind: 'idle' })
   }, [])
   const manualAction = useCallback(() => {
-    router.push('/watch/new?manual=1')
-  }, [router])
+    // Phase 28: preserve initialReturnTo through the manual-entry restart so
+    // the user doesn't lose their entry-point context after re-pasting.
+    const qs = initialReturnTo
+      ? `?manual=1&returnTo=${encodeURIComponent(initialReturnTo)}`
+      : '?manual=1'
+    router.push(`/watch/new${qs}`)
+  }, [router, initialReturnTo])
 
   // -- Rail click → re-open verdict from cache or stored entry --
   const handleRailSelect = (entry: RailEntry) => {
@@ -438,6 +464,8 @@ export function AddWatchFlow({
           mode="create"
           lockedStatus="owned"
           watch={extractedToPartialWatch(state.extracted, 'owned')}
+          returnTo={initialReturnTo}
+          viewerUsername={viewerUsername}
         />
       )}
 
@@ -468,6 +496,8 @@ export function AddWatchFlow({
                 ? extractedToPartialWatch(state.partial, initialStatus ?? 'wishlist')
                 : undefined
             }
+            returnTo={initialReturnTo}
+            viewerUsername={viewerUsername}
           />
         </div>
       )}
