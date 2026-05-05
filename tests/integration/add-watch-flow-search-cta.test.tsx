@@ -85,6 +85,7 @@ describe('Phase 20.1 Plan 05 — /search accordion Wishlist commit + Pitfall 2',
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     // Expand the accordion row.
@@ -113,6 +114,7 @@ describe('Phase 20.1 Plan 05 — /search accordion Wishlist commit + Pitfall 2',
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
@@ -135,6 +137,7 @@ describe('Phase 20.1 Plan 05 — /search accordion Wishlist commit + Pitfall 2',
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     // Expand the accordion row.

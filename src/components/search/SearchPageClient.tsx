@@ -24,6 +24,11 @@ interface SearchPageClientProps {
   viewerId: string
   /** Plan 20 D-06: viewer collection length used as cache-invalidation key for verdict cache. */
   collectionRevision: number
+  /** Phase 28 D-02 / UX-09: viewer's profile username for the inline Wishlist
+   *  commit toast destination. Threaded down to every WatchSearchRowsAccordion
+   *  mount (direct + via AllTabResults). Null is a soft alarm — toast still
+   *  fires but the View action slot is omitted. */
+  viewerUsername: string | null
   /** SuggestedCollectors Server Component, rendered into pre-query + no-results states (D-29 carry-forward). */
   children: React.ReactNode
 }
@@ -62,7 +67,7 @@ const ARIA_BY_TAB: Record<SearchTab, string> = {
  * The Phase 16 `results`/`isLoading`/`hasError` backward-compat aliases on the
  * hook contract are dropped here — this consumer reads per-tab slices directly.
  */
-export function SearchPageClient({ viewerId, collectionRevision, children }: SearchPageClientProps) {
+export function SearchPageClient({ viewerId, collectionRevision, viewerUsername, children }: SearchPageClientProps) {
   const {
     q,
     setQ,
@@ -117,6 +122,7 @@ export function SearchPageClient({ viewerId, collectionRevision, children }: Sea
             q={trimmed}
             viewerId={viewerId}
             collectionRevision={collectionRevision}
+            viewerUsername={viewerUsername}
             peopleResults={peopleResults}
             watchesResults={watchesResults}
             collectionsResults={collectionsResults}
@@ -144,6 +150,7 @@ export function SearchPageClient({ viewerId, collectionRevision, children }: Sea
             isLoading={watchesIsLoading}
             hasError={watchesHasError}
             collectionRevision={collectionRevision}
+            viewerUsername={viewerUsername}
           />
         </TabsContent>
 
@@ -243,12 +250,14 @@ function WatchesPanel({
   isLoading,
   hasError,
   collectionRevision,
+  viewerUsername,
 }: {
   q: string
   results: SearchCatalogWatchResult[]
   isLoading: boolean
   hasError: boolean
   collectionRevision: number
+  viewerUsername: string | null
 }) {
   if (isLoading) return <WatchSearchResultsSkeleton />
   if (hasError) {
@@ -295,6 +304,7 @@ function WatchesPanel({
         results={results}
         q={q}
         collectionRevision={collectionRevision}
+        viewerUsername={viewerUsername}
       />
       {results.length === 20 && (
         <p className="text-sm text-muted-foreground text-center py-2">

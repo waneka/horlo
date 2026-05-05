@@ -103,6 +103,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
@@ -119,6 +120,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
@@ -134,6 +136,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     const trigger = screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i })
@@ -152,6 +155,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     const panelBefore = container.querySelector('[role="region"][aria-labelledby]')
@@ -171,6 +175,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: /Toggle fit for Omega Speedmaster/i }))
@@ -192,6 +197,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         results={[fixtureRow]}
         q=""
         collectionRevision={1}
+        viewerUsername={null}
       />,
     )
     const link = container.querySelector('a[href="/catalog/cat-row-uuid"]')

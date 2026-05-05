@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getCatalogById } from '@/data/catalog'
 import { getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
+import { getProfileById } from '@/data/profiles'
 import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
@@ -47,12 +48,19 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   }
   const user = await getCurrentUser()
 
-  const [catalogEntry, collection, preferences, viewerOwnedRow] = await Promise.all([
+  // Phase 28 D-02 / UX-09 — viewer username for the inline Wishlist commit
+  // toast destination. Resolved server-side; threaded to CatalogPageActions
+  // as a typed prop. Null is a soft alarm — at v4.0+ every authenticated user
+  // has a username via signup trigger. Folded into the existing Promise.all
+  // to keep the parallel-fetch character intact.
+  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile] = await Promise.all([
     getCatalogById(catalogId),
     getWatchesByUser(user.id),
     getPreferencesByUser(user.id),
     findViewerWatchByCatalogId(user.id, catalogId),
+    getProfileById(user.id),
   ])
+  const viewerUsername = viewerProfile?.username ?? null
 
   if (!catalogEntry) notFound()
 
@@ -145,6 +153,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
           catalogId={catalogId}
           spec={actionsSpec}
           framing="cross-user"
+          viewerUsername={viewerUsername}
         />
       )}
     </div>

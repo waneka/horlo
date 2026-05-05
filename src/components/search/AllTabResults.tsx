@@ -21,6 +21,9 @@ interface AllTabResultsProps {
   q: string
   viewerId: string
   collectionRevision: number
+  /** Phase 28 D-02 / UX-09: viewer's profile username threaded to the
+   *  WatchSearchRowsAccordion mount inside the Watches section. */
+  viewerUsername: string | null
   peopleResults: SearchProfileResult[]
   watchesResults: SearchCatalogWatchResult[]
   collectionsResults: SearchCollectionResult[]
@@ -54,6 +57,7 @@ export function AllTabResults({
   q,
   viewerId,
   collectionRevision,
+  viewerUsername,
   peopleResults,
   watchesResults,
   collectionsResults,
@@ -107,6 +111,7 @@ export function AllTabResults({
             results={watchesCapped}
             q={q}
             collectionRevision={collectionRevision}
+            viewerUsername={viewerUsername}
           />
         )}
       </Section>

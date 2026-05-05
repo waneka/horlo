@@ -60,7 +60,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
 
   it('Test 1 (SRCH-01): renders 4 tabs labeled All / Watches / People / Collections', () => {
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -72,7 +72,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
 
   it('Test 2 (SRCH-01 / D-05): default mounted tab is "All" when no ?tab= in URL', () => {
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -85,7 +85,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
   it('Test 3 (D-12 / SRCH-01): clicking People → URL ?tab=people; clicking All → ?tab= REMOVED', async () => {
     const user = userEvent.setup()
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -109,7 +109,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
   it('Test 4 (Plan 06 — Watches tab pre-query: heading "Watches" + sub-copy; no ComingSoonCard)', async () => {
     const user = userEvent.setup()
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -125,7 +125,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
   it('Test 5 (Plan 06 — Collections tab pre-query: heading + sub-copy; no ComingSoonCard)', async () => {
     const user = userEvent.setup()
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -141,7 +141,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
 
   it('Test 6 (SRCH-07 / D-11): pre-query (no ?q=) on All renders suggested-children + "Collectors you might like"', () => {
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -151,7 +151,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
 
   it('Test 7 (SRCH-07): pre-query state — searchPeopleAction is NOT called (q.length < 2 short-circuit)', async () => {
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -172,7 +172,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     })
 
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -203,7 +203,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     })
 
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -230,7 +230,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     )
 
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -251,7 +251,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
 
   it('Test 11 (Plan 06 — All tab renders ZERO ComingSoonCards; replaced by 3-section composer)', () => {
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -264,7 +264,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
   it('Test 12 (Plan 06 — People tab also has zero ComingSoonCards)', async () => {
     const user = userEvent.setup()
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
@@ -280,7 +280,7 @@ describe('SearchPageClient (D-02 / D-05..D-12 / D-29)', () => {
     mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
 
     render(
-      <SearchPageClient viewerId="me" collectionRevision={0}>
+      <SearchPageClient viewerId="me" collectionRevision={0} viewerUsername={null}>
         <SuggestedChildren />
       </SearchPageClient>,
     )
