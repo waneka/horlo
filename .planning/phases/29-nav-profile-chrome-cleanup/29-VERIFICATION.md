@@ -1,37 +1,83 @@
 ---
 phase: 29-nav-profile-chrome-cleanup
 verified: 2026-05-04T00:43:46Z
-status: human_needed
-score: 3/3 must-haves verified at unit-test level
+re_verified: 2026-05-05T12:35:00Z
+status: passed
+score: 3/3 must-haves verified at unit-test level + 10/10 UAT items passed in browser
 overrides_applied: 0
 re_verification:
-  previous_status: none
-  previous_score: n/a
+  previous_status: human_needed
+  previous_score: 3/3 must-haves at unit-test level (5 manual UAT items pending)
+  trigger: "29-UAT.md status: complete — 10/10 tests passed across three rounds of re-testing"
+  ships_since_first_verification:
+    - "29-05 — useWatchSearchVerdictCache module-scope migration (commits e3f691d, 61f0820, a11061f)"
+    - "29-06 — StrictMode-safe useLayoutEffect cleanup + global vitest StrictMode wrapper (commits 7b5c98f, 3e7d20a, 881d6fb, dd2e147)"
+    - "Quick Task FORM-04 Gap 3 — useUrlExtractCache module-scope (commits 03667a5, 8de2382, 726f2ed, 0815c96)"
 human_verification:
   - test: "PROF-10 vertical-scroll passthrough on touch/trackpad"
     expected: "On /u/{username} narrow viewport: scroll vertically with two-finger trackpad swipe over the tab strip — page scrolls, tab strip does NOT consume the gesture. Touch on mobile if available."
     why_human: "JSDOM does not faithfully simulate touch/trackpad gesture forwarding (RESEARCH D-11)."
+    status: passed
+    verified_via: "29-UAT.md Test 4 (re-test 2026-05-05)"
   - test: "FORM-04 back-nav reset (Activity-preservation)"
     expected: "Navigate /watch/new → paste URL → wait for verdict-ready → router.push('/u/{username}/collection') → browser-back → assert paste URL input is empty AND state.kind === 'idle'."
     why_human: "Activity-preservation behavior is router-runtime-specific; JSDOM cannot replay Next.js client cache. Validates the useLayoutEffect cleanup-on-hide layer (Layer 2)."
+    status: passed
+    verified_via: "29-UAT.md Test 6 (originally pass; preserved across 29-06 cleanup-guard rework)"
   - test: "FORM-04 CTA re-entry reset"
     expected: "Enter /watch/new from any 'Add Watch' CTA → paste URL → navigate elsewhere via Cancel/Skip-to-elsewhere or commit → click 'Add Watch' CTA again → paste URL must be empty AND rail must be empty."
     why_human: "End-to-end navigation flow not exercised in unit tests. Validates the per-request nonce + key prop layer (Layer 1)."
+    status: passed
+    verified_via: "29-UAT.md Test 5 (originally pass; preserved)"
   - test: "FORM-04 forward-nav post-commit reset"
     expected: "Navigate /watch/new → paste URL → verdict-ready → commit (wishlist confirm) → land on /u/{username}/wishlist → click Add Watch CTA → assert paste URL empty + state idle. Validates Layer 3 (commit-time reset BEFORE router.push)."
     why_human: "Requires running router.push and re-entering the route — needs live app."
+    status: passed
+    verified_via: "29-UAT.md Test 7 (originally pass; preserved)"
   - test: "FORM-04 verdict cache survival check"
     expected: "Navigate /watch/new → evaluate catalog A → navigate elsewhere → re-enter /watch/new → paste catalog A again → verdict appears (cache repopulates fast via collectionRevision-keyed re-fetch per Phase 20 D-06; Option B accepted)."
     why_human: "Tests cache-keyed re-fetch behavior across navigation; UAT confirms the reset is not user-observable."
+    status: passed
+    verified_via: |
+      29-UAT.md Test 8 — closed across two ships:
+        1. 29-05 made the verdict cache survive remount (module-scope migration)
+        2. Quick FORM-04 Gap 3 added useUrlExtractCache so /api/extract-watch is also skipped on URL re-paste (the user-observable bottleneck the verdict cache could not address — its keying on catalogId requires the extract step to have already completed)
+      Re-test 2026-05-05: DevTools Network filter empty on second paste of same URL across remount; verdict appears instantly.
 ---
 
 # Phase 29: Nav & Profile Chrome Cleanup — Verification Report
 
 **Phase Goal:** The UserMenu, profile tab strip, and Add-Watch flow are tight and predictable — no duplicate Profile affordance, no surprise vertical scroll on the tab strip, and a fresh Add-Watch form on every entry instead of stale data from the prior session.
 
-**Verified:** 2026-05-04T00:43:46Z
-**Status:** human_needed (3/3 success criteria delivered at code+unit-test level; 5 manual UAT items deferred for live-browser validation)
-**Re-verification:** No — initial verification.
+**Verified:** 2026-05-04T00:43:46Z (initial)
+**Re-verified:** 2026-05-05T12:35:00Z
+**Status:** passed (3/3 success criteria + 10/10 UAT items + 2 phase-29-regression UAT gaps closed)
+**Re-verification:** Yes — see "Re-Verification (2026-05-05)" section below.
+
+---
+
+## Re-Verification (2026-05-05)
+
+**Trigger:** 29-UAT.md status flipped to `complete` after the user manually re-tested in browser. 10/10 UAT items now pass (was 8/10 with 2 phase-29-regression gaps after the original 2026-05-04 verification round).
+
+**What changed since initial verification:**
+
+| Ship | Commits | What it closed |
+|---|---|---|
+| Plan 29-05 | `e3f691d` `61f0820` `a11061f` | Verdict cache survives AddWatchFlow remount via module-scope migration of `useWatchSearchVerdictCache`. Public API `{revision, get, set}` byte-identical; both consumers zero-diff. Closes 29-UAT Test 8 partially (verdict layer). |
+| Plan 29-06 | `7b5c98f` `3e7d20a` `881d6fb` `dd2e147` | StrictMode-safe `useLayoutEffect` cleanup with two skip cases (initial idle + form-prefill). Global vitest StrictMode wrapper added (`tests/setup.ts` → `tests/setup.tsx` + `vi.mock('@testing-library/react', ...)`). Closes 29-UAT Test 10 (deep-link prefill from `/search` survives StrictMode). |
+| Quick FORM-04 Gap 3 | `03667a5` `8de2382` `726f2ed` `0815c96` | New `src/components/watch/useUrlExtractCache.ts` — module-scoped Map keyed on raw URL. `handleExtract` consults it BEFORE `/api/extract-watch` fetch; on hit, skips the round-trip entirely. Closes 29-UAT Test 8 fully (extract layer — the user-observable bottleneck). |
+
+**Why two ships were needed for Test 8:** Plan 29-05 fixed what its contract promised — the verdict cache survives remount. But the `useWatchSearchVerdictCache` only short-circuits the verdict server action, not the upstream `/api/extract-watch` fetch. The cache key is `catalogId`, which is only known AFTER extract returns. Re-test of Test 8 still failed because the user observes the network call in DevTools. Quick FORM-04 Gap 3 added a parallel `useUrlExtractCache` keyed on URL → `{catalogId, extracted, catalogIdError}` so the fetch itself is also skipped on hit. Strongest assertion in the FORM-04 test suite: `tests/components/watch/AddWatchFlow.urlCacheRemount.test.tsx` proves `fetchSpy === 1` across remount + same-URL re-paste.
+
+**Verification artifacts updated:**
+- 29-UAT.md `status: complete`, 10/10 pass, both prior gaps marked CLOSED with `resolution:` stanzas
+- STATE.md `status: verifying`, last_activity reflects UAT closure
+- ROADMAP.md Phase 29 line bumped to "6/6 plans complete; ready for re-verification" (now superseded by this re-verification)
+
+**Score:** 3/3 must-haves + 10/10 UAT + 2 regression gaps closed = phase fully verified.
+
+---
 
 ---
 
@@ -186,11 +232,12 @@ Five manual UAT items routed to `/gsd-verify-work` per CONTEXT D-11 + D-19:
 - **SC-2 (PROF-10):** Locked-literal className applied verbatim to ProfileTabs.tsx TabsList; tabs.tsx primitive UNCHANGED (Pitfall 7). 8/8 ProfileTabs tests pass. Touch/trackpad gesture passthrough deferred to manual UAT (JSDOM limitation).
 - **SC-3 (FORM-04):** Three-layer defense shipped — Layer 1 (server nonce → key prop), Layer 2 (useLayoutEffect cleanup-on-hide), Layer 3 (commit-time reset before router.push). Verdict cache UNCHANGED. Within-flow Skip/Cancel paths preserved (D-17). AddWatchFlow + WatchForm + verdict cache tests all green.
 
-**Status: human_needed** — 5 manual UAT items deferred to `/gsd-verify-work` for live-browser validation of behaviors JSDOM cannot simulate (gesture passthrough, browser back-nav, cross-route re-entry, post-commit nav, cross-route cache survival).
+**Status: passed** — 10/10 UAT items confirmed in browser 2026-05-05. The 5 manual UAT items deferred at first verification are now all marked passing in 29-UAT.md (see frontmatter `human_verification[].status: passed` for the verified-via crosswalk). Two phase-29-regression gaps surfaced during UAT (Tests 8 + 10) were closed across three ships: 29-05 (verdict cache), 29-06 (StrictMode cleanup), and Quick FORM-04 Gap 3 (URL extract cache).
 
-**Tracking-doc lag:** REQUIREMENTS.md line 42 + line 91 still show FORM-04 as `[ ]` / `Pending` — needs check-mark update during phase-end housekeeping. Documentation lag only; implementation is complete.
+**Tracking-doc lag:** REQUIREMENTS.md line 42 + line 91 still show FORM-04 as `[ ]` / `Pending` — needs check-mark update during phase-end housekeeping. Documentation lag only; implementation is complete and verified.
 
 ---
 
-*Verified: 2026-05-04T00:43:46Z*
-*Verifier: Claude (gsd-verifier)*
+*Verified: 2026-05-04T00:43:46Z (initial — status: human_needed)*
+*Re-verified: 2026-05-05T12:35:00Z (status: passed after UAT closure + 3 fix-chain ships)*
+*Verifier: Claude (gsd-verifier — initial); manual verification via 29-UAT.md (re-verification)*
