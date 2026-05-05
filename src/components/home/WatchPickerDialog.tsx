@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 import {
   Dialog,
@@ -76,6 +77,16 @@ export function WatchPickerDialog({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  const pathname = usePathname() ?? ''
+  // Phase 28 D-08 — capture pathname for the ?returnTo= query string on the
+  // empty-state Add-Watch CTA so the Add-Watch flow can route the user back
+  // to wherever they opened the picker. Captured BEFORE any conditional
+  // return to satisfy React rules-of-hooks (early-state branch at line 127
+  // returns the empty-state Dialog before the main dialog branch).
+  const addWatchHref = pathname
+    ? `/watch/new?returnTo=${encodeURIComponent(pathname)}`
+    : '/watch/new'
+
   // Only `owned` watches can be logged as a wear. Wishlist / sold / grail
   // are filtered out — logging a wear for a sold watch is a product bug.
   const ownedWatches = useMemo(
@@ -141,7 +152,7 @@ export function WatchPickerDialog({
               Keep browsing
             </Button>
             <Link
-              href="/watch/new"
+              href={addWatchHref}
               className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
             >
               Add watch

@@ -119,7 +119,12 @@ export function WatchSearchRowsAccordion({
   }
 
   const handleAddToCollection = (r: SearchCatalogWatchResult) => {
-    router.push(`/watch/new?catalogId=${encodeURIComponent(r.catalogId)}&intent=owned`)
+    // Phase 28 D-08 — capture entry pathname+search at click time so commit
+    // can route the user back here. Mirrors FollowButton.tsx:71 `?next=` shape.
+    const returnTo = encodeURIComponent(window.location.pathname + window.location.search)
+    router.push(
+      `/watch/new?catalogId=${encodeURIComponent(r.catalogId)}&intent=owned&returnTo=${returnTo}`,
+    )
   }
 
   return (

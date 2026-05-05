@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CatalogPhotoUploader } from './CatalogPhotoUploader'
 import { addWatch, editWatch } from '@/app/actions/watches'
 import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
+import { canonicalize, defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import {
   COMPLICATIONS,
@@ -42,6 +43,15 @@ interface WatchFormProps {
    *  Used by the manual-entry path coming from `/watch/new?status=wishlist`
    *  so the form opens pre-set to wishlist. */
   defaultStatus?: WatchStatus
+  /** Phase 28 D-13/D-14 — server-validated entry-point path. Threaded from
+   *  AddWatchFlow (which received it from /watch/new page.tsx). On create-mode
+   *  commit success, the form pushes to `returnTo ?? defaultDestinationForStatus(...)`.
+   *  Edit-mode commit ignores this prop. */
+  returnTo?: string | null
+  /** Phase 28 D-02/D-06 — viewer's profile username for default-destination
+   *  + suppress comparison. Null is a soft alarm — toast still renders body
+   *  but no action slot. */
+  viewerUsername?: string | null
 }
 
 type FormData = Omit<Watch, 'id'>
@@ -74,7 +84,7 @@ const initialFormData: FormData = {
   imageUrl: '',
 }
 
-export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFormProps) {
+export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, viewerUsername }: WatchFormProps) {
   const router = useRouter()
   // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17). Hook
   // owns the transition; consumers MUST NOT keep their own (FG-8). The hook's
@@ -143,13 +153,27 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
 
     if (!validate()) return
 
-    // LOCKED per UI-SPEC §Default copy contract — both literals are
-    // referenced by SUMMARY grep gates; split onto separate lines so each
-    // gate matches its own occurrence.
+    // Phase 28 D-21 — Phase 25 LOCKED `successMessage` constant SUPERSEDED.
+    // The original Phase 25 constant collapsed all create-mode commits to a
+    // single generic literal. Phase 28 D-21 splits create-mode by status and
+    // locks the literals to the UI-SPEC §"Locked literals" table (see toast
+    // body branch below + buildSuccessOpts helper at the bottom of this file
+    // for the canonical occurrences). The edit-mode literal is PRESERVED
+    // verbatim (Phase 28 D-13/D-14 out-of-scope for edit mode — see the
+    // mode === 'edit' branch in successMessage below).
+    // Pre-supersession verification: the legacy create-mode literal had no
+    // external test/grep dependency; safe to remove (verified repo-wide at
+    // plan time).
+    // Phase 20.1 D-12 defense: ensure lockedStatus wins even if formData.status
+    // drifted (e.g., HMR). Hoisted from the run() closure so successMessage +
+    // submitData both share the same value.
+    const finalStatus: WatchStatus = lockedStatus ?? formData.status
     const successMessage =
       mode === 'edit'
         ? 'Watch updated'
-        : 'Watch added'
+        : (finalStatus === 'wishlist' || finalStatus === 'grail'
+            ? 'Saved to your wishlist'
+            : 'Added to your collection')
 
     run(async () => {
       // Phase 19.1 D-19: if a photo is staged (create mode only), upload to
@@ -187,8 +211,8 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
 
       // Strip client-only blob state from formData before sending to server.
       // photoSourcePath is a transient submit-only payload extension — not a Watch field.
-      // Phase 20.1 D-12 defense: ensure lockedStatus wins even if formData.status drifted (e.g., HMR).
-      const finalStatus: WatchStatus = lockedStatus ?? formData.status
+      // Phase 28 D-21 — finalStatus declared above in outer handleSubmit scope
+      // (used by both successMessage + submitData); referenced here directly.
       const submitData = {
         ...formData,
         status: finalStatus,
@@ -200,16 +224,22 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
           ? await editWatch(watch.id, formData)
           : await addWatch(submitData)
 
-      if (result.success) {
-        // router.push fires before run() resolves; the hook's setState happens
-        // on the next tick + Sonner's portal-mounted toast persists across the
-        // navigation, so the user sees `successMessage` after landing on `/`.
-        // The form unmounts mid-nav, so the inline FormStatusBanner does NOT
-        // render post-nav — toast is the canonical post-add affordance here.
+      if (result.success && mode === 'create') {
+        // Phase 28 D-13/D-14 — resolve destination from returnTo OR status→tab default.
+        // The form unmounts mid-nav; Sonner's portal-mounted toast persists
+        // across the navigation, so the user sees the locked UI-SPEC body
+        // (per the successMessage branch above) after landing on `dest`.
+        const dest = returnTo ?? defaultDestinationForStatus(finalStatus, viewerUsername ?? null)
+        router.push(dest)
+      } else if (result.success) {
+        // Edit-mode commit — Phase 28 D-13/D-14 NOT in scope. Preserve existing redirect.
         router.push('/')
       }
       return result
-    }, { successMessage })
+    }, mode === 'create'
+      ? buildSuccessOpts(finalStatus, returnTo ?? null, viewerUsername ?? null, successMessage)
+      : { successMessage }
+    )
   }
 
   const toggleArrayItem = (
@@ -668,4 +698,39 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus }: WatchFor
       </div>
     </form>
   )
+}
+
+/**
+ * Phase 28 D-04/D-05 — Build the run() opts for create-mode commit.
+ * - When dest === action.href (canonicalized): omit BOTH successMessage and
+ *   successAction so useFormFeedback short-circuits (no toast).
+ * - Otherwise: pass successMessage + successAction declaratively.
+ *
+ * Toast body is locked by UI-SPEC §"Locked literals" — caller passes the
+ * pre-resolved successMessage (computed in handleSubmit per status ∈
+ * wishlist/grail vs. owned/sold) so this helper stays voice-neutral.
+ */
+function buildSuccessOpts(
+  status: WatchStatus,
+  returnTo: string | null,
+  viewerUsername: string | null,
+  successMessage: string,
+): { successMessage?: string; successAction?: { label: string; href: string } } {
+  if (!viewerUsername) {
+    // Soft alarm — no destination to point to; fire bare toast.
+    return { successMessage }
+  }
+  const dest = returnTo ?? defaultDestinationForStatus(status, viewerUsername)
+  const actionTab = status === 'wishlist' || status === 'grail' ? 'wishlist' : 'collection'
+  const actionHref = `/u/${viewerUsername}/${actionTab}`
+  const suppress =
+    canonicalize(dest, viewerUsername) === canonicalize(actionHref, viewerUsername)
+  if (suppress) {
+    // D-05 — both omitted; useFormFeedback fires NO toast.
+    return {}
+  }
+  return {
+    successMessage,
+    successAction: { label: 'View', href: actionHref },
+  }
 }

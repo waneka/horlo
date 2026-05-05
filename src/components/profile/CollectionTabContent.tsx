@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -32,6 +33,14 @@ export function CollectionTabContent({
   isOwner,
   hasUrlExtract,
 }: CollectionTabContentProps) {
+  const pathname = usePathname() ?? ''
+  // Phase 28 D-08 — capture entry pathname so the Add-Watch flow can
+  // route the user back to /u/{username}/collection on commit.
+  const returnTo = pathname ? encodeURIComponent(pathname) : ''
+  const manualHref = returnTo
+    ? `/watch/new?manual=1&returnTo=${returnTo}`
+    : '/watch/new?manual=1'
+
   // Derive role-tag chips dynamically (D-07): "All" + each unique role tag in collection,
   // capped at the most common 6 to keep the bar readable.
   const chipOptions = useMemo(() => {
@@ -108,7 +117,7 @@ export function CollectionTabContent({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button variant="default" render={<Link href="/watch/new?manual=1" />}>
+              <Button variant="default" render={<Link href={manualHref} />}>
                 Add manually
               </Button>
             </div>
@@ -124,7 +133,7 @@ export function CollectionTabContent({
             Add your first watch to start building your collection.
           </p>
           <div className="mx-auto mt-6 max-w-xs">
-            <AddWatchCard />
+            <AddWatchCard returnTo={pathname || null} />
           </div>
         </div>
       )
@@ -166,7 +175,7 @@ export function CollectionTabContent({
             lastWornDate={wearDates[watch.id] ?? null}
           />
         ))}
-        {isOwner && <AddWatchCard />}
+        {isOwner && <AddWatchCard returnTo={pathname || null} />}
       </div>
     </>
   )

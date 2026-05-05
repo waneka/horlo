@@ -2,6 +2,7 @@
 
 import { useOptimistic, useTransition, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   DndContext,
   closestCenter,
@@ -44,6 +45,14 @@ export function WishlistTabContent({
   isOwner,
   username,
 }: WishlistTabContentProps) {
+  const pathname = usePathname() ?? ''
+  // Phase 28 D-08 — capture entry pathname so the Add-Watch flow can
+  // route the user back to /u/{username}/wishlist on commit.
+  const returnTo = pathname ? encodeURIComponent(pathname) : ''
+  const wishlistHref = returnTo
+    ? `/watch/new?status=wishlist&returnTo=${returnTo}`
+    : '/watch/new?status=wishlist'
+
   // EMPTY STATE — PRESERVED VERBATIM (UI-SPEC line 110-114)
   if (watches.length === 0) {
     if (isOwner) {
@@ -58,7 +67,7 @@ export function WishlistTabContent({
             <Button
               variant="default"
               className="w-full"
-              render={<Link href="/watch/new?status=wishlist" />}
+              render={<Link href={wishlistHref} />}
             >
               Add a wishlist watch
             </Button>
@@ -96,7 +105,7 @@ export function WishlistTabContent({
   // POPULATED — owner branch (DnD wired; grid-cols-2 per VIS-07).
   // Delegated to a sub-component so the hooks below this branch don't violate
   // React rules-of-hooks (would otherwise run conditionally after early returns).
-  return <OwnerWishlistGrid watches={watches} wearDates={wearDates} />
+  return <OwnerWishlistGrid watches={watches} wearDates={wearDates} returnTo={pathname || null} />
 }
 
 /**
@@ -116,9 +125,12 @@ export function WishlistTabContent({
 function OwnerWishlistGrid({
   watches,
   wearDates,
+  returnTo,
 }: {
   watches: Watch[]
   wearDates: Record<string, string>
+  /** Phase 28 D-08 — entry pathname captured by parent; threaded into AddWatchCard. */
+  returnTo: string | null
 }) {
   const watchesById = useMemo(
     () => Object.fromEntries(watches.map((w) => [w.id, w])),
@@ -232,7 +244,7 @@ function OwnerWishlistGrid({
               AND rendered AFTER the SortableContext children block —
               it's an action affordance, not sortable, and must land as
               the final grid cell (UI-SPEC line 236-237; RESEARCH Open Q #3). */}
-          <AddWatchCard variant="wishlist" />
+          <AddWatchCard variant="wishlist" returnTo={returnTo} />
         </div>
       </SortableContext>
       <DragOverlay>
