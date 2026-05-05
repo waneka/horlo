@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
-stopped_at: Phase 28 context gathered — awaiting `/gsd-plan-phase 28`
-last_updated: "2026-05-04T22:43:40.127Z"
+stopped_at: Phase 28 planned — 5 plans across 3 waves; ready to execute
+last_updated: "2026-05-04T23:55:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 5
+  total_plans: 10
   completed_plans: 5
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 Phase: 28
 Plan: Not started
-Status: Phase 28 context gathered — awaiting plan-phase
+Status: Ready to execute — 5 plans (3 waves) verified
 Last activity: 2026-05-04
 
 ## Progress Bar
@@ -82,5 +82,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-04
-Stopped at: Phase 28 context gathered — awaiting `/gsd-plan-phase 28`
-Next action: `/gsd-plan-phase 28` — context locks Sonner action-slot toast (suppressed when post-commit landing == destination tab), explicit `?returnTo=` callsite capture with auth-callback regex + self-loop guard, and a structural FIT-06 fix (parallel `rationaleTemplate` slot per Template + `rationalePhrasings: string[]` on the verdict bundle, with WishlistRationalePanel rewired to read it). All 6 DESCRIPTION_FOR_LABEL strings are rewritten + 12 rationaleTemplate slots + 6 RATIONALE_FOR_LABEL fallbacks; planner drafts copy in PLAN.md for plan-check review.
+Stopped at: Phase 28 planned — 5 plans across 3 waves verified; ready to execute
+Next action: `/gsd-execute-phase 28` — Wave 1 runs Plans 01/02/03 in parallel (verdict copy + speech-act split, useFormFeedback successAction, /watch/new returnTo whitelist + destinations.ts). Wave 2 runs Plan 04 (inline-commit toast wiring at /search + /catalog). Wave 3 runs Plan 05 (callsite append + AddWatchFlow/WatchForm rewrites + router.refresh removal). Plan 01 ships all 24+ planner-drafted copy strings verbatim for user review during execution.

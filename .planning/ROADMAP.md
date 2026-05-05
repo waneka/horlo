@@ -129,7 +129,25 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
   2. After completing or canceling the Add-Watch Flow, the user is returned to the entry point they came from (collection, wishlist, search, /catalog, etc.) — not unconditionally to home — via a `?returnTo=` parameter validated against an allow-list of internal paths.
   3. The "unusual for your collection" verdict reads coherently to the user on `/watch/[id]`, the `/search` accordion, and `/catalog/[id]`.
   4. The wishlist note auto-fill, when populated from a verdict, reads as the user's own first-person rationale (not as a verdict-to-user message), and the source of that auto-fill text is intentional rather than incidentally `contextualPhrasings[0]`.
-**Plans**: TBD
+**Plans**: 5 plans across 3 waves
+
+**Wave 1** *(parallel-safe — zero file overlap)*
+- [ ] 28-01-PLAN.md — FIT-06: verdict copy rewrite + speech-act split
+- [ ] 28-02-PLAN.md — UX-09 hook foundation: useFormFeedback successAction extension
+- [ ] 28-03-PLAN.md — ADD-08 server foundation: /watch/new returnTo whitelist + shared destinations.ts module
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 28-04-PLAN.md — UX-09 inline-commit wiring: /search + /catalog/[id] Wishlist commits switch to Sonner action-slot
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 28-05-PLAN.md — ADD-08 callsite append + UX-09 nav-on-commit: 8 entry-points + AddWatchFlow/WatchForm rewrites
+
+**Cross-cutting constraints** (appear in 2+ plans):
+- Sonner action-slot toast contract (D-01/D-02/D-03) — Plans 02, 04, 05
+- viewerUsername server-side resolution (D-02/D-06) — Plans 03, 04
+- BottomNav D-09 phantom (no Add slot since Phase 18) — explicitly NOT modified
+- NotesTabContent D-10 skip (Server Component fallback to default destination)
+- composer.test.ts FIT-02 lock preservation (D-22) — Plan 01 only
 **UI hint**: yes
 
 ### Phase 29: Nav & Profile Chrome Cleanup
@@ -178,7 +196,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
-| 28. Add-Watch Flow & Verdict Copy Polish | 0/0 | Not started | — |
+| 28. Add-Watch Flow & Verdict Copy Polish | 0/5 | Plans created | — |
 | 29. Nav & Profile Chrome Cleanup | 0/0 | Not started | — |
 | 30. WYWT Capture Alignment Fix | 0/0 | Not started | — |
 | 31. v4.0 Verification Backfill | 0/0 | Not started | — |
