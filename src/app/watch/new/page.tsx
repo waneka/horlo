@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getWatchesByUser } from '@/data/watches'
 import { getCatalogById } from '@/data/catalog'
+import { getProfileById } from '@/data/profiles'
 import { AddWatchFlow } from '@/components/watch/AddWatchFlow'
+import { validateReturnTo } from '@/lib/watchFlow/destinations'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import type { MovementType, CrystalType } from '@/lib/types'
 
@@ -33,6 +35,9 @@ interface NewWatchPageProps {
     /** Phase 25 D-05: literal-match whitelisted to 'wishlist'; presets the
      *  manual-entry WatchForm's status field (still user-editable). */
     status?: string
+    /** Phase 28 D-11: validated server-side via validateReturnTo(); invalid → null
+     *  → AddWatchFlow falls back to default destination per D-13. */
+    returnTo?: string
   }>
 }
 
@@ -69,10 +74,25 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
       ? sp.catalogId
       : null
 
-  const [collection, catalogPrefill] = await Promise.all([
+  // Phase 28 D-11 — validate returnTo via shared validator (mirrors the
+  // auth-callback regex + adds a self-loop guard against /watch/new). Invalid
+  // values collapse to null silently; AddWatchFlow then routes to the D-13
+  // default destination on commit.
+  const initialReturnTo = validateReturnTo(sp.returnTo)
+
+  // Phase 28 D-02 / D-06 — resolve the viewer's username server-side so:
+  //   1. /u/me/... shorthand canonicalization (D-06) can resolve correctly.
+  //   2. The Plan 05 default-destination logic can build /u/{username}/{tab}.
+  //   3. The Plan 04 toast suppress comparison can compare apples-to-apples.
+  // At v4.0+ every authenticated user has a username via the signup trigger,
+  // so null here is a soft alarm — the flow falls back to "no toast" + "/"
+  // default destination.
+  const [collection, catalogPrefill, viewerProfile] = await Promise.all([
     getWatchesByUser(user.id),
     catalogId ? hydrateCatalogPrefill(catalogId) : Promise.resolve(null),
+    getProfileById(user.id),
   ])
+  const viewerUsername = viewerProfile?.username ?? null
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -86,6 +106,8 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         initialCatalogPrefill={catalogPrefill}
         initialManual={initialManual}
         initialStatus={initialStatus}
+        initialReturnTo={initialReturnTo}
+        viewerUsername={viewerUsername}
       />
     </div>
   )
