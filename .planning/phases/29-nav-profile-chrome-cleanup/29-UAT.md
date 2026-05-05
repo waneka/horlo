@@ -1,18 +1,40 @@
 ---
-status: complete
+status: re-testing
 phase: 29-nav-profile-chrome-cleanup
 source:
   - 29-01-SUMMARY.md
   - 29-02-SUMMARY.md
   - 29-03-SUMMARY.md
   - 29-04-SUMMARY.md
+  - 29-05-SUMMARY.md
+  - 29-06-SUMMARY.md
+  - quick/2026-05-05-form04-gap3-url-extract-cache/SUMMARY.md
 started: 2026-05-05T07:45:00Z
-updated: 2026-05-05T08:00:00Z
+updated: 2026-05-05T12:25:00Z
+re_verification:
+  reason: |
+    Gap closure plans shipped: 29-05 (verdict cache module-scope), 29-06 (StrictMode-safe cleanup),
+    AND post-UAT Quick Task FORM-04 Gap 3 (useUrlExtractCache). Re-test Test 8 (extract NOT re-fired
+    on remount — the original user-observable bottleneck) + Test 10 (deep-link prefill survives StrictMode).
+
+    First re-test of Test 8 (after only 29-05) FAILED — diagnosis showed the verdict cache survived
+    remount but /api/extract-watch was uncached upstream. Quick Task added useUrlExtractCache to
+    skip the fetch entirely on URL re-paste. NOW re-testing.
 ---
 
 ## Current Test
 
-[testing complete]
+number: 8
+name: FORM-04 — Extract API skipped on URL re-paste (re-test post Quick Task Gap 3)
+expected: |
+  On `/watch/new`, paste any catalog URL → wait for verdict to appear.
+  Click any "Add Watch" CTA in the app to re-enter `/watch/new` (or browser-back
+  then re-enter). Paste the SAME URL again. The verdict should appear NEAR-INSTANTLY
+  this time — `/api/extract-watch` should NOT fire a second time.
+
+  **Open DevTools → Network and clear before the second paste. Filter on /api/extract-watch.
+  After the second paste, the panel should remain EMPTY (zero new requests).**
+awaiting: user response
 
 ## Tests
 
