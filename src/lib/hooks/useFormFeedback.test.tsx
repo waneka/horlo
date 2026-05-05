@@ -124,7 +124,7 @@ describe('useFormFeedback', () => {
     })
     expect(result.current.state).toBe('success')
     expect(result.current.message).toBe('Saved')
-    expect(toast.success).toHaveBeenCalledWith('Saved')
+    expect(toast.success).toHaveBeenCalledWith('Saved', undefined)
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -135,7 +135,7 @@ describe('useFormFeedback', () => {
     })
     expect(result.current.state).toBe('success')
     expect(result.current.message).toBe('Profile updated')
-    expect(toast.success).toHaveBeenCalledWith('Profile updated')
+    expect(toast.success).toHaveBeenCalledWith('Profile updated', undefined)
   })
 
   it('Test 9: dialogMode: true exposes dialogMode flag (consumer suppresses banner)', async () => {
@@ -146,7 +146,7 @@ describe('useFormFeedback', () => {
       await result.current.run(okAction, { successMessage: 'Saved' })
     })
     expect(result.current.state).toBe('success')
-    expect(toast.success).toHaveBeenCalledWith('Saved')
+    expect(toast.success).toHaveBeenCalledWith('Saved', undefined)
   })
 
   it('Test 10: run(failAction) transitions to error, message=server error, fires toast.error', async () => {
@@ -261,5 +261,49 @@ describe('useFormFeedback', () => {
     })
     expect(errorSpy).not.toHaveBeenCalled()
     errorSpy.mockRestore()
+  })
+
+  it('Test 16: successAction option wires Sonner action slot and onClick fires router.push(href)', async () => {
+    const { result } = renderHook(() => useFormFeedback())
+    await act(async () => {
+      await result.current.run(okAction, {
+        successMessage: 'Saved to your wishlist',
+        successAction: { label: 'View', href: '/u/twwaneka/wishlist' },
+      })
+    })
+    expect(toast.success).toHaveBeenCalledWith(
+      'Saved to your wishlist',
+      expect.objectContaining({
+        action: expect.objectContaining({
+          label: 'View',
+          onClick: expect.any(Function),
+        }),
+      }),
+    )
+    // Fire the action onClick — should call router.push with the href.
+    const call = (toast.success as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]
+    const sonnerOpts = call[1] as { action: { onClick: () => void } }
+    sonnerOpts.action.onClick()
+    expect(pushMock).toHaveBeenCalledWith('/u/twwaneka/wishlist')
+  })
+
+  it('Test 17: omitting successAction produces toast.success(msg, undefined) — second arg undefined', async () => {
+    const { result } = renderHook(() => useFormFeedback())
+    await act(async () => {
+      await result.current.run(okAction, { successMessage: 'Watch added' })
+    })
+    expect(toast.success).toHaveBeenCalledWith('Watch added', undefined)
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  it('Test 18: when neither successMessage nor successAction is set, toast.success is NOT called (D-05 suppress)', async () => {
+    const { result } = renderHook(() => useFormFeedback())
+    await act(async () => {
+      await result.current.run(okAction) // both opts omitted
+    })
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(result.current.state).toBe('success')
+    expect(result.current.message).toBe('Saved')
   })
 })

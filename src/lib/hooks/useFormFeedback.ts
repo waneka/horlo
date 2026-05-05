@@ -29,6 +29,15 @@ import type { ActionResult } from '@/lib/actionTypes'
  * components — call run() only on error/revert, or skip the hook entirely
  * for the happy path. The hook stays generic.
  *
+ * Phase 28 D-04 / UX-09 extension — `successAction?: { label, href }` opt:
+ *   When provided, the success toast emits Sonner's built-in action slot with
+ *   `label` and an internally-wired `onClick: () => router.push(href)`. Caller
+ *   passes declarative `{ label, href }`; the hook owns the router.push.
+ *   When both `successMessage` and `successAction` are undefined, the hook
+ *   short-circuits and does NOT call toast.success — used by callers
+ *   implementing the D-05 suppress-toast rule when post-commit landing
+ *   matches the action destination.
+ *
  * Anti-patterns to avoid (per UI-SPEC):
  *   - DO NOT auto-clear the error state. Errors persist until the next run()
  *     call (D-16; UI-SPEC Anti-Pattern #8).
@@ -58,10 +67,10 @@ export interface UseFormFeedbackReturn<T> {
     opts?: {
       successMessage?: string
       errorMessage?: string
-      /** Phase 28 D-04 — additive opt; wiring lands in Task 2. When set,
-       *  Task 2 will render Sonner's built-in action slot with `label` and an
-       *  internally-wired `onClick: () => router.push(href)`. Caller passes
-       *  declarative `{ label, href }`; hook owns the router.push. */
+      /** Phase 28 D-04 — when set, the success toast renders Sonner's built-in
+       *  action slot with `label` and an internally-wired
+       *  `onClick: () => router.push(href)`. Caller passes declarative
+       *  `{ label, href }`; the hook owns the router.push. */
       successAction?: { label: string; href: string }
     },
   ) => Promise<void>
@@ -153,14 +162,34 @@ export function useFormFeedback<T = unknown>(
       if (!mountedRef.current) return
 
       if (result.success) {
+        const callerProvidedMessage = opts?.successMessage !== undefined
+        const callerProvidedAction = opts?.successAction !== undefined
+        // Phase 28 D-05 caller-side suppress: when caller passes neither
+        // successMessage NOR successAction, do NOT fire the success toast.
+        // Internal state still goes success → 5s → idle so the banner reflects
+        // the success regardless of the toast suppression.
+        const suppressToast = !callerProvidedMessage && !callerProvidedAction
         const msg = opts?.successMessage ?? 'Saved'
         startTransition(() => {
           setState('success')
           setMessage(msg)
         })
-        toast.success(msg)
-        // Schedule the 5s auto-dismiss (D-16). Errors do NOT get this — they
-        // persist until the next run() call.
+        if (!suppressToast) {
+          // Phase 28 D-04: Sonner action slot when successAction is provided.
+          const successAction = opts?.successAction
+          const sonnerOpts = successAction
+            ? {
+                action: {
+                  label: successAction.label,
+                  onClick: () => router.push(successAction.href),
+                },
+              }
+            : undefined
+          toast.success(msg, sonnerOpts)
+        }
+        // Schedule the 5s auto-dismiss (D-16) regardless of toast suppression —
+        // the internal state lifecycle does NOT depend on whether toast fired.
+        // Errors do NOT get this — they persist until the next run() call.
         timeoutRef.current = setTimeout(() => {
           timeoutRef.current = null
           if (!mountedRef.current) return
