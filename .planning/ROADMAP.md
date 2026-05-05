@@ -161,7 +161,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 **Plans**: 4 plans across 2 waves
 
 **Wave 1** *(parallel-safe — zero file overlap)*
-- [ ] 29-01-PLAN.md — FORM-04 Wave 0: NEW tests/components/watch/AddWatchFlow.test.tsx (key-change + useLayoutEffect cleanup) + extend tests/components/watch/WatchForm.test.tsx with reset-on-key-change test
+- [x] 29-01-PLAN.md — FORM-04 Wave 0: NEW tests/components/watch/AddWatchFlow.test.tsx (key-change + useLayoutEffect cleanup) + extend tests/components/watch/WatchForm.test.tsx with reset-on-key-change test (completed 2026-05-05)
 - [ ] 29-02-PLAN.md — NAV-16: delete Profile DropdownMenuItem from UserMenu.tsx (preserve BOTH surrounding separators per UI-SPEC D-01 wording precision); rewrite UserMenu.test.tsx Test 3, delete Test 4
 - [ ] 29-03-PLAN.md — PROF-10: append `overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to ProfileTabs.tsx:65 TabsList className; assert all 4 utilities in ProfileTabs.test.tsx
 

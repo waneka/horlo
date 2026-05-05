@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
 status: executing
-stopped_at: Phase 29 context gathered
-last_updated: "2026-05-05T07:14:45.897Z"
-last_activity: 2026-05-05 -- Phase 29 planning complete
+stopped_at: Phase 29 Plan 01 complete
+last_updated: "2026-05-05T07:19:22.000Z"
+last_activity: 2026-05-05 -- Phase 29 Plan 01 (FORM-04 test scaffold) shipped
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 14
-  completed_plans: 10
-  percent: 71
+  completed_plans: 11
+  percent: 79
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 29 — nav-and-profile-chrome-cleanup
+**Current focus:** Phase 29 — nav-profile-chrome-cleanup
 
 ## Current Position
 
-Phase: 29
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-05 -- Phase 29 planning complete
+Phase: 29 (nav-profile-chrome-cleanup) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 29 (Plan 01 shipped)
+Last activity: 2026-05-05 -- Phase 29 Plan 01 (FORM-04 test scaffold) shipped
 
 ## Progress Bar
 
@@ -81,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-05T05:33:36.659Z
-Stopped at: Phase 29 context gathered
-Next action: `/gsd-discuss-phase 29` to gather context for Nav & Profile Chrome Cleanup (NAV-16, PROF-10), then `/gsd-plan-phase 29`. Phase 28 shipped Sonner action-slot toast wiring across 4 commit sites, ?returnTo= validated round-trip across 8 entry-points (BottomNav phantom skipped, NotesTabContent fallback to default), AddWatchFlow router.refresh removed (Pitfall 3 closed), Phase 25 LOCKED successMessage block superseded with Phase 28 D-21, 25 literal copy strings + speech-act-split verdict bundle (rationalePhrasings lockstep with contextualPhrasings), and WishlistRationalePanel auto-fill source switched to rationalePhrasings[0]. UAT confirmed all 12 user-observable behaviors pass; security audit closed all 21 declared threats.
+Last session: 2026-05-05T07:19:22.000Z
+Stopped at: Phase 29 Plan 01 complete
+Next action: Execute Phase 29 Plan 02 (NAV-16 — UserMenu Profile row removal). Plan 01 shipped FORM-04 Wave 0 test scaffolds: NEW tests/components/watch/AddWatchFlow.test.tsx with two describe blocks (key-change remount + useLayoutEffect cleanup-on-hide sanity) and an appended FORM-04 reset-on-key-change describe block in tests/components/watch/WatchForm.test.tsx. All 13 tests across both files pass. Note: AddWatchFlow Test 1 was predicted to be RED at Plan 01 close but passes — RTL's rerender triggers React's key-prop remount semantics natively. Plan 04's value is in the production-runtime behavior (Next.js Activity-preservation) that jsdom does not simulate.
