@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: verifying
-stopped_at: Phase 29 UAT re-verified — 10/10 passed, 0 issues; ready for /gsd-verify-work or milestone advance
-last_updated: "2026-05-05T12:35:00.000Z"
-last_activity: 2026-05-05 -- Phase 29 UAT re-verification complete (Tests 8 + 10 both PASS in browser); FORM-04 fully closed across 3 ships (29-05 verdict cache, 29-06 StrictMode-safe cleanup, Quick Gap 3 URL extract cache)
+status: discussing
+stopped_at: Phase 30 context gathered — WYWT capture alignment fix (WYSIWYG crop, aspect-square wrapper); ready for /gsd-plan-phase 30
+last_updated: "2026-05-05T13:30:00.000Z"
+last_activity: 2026-05-05 -- Phase 30 discuss-phase complete; 13 decisions captured across 4 areas (fix strategy, saved-photo aspect, verification, out-of-scope); resume file = .planning/phases/30-wywt-capture-alignment-fix/30-CONTEXT.md
 progress:
   total_phases: 5
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 29 — nav-profile-chrome-cleanup
+**Current focus:** Phase 30 — wywt-capture-alignment-fix
 
 ## Current Position
 
-Phase: 29 (nav-profile-chrome-cleanup) — UAT COMPLETE (10/10 pass)
-Plan: 6 of 6 complete (4 originals + 2 gap-closure plans 29-05, 29-06) + Quick Task FORM-04 Gap 3
-Status: Phase complete + UAT re-verified — ready for /gsd-verify-work or milestone advance
-Last activity: 2026-05-05 -- Phase 29 UAT re-verified in browser (Tests 8 + 10 both PASS); FORM-04 closed across 3 ships
+Phase: 30 (wywt-capture-alignment-fix) — CONTEXT GATHERED
+Plan: 0 of TBD — ready for /gsd-plan-phase 30
+Status: Discuss complete; 13 decisions captured across 4 areas; CONTEXT.md + DISCUSSION-LOG.md committed
+Last activity: 2026-05-05 -- Phase 30 discuss-phase complete (WYSIWYG capture-crop strategy, 1:1 aspect lock via aspect-square wrapper + object-cover, JSDOM math test + iOS Safari visual UAT, four no-touch items locked)
 
 ## Progress Bar
 
