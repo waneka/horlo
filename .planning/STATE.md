@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Patch
-status: ready_to_execute
-stopped_at: Phase 31 planned (3 plans, 2 waves)
-last_updated: "2026-05-05T23:30:00.000Z"
-last_activity: 2026-05-05 -- Phase 31 planned (3 plans)
+status: phase_complete
+stopped_at: Phase 31 verified PASS (3/3 success criteria, byte-equality invariant intact)
+last_updated: "2026-05-06T00:00:00.000Z"
+last_activity: 2026-05-05 -- Phase 31 complete; v4.0 audit asymmetry resolved
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 18
-  percent: 86
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-03 — v4.0 milestone shipped)
 
 ## Current Position
 
-Phase: 31 — Ready to execute
-Plan: 3 plans in 2 waves (31-01 + 31-02 parallel; 31-03 depends on both)
-Status: Ready to execute
-Last activity: 2026-05-05 -- Phase 31 planned (3 plans)
+Phase: 31 — Complete (verified PASS 2026-05-05)
+Plan: 3/3 plans complete (31-01, 31-02, 31-03)
+Status: Phase complete; v4.1 ready for `/gsd-complete-milestone`
+Last activity: 2026-05-05 -- Phase 31 verified PASS
 
 ## Progress Bar
 
@@ -37,7 +37,7 @@ v1.0 MVP                          [x] shipped 2026-04-19
 v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
-v4.1 Polish & Patch               [ ] in progress (18/18 plans complete; Phase 31 next — v4.0 verification backfill)
+v4.1 Polish & Patch               [ ] in progress (21/21 plans complete; Phase 31 verified — ready for milestone close)
 v5.0 Discovery North Star         [ ] planted (SEED-004)
 v6.0 Market Value                 [ ] planted (SEED-005)
 

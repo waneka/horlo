@@ -84,7 +84,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 - [x] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink (completed 2026-05-05)
 - [x] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry (completed 2026-05-05)
 - [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
-- [ ] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
+- [x] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
 
 ## Phase Details
 
@@ -215,11 +215,11 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 **Plans**: 3 plans
 
 **Wave 1** *(parallel — disjoint archive directories)*
-- [ ] 31-01-PLAN.md — Write phase-level 23-VERIFICATION.md (Phase 23 goal-backward audit; FEAT-07 GAP framing; 5 UAT carryover; sub-plan citation for SET-09/11/12)
-- [ ] 31-02-PLAN.md — Write phase-level 24-VERIFICATION.md (Phase 24 goal-backward audit; 5/5 success criteria PASS; 7 REQ-IDs SATISFIED; 51 tests across 5 files)
+- [x] 31-01-PLAN.md — Write phase-level 23-VERIFICATION.md (Phase 23 goal-backward audit; FEAT-07 GAP framing; 5 UAT carryover; sub-plan citation for SET-09/11/12) — score `4/5 + 1 GAP`
+- [x] 31-02-PLAN.md — Write phase-level 24-VERIFICATION.md (Phase 24 goal-backward audit; 5/5 success criteria PASS; 7 REQ-IDs SATISFIED; 46 tests across 5 files) — score `5/5 PASS`
 
 **Wave 2** *(blocked on Wave 1 completion — reads scores from both new VERIFICATION.md files)*
-- [ ] 31-03-PLAN.md — Append `## Closure` section to v4.0-MILESTONE-AUDIT.md (cite both new VERIFICATION.md files; preserve audit body byte-equal per D-09/D-10)
+- [x] 31-03-PLAN.md — Append `## Closure` section to v4.0-MILESTONE-AUDIT.md (cite both new VERIFICATION.md files; preserve audit body byte-equal per D-09/D-10) — verified zero deletions
 
 **Cross-cutting constraints:**
 - Append-only edit pattern (D-08/D-09/D-10) — pre-existing audit body MUST remain byte-equal pre/post Phase 31; verified by `git diff` zero-deletion gate.
@@ -235,7 +235,7 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | 18/18 | 🚧 In progress | — |
+| v4.1 Polish & Patch | 27-31 | 21/21 | 🚧 Phase 31 verified — ready to close | — |
 
 ### v4.1 Phase Progress
 
@@ -245,4 +245,4 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
 | 29. Nav & Profile Chrome Cleanup | 6/6 | Complete    | 2026-05-05 |
 | 30. WYWT Capture Alignment Fix | 2/2 | Complete    | 2026-05-05 |
-| 31. v4.0 Verification Backfill | 0/0 | Not started | — |
+| 31. v4.0 Verification Backfill | 3/3 | Complete    | 2026-05-05 |
