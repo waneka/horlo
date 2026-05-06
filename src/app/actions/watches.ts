@@ -38,6 +38,7 @@ const insertWatchSchema = z.object({
   isFlaggedDeal: z.boolean().optional(),
   isChronometer: z.boolean().optional(),
   notes: z.string().optional(),
+  notesPublic: z.boolean().optional(),
   imageUrl: z.string().optional(),
   // Phase 27 (D-03/D-04) — accepted in the schema so the action can pass it
   // through after computing maxSort + 1 server-side. Client-supplied values
@@ -265,6 +266,7 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     }
 
     revalidatePath('/')
+    revalidatePath('/u/[username]', 'layout')
 
     // Phase 18 DISC-05 / DISC-06 — fan out 'explore' tag so the global
     // Trending + Gaining Traction rails (and the per-viewer Popular Collectors
@@ -338,6 +340,7 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
 
     const watch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
     revalidatePath('/')
+    revalidatePath('/u/[username]', 'layout')
 
     // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch. editWatch can
     // change status (owned ↔ wishlist ↔ sold ↔ grail), and each transition
