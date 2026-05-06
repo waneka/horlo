@@ -20,23 +20,48 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 See `.planning/milestones/v4.1-MILESTONE-AUDIT.md` for the full audit (status: `tech_debt` — 12/12 requirements satisfied, 1 NEW finding deferred, Nyquist 4/5 partial, none blocking).
 
-## Next Milestone Goals: v5.0 Discovery North Star (planted — SEED-004)
+## Current Milestone: v5.0 Discovery North Star
 
-**Pre-v5.0 work:**
-- Premium features audit via `/gsd-explore` (SEED-006) — runs between v4.1 close and v5.0 start
-- Market pricing API spike via `/gsd-spike` (SEED-007) — runs between v5.0 close and v6.0 start
+**Goal:** Make Rdio-style click-driven discovery the organizing principle of Horlo by auditing every discovery surface, then rebuilding the catalog as a 5-level hierarchy that earns Reference granularity for the future recommender — clearing v4.x carryover (DEBT-09, Nyquist) along the way.
 
-**v5.0 anchor candidates:**
-- CAT-13 catalog → similarity engine rewire — main anchor
-- DEBT-09 carry-forward — `notesPublic` + `revalidatePath` server-action regression (HIGH severity)
-- DISC-09 /explore Editorial Featured Collection — admin tooling required
+**Target features:**
+
+*Discovery (audit-first per SEED-004):*
+- Discovery audit (read-only Phase 1; click-path map across `/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}`; answers "combine home and explore?")
+- Audit-driven discovery polish (wave shaped by audit findings — lineage browse, Family pages, dead-end fixes, missing affordances)
+- DISC-09 /explore Editorial Featured Collection (admin tooling)
 - SRCH-16 Search facets (Movement / Case size / Style) on /search Watches
-- FIT-05 pairwise drill-down — "Compare with watch I own" inside CollectionFitCard
-- SET-13 Account → Delete / Wipe Collection — Danger Zone
-- SET-14 Branded HTML email templates
-- ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23
-- Nyquist hardening sweep — close the 4/5 partial coverage from v4.1 + drift from v3.0+
-- v6.0 candidates: Market Value (SEED-005) — Watch Charts integration; `market_prices` keyed on `catalog_id`
+- FIT-05 pairwise drill-down ("Compare with watch I own") inside CollectionFitCard
+
+*Catalog hierarchy (SEED-001, all 4 layers, schema-only):*
+- Layer A — Brand + Family entities (additive `brand_id`, `family_id` on `watches_catalog`)
+- Layer B — Lineage edges + structured movement `(caliber, type)` + first-class era / case_material / bracelet_config
+- Layer C — Variant split (clean-slate DB wipe + reseed; user-curated dedup of existing rows)
+- Layer D — Provenance fields on `watches` + `divestments` table / `sold` status (SEED-002 prereq even though recommender doesn't ship in v5.0)
+
+*Engine rewire:*
+- CAT-13 — `analyzeSimilarity()` reads catalog taste columns at JOIN time
+- CAT-14 — `SET NOT NULL` on `watches.catalog_id` (made possible by the clean slate)
+
+*v4.x carryover & polish:*
+- DEBT-09 — `addWatch`/`editWatch` `notesPublic` + `revalidatePath('/u/...')` regression fix
+- SET-13 — Account → Delete / Wipe Collection (Danger Zone, multi-step confirm)
+- SET-14 — Branded HTML email templates
+- Nyquist hardening sweep — close 4/5 partial coverage from v4.1 + drift from v3.0+ (Phases 25, 26, 27, 28, 30, 31)
+- ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23 (triage and close)
+
+**Key context / decisions:**
+
+- **No paywall** — SEED-006 resolved 2026-05-06 → Horlo ships fully free; no Subscription tab, no Stripe, no entitlements scaffolding. See `.planning/research/PREMIUM-MAP.md`.
+- **Schema-only catalog seeding** — ship the hierarchy + clean DB wipe; do NOT pre-seed ~500 curated References. Catalog grows organically via existing `user_promoted` + URL extract paths.
+- **Audit-first ordering** — discovery audit is Phase 1 of v5.0; SEED-001 schema waves come after. Audit findings may dial back/up Layer B's lineage urgency or shape audit-driven polish.
+- **Clean-slate enabled** — single user (owner), small DB, willing to wipe makes Variant dedup safe + CAT-14 `SET NOT NULL` feasible inside this milestone (no production migration safety required).
+- **Recommender (SEED-002) NOT in v5.0** — but Layer D `sold` / `divestments` schema lands as prep so the recommender milestone (v6.0+) doesn't have to relitigate the data model.
+- **Phase numbering continues from v4.1** — Phase 32 onward (no `--reset-phase-numbers`).
+
+**Pre-v6.0 work (between v5.0 close and v6.0 start):**
+- Market pricing API spike via `/gsd-spike` (SEED-007) — Watch Charts vs Chrono24 vs eBay vs scraping vs manual
+- v6.0 Market Value (SEED-005) — `market_prices` keyed on `catalog_id`; total collection value + paid-vs-market chart + per-watch market price (all free per SEED-006)
 
 ## Requirements
 
@@ -230,7 +255,9 @@ This document evolves at phase transitions and milestone boundaries.
 *2026-05-01 — Phase 23 (Settings Sections + Schema-Field UI) complete. SET-07/08/09/10/11/12 + FEAT-07/08 satisfied: collectionGoal + overlapTolerance lifted to top of Preferences tab as dedicated Cards (Brand Loyalist option added with locked em-dash copy); PreferencesClient gains embedded prop suppressing page chrome inside Settings tab; AppearanceSection mounts InlineThemeSegmented in SettingsSection title="Theme" (Server-renders-Client child per Next.js 16; UserMenu retains its segmented control — both sync via horlo-theme cookie); WatchForm exposes isChronometer Checkbox and notesPublic Public/Private pill below Notes textarea; WatchDetail renders only-if-true Certification row with text-foreground Check icon (Anti-Pattern 9 honored); addWatch/editWatch Zod accepts notesPublic and revalidates /u/[username] layout for cross-page sync (D-19); SET-09/SET-11/SET-12 verified-no-change via Phase 22 D-01/D-15; D-20 cleanup grep ZERO orphans. Zero schema changes, zero new DAL functions; 6 plans in 2 worktree-parallelized waves; 5 manual UAT items approved. Up next: Phase 24 (Notification Stub Cleanup + Test Fixture & Carryover).*</details>
 
 ---
-*Last updated: 2026-05-05 after v4.1 milestone — Polish & Patch shipped. 5 phases (27-31), 21 plans + 1 quick task + 1 post-ship hotfix, 152 commits over 2 days. 12/12 v4.1 requirements satisfied at code level. Phase 31 audit surfaced DEBT-09 (HIGH severity Phase 23-era regression: `notesPublic` Zod field + `revalidatePath('/u/...')` absent from `src/app/actions/watches.ts` on `main`; commit `4d362ff` not in HEAD ancestry) — deferred to v4.2 / v5.0 carryover. Audit status: `tech_debt`. Up next: SEED-006 premium features audit via `/gsd-explore`, then `/gsd-new-milestone` for v5.0 Discovery North Star (CAT-13 anchor).*
+*Last updated: 2026-05-06 — v5.0 Discovery North Star milestone started. Goal: Rdio click-driven discovery as organizing principle + full catalog hierarchy (SEED-001 all 4 layers, schema-only) earning Reference granularity for the future recommender + v4.x carryover (DEBT-09, Nyquist sweep, deferred UAT triage). Audit-first per SEED-004 — Phase 32 is the discovery audit (read-only decisions doc); SEED-001 schema waves come after. Clean-slate DB wipe enabled by single-user state; CAT-14 `SET NOT NULL` lands alongside. No paywall (SEED-006 resolved 2026-05-06 — `.planning/research/PREMIUM-MAP.md`). Phase numbering continues from 32. Up next: research → requirements → roadmap.*
+
+*Previous: 2026-05-05 after v4.1 milestone — Polish & Patch shipped. 5 phases (27-31), 21 plans + 1 quick task + 1 post-ship hotfix, 152 commits over 2 days. 12/12 v4.1 requirements satisfied at code level. Phase 31 audit surfaced DEBT-09 (HIGH severity Phase 23-era regression: `notesPublic` Zod field + `revalidatePath('/u/...')` absent from `src/app/actions/watches.ts` on `main`; commit `4d362ff` not in HEAD ancestry) — deferred to v5.0 carryover. Audit status: `tech_debt`.*
 
 *Previous: 2026-05-05 after Phase 29 — Nav & Profile Chrome Cleanup (6 plans across 3 waves + 1 quick task) shipped: NAV-16 + PROF-10 + FORM-04 satisfied. UserMenu Profile row removed; Profile tab strip locked to horizontal scroll only; Add-Watch flow resets on every entry via per-request `crypto.randomUUID()` nonce + ref-guarded `useLayoutEffect` cleanup, with verdict + URL-extract caches hoisted to module scope so they survive remount. StrictMode-safe deep-link prefill from `/search`. Global vitest `<StrictMode>` wrapper added so this regression class is caught in CI. UAT 10/10 passed across three rounds. v4.1 progress: 4/5 phases complete (27 + 28 + 29 + 30); only Phase 31 (v4.0 Verification Backfill — DEBT-07/DEBT-08) remains.*
 

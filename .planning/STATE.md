@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.1
-milestone_name: Polish & Patch
-status: shipped
-stopped_at: v4.1 milestone shipped 2026-05-05; archive complete
-last_updated: "2026-05-06T05:35:00.000Z"
-last_activity: 2026-05-06 -- SEED-006 premium-features audit resolved via /gsd-explore; outcome no paywall in v5.0 (.planning/research/PREMIUM-MAP.md)
+milestone: v5.0
+milestone_name: Discovery North Star
+status: planning
+last_updated: "2026-05-06T20:05:03.964Z"
+last_activity: 2026-05-06
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 21
-  completed_plans: 21
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,11 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-05 — v4.1 milestone shipped)
 
 ## Current Position
 
-Milestone: v4.1 Polish & Patch — SHIPPED 2026-05-05
-Tag: v4.1
-Archive: `.planning/milestones/v4.1-ROADMAP.md` + `v4.1-REQUIREMENTS.md` + `v4.1-MILESTONE-AUDIT.md`
-Status: Ready for `/gsd-new-milestone` to scope v5.0
-Last activity: 2026-05-05 -- v4.1 archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-06 — Milestone v5.0 started
 
 ## Progress Bar
 
