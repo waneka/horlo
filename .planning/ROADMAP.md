@@ -127,7 +127,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
   5. No new test failures introduced; full test suite remains GREEN
 **Plans**: 1 plan
 Plans:
-- [ ] 32-01-PLAN.md — Add notesPublic to insertWatchSchema, insert revalidatePath layout calls in addWatch/editWatch, correct ROADMAP wording (D-05), full-suite regression verification
+- [x] 32-01-PLAN.md — Add notesPublic to insertWatchSchema, insert revalidatePath layout calls in addWatch/editWatch, correct ROADMAP wording (D-05), full-suite regression verification
 
 ### Phase 33: Discovery Audit
 **Goal**: Produce a falsifiable, read-only click-path audit of all discovery surfaces so that every downstream polish phase cites specific audit row IDs rather than vibes.
