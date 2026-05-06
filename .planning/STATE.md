@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Polish & Patch
 status: shipped
 stopped_at: v4.1 milestone shipped 2026-05-05; archive complete
-last_updated: "2026-05-06T00:30:00.000Z"
-last_activity: 2026-05-05 -- v4.1 milestone shipped; archived to milestones/v4.1-*; tagged v4.1
+last_updated: "2026-05-06T05:35:00.000Z"
+last_activity: 2026-05-06 -- SEED-006 premium-features audit resolved via /gsd-explore; outcome no paywall in v5.0 (.planning/research/PREMIUM-MAP.md)
 progress:
   total_phases: 5
   completed_phases: 5
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-05 — v4.1 milestone shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Planning next milestone (v5.0 Discovery North Star — SEED-004 anchored on CAT-13 catalog → similarity rewire). Premium features audit (SEED-006 `/gsd-explore`) recommended before milestone start.
+**Current focus:** Planning next milestone (v5.0 Discovery North Star — SEED-004 anchored on CAT-13 catalog → similarity rewire). SEED-006 premium-features audit completed 2026-05-06 — outcome: **no paywall in v5.0; build Horlo as fully free; revisit monetization post-recommender**. v5.0 scopes freely with no gating decisions to make. See `.planning/research/PREMIUM-MAP.md`.
 
 ## Current Position
 
@@ -77,7 +77,7 @@ None. v4.1 closed cleanly.
 
 ## Session Continuity
 
-Last session: 2026-05-06T00:30:00.000Z
-Stopped at: v4.1 milestone shipped + archived
-Resume file: N/A — milestone complete
-Next action: `/clear` then `/gsd-new-milestone` to scope v5.0 Discovery North Star. Optionally run `/gsd-explore` (SEED-006 premium features audit) first.
+Last session: 2026-05-06T05:35:00.000Z
+Stopped at: SEED-006 premium-features audit resolved (no paywall in v5.0)
+Resume file: N/A — between milestones
+Next action: `/clear` then `/gsd-new-milestone` to scope v5.0 Discovery North Star. SEED-006 audit complete (see `.planning/research/PREMIUM-MAP.md`) — v5.0 scopes freely with no monetization gating decisions to make.

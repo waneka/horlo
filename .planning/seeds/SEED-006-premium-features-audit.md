@@ -1,12 +1,35 @@
 ---
 id: SEED-006
-status: dormant
+status: resolved
 planted: 2026-05-03
 planted_during: post-v4.0 close — milestone roadmapping conversation
+resolved: 2026-05-06
+resolved_via: /gsd-explore session
+resolution: No paywall in v5.0; build Horlo as fully free; revisit monetization post-recommender. SEED-002 hybrid recommender is the leading future paid-surface candidate but is not ready and should not be built under monetization pressure.
+decision_doc: .planning/research/PREMIUM-MAP.md
 trigger_when: BETWEEN v4.1 close and v5.0 start — premium-tier scoping decisions reshape v5.0 (discovery) and v6.0 (market value) before either locks
 scope: medium
 related_phases: [v4.1 Polish & Patch (must complete first), v5.0 Discovery North Star (informed by this), v6.0 Market Value (informed by this)]
 ---
+
+## Resolution (2026-05-06)
+
+**Outcome:** No paywall in v5.0. Continue building Horlo as a fully free product. Monetization deferred to a post-recommender milestone (v6.0+ at earliest).
+
+**Decision document:** `.planning/research/PREMIUM-MAP.md`
+
+**Key drivers of the no-paywall conclusion:**
+
+1. **Don't gate the differentiator.** Taste-aware evaluation (verdict labels, FIT-05 pairwise drill-down, taste profile, taste-overlap) is the core of the product. All free.
+2. **Watch Charts gives away core valuation features for free** — portfolio + total value + per-watch P&L + value-over-time charts. Charging Horlo users $8/mo for a worse version is a competitive non-starter.
+3. **Watch Charts has freemium alerts at a $160/yr ceiling.** Alerts are commodity, not a wedge.
+4. **Provenance + export alone is too thin a tier** to justify $8/mo against the persona — they are real Horlo-native value, but ship as part of the free product.
+5. **The strongest paid wedge (SEED-002 hybrid recommender) has unmet prerequisites** — SEED-001 catalog hierarchy, sold-signal schema, cold-start density / editorial bootstrap. Earliest realistic ship: v6.0+. Should not be built under monetization pressure.
+6. **The seed's own warning applied in full:** *"Don't ship a 'subscription' surface before the audit."* The audit's answer is *not yet, period.*
+
+**Implications:** No Subscription / Plan tab in `/settings` for v5.0. No Stripe wiring. No paid-vs-free forks shaping data-model or feature design. v5.0 (Discovery) and v6.0 (Market Value) scope freely with no gating decisions to make.
+
+**Watch list:** Operational cost defense (LLM/external-API caps) may surface a "support the project to remove cap" tier earlier as cost-defense, distinct from product monetization. Competitive surface erosion (e.g. Watch Charts launches taste-aware feature) would re-trigger this decision.
 
 # SEED-006: Premium features audit — what gates behind paid?
 

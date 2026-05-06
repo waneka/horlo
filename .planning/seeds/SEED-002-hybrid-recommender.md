@@ -95,3 +95,11 @@ Implication for Phase 18 and earlier: Popular Collectors rail is a *raw populari
 - **The `sold` negative signal can't be retrofitted from current data** — Phase 17 `wishlistDate` and current `watches.status` enum (`'owned' | 'wishlist'`) don't track transitions. Adding a `sold` status (or a `divestments` table) is a precondition for the negative-signal dimension and should land before the recommender milestone, ideally as part of the catalog hierarchy work in SEED-001.
 - **Explainability constraint should shape the data model.** Every reason string needs structured precursors: "12 collectors with taste like yours" requires storing taste-cluster membership; "your 16610 and three others in your cluster moved to vintage Heuer" requires storing transitions. Plan the event log accordingly.
 - **/explore Phase 18 is compatible.** Today's raw popularity rails coexist fine with a future personalized feed — the personalized surface is additive (likely a new `/feed` or a "For you" tab on `/explore`), not a replacement.
+
+## Monetization Note (2026-05-06 — SEED-006 audit outcome)
+
+This recommender is the leading paid-surface candidate **if/when** Horlo ever ships a paid tier. SEED-006 audit (`.planning/research/PREMIUM-MAP.md`) concluded: no paywall in v5.0; build Horlo as a fully free product; revisit monetization post-recommender.
+
+**Practical implication for design:** Build SEED-002 free. Do not let "what would we charge for?" shape the architecture, the data model, the reason-string surface, or the UX. Optimize purely for "is this useful to the collector?" If a wedge later proves real, gating is a thin layer added on top — not a baked-in constraint.
+
+The recommender remains the strongest *eventual* paid surface (real compute cost, Horlo-native, value scales with collection depth, explainability differentiator) — but the design must not assume monetization. No tier-aware features, no "free tier shows top-3 / paid tier shows top-50" knobs, no entitlements coupling in the recommender service itself.
