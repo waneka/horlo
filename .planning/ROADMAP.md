@@ -6,7 +6,9 @@
 - ✅ **v2.0 Taste Network Foundation** — Phases 6-10 (shipped 2026-04-22) — [archive](milestones/v2.0-ROADMAP.md)
 - ✅ **v3.0 Production Nav & Daily Wear Loop** — Phases 11-16 + 999.1 (shipped 2026-04-27) — [archive](milestones/v3.0-ROADMAP.md)
 - ✅ **v4.0 Discovery & Polish** — Phases 17-26 + 19.1 + 20.1 (shipped 2026-05-03) — [archive](milestones/v4.0-ROADMAP.md)
-- 🚧 **v4.1 Polish & Patch** — Phases 27-31 (in progress)
+- ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
+- 📋 **v5.0 Discovery North Star** — planted (SEED-004)
+- 📋 **v6.0 Market Value** — planted (SEED-005)
 
 ## Phases
 
@@ -67,165 +69,39 @@ See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3
 - [x] Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step (8/8 plans incl. gap-closure 06/07/08, inserted)
 - [x] Phase 21: Custom SMTP via Resend (2/2 plans)
 - [x] Phase 22: Settings Restructure + Account Section (5/5 plans)
-- [x] Phase 23: Settings Sections + Schema-Field UI (6/6 plans, no phase-level VERIFICATION.md)
-- [x] Phase 24: Notification Stub Cleanup + Test Fixture/Carryover (8/8 plans, no phase-level VERIFICATION.md)
+- [x] Phase 23: Settings Sections + Schema-Field UI (6/6 plans, no phase-level VERIFICATION.md → backfilled in v4.1 Phase 31)
+- [x] Phase 24: Notification Stub Cleanup + Test Fixture/Carryover (8/8 plans, no phase-level VERIFICATION.md → backfilled in v4.1 Phase 31)
 - [x] Phase 25: Profile Nav Prominence + Empty States + Form Polish (6/6 plans, UAT approved on prod)
 - [x] Phase 26: WYWT Auto-Nav (2/2 plans, gap closed inline)
 
-75/75 actionable requirements satisfied + 1 deferred (SMTP-06 staging-prod sender split). Audit status `tech_debt` — 2 phases without phase-level VERIFICATION.md, ~33 deferred human UAT items, Nyquist coverage partial. None blocking.
+75/75 actionable requirements satisfied + 1 deferred (SMTP-06 staging-prod sender split). Audit status `tech_debt` — 2 phases without phase-level VERIFICATION.md (closed in v4.1), ~33 deferred human UAT items, Nyquist coverage partial. None blocking.
 
 See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4.0-MILESTONE-AUDIT.md](milestones/v4.0-MILESTONE-AUDIT.md) for the audit report.
 
 </details>
 
-### v4.1 Polish & Patch (active)
+<details>
+<summary>✅ v4.1 Polish & Patch (Phases 27-31) — SHIPPED 2026-05-05</summary>
 
-- [x] **Phase 27: Watch Card & Collection Render Polish** — Reorderable wishlist (sort_order column), 2-column mobile grid, price line on card (completed 2026-05-04)
-- [x] **Phase 28: Add-Watch Flow & Verdict Copy Polish** — Return-to-context, success-toast-with-link, "unusual" verdict copy rewrite + rationale-source rethink (completed 2026-05-05)
-- [x] **Phase 29: Nav & Profile Chrome Cleanup** — Remove redundant Profile from UserMenu, profile tabs horizontal-scroll only, Add-Watch form resets on every entry (completed 2026-05-05)
-- [ ] **Phase 30: WYWT Capture Alignment Fix** — Overlay positioning math matches capture frame, not preview frame
-- [x] **Phase 31: v4.0 Verification Backfill** — Phase 23 + Phase 24 phase-level VERIFICATION.md goal-backward audits
+- [x] Phase 27: Watch Card & Collection Render Polish (5/5 plans)
+- [x] Phase 28: Add-Watch Flow & Verdict Copy Polish (5/5 plans)
+- [x] Phase 29: Nav & Profile Chrome Cleanup (6/6 plans + 1 quick task)
+- [x] Phase 30: WYWT Capture Alignment Fix (2/2 plans + 1 post-ship hotfix)
+- [x] Phase 31: v4.0 Verification Backfill (3/3 plans)
 
-## Phase Details
+12/12 requirements satisfied at code level. Cross-phase integration verified (7/7 seams pass). E2E flows trace cleanly (4/4). Audit status `tech_debt` — 1 NEW finding (DEBT-09: Phase 23-era `notesPublic` / `revalidatePath` regression discovered by Phase 31 audit) deferred to v4.2 / v5.0; Nyquist 4/5 partial. None blocking.
 
-### Phase 27: Watch Card & Collection Render Polish
-**Goal**: Collection and wishlist owners can see and reorder their watches in a denser, price-aware grid that reflects the order they care about.
-**Depends on**: v4.0 (WatchCard, Collection/Wishlist tabs, watches table schema)
-**Requirements**: WISH-01, VIS-07, VIS-08
-**Success Criteria** (what must be TRUE):
-  1. On a mobile viewport (<768px), Collection and Wishlist tabs render watches in a 2-column grid (desktop layout unchanged).
-  2. Each watch card shows a price line — `paid_price` for owned, `target_price` for wishlist — and the line is hidden when the relevant value is null.
-  3. The owner can reorder Wishlist items via drag-and-drop on desktop and long-press-and-drag on mobile, and the new order persists across sessions and across devices.
-  4. A non-owner viewing a public Wishlist sees the watches in the order the owner chose.
-**Plans**: 5 plans across 4 waves
+See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4.1-MILESTONE-AUDIT.md](milestones/v4.1-MILESTONE-AUDIT.md) for the audit report.
 
-**Wave 1**
-- [x] 27-01-PLAN.md — Wave 0 RED test scaffolds (7 new + 1 extend)
+</details>
 
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 27-02-PLAN.md — Schema column + drizzle/supabase migrations + DAL helpers + addWatch/editWatch sort_order; `[BLOCKING]` local drizzle-kit push
-- [x] 27-04-PLAN.md — ProfileWatchCard status-driven price line + Image sizes attr; CollectionTabContent grid-cols-2
+### 📋 v5.0 Discovery North Star (planted — SEED-004)
 
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 27-03-PLAN.md — reorderWishlist Server Action (Zod .strict, owner-only, ActionResult)
+Awaiting `/gsd-new-milestone` invocation. Anchored by CAT-13 (catalog → similarity engine rewire). Pre-milestone discovery audit (SEED-006) runs between v4.1 close and v5.0 start.
 
-**Wave 4** *(blocked on Wave 3 completion; manual UAT checkpoint at end)*
-- [x] 27-05-PLAN.md — Drag UX: install @dnd-kit/*, SortableProfileWatchCard with drop-indicator, WishlistTabContent DnD wiring + grid-cols-2; manual UAT
+### 📋 v6.0 Market Value (planted — SEED-005)
 
-**Cross-cutting constraints** (appear in 2+ plans):
-- Mobile `grid-cols-2` breakpoint (D-11, VIS-07) — Plans 01, 04, 05
-- Owner-only enforcement at DAL + Action layers (D-10, T-27-01) — Plans 02, 03
-- Status-driven price line bucket logic (D-15..D-21, VIS-08) — Plans 01, 04
-- `[BLOCKING]` local drizzle-kit push gates Wave 3 (T-27-LOCAL: drizzle-kit push is LOCAL ONLY; prod uses `supabase db push --linked` at deploy time)
-
-**UI hint**: yes
-
-### Phase 28: Add-Watch Flow & Verdict Copy Polish
-**Goal**: Adding a watch lands the user back where they started, gives them a clear next-step link, and the verdict copy reads coherently both as a verdict and as the wishlist-note auto-fill.
-**Depends on**: Phase 27 (no hard dependency, but Phase 27 ships the price/grid surface UX-09's success toast links into); v4.0 Phases 20, 20.1, 25 (CollectionFitCard composer, Add-Watch Flow state machine, useFormFeedback hook)
-**Requirements**: FIT-06, ADD-08, UX-09
-**Success Criteria** (what must be TRUE):
-  1. After adding a watch from any entry point (Add-Watch Flow, /search row 3-CTA accordion, /catalog/[id] 3-CTA), the user sees a success toast that includes a link to the corresponding profile collection or wishlist tab.
-  2. After completing or canceling the Add-Watch Flow, the user is returned to the entry point they came from (collection, wishlist, search, /catalog, etc.) — not unconditionally to home — via a `?returnTo=` parameter validated against an allow-list of internal paths.
-  3. The "unusual for your collection" verdict reads coherently to the user on `/watch/[id]`, the `/search` accordion, and `/catalog/[id]`.
-  4. The wishlist note auto-fill, when populated from a verdict, reads as the user's own first-person rationale (not as a verdict-to-user message), and the source of that auto-fill text is intentional rather than incidentally `contextualPhrasings[0]`.
-**Plans**: 5 plans across 3 waves
-
-**Wave 1** *(parallel-safe — zero file overlap)*
-- [x] 28-01-PLAN.md — FIT-06: verdict copy rewrite + speech-act split
-- [x] 28-02-PLAN.md — UX-09 hook foundation: useFormFeedback successAction extension
-- [x] 28-03-PLAN.md — ADD-08 server foundation: /watch/new returnTo whitelist + shared destinations.ts module
-
-**Wave 2** *(blocked on Wave 1)*
-- [x] 28-04-PLAN.md — UX-09 inline-commit wiring: /search + /catalog/[id] Wishlist commits switch to Sonner action-slot
-
-**Wave 3** *(blocked on Wave 2)*
-- [x] 28-05-PLAN.md — ADD-08 callsite append + UX-09 nav-on-commit: 8 entry-points + AddWatchFlow/WatchForm rewrites
-
-**Cross-cutting constraints** (appear in 2+ plans):
-- Sonner action-slot toast contract (D-01/D-02/D-03) — Plans 02, 04, 05
-- viewerUsername server-side resolution (D-02/D-06) — Plans 03, 04
-- BottomNav D-09 phantom (no Add slot since Phase 18) — explicitly NOT modified
-- NotesTabContent D-10 skip (Server Component fallback to default destination)
-- composer.test.ts FIT-02 lock preservation (D-22) — Plan 01 only
-**UI hint**: yes
-
-### Phase 29: Nav & Profile Chrome Cleanup
-**Goal**: The UserMenu, profile tab strip, and Add-Watch flow are tight and predictable — no duplicate Profile affordance, no surprise vertical scroll on the tab strip, and a fresh Add-Watch form on every entry instead of stale data from the prior session.
-**Depends on**: v4.0 Phase 25 (avatar dual-affordance shipped Profile as primary path), Phase 20.1 (AddWatchFlow state machine)
-**Requirements**: NAV-16, PROF-10, FORM-04
-**Success Criteria** (what must be TRUE):
-  1. The UserMenu dropdown no longer shows a "Profile" item; the avatar Link remains the primary path to `/u/{username}`. UserMenu still exposes Settings, Theme segmented control, and Sign out.
-  2. On `/u/[username]`, the profile tab strip scrolls horizontally only when its tabs overflow — no vertical scroll-bar appears, no vertical-scroll gesture is consumed by the tab strip on touch or trackpad.
-  3. Every entry to `/watch/new` (CTA click, browser back/forward, refresh, post-commit re-navigation) renders the Add-Watch flow in a fresh state — paste URL empty, FlowState idle (or driven by current URL params), rail empty, WatchForm fields/photo/errors at defaults. The verdict cache (`useWatchSearchVerdictCache`, intentionally cross-session) is unaffected. Within-flow Skip / Cancel paths still loop back to idle inside the same mount; only entry to the route triggers the reset.
-**Plans**: 6 plans across 3 waves
-
-**Wave 1** *(parallel-safe — zero file overlap)*
-- [x] 29-01-PLAN.md — FORM-04 Wave 0: NEW tests/components/watch/AddWatchFlow.test.tsx (key-change + useLayoutEffect cleanup) + extend tests/components/watch/WatchForm.test.tsx with reset-on-key-change test (completed 2026-05-05)
-- [x] 29-02-PLAN.md — NAV-16: delete Profile DropdownMenuItem from UserMenu.tsx (preserve BOTH surrounding separators per UI-SPEC D-01 wording precision); rewrite UserMenu.test.tsx Test 3, delete Test 4 (completed 2026-05-05)
-- [x] 29-03-PLAN.md — PROF-10: append `overflow-y-hidden pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden` to ProfileTabs.tsx:65 TabsList className; assert all 4 utilities in ProfileTabs.test.tsx (completed 2026-05-05)
-
-**Wave 2** *(blocked on Wave 1 — Plan 01 test scaffolds gate Plan 04 verify)*
-- [x] 29-04-PLAN.md — FORM-04 implementation: per-request `crypto.randomUUID()` nonce as `<AddWatchFlow key={flowKey}>` in /watch/new/page.tsx; `useLayoutEffect` cleanup-on-hide in AddWatchFlow.tsx (back-nav defense per RESEARCH Pitfall 4); explicit state reset in `handleWishlistConfirm` BEFORE `router.push(dest)` (D-14 defense-in-depth); cache hoisting strategy = Option B (accept reset)
-
-**Wave 3** *(gap closure — UAT-1 closed two FORM-04 regressions; parallel-safe — zero file overlap)*
-- [x] 29-05-PLAN.md — FORM-04 Gap 1: migrate useWatchSearchVerdictCache.ts to module-scoped Map (smallest-blast-radius variant of Option A); revises Plan 04 hoisting decision (Option B literally cannot honor D-15 cache-survives-entry contract); adds remount-cache-hit regression test (completed 2026-05-05)
-- [x] 29-06-PLAN.md — FORM-04 Gap 2: StrictMode-safe useLayoutEffect cleanup (ref-guarded skip cases for initial idle + form-prefill) so D-16 deep-link prefill survives Next.js 16 dev StrictMode mount/cleanup/mount; rename tests/setup.ts → tests/setup.tsx + global RTL render() StrictMode wrapper (test-infra gap that let Plan 04 regression slip through CI); adds form-prefill survives StrictMode regression test (completed 2026-05-05)
-
-**Cross-cutting constraints** (appear in 2+ plans):
-- Pitfall 8 (`key` MUST be at JSX level, NOT in spread) — Plans 01, 04
-- Plan 01 Test 1 RED → GREEN handoff to Plan 04 (key-change remount test)
-- `src/components/ui/tabs.tsx` LOCKED READ-ONLY (Pitfall 7 / D-09) — referenced by Plan 03, never modified
-- `src/components/search/useWatchSearchVerdictCache.ts` LOCKED READ-ONLY for Plans 04, 02, 03 (Plan 04 picks Option B; primitive untouched). RELAXED for Plan 05 — UAT-1 proved Option B cannot honor D-15 cache-survives-entry contract; Plan 05 migrates to module-scoped Map
-- Phase 25 D-04 dropdown byte-identity lock RELAXED minimally (Plan 02 NAV-16 D-02 — Profile-row removal + JSDoc adjustment only)
-
-**UI hint**: yes
-
-### Phase 30: WYWT Capture Alignment Fix
-**Goal**: When a user aligns their wrist with the WYWT camera overlay, the saved photo crops the wrist where the overlay said it would be — not lower in the frame.
-**Depends on**: v3.0 Phase 15 (CameraCaptureView, WristOverlaySvg, photo capture pipeline)
-**Requirements**: WYWT-22
-**Success Criteria** (what must be TRUE):
-  1. The WYWT capture overlay's geometric center (or anchor point) corresponds to the same pixel coordinates in the saved JPEG that it visually occupies in the live preview.
-  2. The capture pipeline either crops the preview to match the capture frame, or shifts the overlay to the capture coordinate space, so a user who aligns their wrist with the on-screen guide sees the same alignment in the resulting `/wear/[id]` photo.
-  3. WristOverlaySvg geometry (canonical 10:10 + arm spacing) is unchanged — out of scope for this phase per requirement note.
-**Plans**: 2 plans across 2 waves
-
-**Wave 1**
-- [ ] 30-01-PLAN.md — D-07 RED test scaffold: create tests/components/wywt/CameraCaptureView.test.tsx with 4 pure-math assertions on the not-yet-exported computeObjectCoverSourceRect helper
-
-**Wave 2** *(blocked on Wave 1 — RED test must exist before GREEN implementation)*
-- [ ] 30-02-PLAN.md — Implement WYSIWYG fix in src/components/wywt/CameraCaptureView.tsx: wrapperRef + aspect-square wrapper class + computeObjectCoverSourceRect named export + extended readiness guard + 9-arg drawImage capture math; followed by iOS Safari manual UAT (D-08)
-
-**Cross-cutting constraints** (appear in 2+ plans):
-- Plan 01 RED → Plan 02 GREEN handoff (math contract encoded as test before production export exists)
-- Single src/ file edited (D-01 through D-13 lock everything outside src/components/wywt/CameraCaptureView.tsx)
-- D-10/D-11/D-12/D-13 NO-EDIT files: WristOverlaySvg.tsx, ComposeStep.tsx, src/lib/exif/strip.ts (referenced read-only by both plans, never modified)
-- stripAndResize pipeline preserved (D-12) — cropped blob still pipes through the existing helper at line 91
-**UI hint**: yes
-
-### Phase 31: v4.0 Verification Backfill
-**Goal**: Phase 23 and Phase 24 each have a phase-level VERIFICATION.md that goal-backward-audits the shipped code, closing the v4.0 verification asymmetry recorded in the milestone audit.
-**Depends on**: v4.0 Phase 23 + Phase 24 (already shipped; this phase audits them retroactively)
-**Requirements**: DEBT-07, DEBT-08
-**Success Criteria** (what must be TRUE):
-  1. `.planning/milestones/v4.0-phases/23-phase-23-settings-sections-and-schema-field-ui/VERIFICATION.md` (or equivalent path under the v4.0 milestone archive) exists and audits Phase 23's success criteria against shipped code.
-  2. `.planning/milestones/v4.0-phases/24-phase-24-notification-stub-cleanup-and-test-fixture-carryover/VERIFICATION.md` (or equivalent) exists and audits Phase 24's success criteria against shipped code.
-  3. The v4.0 milestone audit status note recording the missing VERIFICATION.md files is updated (or amended with a closure note) to reflect the backfill.
-**Plans**: 3 plans
-
-**Wave 1** *(parallel — disjoint archive directories)*
-- [x] 31-01-PLAN.md — Write phase-level 23-VERIFICATION.md (Phase 23 goal-backward audit; FEAT-07 GAP framing; 5 UAT carryover; sub-plan citation for SET-09/11/12) — score `4/5 + 1 GAP`
-- [x] 31-02-PLAN.md — Write phase-level 24-VERIFICATION.md (Phase 24 goal-backward audit; 5/5 success criteria PASS; 7 REQ-IDs SATISFIED; 46 tests across 5 files) — score `5/5 PASS`
-
-**Wave 2** *(blocked on Wave 1 completion — reads scores from both new VERIFICATION.md files)*
-- [x] 31-03-PLAN.md — Append `## Closure` section to v4.0-MILESTONE-AUDIT.md (cite both new VERIFICATION.md files; preserve audit body byte-equal per D-09/D-10) — verified zero deletions
-
-**Cross-cutting constraints:**
-- Append-only edit pattern (D-08/D-09/D-10) — pre-existing audit body MUST remain byte-equal pre/post Phase 31; verified by `git diff` zero-deletion gate.
-- Canonical Phase 22-VERIFICATION.md format (D-05) — frontmatter + Goal Achievement + Required Artifacts + Key Link Verification + Behavioral Spot-Checks; reference at `git show 2918e95:.planning/phases/22-settings-restructure-account-section/22-VERIFICATION.md`.
-- Evidence-cell shape (D-06) — every Observable Truth row cites src+lines, grep+result, or test+pass count; no prose-only evidence.
-- Nyquist Dimension 8 N/A — documentation-only phase; recorded in 31-VALIDATION.md and each plan's `must_haves.truths`.
+Awaiting completion of v5.0. Watch Charts pricing-API integration; `market_prices` keyed on `catalog_id`.
 
 ## Progress
 
@@ -235,14 +111,6 @@ See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4
 | v2.0 Taste Network Foundation | 6-10 | 21/21 | ✅ Complete | 2026-04-22 |
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | 21/21 | 🚧 Phase 31 verified — ready to close | — |
-
-### v4.1 Phase Progress
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 27. Watch Card & Collection Render Polish | 5/5 | Complete    | 2026-05-04 |
-| 28. Add-Watch Flow & Verdict Copy Polish | 5/5 | Complete    | 2026-05-05 |
-| 29. Nav & Profile Chrome Cleanup | 6/6 | Complete    | 2026-05-05 |
-| 30. WYWT Capture Alignment Fix | 2/2 | Complete    | 2026-05-05 |
-| 31. v4.0 Verification Backfill | 3/3 | Complete    | 2026-05-05 |
+| v4.1 Polish & Patch | 27-31 | 21/21 | ✅ Complete | 2026-05-05 |
+| v5.0 Discovery North Star | TBD | — | 📋 Planted | — |
+| v6.0 Market Value | TBD | — | 📋 Planted | — |
