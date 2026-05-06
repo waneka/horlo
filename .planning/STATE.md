@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: planning
-last_updated: "2026-05-06T20:05:03.964Z"
+status: ready_to_plan
+last_updated: "2026-05-06T00:00:00.000Z"
 last_activity: 2026-05-06
 progress:
-  total_phases: 0
+  total_phases: 11
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,19 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-05 — v4.1 milestone shipped)
+See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Planning next milestone (v5.0 Discovery North Star — SEED-004 anchored on CAT-13 catalog → similarity rewire). SEED-006 premium-features audit completed 2026-05-06 — outcome: **no paywall in v5.0; build Horlo as fully free; revisit monetization post-recommender**. v5.0 scopes freely with no gating decisions to make. See `.planning/research/PREMIUM-MAP.md`.
+**Current focus:** Phase 32 — DEBT-09 notesPublic Fix (first phase of v5.0)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-05-06 — Milestone v5.0 started
+Phase: 32 of 42 (DEBT-09 notesPublic Fix)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-05-06 — v5.0 roadmap created (11 phases, 16 requirements mapped)
 
-## Progress Bar
+Progress: [░░░░░░░░░░] 0%
 
 ```
 v1.0 MVP                          [x] shipped 2026-04-19
@@ -37,45 +37,50 @@ v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
 v4.1 Polish & Patch               [x] shipped 2026-05-05
-v5.0 Discovery North Star         [ ] planted (SEED-004)
+v5.0 Discovery North Star         [ ] Phase 32 next up (11 phases, 16 reqs)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
 [██████████████████████] 5 milestones shipped
 ```
 
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0 (v5.0)
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| — | — | — | — |
+
+*Updated after each plan completion*
+
 ## Accumulated Context
 
-### Carried Forward
+### Key Decisions (v5.0)
 
-The full Key Decisions log lives in `.planning/PROJECT.md` (Key Decisions table). Per-milestone retrospective in `.planning/RETROSPECTIVE.md`. Active todos and tech debt now live in PROJECT.md `## Requirements → ### Active`. Milestone archives in `.planning/milestones/`.
+- Build order locked: serial spine 32→33→34→35→36→37→38→39→40 + parallel tracks 41/42
+- DEBT-09 before audit: RED scaffold blocks CI confidence; audit quality unaffected (audit is read-only)
+- CAT-14 bundled with CAT-17 (Phase 36): clean-slate provides the 100% backfill guarantee the NOT NULL flip requires
+- CAT-13 after all 4 catalog layers: high coverage makes LEFT JOIN taste JOIN meaningful; pre-wipe rewire produces minimal verdict improvement
+- No paywall in v5.0 (SEED-006 resolved 2026-05-06): build fully free; revisit monetization post-recommender
+- SRCH-16 hard-blocked on Phase 35 (movement_type enum): if Layer B slips, SRCH-16 defers to v5.x
 
-### Blockers
+### Blockers/Concerns
 
-None. v4.1 closed cleanly.
+- Phase 39 scope is audit-conditional: do not write Phase 39 plans until Phase 33 DISCOVERY-AUDIT.md decisions doc is committed
+- Phase 35 lineage browse UI scope is audit-conditional: Phase 35 ships schema-only; browse UI affordances move to Phase 39 or v5.x per audit finding
 
-### Quick Tasks Completed
+### Pending Todos
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 2026-05-05-form04-gap3 | useUrlExtractCache — cache /api/extract-watch responses by URL so re-paste skips the round-trip (FORM-04 Gap 3, post-29-05/06 UAT) | 2026-05-05 | 0815c96 | [2026-05-05-form04-gap3-url-extract-cache](./quick/2026-05-05-form04-gap3-url-extract-cache/) |
-
-### Deferred to v4.2 / v5.0+
-
-- **DEBT-09 (NEW from v4.1 Phase 31 audit, HIGH severity)** — `addWatch` / `editWatch` in `src/app/actions/watches.ts` do not persist `notesPublic` and do not call `revalidatePath('/u/{username}/{tab}')`. Phase 23 SUMMARY-claimed implementation never reached `main`. Owner: v4.2 patch or v5.0 carryover.
-- ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23
-- 31 v3.0 deferred human-verification UAT items
-- CAT-13 catalog → similarity engine rewire (anchor for v5.0)
-- CAT-14 `SET NOT NULL` on `watches.catalog_id` — after 100% backfill verified across two consecutive deploys
-- SMTP-06 staging-prod sender split — pending staging Supabase project
-- DISC-09/10, SRCH-16/17, FIT-05, SET-13/14, UX-10/11 — see `milestones/v4.0-REQUIREMENTS.md` Future Requirements
-- `useWatchSearchVerdictCache` signOut invalidation — pre-existing post-29-05 risk
-- Nyquist hardening sweep — 4/5 v4.1 phases PARTIAL; bundle for v5.0 cleanup phase
-- Phase 999.1 directory still in `.planning/phases/` (v3.0 archival miss)
-- DEBT (Phase 17 local DB reset hygiene) — see PROJECT.md Active
+None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T05:35:00.000Z
-Stopped at: SEED-006 premium-features audit resolved (no paywall in v5.0)
-Resume file: N/A — between milestones
-Next action: `/clear` then `/gsd-new-milestone` to scope v5.0 Discovery North Star. SEED-006 audit complete (see `.planning/research/PREMIUM-MAP.md`) — v5.0 scopes freely with no monetization gating decisions to make.
+Last session: 2026-05-06
+Stopped at: v5.0 roadmap created — ROADMAP.md + STATE.md written, REQUIREMENTS.md traceability updated
+Resume file: None
+Next action: `/gsd-plan-phase 32` to begin DEBT-09 notesPublic fix

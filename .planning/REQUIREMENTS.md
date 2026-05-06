@@ -93,12 +93,29 @@
 
 ## Traceability
 
-*This section will be filled by the roadmapper when phases are created. Each REQ-ID will map to exactly one phase, and each phase will list its REQ-IDs.*
+*Filled by roadmapper 2026-05-06. All 16 v5.0 requirements mapped to exactly one phase.*
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| (filled by roadmap) | | |
+| DEBT-09 | Phase 32 | Pending |
+| DISC-10 | Phase 33 | Pending |
+| CAT-15 | Phase 34 | Pending |
+| CAT-16 | Phase 35 | Pending |
+| CAT-17 | Phase 36 | Pending |
+| CAT-14 | Phase 36 | Pending |
+| CAT-18 | Phase 37 | Pending |
+| CAT-13 | Phase 38 | Pending |
+| DISC-09 | Phase 39 | Pending |
+| DISC-11 | Phase 39 | Pending |
+| SRCH-16 | Phase 40 | Pending |
+| FIT-05 | Phase 40 | Pending |
+| SET-13 | Phase 41 | Pending |
+| SET-14 | Phase 41 | Pending |
+| DEBT-10 | Phase 42 | Pending |
+| DEBT-11 | Phase 42 | Pending |
+
+**Coverage: 16/16 requirements mapped. No orphans.**
 
 ---
 
-*Last updated: 2026-05-06 — milestone v5.0 requirements defined. 16 requirements across 8 categories. Up next: gsd-roadmapper.*
+*Last updated: 2026-05-06 — traceability filled by roadmapper. 16 requirements across 8 categories mapped to Phases 32–42.*

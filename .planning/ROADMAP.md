@@ -7,7 +7,7 @@
 - ✅ **v3.0 Production Nav & Daily Wear Loop** — Phases 11-16 + 999.1 (shipped 2026-04-27) — [archive](milestones/v3.0-ROADMAP.md)
 - ✅ **v4.0 Discovery & Polish** — Phases 17-26 + 19.1 + 20.1 (shipped 2026-05-03) — [archive](milestones/v4.0-ROADMAP.md)
 - ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
-- 📋 **v5.0 Discovery North Star** — planted (SEED-004)
+- 🚧 **v5.0 Discovery North Star** — Phases 32-42 (in progress)
 - 📋 **v6.0 Market Value** — planted (SEED-005)
 
 ## Phases
@@ -95,15 +95,171 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 
 </details>
 
-### 📋 v5.0 Discovery North Star (planted — SEED-004)
+### 🚧 v5.0 Discovery North Star (In Progress)
 
-Awaiting `/gsd-new-milestone` invocation. Anchored by CAT-13 (catalog → similarity engine rewire). Pre-milestone discovery audit (SEED-006) runs between v4.1 close and v5.0 start.
+**Milestone Goal:** Make Rdio-style click-driven discovery the organizing principle of Horlo by auditing every discovery surface, then rebuilding the catalog as a 5-level hierarchy that earns Reference granularity for the future recommender — clearing v4.x carryover along the way.
 
-### 📋 v6.0 Market Value (planted — SEED-005)
+**Build order:** Serial spine (Phases 32–40) with two parallel tracks (Phases 41–42). Serial phases have strict schema-layering dependencies. Parallel tracks run concurrently with any Phase 34+ serial work.
 
-Awaiting completion of v5.0. Watch Charts pricing-API integration; `market_prices` keyed on `catalog_id`.
+- [ ] **Phase 32: DEBT-09 notesPublic Fix** — Repair carryover data-loss regression; turn RED scaffold GREEN
+- [ ] **Phase 33: Discovery Audit** — Read-only click-path audit of all discovery surfaces; decisions doc gates all polish phases
+- [ ] **Phase 34: Layer A — Brand + Family Entities** — `brands` + `watch_families` tables; nullable FKs on `watches_catalog`
+- [ ] **Phase 35: Layer B — Lineage + Movement + Era/Material** — `watch_lineage_edges` with cycle-guard; `movement_type` enum; unblocks SRCH-16
+- [ ] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip
+- [ ] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep
+- [ ] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first
+- [ ] **Phase 39: Audit-Driven Discovery Polish** — Closes specific DISCOVERY-AUDIT.md row IDs; DISC-09 editorial slot + DISC-11 dead-end fixes
+- [ ] **Phase 40: Search & Verdict Polish** — SRCH-16 faceted filters + FIT-05 pairwise drill-down in CollectionFitCard
+- [ ] **Phase 41: Account Danger Zone + Branded Auth Emails** *(parallel track)* — SET-13 Danger Zone; SET-14 react-email templates
+- [ ] **Phase 42: Nyquist Hardening + UAT Triage** *(parallel track)* — VALIDATION.md sweep; ~33 UAT items triaged
+
+## Phase Details
+
+### Phase 32: DEBT-09 notesPublic Fix
+**Goal**: Repair the data-loss regression where `addWatch`/`editWatch` never persisted `notesPublic` and never called the correct `revalidatePath`, turning the existing RED scaffold GREEN before the multi-phase schema marathon begins.
+**Depends on**: Nothing (independent carryover bugfix; zero catalog dependencies)
+**Requirements**: DEBT-09
+**Success Criteria** (what must be TRUE):
+  1. `tests/actions/watches.notesPublic.test.ts` reaches 4/4 GREEN in CI (was 4/4 FAIL at v4.1 close)
+  2. Zod schemas in `src/app/actions/watches.ts` accept `notesPublic: z.boolean().optional()` on both `addWatch` and `editWatch`
+  3. Both Server Actions persist `notesPublic` to the database on every write
+  4. Both Server Actions call `revalidatePath('/u/[username]/[tab]', 'page')` after every successful write
+  5. No new test failures introduced; full test suite remains GREEN
+**Plans**: TBD
+
+### Phase 33: Discovery Audit
+**Goal**: Produce a falsifiable, read-only click-path audit of all discovery surfaces so that every downstream polish phase cites specific audit row IDs rather than vibes.
+**Depends on**: Phase 32 (CI must be trustworthy before committing audit findings)
+**Requirements**: DISC-10
+**Success Criteria** (what must be TRUE):
+  1. `.planning/phases/33-discovery-audit/DISCOVERY-AUDIT.md` exists and contains a click-path TABLE (not prose) with one row per `(surface × clickable element)` across `/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}` — each row tagged Live / Dead / Redundant / Missing
+  2. Pass/fail criteria are written at the TOP of DISCOVERY-AUDIT.md BEFORE any audit findings appear — the audit is self-falsifiable
+  3. A decisions section exists with explicit YES/NO/DEFERRED rows for: "combine home and explore?", lineage browse priority, dead-end closure priority, CAT-13 discovery framing
+  4. Every click-path table row has an assigned row ID (e.g., `DISC-AUDIT-01`) that subsequent phases can cite by reference
+  5. Zero code, schema, or dependency changes ship in this phase
+**Plans**: TBD
+
+### Phase 34: Layer A — Brand + Family Entities
+**Goal**: Add `brands` and `watch_families` as first-class catalog entities with nullable FKs on `watches_catalog`, giving every higher-level hierarchy feature its foundation without touching any existing query path.
+**Depends on**: Phase 33 (audit must not reveal scope-reducing findings before migration work begins)
+**Requirements**: CAT-15
+**Success Criteria** (what must be TRUE):
+  1. `brands` and `watch_families` tables exist in production with public-read RLS and service-role-write policies co-located in the migration file
+  2. `watches_catalog.brand_id` (nullable FK) and `watches_catalog.family_id` (nullable FK) columns exist; all existing DAL queries return correct results without modification
+  3. `has_table_privilege('anon', 'public.brands', 'SELECT')` and `has_table_privilege('anon', 'public.watch_families', 'SELECT')` both return true in production — RLS verified in the deploy runbook
+  4. A service-role backfill script exists at `scripts/backfill-catalog-brands.ts` for manual brand/family assignment (no automated migration; no admin UI in this phase)
+  5. Three-step migration discipline (nullable column add → backfill → NOT NULL flip) is documented in phase CONTEXT.md; the NOT NULL flip is explicitly deferred
+**Plans**: TBD
+
+### Phase 35: Layer B — Lineage Edges + Structured Movement + Era/Material
+**Goal**: Add the `watch_lineage_edges` junction table with cycle-safety guarantees, replace the free-text `movement` column with a structured enum, and add era/material/bracelet columns — unblocking the SRCH-16 movement facet.
+**Depends on**: Phase 34 (brand/family context needed for meaningful lineage edge data)
+**Requirements**: CAT-16
+**Success Criteria** (what must be TRUE):
+  1. `watch_lineage_edges` table exists with `(predecessor_catalog_id, successor_catalog_id, relationship_type, metadata)` and a BEFORE INSERT trigger that runs a bounded cycle-check query — inserting a self-loop or a cycle through existing edges raises an exception
+  2. Every recursive CTE in `src/data/hierarchy.ts` includes both the Postgres 15 `CYCLE` clause AND a depth guard of 10 — both must be present in every `WITH RECURSIVE` query
+  3. `getLineageForReference(catalogId)` DAL function exists in `src/data/hierarchy.ts` and returns correct results for a 3-node lineage chain in unit tests
+  4. `watches_catalog.movement_type` pgEnum (`auto`, `manual`, `quartz`, `spring_drive`) and `movement_caliber TEXT` columns exist; the old free-text `movement` column is removed or migrated; SRCH-16 can source its facet from `movement_type`
+  5. `era` (text), `case_material` (text), `bracelet_config` (text) columns exist on `watches_catalog`; all existing DAL queries return correct results unchanged
+**Plans**: TBD
+
+### Phase 36: Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL
+**Goal**: Create the `watch_variants` table, execute the clean-slate catalog DELETE to eliminate fragmented Reference rows, re-link user watches, and flip `watches.catalog_id` to NOT NULL — bundled together because the clean-slate provides the 100% backfill guarantee CAT-14 requires.
+**Depends on**: Phase 35 (movement enum and lineage schema must exist before canonical References are re-seeded)
+**Requirements**: CAT-17, CAT-14
+**Success Criteria** (what must be TRUE):
+  1. `watch_variants` table exists with `(catalog_id FK, dial_color, bezel, bracelet_variant)` columns; `watches.variant_id` optional FK added
+  2. The 6-step clean-slate runbook is executed in order and each step's verification output is documented in phase CONTEXT.md: (a) export user collection `catalog_id` refs to CSV backup, (b) DELETE fragmented rows from `watches_catalog` (NOT DROP TABLE — preserves pg_cron schedule, RLS policies, and `ON DELETE SET NULL` cascade behavior), (c) re-seed canonical Reference rows via idempotent `npm run db:backfill-catalog`, (d) re-link user watches via existing idempotent backfill (`WHERE catalog_id IS NULL`), (e) verify zero NULLs with `SELECT COUNT(*) FROM watches WHERE catalog_id IS NULL` returning 0, (f) proceed to CAT-14 NOT NULL flip
+  3. CAT-14 migration begins with a `DO $$ BEGIN ... END $$` pre-flight block asserting zero NULLs as its FIRST statement — the transaction aborts if any NULL exists before the `ALTER COLUMN SET NOT NULL` executes
+  4. `watches.catalog_id` is NOT NULL in production schema after this phase
+  5. All existing collection-browsing, profile, and verdict flows return correct watch data after the wipe and re-link; no user-visible watch data is lost
+**Plans**: TBD
+
+### Phase 37: Layer D — Provenance Fields + Divestments Table
+**Goal**: Add collector-diary provenance columns to `watches` and create the `divestments` table that gives the future recommender a timestamped sold-signal for temporal decay, replacing the insufficient `watches.status = 'sold'` alone.
+**Depends on**: Phase 36 (`watches.catalog_id NOT NULL` makes `divestments.catalog_id NOT NULL` meaningful)
+**Requirements**: CAT-18
+**Success Criteria** (what must be TRUE):
+  1. `watches` table gains 7 provenance columns: `serial`, `year_of_acquisition`, `condition`, `box_papers` (chip enum: `none` / `box-only` / `papers-only` / `full-set`), `service_history`, `paid_currency`, `purchase_date` — all nullable; all existing rows unaffected
+  2. `divestments` table exists with `(catalog_id NOT NULL, user_id, divested_at, replaced_by_catalog_id, sale_price, notes)` and RLS mirroring `watches` (`auth.uid() = user_id`)
+  3. Status transition `owned → sold` in the UI writes a row to `divestments` with `divested_at = NOW()` via a Server Action; `watches.status = 'sold'` remains for UI display purposes
+  4. WatchForm edit page shows a collapsed "Collector's Record" disclosure section exposing the 7 provenance fields — collapsed by default with no visual regression on the non-expanded state
+  5. Divestment dialog UI (post-status-change "I just sold this watch" flow) is explicitly documented as deferred to v5.x in phase CONTEXT.md
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 38: CAT-13 Engine Rewire
+**Goal**: Wire `analyzeSimilarity()` to consume catalog taste columns as an additive 9th scoring dimension gated on confidence, making the Phase 19.1 LLM-enrichment investment visible in collection fit verdicts for the first time.
+**Depends on**: Phases 34, 35, 36, 37 (all catalog layers must exist; clean-slate ensures high catalog coverage for meaningful taste JOIN results)
+**Requirements**: CAT-13
+**Success Criteria** (what must be TRUE):
+  1. `tests/static/similarity.taste-null.test.ts` is written AND passes BEFORE any change to `src/lib/similarity.ts` — asserts that when `catalogTaste` is null or `confidence < 0.5`, engine output is byte-identical to the pre-rewire baseline
+  2. `tests/static/similarity.taste-present.test.ts` is written AND passes BEFORE any change to `src/lib/similarity.ts` — asserts that when `catalogTaste` is present with `confidence >= 0.5`, the engine produces a higher alignment score for taste-compatible watch pairings vs. taste-incompatible pairings (directional assertion)
+  3. Both static guard tests continue passing after `similarity.ts` is modified — the rewire satisfies the guards, not just the pre-condition
+  4. `Watch` type in `src/lib/types.ts` includes optional `catalogTaste` field; `getWatchesByUser` DAL LEFT JOINs `watches_catalog` to populate `catalogTaste` on each returned Watch object
+  5. `tests/static/CollectionFitCard.no-engine.test.ts` import boundary guard remains unchanged and passing; `src/lib/extractors/llm.ts` D-07 byte-lock survives untouched
+**Plans**: TBD
+
+### Phase 39: Audit-Driven Discovery Polish
+**Goal**: Close specific row IDs from the Phase 33 DISCOVERY-AUDIT.md click-path table and decisions doc — shipping exactly the dead-end fixes and surface improvements the audit identified as highest priority.
+**Depends on**: Phase 38 (engine rewire needed for improved verdict quality on catalog pages; Phase 33 audit decisions gate all scope)
+**Requirements**: DISC-09, DISC-11
+**Success Criteria** (what must be TRUE):
+  1. Every plan in this phase cites a specific audit row ID (e.g., `DISC-AUDIT-07`) from DISCOVERY-AUDIT.md — no un-cited polish items ship
+  2. The DISCOVERY-AUDIT.md click-path table has zero rows still tagged Dead or Missing after this phase, OR each remaining Dead/Missing row carries an explicit DEFERRED annotation with a v5.x target reason
+  3. DISC-09 Editorial Featured Collection slot exists on `/explore` — admin-only (owner user_id check) write surface; curator-written blurb; free per SEED-006; detailed UX shaped by Phase 33 audit findings
+  4. Each DISC-11 polish item ships as a separate plan within this phase with the audit row ID it closes documented in that plan's CONTEXT.md
+  5. Scope is audit-conditional: if Phase 33 finds no Dead/Missing rows for a given surface, no work ships for that surface
+**Plans**: TBD (scope pending Phase 33 DISCOVERY-AUDIT.md)
+**UI hint**: yes
+
+### Phase 40: Search & Verdict Polish
+**Goal**: Add three faceted filters to the `/search` Watches tab and ship the pairwise drill-down section in CollectionFitCard, giving collectors taste-aware search refinement and side-by-side comparison.
+**Depends on**: Phase 35 (SRCH-16 hard-blocked on `movement_type` enum from Layer B), Phase 38 (FIT-05 verdict quality best after engine rewire populates taste dimensions)
+**Requirements**: SRCH-16, FIT-05
+**Success Criteria** (what must be TRUE):
+  1. `/search` Watches tab has three faceted filters: Movement Type chip group (`auto` / `manual` / `quartz` / `spring_drive` from `watches_catalog.movement_type`), Case Size chip group (pre-defined size bands from `case_size_mm`), Style multi-select chip group (from `style_tags`) — all filters narrow results without a full page reload
+  2. On mobile, facet controls appear in a bottom-sheet / drawer pattern (not a sidebar); filter state round-trips through URL params for shareability
+  3. CollectionFitCard accordion gains a "Compare with the [X] you own" pairwise drill-down section — two-column layout (max 2 items on mobile per NN/Group pattern) showing only taste-relevant dimensions, with a delta row at the bottom summarizing the key taste difference
+  4. SRCH-16 facets use the `movement_type` pgEnum column from Phase 35, not the deprecated free-text `movement` column — a test asserts the DAL query references `movement_type`
+  5. If Phase 35 (Layer B) slipped, SRCH-16 does not ship in this phase — the dependency is enforced with an explicit v5.x deferral note in phase CONTEXT.md
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 41: Account Danger Zone + Branded Auth Emails *(parallel track)*
+**Goal**: Ship the two Danger Zone account actions (Wipe Collection, Delete Account) and three branded Horlo auth email templates — both fully independent of the catalog hierarchy serial spine.
+**Depends on**: Phase 22 (Settings Account tab — shipped v4.0), Phase 21 (Resend SMTP — shipped v4.0). Independent of Phases 33–40; runs concurrently with any Phase 34+ serial work.
+**Parallel track note**: Numbered Phase 41 for ROADMAP.md tracking. Actual execution is concurrent with the serial spine — plan and execute this phase while any Layer A-D phase is in progress.
+**Requirements**: SET-13, SET-14
+**Success Criteria** (what must be TRUE):
+  1. `/settings#account` Danger Zone section exposes two distinct actions: "Wipe Collection" (deletes all `watches` + `wear_events` + `wear-photos/{userId}/` storage files; preserves account, profile, follows) and "Delete Account" (full hard delete via `supabase.auth.admin.deleteUser()`) — both require a type-to-confirm input + Phase 22 password re-auth + multi-step modal
+  2. Storage `wear-photos/{userId}/` files are explicitly purged BEFORE the database delete in the Delete Account flow — no orphaned storage objects remain post-deletion
+  3. The cascade behavior of Account Delete on `notifications.actor_id` rows for other users is documented with a UX note in phase CONTEXT.md
+  4. Three Supabase Auth email templates (Confirm signup, Reset Password, Change Email) are rebranded: 600px single-column HTML, Horlo header logo, brand color, single CTA button — built with `react-email` 6.1.1 + `@react-email/components`; cross-client verified on Apple Mail iOS dark mode + Outlook MSO conditional + Gmail web
+  5. Existing Resend SMTP at `mail.horlo.app` and DKIM signature are unaffected — template changes are HTML content only pasted into Supabase Auth dashboard; no Next.js code change ships for the email templates themselves
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 42: Nyquist Hardening Sweep + UAT Triage *(parallel track)*
+**Goal**: Retroactively bring v4.1 and v4.0 phases to Nyquist compliance and triage all ~33 deferred UAT items to explicit CLOSED / SUPERSEDED / DEFERRED states.
+**Depends on**: Phase 39 (audit-driven polish must ship before UAT triage — many UAT items touch surfaces v5.0 polish changes). Independent of catalog schema; runs concurrently with Phase 40 once Phase 39 is complete.
+**Parallel track note**: Numbered Phase 42 for ROADMAP.md tracking. Actual execution begins after Phase 39 completes and can overlap with Phase 40.
+**Requirements**: DEBT-10, DEBT-11
+**Success Criteria** (what must be TRUE):
+  1. VALIDATION.md files exist for Phases 25 and 26 (currently missing); VALIDATION.md files for Phases 27, 28, 30, 31 are upgraded from `partial` to `nyquist_compliant: true` + `wave_0_complete: true`
+  2. Phase 30 aspect-ratio / object-fit VALIDATION.md contains CSS chain assertions using computed styles (not class names) — assertions that would have caught the `h-full` hotfix regression per the v4.1 feedback memory
+  3. All ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23 are triaged: each item is CLOSED (UAT run and passed), SUPERSEDED (overtaken by later phase work — citing the superseding phase), or DEFERRED (carry to v5.x with an explicit reason)
+  4. Triage output exists as a closure table in phase CONTEXT.md — each row has: item description, original phase, disposition (CLOSED / SUPERSEDED / DEFERRED), resolution note
+  5. No new test failures introduced; all new assertions use computed-style checks, not class-name checks
+**Plans**: TBD
+
+---
 
 ## Progress
+
+**Execution Order:**
+Serial spine: 32 → 33 → 34 → 35 → 36 → 37 → 38 → 39 → 40
+Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 
 | Milestone | Phases | Plans Complete | Status | Completed |
 |-----------|--------|----------------|--------|-----------|
@@ -112,5 +268,46 @@ Awaiting completion of v5.0. Watch Charts pricing-API integration; `market_price
 | v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | 37/37 | ✅ Complete | 2026-04-27 |
 | v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | 65/65 | ✅ Complete | 2026-05-03 |
 | v4.1 Polish & Patch | 27-31 | 21/21 | ✅ Complete | 2026-05-05 |
-| v5.0 Discovery North Star | TBD | — | 📋 Planted | — |
+| v5.0 Discovery North Star | 32-42 | 0/? | 🚧 In progress | — |
 | v6.0 Market Value | TBD | — | 📋 Planted | — |
+
+### v5.0 Phase Detail
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 32. DEBT-09 notesPublic Fix | 0/? | Not started | - |
+| 33. Discovery Audit | 0/? | Not started | - |
+| 34. Layer A — Brand + Family | 0/? | Not started | - |
+| 35. Layer B — Lineage + Movement | 0/? | Not started | - |
+| 36. Layer C — Variants + Clean-Slate | 0/? | Not started | - |
+| 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
+| 38. CAT-13 Engine Rewire | 0/? | Not started | - |
+| 39. Audit-Driven Discovery Polish | 0/? | Not started | - |
+| 40. Search & Verdict Polish | 0/? | Not started | - |
+| 41. Account Danger Zone + Branded Emails *(parallel)* | 0/? | Not started | - |
+| 42. Nyquist Hardening + UAT Triage *(parallel)* | 0/? | Not started | - |
+
+---
+
+## Requirement Coverage — v5.0
+
+| REQ-ID | Phase | Description |
+|--------|-------|-------------|
+| DEBT-09 | 32 | notesPublic regression fix (addWatch / editWatch) |
+| DISC-10 | 33 | Discovery audit — click-path table + decisions doc |
+| CAT-15 | 34 | Layer A: Brand + Family entities |
+| CAT-16 | 35 | Layer B: Lineage edges + structured movement + era/material |
+| CAT-17 | 36 | Layer C: Variant split + clean-slate DELETE wipe |
+| CAT-14 | 36 | SET NOT NULL on watches.catalog_id (bundled with CAT-17) |
+| CAT-18 | 37 | Layer D: Provenance fields + divestments table |
+| CAT-13 | 38 | Engine rewire — catalog taste as 9th similarity dimension |
+| DISC-09 | 39 | Editorial Featured Collection slot on /explore |
+| DISC-11 | 39 | Audit-driven discovery surface polish (closes DISC-AUDIT row IDs) |
+| SRCH-16 | 40 | Search facets: Movement / Case Size / Style |
+| FIT-05 | 40 | CollectionFitCard pairwise drill-down |
+| SET-13 | 41 | Account Danger Zone (Wipe Collection + Delete Account) |
+| SET-14 | 41 | Branded auth email templates (react-email) |
+| DEBT-10 | 42 | Nyquist hardening sweep (v4.0 / v4.1 phases) |
+| DEBT-11 | 42 | UAT triage (~33 deferred items) |
+
+**Coverage: 16/16 v5.0 requirements mapped. No orphans.**
