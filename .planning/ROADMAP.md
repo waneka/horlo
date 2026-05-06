@@ -123,7 +123,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
   1. `tests/actions/watches.notesPublic.test.ts` reaches 4/4 GREEN in CI (was 4/4 FAIL at v4.1 close)
   2. Zod schemas in `src/app/actions/watches.ts` accept `notesPublic: z.boolean().optional()` on both `addWatch` and `editWatch`
   3. Both Server Actions persist `notesPublic` to the database on every write
-  4. Both Server Actions call `revalidatePath('/u/[username]/[tab]', 'page')` after every successful write
+  4. Both Server Actions call `revalidatePath('/u/[username]', 'layout')` after every successful write
   5. No new test failures introduced; full test suite remains GREEN
 **Plans**: 1 plan
 Plans:
