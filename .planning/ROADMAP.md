@@ -141,10 +141,20 @@ Plans:
   5. Zero code, schema, or dependency changes ship in this phase
 **Plans**: 4 plans
 Plans:
+**Wave 1**
 - [ ] 33-01-PLAN.md — Wave 0 scaffold: checks/quick.sh + checks/full.sh (D-13 5-rule validator) + 33-DISCOVERY-AUDIT.md skeleton (Pass/Fail @ TOP, Rdio anchor, 8-col table header, 4 decision stubs)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 33-02-PLAN.md — Pass A source-grep enumeration: fill 130–250 candidate rows for all 15 D-05 surface blocks; capture WR-07 wishlist.ts:206 flagship Dead row
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 33-03-PLAN.md — Pass B runtime-gate annotation: walk G-1..G-20, finalize viewer_state column, apply row-splits for G-3/G-4/G-6/G-7/G-12 divergent renderings
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 33-04-PLAN.md — Pass C production browser spot-check (~25–30 high-stakes rows, owner + fresh-account, desktop + mobile) + Pass D author 4 decision verdicts (Q1–Q4 per D-17)
+
+**Cross-cutting constraints:**
+- Zero files modified outside .planning/phases/33-discovery-audit/
 
 ### Phase 34: Layer A — Brand + Family Entities
 **Goal**: Add `brands` and `watch_families` as first-class catalog entities with nullable FKs on `watches_catalog`, giving every higher-level hierarchy feature its foundation without touching any existing query path.

@@ -514,27 +514,31 @@ This is a documentation phase — no code ships. Below are example *audit table 
 ### Tertiary (LOW confidence)
 - None — the entire audit method is locked in CONTEXT.md; this research operationalizes that spec rather than hypothesizing.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All 4 questions are resolved below. Each `RESOLVED:` decision has been folded
+> into the Phase 33 plan set (33-01..33-04) per the plan checker's Dimension 11
+> verification.
 
 1. **Should the source-grep recipe also include `redirect()` calls outside of page.tsx?**
    - What we know: `redirect(\`/u/${username}/collection\`)` at `src/app/u/[username]/page.tsx:10` is a navigation affordance; counted in the page-level grep above.
    - What's unclear: Server Actions also use `redirect()` (e.g., post-signup redirects). These aren't user-facing clickable elements but they ARE click-path destinations.
-   - Recommendation: Treat Server Action `redirect()` calls as TARGETS of affordances (the affordance is the form submit; the redirect is where it ends up), NOT separate affordances. This matches D-10 schema where `target` is a route or action.
+   - **RESOLVED:** Treat Server Action `redirect()` calls as TARGETS of affordances (the affordance is the form submit; the redirect is where it ends up), NOT separate affordances. This matches D-10 schema where `target` is a route or action. Adopted by Plan 33-02 Pass A grep recipe (Server Action `redirect()` is captured under the form-submit affordance row, not a separate row).
 
 2. **How to handle BottomNav rendering on PUBLIC_PATHS (G-18)?**
    - What we know: BottomNav.tsx:104 returns null on PUBLIC_PATHS. Auth pages (/login, /signup) hide BottomNav entirely.
    - What's unclear: Should the audit document these no-render cases as Dead rows? Or skip because PUBLIC_PATHS are out of scope per D-05?
-   - Recommendation: Skip — D-05 explicitly excludes /login, /signup, etc. The "BottomNav doesn't render on /login" is correct behavior, not a discovery dead-end.
+   - **RESOLVED:** Skip — D-05 explicitly excludes /login, /signup, etc. The "BottomNav doesn't render on /login" is correct behavior, not a discovery dead-end. Adopted by Plan 33-02 (PUBLIC_PATHS surfaces are not enumerated as audit rows).
 
 3. **Phase 30 CSS-chain blind spot — should the audit assert computed styles?**
    - What we know: `feedback_ui_spec_css_chain_blind_spot.md` says class-name validation missed the black-bar bug; computed-style assertions would have caught it.
    - What's unclear: Phase 33 is documentation-only; computed-style assertions belong in Phase 30/42 VALIDATION.md backfill.
-   - Recommendation: Audit author OBSERVES at mobile viewport (V-8) and tags any visible aspect-ratio / object-fit failure as a Dead row with evidence "rendered black-bar at viewport 390px"; the FIX is Phase 42 (DEBT-10 Nyquist hardening), not Phase 33.
+   - **RESOLVED:** Audit author OBSERVES at mobile viewport (V-8) and tags any visible aspect-ratio / object-fit failure as a Dead row with evidence "rendered black-bar at viewport 390px"; the FIX is Phase 42 (DEBT-10 Nyquist hardening), not Phase 33. Adopted by Plan 33-04 Pass C browser spot-check (mobile-viewport observation captures CSS-chain failures as Dead rows; remediation is out-of-scope for this phase).
 
 4. **Decision Q4 ("CAT-13 discovery framing") — what does the verdict actually decide?**
    - What we know: D-17 says Q4 drives Phase 38 framing — "tech debt" vs "discovery improvement".
    - What's unclear: How does the AUDIT TABLE produce evidence for this decision? CAT-13 is engine code, not a click-path affordance.
-   - Recommendation: The verdict cites Missing rows on `/catalog/{id}` and `/watch/{id}` where the verdict is suppressed (G-4, G-6 empty-collection branches) OR where catalog taste columns would visibly change the verdict label. If many such rows exist, CAT-13 is a discovery improvement; if few, it's tech debt. Audit author should look for verdict-related rows and weight Q4 accordingly.
+   - **RESOLVED:** The verdict cites Missing rows on `/catalog/{id}` and `/watch/{id}` where the verdict is suppressed (G-4, G-6 empty-collection branches) OR where catalog taste columns would visibly change the verdict label. If many such rows exist, CAT-13 is a discovery improvement; if few, it's tech debt. Audit author should look for verdict-related rows and weight Q4 accordingly. Adopted by Plan 33-04 Pass D Decision Q4 verdict-authoring guidance (verdict cites Missing-row count on /catalog/{id} and /watch/{id} verdict-suppression branches).
 
 ## Environment Availability
 
