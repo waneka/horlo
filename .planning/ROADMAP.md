@@ -166,7 +166,18 @@ Plans:
   3. A decisions section exists with explicit YES/NO/DEFERRED verdicts for the 4 D-17 questions deferred from Phase 33 (combine home+explore, lineage browse priority, dead-end closure priority, CAT-13 framing); each verdict has a 2–4 sentence rationale citing specific north-star findings AND specific DISC-AUDIT-NN backing rows from Phase 33
   4. Every missing-vector row is anchored to the SEED-004 Rdio principle (`.planning/seeds/SEED-004-v5-discovery-north-star.md` line 15) AND cites at least one DISC-AUDIT-NN row from Phase 33 that captures the click-path absence
   5. Zero code, schema, or dependency changes ship in this phase; zero modifications to Phase 33's `33-DISCOVERY-AUDIT.md` (the click-path table is immutable for cross-reference stability)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 33b-01-PLAN.md — Wave 0 scaffold: checks/quick.sh, checks/full.sh, audit-doc skeleton with 6 sections + 7-column NSD-13 table header + 4 NSD-16 decision stubs + skeleton sentinel
+- [ ] 33b-02-PLAN.md — Wave 1 cell population: 42 NSV-NN rows (6 entities × 7 vectors) via 3-pass authoring (status → backing_rows → rationale + leverage); 6 per-entity-block commits; full.sh rules 1-4 green
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 33b-03-PLAN.md — Wave 2 decisions + closeout: 4 D-17 verdicts (Q1 home+explore, Q2 lineage browse, Q3 dead-end closure, Q4 CAT-13 framing) per NSD-16 extended template; flip frontmatter decision: final; update STATE.md; full.sh exit 0
+
+**Cross-cutting constraints:**
+- Zero files modified outside .planning/phases/33b-discovery-north-star-audit/
 
 ### Phase 34: Layer A — Brand + Family Entities
 **Goal**: Add `brands` and `watch_families` as first-class catalog entities with nullable FKs on `watches_catalog`, giving every higher-level hierarchy feature its foundation without touching any existing query path.
