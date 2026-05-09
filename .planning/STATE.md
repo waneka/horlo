@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 34 Plan 04 complete out-of-order (Wave 4 deploy runbook; Wave 3 prod push still pending — runbook now in hand)
-last_updated: "2026-05-09T17:35:00.000Z"
-last_activity: 2026-05-09 -- Phase 34 Plan 04 complete out-of-order (deploy runbook +118 lines; CAT-15 SC#5 satisfied)
+stopped_at: Phase 34 all 4 plans complete; verifier next
+last_updated: "2026-05-09T18:00:00.000Z"
+last_activity: 2026-05-09 -- Phase 34 Wave 3 prod push complete; 6 brands populated, 9/9 catalog linked, RLS truth t/t
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 31
+  completed_plans: 12
+  percent: 33
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 34 — EXECUTING (Waves 1+2+4 complete out-of-order; Wave 3 prod push pending; 3/4 plans complete)
-Next: execute 34-03-PLAN.md (production push: supabase db push --linked + drizzle migrate + prod backfill — operator now holds the runbook from Plan 04)
-Status: Executing Phase 34
-Last activity: 2026-05-09 -- Phase 34 Plan 04 deploy runbook complete (1 commit; +118 lines to docs/deploy-db-setup.md; CAT-15 SC#5 satisfied)
+Phase: 34 — ALL 4 PLANS COMPLETE; verifier next (4/4 plans done; ready for goal-backward verification)
+Next: run gsd-verifier; then file DEBT ticket for drizzle journal drift (Task #12)
+Status: Phase 34 ready for verification
+Last activity: 2026-05-09 -- Phase 34 Wave 3 prod push complete (6 brands, 9/9 linked, RLS t/t, pg_depend +4)
 
 Progress: [███████░░░] 31%
 

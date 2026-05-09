@@ -199,7 +199,7 @@ Plans:
 - [x] 34-02-PLAN.md — Backfill layer: scripts/backfill-catalog-brands.ts (3-pass derive→patch→link, idempotent); scripts/country.json starter map; package.json db:backfill-catalog-brands entry
 
 **Wave 3** *(blocked on Wave 2 completion; BLOCKING production deploy)*
-- [ ] 34-03-PLAN.md — Production deploy: supabase db push --linked + drizzle-kit migrate; brand backfill against prod with inline DATABASE_URL override (Footgun T-34-04); 2 checkpoint:human-verify gates
+- [x] 34-03-PLAN.md — Production deploy: supabase db push --linked + drizzle-kit migrate; brand backfill against prod with inline DATABASE_URL override (Footgun T-34-04); 2 checkpoint:human-verify gates [shipped 2026-05-09: 6 brands, 9/9 linked, RLS t/t]
 
 **Wave 4** *(blocked on Wave 3 completion; ran out-of-order BEFORE Wave 3 per user request — runbook in hand for prod push)*
 - [x] 34-04-PLAN.md — Deploy runbook: docs/deploy-db-setup.md Phase 34 section (§34.0-§34.7) + local-reset workflow update
