@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 34 Plan 01 complete (Wave 1 done; Wave 2 next)
-last_updated: "2026-05-09T15:16:00.000Z"
-last_activity: 2026-05-09 -- Phase 34 Plan 01 complete (schema layer shipped; 3 commits)
+stopped_at: Phase 34 Plan 02 complete (Wave 2 done; Wave 3 next — prod push)
+last_updated: "2026-05-09T15:32:00.000Z"
+last_activity: 2026-05-09 -- Phase 34 Plan 02 complete (backfill script shipped; 3 commits; local idempotent smoke green)
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 12
-  completed_plans: 9
-  percent: 27
+  completed_plans: 10
+  percent: 29
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 34 — EXECUTING (Wave 1 complete; Wave 2 next; 1/4 plans complete)
-Next: execute 34-02-PLAN.md (backfill script)
+Phase: 34 — EXECUTING (Waves 1+2 complete; Wave 3 next; 2/4 plans complete)
+Next: execute 34-03-PLAN.md (production push: supabase db push --linked + drizzle migrate + prod backfill)
 Status: Executing Phase 34
-Last activity: 2026-05-09 -- Phase 34 Plan 01 schema layer complete (3 commits, 11/11 tests pass)
+Last activity: 2026-05-09 -- Phase 34 Plan 02 backfill script complete (3 commits; local idempotent smoke 4/4 exit 0)
 
-Progress: [██████░░░░] 27%
+Progress: [██████░░░░] 29%
 
 ```
 v1.0 MVP                          [x] shipped 2026-04-19
@@ -38,7 +38,7 @@ v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
 v4.1 Polish & Patch               [x] shipped 2026-05-05
-v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 next up (12 phases, 17 reqs)
+v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 in progress 2/4 (12 phases, 17 reqs)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
 [██████████████████████] 5 milestones shipped
@@ -48,15 +48,15 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 1 (v5.0)
-- Average duration: ~5 min
-- Total execution time: ~5 min
+- Total plans completed: 2 (v5.0)
+- Average duration: ~7.5 min
+- Total execution time: ~15 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 34 (Layer A) | 1/4 | ~5 min | ~5 min |
+| 34 (Layer A) | 2/4 | ~15 min | ~7.5 min |
 
 *Updated after each plan completion*
 
@@ -77,6 +77,8 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - **Phase 33b Q4 verdict (2026-05-09):** YES — CAT-13 discovery framing. NSV-01/06/15/20/41 partial-high pattern across /watch, /catalog, /search per-watch surfaces makes "discovery improvement" (NOT tech-debt) the framing aligned with the v5.0 SEED-004 north-star. Drives Phase 38 plan motivation framing: discovery improvement. Per `33b-DISCOVERY-NORTH-STAR-AUDIT.md` § Decisions Q4.
 - **Phase 34 Plan 01 (2026-05-09):** Drizzle migration MUST be self-idempotent (CREATE TABLE IF NOT EXISTS + DO-block FK guards) — collapses Phase 17 dual-file pattern and survives `supabase db push --linked` running first then `drizzle-kit migrate` running second. Plan 03 prod-push depends on this idempotence.
 - **Phase 34 Plan 01 (2026-05-09):** drizzle/meta/_journal.json MUST be appended in same task as the Drizzle migration file — without the idx=7 entry, drizzle-kit migrate silently skips 0007 in prod and the prod `__drizzle_migrations` row count stays unchanged (silent no-op).
+- **Phase 34 Plan 02 (2026-05-09):** Backfill script ships brand-only — family backfill belongs in Phase 35 alongside lineage_edges curation per CONTEXT D-03; pre-emptive operator-as-author country.json seeding (44 brands incl. local catalog tail) extended plan-spec 40 to ensure passB validation surface during local smoke (10/11 brands patched).
+- **Phase 34 Plan 02 (2026-05-09):** 3-pass idempotent rhythm proven: 4 successive local invocations all exit 0; runs 2 and 4 report `inserted=0 patched=0 linked=0 unlinked=0` confirming WHERE-x-IS-NULL filter shrink-to-empty pattern. Plan 03 prod push depends on this idempotence (interrupted-then-resumed prod runs are safe).
 
 ### Blockers/Concerns
 
@@ -91,7 +93,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T15:16:00.000Z
-Stopped at: Phase 34 Plan 01 complete (3 commits: 5437048, 70d701b, 5a47079; 11/11 tests pass; Wave 2 next)
-Resume file: .planning/phases/34-layer-a-brand-family-entities/34-02-PLAN.md
-Next action: continue Phase 34 execution (Wave 2: backfill script)
+Last session: 2026-05-09T15:32:00.000Z
+Stopped at: Phase 34 Plan 02 complete (3 commits: e5adb0f, d50a26a, a7c53f1; local smoke 4/4 exit 0; Wave 3 next)
+Resume file: .planning/phases/34-layer-a-brand-family-entities/34-03-PLAN.md
+Next action: continue Phase 34 execution (Wave 3: production deploy — supabase db push + drizzle migrate + prod backfill with inline DATABASE_URL override)

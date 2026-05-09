@@ -196,7 +196,7 @@ Plans:
 - [x] 34-01-PLAN.md — Schema layer: src/db/schema.ts brands+watchFamilies+FK columns; drizzle/0007 migration; supabase/20260510000000 authoritative DDL with RLS+GENERATED+assertions; tests/integration/phase34-rls.test.ts (11 tests)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 34-02-PLAN.md — Backfill layer: scripts/backfill-catalog-brands.ts (3-pass derive→patch→link, idempotent); scripts/country.json starter map; package.json db:backfill-catalog-brands entry
+- [x] 34-02-PLAN.md — Backfill layer: scripts/backfill-catalog-brands.ts (3-pass derive→patch→link, idempotent); scripts/country.json starter map; package.json db:backfill-catalog-brands entry
 
 **Wave 3** *(blocked on Wave 2 completion; BLOCKING production deploy)*
 - [ ] 34-03-PLAN.md — Production deploy: supabase db push --linked + drizzle-kit migrate; brand backfill against prod with inline DATABASE_URL override (Footgun T-34-04); 2 checkpoint:human-verify gates
