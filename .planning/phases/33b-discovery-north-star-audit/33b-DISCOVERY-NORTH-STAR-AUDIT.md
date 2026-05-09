@@ -137,11 +137,11 @@ The 4 D-17 decisions deferred from Phase 33 per NSD-16. Each verdict uses the Ph
 
 ### Decision Q2: Lineage browse priority
 
-**Verdict:** TBD (YES | NO | DEFERRED — set in Wave 2)
-**Rationale:** TBD by Wave 2 (Plan 03) — 2–4 sentences citing audit findings.
-**Cited NSV rows:** TBD
-**Backing DISC-AUDIT rows:** TBD
-**Drives:** TBD downstream phase / item gated by this verdict.
+**Verdict:** DEFERRED
+**Rationale:** Wave 1's evidence confirms the same-family/lineage vector is missing high on /catalog (NSV-16 anchored to DISC-AUDIT-130 — the explicit "no walk-back to other watches in the same family" absence) and missing high on /watch (NSV-02 — the per-watch family-walk counterpart with no Phase 33 backing because the affordance is absent at the surface), with NSV-09 (Collector Profile) missing med rounding out the cross-entity gap. The leverage rating supports prioritizing the lineage vector — family-walk is a canonical Rdio drift direction the catalog surface fails to honor — but per NSD-12 leverage informs without forcing the verdict, and the project's locked default (STATE.md "Phase 35 ships schema-only; browse UI affordances move to Phase 39 or v5.x per Phase 33b lineage-priority verdict") favors splitting schema delivery from UI delivery. Phase 35's CAT-15/CAT-16 work (brands + watch_families + lineage edges) is large enough to warrant its own phase focus; folding browse-UI affordances into Phase 35 would compromise schema-quality on a foundational layer in exchange for UI work that fits naturally in a polish phase. The verdict is therefore DEFERRED — Phase 35 ships schema-only; lineage browse UI is deferred to Phase 39 (preferred — closes alongside other high-leverage missing-vector cells) or v5.x if Phase 39 capacity does not absorb it.
+**Cited NSV rows:** NSV-02, NSV-09, NSV-16
+**Backing DISC-AUDIT rows:** DISC-AUDIT-130
+**Drives:** Phase 35 Layer B — Lineage Edges + Structured Movement + Era/Material — UI scope: schema-only; lineage browse UI deferred to Phase 39 (closes alongside Q3 high-leverage backlog) or v5.x if Phase 39 capacity does not absorb the UI work.
 
 ### Decision Q3: Dead-end closure priority
 
