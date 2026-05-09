@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 33b context gathered
-last_updated: "2026-05-09T05:11:32.344Z"
-last_activity: 2026-05-09 -- Phase 33b planning complete
+stopped_at: Phase 33b complete; 4 D-17 verdicts published
+last_updated: "2026-05-09T05:30:00.000Z"
+last_activity: 2026-05-09 -- Phase 33b closed; 4 D-17 verdicts published
 progress:
   total_phases: 12
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 8
+  percent: 25
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 33b — Discovery North-Star Audit
+**Current focus:** Phase 33b — discovery-north-star-audit
 
 ## Current Position
 
-Phase: 33 — COMPLETE (4/4 plans; Pass D verdicts deferred to Phase 33b)
-Next: Phase 33b — Discovery North-Star Audit (DISC-12)
-Status: Ready to execute
-Last activity: 2026-05-09 -- Phase 33b planning complete
+Phase: 33b — COMPLETE (3/3 plans; 4 D-17 verdicts authored)
+Next: Phase 34 — Layer A — Brand + Family Entities (CAT-15)
+Status: Ready to execute Phase 34
+Last activity: 2026-05-09 -- Phase 33b closed; 4 D-17 verdicts published
 
-Progress: [██░░░░░░░░] 17%
+Progress: [█████░░░░░] 25%
 
 ```
 v1.0 MVP                          [x] shipped 2026-04-19
@@ -38,7 +38,7 @@ v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
 v4.1 Polish & Patch               [x] shipped 2026-05-05
-v5.0 Discovery North Star         [ ] Phases 32+33 done (2/12) — Phase 33b next up (12 phases, 17 reqs)
+v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 next up (12 phases, 17 reqs)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
 [██████████████████████] 5 milestones shipped
@@ -71,13 +71,17 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - No paywall in v5.0 (SEED-006 resolved 2026-05-06): build fully free; revisit monetization post-recommender
 - SRCH-16 hard-blocked on Phase 35 (movement_type enum): if Layer B slips, SRCH-16 defers to v5.x
 - **Phase 33b inserted 2026-05-08:** the 4 D-17 product decisions (combine home+explore, lineage browse priority, dead-end closure priority, CAT-13 framing) deferred from Phase 33 because they are inherently product judgments against the SEED-004 Rdio principle, not engineering judgments the click-path data alone can answer. Phase 33 ships its 136-row click-path table as the immutable research substrate; Phase 33b runs the per-entity drift-vector analysis and authors the 4 verdicts. Phase 34/35/38/39 dependency upgraded from Phase 33 → Phase 33b.
+- **Phase 33b Q1 verdict (2026-05-09):** NO — combine home and explore? Wave 1 evidence shows complementary (not redundant) vector mixes: Home ships taste-personalization (NSV-22/26) where Explore is missing; Explore ships raw-popularity cross-collector graph (NSV-32) where Home only partially has it. Drives Phase 39 polish ordering: home/explore consolidation NOT scoped into Phase 39 (or any v5.0 phase) per `33b-DISCOVERY-NORTH-STAR-AUDIT.md` § Decisions Q1.
+- **Phase 33b Q2 verdict (2026-05-09):** DEFERRED — lineage browse priority. Anchored to NSV-16 missing high (DISC-AUDIT-130) + NSV-02 missing high. Per NSD-12 leverage informs without forcing the verdict; the project's locked default favors splitting schema delivery (Phase 35) from UI delivery (Phase 39 / v5.x). Drives Phase 35 UI scope: schema-only; lineage browse UI deferred to Phase 39 (preferred — closes alongside Q3 backlog) or v5.x if Phase 39 capacity does not absorb the UI work.
+- **Phase 33b Q3 verdict (2026-05-09):** YES — dead-end closure priority. 10 high-leverage cells identified (NSV-01/02/06/08/12/14/15/16/18/20). Drives Phase 39 sorted backlog (cheapest-to-costliest patch order): NSV-01, NSV-15, NSV-08, NSV-06, NSV-20, NSV-12, NSV-14 (8-row sub-cluster), NSV-18; with NSV-02 + NSV-16 absorbed via Q2 schema-then-UI handoff. Med/low-leverage cells DEFERRED to v5.x. Per `33b-DISCOVERY-NORTH-STAR-AUDIT.md` § Decisions Q3.
+- **Phase 33b Q4 verdict (2026-05-09):** YES — CAT-13 discovery framing. NSV-01/06/15/20/41 partial-high pattern across /watch, /catalog, /search per-watch surfaces makes "discovery improvement" (NOT tech-debt) the framing aligned with the v5.0 SEED-004 north-star. Drives Phase 38 plan motivation framing: discovery improvement. Per `33b-DISCOVERY-NORTH-STAR-AUDIT.md` § Decisions Q4.
 
 ### Blockers/Concerns
 
-- Phase 39 scope is audit-conditional on Phase 33b: do not write Phase 39 plans until Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md verdicts are committed
-- Phase 35 lineage browse UI scope is audit-conditional on Phase 33b Q2 verdict: Phase 35 ships schema-only; browse UI affordances move to Phase 39 or v5.x per Phase 33b lineage-priority verdict
-- Phase 38 CAT-13 framing ("tech debt" vs "discovery improvement") shaped by Phase 33b Q4 verdict — affects how Phase 38 plans frame their motivation, not Phase 38's hard scope
-- Phase 33 click-path table (`33-DISCOVERY-AUDIT.md`) is IMMUTABLE for Phase 33b consumption — Phase 33b reads but does not modify it; Phase 33b produces a separate `DISCOVERY-NORTH-STAR-AUDIT.md` artifact
+- ~~Phase 39 scope is audit-conditional on Phase 33b: do not write Phase 39 plans until Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md verdicts are committed~~ — RESOLVED 2026-05-09 by Phase 33b Q3 verdict (sorted Phase 39 backlog handed off)
+- ~~Phase 35 lineage browse UI scope is audit-conditional on Phase 33b Q2 verdict: Phase 35 ships schema-only; browse UI affordances move to Phase 39 or v5.x per Phase 33b lineage-priority verdict~~ — RESOLVED 2026-05-09 by Phase 33b Q2 verdict (DEFERRED — schema-only Phase 35; browse UI to Phase 39 / v5.x)
+- ~~Phase 38 CAT-13 framing ("tech debt" vs "discovery improvement") shaped by Phase 33b Q4 verdict — affects how Phase 38 plans frame their motivation, not Phase 38's hard scope~~ — RESOLVED 2026-05-09 by Phase 33b Q4 verdict (discovery improvement framing)
+- Phase 33 click-path table (`33-DISCOVERY-AUDIT.md`) is IMMUTABLE for Phase 33b consumption — Phase 33b reads but does not modify it; Phase 33b produced a separate `33b-DISCOVERY-NORTH-STAR-AUDIT.md` artifact (T-33b-01 mitigation green throughout Phase 33b)
 
 ### Pending Todos
 
@@ -85,7 +89,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T04:21:27.275Z
-Stopped at: Phase 33b context gathered
-Resume file: .planning/phases/33b-discovery-north-star-audit/33b-CONTEXT.md
-Next action: `/gsd-discuss-phase 33b` to begin the product-framed Rdio north-star audit
+Last session: 2026-05-09T05:30:00.000Z
+Stopped at: Phase 33b complete; 4 D-17 verdicts published
+Resume file: .planning/phases/33b-discovery-north-star-audit/33b-03-SUMMARY.md
+Next action: `/gsd-execute-phase 34` to begin Layer A — Brand + Family Entities (CAT-15)

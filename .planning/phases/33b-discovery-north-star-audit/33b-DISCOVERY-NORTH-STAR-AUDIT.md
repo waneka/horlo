@@ -5,7 +5,7 @@ date: 2026-05-08
 audit_seed: SEED-004
 phase: 33b-discovery-north-star-audit
 requirement: DISC-12
-decision: pending
+decision: final
 predecessor_audit: 33-discovery-audit
 ---
 
@@ -153,8 +153,8 @@ The 4 D-17 decisions deferred from Phase 33 per NSD-16. Each verdict uses the Ph
 
 ### Decision Q4: CAT-13 discovery framing
 
-**Verdict:** TBD (YES | NO | DEFERRED — set in Wave 2)
-**Rationale:** TBD by Wave 2 (Plan 03) — 2–4 sentences citing audit findings.
-**Cited NSV rows:** TBD
-**Backing DISC-AUDIT rows:** TBD
-**Drives:** TBD downstream phase / item gated by this verdict.
+**Verdict:** YES
+**Rationale:** Wave 1's evidence anchors CAT-13's effect across two paired vector clusters on the per-watch surfaces — the evaluative-verdict cluster (NSV-06 Watch Detail partial high via DISC-AUDIT-81 + DISC-AUDIT-131; NSV-20 Catalog partial high via DISC-AUDIT-70 + DISC-AUDIT-130; NSV-41 Search Results partial med via DISC-AUDIT-63 + DISC-AUDIT-64) and the similar-by-taste cluster (NSV-01 Watch Detail partial high via DISC-AUDIT-82; NSV-15 Catalog partial high via DISC-AUDIT-71). All five cells are status=partial via NSD-06 worst-case viewer-state aggregation — the canonical "does this fit my collection" answer is silently absent or text-only across every per-watch surface for fresh-account viewers, while the mostSimilar lists name taste-derived candidates without click-through for owner-populated viewers. CAT-13's engine rewire (catalog→similarity engine reads watches_catalog taste columns at JOIN time post-Phase 38) directly upgrades these cell statuses by enabling taste-aware verdict computation against the full catalog and clickable similar-by-taste targets sourced from structured taste signal — a discovery improvement, not a tech-debt cleanup. Per NSD-12, leverage informs without forcing the verdict, but the uniformity of the partial-high pattern across three per-watch surfaces (the visibility of the missing taste-aware verdict signal everywhere a viewer evaluates a watch) makes "discovery improvement" the framing that aligns Phase 38's plan motivation with the audit's evidence; framing CAT-13 as tech-debt understates what the rewire delivers to the v5.0 SEED-004 north-star.
+**Cited NSV rows:** NSV-01, NSV-06, NSV-15, NSV-20, NSV-41
+**Backing DISC-AUDIT rows:** DISC-AUDIT-63, DISC-AUDIT-64, DISC-AUDIT-70, DISC-AUDIT-71, DISC-AUDIT-81, DISC-AUDIT-82, DISC-AUDIT-130, DISC-AUDIT-131
+**Drives:** Phase 38 CAT-13 Engine Rewire — plan motivation framing: discovery improvement (NOT tech-debt). Phase 38 plans frame the engine rewire as a v5.0 discovery feature whose downstream effect upgrades evaluative-verdict and similar-by-taste cell statuses across /watch, /catalog, and /search per-watch surfaces.
