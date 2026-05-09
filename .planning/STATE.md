@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 34 all 4 plans complete; verifier next
-last_updated: "2026-05-09T18:00:00.000Z"
-last_activity: 2026-05-09 -- Phase 34 Wave 3 prod push complete; 6 brands populated, 9/9 catalog linked, RLS truth t/t
+stopped_at: Phase 34 COMPLETE (verifier passed; DEBT-12 filed)
+last_updated: "2026-05-09T18:30:00.000Z"
+last_activity: 2026-05-09 -- Phase 34 verifier PASSED 5/5 must-haves; DEBT-12 (drizzle journal repair) filed, RLS truth t/t
 progress:
   total_phases: 12
   completed_phases: 3
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 34 — ALL 4 PLANS COMPLETE; verifier next (4/4 plans done; ready for goal-backward verification)
-Next: run gsd-verifier; then file DEBT ticket for drizzle journal drift (Task #12)
-Status: Phase 34 ready for verification
-Last activity: 2026-05-09 -- Phase 34 Wave 3 prod push complete (6 brands, 9/9 linked, RLS t/t, pg_depend +4)
+Phase: 34 — COMPLETE ✓ (verifier passed 5/5 must-haves; ready to advance to Phase 35)
+Next: `/gsd-discuss-phase 35` (Layer B — Lineage Edges + Structured Movement + Era/Material)
+Status: Phase 34 SHIPPED to prod; Phase 35 ready to start
+Last activity: 2026-05-09 -- Phase 34 verifier PASSED; DEBT-12 (drizzle journal repair) filed for opportunistic Phase 35 pickup
 
 Progress: [███████░░░] 31%
 
