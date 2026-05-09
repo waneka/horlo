@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 34 Plan 02 complete (Wave 2 done; Wave 3 next — prod push)
-last_updated: "2026-05-09T15:32:00.000Z"
-last_activity: 2026-05-09 -- Phase 34 Plan 02 complete (backfill script shipped; 3 commits; local idempotent smoke green)
+stopped_at: Phase 34 Plan 04 complete out-of-order (Wave 4 deploy runbook; Wave 3 prod push still pending — runbook now in hand)
+last_updated: "2026-05-09T17:35:00.000Z"
+last_activity: 2026-05-09 -- Phase 34 Plan 04 complete out-of-order (deploy runbook +118 lines; CAT-15 SC#5 satisfied)
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 12
-  completed_plans: 10
-  percent: 29
+  completed_plans: 11
+  percent: 31
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 34 — EXECUTING (Waves 1+2 complete; Wave 3 next; 2/4 plans complete)
-Next: execute 34-03-PLAN.md (production push: supabase db push --linked + drizzle migrate + prod backfill)
+Phase: 34 — EXECUTING (Waves 1+2+4 complete out-of-order; Wave 3 prod push pending; 3/4 plans complete)
+Next: execute 34-03-PLAN.md (production push: supabase db push --linked + drizzle migrate + prod backfill — operator now holds the runbook from Plan 04)
 Status: Executing Phase 34
-Last activity: 2026-05-09 -- Phase 34 Plan 02 backfill script complete (3 commits; local idempotent smoke 4/4 exit 0)
+Last activity: 2026-05-09 -- Phase 34 Plan 04 deploy runbook complete (1 commit; +118 lines to docs/deploy-db-setup.md; CAT-15 SC#5 satisfied)
 
-Progress: [██████░░░░] 29%
+Progress: [███████░░░] 31%
 
 ```
 v1.0 MVP                          [x] shipped 2026-04-19
@@ -38,7 +38,7 @@ v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
 v4.1 Polish & Patch               [x] shipped 2026-05-05
-v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 in progress 2/4 (12 phases, 17 reqs)
+v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 in progress 3/4 (Waves 1+2+4 done; Wave 3 prod push next; 12 phases, 17 reqs)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
 [██████████████████████] 5 milestones shipped
@@ -48,15 +48,15 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 2 (v5.0)
-- Average duration: ~7.5 min
-- Total execution time: ~15 min
+- Total plans completed: 3 (v5.0; Phase 34 only — Plans 01, 02, 04)
+- Average duration: ~5.7 min
+- Total execution time: ~17 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 34 (Layer A) | 2/4 | ~15 min | ~7.5 min |
+| 34 (Layer A) | 3/4 (out-of-order: 01→02→04; 03 prod push pending) | ~17 min | ~5.7 min |
 
 *Updated after each plan completion*
 
@@ -79,6 +79,8 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - **Phase 34 Plan 01 (2026-05-09):** drizzle/meta/_journal.json MUST be appended in same task as the Drizzle migration file — without the idx=7 entry, drizzle-kit migrate silently skips 0007 in prod and the prod `__drizzle_migrations` row count stays unchanged (silent no-op).
 - **Phase 34 Plan 02 (2026-05-09):** Backfill script ships brand-only — family backfill belongs in Phase 35 alongside lineage_edges curation per CONTEXT D-03; pre-emptive operator-as-author country.json seeding (44 brands incl. local catalog tail) extended plan-spec 40 to ensure passB validation surface during local smoke (10/11 brands patched).
 - **Phase 34 Plan 02 (2026-05-09):** 3-pass idempotent rhythm proven: 4 successive local invocations all exit 0; runs 2 and 4 report `inserted=0 patched=0 linked=0 unlinked=0` confirming WHERE-x-IS-NULL filter shrink-to-empty pattern. Plan 03 prod push depends on this idempotence (interrupted-then-resumed prod runs are safe).
+- **Phase 34 Plan 04 (2026-05-09):** Plan 04 ran OUT-OF-ORDER before Plan 03 per user request (operator wants the deploy runbook in hand BEFORE performing the prod push). Plan 04 is docs-only (`docs/deploy-db-setup.md` +118 lines, §34.0–§34.7 + local-reset workflow update) so it has no operational dependency on Plan 03. CAT-15 SC#5 (three-step migration discipline documented; NOT NULL flip explicitly DEFERRED) is now satisfied; only SC#1/SC#3/SC#4 prod-state criteria remain pending on Plan 03.
+- **Phase 34 Plan 04 (2026-05-09):** Footgun T-34-04 (silent backfill against wrong DB) is now operator-readable in `docs/deploy-db-setup.md` §34.2 with explicit `DATABASE_URL="<prod session-mode pooler URL>"` inline override pattern + cross-reference to Phase 17 §17.2 T-17-BACKFILL-PROD-DB precedent. The runbook (not memory) is the long-term mitigation surface.
 
 ### Blockers/Concerns
 
@@ -93,7 +95,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T15:32:00.000Z
-Stopped at: Phase 34 Plan 02 complete (3 commits: e5adb0f, d50a26a, a7c53f1; local smoke 4/4 exit 0; Wave 3 next)
+Last session: 2026-05-09T17:35:00.000Z
+Stopped at: Phase 34 Plan 04 complete out-of-order (1 commit: cafcdb1; +118 lines to docs/deploy-db-setup.md §34.0–§34.7 + local-reset Step 4; CAT-15 SC#5 satisfied; Wave 3 prod push still pending)
 Resume file: .planning/phases/34-layer-a-brand-family-entities/34-03-PLAN.md
-Next action: continue Phase 34 execution (Wave 3: production deploy — supabase db push + drizzle migrate + prod backfill with inline DATABASE_URL override)
+Next action: continue Phase 34 execution (Wave 3: production deploy — supabase db push + drizzle migrate + prod backfill with inline DATABASE_URL override; operator follows §34.0–§34.4 of docs/deploy-db-setup.md)

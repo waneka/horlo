@@ -201,8 +201,8 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion; BLOCKING production deploy)*
 - [ ] 34-03-PLAN.md — Production deploy: supabase db push --linked + drizzle-kit migrate; brand backfill against prod with inline DATABASE_URL override (Footgun T-34-04); 2 checkpoint:human-verify gates
 
-**Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 34-04-PLAN.md — Deploy runbook: docs/deploy-db-setup.md Phase 34 section (§34.0-§34.7) + local-reset workflow update
+**Wave 4** *(blocked on Wave 3 completion; ran out-of-order BEFORE Wave 3 per user request — runbook in hand for prod push)*
+- [x] 34-04-PLAN.md — Deploy runbook: docs/deploy-db-setup.md Phase 34 section (§34.0-§34.7) + local-reset workflow update
 
 **Cross-cutting constraints:**
 - ROADMAP success #1/#2/#3 require PRODUCTION state — Wave 3 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
@@ -337,7 +337,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 |-------|----------------|--------|-----------|
 | 32. DEBT-09 notesPublic Fix | 0/? | Not started | - |
 | 33. Discovery Audit | 0/? | Not started | - |
-| 34. Layer A — Brand + Family | 1/4 | In progress | - |
+| 34. Layer A — Brand + Family | 3/4 (Wave 4 ran out-of-order; Wave 3 prod push pending) | In progress | - |
 | 35. Layer B — Lineage + Movement | 0/? | Not started | - |
 | 36. Layer C — Variants + Clean-Slate | 0/? | Not started | - |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
