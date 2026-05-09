@@ -170,11 +170,11 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 33b-01-PLAN.md — Wave 0 scaffold: checks/quick.sh, checks/full.sh, audit-doc skeleton with 6 sections + 7-column NSD-13 table header + 4 NSD-16 decision stubs + skeleton sentinel
-- [ ] 33b-02-PLAN.md — Wave 1 cell population: 42 NSV-NN rows (6 entities × 7 vectors) via 3-pass authoring (status → backing_rows → rationale + leverage); 6 per-entity-block commits; full.sh rules 1-4 green
+- [x] 33b-01-PLAN.md — Wave 0 scaffold: checks/quick.sh, checks/full.sh, audit-doc skeleton with 6 sections + 7-column NSD-13 table header + 4 NSD-16 decision stubs + skeleton sentinel
+- [x] 33b-02-PLAN.md — Wave 1 cell population: 42 NSV-NN rows (6 entities × 7 vectors) via 3-pass authoring (status → backing_rows → rationale + leverage); 6 per-entity-block commits; full.sh rules 1-4 green
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 33b-03-PLAN.md — Wave 2 decisions + closeout: 4 D-17 verdicts (Q1 home+explore, Q2 lineage browse, Q3 dead-end closure, Q4 CAT-13 framing) per NSD-16 extended template; flip frontmatter decision: final; update STATE.md; full.sh exit 0
+- [x] 33b-03-PLAN.md — Wave 2 decisions + closeout: 4 D-17 verdicts (Q1 home+explore, Q2 lineage browse, Q3 dead-end closure, Q4 CAT-13 framing) per NSD-16 extended template; flip frontmatter decision: final; update STATE.md; full.sh exit 0
 
 **Cross-cutting constraints:**
 - Zero files modified outside .planning/phases/33b-discovery-north-star-audit/
