@@ -335,9 +335,60 @@ export const watchesCatalog = pgTable(
     confidence:       numeric('confidence',       { precision: 3, scale: 2 }),
     extractedFromPhoto: boolean('extracted_from_photo').notNull().default(false),
 
+    // ----- Phase 34 D-02: nullable FKs to brand + family entities (CAT-15) -----
+    // ON DELETE RESTRICT — service-role-only writes; orphan-detection signal at delete.
+    // Different from watches.catalogId 'set null' (Phase 36 wipes catalog rows; brands/families don't).
+    brandId: uuid('brand_id').references(() => brands.id, { onDelete: 'restrict' }),
+    familyId: uuid('family_id').references(() => watchFamilies.id, { onDelete: 'restrict' }),
+
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
+)
+
+// ============================================================
+// Phase 34 — Layer A (CAT-15, D-01..D-04): brands + watch_families
+// Schema-only entities; populated via service-role backfill (D-03).
+// RLS public-read + service-role-write co-located in
+// supabase/migrations/20260510000000_phase34_brands_families.sql.
+// ============================================================
+export const brands = pgTable(
+  'brands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    // GENERATED ALWAYS AS (lower(trim(name))) STORED — Phase 17 D-02/D-03 inheritance.
+    nameNormalized: text('name_normalized').generatedAlwaysAs(
+      sql`lower(trim(name))`,
+    ),
+    slug: text('slug').notNull().unique(),
+    countryOfOrigin: text('country_of_origin'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('brands_name_normalized_unique').on(table.nameNormalized),
+  ]
+)
+
+export const watchFamilies = pgTable(
+  'watch_families',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // brand_id NOT NULL per D-01 (a family must belong to a brand); ON DELETE RESTRICT per D-02.
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    nameNormalized: text('name_normalized').generatedAlwaysAs(
+      sql`lower(trim(name))`,
+    ),
+    // slug nullable per D-01a — global slug uniqueness not enforced for families.
+    slug: text('slug'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('watch_families_brand_name_unique').on(table.brandId, table.nameNormalized),
+  ]
 )
 
 // ----- Phase 17: daily catalog snapshots (CAT-12) -----
