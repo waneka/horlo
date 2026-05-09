@@ -189,7 +189,27 @@ Plans:
   3. `has_table_privilege('anon', 'public.brands', 'SELECT')` and `has_table_privilege('anon', 'public.watch_families', 'SELECT')` both return true in production — RLS verified in the deploy runbook
   4. A service-role backfill script exists at `scripts/backfill-catalog-brands.ts` for manual brand/family assignment (no automated migration; no admin UI in this phase)
   5. Three-step migration discipline (nullable column add → backfill → NOT NULL flip) is documented in phase CONTEXT.md; the NOT NULL flip is explicitly deferred
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 34-01-PLAN.md — Schema layer: src/db/schema.ts brands+watchFamilies+FK columns; drizzle/0007 migration; supabase/20260510000000 authoritative DDL with RLS+GENERATED+assertions; tests/integration/phase34-rls.test.ts (11 tests)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 34-02-PLAN.md — Backfill layer: scripts/backfill-catalog-brands.ts (3-pass derive→patch→link, idempotent); scripts/country.json starter map; package.json db:backfill-catalog-brands entry
+
+**Wave 3** *(blocked on Wave 2 completion; BLOCKING production deploy)*
+- [ ] 34-03-PLAN.md — Production deploy: supabase db push --linked + drizzle-kit migrate; brand backfill against prod with inline DATABASE_URL override (Footgun T-34-04); 2 checkpoint:human-verify gates
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 34-04-PLAN.md — Deploy runbook: docs/deploy-db-setup.md Phase 34 section (§34.0-§34.7) + local-reset workflow update
+
+**Cross-cutting constraints:**
+- ROADMAP success #1/#2/#3 require PRODUCTION state — Wave 3 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
+- Phase 17 D-04/D-06 RLS pattern inherited verbatim (public-read + service-role-write; no INSERT/UPDATE/DELETE policy)
+- D-04 permanent denormalization: watches_catalog.brand text NOT NULL stays forever; brand_id is purely the relational link
+- watch_families table ships empty in Phase 34 (D-03; family seeding deferred to Phase 35)
+- 5 STRIDE threats T-34-01..T-34-05 mapped to plan threat_refs
 
 ### Phase 35: Layer B — Lineage Edges + Structured Movement + Era/Material
 **Goal**: Add the `watch_lineage_edges` junction table with cycle-safety guarantees, replace the free-text `movement` column with a structured enum, and add era/material/bracelet columns — unblocking the SRCH-16 movement facet.
@@ -317,7 +337,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 |-------|----------------|--------|-----------|
 | 32. DEBT-09 notesPublic Fix | 0/? | Not started | - |
 | 33. Discovery Audit | 0/? | Not started | - |
-| 34. Layer A — Brand + Family | 0/? | Not started | - |
+| 34. Layer A — Brand + Family | 0/4 | Planned | - |
 | 35. Layer B — Lineage + Movement | 0/? | Not started | - |
 | 36. Layer C — Variants + Clean-Slate | 0/? | Not started | - |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |

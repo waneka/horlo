@@ -890,31 +890,30 @@ The next safe 14-digit filename greater than `20260504120000_phase27_sort_order.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`country.json` initial content scope** — Should the planner ship a starter `country.json` covering ~10–30 obvious brands (Rolex, Omega, Casio, Seiko, Patek Philippe, Cartier, etc.) or leave it empty for the operator to populate?
    - What we know: D-03 specifies operator-driven population; D-06 makes it a runbook step.
    - What's unclear: Whether shipping a starter map is "doing the operator's work" or "removing friction".
-   - Recommendation: ship a starter map as `scripts/country.json` covering brands likely to be in the existing collection (operator can verify against `SELECT DISTINCT brand_normalized FROM watches_catalog ORDER BY 1` after the auto-derivation pass). Reduces the "manual review" surface to "verify and add tail".
+   - RESOLVED: ship a starter map as `scripts/country.json` covering brands likely to be in the existing collection (operator can verify against `SELECT DISTINCT brand_normalized FROM watches_catalog ORDER BY 1` after the auto-derivation pass). Reduces the "manual review" surface to "verify and add tail".
 
 2. **Optional Vitest integration test ship/skip** — Should `tests/integration/phase34-rls.test.ts` ship in Wave 0 (recommended) or be skipped in favor of operator runbook smoke tests only?
    - What we know: Phase 17 shipped `tests/integration/phase17-secdef.test.ts`; Phase 27 shipped `tests/integration/phase27-backfill.test.ts`. Both add CI insurance.
    - What's unclear: Whether single-user MVP CI value justifies the test file (CI doesn't actually have a DB-gated env, so the test runs locally only).
-   - Recommendation: ship the test. Cost is ~30 lines of code. Value is local-dev confidence + machine-readable doc of intent.
+   - RESOLVED: ship the test. Cost is ~30 lines of code. Value is local-dev confidence + machine-readable doc of intent.
 
 3. **DAL parity smoke test ship/skip** — Should the planner add a static-analysis test that asserts "selectFromCatalog query shape unchanged"?
    - What we know: ROADMAP success #2 + Pitfall 8 analysis say static analysis is sufficient.
    - What's unclear: Whether to formalize this with a one-off `scripts/check-dal-shape.ts` linter or trust the static reasoning.
-   - Recommendation: skip. Static reasoning + grep audit is enough. The two new nullable columns cannot break anything by inspection.
+   - RESOLVED: skip. Static reasoning + grep audit is enough. The two new nullable columns cannot break anything by inspection.
 
 4. **Local DB reset workflow update timing** — Should `docs/deploy-db-setup.md:386-404` (existing local-reset workflow) be updated in Phase 34 to include the new migration filename?
    - What we know: D-06 mandates appending a Phase 34 deploy section. The local-reset workflow is a separate section and isn't called out.
    - What's unclear: Whether Phase 34 owns updating the reset workflow or whether it accumulates organically across phases.
-   - Recommendation: include a one-line addition to the local-reset section ("4. Apply Phase 34 migration: `docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260510000000_phase34_brands_families.sql`") as part of the D-06 runbook update task.
+   - RESOLVED: include a one-line addition to the local-reset section ("4. Apply Phase 34 migration: `docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260510000000_phase34_brands_families.sql`") as part of the D-06 runbook update task.
 
 5. **Where to commit `country.json`** — `scripts/country.json` (next to the script that consumes it) or `data/country.json` (separate data dir)?
-   - Recommendation: `scripts/country.json`. Next-to-script colocation matches the project's flat `scripts/` layout. No `data/` directory exists today.
-
+   - RESOLVED: `scripts/country.json`. Next-to-script colocation matches the project's flat `scripts/` layout. No `data/` directory exists today.
 ---
 
 ## Environment Availability
