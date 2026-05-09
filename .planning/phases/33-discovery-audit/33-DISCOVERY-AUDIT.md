@@ -199,33 +199,35 @@ Every Missing row in the Click-Path Audit table MUST cite this principle by name
 
 Per D-15 + D-17, exactly 4 decisions. Per D-16, each uses the verdict + 2–4 sentence rationale + cited rows + drives template. No 5th catch-all.
 
+> **Pass D deferred to Phase 33b (DISC-12) on 2026-05-08.** Phase 33's click-path enumeration confirms the wired affordances and surfaces source-level dead-ends, but the 4 decisions below are inherently product judgments against the SEED-004 Rdio north star (does each surface invite drift; where are we leaving discovery on the table; which dead-ends matter most). The data in this table is the **research substrate** for those judgments. Phase 33b runs the product-framed north-star analysis and replaces each verdict below with a YES / NO / DEFERRED that downstream Phases 34 / 35 / 38 / 39 can cite.
+
 ### Decision Q1: Combine home and explore?
 
-**Verdict:** PENDING <!-- Wave 3 (Pass D) replaces with YES | NO | DEFERRED -->
-**Rationale:** [Wave 3 fills with 2–4 sentences citing audit findings]
-**Cited rows:** [Wave 3 fills with DISC-AUDIT-NN, DISC-AUDIT-MM]
-**Drives:** [Wave 3 fills with downstream phase / item this verdict gates]
+**Verdict:** DEFERRED
+**Rationale:** Inherently a product judgment against the Rdio north star — the click-path table shows what each surface ships but does not score whether `/` and `/explore` invite drift in materially different directions. Deferred to Phase 33b (DISC-12) `DISCOVERY-NORTH-STAR-AUDIT.md` where each surface is scored against the SEED-004 principle.
+**Cited rows:** [pending Phase 33b cross-reference pass — backing data sample: DISC-AUDIT-01, DISC-AUDIT-47, DISC-AUDIT-48, DISC-AUDIT-49 (representative `/` and `/explore` rows; full set is rows on those two surfaces)]
+**Drives:** Phase 33b (DISC-12) authors final verdict; downstream Phase 39 polish scope and any home/explore consolidation work consume from there.
 
 ### Decision Q2: Lineage browse priority
 
-**Verdict:** PENDING <!-- Wave 3 (Pass D) replaces with YES | NO | DEFERRED -->
-**Rationale:** [Wave 3 fills with 2–4 sentences citing audit findings]
-**Cited rows:** [Wave 3 fills with DISC-AUDIT-NN, DISC-AUDIT-MM]
-**Drives:** [Wave 3 fills with Phase 35 schema-only vs schema+UI scope, and Phase 39 lineage-browse polish scope]
+**Verdict:** DEFERRED
+**Rationale:** Lineage-browse priority is a north-star judgment about whether the missing "browse other watches in the same family / lineage" drift vector is high-leverage. Click-path data confirms the affordance is missing on `/catalog/{id}` and `/watch/{id}` but does not score its priority against other missing vectors. Deferred to Phase 33b (DISC-12).
+**Cited rows:** [pending Phase 33b cross-reference pass — backing data sample: DISC-AUDIT-130, DISC-AUDIT-131 (Missing rows on `/catalog/{id}` and `/watch/{id}` capturing the absent lineage-browse affordances)]
+**Drives:** Phase 33b (DISC-12) authors final verdict; gates Phase 35 schema-only vs schema+UI scope and Phase 39 lineage-browse polish scope.
 
 ### Decision Q3: Dead-end closure priority
 
-**Verdict:** PENDING <!-- Wave 3 (Pass D) replaces with YES | NO | DEFERRED -->
-**Rationale:** [Wave 3 fills with 2–4 sentences citing audit findings]
-**Cited rows:** [Wave 3 fills with DISC-AUDIT-NN, DISC-AUDIT-MM]
-**Drives:** [Wave 3 fills with Phase 39 polish item ordering]
+**Verdict:** DEFERRED
+**Rationale:** Dead-end closure priority requires ranking the audit's Dead and Missing rows against the Rdio drift principle, not just counting them. Phase 33's click-path table flags 1 Dead (WR-07) + 8 Missing rows; Phase 33b's per-surface drift-vector analysis is the right framework for prioritization. Deferred to Phase 33b (DISC-12).
+**Cited rows:** [pending Phase 33b cross-reference pass — backing data sample: DISC-AUDIT-99 (WR-07 wishlist silent no-op flagship Dead), DISC-AUDIT-130, DISC-AUDIT-131 (representative Missing rows; full set is all Dead + Missing rows)]
+**Drives:** Phase 33b (DISC-12) authors final verdict; gates Phase 39 polish item ordering.
 
 ### Decision Q4: CAT-13 discovery framing
 
-**Verdict:** PENDING <!-- Wave 3 (Pass D) replaces with YES | NO | DEFERRED -->
-**Rationale:** [Wave 3 fills with 2–4 sentences citing audit findings]
-**Cited rows:** [Wave 3 fills with DISC-AUDIT-NN, DISC-AUDIT-MM]
-**Drives:** [Wave 3 fills with Phase 38 framing — "tech debt" vs "discovery improvement"]
+**Verdict:** DEFERRED
+**Rationale:** Whether CAT-13 is "tech debt" vs "discovery improvement" depends on how visibly the missing taste-aware verdict signal blocks Rdio drift on `/catalog/{id}` and `/watch/{id}`. That is a product judgment best made inside the north-star framework. Deferred to Phase 33b (DISC-12).
+**Cited rows:** [pending Phase 33b cross-reference pass — backing data sample: DISC-AUDIT-70, DISC-AUDIT-71 (Verdict rows on `/catalog/{id}` owner-populated branch), DISC-AUDIT-130, DISC-AUDIT-131 (G-4 / G-6 fresh-account verdict-suppression branches)]
+**Drives:** Phase 33b (DISC-12) authors final verdict; gates Phase 38 framing — "tech debt" vs "discovery improvement".
 
 ## Cross-References
 

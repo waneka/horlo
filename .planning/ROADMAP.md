@@ -156,9 +156,21 @@ Plans:
 **Cross-cutting constraints:**
 - Zero files modified outside .planning/phases/33-discovery-audit/
 
+### Phase 33b: Discovery North-Star Audit
+**Goal**: Produce a falsifiable, read-only PRODUCT-framed audit against the SEED-004 Rdio principle — for each user-facing entity (watch detail, collector profile, catalog/family, home/explore feeds, search results), enumerate which discovery vectors should exist, score each as ship/partial/missing, and rank missing vectors by Rdio leverage. Authors the 4 D-17 product decisions deferred from Phase 33 (combine home+explore, lineage browse priority, dead-end closure priority, CAT-13 framing). Backing evidence: Phase 33's DISC-AUDIT-NN click-path rows, referenced by id only.
+**Depends on**: Phase 33 (Phase 33's 136-row click-path table is the research substrate; this phase reads but does not modify it)
+**Requirements**: DISC-12
+**Success Criteria** (what must be TRUE):
+  1. `.planning/phases/33b-discovery-north-star-audit/DISCOVERY-NORTH-STAR-AUDIT.md` exists and contains a per-entity drift-vector table — for each entity (watch detail, collector profile, catalog/family, home/explore feeds, search results), one row per (entity × should-have-vector) tagged ship / partial / missing, with each missing row scored for Rdio leverage (high / medium / low)
+  2. Pass/fail criteria are written at the TOP of DISCOVERY-NORTH-STAR-AUDIT.md before any findings appear — the audit is self-falsifiable
+  3. A decisions section exists with explicit YES/NO/DEFERRED verdicts for the 4 D-17 questions deferred from Phase 33 (combine home+explore, lineage browse priority, dead-end closure priority, CAT-13 framing); each verdict has a 2–4 sentence rationale citing specific north-star findings AND specific DISC-AUDIT-NN backing rows from Phase 33
+  4. Every missing-vector row is anchored to the SEED-004 Rdio principle (`.planning/seeds/SEED-004-v5-discovery-north-star.md` line 15) AND cites at least one DISC-AUDIT-NN row from Phase 33 that captures the click-path absence
+  5. Zero code, schema, or dependency changes ship in this phase; zero modifications to Phase 33's `33-DISCOVERY-AUDIT.md` (the click-path table is immutable for cross-reference stability)
+**Plans**: TBD
+
 ### Phase 34: Layer A — Brand + Family Entities
 **Goal**: Add `brands` and `watch_families` as first-class catalog entities with nullable FKs on `watches_catalog`, giving every higher-level hierarchy feature its foundation without touching any existing query path.
-**Depends on**: Phase 33 (audit must not reveal scope-reducing findings before migration work begins)
+**Depends on**: Phase 33b (DISC-12 north-star verdicts must not reveal scope-reducing findings before migration work begins; Phase 33 click-path table is consumed transitively via Phase 33b)
 **Requirements**: CAT-15
 **Success Criteria** (what must be TRUE):
   1. `brands` and `watch_families` tables exist in production with public-read RLS and service-role-write policies co-located in the migration file
@@ -218,16 +230,16 @@ Plans:
 **Plans**: TBD
 
 ### Phase 39: Audit-Driven Discovery Polish
-**Goal**: Close specific row IDs from the Phase 33 DISCOVERY-AUDIT.md click-path table and decisions doc — shipping exactly the dead-end fixes and surface improvements the audit identified as highest priority.
-**Depends on**: Phase 38 (engine rewire needed for improved verdict quality on catalog pages; Phase 33 audit decisions gate all scope)
+**Goal**: Close specific row IDs from the Phase 33 DISCOVERY-AUDIT.md click-path table and ship the missing drift vectors prioritized by the Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md verdicts — shipping exactly the dead-end fixes and surface improvements the audits identified as highest Rdio leverage.
+**Depends on**: Phase 38 (engine rewire needed for improved verdict quality on catalog pages); Phase 33b (DISC-12 north-star verdicts gate all polish scope; Phase 33 DISC-AUDIT-NN row IDs cited as backing data via Phase 33b)
 **Requirements**: DISC-09, DISC-11
 **Success Criteria** (what must be TRUE):
-  1. Every plan in this phase cites a specific audit row ID (e.g., `DISC-AUDIT-07`) from DISCOVERY-AUDIT.md — no un-cited polish items ship
-  2. The DISCOVERY-AUDIT.md click-path table has zero rows still tagged Dead or Missing after this phase, OR each remaining Dead/Missing row carries an explicit DEFERRED annotation with a v5.x target reason
-  3. DISC-09 Editorial Featured Collection slot exists on `/explore` — admin-only (owner user_id check) write surface; curator-written blurb; free per SEED-006; detailed UX shaped by Phase 33 audit findings
-  4. Each DISC-11 polish item ships as a separate plan within this phase with the audit row ID it closes documented in that plan's CONTEXT.md
-  5. Scope is audit-conditional: if Phase 33 finds no Dead/Missing rows for a given surface, no work ships for that surface
-**Plans**: TBD (scope pending Phase 33 DISCOVERY-AUDIT.md)
+  1. Every plan in this phase cites EITHER a specific DISC-AUDIT-NN row ID from Phase 33's DISCOVERY-AUDIT.md OR a specific north-star vector from Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md — no un-cited polish items ship
+  2. Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md missing-vector list has zero high-leverage rows still unaddressed after this phase, OR each remaining high-leverage missing vector carries an explicit DEFERRED annotation with a v5.x target reason
+  3. DISC-09 Editorial Featured Collection slot exists on `/explore` — admin-only (owner user_id check) write surface; curator-written blurb; free per SEED-006; detailed UX shaped by Phase 33b north-star verdicts (esp. Q1 combine home+explore)
+  4. Each DISC-11 polish item ships as a separate plan within this phase with the DISC-AUDIT-NN row id and/or DISC-12 north-star vector id it closes documented in that plan's CONTEXT.md
+  5. Scope is audit-conditional on Phase 33b verdicts: if DISC-12 ranks a missing vector as low-leverage or DEFERRED, no work ships for that vector in v5.0
+**Plans**: TBD (scope pending Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md)
 **UI hint**: yes
 
 ### Phase 40: Search & Verdict Polish

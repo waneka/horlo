@@ -16,7 +16,9 @@
 
 ### Discovery Audit (audit-first per SEED-004)
 
-- [ ] **DISC-10**: A read-only discovery audit produces `.planning/phases/{N}-discovery-audit/DISCOVERY-AUDIT.md` containing (a) a click-path table with one row per `(surface × clickable element)` across `/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}` — each row tagged Live / Dead / Redundant / Missing — and (b) a decisions doc with explicit YES/NO/DEFERRED resolutions for: "combine home and explore?", lineage browse priority, dead-end closure priority, CAT-13 discovery framing. Pass/fail criteria are written before audit runs. Downstream phases cite specific audit row IDs. No code ships in this phase.
+- [ ] **DISC-10**: A read-only discovery audit produces `.planning/phases/{N}-discovery-audit/DISCOVERY-AUDIT.md` containing (a) a click-path table with one row per `(surface × clickable element)` across `/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}` — each row tagged Live / Dead / Redundant / Missing — and (b) a decisions doc with explicit YES/NO/DEFERRED resolutions for: "combine home and explore?", lineage browse priority, dead-end closure priority, CAT-13 discovery framing. Pass/fail criteria are written before audit runs. Downstream phases cite specific audit row IDs. No code ships in this phase. **2026-05-08 update:** the 4 decision verdicts are deferred to DISC-12 (Phase 33b) — they are inherently product judgments against the Rdio north star; Phase 33 ships the click-path table as the research substrate.
+
+- [ ] **DISC-12**: A product-framed Rdio north-star audit produces `.planning/phases/33b-discovery-north-star-audit/DISCOVERY-NORTH-STAR-AUDIT.md` containing (a) per-entity drift-vector enumeration — for each user-facing entity (watch detail, collector profile, catalog/family, home/explore feeds, search results) list every discovery vector that SHOULD exist (drift directions a collector might want to follow), score each as ship / partial / missing, and rank missing vectors by Rdio leverage; (b) per-surface dead-end and discovery-leverage scoring against the SEED-004 Rdio principle ("a collector should be able to drift from one watch / collector / family / reference to another by clicking, without ever feeling lost or running into a dead end"); and (c) explicit YES/NO/DEFERRED verdicts (with 2–4 sentence rationales + downstream-phase impact lines) for the 4 D-17 product decisions deferred from Phase 33 — combine home and explore, lineage browse priority, dead-end closure priority, CAT-13 discovery framing. Backing evidence: Phase 33's DISC-AUDIT-NN click-path rows (referenced by id, not modified). Downstream Phases 34 / 35 / 38 / 39 cite north-star findings rather than raw DISC-AUDIT-NN row ids for product decisions. No code, schema, or dependency changes ship in this phase.
 
 ### Catalog Hierarchy (SEED-001, schema-only, all 4 layers)
 
@@ -38,7 +40,7 @@
 
 - [ ] **DISC-09**: An "Editorial Featured Collection" slot ships on `/explore` with admin-only write surface. Curators (admin = owner user_id check in single-user app) can pin a featured catalog reference, family, or collector with a curator-written blurb. Free per SEED-006. Detailed UX shaped by audit findings.
 
-- [ ] **DISC-11**: Audit-driven discovery surface polish closes specific row IDs from the DISC-10 click-path table. Each polish item is a separate plan within this phase, citing the audit row ID it closes. Possible items (audit determines): `/family/{familyId}` lineage browse pages, `/catalog/{id}` predecessor/successor affordances, home/explore consolidation if audit calls for it, dead-end fixes per the audit table. Scope is fully audit-conditional.
+- [ ] **DISC-11**: Audit-driven discovery surface polish closes specific row IDs from the DISC-10 click-path table AND addresses the missing drift vectors identified by the DISC-12 north-star audit. Each polish item is a separate plan within this phase, citing the DISC-AUDIT-NN row ID it closes and/or the DISC-12 north-star vector it addresses. Possible items (DISC-12 verdicts determine final scope): `/family/{familyId}` lineage browse pages, `/catalog/{id}` predecessor/successor affordances, home/explore consolidation if DISC-12 Q1 calls for it, dead-end fixes per the audit table prioritized by DISC-12 Q3 verdict. Scope is fully audit-conditional on Phase 33b verdicts.
 
 ### Search & Verdict Polish
 
@@ -99,6 +101,7 @@
 |--------|-------|--------|
 | DEBT-09 | Phase 32 | Pending |
 | DISC-10 | Phase 33 | Pending |
+| DISC-12 | Phase 33b | Pending |
 | CAT-15 | Phase 34 | Pending |
 | CAT-16 | Phase 35 | Pending |
 | CAT-17 | Phase 36 | Pending |
@@ -114,8 +117,8 @@
 | DEBT-10 | Phase 42 | Pending |
 | DEBT-11 | Phase 42 | Pending |
 
-**Coverage: 16/16 requirements mapped. No orphans.**
+**Coverage: 17/17 requirements mapped. No orphans.**
 
 ---
 
-*Last updated: 2026-05-06 — traceability filled by roadmapper. 16 requirements across 8 categories mapped to Phases 32–42.*
+*Last updated: 2026-05-08 — DISC-12 (Phase 33b north-star audit) inserted between Phase 33 and Phase 34 after mid-execution scope reframe. 17 requirements across 8 categories mapped to Phases 32–42.*
