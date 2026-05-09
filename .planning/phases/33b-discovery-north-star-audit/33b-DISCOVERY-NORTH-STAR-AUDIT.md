@@ -129,11 +129,11 @@ The 4 D-17 decisions deferred from Phase 33 per NSD-16. Each verdict uses the Ph
 
 ### Decision Q1: Combine home and explore?
 
-**Verdict:** TBD (YES | NO | DEFERRED — set in Wave 2)
-**Rationale:** TBD by Wave 2 (Plan 03) — 2–4 sentences citing audit findings.
-**Cited NSV rows:** TBD
-**Backing DISC-AUDIT rows:** TBD
-**Drives:** TBD downstream phase / item gated by this verdict.
+**Verdict:** NO
+**Rationale:** Wave 1's per-vector evidence shows Home Feed and Explore Feed ship COMPLEMENTARY vector mixes, not redundant ones — Home ships taste-personalization (NSV-22 CollectorsLikeYou via DISC-AUDIT-29) and clean owner-overlap (NSV-26 CommonGroundFollowerCard via DISC-AUDIT-38) where Explore is missing both (NSV-29, NSV-33), while Explore ships the canonical cross-collector-graph other-owners vector (NSV-32 PopularCollectorRow via DISC-AUDIT-49) where Home delivers only an activity-feed-derivative partial (NSV-25 via DISC-AUDIT-30/32/39). Both surfaces ship see-more-like-this (NSV-28 via DISC-AUDIT-33/35–38; NSV-35 via DISC-AUDIT-51/52/54/56) but through DIFFERENT mechanisms — taste-derived insights grid on Home vs raw-popularity rails on Explore — which serve distinct collector intents per SEED-004 line 36 ("raw popularity, not personalized"). Combining the surfaces would force a compromise framing that dilutes the rec-vs-popularity distinction, sacrificing the cleanest taste-personalization rails on Home and the cleanest cross-collector-graph rails on Explore for surface consolidation that the audit evidence does not support.
+**Cited NSV rows:** NSV-22, NSV-25, NSV-26, NSV-28, NSV-29, NSV-32, NSV-33, NSV-35
+**Backing DISC-AUDIT rows:** DISC-AUDIT-29, DISC-AUDIT-30, DISC-AUDIT-32, DISC-AUDIT-33, DISC-AUDIT-38, DISC-AUDIT-39, DISC-AUDIT-49, DISC-AUDIT-52, DISC-AUDIT-54
+**Drives:** Phase 39 Audit-Driven Discovery Polish — home/explore consolidation work is NOT scoped into Phase 39 (or any v5.0 phase); both surfaces remain distinct entities and Phase 39 polish closes individual missing-vector cells per-surface rather than collapsing the surfaces.
 
 ### Decision Q2: Lineage browse priority
 
