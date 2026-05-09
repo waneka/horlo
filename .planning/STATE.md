@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 34 planned (4 plans across 4 waves)
-last_updated: "2026-05-09T00:00:00.000Z"
-last_activity: 2026-05-09 -- Phase 34 plans authored (4 plans, 9 tasks; passed plan-checker iteration 2/3)
+stopped_at: Phase 34 Plan 01 complete (Wave 1 done; Wave 2 next)
+last_updated: "2026-05-09T15:16:00.000Z"
+last_activity: 2026-05-09 -- Phase 34 Plan 01 complete (schema layer shipped; 3 commits)
 progress:
   total_phases: 12
   completed_phases: 3
   total_plans: 12
-  completed_plans: 8
-  percent: 25
+  completed_plans: 9
+  percent: 27
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 34 — PLANNED (4/4 plans authored; 9 tasks across 4 waves; D-01..D-06 fully covered)
-Next: `/gsd-execute-phase 34` to ship Phase 34
-Status: Ready to execute Phase 34
-Last activity: 2026-05-09 -- Phase 34 plans authored + verified (iteration 2/3 PASSED; W1–W5 resolved)
+Phase: 34 — EXECUTING (Wave 1 complete; Wave 2 next; 1/4 plans complete)
+Next: execute 34-02-PLAN.md (backfill script)
+Status: Executing Phase 34
+Last activity: 2026-05-09 -- Phase 34 Plan 01 schema layer complete (3 commits, 11/11 tests pass)
 
-Progress: [█████░░░░░] 25%
+Progress: [██████░░░░] 27%
 
 ```
 v1.0 MVP                          [x] shipped 2026-04-19
@@ -48,15 +48,15 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 0 (v5.0)
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 1 (v5.0)
+- Average duration: ~5 min
+- Total execution time: ~5 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| — | — | — | — |
+| 34 (Layer A) | 1/4 | ~5 min | ~5 min |
 
 *Updated after each plan completion*
 
@@ -75,6 +75,8 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - **Phase 33b Q2 verdict (2026-05-09):** DEFERRED — lineage browse priority. Anchored to NSV-16 missing high (DISC-AUDIT-130) + NSV-02 missing high. Per NSD-12 leverage informs without forcing the verdict; the project's locked default favors splitting schema delivery (Phase 35) from UI delivery (Phase 39 / v5.x). Drives Phase 35 UI scope: schema-only; lineage browse UI deferred to Phase 39 (preferred — closes alongside Q3 backlog) or v5.x if Phase 39 capacity does not absorb the UI work.
 - **Phase 33b Q3 verdict (2026-05-09):** YES — dead-end closure priority. 10 high-leverage cells identified (NSV-01/02/06/08/12/14/15/16/18/20). Drives Phase 39 sorted backlog (cheapest-to-costliest patch order): NSV-01, NSV-15, NSV-08, NSV-06, NSV-20, NSV-12, NSV-14 (8-row sub-cluster), NSV-18; with NSV-02 + NSV-16 absorbed via Q2 schema-then-UI handoff. Med/low-leverage cells DEFERRED to v5.x. Per `33b-DISCOVERY-NORTH-STAR-AUDIT.md` § Decisions Q3.
 - **Phase 33b Q4 verdict (2026-05-09):** YES — CAT-13 discovery framing. NSV-01/06/15/20/41 partial-high pattern across /watch, /catalog, /search per-watch surfaces makes "discovery improvement" (NOT tech-debt) the framing aligned with the v5.0 SEED-004 north-star. Drives Phase 38 plan motivation framing: discovery improvement. Per `33b-DISCOVERY-NORTH-STAR-AUDIT.md` § Decisions Q4.
+- **Phase 34 Plan 01 (2026-05-09):** Drizzle migration MUST be self-idempotent (CREATE TABLE IF NOT EXISTS + DO-block FK guards) — collapses Phase 17 dual-file pattern and survives `supabase db push --linked` running first then `drizzle-kit migrate` running second. Plan 03 prod-push depends on this idempotence.
+- **Phase 34 Plan 01 (2026-05-09):** drizzle/meta/_journal.json MUST be appended in same task as the Drizzle migration file — without the idx=7 entry, drizzle-kit migrate silently skips 0007 in prod and the prod `__drizzle_migrations` row count stays unchanged (silent no-op).
 
 ### Blockers/Concerns
 
@@ -89,7 +91,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T00:00:00.000Z
-Stopped at: Phase 34 planned (4 plans, 9 tasks, plan-checker PASS iteration 2/3)
-Resume file: .planning/phases/34-layer-a-brand-family-entities/34-01-PLAN.md
-Next action: `/gsd-execute-phase 34` to ship Phase 34
+Last session: 2026-05-09T15:16:00.000Z
+Stopped at: Phase 34 Plan 01 complete (3 commits: 5437048, 70d701b, 5a47079; 11/11 tests pass; Wave 2 next)
+Resume file: .planning/phases/34-layer-a-brand-family-entities/34-02-PLAN.md
+Next action: continue Phase 34 execution (Wave 2: backfill script)

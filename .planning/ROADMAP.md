@@ -193,7 +193,7 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 34-01-PLAN.md — Schema layer: src/db/schema.ts brands+watchFamilies+FK columns; drizzle/0007 migration; supabase/20260510000000 authoritative DDL with RLS+GENERATED+assertions; tests/integration/phase34-rls.test.ts (11 tests)
+- [x] 34-01-PLAN.md — Schema layer: src/db/schema.ts brands+watchFamilies+FK columns; drizzle/0007 migration; supabase/20260510000000 authoritative DDL with RLS+GENERATED+assertions; tests/integration/phase34-rls.test.ts (11 tests)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 34-02-PLAN.md — Backfill layer: scripts/backfill-catalog-brands.ts (3-pass derive→patch→link, idempotent); scripts/country.json starter map; package.json db:backfill-catalog-brands entry
@@ -337,7 +337,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 |-------|----------------|--------|-----------|
 | 32. DEBT-09 notesPublic Fix | 0/? | Not started | - |
 | 33. Discovery Audit | 0/? | Not started | - |
-| 34. Layer A — Brand + Family | 0/4 | Planned | - |
+| 34. Layer A — Brand + Family | 1/4 | In progress | - |
 | 35. Layer B — Lineage + Movement | 0/? | Not started | - |
 | 36. Layer C — Variants + Clean-Slate | 0/? | Not started | - |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
