@@ -13,7 +13,8 @@
     "db:refresh-counts": "tsx --env-file=.env.local scripts/refresh-counts.ts",
     "db:backfill-taste": "tsx --env-file=.env.local scripts/backfill-taste.ts",
     "db:reenrich-taste": "tsx --env-file=.env.local scripts/reenrich-taste.ts",
-    "db:preflight-notification-cleanup": "tsx --env-file=.env.local scripts/preflight-notification-types.ts"
+    "db:preflight-notification-cleanup": "tsx --env-file=.env.local scripts/preflight-notification-types.ts",
+    "db:backfill-catalog-brands": "tsx --env-file=.env.local scripts/backfill-catalog-brands.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
