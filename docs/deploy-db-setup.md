@@ -401,6 +401,9 @@ docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrati
 docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260427000001_phase17_pg_cron.sql
 docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260430000000_phase19_1_taste_constraints.sql
 docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260430000001_phase19_1_catalog_source_photos_bucket.sql
+
+# 4. Apply Phase 34 migration (brands + watch_families tables + FK columns on watches_catalog)
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260510000000_phase34_brands_families.sql
 ```
 
 ### Backout plan
@@ -547,3 +550,118 @@ If the migration applies correctly but a downstream issue forces a revert AND pl
 3. Revert plan 24-04's pgEnum narrow + render-branch deletion in a follow-up commit.
 
 If plan 24-04 has ALREADY shipped, follow Footgun T-24-PRODAPPLY recovery step 3 first (revert source-code enum), then run the SQL above.
+
+## Phase 34 — Layer A: Brand + Family Entities Deploy Steps
+
+Phase 34 (CAT-15) adds first-class `brands` and `watch_families` tables with public-read RLS + service-role-write, plus nullable `brand_id` and `family_id` FK columns on `watches_catalog`. Schema-only — no admin UI. The brand backfill RUNS on prod as part of this deploy (D-03); the family table stays empty (Phase 35 work).
+
+Threats mitigated: T-34-01 (anon write blocked by RLS), T-34-02 (anon read enabled by GRANT), T-34-03 (FK orphans blocked by ON DELETE RESTRICT), T-34-04 (silent backfill against wrong DB — see Footgun below).
+
+### Preconditions
+- Phase 34 PR is merged to `main`
+- Local DB push is GREEN (`docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260510000000_phase34_brands_families.sql` exits 0 with no RAISE EXCEPTION)
+- `tests/integration/phase34-rls.test.ts` passes locally with `DATABASE_URL` pointed at local Docker
+- Supabase CLI linked to prod project (`supabase status` shows the same project ref as Phase 17 / 19.1 / 27 deploys)
+- `DATABASE_URL` for prod (session-mode pooler URL with service-role password) is available
+
+### 34.0 — Pre-flight pg_depend check (memory rule 4)
+Memory `project_drizzle_supabase_db_mismatch.md` Rule 4: query `pg_depend` BEFORE structural changes touching catalog. Phase 34 adds two FKs that reference `watches_catalog`, so:
+```bash
+psql "<prod session-mode pooler URL>" -c "SELECT count(*) FROM pg_depend WHERE refobjid = 'public.watches_catalog'::regclass;"
+```
+Note the count. After §34.1 expect this count to increase by exactly 2 (the new brand_id + family_id FKs).
+
+### 34.1 — Apply migrations to prod
+```bash
+supabase db push --linked
+```
+Expected: CLI applies in lexical filename sort order; `20260510000000_phase34_brands_families.sql` appears in the applied list; exit 0; no `RAISE EXCEPTION` from the embedded `DO $$` assertion block at the end of the migration file.
+
+Also push the Drizzle column-shape migration:
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  npx drizzle-kit migrate
+```
+Expected: applies `0007_phase34_brands_families.sql`; `drizzle.__drizzle_migrations` row count incremented by 1. The Drizzle migration is idempotent (CREATE TABLE IF NOT EXISTS + ADD COLUMN IF NOT EXISTS + DO-block FK guards) so it tolerates having the supabase migration take the first apply — `NOTICE: relation "..." already exists, skipping` is expected and benign; any `ERROR:` line is a fail.
+
+Re-run the pg_depend check from §34.0 — expect count = (pre-flight) + 2.
+
+### 34.2 — Run the brand backfill (CAT-15 SC#4 — D-03 actually runs on prod)
+First pass — auto-derive brands and link catalog:
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  npm run db:backfill-catalog-brands
+```
+Expected: `[backfill-catalog-brands] OK — inserted=N patched=0 linked=M unlinked=0 elapsedMs=...` where N ≈ 10–30 (single-user MVP scale per CONTEXT D-03) and M ≈ prod catalog row count.
+
+Second pass — apply country_of_origin from `scripts/country.json`:
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  npm run db:backfill-catalog-brands -- --patch-country=scripts/country.json
+```
+Expected: `inserted=0 patched=K linked=0 unlinked=0` where K = count of `country.json` keys matching prod `brands.name_normalized` values.
+
+Idempotence (third pass should be a complete no-op):
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" \
+  npm run db:backfill-catalog-brands -- --patch-country=scripts/country.json
+```
+Expected: `inserted=0 patched=0 linked=0 unlinked=0`.
+
+**Footgun T-34-04 (mirrors T-17-BACKFILL-PROD-DB at §17.2):** Do NOT run `npm run db:backfill-catalog-brands` against the LOCAL Docker DB by accident. The `--env-file=.env.local` flag in `package.json` reads the LOCAL DB URL by default. The inline `DATABASE_URL="<prod-pooler>"` form OVERRIDES the env-file URL and is mandatory for prod runs. Symptom of the footgun: post-script `SELECT count(*) FROM watches_catalog WHERE brand_id IS NULL` against prod returns the same number as before. The script's final assertion (`SELECT count(*) FROM watches_catalog WHERE brand_normalized IS NOT NULL AND brand_id IS NULL` raises and exits 1 if non-zero) makes wrong-DB runs LOUD rather than silent — but only if you run the script against prod with the override. Without the override, the script silently backfills LOCAL and exits 0.
+
+### 34.3 — Verify RLS truth values (CAT-15 SC#3)
+```sql
+SELECT has_table_privilege('anon', 'public.brands', 'SELECT');         -- expect: t
+SELECT has_table_privilege('anon', 'public.watch_families', 'SELECT'); -- expect: t
+```
+Per memory `project_supabase_secdef_grants.md`: `REVOKE FROM PUBLIC` alone does NOT block anon — explicit `GRANT SELECT TO anon, authenticated` is what enables anon SELECT here, and the migration's RLS `CREATE POLICY ... FOR SELECT USING (true)` is what authorizes the read. Both must hold; `has_table_privilege` returning `t` confirms both are in effect.
+
+### 34.4 — Verify backfill row counts (CAT-15 SC#4 / D-03)
+```sql
+SELECT count(*) AS brand_count FROM brands;
+-- expect: ~10–30 (matches §34.2 first-run inserted count)
+SELECT count(*) AS brands_with_country FROM brands WHERE country_of_origin IS NOT NULL;
+-- expect: K (matches §34.2 second-run patched count)
+SELECT count(*) AS family_count FROM watch_families;
+-- expect: 0 (deferred to Phase 35)
+SELECT count(*) AS catalog_unlinked_brand FROM watches_catalog WHERE brand_id IS NULL AND brand_normalized IS NOT NULL;
+-- expect: 0 (every catalog row whose brand is non-null has brand_id linked)
+SELECT count(*) AS catalog_unlinked_family FROM watches_catalog WHERE family_id IS NULL;
+-- expect: equals catalog total row count (Phase 35 will populate)
+```
+
+### 34.5 — Three-step migration discipline (CAT-15 SC#5; D-05)
+Phase 34 follows the three-step migration discipline for `brand_id` / `family_id`:
+1. **Step 1 (Phase 34, this deploy):** Add columns as `NULL` allowed (this migration); ship migration; populate `brand_id` via the §34.2 backfill. `family_id` stays all NULL.
+2. **Step 2 (Phase 35, future):** Populate `family_id` via second backfill pass during lineage-edges work; populate `watch_families` rows.
+3. **Step 3 (DEFERRED, no target phase):** Flip `brand_id` and `family_id` to `NOT NULL`. The NOT NULL flip is explicitly DEFERRED beyond Phase 34. Conditional on (a) every `watches_catalog` row having both FKs populated AND (b) the catalog growth path (URL-extract / user-promoted creates) reliably setting `brand_id` / `family_id` on insert. Pre-flight assertion for the future flip migration would be a `DO $$ BEGIN IF EXISTS (SELECT 1 FROM watches_catalog WHERE brand_id IS NULL) THEN RAISE EXCEPTION ...; END IF; END $$` block at the top.
+
+### 34.6 — DAL parity smoke (CAT-15 SC#2)
+Visit each of the following prod surfaces and confirm visual parity with the pre-deploy baseline (manual eyeball check):
+1. `https://<prod-domain>/` — home renders without 5xx
+2. `https://<prod-domain>/explore` — trending grid renders; brand text on cards looks correct (e.g., "Rolex" not "rolex" — the canonical brand text is what's stored in `watches_catalog.brand`, not derived from `brands.name`)
+3. `https://<prod-domain>/catalog/{any-known-id}` — detail page renders; brand text on the page
+4. `https://<prod-domain>/search?q=rolex` (or any owned brand) — results match pre-deploy
+5. Vercel dashboard: no new 5xx in past 10 minutes
+
+Static analysis confirms no DAL change is needed (per Phase 34 RESEARCH §Pitfall 8): all 31 `watchesCatalog` references in `src/data/` use column-list or `$inferSelect` patterns that survive nullable additive columns. New columns don't appear in any SELECT until Phase 35+ DAL adds them explicitly.
+
+### 34.7 — Backout plan (if Phase 34 must be reverted post-deploy)
+Reversible because Phase 34 is purely additive:
+```sql
+-- 1. Drop empty watch_families table (no rows in Phase 34)
+DROP TABLE IF EXISTS watch_families;
+
+-- 2. Drop brands table — CASCADE drops the FKs from watches_catalog
+DROP TABLE IF EXISTS brands CASCADE;
+
+-- 3. Defensive: ensure the columns are gone (CASCADE above should have removed
+--    them, but DROP COLUMN IF EXISTS is idempotent and safe)
+ALTER TABLE watches_catalog
+  DROP COLUMN IF EXISTS brand_id,
+  DROP COLUMN IF EXISTS family_id;
+```
+pg_cron / RLS policies / data on `watches_catalog` are unaffected (no rows removed there).
+
+**Caveat:** This backout plan is safe ONLY for the Phase-34-only window. Once Phase 35 ships (which adds `watch_lineage_edges` referencing `watch_families` AND populates `watch_families` rows), the `DROP TABLE` on `watch_families` would lose curated data. Once any user collection has its catalog rows depending on `brand_id` for downstream features (Phase 38 / 39), backing out also reverts those features. Treat §34.7 as a Phase-34-only window — after Phase 35 ships, schedule a forward-fix instead of a backout.
