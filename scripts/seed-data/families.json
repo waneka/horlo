@@ -1,0 +1,12 @@
+[
+  { "brand_slug": "rolex",           "name": "Submariner",  "slug": "submariner" },
+  { "brand_slug": "rolex",           "name": "GMT-Master",  "slug": "gmt-master" },
+  { "brand_slug": "rolex",           "name": "Datejust",    "slug": "datejust" },
+  { "brand_slug": "rolex",           "name": "Daytona",     "slug": "daytona" },
+  { "brand_slug": "omega",           "name": "Speedmaster", "slug": "speedmaster" },
+  { "brand_slug": "omega",           "name": "Seamaster",   "slug": "seamaster" },
+  { "brand_slug": "tudor",           "name": "Black Bay",   "slug": "black-bay" },
+  { "brand_slug": "audemars-piguet", "name": "Royal Oak",   "slug": "royal-oak" },
+  { "brand_slug": "patek-philippe",  "name": "Nautilus",    "slug": "nautilus" },
+  { "brand_slug": "grand-seiko",     "name": "Snowflake",   "slug": "snowflake" }
+]

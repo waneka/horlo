@@ -1,6 +1,12 @@
 export type WatchStatus = 'owned' | 'wishlist' | 'sold' | 'grail'
 
-export type MovementType = 'automatic' | 'manual' | 'quartz' | 'spring-drive' | 'other'
+export type MovementType = 'auto' | 'manual' | 'quartz' | 'spring_drive'
+
+// Phase 35 D-09: factual era classification — independent of era_signal (Phase 19.1).
+export type WatchEra =
+  | '1900-1910' | '1910-1920' | '1920-1930' | '1930-1940' | '1940-1950'
+  | '1950-1960' | '1960-1970' | '1970-1980' | '1980-1990' | '1990-2000'
+  | '2000-2010' | '2010-2020' | '2020-2030'
 
 export type StrapType = 'bracelet' | 'leather' | 'rubber' | 'nato' | 'other'
 
@@ -27,7 +33,7 @@ export interface Watch {
   targetPrice?: number
   marketPrice?: number
 
-  movement: MovementType
+  movement?: MovementType
   complications: string[]
 
   caseSizeMm?: number

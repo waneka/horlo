@@ -1,0 +1,4 @@
+[
+  { "predecessor_ref": "rolex/submariner/5513",  "successor_ref": "rolex/submariner/14060",  "relationship_type": "successor" },
+  { "predecessor_ref": "rolex/submariner/14060", "successor_ref": "rolex/submariner/124060", "relationship_type": "successor" }
+]

@@ -33,6 +33,23 @@ export const notificationTypeEnum = pgEnum('notification_type', [
   'watch_overlap',
 ])
 
+// ----- Phase 35 D-01: movement type pgEnum (CAT-16) -----
+export const movementTypeEnum = pgEnum('movement_type_enum', [
+  'auto', 'manual', 'quartz', 'spring_drive',
+] as const)
+
+// ----- Phase 35 D-04: lineage relationship type pgEnum (CAT-16) -----
+export const lineageRelationshipTypeEnum = pgEnum('lineage_relationship_type', [
+  'successor', 'predecessor', 'remake', 'tribute', 'homage',
+] as const)
+
+// ----- Phase 35 D-09: watch era pgEnum (CAT-16) — independent of era_signal (Phase 19.1 D-01) -----
+export const watchEraEnum = pgEnum('watch_era', [
+  '1900-1910', '1910-1920', '1920-1930', '1930-1940', '1940-1950',
+  '1950-1960', '1960-1970', '1970-1980', '1980-1990', '1990-2000',
+  '2000-2010', '2010-2020', '2020-2030',
+] as const)
+
 // Shadow users table for FK integrity.
 // Supabase Auth owns the real user record; this table exists solely for foreign key references.
 export const users = pgTable('users', {
@@ -61,9 +78,9 @@ export const watches = pgTable(
     targetPrice: real('target_price'),
     marketPrice: real('market_price'),
 
-    movement: text('movement', {
-      enum: ['automatic', 'manual', 'quartz', 'spring-drive', 'other'],
-    }).notNull(),
+    // Phase 35 D-03: movement_type enum + movement_caliber (replaces nullable text 'movement')
+    movementType: movementTypeEnum('movement_type'),
+    movementCaliber: text('movement_caliber'),
     // Array fields use Postgres text arrays (D-01). Default is an empty array, not null.
     complications: text('complications').array().notNull().default(sql`'{}'::text[]`),
 
@@ -305,7 +322,12 @@ export const watchesCatalog = pgTable(
     imageSourceUrl: text('image_source_url'),
     imageSourceQuality: text('image_source_quality'),
 
-    movement: text('movement'),
+    // Phase 35 D-03 + D-09 + D-10 + D-11: structured movement + era + material + bracelet
+    movementType: movementTypeEnum('movement_type'),
+    movementCaliber: text('movement_caliber'),
+    era: watchEraEnum('era'),
+    caseMaterial: text('case_material'),
+    braceletConfig: text('bracelet_config'),
     caseSizeMm: real('case_size_mm'),
     lugToLugMm: real('lug_to_lug_mm'),
     waterResistanceM: integer('water_resistance_m'),
@@ -389,6 +411,36 @@ export const watchFamilies = pgTable(
   (table) => [
     unique('watch_families_brand_name_unique').on(table.brandId, table.nameNormalized),
   ]
+)
+
+// ----- Phase 35 D-04..D-07: watch_lineage_edges junction table (CAT-16) -----
+// CHECK (predecessor_catalog_id <> successor_catalog_id) and BEFORE INSERT cycle trigger
+// live in the Supabase migration (Plan 05) — not expressible in Drizzle 0.45.2 pg-core DSL.
+// Same pattern as notifications table comment above.
+export const watchLineageEdges = pgTable(
+  'watch_lineage_edges',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    predecessorCatalogId: uuid('predecessor_catalog_id')
+      .notNull()
+      .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    successorCatalogId: uuid('successor_catalog_id')
+      .notNull()
+      .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    relationshipType: lineageRelationshipTypeEnum('relationship_type').notNull(),
+    metadata: jsonb('metadata').notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('watch_lineage_edges_predecessor_idx').on(table.predecessorCatalogId),
+    index('watch_lineage_edges_successor_idx').on(table.successorCatalogId),
+    unique('lineage_edges_unique_triple').on(
+      table.predecessorCatalogId,
+      table.successorCatalogId,
+      table.relationshipType,
+    ),
+  ],
 )
 
 // ----- Phase 17: daily catalog snapshots (CAT-12) -----
