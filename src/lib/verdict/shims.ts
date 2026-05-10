@@ -16,11 +16,10 @@ import type { Watch, CatalogEntry, WatchStatus, MovementType, CrystalType } from
 const STATUS_FOR_CANDIDATE: WatchStatus = 'wishlist'
 
 const KNOWN_MOVEMENTS: ReadonlySet<MovementType> = new Set<MovementType>([
-  'automatic',
+  'auto',
   'manual',
   'quartz',
-  'spring-drive',
-  'other',
+  'spring_drive',
 ])
 
 const KNOWN_CRYSTALS: ReadonlySet<CrystalType> = new Set<CrystalType>([
@@ -31,9 +30,9 @@ const KNOWN_CRYSTALS: ReadonlySet<CrystalType> = new Set<CrystalType>([
   'hardlex',
 ])
 
-function coerceMovement(m: string | null): MovementType {
-  if (m === null) return 'other'
-  return KNOWN_MOVEMENTS.has(m as MovementType) ? (m as MovementType) : 'other'
+function coerceMovement(m: string | null | undefined): MovementType | undefined {
+  if (m === null || m === undefined) return undefined
+  return KNOWN_MOVEMENTS.has(m as MovementType) ? (m as MovementType) : undefined
 }
 
 function coerceCrystal(c: string | null): CrystalType | undefined {
@@ -48,7 +47,7 @@ export function catalogEntryToSimilarityInput(entry: CatalogEntry): Watch {
     model: entry.model,
     reference: entry.reference ?? undefined,
     status: STATUS_FOR_CANDIDATE,       // Pitfall 7 — see header comment
-    movement: coerceMovement(entry.movement),
+    movement: coerceMovement(entry.movementType ?? null),
     complications: entry.complications,
     caseSizeMm: entry.caseSizeMm ?? undefined,
     lugToLugMm: entry.lugToLugMm ?? undefined,

@@ -20,7 +20,8 @@ function buildCatalogEntry(overrides: Partial<CatalogEntry> = {}): CatalogEntry 
     imageUrl: 'https://example.com/sub.jpg',
     imageSourceUrl: null,
     imageSourceQuality: null,
-    movement: 'automatic',
+    movementType: 'auto',
+    movementCaliber: null,
     caseSizeMm: 41,
     lugToLugMm: 48,
     waterResistanceM: 300,
@@ -69,7 +70,7 @@ function buildOwnedWatch(id: string, overrides: Partial<Watch> = {}): Watch {
     brand: 'Omega',
     model: 'Seamaster',
     status: 'owned',
-    movement: 'automatic',
+    movement: 'auto',
     complications: ['date'],
     styleTags: ['tool'],
     designTraits: ['rotating-bezel'],
@@ -94,7 +95,7 @@ describe('D-09 catalogEntryToSimilarityInput shim (Plan 02)', () => {
       model: entry.model,
       reference: entry.reference ?? undefined,
       status: 'wishlist',
-      movement: 'automatic',
+      movement: 'auto',
       complications: entry.complications,
       caseSizeMm: entry.caseSizeMm ?? undefined,
       lugToLugMm: entry.lugToLugMm ?? undefined,
@@ -121,10 +122,10 @@ describe('D-09 catalogEntryToSimilarityInput shim (Plan 02)', () => {
     expect(a).toEqual(b)
   })
 
-  it('coerces unknown movement string to "other" (closed union safety)', () => {
-    const entry = buildCatalogEntry({ movement: 'rotor-driven' })
+  it('coerces unknown movement string to undefined (closed union safety)', () => {
+    const entry = buildCatalogEntry({ movementType: null })
     const shimmed = catalogEntryToSimilarityInput(entry)
-    expect(shimmed.movement).toBe('other')
+    expect(shimmed.movement).toBeUndefined()
   })
 
   it('coerces unknown crystalType to undefined (Watch optional)', () => {

@@ -132,7 +132,9 @@ export interface CatalogEntry {
   imageUrl: string | null
   imageSourceUrl: string | null
   imageSourceQuality: ImageSourceQuality | null
-  movement: string | null
+  // Phase 35 D-03: structured movement (replaces free-text movement column)
+  movementType: MovementType | null
+  movementCaliber: string | null
   caseSizeMm: number | null
   lugToLugMm: number | null
   waterResistanceM: number | null
