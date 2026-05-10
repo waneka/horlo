@@ -19,7 +19,7 @@ Return a JSON object with these fields (omit fields if not found):
   "brand": "string - watch brand/manufacturer",
   "model": "string - model name",
   "reference": "string - reference number",
-  "movement": "automatic|manual|quartz|spring-drive|other",
+  "movement": "auto|manual|quartz|spring_drive",
   "complications": ["array of: ${COMPLICATIONS.join(', ')}"],
   "isChronometer": boolean (true ONLY if COSC-certified or explicitly stated as chronometer),
   "caseSizeMm": number (just the number, e.g., 42),

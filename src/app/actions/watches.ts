@@ -22,7 +22,7 @@ const insertWatchSchema = z.object({
   pricePaid: z.number().optional(),
   targetPrice: z.number().optional(),
   marketPrice: z.number().optional(),
-  movement: z.enum(['automatic', 'manual', 'quartz', 'spring-drive', 'other']),
+  movement: z.enum(['auto', 'manual', 'quartz', 'spring_drive']).optional(),
   complications: z.array(z.string()).default([]),
   caseSizeMm: z.number().optional(),
   lugToLugMm: z.number().optional(),
