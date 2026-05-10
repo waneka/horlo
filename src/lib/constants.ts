@@ -1,3 +1,5 @@
+import type { MovementType } from './types'
+
 // Style: What TYPE of watch is this? (functional category)
 export const STYLE_TAGS = [
   'diver',
@@ -69,12 +71,45 @@ export const DIAL_COLORS = [
   'other',
 ] as const
 
-export const MOVEMENT_TYPES = [
-  'automatic',
-  'manual',
-  'quartz',
-  'spring-drive',
-  'other',
+// Phase 35 D-03a: 4-value DB-canonical enum (matches movement_type_enum in src/db/schema.ts).
+// Replaces the legacy 5-value list (automatic, spring-drive, other removed).
+export const MOVEMENT_TYPES = ['auto', 'manual', 'quartz', 'spring_drive'] as const
+
+// Phase 35 D-03a: display labels for UI rendering only — never persisted.
+// WatchForm uses MOVEMENT_LABELS[v] for display; persists raw enum values.
+export const MOVEMENT_LABELS: Record<MovementType, string> = {
+  auto:         'Automatic',
+  manual:       'Manual',
+  quartz:       'Quartz',
+  spring_drive: 'Spring Drive',
+}
+
+// Phase 35 D-10: case material suggested-label list. Free text in DB (no CHECK constraint).
+// Specialty alloys (e.g., 'ceramic-titanium-hybrid') flow through as freeform strings.
+// Variant-level material variation lives on Phase 36 watch_variants.
+export const CASE_MATERIALS_SUGGESTED = [
+  'steel',
+  'gold-yellow',
+  'gold-rose',
+  'gold-white',
+  'two-tone-steel-gold',
+  'titanium',
+  'ceramic',
+  'bronze',
+  'platinum',
+  'carbon-fiber',
+] as const
+
+// Phase 35 D-11: bracelet config suggested-label list. Free text in DB (no CHECK constraint).
+// Multi-bracelet variants (Daytona Oysterflex vs Oyster) live on Phase 36 watch_variants.
+export const BRACELET_CONFIGS_SUGGESTED = [
+  'integrated-bracelet',  // AP Royal Oak, PP Nautilus
+  'bracelet-only',        // Sub on Oyster only
+  'leather-strap-only',   // Speedy Pro on leather
+  'rubber-strap-only',    // Daytona Oysterflex variant
+  'bracelet-and-strap',   // Ships with both
+  'nato-strap',
+  'bund-strap',
 ] as const
 
 export const STRAP_TYPES = [
