@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: Phase 34 SHIPPED to prod; Phase 35 ready to start
+status: executing
 stopped_at: Phase 35 context gathered
-last_updated: "2026-05-10T04:07:37.490Z"
-last_activity: 2026-05-09 -- Phase 34 verifier PASSED; DEBT-12 (drizzle journal repair) filed for opportunistic Phase 35 pickup
+last_updated: "2026-05-10T05:26:26.339Z"
+last_activity: 2026-05-10 -- Phase 35 planning complete
 progress:
   total_phases: 12
   completed_phases: 4
-  total_plans: 12
+  total_plans: 19
   completed_plans: 12
-  percent: 100
+  percent: 63
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 Phase: 34 — COMPLETE ✓ (verifier passed 5/5 must-haves; ready to advance to Phase 35)
 Next: `/gsd-discuss-phase 35` (Layer B — Lineage Edges + Structured Movement + Era/Material)
-Status: Phase 34 SHIPPED to prod; Phase 35 ready to start
-Last activity: 2026-05-09 -- Phase 34 verifier PASSED; DEBT-12 (drizzle journal repair) filed for opportunistic Phase 35 pickup
+Status: Ready to execute
+Last activity: 2026-05-10 -- Phase 35 planning complete
 
 Progress: [███████░░░] 31%
 
