@@ -23,6 +23,7 @@ import {
 import { editWatch, removeWatch } from '@/app/actions/watches'
 import { markAsWorn } from '@/app/actions/wearEvents'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
+import { MOVEMENT_LABELS } from '@/lib/constants'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
 import type { Watch, UserPreferences } from '@/lib/types'
@@ -240,7 +241,7 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <dt className="text-muted-foreground">Movement</dt>
-                <dd className="font-semibold capitalize">{watch.movement}</dd>
+                <dd className="font-semibold">{watch.movement ? MOVEMENT_LABELS[watch.movement] : null}</dd>
               </div>
               {watch.caseSizeMm && (
                 <div>

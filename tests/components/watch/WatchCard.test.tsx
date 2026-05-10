@@ -31,7 +31,7 @@ const baseWatch: Watch = {
   brand: 'Omega',
   model: 'Speedmaster',
   status: 'owned',
-  movement: 'automatic',
+  movement: 'auto',
   complications: [],
   styleTags: [],
   designTraits: [],

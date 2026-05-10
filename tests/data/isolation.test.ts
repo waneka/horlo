@@ -85,7 +85,7 @@ maybe('IDOR isolation — AUTH-03', () => {
   it('addWatch with User A session creates a watch owned by User A only', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue(userA)
     const result = await addWatch({
-      brand: 'Seiko', model: 'SKX007', status: 'owned', movement: 'automatic',
+      brand: 'Seiko', model: 'SKX007', status: 'owned', movement: 'auto',
     })
     expect(result.success).toBe(true)
     if (result.success) {

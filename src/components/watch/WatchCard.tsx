@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getSafeImageUrl } from '@/lib/images'
 import { computeGapFill } from '@/lib/gapFill'
+import { MOVEMENT_LABELS } from '@/lib/constants'
 import type { Watch, UserPreferences } from '@/lib/types'
 
 interface WatchCardProps {
@@ -80,7 +81,7 @@ export function WatchCard({ watch, collection, preferences }: WatchCardProps) {
             {watch.caseSizeMm && <span>{watch.caseSizeMm}mm</span>}
             {watch.caseSizeMm && watch.movement && <span>·</span>}
             {watch.movement && (
-              <span className="capitalize">{watch.movement}</span>
+              <span>{MOVEMENT_LABELS[watch.movement]}</span>
             )}
             {watch.waterResistanceM && (
               <>

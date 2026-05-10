@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
           brand: result.data.brand,
           model: result.data.model,
           reference: result.data.reference ?? null,
-          movement: result.data.movement ?? null,
+          movementType: result.data.movement ?? null,
           caseSizeMm: result.data.caseSizeMm ?? null,
           lugToLugMm: result.data.lugToLugMm ?? null,
           waterResistanceM: result.data.waterResistanceM ?? null,

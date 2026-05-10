@@ -95,7 +95,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
       brand: catalogEntry.brand,
       model: catalogEntry.model,
       reference: catalogEntry.reference,
-      movement: catalogEntry.movement as MovementType | null,
+      movement: catalogEntry.movementType,
       caseSizeMm: catalogEntry.caseSizeMm,
       lugToLugMm: catalogEntry.lugToLugMm,
       waterResistanceM: catalogEntry.waterResistanceM,
@@ -135,7 +135,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
             <p className="text-sm text-muted-foreground">{catalogEntry.reference}</p>
           )}
           <SpecsSublabel
-            movement={catalogEntry.movement}
+            movement={catalogEntry.movementType}
             caseSizeMm={catalogEntry.caseSizeMm}
             dialColor={catalogEntry.dialColor}
           />

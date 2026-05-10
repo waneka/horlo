@@ -13,7 +13,7 @@ export function makeWatch(overrides: Partial<Watch> = {}): Watch {
     brand: 'TestBrand',
     model: 'Model',
     status: 'owned',
-    movement: 'automatic',
+    movement: 'auto',
     complications: [],
     styleTags: [],
     designTraits: [],

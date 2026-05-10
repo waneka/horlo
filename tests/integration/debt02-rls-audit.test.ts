@@ -54,7 +54,7 @@ maybe('DEBT-02 ongoing regression — users/watches/user_preferences IDOR RLS', 
         brand: 'Debt02Brand',
         model: 'Debt02Model',
         status: 'owned',
-        movement: 'automatic',
+        movementType: 'auto',
       })
       .returning()
     userBWatchId = w.id

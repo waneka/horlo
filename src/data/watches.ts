@@ -24,7 +24,7 @@ function mapRowToWatch(row: WatchRow): Watch {
     pricePaid: row.pricePaid ?? undefined,
     targetPrice: row.targetPrice ?? undefined,
     marketPrice: row.marketPrice ?? undefined,
-    movement: row.movement,
+    movement: row.movementType ?? undefined,
     complications: row.complications,
     caseSizeMm: row.caseSizeMm ?? undefined,
     lugToLugMm: row.lugToLugMm ?? undefined,
@@ -63,7 +63,7 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   if ('pricePaid' in data) row.pricePaid = data.pricePaid ?? null
   if ('targetPrice' in data) row.targetPrice = data.targetPrice ?? null
   if ('marketPrice' in data) row.marketPrice = data.marketPrice ?? null
-  if (data.movement !== undefined) row.movement = data.movement
+  if (data.movement !== undefined) row.movementType = data.movement
   if (data.complications !== undefined) row.complications = data.complications
   if ('caseSizeMm' in data) row.caseSizeMm = data.caseSizeMm ?? null
   if ('lugToLugMm' in data) row.lugToLugMm = data.lugToLugMm ?? null
@@ -186,7 +186,7 @@ export async function createWatch(userId: string, data: Omit<Watch, 'id'>): Prom
       brand: data.brand,
       model: data.model,
       status: data.status,
-      movement: data.movement,
+      movementType: data.movement,
       complications: data.complications,
       styleTags: data.styleTags,
       designTraits: data.designTraits,

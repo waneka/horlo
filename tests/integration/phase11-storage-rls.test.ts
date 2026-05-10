@@ -84,7 +84,7 @@ maybe('Phase 11 storage RLS — WYWT-13 / WYWT-14 three-tier + folder enforcemen
         brand: 'TestBrand',
         model: 'TestModel',
         status: 'owned',
-        movement: 'automatic',
+        movementType: 'auto',
       })
       .returning()
     watchId = w.id

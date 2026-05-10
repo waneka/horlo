@@ -53,7 +53,7 @@ import { revalidateTag } from 'next/cache'
 import type { Watch } from '@/lib/types'
 
 const validWatch = {
-  brand: 'Omega', model: 'Seamaster', status: 'owned' as const, movement: 'automatic' as const,
+  brand: 'Omega', model: 'Seamaster', status: 'owned' as const, movement: 'auto' as const,
 }
 
 const viewerUserId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'

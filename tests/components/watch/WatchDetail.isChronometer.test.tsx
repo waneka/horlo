@@ -47,7 +47,7 @@ const baseWatch: Watch = {
   model: 'Datejust',
   reference: '',
   status: 'owned',
-  movement: 'automatic',
+  movement: 'auto',
   complications: [],
   styleTags: [],
   designTraits: [],

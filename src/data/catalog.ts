@@ -58,7 +58,8 @@ function mapRowToCatalogEntry(row: CatalogRow): CatalogEntry {
     imageUrl: row.imageUrl ?? null,
     imageSourceUrl: row.imageSourceUrl ?? null,
     imageSourceQuality: (row.imageSourceQuality as ImageSourceQuality | null) ?? null,
-    movement: row.movement ?? null,
+    movementType: row.movementType ?? null,
+    movementCaliber: row.movementCaliber ?? null,
     caseSizeMm: row.caseSizeMm ?? null,
     lugToLugMm: row.lugToLugMm ?? null,
     waterResistanceM: row.waterResistanceM ?? null,
@@ -100,7 +101,9 @@ export interface UrlExtractedCatalogInput {
   brand: string
   model: string
   reference: string | null
-  movement?: string | null
+  // Phase 35 D-03: structured movement (replaces free-text movement column).
+  movementType?: 'auto' | 'manual' | 'quartz' | 'spring_drive' | null
+  movementCaliber?: string | null
   caseSizeMm?: number | null
   lugToLugMm?: number | null
   waterResistanceM?: number | null
@@ -191,14 +194,15 @@ export async function upsertCatalogFromExtractedUrl(
   const result = await db.execute<{ id: string }>(sql`
     INSERT INTO watches_catalog (
       brand, model, reference, source,
-      movement, case_size_mm, lug_to_lug_mm, water_resistance_m,
+      movement_type, movement_caliber, case_size_mm, lug_to_lug_mm, water_resistance_m,
       crystal_type, dial_color, is_chronometer, production_year,
       image_url, image_source_url, image_source_quality,
       style_tags, design_traits, role_tags, complications
     )
     VALUES (
       ${input.brand}, ${input.model}, ${input.reference}, 'url_extracted',
-      ${input.movement ?? null}, ${input.caseSizeMm ?? null},
+      ${input.movementType ?? null}::movement_type_enum, ${input.movementCaliber ?? null},
+      ${input.caseSizeMm ?? null},
       ${input.lugToLugMm ?? null}, ${input.waterResistanceM ?? null},
       ${input.crystalType ?? null}, ${input.dialColor ?? null},
       ${input.isChronometer ?? null}, ${input.productionYear ?? null},
@@ -212,7 +216,8 @@ export async function upsertCatalogFromExtractedUrl(
         WHEN watches_catalog.source = 'admin_curated' THEN watches_catalog.source
         ELSE 'url_extracted'
       END,
-      movement              = COALESCE(watches_catalog.movement,              EXCLUDED.movement),
+      movement_type    = COALESCE(watches_catalog.movement_type,    EXCLUDED.movement_type),
+      movement_caliber = COALESCE(watches_catalog.movement_caliber, EXCLUDED.movement_caliber),
       case_size_mm          = COALESCE(watches_catalog.case_size_mm,          EXCLUDED.case_size_mm),
       lug_to_lug_mm         = COALESCE(watches_catalog.lug_to_lug_mm,         EXCLUDED.lug_to_lug_mm),
       water_resistance_m    = COALESCE(watches_catalog.water_resistance_m,    EXCLUDED.water_resistance_m),

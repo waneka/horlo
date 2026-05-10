@@ -50,7 +50,7 @@ function makeWatch(id: string): Watch {
     brand: 'Rolex',
     model: `Submariner ${id}`,
     status: 'owned',
-    movement: 'automatic',
+    movement: 'auto',
     complications: [],
     styleTags: [],
     designTraits: [],

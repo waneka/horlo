@@ -100,14 +100,14 @@ maybe('Phase 15 wear detail gating', () => {
           brand: 'Brand-A',
           model: 'Model-A',
           status: 'owned' as const,
-          movement: 'automatic' as const,
+          movementType: 'auto' as const,
         },
         {
           userId: ids.Ap,
           brand: 'Brand-Ap',
           model: 'Model-Ap',
           status: 'owned' as const,
-          movement: 'automatic' as const,
+          movementType: 'auto' as const,
         },
       ])
       .returning()

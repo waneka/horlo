@@ -46,7 +46,7 @@ maybe('getWearEventsCountByUser — DAL integration', () => {
         brand: 'Rolex',
         model: 'Submariner',
         status: 'owned',
-        movement: 'automatic',
+        movementType: 'auto',
       },
       {
         id: watchBId,
@@ -54,7 +54,7 @@ maybe('getWearEventsCountByUser — DAL integration', () => {
         brand: 'Tudor',
         model: 'Black Bay',
         status: 'owned',
-        movement: 'automatic',
+        movementType: 'auto',
       },
     ])
   }, 30_000)

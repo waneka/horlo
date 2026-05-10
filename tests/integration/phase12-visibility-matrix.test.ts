@@ -113,7 +113,7 @@ maybe('Phase 12 visibility matrix', () => {
     const watchRows = await db.insert(watches).values(
       Object.entries(ids).map(([k, id]) => ({
         userId: id, brand: `Brand-${k}`, model: `Model-${k}`,
-        status: 'owned' as const, movement: 'automatic' as const,
+        status: 'owned' as const, movementType: 'auto' as const,
       })),
     ).returning()
     const watchByUser = new Map(watchRows.map((w) => [w.userId, w]))

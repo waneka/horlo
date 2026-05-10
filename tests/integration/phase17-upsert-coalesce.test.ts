@@ -25,13 +25,13 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
       reference: '116610LN',
     })
     expect(id).toBeTruthy()
-    const result = await db.execute<{ source: string; case_size_mm: number | null; movement: string | null; style_tags: string[] }>(
-      sql`SELECT source, case_size_mm, movement, style_tags FROM watches_catalog WHERE id = ${id}`
+    const result = await db.execute<{ source: string; case_size_mm: number | null; movement_type: string | null; style_tags: string[] }>(
+      sql`SELECT source, case_size_mm, movement_type, style_tags FROM watches_catalog WHERE id = ${id}`
     )
-    const row = (result as unknown as Array<{ source: string; case_size_mm: number | null; movement: string | null; style_tags: string[] }>)[0]
+    const row = (result as unknown as Array<{ source: string; case_size_mm: number | null; movement_type: string | null; style_tags: string[] }>)[0]
     expect(row.source).toBe('user_promoted')
     expect(row.case_size_mm).toBeNull()
-    expect(row.movement).toBeNull()
+    expect(row.movement_type).toBeNull()
     expect(row.style_tags).toEqual([])
   })
 
@@ -44,7 +44,7 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   it('user input does nothing on conflict — does NOT downgrade source', async () => {
     const id1 = await upsertCatalogFromExtractedUrl({
       brand: stampedBrand('C'), model: 'Sub', reference: 'ref-c',
-      caseSizeMm: 40, movement: 'automatic',
+      caseSizeMm: 40, movementType: 'auto',
     })
     const id2 = await upsertCatalogFromUserInput({ brand: stampedBrand('C'), model: 'Sub', reference: 'ref-c' })
     expect(id1).toBe(id2)
@@ -60,15 +60,15 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
     const id1 = await upsertCatalogFromUserInput({ brand: stampedBrand('D'), model: 'Sub', reference: 'ref-d' })
     const id2 = await upsertCatalogFromExtractedUrl({
       brand: stampedBrand('D'), model: 'Sub', reference: 'ref-d',
-      caseSizeMm: 40, movement: 'automatic',
+      caseSizeMm: 40, movementType: 'auto',
     })
     expect(id1).toBe(id2)
-    const result = await db.execute<{ source: string; case_size_mm: number | null; movement: string | null }>(
-      sql`SELECT source, case_size_mm, movement FROM watches_catalog WHERE id = ${id1}`
+    const result = await db.execute<{ source: string; case_size_mm: number | null; movement_type: string | null }>(
+      sql`SELECT source, case_size_mm, movement_type FROM watches_catalog WHERE id = ${id1}`
     )
-    const row = (result as unknown as Array<{ source: string; case_size_mm: number | null; movement: string | null }>)[0]
+    const row = (result as unknown as Array<{ source: string; case_size_mm: number | null; movement_type: string | null }>)[0]
     expect(row.case_size_mm).toBe(40)
-    expect(row.movement).toBe('automatic')
+    expect(row.movement_type).toBe('auto')
     expect(row.source).toBe('url_extracted')   // D-10 upgrade
   })
 
@@ -112,16 +112,16 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
     // Now URL-extract attempts enrichment
     await upsertCatalogFromExtractedUrl({
       brand: adminBrand, model: 'AdminModel', reference: 'ref-g',
-      caseSizeMm: 99, movement: 'quartz',
+      caseSizeMm: 99, movementType: 'quartz',
     })
 
-    const result = await db.execute<{ source: string; case_size_mm: number | null; movement: string | null }>(
-      sql`SELECT source, case_size_mm, movement FROM watches_catalog WHERE id = ${adminId}`
+    const result = await db.execute<{ source: string; case_size_mm: number | null; movement_type: string | null }>(
+      sql`SELECT source, case_size_mm, movement_type FROM watches_catalog WHERE id = ${adminId}`
     )
-    const row = (result as unknown as Array<{ source: string; case_size_mm: number | null; movement: string | null }>)[0]
+    const row = (result as unknown as Array<{ source: string; case_size_mm: number | null; movement_type: string | null }>)[0]
     expect(row.source).toBe('admin_curated')   // locked — D-11
     expect(row.case_size_mm).toBe(38)           // not overwritten — D-13 (was already non-null)
-    expect(row.movement).toBe('quartz')         // enriched (was NULL — COALESCE applied)
+    expect(row.movement_type).toBe('quartz')    // enriched (was NULL — COALESCE applied)
   })
 
   it('image_source_url rejects non-http (T-17-02-01)', async () => {

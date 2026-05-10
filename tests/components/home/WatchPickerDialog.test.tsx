@@ -33,7 +33,7 @@ function makeWatch(overrides: Partial<Watch> = {}): Watch {
     brand: 'Rolex',
     model: 'Submariner',
     status: 'owned',
-    movement: 'automatic',
+    movement: 'auto',
     complications: [],
     styleTags: [],
     designTraits: [],

@@ -172,7 +172,7 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
             brand: parsed.data.brand,
             model: parsed.data.model,
             reference: parsed.data.reference ?? null,
-            movement: parsed.data.movement,
+            movement: parsed.data.movement ?? null,
             caseSizeMm: parsed.data.caseSizeMm ?? null,
             lugToLugMm: parsed.data.lugToLugMm ?? null,
             waterResistanceM: parsed.data.waterResistanceM ?? null,

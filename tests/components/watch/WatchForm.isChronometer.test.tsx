@@ -100,7 +100,7 @@ describe('<WatchForm> — isChronometer Checkbox (FEAT-08, Wave 0 RED scaffold)'
       model: 'Datejust',
       reference: '',
       status: 'owned',
-      movement: 'automatic',
+      movement: 'auto',
       complications: [],
       styleTags: [],
       designTraits: [],

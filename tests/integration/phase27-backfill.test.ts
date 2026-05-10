@@ -52,7 +52,7 @@ maybe(`Phase 27 backfill — sort_order ROW_NUMBER ranking per user (WISH-01) [$
           brand: `${STAMP}-Brand-${i}`,
           model: `Model-${i}`,
           status: 'wishlist',
-          movement: 'automatic',
+          movementType: 'auto',
           complications: [],
           styleTags: [],
           designTraits: [],

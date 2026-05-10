@@ -1,4 +1,5 @@
 import type { Watch, WatchWithWear, CollectionGoal } from '@/lib/types'
+import { MOVEMENT_LABELS } from '@/lib/constants'
 import { detectLoyalBrands } from '@/lib/similarity'
 import { daysSince, SLEEPING_BEAUTY_DAYS } from '@/lib/wear'
 
@@ -121,7 +122,9 @@ export function buildObservations(input: ObservationsInput): string[] {
   // Movement consistency
   const movements = new Set(owned.map((w) => w.movement))
   if (movements.size === 1 && owned.length >= 3) {
-    observations.push(`All your watches use ${[...movements][0]} movements.`)
+    const movementKey = [...movements][0]
+    const movementLabel = movementKey ? MOVEMENT_LABELS[movementKey] : movementKey
+    observations.push(`All your watches use ${movementLabel} movements.`)
   }
 
   return observations

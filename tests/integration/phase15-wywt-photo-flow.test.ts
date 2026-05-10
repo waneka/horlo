@@ -114,21 +114,21 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           brand: 'TestBrandA1',
           model: 'TestModelA1',
           status: 'owned',
-          movement: 'automatic',
+          movementType: 'auto',
         },
         {
           userId: userA.id,
           brand: 'TestBrandA2',
           model: 'TestModelA2',
           status: 'owned',
-          movement: 'automatic',
+          movementType: 'auto',
         },
         {
           userId: userB.id,
           brand: 'TestBrandB1',
           model: 'TestModelB1',
           status: 'owned',
-          movement: 'automatic',
+          movementType: 'auto',
         },
       ])
       .returning()

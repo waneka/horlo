@@ -47,7 +47,7 @@ maybe('Phase 17 join shape — CAT-11 watches LEFT JOIN watches_catalog', () => 
       brand: `JoinBrand_${stamp}`,
       model: `JoinModel_${stamp}`,
       status: 'owned',
-      movement: 'automatic',
+      movementType: 'auto',
       catalogId,
     }).returning()
     watchWithCatalogId = w1.id
@@ -58,7 +58,7 @@ maybe('Phase 17 join shape — CAT-11 watches LEFT JOIN watches_catalog', () => 
       brand: `NoCatalog_${stamp}`,
       model: `NoCatalogModel_${stamp}`,
       status: 'wishlist',
-      movement: 'quartz',
+      movementType: 'quartz',
     }).returning()
     watchWithoutCatalogId = w2.id
   }, 30_000)

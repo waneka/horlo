@@ -81,7 +81,7 @@ maybe('Phase 11 schema — WYWT-09 / WYWT-13 / SRCH-08 existence checks', () => 
           brand: 'CheckBrand',
           model: 'CheckModel',
           status: 'owned',
-          movement: 'automatic',
+          movementType: 'auto',
         })
         .returning()
       testWatchId = w.id

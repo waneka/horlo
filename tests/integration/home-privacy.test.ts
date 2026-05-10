@@ -125,7 +125,7 @@ maybe('Phase 10 home privacy end-to-end', () => {
           brand: `Brand-${k}`,
           model: `Model-${k}`,
           status: 'owned' as const,
-          movement: 'automatic' as const,
+          movementType: 'auto' as const,
         })),
       )
       .returning()

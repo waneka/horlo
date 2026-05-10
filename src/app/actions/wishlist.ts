@@ -70,7 +70,7 @@ export async function addToWishlistFromWearEvent(
       brand: watches.brand,
       model: watches.model,
       imageUrl: watches.imageUrl,
-      movement: watches.movement,
+      movementType: watches.movementType,
       profilePublic: profileSettings.profilePublic,
       visibility: wearEvents.visibility,
     })
@@ -125,7 +125,7 @@ export async function addToWishlistFromWearEvent(
       brand: row.brand,
       model: row.model,
       status: 'wishlist',
-      movement: row.movement as MovementType,
+      movement: row.movementType ?? undefined,
       complications: [],
       styleTags: [],
       designTraits: [],

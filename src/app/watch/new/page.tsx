@@ -138,7 +138,7 @@ async function hydrateCatalogPrefill(
     brand: entry.brand,
     model: entry.model,
     reference: entry.reference ?? undefined,
-    movement: (entry.movement as MovementType | null) ?? undefined,
+    movement: entry.movementType ?? undefined,
     caseSizeMm: entry.caseSizeMm ?? undefined,
     lugToLugMm: entry.lugToLugMm ?? undefined,
     waterResistanceM: entry.waterResistanceM ?? undefined,

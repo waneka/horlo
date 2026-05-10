@@ -324,7 +324,7 @@ maybe('getWearRailForViewer — integration', () => {
       brand,
       model,
       status: 'owned',
-      movement: 'automatic',
+      movement: 'auto',
       complications: [],
       styleTags: [],
       designTraits: [],

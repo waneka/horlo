@@ -9,7 +9,7 @@ function mkWatch(overrides: Partial<Watch> = {}): Watch {
     brand: overrides.brand ?? 'Generic',
     model: overrides.model ?? 'Model',
     status: overrides.status ?? 'owned',
-    movement: overrides.movement ?? 'automatic',
+    movement: overrides.movement ?? 'auto',
     complications: overrides.complications ?? [],
     styleTags: overrides.styleTags ?? [],
     designTraits: overrides.designTraits ?? [],

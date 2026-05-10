@@ -32,7 +32,7 @@ maybe('Phase 17 refresh-counts function -- CAT-09 + CAT-10', () => {
     for (const r of seedRows) {
       await db.insert(watches).values({
         id: r.id, userId, brand: `Rc-${STAMP}-X`, model: 'Sub', reference: 'r1',
-        status: r.status, movement: 'automatic', catalogId,
+        status: r.status, movementType: 'auto', catalogId,
       })
       seededWatchIds.push(r.id)
     }

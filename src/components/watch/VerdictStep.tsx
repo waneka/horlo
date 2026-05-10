@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { MOVEMENT_LABELS } from '@/lib/constants'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import type { VerdictBundle } from '@/lib/verdict/types'
@@ -149,7 +150,7 @@ export function VerdictStep({
 
 function SpecHeadline({ data }: { data: ExtractedWatchData }) {
   const parts = [
-    data.movement,
+    data.movement ? MOVEMENT_LABELS[data.movement] : null,
     data.caseSizeMm ? `${data.caseSizeMm}mm` : null,
     data.dialColor,
   ].filter((p): p is string => Boolean(p))
