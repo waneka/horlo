@@ -4,8 +4,8 @@ milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
 stopped_at: Phase 35 context gathered
-last_updated: "2026-05-10T05:26:26.339Z"
-last_activity: 2026-05-10 -- Phase 35 planning complete
+last_updated: "2026-05-10T05:28:17.546Z"
+last_activity: 2026-05-10 -- Phase 35 execution started
 progress:
   total_phases: 12
   completed_phases: 4
@@ -21,14 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 34 — Layer A — Brand + Family Entities
+**Current focus:** Phase 35 — Layer B — Lineage Edges + Structured Movement + Era/Material
 
 ## Current Position
 
-Phase: 34 — COMPLETE ✓ (verifier passed 5/5 must-haves; ready to advance to Phase 35)
+Phase: 35 (Layer B — Lineage Edges + Structured Movement + Era/Material) — EXECUTING
+Plan: 1 of 7
 Next: `/gsd-discuss-phase 35` (Layer B — Lineage Edges + Structured Movement + Era/Material)
-Status: Ready to execute
-Last activity: 2026-05-10 -- Phase 35 planning complete
+Status: Executing Phase 35
+Last activity: 2026-05-10 -- Phase 35 execution started
 
 Progress: [███████░░░] 31%
 
