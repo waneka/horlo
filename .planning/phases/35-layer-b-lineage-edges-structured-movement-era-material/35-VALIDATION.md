@@ -2,7 +2,7 @@
 phase: 35
 slug: layer-b-lineage-edges-structured-movement-era-material
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-05-09
 ---
@@ -40,8 +40,30 @@ created: 2026-05-09
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 35-01-01 | 01 | 0 | CAT-16 SC#2/3 | — | Static guard tests for hierarchy.ts CTE shape | unit | `npx vitest run tests/static/hierarchy.lineage-3-node.test.ts` | ❌ W0 | ⬜ pending |
-| {planner-fills-rest} | | | | | | | | | |
+| 35-01-01 | 01 | 0 | CAT-16 SC#2/3 | — | Static guard tests for hierarchy.ts CTE shape (G1, G2, G3) | unit | `npx vitest run tests/static/hierarchy.lineage-3-node.test.ts` | ❌ W0 | ⬜ pending |
+| 35-02-01 | 02 | 1 | CAT-16 SC#1/4/5 | T-35-04 | Drizzle pgEnum + table declarations source-of-truth | grep | `grep -c "pgEnum('movement_type_enum'" src/db/schema.ts` returns 1 | ❌ W1 | ⬜ pending |
+| 35-02-02 | 02 | 1 | CAT-16 SC#4 | — | MovementType realigned + WatchEra type + Watch.movement optional | grep | `grep -c "export type MovementType = 'auto' \| 'manual' \| 'quartz' \| 'spring_drive'" src/lib/types.ts` returns 1 | ❌ W1 | ⬜ pending |
+| 35-02-03 | 02 | 1 | CAT-16 SC#4 | — | MOVEMENT_TYPES + MOVEMENT_LABELS + 2 SUGGESTED lists | grep | `grep -c "MOVEMENT_TYPES = \['auto', 'manual', 'quartz', 'spring_drive'\]" src/lib/constants.ts` returns 1 | ❌ W1 | ⬜ pending |
+| 35-02-04 | 02 | 1 | CAT-16 SC#1 | — | Anchor JSON seed files (10 families + 2 lineage edges) | unit (node json) | `node -e "JSON.parse(require('fs').readFileSync('scripts/seed-data/families.json','utf-8')).length === 10"` exits 0 | ❌ W1 | ⬜ pending |
+| 35-03-01 | 03 | 2 | CAT-16 SC#4 | T-35-CONS-01 | Zod schema accepts 4 new movement values + optional() + LLM prompt advertises 4-value contract | grep | `grep -c "z.enum(\['auto', 'manual', 'quartz', 'spring_drive'\]).optional()" src/app/actions/watches.ts` returns 1 | ❌ W2 | ⬜ pending |
+| 35-03-02 | 03 | 2 | CAT-16 SC#4 | T-35-CONS-03 | shims.ts coerceMovement returns MovementType \| undefined; entry.movementType column read; shims.test.ts asserts undefined-fallback | unit | `npx vitest run src/lib/verdict/shims.test.ts` exits 0 | ❌ W2 | ⬜ pending |
+| 35-03-03 | 03 | 2 | CAT-16 SC#4/5 | — | Component fallbacks + WatchForm dropdown + 8 test fixtures use 'auto' (not 'automatic') | unit | `npx vitest run src/components src/lib` exits 0 | ❌ W2 | ⬜ pending |
+| 35-03-04 | 03 | 2 | CAT-16 SC#4/5 | — | DAL movement column rewrite: catalog.ts upsert writes movement_type; watches.ts mapper reads movementType | unit | `npx vitest run src/data` exits 0 AND `npx tsc --noEmit` exits 0 | ❌ W2 | ⬜ pending |
+| 35-04-01 | 04 | 2 | CAT-16 SC#2/3 | T-35-DAL-01/02/03 | hierarchy.ts created; CYCLE clause + depth<10 + getLineageForReference + server-only — flips Plan 01 to load-bearing-pass (G1, G2, G3) | unit | `npx vitest run tests/static/hierarchy.lineage-3-node.test.ts` exits 0 with 5 passing tests | ❌ W2 | ⬜ pending |
+| 35-05-01 | 05 | 3 | CAT-16 SC#1/4/5 | T-35-01/03/04/05 | Supabase authoritative migration: TRUNCATE + 4 CREATE TYPE + ALTER TABLE + CREATE TABLE watch_lineage_edges + cycle trigger + RLS + DO $$ assertions | grep | `grep -c "CREATE TYPE movement_type_enum AS ENUM" supabase/migrations/20260510000001_phase35_layer_b.sql` returns 1 AND 13+ RAISE EXCEPTION assertions | ❌ W3 | ⬜ pending |
+| 35-05-02 | 05 | 3 | CAT-16 SC#1/4/5 | — | Drizzle structural twin migration + journal idx=8 entry (no silent skip) | unit (node json) | `node -e "const j=require('./drizzle/meta/_journal.json'); j.entries[j.entries.length-1].idx === 8"` exits 0 | ❌ W3 | ⬜ pending |
+| 35-06-01 | 06 | 3 | CAT-16 SC#1 | T-35-02/SCRIPT-01 | scripts/backfill-catalog-families.ts idempotent insert + family_id link | grep | `grep -c "ON CONFLICT (brand_id, name_normalized) DO NOTHING" scripts/backfill-catalog-families.ts` returns 1 | ❌ W3 | ⬜ pending |
+| 35-06-02 | 06 | 3 | CAT-16 SC#1 | — | scripts/backfill-catalog-lineage.ts idempotent insert + ref triple resolver | grep | `grep -c "ON CONFLICT (predecessor_catalog_id, successor_catalog_id, relationship_type) DO NOTHING" scripts/backfill-catalog-lineage.ts` returns 1 | ❌ W3 | ⬜ pending |
+| 35-06-03 | 06 | 3 | CAT-16 SC#1/4/5 | T-35-RUNBOOK-01 | package.json scripts wired + Phase 35 deploy runbook section (TRUNCATE warning + 6-step + cycle test) | grep | `grep -c "Phase 35 — Layer B" docs/deploy-db-setup.md` returns 1 AND `grep -c "db:backfill-catalog-families" package.json` returns 1 | ❌ W3 | ⬜ pending |
+| 35-07-01 | 07 | 4 | CAT-16 SC#1/3/4/5 | T-35-02 | [BLOCKING] auth.users single-user assumption verified pre-TRUNCATE | manual | psql `SELECT count(*) FROM auth.users` returns 1 | manual | ⬜ pending |
+| 35-07-02 | 07 | 4 | CAT-16 SC#4 | T-35-04 | [BLOCKING] pg_depend pre-flight returns 0 rows on movement column (G4) | manual | psql pg_depend query (D-03b) | manual | ⬜ pending |
+| 35-07-03 | 07 | 4 | CAT-16 SC#1/4/5 | T-35-01/03/04/05 | supabase db push --linked applies migration atomically; DO $$ assertions pass (G5) | shell | `supabase db push --linked` exits 0 + post-push table/enum existence SELECTs return t/t | manual | ⬜ pending |
+| 35-07-04 | 07 | 4 | CAT-16 SC#1 | — | db:backfill-catalog runs against PROD with inline DATABASE_URL override | shell | exit 0 with `[backfill-catalog] OK` | manual | ⬜ pending |
+| 35-07-05 | 07 | 4 | CAT-16 SC#1 | — | db:backfill-catalog-brands runs against PROD; unlinked=0 | shell | exit 0 with `unlinked=0` | manual | ⬜ pending |
+| 35-07-06 | 07 | 4 | CAT-16 SC#1 | — | db:backfill-catalog-families runs against PROD; 10 families seeded | shell | exit 0 with `inserted=10 skipped=0` (or operator-acknowledged lower) | manual | ⬜ pending |
+| 35-07-07 | 07 | 4 | CAT-16 SC#3 | — | db:backfill-catalog-lineage runs against PROD; 2 anchor edges inserted | shell | exit 0 with `inserted=2 skipped=0` (or operator-acknowledged with reason) | manual | ⬜ pending |
+| 35-07-08 | 07 | 4 | CAT-16 SC#1/4/5 | T-35-01/04/05 | Smoke-test SELECTs against PROD (G6, G9) | manual | 6 SELECT outputs match expected (anon SELECT=t, families count, edges count, pg_typeof shapes) | manual | ⬜ pending |
+| 35-07-09 | 07 | 4 | CAT-16 SC#1 | T-35-03 | Cycle trigger manual smoke (G7) | manual | psql cycle-completing INSERT raises `Lineage cycle detected: ...` exception | manual | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

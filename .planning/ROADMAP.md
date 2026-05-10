@@ -221,7 +221,32 @@ Plans:
   3. `getLineageForReference(catalogId)` DAL function exists in `src/data/hierarchy.ts` and returns correct results for a 3-node lineage chain in unit tests
   4. `watches_catalog.movement_type` pgEnum (`auto`, `manual`, `quartz`, `spring_drive`) and `movement_caliber TEXT` columns exist; the old free-text `movement` column is removed or migrated; SRCH-16 can source its facet from `movement_type`
   5. `era` (text), `case_material` (text), `bracelet_config` (text) columns exist on `watches_catalog`; all existing DAL queries return correct results unchanged
-**Plans**: TBD
+**Plans:** 7 plans
+
+**Wave 0** *(static guard test — Wave 0 dependency from VALIDATION.md)*
+- [ ] 35-01-PLAN.md — Wave 0 static guard test for hierarchy.ts CTE invariants (gates G1, G2, G3)
+
+**Wave 1** *(TS source-of-truth — independent, no in-phase dependencies)*
+- [ ] 35-02-PLAN.md — Drizzle schema (3 pgEnums + watchLineageEdges table + column shape changes) + types.ts MovementType realign + WatchEra + Watch.movement optional + constants.ts (MOVEMENT_TYPES + MOVEMENT_LABELS + CASE_MATERIALS_SUGGESTED + BRACELET_CONFIGS_SUGGESTED) + JSON seed files (families.json + lineage-edges.json)
+
+**Wave 2** *(parallel — depends on 35-02; no file overlap between 03 and 04)*
+- [ ] 35-03-PLAN.md — TS consumer sweep: Zod schema + LLM prompt + shims.ts restructure + WatchForm dropdown rebuild + 4 component fallbacks + 8 test fixture files + DAL movement column rewrite (watches.ts + catalog.ts upsert)
+- [ ] 35-04-PLAN.md — DAL hierarchy.ts: getLineageForReference recursive CTE with Postgres 15 CYCLE clause + depth<10 guard (server-only); flips Plan 01 vacuous-pass to load-bearing-pass
+
+**Wave 3** *(parallel — depends on 35-02; Plan 06 also depends on 35-04 for runbook references; no file overlap between 05 and 06)*
+- [ ] 35-05-PLAN.md — Migrations: supabase/migrations/20260510000001_phase35_layer_b.sql (TRUNCATE + 4 CREATE TYPE + ALTER TABLE + CREATE TABLE watch_lineage_edges + cycle trigger + RLS + DO $$ assertions) + drizzle/0008_phase35_layer_b.sql (idempotent twin) + drizzle/meta/_journal.json idx=8 entry
+- [ ] 35-06-PLAN.md — Backfill scripts (scripts/backfill-catalog-families.ts + scripts/backfill-catalog-lineage.ts) + package.json npm scripts + docs/deploy-db-setup.md Phase 35 section (TRUNCATE warning + 6-step deploy order + smoke tests + cycle-trigger manual smoke)
+
+**Wave 4** *([BLOCKING] production deploy — depends on Waves 2 + 3 complete; autonomous=false)*
+- [ ] 35-07-PLAN.md — Production deploy: auth.users single-user check → pg_depend pre-flight → `supabase db push --linked` → 4 backfill runs (catalog → brands → families → lineage) → smoke-test SELECTs (G6/G9) → cycle trigger manual smoke (G7); 4 checkpoint:human-verify gates
+
+**Cross-cutting constraints:**
+- ROADMAP success #1/#3/#4/#5 require PRODUCTION state — Wave 4 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
+- ROADMAP success #2 satisfied by Wave 0 static guard test (compile-time evidence)
+- Phase 17 D-04/D-06 RLS pattern + Phase 34 mirror inherited verbatim (public-read + service-role-write; no INSERT/UPDATE/DELETE policy)
+- D-02 prod TRUNCATE: single-user assumption MUST be re-verified in Plan 07 Task 1 (`SELECT count(*) FROM auth.users` returns 1)
+- D-03b `pg_depend` pre-flight is BLOCKING gate before `DROP COLUMN movement` commits to prod
+- 5 STRIDE threats T-35-01..T-35-05 mapped to plan threat_refs; T-35-01/03/04/05 verified via Plan 07 manual smoke gates G4/G6/G7/G9
 
 ### Phase 36: Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL
 **Goal**: Create the `watch_variants` table, execute the clean-slate catalog DELETE to eliminate fragmented Reference rows, re-link user watches, and flip `watches.catalog_id` to NOT NULL — bundled together because the clean-slate provides the 100% backfill guarantee CAT-14 requires.
