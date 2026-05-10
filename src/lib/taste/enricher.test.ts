@@ -52,7 +52,7 @@ const BASE_INPUT: EnrichmentInput = {
     brand: 'Rolex',
     model: 'Datejust',
     reference: '1601',
-    movement: 'automatic',
+    movement: 'auto',
     caseSizeMm: 36,
     lugToLugMm: 44,
     waterResistanceM: 100,

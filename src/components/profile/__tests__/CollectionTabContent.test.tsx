@@ -53,7 +53,7 @@ function buildWatch(id: string): Watch {
     brand: 'Brand',
     model: `Model-${id}`,
     status: 'owned',
-    movement: 'automatic',
+    movement: 'auto',
     complications: [],
     styleTags: [],
     designTraits: [],

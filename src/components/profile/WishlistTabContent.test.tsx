@@ -54,7 +54,7 @@ const buildWatch = (id: string): Watch => ({
   brand: 'Brand',
   model: 'Model',
   status: 'wishlist',
-  movement: 'automatic',
+  movement: 'auto',
   complications: [],
   styleTags: [],
   designTraits: [],

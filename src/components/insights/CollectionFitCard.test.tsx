@@ -14,7 +14,7 @@ import type { Watch } from '@/lib/types'
 const buildWatch = (id: string, brand: string, model: string): Watch => ({
   id, brand, model,
   status: 'owned',
-  movement: 'automatic',
+  movement: 'auto',
   complications: [],
   styleTags: [], designTraits: [], roleTags: [],
 })

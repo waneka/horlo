@@ -23,6 +23,7 @@ import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import {
   COMPLICATIONS,
   DIAL_COLORS,
+  MOVEMENT_LABELS,
   MOVEMENT_TYPES,
   STRAP_TYPES,
   CRYSTAL_TYPES,
@@ -64,7 +65,7 @@ const initialFormData: FormData = {
   pricePaid: undefined,
   targetPrice: undefined,
   marketPrice: undefined,
-  movement: 'automatic',
+  movement: 'auto',
   complications: [],
   caseSizeMm: undefined,
   lugToLugMm: undefined,
@@ -427,7 +428,7 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
               <SelectContent>
                 {MOVEMENT_TYPES.map((type) => (
                   <SelectItem key={type} value={type}>
-                    <span className="capitalize">{type}</span>
+                    {MOVEMENT_LABELS[type]}
                   </SelectItem>
                 ))}
               </SelectContent>

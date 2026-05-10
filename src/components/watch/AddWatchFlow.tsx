@@ -635,7 +635,7 @@ export function AddWatchFlow({
  * - Required fields with no extracted value get safe defaults
  */
 function extractedToPartialWatch(data: ExtractedWatchData, status: WatchStatus): Watch {
-  const movement: MovementType = data.movement ?? 'automatic'
+  const movement: MovementType = data.movement ?? 'auto'
   return {
     id: 'pending',
     brand: data.brand ?? '',
@@ -677,7 +677,7 @@ function buildAddWatchPayload(
     reference: data.reference,
     status,
     marketPrice: data.marketPrice,
-    movement: data.movement ?? 'automatic',
+    movement: data.movement ?? 'auto',
     complications: data.complications ?? [],
     caseSizeMm: data.caseSizeMm,
     lugToLugMm: data.lugToLugMm,

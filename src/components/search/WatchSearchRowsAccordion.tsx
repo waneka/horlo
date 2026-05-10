@@ -84,7 +84,7 @@ export function WatchSearchRowsAccordion({
         model: r.model,
         reference: r.reference ?? undefined,
         status: 'wishlist' as const,
-        movement: 'automatic' as const,
+        movement: 'auto' as const,
         complications: [],
         styleTags: [],
         designTraits: [],

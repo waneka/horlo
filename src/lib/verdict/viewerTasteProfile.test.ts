@@ -46,7 +46,7 @@ function w(id: string, overrides: Partial<Watch> = {}): Watch {
     brand: 'Brand',
     model: 'Model',
     status: 'owned',
-    movement: 'automatic',
+    movement: 'auto',
     complications: [],
     styleTags: [],
     designTraits: [],

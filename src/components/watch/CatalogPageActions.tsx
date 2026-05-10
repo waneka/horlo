@@ -78,7 +78,7 @@ export function CatalogPageActions({
         model: spec.model,
         reference: spec.reference ?? undefined,
         status: 'wishlist' as const,
-        movement: spec.movement ?? 'automatic',
+        movement: spec.movement ?? 'auto',
         complications: spec.complications,
         caseSizeMm: spec.caseSizeMm ?? undefined,
         lugToLugMm: spec.lugToLugMm ?? undefined,
