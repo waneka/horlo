@@ -24,7 +24,7 @@
 
 - [ ] **CAT-15** (Layer A): New `brands` and `watch_families` tables with public-read RLS + service-role-write. Nullable `brand_id` FK and nullable `family_id` FK added to `watches_catalog`. Existing DAL queries continue working unchanged. Backfill is manual via service-role scripts; no automated migration. Three-step migration discipline: nullable column add → backfill → (deferred) NOT NULL flip.
 
-- [ ] **CAT-16** (Layer B): New `watch_lineage_edges` junction table with `(predecessor_catalog_id, successor_catalog_id, relationship_type, metadata)` supporting M:N relationships and `relationship_type ∈ {successor, predecessor, remake, tribute, homage}`. BEFORE INSERT cycle-detection trigger plus `CYCLE` clause on every recursive CTE query. New `src/data/hierarchy.ts` DAL with `getLineageForReference(catalogId)` recursive CTE (depth-guard 10). Free-text `movement` column replaced by `(movement_caliber TEXT, movement_type ENUM[auto, manual, quartz, spring_drive])`. New first-class columns: `era` (text enum), `case_material` (text), `bracelet_config` (text). Lineage edge data is manually curated only — no automated inference.
+- [x] **CAT-16** (Layer B): New `watch_lineage_edges` junction table with `(predecessor_catalog_id, successor_catalog_id, relationship_type, metadata)` supporting M:N relationships and `relationship_type ∈ {successor, predecessor, remake, tribute, homage}`. BEFORE INSERT cycle-detection trigger plus `CYCLE` clause on every recursive CTE query. New `src/data/hierarchy.ts` DAL with `getLineageForReference(catalogId)` recursive CTE (depth-guard 10). Free-text `movement` column replaced by `(movement_caliber TEXT, movement_type ENUM[auto, manual, quartz, spring_drive])`. New first-class columns: `era` (text enum), `case_material` (text), `bracelet_config` (text). Lineage edge data is manually curated only — no automated inference.
 
 - [ ] **CAT-17** (Layer C): New `watch_variants` table (catalog_id FK + dial_color, bezel, bracelet_variant). Existing fragmented Reference rows (e.g., "16610 Kermit" + "16610 black dial") consolidated to canonical Reference + N Variants. Migration is `DELETE` rows from `watches_catalog` (NOT `DROP TABLE` — preserves pg_cron schedule + RLS policies + `ON DELETE SET NULL` cascade behavior on `watches.catalog_id`). User's collection survives the wipe (FKs go null) and is re-linked via the existing idempotent `npm run db:backfill-catalog` (already idempotent on `WHERE catalog_id IS NULL`). 6-step runbook (export user collection refs → wipe catalog → reseed canonical refs → relink user watches → verify zero NULLs → CAT-14 NOT NULL flip) documented in phase CONTEXT.md as a success criterion.
 
@@ -105,7 +105,7 @@
 | DISC-10 | Phase 33 | Pending |
 | DISC-12 | Phase 33b | Pending |
 | CAT-15 | Phase 34 | Pending |
-| CAT-16 | Phase 35 | Pending |
+| CAT-16 | Phase 35 | Complete |
 | CAT-17 | Phase 36 | Pending |
 | CAT-14 | Phase 36 | Pending |
 | CAT-18 | Phase 37 | Pending |

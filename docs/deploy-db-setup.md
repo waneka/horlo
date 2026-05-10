@@ -684,24 +684,40 @@ Threats mitigated: T-35-01 (anon write blocked by RLS service-role-only), T-35-0
 - Full test suite passes (`npx vitest run` exits 0)
 - `SELECT count(*) FROM auth.users` against prod returns 1 (single-user assumption holds)
 
-### 35.0 — Pre-flight pg_depend check (memory rule project_drizzle_supabase_db_mismatch.md rule 4)
+### 35.0 — Pre-flight pg_depend check (memory rule project_drizzle_supabase_db_mismatch.md rule 4 + 4a)
 
 BEFORE applying the migration, run this query against PROD via psql to confirm the `movement` column has no unexpected dependents (indexes, views, generated columns, foreign keys):
 
 ```sql
-SELECT classid::regclass, objid::regclass, refobjid::regclass, refobjsubid
-  FROM pg_depend
- WHERE refobjid IN ('watches'::regclass, 'watches_catalog'::regclass)
-   AND refobjsubid IN (
-     SELECT attnum FROM pg_attribute
-      WHERE attrelid = 'watches'::regclass AND attname = 'movement'
-     UNION ALL
-     SELECT attnum FROM pg_attribute
-      WHERE attrelid = 'watches_catalog'::regclass AND attname = 'movement'
-   );
+-- CORRECT form: joins pg_attribute by both attrelid AND attnum to confirm the
+-- column name on each row. Returns ONLY true dependents on `movement`.
+SELECT
+  d.classid::regclass AS dependency_class,
+  d.objid::regclass   AS dependent_object,
+  d.refobjid::regclass AS on_table,
+  a.attname            AS on_column,
+  d.deptype
+FROM pg_depend d
+JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+WHERE d.refobjid IN ('watches'::regclass, 'watches_catalog'::regclass)
+  AND a.attname = 'movement';
 ```
 
 **Expected output: zero rows.** If any rows return, **DO NOT PROCEED** — investigate the dependent object first. The migration's `DROP COLUMN movement` would otherwise fail.
+
+> **Footgun T-35-PGDEPEND-ATTNUM (Phase 35 deploy incident):** The naive form below is buggy — it matches `refobjsubid IN (X, Y)` regardless of which table the dependency is on. If `watches.movement` has attnum=10 AND `watches_catalog.image_source_url` ALSO has attnum=10, a CHECK constraint on `image_source_url` falsely shows up as a "movement dependent." During the actual Phase 35 deploy on 2026-05-10, the broken query returned 2 false-positive rows for `watches_catalog_image_source_url_protocol_check`. Always use the joined form above.
+>
+> ```sql
+> -- BROKEN — DO NOT USE. Cross-table attnum collision risk.
+> SELECT classid::regclass, objid::regclass, refobjid::regclass, refobjsubid
+>   FROM pg_depend
+>  WHERE refobjid IN ('watches'::regclass, 'watches_catalog'::regclass)
+>    AND refobjsubid IN (
+>      SELECT attnum FROM pg_attribute WHERE attrelid = 'watches'::regclass         AND attname = 'movement'
+>      UNION ALL
+>      SELECT attnum FROM pg_attribute WHERE attrelid = 'watches_catalog'::regclass AND attname = 'movement'
+>    );
+> ```
 
 ### 35.1 — Apply migration to prod
 

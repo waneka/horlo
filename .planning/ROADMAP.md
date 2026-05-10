@@ -104,7 +104,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [x] **Phase 32: DEBT-09 notesPublic Fix** — Repair carryover data-loss regression; turn RED scaffold GREEN *(completed 2026-05-06)*
 - [ ] **Phase 33: Discovery Audit** — Read-only click-path audit of all discovery surfaces; decisions doc gates all polish phases
 - [ ] **Phase 34: Layer A — Brand + Family Entities** — `brands` + `watch_families` tables; nullable FKs on `watches_catalog`
-- [ ] **Phase 35: Layer B — Lineage + Movement + Era/Material** — `watch_lineage_edges` with cycle-guard; `movement_type` enum; unblocks SRCH-16
+- [x] **Phase 35: Layer B — Lineage + Movement + Era/Material** — `watch_lineage_edges` with cycle-guard; `movement_type` enum; unblocks SRCH-16 (completed 2026-05-10)
 - [ ] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip
 - [ ] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep
 - [ ] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first
@@ -221,24 +221,24 @@ Plans:
   3. `getLineageForReference(catalogId)` DAL function exists in `src/data/hierarchy.ts` and returns correct results for a 3-node lineage chain in unit tests
   4. `watches_catalog.movement_type` pgEnum (`auto`, `manual`, `quartz`, `spring_drive`) and `movement_caliber TEXT` columns exist; the old free-text `movement` column is removed or migrated; SRCH-16 can source its facet from `movement_type`
   5. `era` (text), `case_material` (text), `bracelet_config` (text) columns exist on `watches_catalog`; all existing DAL queries return correct results unchanged
-**Plans:** 7 plans
+**Plans:** 7/7 plans complete
 
 **Wave 0** *(static guard test — Wave 0 dependency from VALIDATION.md)*
-- [ ] 35-01-PLAN.md — Wave 0 static guard test for hierarchy.ts CTE invariants (gates G1, G2, G3)
+- [x] 35-01-PLAN.md — Wave 0 static guard test for hierarchy.ts CTE invariants (gates G1, G2, G3)
 
 **Wave 1** *(TS source-of-truth — independent, no in-phase dependencies)*
-- [ ] 35-02-PLAN.md — Drizzle schema (3 pgEnums + watchLineageEdges table + column shape changes) + types.ts MovementType realign + WatchEra + Watch.movement optional + constants.ts (MOVEMENT_TYPES + MOVEMENT_LABELS + CASE_MATERIALS_SUGGESTED + BRACELET_CONFIGS_SUGGESTED) + JSON seed files (families.json + lineage-edges.json)
+- [x] 35-02-PLAN.md — Drizzle schema (3 pgEnums + watchLineageEdges table + column shape changes) + types.ts MovementType realign + WatchEra + Watch.movement optional + constants.ts (MOVEMENT_TYPES + MOVEMENT_LABELS + CASE_MATERIALS_SUGGESTED + BRACELET_CONFIGS_SUGGESTED) + JSON seed files (families.json + lineage-edges.json)
 
 **Wave 2** *(parallel — depends on 35-02; no file overlap between 03 and 04)*
-- [ ] 35-03-PLAN.md — TS consumer sweep: Zod schema + LLM prompt + shims.ts restructure + WatchForm dropdown rebuild + 4 component fallbacks + 8 test fixture files + DAL movement column rewrite (watches.ts + catalog.ts upsert)
-- [ ] 35-04-PLAN.md — DAL hierarchy.ts: getLineageForReference recursive CTE with Postgres 15 CYCLE clause + depth<10 guard (server-only); flips Plan 01 vacuous-pass to load-bearing-pass
+- [x] 35-03-PLAN.md — TS consumer sweep: Zod schema + LLM prompt + shims.ts restructure + WatchForm dropdown rebuild + 4 component fallbacks + 8 test fixture files + DAL movement column rewrite (watches.ts + catalog.ts upsert)
+- [x] 35-04-PLAN.md — DAL hierarchy.ts: getLineageForReference recursive CTE with Postgres 15 CYCLE clause + depth<10 guard (server-only); flips Plan 01 vacuous-pass to load-bearing-pass
 
 **Wave 3** *(parallel — depends on 35-02; Plan 06 also depends on 35-04 for runbook references; no file overlap between 05 and 06)*
-- [ ] 35-05-PLAN.md — Migrations: supabase/migrations/20260510000001_phase35_layer_b.sql (TRUNCATE + 4 CREATE TYPE + ALTER TABLE + CREATE TABLE watch_lineage_edges + cycle trigger + RLS + DO $$ assertions) + drizzle/0008_phase35_layer_b.sql (idempotent twin) + drizzle/meta/_journal.json idx=8 entry
-- [ ] 35-06-PLAN.md — Backfill scripts (scripts/backfill-catalog-families.ts + scripts/backfill-catalog-lineage.ts) + package.json npm scripts + docs/deploy-db-setup.md Phase 35 section (TRUNCATE warning + 6-step deploy order + smoke tests + cycle-trigger manual smoke)
+- [x] 35-05-PLAN.md — Migrations: supabase/migrations/20260510000001_phase35_layer_b.sql (TRUNCATE + 4 CREATE TYPE + ALTER TABLE + CREATE TABLE watch_lineage_edges + cycle trigger + RLS + DO $$ assertions) + drizzle/0008_phase35_layer_b.sql (idempotent twin) + drizzle/meta/_journal.json idx=8 entry
+- [x] 35-06-PLAN.md — Backfill scripts (scripts/backfill-catalog-families.ts + scripts/backfill-catalog-lineage.ts) + package.json npm scripts + docs/deploy-db-setup.md Phase 35 section (TRUNCATE warning + 6-step deploy order + smoke tests + cycle-trigger manual smoke)
 
 **Wave 4** *([BLOCKING] production deploy — depends on Waves 2 + 3 complete; autonomous=false)*
-- [ ] 35-07-PLAN.md — Production deploy: auth.users single-user check → pg_depend pre-flight → `supabase db push --linked` → 4 backfill runs (catalog → brands → families → lineage) → smoke-test SELECTs (G6/G9) → cycle trigger manual smoke (G7); 4 checkpoint:human-verify gates
+- [x] 35-07-PLAN.md — Production deploy: auth.users single-user check → pg_depend pre-flight → `supabase db push --linked` → 4 backfill runs (catalog → brands → families → lineage) → smoke-test SELECTs (G6/G9) → cycle trigger manual smoke (G7); 4 checkpoint:human-verify gates
 
 **Cross-cutting constraints:**
 - ROADMAP success #1/#3/#4/#5 require PRODUCTION state — Wave 4 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
@@ -363,7 +363,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 32. DEBT-09 notesPublic Fix | 0/? | Not started | - |
 | 33. Discovery Audit | 0/? | Not started | - |
 | 34. Layer A — Brand + Family | 3/4 (Wave 4 ran out-of-order; Wave 3 prod push pending) | In progress | - |
-| 35. Layer B — Lineage + Movement | 0/? | Not started | - |
+| 35. Layer B — Lineage + Movement | 7/7 | Complete    | 2026-05-10 |
 | 36. Layer C — Variants + Clean-Slate | 0/? | Not started | - |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
 | 38. CAT-13 Engine Rewire | 0/? | Not started | - |
