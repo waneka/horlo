@@ -665,3 +665,145 @@ ALTER TABLE watches_catalog
 pg_cron / RLS policies / data on `watches_catalog` are unaffected (no rows removed there).
 
 **Caveat:** This backout plan is safe ONLY for the Phase-34-only window. Once Phase 35 ships (which adds `watch_lineage_edges` referencing `watch_families` AND populates `watch_families` rows), the `DROP TABLE` on `watch_families` would lose curated data. Once any user collection has its catalog rows depending on `brand_id` for downstream features (Phase 38 / 39), backing out also reverts those features. Treat §34.7 as a Phase-34-only window — after Phase 35 ships, schedule a forward-fix instead of a backout.
+
+---
+
+## Phase 35 — Layer B: Lineage Edges + Structured Movement + Era/Material Deploy Steps
+
+Phase 35 (CAT-16) introduces the `watch_lineage_edges` junction table with a BEFORE INSERT cycle-detection trigger, replaces the free-text `movement` column with a structured `movement_type_enum` pgEnum on BOTH `watches` and `watches_catalog`, and adds `era` (pgEnum) / `case_material` (text) / `bracelet_config` (text) columns to `watches_catalog`.
+
+Threats mitigated: T-35-01 (anon write blocked by RLS service-role-only), T-35-03 (cycle trigger), T-35-04 (TRUNCATE-first eliminates value-mapping risk; pg_depend pre-flight catches column dependents), T-35-05 (lineage edge ON DELETE RESTRICT catches catalog deletion attempts).
+
+> **WARNING — DESTRUCTIVE MIGRATION:** This is the FIRST deploy in project history that wipes prod data. The migration begins with `TRUNCATE watches CASCADE; TRUNCATE watches_catalog CASCADE;` inside the transaction. Per memory rule `project_db_wipeable_2026_05_09.md`, the prod DB is single-user (twwaneka@gmail.com) — if a 2nd user has signed up since 2026-05-09, **STOP AND RE-CHECK** before running this migration. Verify with `SELECT count(*) FROM auth.users;` against prod.
+
+### Preconditions
+
+- Phase 35 PR is merged to `main`
+- Local DB push is GREEN (Plan 05 migration verified locally via `supabase db reset && supabase db push`)
+- TypeScript compiles cleanly (`npx tsc --noEmit` exits 0)
+- Full test suite passes (`npx vitest run` exits 0)
+- `SELECT count(*) FROM auth.users` against prod returns 1 (single-user assumption holds)
+
+### 35.0 — Pre-flight pg_depend check (memory rule project_drizzle_supabase_db_mismatch.md rule 4)
+
+BEFORE applying the migration, run this query against PROD via psql to confirm the `movement` column has no unexpected dependents (indexes, views, generated columns, foreign keys):
+
+```sql
+SELECT classid::regclass, objid::regclass, refobjid::regclass, refobjsubid
+  FROM pg_depend
+ WHERE refobjid IN ('watches'::regclass, 'watches_catalog'::regclass)
+   AND refobjsubid IN (
+     SELECT attnum FROM pg_attribute
+      WHERE attrelid = 'watches'::regclass AND attname = 'movement'
+     UNION ALL
+     SELECT attnum FROM pg_attribute
+      WHERE attrelid = 'watches_catalog'::regclass AND attname = 'movement'
+   );
+```
+
+**Expected output: zero rows.** If any rows return, **DO NOT PROCEED** — investigate the dependent object first. The migration's `DROP COLUMN movement` would otherwise fail.
+
+### 35.1 — Apply migration to prod
+
+```bash
+# From repo root, with DATABASE_URL pointed at prod (or use --linked flag).
+supabase db push --linked
+```
+
+Confirms:
+- `BEGIN;` opens transaction
+- `TRUNCATE watches CASCADE; TRUNCATE watches_catalog CASCADE;` runs first
+- 4 `CREATE TYPE` statements (movement_type_enum, lineage_relationship_type, watch_era)
+- 2 `ALTER TABLE` (drop + add columns) on watches and watches_catalog
+- `CREATE TABLE watch_lineage_edges` with FKs, CHECK, UNIQUE, indexes
+- Cycle trigger function + `BEFORE INSERT` trigger
+- RLS policy + `GRANT SELECT TO anon, authenticated`
+- Final `DO $$ ... END $$` assertion block (raises RAISE EXCEPTION on any invariant failure → entire transaction rolls back)
+- `COMMIT;` closes transaction atomically
+
+If any DO $$ assertion raises EXCEPTION, the transaction rolls back — TRUNCATE included; prod is restored to pre-migration state with no data loss.
+
+### 35.2 — Re-seed canonical Reference rows (existing Phase 17 script)
+
+```bash
+# Inline override DATABASE_URL with prod pooler URL (Footgun T-34-04 / T-17-BACKFILL-PROD-DB).
+DATABASE_URL="<prod session-mode pooler URL>" npm run db:backfill-catalog
+```
+
+Provides the catalog rows that family/lineage seeding will reference.
+
+### 35.3 — Re-seed brands (existing Phase 34 script — idempotent re-run after wipe)
+
+```bash
+DATABASE_URL="<prod pooler URL>" npm run db:backfill-catalog-brands -- --patch-country=scripts/country.json
+```
+
+Re-derives `brands` rows from re-seeded catalog text + applies country_of_origin map. Idempotent — safe to re-run.
+
+### 35.4 — Seed families (NEW Phase 35 script)
+
+```bash
+DATABASE_URL="<prod pooler URL>" npm run db:backfill-catalog-families
+```
+
+Reads `scripts/seed-data/families.json`. Inserts ~10 anchor families. Links `watches_catalog.family_id` for the seeded refs. Idempotent — re-runs are no-ops on existing rows.
+
+### 35.5 — Seed lineage edges (NEW Phase 35 script)
+
+```bash
+DATABASE_URL="<prod pooler URL>" npm run db:backfill-catalog-lineage
+```
+
+Reads `scripts/seed-data/lineage-edges.json`. Resolves `<brand>/<family>/<reference>` triples to catalog IDs. INSERTs 2 anchor Submariner edges (5513 → 14060 → 124060). Logs warnings for any unresolvable refs (skip-on-missing-ref behavior; no placeholder inserts).
+
+### 35.6 — Smoke-test SELECTs (D-14 step 7)
+
+Run against PROD via psql:
+
+```sql
+-- RLS verification
+SELECT has_table_privilege('anon', 'public.watch_lineage_edges', 'SELECT');
+-- expect: t
+
+-- Backfill row counts
+SELECT COUNT(*) FROM watch_families;             -- expect: 10 (or higher if operator extended seed)
+SELECT COUNT(*) FROM watch_lineage_edges;        -- expect: 2 (or higher)
+
+-- Column shape verification
+SELECT pg_typeof(movement_type) FROM watches_catalog WHERE movement_type IS NOT NULL LIMIT 1;
+-- expect: movement_type_enum (or empty result if all rows have NULL movement_type)
+SELECT pg_typeof(era) FROM watches_catalog WHERE era IS NOT NULL LIMIT 1;
+-- expect: watch_era
+
+-- Family link sanity (post Plan 06 family backfill)
+SELECT COUNT(*) FROM watches_catalog WHERE family_id IS NULL;
+-- expect: > 0 for non-seeded refs (normal); 0 for the Submariner refs specifically (5513, 14060, 124060)
+```
+
+### 35.7 — Cycle trigger smoke test (intentional failure — manual)
+
+After Step 35.5 has inserted the Submariner chain, attempt to insert a cycle-completing edge:
+
+```sql
+-- Find the catalog IDs for 5513 and 124060:
+WITH s5513 AS (SELECT id FROM watches_catalog WHERE reference_normalized = '5513' LIMIT 1),
+     s124060 AS (SELECT id FROM watches_catalog WHERE reference_normalized = '124060' LIMIT 1)
+INSERT INTO watch_lineage_edges (predecessor_catalog_id, successor_catalog_id, relationship_type)
+SELECT s124060.id, s5513.id, 'successor'::lineage_relationship_type FROM s124060, s5513;
+
+-- EXPECTED: ERROR raised with message "Lineage cycle detected: <124060-uuid> -> <5513-uuid>"
+```
+
+If the INSERT succeeds (no error raised), the cycle trigger is BROKEN — investigate before considering Phase 35 complete.
+
+### 35.8 — Local DB re-sync after Phase 35
+
+Per memory `project_local_db_reset.md`, local re-sync needs:
+
+```bash
+supabase db reset
+npx drizzle-kit push
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260510000001_phase35_layer_b.sql
+```
+
+Then re-run the 4 backfill scripts against the local DB (omit the `DATABASE_URL=` inline override — local default URL applies).

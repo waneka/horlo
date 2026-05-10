@@ -14,7 +14,9 @@
     "db:backfill-taste": "tsx --env-file=.env.local scripts/backfill-taste.ts",
     "db:reenrich-taste": "tsx --env-file=.env.local scripts/reenrich-taste.ts",
     "db:preflight-notification-cleanup": "tsx --env-file=.env.local scripts/preflight-notification-types.ts",
-    "db:backfill-catalog-brands": "tsx --env-file=.env.local scripts/backfill-catalog-brands.ts"
+    "db:backfill-catalog-brands":   "tsx --env-file=.env.local scripts/backfill-catalog-brands.ts",
+    "db:backfill-catalog-families": "tsx --env-file=.env.local scripts/backfill-catalog-families.ts",
+    "db:backfill-catalog-lineage":  "tsx --env-file=.env.local scripts/backfill-catalog-lineage.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
