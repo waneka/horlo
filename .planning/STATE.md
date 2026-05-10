@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: executing
-stopped_at: Phase 34 COMPLETE (verifier passed; DEBT-12 filed)
-last_updated: "2026-05-09T18:30:00.000Z"
-last_activity: 2026-05-09 -- Phase 34 verifier PASSED 5/5 must-haves; DEBT-12 (drizzle journal repair) filed, RLS truth t/t
+status: Phase 34 SHIPPED to prod; Phase 35 ready to start
+stopped_at: Phase 35 context gathered
+last_updated: "2026-05-10T04:07:37.490Z"
+last_activity: 2026-05-09 -- Phase 34 verifier PASSED; DEBT-12 (drizzle journal repair) filed for opportunistic Phase 35 pickup
 progress:
   total_phases: 12
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
   completed_plans: 12
-  percent: 33
+  percent: 100
 ---
 
 # Project State
@@ -95,7 +95,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T17:35:00.000Z
-Stopped at: Phase 34 Plan 04 complete out-of-order (1 commit: cafcdb1; +118 lines to docs/deploy-db-setup.md §34.0–§34.7 + local-reset Step 4; CAT-15 SC#5 satisfied; Wave 3 prod push still pending)
-Resume file: .planning/phases/34-layer-a-brand-family-entities/34-03-PLAN.md
+Last session: 2026-05-10T04:07:37.477Z
+Stopped at: Phase 35 context gathered
+Resume file: .planning/phases/35-layer-b-lineage-edges-structured-movement-era-material/35-CONTEXT.md
 Next action: continue Phase 34 execution (Wave 3: production deploy — supabase db push + drizzle migrate + prod backfill with inline DATABASE_URL override; operator follows §34.0–§34.4 of docs/deploy-db-setup.md)
