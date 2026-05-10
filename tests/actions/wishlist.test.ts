@@ -96,7 +96,7 @@ function publicWearJoinRow(overrides: Record<string, unknown> = {}) {
     brand: 'Rolex',
     model: 'Submariner',
     imageUrl: 'https://example.com/sub.jpg',
-    movement: 'auto',
+    movementType: 'auto',
     profilePublic: true,
     visibility: 'public',
     ...overrides,
