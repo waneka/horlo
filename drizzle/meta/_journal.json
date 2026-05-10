@@ -57,6 +57,13 @@
       "when": 1778339534536,
       "tag": "0007_phase34_brands_families",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778393232709,
+      "tag": "0008_phase35_layer_b",
+      "breakpoints": true
     }
   ]
 }
