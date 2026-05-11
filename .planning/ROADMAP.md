@@ -270,7 +270,7 @@ Plans:
 - [x] 36-04-PLAN.md — Local schema push (docker exec psql apply of 20260511000000_phase36_layer_c_variants.sql) + tests/integration/phase36-rls.test.ts (13 it() blocks covering V-01..V-11, all green) + V-12 parity grep (0 matches). drizzle-kit push deviation: skipped (interactive TTY prompt on pre-existing snapshot drift; live DB shape verified directly via 5/5 ACs — types match by construction). cause.code assertion fix applied for V-09/V-01 INSERT rejection tests (Rule 1 — drizzle wraps postgres-js errors).
 
 **Wave 3** *(depends on Wave 2; [BLOCKING] prod deploy — autonomous: false)*
-- [ ] 36-05-PLAN.md — Append §36 deploy section to docs/deploy-db-setup.md (~150 lines covering §36.0 pg_depend → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 supabase db push --linked → §36.4 smoke tests → §36.5 hard-fail recovery → §36.6 local re-sync → §36.7 backout) + checkpoint:human-action operator gate for prod deploy
+- [~] 36-05-PLAN.md — Task 1 (docs append) ✅ shipped at commit 9eec274 (docs/deploy-db-setup.md +196 lines covering §36.0 pg_depend JOIN form → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 supabase db push --linked + DEBT-12 SKIP note → §36.4 smoke tests → §36.5 hard-fail recovery → §36.6 local re-sync → §36.7 backout). Task 2 (checkpoint:human-action — operator runs §36.0..§36.4 + §36.6 against prod) BLOCKED on operator approval.
 
 **Cross-cutting constraints:**
 - ROADMAP success #4 requires PRODUCTION state — Wave 3 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
