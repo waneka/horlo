@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 35 context gathered
-last_updated: "2026-05-10T07:23:23.666Z"
-last_activity: 2026-05-10
+stopped_at: Phase 36 context gathered
+last_updated: "2026-05-11T00:00:00.000Z"
+last_activity: 2026-05-11
 progress:
   total_phases: 12
   completed_phases: 5
@@ -21,13 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 35 — Layer B — Lineage Edges + Structured Movement + Era/Material
+**Current focus:** Phase 36 — Layer C — Variant Split + CAT-14 NOT NULL
 
 ## Current Position
 
 Phase: 36
 Plan: Not started
-Next: `/gsd-discuss-phase 35` (Layer B — Lineage Edges + Structured Movement + Era/Material)
+Next: `/gsd-plan-phase 36` (Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL)
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-CONTEXT.md
 Status: Executing Phase 35
 Last activity: 2026-05-10
 
