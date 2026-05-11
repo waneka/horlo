@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 36 Wave 1 — Plans 01 + 02 complete; Plan 03 next
-last_updated: "2026-05-11T21:20:19.000Z"
+stopped_at: Phase 36 Wave 1 complete — Plans 01 + 02 + 03 done; Wave 2 Plan 04 next
+last_updated: "2026-05-11T21:26:08.000Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 12
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 ## Current Position
 
 Phase: 36
-Plan: 5 plans across 3 waves; Wave 1 — Plans 01 + 02 complete (Drizzle schema + Supabase migration); Plan 03 next
-Next: Wave 1 — Plan 03 (Drizzle migration twin + journal append) → Wave 2 (Plan 04 [BLOCKING local push + integration test]) → Wave 3 (Plan 05 [autonomous:false prod-deploy gate])
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-03-PLAN.md
-Status: Executing Phase 36 Wave 1
+Plan: 5 plans across 3 waves; Wave 1 complete (Plans 01 Drizzle schema + 02 Supabase migration + 03 Drizzle migration twin + journal idx=9); Wave 2 Plan 04 next
+Next: Wave 2 — Plan 04 (BLOCKING local push + integration test) → Wave 3 (Plan 05 [autonomous:false prod-deploy gate])
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-04-PLAN.md
+Status: Executing Phase 36 — Wave 1 closed, Wave 2 next
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%
@@ -40,7 +40,7 @@ v2.0 Taste Network Foundation     [x] shipped 2026-04-22
 v3.0 Production Nav & Daily Wear  [x] shipped 2026-04-27
 v4.0 Discovery & Polish           [x] shipped 2026-05-03
 v4.1 Polish & Patch               [x] shipped 2026-05-05
-v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 in progress 3/4; Phase 36 in progress 2/5 (Wave 1 Plans 01+02 done; Plan 03 next; 12 phases, 17 reqs)
+v5.0 Discovery North Star         [ ] Phases 32+33+33b done (3/12) — Phase 34 in progress 3/4; Phase 36 in progress 3/5 (Wave 1 complete: Plans 01+02+03; Plan 04 next; 12 phases, 17 reqs)
 v6.0 Market Value                 [ ] planted (SEED-005)
 
 [██████████████████████] 5 milestones shipped
@@ -50,9 +50,9 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 12 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plans 01+02)
-- Average duration: ~6.0 min
-- Total execution time: ~32.5 min
+- Total plans completed: 13 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plans 01+02+03)
+- Average duration: ~5.7 min
+- Total execution time: ~34.2 min
 
 **By Phase:**
 
@@ -60,7 +60,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 |-------|-------|-------|----------|
 | 34 (Layer A) | 3/4 (out-of-order: 01→02→04; 03 prod push pending) | ~17 min | ~5.7 min |
 | 35 | 7 | - | - |
-| 36 (Layer C) | 2/5 (Plans 01 Drizzle schema + 02 Supabase migration; Plans 03–05 pending) | ~15.5 min | 7.75 min |
+| 36 (Layer C) | 3/5 (Plans 01 Drizzle schema + 02 Supabase migration + 03 Drizzle migration twin + journal; Plans 04–05 pending) | ~17.2 min | ~5.7 min |
 
 *Updated after each plan completion*
 
@@ -88,6 +88,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - **Phase 36 Plan 01 (2026-05-11):** Pitfall 6 `.notNull()` tightening on `watches.catalogId` DEFERRED to Phase 38 per Rule 4 — applying it caused 18 NEW tsc errors (1 production DAL at `src/data/watches.ts:184` + 17 integration test fixtures). Closing the cascade requires rewriting `createWatch(userId, data)` to `createWatch(userId, data, catalogId)`, restructuring the legacy "insert with NULL, link later" flow at `src/app/actions/watches.ts:88-135` and `src/app/actions/wishlist.ts:124`, AND updating 17 fixture inserts — outside Plan 01's `src/db/schema.ts`-only scope. Full handoff in `.planning/phases/36-…/deferred-items.md` Item 1. Prod-side CAT-14 NOT NULL flip is UNAFFECTED — it still ships via Plan 02's Supabase migration. The Drizzle/prod TypeScript-level drift on this one column is the documented temporary cost; resolves in Phase 38 (the consumer that benefits from the non-null guarantee).
 - **Phase 36 Plan 01 (2026-05-11):** Project-wide tsc baseline = 27 pre-existing errors on `main` (8 unique files) BEFORE Phase 36 ran. Plan 01's literal AC "`tsc exits 0 with no errors`" was unattainable from the start; pragmatic interpretation = "no NEW errors caused by this plan" (post-edit count = baseline, verified by diff exit 0). Future plans should treat 27 as the load-bearing baseline; pre-existing errors are out of scope per the executor scope-boundary rule. Full inventory in `.planning/phases/36-…/deferred-items.md` § "Pre-existing baseline".
 - **Phase 36 Plan 02 (2026-05-11):** Supabase migration `supabase/migrations/20260511000000_phase36_layer_c_variants.sql` shipped 150 lines / 8.5 KB / 1 commit (`5a3614e`) with zero deviations. All 13 plan ACs verified by automated grep. The FIRST-position DO $$ pre-flight pattern (novel to this phase) is the new project template for any future load-bearing constraint flip — same PL/pgSQL syntax as Phase 35's end-of-migration DO $$ but rolls back BEFORE any DDL runs. `CREATE POLICY ... FOR SELECT USING (true)` + separate `GRANT SELECT TO anon, authenticated` (4-line block from Phase 35 lines 118–121) is the canonical RLS shape — the `FOR SELECT TO anon, authenticated` form mentioned in the additional-context block was a documentation alias, not a syntax change.
+- **Phase 36 Plan 03 (2026-05-11):** Drizzle migration twin `drizzle/0009_phase36_layer_c_variants.sql` (64 lines) + `drizzle/meta/_journal.json` idx=9 entry shipped in a single commit (`04fdfe3`) with zero deviations. All 13 plan ACs verified by automated grep + jq + node JSON.parse. Mirrors Phase 35's `drizzle/0008_phase35_layer_b.sql` idempotent pattern verbatim (CREATE TABLE IF NOT EXISTS + ADD COLUMN IF NOT EXISTS + DO $$ IF NOT EXISTS pg_constraint FK guards + CREATE INDEX IF NOT EXISTS). Journal `when` field captured at execution time via `node -e "process.stdout.write(String(Date.now()))"` = 1778534674854 (plain integer literal, NOT a JS expression). Phase 34 Plan 01 lesson (journal-in-same-commit-as-SQL-file) honored — without idx=9, `drizzle-kit migrate` would silently skip 0009 in prod. Wave 1 of Phase 36 now closed; Wave 2 Plan 04 (BLOCKING local schema push + integration test) next.
 
 ### Blockers/Concerns
 
@@ -102,7 +103,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T21:20:19.000Z
-Stopped at: Phase 36 Plan 02 complete (Supabase migration supabase/migrations/20260511000000_phase36_layer_c_variants.sql shipped — DO $$ pre-flight FIRST + CREATE TABLE watch_variants + RLS/GRANT + variant_id ADD COLUMN + CAT-14 SET NOT NULL + final DO $$ post-assertion; commit 5a3614e; zero deviations)
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-03-PLAN.md
-Next action: continue Phase 36 Wave 1 sequential — execute Plan 03 (Drizzle migration twin drizzle/0009_phase36_layer_c_variants.sql with idempotent IF NOT EXISTS + DO $$ FK guards, no RLS/GRANT/pre-flight; + append idx=9 entry to drizzle/meta/_journal.json in the SAME commit per Phase 34 Plan 01 lesson)
+Last session: 2026-05-11T21:26:08.000Z
+Stopped at: Phase 36 Wave 1 complete (Plan 03 Drizzle migration twin drizzle/0009_phase36_layer_c_variants.sql 64 lines + drizzle/meta/_journal.json idx=9 entry shipped in single commit 04fdfe3; zero deviations; all 13 ACs verified)
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-04-PLAN.md
+Next action: begin Phase 36 Wave 2 — execute Plan 04 (BLOCKING local schema push + integration test: supabase db reset → drizzle-kit push → docker exec psql apply of 20260511000000_phase36_layer_c_variants.sql → write tests/integration/phase36-*.test.ts covering V-01..V-11 + V-12 parity grep → vitest green)

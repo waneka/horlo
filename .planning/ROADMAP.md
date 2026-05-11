@@ -264,7 +264,7 @@ Plans:
 **Wave 1** *(parallel — schema sources of truth; no file overlap)*
 - [x] 36-01-PLAN.md — Drizzle schema edits: add watchVariants pgTable + watches.variantId column in src/db/schema.ts (D-02..D-05). Pitfall 6 .notNull() tightening on watches.catalogId DEFERRED to Phase 38 per Rule 4 — see 36-01-SUMMARY.md and deferred-items.md (18-error DAL-flow cascade outside Plan 01 scope)
 - [x] 36-02-PLAN.md — Supabase migration: write supabase/migrations/20260511000000_phase36_layer_c_variants.sql with DO $$ pre-flight FIRST + CREATE TABLE + RLS + GRANT + variant_id ADD COLUMN + CAT-14 SET NOT NULL + final DO $$ post-assertion (D-02..D-07; ROADMAP success #1/#3/#4)
-- [ ] 36-03-PLAN.md — Drizzle migration: write drizzle/0009_phase36_layer_c_variants.sql (idempotent structural twin) + append drizzle/meta/_journal.json idx=9 entry
+- [x] 36-03-PLAN.md — Drizzle migration: write drizzle/0009_phase36_layer_c_variants.sql (idempotent structural twin) + append drizzle/meta/_journal.json idx=9 entry
 
 **Wave 2** *(depends on Waves 1-01/02/03; [BLOCKING] local schema push + integration test)*
 - [ ] 36-04-PLAN.md — Local schema push (drizzle-kit push + docker exec psql apply) + write tests/integration/phase36-rls.test.ts (12 it() blocks covering V-01..V-11) + run vitest green + V-12 parity grep
@@ -384,7 +384,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 33. Discovery Audit | 0/? | Not started | - |
 | 34. Layer A — Brand + Family | 3/4 (Wave 4 ran out-of-order; Wave 3 prod push pending) | In progress | - |
 | 35. Layer B — Lineage + Movement | 7/7 | Complete    | 2026-05-10 |
-| 36. Layer C — Variants + Clean-Slate | 2/5 (Wave 1 Plans 01 + 02 done; Plan 03 next) | In progress | - |
+| 36. Layer C — Variants + Clean-Slate | 3/5 (Wave 1 complete: Plans 01 + 02 + 03 done; Wave 2 Plan 04 next) | In progress | - |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
 | 38. CAT-13 Engine Rewire | 0/? | Not started | - |
 | 39. Audit-Driven Discovery Polish | 0/? | Not started | - |
