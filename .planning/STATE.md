@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 36 plans ready to execute
-last_updated: "2026-05-11T00:00:00.000Z"
+stopped_at: Phase 36 Wave 1 — Plan 01 complete; Plans 02/03 next
+last_updated: "2026-05-11T21:15:00.000Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 12
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 ## Current Position
 
 Phase: 36
-Plan: 5 plans, 3 waves (01/02/03 parallel → 04 [BLOCKING local push + integration test] → 05 [autonomous:false prod-deploy gate])
-Next: `/gsd-execute-phase 36` (Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL)
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-01-PLAN.md
-Status: Ready to execute
+Plan: 5 plans across 3 waves; Wave 1 — Plan 01 complete (Drizzle schema); Plans 02/03 next
+Next: Wave 1 — Plan 02 (Supabase migration) + Plan 03 (Drizzle migration + journal) → Wave 2 (Plan 04 [BLOCKING local push + integration test]) → Wave 3 (Plan 05 [autonomous:false prod-deploy gate])
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-02-PLAN.md
+Status: Executing Phase 36 Wave 1
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%
@@ -50,9 +50,9 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 10 (v5.0; Phase 34 only — Plans 01, 02, 04)
-- Average duration: ~5.7 min
-- Total execution time: ~17 min
+- Total plans completed: 11 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plan 01)
+- Average duration: ~6.5 min
+- Total execution time: ~31 min
 
 **By Phase:**
 
@@ -60,6 +60,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 |-------|-------|-------|----------|
 | 34 (Layer A) | 3/4 (out-of-order: 01→02→04; 03 prod push pending) | ~17 min | ~5.7 min |
 | 35 | 7 | - | - |
+| 36 (Layer C) | 1/5 (Plan 01 Drizzle schema; Plans 02–05 pending) | ~14 min | 14.0 min |
 
 *Updated after each plan completion*
 
@@ -84,6 +85,8 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - **Phase 34 Plan 02 (2026-05-09):** 3-pass idempotent rhythm proven: 4 successive local invocations all exit 0; runs 2 and 4 report `inserted=0 patched=0 linked=0 unlinked=0` confirming WHERE-x-IS-NULL filter shrink-to-empty pattern. Plan 03 prod push depends on this idempotence (interrupted-then-resumed prod runs are safe).
 - **Phase 34 Plan 04 (2026-05-09):** Plan 04 ran OUT-OF-ORDER before Plan 03 per user request (operator wants the deploy runbook in hand BEFORE performing the prod push). Plan 04 is docs-only (`docs/deploy-db-setup.md` +118 lines, §34.0–§34.7 + local-reset workflow update) so it has no operational dependency on Plan 03. CAT-15 SC#5 (three-step migration discipline documented; NOT NULL flip explicitly DEFERRED) is now satisfied; only SC#1/SC#3/SC#4 prod-state criteria remain pending on Plan 03.
 - **Phase 34 Plan 04 (2026-05-09):** Footgun T-34-04 (silent backfill against wrong DB) is now operator-readable in `docs/deploy-db-setup.md` §34.2 with explicit `DATABASE_URL="<prod session-mode pooler URL>"` inline override pattern + cross-reference to Phase 17 §17.2 T-17-BACKFILL-PROD-DB precedent. The runbook (not memory) is the long-term mitigation surface.
+- **Phase 36 Plan 01 (2026-05-11):** Pitfall 6 `.notNull()` tightening on `watches.catalogId` DEFERRED to Phase 38 per Rule 4 — applying it caused 18 NEW tsc errors (1 production DAL at `src/data/watches.ts:184` + 17 integration test fixtures). Closing the cascade requires rewriting `createWatch(userId, data)` to `createWatch(userId, data, catalogId)`, restructuring the legacy "insert with NULL, link later" flow at `src/app/actions/watches.ts:88-135` and `src/app/actions/wishlist.ts:124`, AND updating 17 fixture inserts — outside Plan 01's `src/db/schema.ts`-only scope. Full handoff in `.planning/phases/36-…/deferred-items.md` Item 1. Prod-side CAT-14 NOT NULL flip is UNAFFECTED — it still ships via Plan 02's Supabase migration. The Drizzle/prod TypeScript-level drift on this one column is the documented temporary cost; resolves in Phase 38 (the consumer that benefits from the non-null guarantee).
+- **Phase 36 Plan 01 (2026-05-11):** Project-wide tsc baseline = 27 pre-existing errors on `main` (8 unique files) BEFORE Phase 36 ran. Plan 01's literal AC "`tsc exits 0 with no errors`" was unattainable from the start; pragmatic interpretation = "no NEW errors caused by this plan" (post-edit count = baseline, verified by diff exit 0). Future plans should treat 27 as the load-bearing baseline; pre-existing errors are out of scope per the executor scope-boundary rule. Full inventory in `.planning/phases/36-…/deferred-items.md` § "Pre-existing baseline".
 
 ### Blockers/Concerns
 
@@ -98,7 +101,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-10T04:07:37.477Z
-Stopped at: Phase 35 context gathered
-Resume file: .planning/phases/35-layer-b-lineage-edges-structured-movement-era-material/35-CONTEXT.md
-Next action: continue Phase 34 execution (Wave 3: production deploy — supabase db push + drizzle migrate + prod backfill with inline DATABASE_URL override; operator follows §34.0–§34.4 of docs/deploy-db-setup.md)
+Last session: 2026-05-11T21:15:00.000Z
+Stopped at: Phase 36 Plan 01 complete (Drizzle schema for watch_variants + watches.variant_id; Pitfall 6 deferred to Phase 38)
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-02-PLAN.md
+Next action: continue Phase 36 Wave 1 sequential — execute Plan 02 (Supabase migration with DO $$ pre-flight FIRST + CREATE TABLE watch_variants + RLS/GRANT + variant_id ADD COLUMN + CAT-14 SET NOT NULL + final DO $$ post-assertion) and Plan 03 (Drizzle migration twin + journal append)

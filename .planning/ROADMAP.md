@@ -262,7 +262,7 @@ Plans:
 
 Plans:
 **Wave 1** *(parallel — schema sources of truth; no file overlap)*
-- [ ] 36-01-PLAN.md — Drizzle schema edits: add watchVariants pgTable + watches.variantId column + tighten watches.catalogId to .notNull() in src/db/schema.ts (D-02..D-05 + Pitfall 6 mitigation)
+- [x] 36-01-PLAN.md — Drizzle schema edits: add watchVariants pgTable + watches.variantId column in src/db/schema.ts (D-02..D-05). Pitfall 6 .notNull() tightening on watches.catalogId DEFERRED to Phase 38 per Rule 4 — see 36-01-SUMMARY.md and deferred-items.md (18-error DAL-flow cascade outside Plan 01 scope)
 - [ ] 36-02-PLAN.md — Supabase migration: write supabase/migrations/20260511000000_phase36_layer_c_variants.sql with DO $$ pre-flight FIRST + CREATE TABLE + RLS + GRANT + variant_id ADD COLUMN + CAT-14 SET NOT NULL + final DO $$ post-assertion (D-02..D-07; ROADMAP success #1/#3/#4)
 - [ ] 36-03-PLAN.md — Drizzle migration: write drizzle/0009_phase36_layer_c_variants.sql (idempotent structural twin) + append drizzle/meta/_journal.json idx=9 entry
 
