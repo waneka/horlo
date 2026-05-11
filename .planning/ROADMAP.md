@@ -267,7 +267,7 @@ Plans:
 - [x] 36-03-PLAN.md — Drizzle migration: write drizzle/0009_phase36_layer_c_variants.sql (idempotent structural twin) + append drizzle/meta/_journal.json idx=9 entry
 
 **Wave 2** *(depends on Waves 1-01/02/03; [BLOCKING] local schema push + integration test)*
-- [ ] 36-04-PLAN.md — Local schema push (drizzle-kit push + docker exec psql apply) + write tests/integration/phase36-rls.test.ts (12 it() blocks covering V-01..V-11) + run vitest green + V-12 parity grep
+- [x] 36-04-PLAN.md — Local schema push (docker exec psql apply of 20260511000000_phase36_layer_c_variants.sql) + tests/integration/phase36-rls.test.ts (13 it() blocks covering V-01..V-11, all green) + V-12 parity grep (0 matches). drizzle-kit push deviation: skipped (interactive TTY prompt on pre-existing snapshot drift; live DB shape verified directly via 5/5 ACs — types match by construction). cause.code assertion fix applied for V-09/V-01 INSERT rejection tests (Rule 1 — drizzle wraps postgres-js errors).
 
 **Wave 3** *(depends on Wave 2; [BLOCKING] prod deploy — autonomous: false)*
 - [ ] 36-05-PLAN.md — Append §36 deploy section to docs/deploy-db-setup.md (~150 lines covering §36.0 pg_depend → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 supabase db push --linked → §36.4 smoke tests → §36.5 hard-fail recovery → §36.6 local re-sync → §36.7 backout) + checkpoint:human-action operator gate for prod deploy
