@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 36 prod deploy COMPLETE 2026-05-11 — CAT-14 LIVE (watches.catalog_id is_nullable=NO); watch_variants + variant_id shipped empty (D-06); all 5 ROADMAP success criteria green; phase verifier next
+stopped_at: Phase 36 COMPLETE 2026-05-11 — verifier PHASE_PASSED (5/5 ROADMAP + 7/7 D-NN + 12/13 Nyquist; V-13 deferred to Phase 38 as documented). CAT-14 + CAT-17 shipped. Next: Phase 37 (Layer D — Provenance + Divestments) per --no-transition chain handoff.
 last_updated: "2026-05-11T21:47:52.000Z"
 last_activity: 2026-05-11
 progress:
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 36
-Plan: 5 plans across 3 waves; ALL 5 PLANS COMPLETE — Phase 36 prod deploy succeeded 2026-05-11 (CAT-14 LIVE)
-Next: Run gsd-verifier for phase-level goal-backward check, then update memory file (project_db_wipeable_2026_05_09.md — prod has 12 seed auth.users from prior Claude sessions), close phase, advance chain to Phase 37
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-05-SUMMARY.md (Task 2 prod deploy outcome amended)
-Status: Phase 36 prod-ready — awaiting verifier
+Phase: 36 (CLOSED) → 37 next
+Plan: Phase 36 complete — 5/5 plans shipped + prod deployed; verifier PHASE_PASSED 2026-05-11
+Next: `/gsd-discuss-phase 37` or `/gsd-plan-phase 37` (Layer D — Provenance Fields + Divestments Table)
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-VERIFICATION.md (PHASE_PASSED report)
+Status: Phase 36 closed — chain returned with --no-transition; user controls next-phase kickoff
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%

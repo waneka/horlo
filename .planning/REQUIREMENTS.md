@@ -26,7 +26,7 @@
 
 - [x] **CAT-16** (Layer B): New `watch_lineage_edges` junction table with `(predecessor_catalog_id, successor_catalog_id, relationship_type, metadata)` supporting M:N relationships and `relationship_type ∈ {successor, predecessor, remake, tribute, homage}`. BEFORE INSERT cycle-detection trigger plus `CYCLE` clause on every recursive CTE query. New `src/data/hierarchy.ts` DAL with `getLineageForReference(catalogId)` recursive CTE (depth-guard 10). Free-text `movement` column replaced by `(movement_caliber TEXT, movement_type ENUM[auto, manual, quartz, spring_drive])`. New first-class columns: `era` (text enum), `case_material` (text), `bracelet_config` (text). Lineage edge data is manually curated only — no automated inference.
 
-- [ ] **CAT-17** (Layer C): New `watch_variants` table (catalog_id FK + dial_color, bezel, bracelet_variant). Existing fragmented Reference rows (e.g., "16610 Kermit" + "16610 black dial") consolidated to canonical Reference + N Variants. Migration is `DELETE` rows from `watches_catalog` (NOT `DROP TABLE` — preserves pg_cron schedule + RLS policies + `ON DELETE SET NULL` cascade behavior on `watches.catalog_id`). User's collection survives the wipe (FKs go null) and is re-linked via the existing idempotent `npm run db:backfill-catalog` (already idempotent on `WHERE catalog_id IS NULL`). 6-step runbook (export user collection refs → wipe catalog → reseed canonical refs → relink user watches → verify zero NULLs → CAT-14 NOT NULL flip) documented in phase CONTEXT.md as a success criterion.
+- [x] **CAT-17** (Layer C, ✅ Phase 36 shipped 2026-05-11): New `watch_variants` table (catalog_id FK + dial_color, bezel, bracelet_variant). Existing fragmented Reference rows (e.g., "16610 Kermit" + "16610 black dial") consolidated to canonical Reference + N Variants. Migration is `DELETE` rows from `watches_catalog` (NOT `DROP TABLE` — preserves pg_cron schedule + RLS policies + `ON DELETE SET NULL` cascade behavior on `watches.catalog_id`). User's collection survives the wipe (FKs go null) and is re-linked via the existing idempotent `npm run db:backfill-catalog` (already idempotent on `WHERE catalog_id IS NULL`). 6-step runbook (export user collection refs → wipe catalog → reseed canonical refs → relink user watches → verify zero NULLs → CAT-14 NOT NULL flip) documented in phase CONTEXT.md as a success criterion.
 
 - [ ] **CAT-18** (Layer D): Provenance columns added to `watches`: `serial`, `year_of_acquisition`, `condition`, `box_papers` (chip enum: none / box-only / papers-only / full-set), `service_history`, `paid_currency`, `purchase_date`. New `divestments` table with `(catalog_id NOT NULL, user_id, divested_at, replaced_by_catalog_id, sale_price, notes)`. Existing `watches.status = 'sold'` enum value remains for UI display; recommender (SEED-002, future) reads from `divestments`. Status transition `'owned' → 'sold'` writes a row to `divestments`. Provenance UI ships as collapsed "Collector's Record" disclosure on the WatchForm edit page. Divestment dialog UI scope deferred to phase discuss-phase.
 
@@ -34,7 +34,7 @@
 
 - [ ] **CAT-13**: `analyzeSimilarity()` in `src/lib/similarity.ts` reads catalog taste columns (`formality`, `sportiness`, `heritage_score`, `primary_archetype`, `era_signal`, `design_motifs`, `confidence`) at JOIN time. The `Watch` type extends with optional `catalogTaste`. Taste becomes a 9th additive scoring dimension gated on `confidence >= 0.5` (per Phase 19.1 D-13 confidence semantics). Two new static guard tests at `tests/static/similarity.taste-null.test.ts` (engine falls back to per-user tag data when `catalogTaste` null or below threshold) and `tests/static/similarity.taste-present.test.ts` (engine uses additive 9th dimension when `catalogTaste` present and confidence ≥ 0.5) — both written and passing BEFORE any change to `similarity.ts`. Existing `tests/static/CollectionFitCard.no-engine.test.ts` import boundary guard unchanged. Phase 19.1 D-07 byte-lock on `extractWithLlm()` survives untouched.
 
-- [ ] **CAT-14**: `SET NOT NULL` on `watches.catalog_id`. Pre-flight `DO $$` block asserts zero NULLs as the first migration statement; transaction aborts if any NULL exists. Bundled with CAT-17 Layer C clean-slate phase since clean-slate enables the constraint.
+- [x] **CAT-14** (✅ Phase 36 shipped 2026-05-11 — `is_nullable=NO` LIVE in prod): `SET NOT NULL` on `watches.catalog_id`. Pre-flight `DO $$` block asserts zero NULLs as the first migration statement; transaction aborts if any NULL exists. Bundled with CAT-17 Layer C clean-slate phase since clean-slate enables the constraint.
 
 ### Audit-Driven Discovery Polish
 
@@ -106,8 +106,8 @@
 | DISC-12 | Phase 33b | Pending |
 | CAT-15 | Phase 34 | Pending |
 | CAT-16 | Phase 35 | Complete |
-| CAT-17 | Phase 36 | Pending |
-| CAT-14 | Phase 36 | Pending |
+| CAT-17 | Phase 36 | Shipped 2026-05-11 |
+| CAT-14 | Phase 36 | Shipped 2026-05-11 |
 | CAT-18 | Phase 37 | Pending |
 | CAT-13 | Phase 38 | Pending |
 | DISC-09 | Phase 39 | Pending |

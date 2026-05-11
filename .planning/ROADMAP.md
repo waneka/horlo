@@ -105,7 +105,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [ ] **Phase 33: Discovery Audit** — Read-only click-path audit of all discovery surfaces; decisions doc gates all polish phases
 - [ ] **Phase 34: Layer A — Brand + Family Entities** — `brands` + `watch_families` tables; nullable FKs on `watches_catalog`
 - [x] **Phase 35: Layer B — Lineage + Movement + Era/Material** — `watch_lineage_edges` with cycle-guard; `movement_type` enum; unblocks SRCH-16 (completed 2026-05-10)
-- [ ] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip
+- [x] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip *(completed 2026-05-11)*
 - [ ] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep
 - [ ] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first
 - [ ] **Phase 39: Audit-Driven Discovery Polish** — Closes specific DISCOVERY-AUDIT.md row IDs; DISC-09 editorial slot + DISC-11 dead-end fixes
@@ -384,7 +384,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 33. Discovery Audit | 0/? | Not started | - |
 | 34. Layer A — Brand + Family | 3/4 (Wave 4 ran out-of-order; Wave 3 prod push pending) | In progress | - |
 | 35. Layer B — Lineage + Movement | 7/7 | Complete    | 2026-05-10 |
-| 36. Layer C — Variants + Clean-Slate | 5/5 (all plans complete; prod deployed 2026-05-11 — CAT-14 LIVE) | Complete (awaiting verifier) | 2026-05-11 |
+| 36. Layer C — Variants + Clean-Slate | 5/5 | Complete (verifier PHASE_PASSED) | 2026-05-11 |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
 | 38. CAT-13 Engine Rewire | 0/? | Not started | - |
 | 39. Audit-Driven Discovery Polish | 0/? | Not started | - |
