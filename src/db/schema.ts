@@ -113,9 +113,21 @@ export const watches = pgTable(
     notesUpdatedAt: timestamp('notes_updated_at', { withTimezone: true }),
     imageUrl: text('image_url'),
 
-    // Phase 17: catalog FK — nullable, ON DELETE SET NULL (CAT-04, D-catalog-14: NEVER SET NOT NULL in v4.0)
-    // Forward-reference resolved lazily by Drizzle (watchesCatalog defined below).
+    // Phase 17 + Phase 36: catalog FK — prod becomes NOT NULL after Phase 36 CAT-14 flip
+    // (supabase/migrations/20260511000000_phase36_layer_c_variants.sql ships SET NOT NULL).
+    // Drizzle-side `.notNull()` tightening (Pitfall 6 mitigation in 36-RESEARCH.md §Common Pitfalls)
+    // is DEFERRED — see .planning/phases/36-…/deferred-items.md → "Pitfall 6 catalogId .notNull()
+    // deferred to Phase 38". Cascading type-error fix requires DAL flow rewrite (createWatch must
+    // accept catalog_id, two production call sites must upsert catalog BEFORE createWatch) plus
+    // updating 17 integration test fixtures. Per scope boundary (Plan 01 files_modified =
+    // src/db/schema.ts only) and per Rule 4 (architectural change), this is out of scope.
+    // ON DELETE SET NULL preserved (Phase 17 D-04).
     catalogId: uuid('catalog_id').references(() => watchesCatalog.id, { onDelete: 'set null' }),
+
+    // Phase 36 D-04: variant FK — nullable, ON DELETE SET NULL (CAT-17).
+    // No NOT NULL flip scheduled — variants will never hit 100% coverage (D-04 rationale).
+    // Forward-reference resolved lazily by Drizzle (watchVariants defined below at end of file).
+    variantId: uuid('variant_id').references(() => watchVariants.id, { onDelete: 'set null' }),
 
     // Phase 27 — sort_order for wishlist drag-reorder (D-01).
     // Default 0; backfilled per-user in createdAt DESC order via parallel
@@ -440,6 +452,38 @@ export const watchLineageEdges = pgTable(
       table.successorCatalogId,
       table.relationshipType,
     ),
+  ],
+)
+
+// ============================================================
+// Phase 36 — Layer C (CAT-17, D-02..D-05): watch_variants
+// Schema-only entity; populated via service-role backfill in Phase 39 (D-06).
+// RLS public-read + GRANT SELECT to anon/authenticated co-located in
+// supabase/migrations/20260511000000_phase36_layer_c_variants.sql.
+// Same Drizzle-vs-Supabase split as Phase 34/35: Drizzle = column shapes;
+// Supabase = authoritative DDL including RLS + GRANT + DO $$ pre-flight + assertions.
+// ============================================================
+export const watchVariants = pgTable(
+  'watch_variants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // D-03: ON DELETE RESTRICT — orphan-detection signal; service-role-only writes mean no app-flow risk.
+    catalogId: uuid('catalog_id')
+      .notNull()
+      .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    // D-02: slug is set explicitly (NOT GENERATED) — URL-stable across name edits.
+    slug: text('slug').notNull(),
+    dialColor: text('dial_color'),
+    bezel: text('bezel'),
+    braceletVariant: text('bracelet_variant'),
+    imageUrl: text('image_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('watch_variants_catalog_id_idx').on(table.catalogId),
+    unique('watch_variants_catalog_slug_unique').on(table.catalogId, table.slug),
   ],
 )
 
