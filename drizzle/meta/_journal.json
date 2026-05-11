@@ -64,6 +64,13 @@
       "when": 1778393232709,
       "tag": "0008_phase35_layer_b",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778534674854,
+      "tag": "0009_phase36_layer_c_variants",
+      "breakpoints": true
     }
   ]
 }
