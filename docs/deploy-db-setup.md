@@ -823,3 +823,199 @@ docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrati
 ```
 
 Then re-run the 4 backfill scripts against the local DB (omit the `DATABASE_URL=` inline override — local default URL applies).
+
+---
+
+## Phase 36 — Layer C: Variant Split + CAT-14 NOT NULL Deploy Steps
+
+Phase 36 (CAT-17 + CAT-14) introduces the `watch_variants` table with public-read RLS + service-role-write, adds a nullable `watches.variant_id` FK column, and flips `watches.catalog_id` to NOT NULL. Schema-only — no UI surface, no DAL changes, no new app code.
+
+Threats mitigated: T-36-01 (anon write blocked by RLS service-role-only), T-36-02 (anon read enabled by GRANT SELECT — memory rule `project_supabase_secdef_grants.md`), T-36-03 (FK orphans blocked by ON DELETE RESTRICT on `watch_variants.catalog_id`), T-36-04 (CAT-14 silent application — DO $$ pre-flight as FIRST migration statement aborts the transaction if any orphan exists).
+
+> **NOTE — INHERITED FROM PHASE 35:** Steps (a)(b)(c) of the ROADMAP success #2 6-step runbook (export-to-CSV / DELETE fragmented rows / re-seed canonical refs) are inherited from Phase 35 D-02 — that TRUNCATE + re-seed cycle ran on 2026-05-10. Phase 36 does NOT re-execute the wipe. Per memory `project_db_wipeable_2026_05_09.md`, prod is still single-user (twwaneka@gmail.com) — verify with `SELECT count(*) FROM auth.users` before assuming.
+
+### Preconditions
+
+- Phase 36 PR is merged to `main`
+- Local DB push is GREEN (Phase 36 supabase migration applied locally via `docker exec ... psql ... < supabase/migrations/20260511000000_phase36_layer_c_variants.sql` exits 0; final DO $$ post-assertion does NOT raise)
+- `tests/integration/phase36-rls.test.ts` passes locally with `DATABASE_URL` pointed at local Docker (`postgresql://postgres:postgres@127.0.0.1:54322/postgres`)
+- TypeScript compiles cleanly (`npx tsc --noEmit` exits 0)
+- Full test suite passes (`npx vitest run` exits 0)
+- `SELECT count(*) FROM auth.users` against prod returns 1 (single-user assumption holds — STOP if a 2nd user has signed up)
+- `SELECT count(*) FROM watches WHERE catalog_id IS NULL` against prod returns 0 (Phase 35 inheritance — verify here, do not assume)
+
+### 36.0 — Pre-flight pg_depend check (memory rule 4 + 4a)
+
+BEFORE applying the migration, run this query against PROD via psql to confirm `watches.catalog_id` has no unexpected dependents:
+
+```sql
+-- CORRECT form (memory rule 4a): joins pg_attribute by both attrelid AND attnum
+-- to confirm the column name on each row. Returns ONLY true dependents on
+-- watches.catalog_id.
+SELECT
+  d.classid::regclass AS dependency_class,
+  d.objid::regclass   AS dependent_object,
+  d.refobjid::regclass AS on_table,
+  a.attname            AS on_column,
+  d.deptype
+FROM pg_depend d
+JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+WHERE d.refobjid = 'watches'::regclass
+  AND a.attname = 'catalog_id';
+```
+
+**Expected output: ONE row** — the `watches_catalog_id_idx` index. The index is unaffected by a nullability change (metadata-only).
+
+> **Footgun T-35-PGDEPEND-ATTNUM (cross-reference from Phase 35 §35.0):** The naive `IN` form has a cross-table attnum-collision bug. Use the JOIN form above only.
+
+If any row OTHER than `watches_catalog_id_idx` appears, **DO NOT PROCEED** — investigate the dependent object first. Most likely candidates would be a forgotten view, materialized view, or generated column referencing `catalog_id`. None exist as of 2026-05-11.
+
+### 36.1 — Safety re-link backfill (D-01 step (d))
+
+```bash
+DATABASE_URL="<prod session-mode pooler URL>" npm run db:backfill-catalog
+```
+
+Idempotent — `WHERE catalog_id IS NULL` filter from Phase 17. Re-runs against a fully-linked collection are no-ops (exit `inserted=0 patched=0 linked=0 unlinked=0`). This is the belt-and-suspenders for any watch added since Phase 35's 2026-05-10 wipe + re-seed.
+
+Footgun T-17-BACKFILL-PROD-DB / T-34-04 applies — see §17.2 / §34.2 for the wrong-DB risk and the inline `DATABASE_URL=` override pattern.
+
+### 36.2 — Zero-NULL verification (D-01 step (e))
+
+```bash
+psql "<prod pooler URL>" -c "SELECT COUNT(*) FROM watches WHERE catalog_id IS NULL;"
+```
+
+**Expected: 0.** If non-zero, **STOP** and go to §36.5 hard-fail recovery flow before retrying the migration push.
+
+### 36.3 — Apply migrations to prod (D-01 step (f) — CAT-14 NOT NULL flip)
+
+```bash
+supabase db push --linked
+```
+
+Confirms (in order):
+- `BEGIN;` opens transaction
+- `DO $$ ... END $$` CAT-14 pre-flight runs FIRST (ROADMAP success #3). If orphans exist, this raises EXCEPTION and rolls back; prod stays in pre-migration state.
+- `CREATE TABLE watch_variants (...)` with PK, FK, UNIQUE, indexes
+- `ALTER TABLE watch_variants ENABLE ROW LEVEL SECURITY` + policy + GRANT
+- `ALTER TABLE watches ADD COLUMN variant_id uuid NULL REFERENCES watch_variants(id) ON DELETE SET NULL`
+- `ALTER TABLE watches ALTER COLUMN catalog_id SET NOT NULL` (the CAT-14 load-bearing change)
+- Final `DO $$ ... END $$` post-assertion block (raises on any invariant failure → rollback)
+- `COMMIT;` closes transaction atomically
+
+**DEBT-12 — `npx drizzle-kit migrate` against prod is SKIPPED for Phase 36.** Prod's `drizzle.__drizzle_migrations` journal contains only `idx=0` (per STATE.md Accumulated Context). Running `drizzle-kit migrate` against prod would try `0001` first and fail on `relation "watches" already exists`. Phase 36 relies on `supabase db push --linked` only; the Drizzle migration file (`drizzle/0009_phase36_layer_c_variants.sql`) is retained for documentation + local re-sync support per memory `project_local_db_reset.md`. DEBT-12 repair is deferred to a future phase that genuinely requires drizzle-kit migrate on prod.
+
+### 36.4 — Smoke-test SELECTs (post-deploy)
+
+Run against PROD via psql:
+
+```sql
+-- RLS verification (T-36-02)
+SELECT has_table_privilege('anon', 'public.watch_variants', 'SELECT');
+-- expect: t
+
+-- CAT-14 NOT NULL flip verification
+SELECT is_nullable FROM information_schema.columns
+ WHERE table_name = 'watches' AND column_name = 'catalog_id';
+-- expect: NO
+
+-- Empty-table parity (per D-06)
+SELECT COUNT(*) FROM watch_variants;                   -- expect: 0
+SELECT COUNT(*) FROM watches WHERE variant_id IS NOT NULL;  -- expect: 0
+
+-- Row-count parity (no data lost)
+SELECT COUNT(*) FROM watches;                           -- expect: same as pre-migration
+SELECT COUNT(*) FROM watches_catalog;                   -- expect: same as pre-migration
+
+-- Column shape verification
+SELECT column_name, is_nullable, data_type
+  FROM information_schema.columns
+ WHERE table_name = 'watch_variants'
+ ORDER BY ordinal_position;
+-- expect: id, catalog_id, name, slug, dial_color, bezel, bracelet_variant, image_url, created_at, updated_at
+```
+
+### 36.5 — CAT-14 hard-fail recovery flow (if §36.3 pre-flight fires)
+
+If `supabase db push --linked` fails with:
+```
+ERROR: CAT-14 pre-flight failed: N rows in watches have NULL catalog_id. Run npm run db:backfill-catalog or inspect manually (see docs/deploy-db-setup.md Phase 36 recovery flow), then retry the migration.
+```
+
+The transaction has rolled back. Prod is in pre-migration state. `watches.catalog_id` is still nullable. `watch_variants` does NOT exist. `watches.variant_id` does NOT exist. No data loss.
+
+Recovery:
+
+1. **Inspect orphans:**
+   ```sql
+   SELECT id, user_id, brand, model, reference, created_at
+     FROM watches WHERE catalog_id IS NULL
+     ORDER BY created_at;
+   ```
+
+2. **For each orphan, choose one path:**
+
+   **Path (a) — Re-run safety re-link** (if the orphan matches an existing canonical Reference):
+   ```bash
+   DATABASE_URL="<prod pooler URL>" npm run db:backfill-catalog
+   ```
+   Idempotent. Picks up any orphan whose `(brand, model, reference)` matches an existing canonical Reference via the `WHERE catalog_id IS NULL` filter.
+
+   **Path (b) — Manual upsert via DAL helper** (if no canonical match exists):
+   ```bash
+   # In a tsx repl or one-shot script:
+   await catalogDAL.upsertCatalogFromUserInput({
+     userId: '<orphan user_id>',
+     brand: '<orphan brand>',
+     model: '<orphan model>',
+     reference: '<orphan reference>',
+   })
+   # Then re-run db:backfill-catalog to link.
+   ```
+
+3. **Re-verify zero NULLs:**
+   ```sql
+   SELECT COUNT(*) FROM watches WHERE catalog_id IS NULL;
+   -- expect: 0
+   ```
+
+4. **Retry the migration push:** `supabase db push --linked`
+
+Per D-07 rationale: auto-creating user_promoted rows inside the migration transaction (the rejected alternative) would silently create low-quality catalog rows the user never reviewed — loses curation discipline. Hard-fail + manual recovery is the safer path.
+
+### 36.6 — Local DB re-sync after Phase 36
+
+Per memory `project_local_db_reset.md`:
+
+```bash
+supabase db reset
+npx drizzle-kit push
+# Apply prior-phase Supabase migrations in lexical order (see §35.8 list), then:
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260511000000_phase36_layer_c_variants.sql
+```
+
+If a local watch was inserted without a catalog link before the Phase 36 migration is applied locally, the DO $$ pre-flight will raise. Recovery: run `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres npm run db:backfill-catalog` against local FIRST.
+
+### 36.7 — Backout plan (if Phase 36 must be reverted post-deploy)
+
+Reversible because Phase 36 is additive + a constraint flip:
+
+```sql
+BEGIN;
+
+-- 1. Drop watches.variant_id column (clean since watch_variants is empty)
+ALTER TABLE watches DROP COLUMN IF EXISTS variant_id;
+
+-- 2. Drop watch_variants table (no rows ever inserted in Phase 36 per D-06)
+DROP TABLE IF EXISTS watch_variants;
+
+-- 3. Revert CAT-14 NOT NULL flip (rollback to original Phase 17 D-04 state)
+ALTER TABLE watches ALTER COLUMN catalog_id DROP NOT NULL;
+
+COMMIT;
+```
+
+**Caveat:** Once Phase 37 / 38 ship and downstream consumers assume `watches.catalog_id` is NOT NULL (e.g., Phase 38 CAT-13 LEFT JOIN simplification), backing out the NOT NULL flip would re-introduce defensive null-checks. Treat §36.7 as a Phase-36-only window — after Phase 37 ships, schedule a forward-fix instead of a backout.
+
+**Drizzle-side backout:** Revert `src/db/schema.ts` to remove `watchVariants` table definition and `variantId` column on `watches`. Delete `drizzle/0009_phase36_layer_c_variants.sql` and remove the `idx=9` entry from `drizzle/meta/_journal.json`.
