@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 36 Wave 3 Plan 05 Task 1 (docs append) shipped at commit 9eec274 — docs/deploy-db-setup.md +196 lines (§36.0..§36.7); Task 2 prod-push BLOCKED on operator (checkpoint:human-action — operator runs §36.0 pg_depend pre-check → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 supabase db push --linked → §36.4 smoke-test SELECTs → §36.6 UI walk)
+stopped_at: Phase 36 prod deploy COMPLETE 2026-05-11 — CAT-14 LIVE (watches.catalog_id is_nullable=NO); watch_variants + variant_id shipped empty (D-06); all 5 ROADMAP success criteria green; phase verifier next
 last_updated: "2026-05-11T21:47:52.000Z"
 last_activity: 2026-05-11
 progress:
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 ## Current Position
 
 Phase: 36
-Plan: 5 plans across 3 waves; Waves 1 + 2 complete; Wave 3 Plan 05 Task 1 (docs append, autonomous) shipped at 9eec274; Plan 05 Task 2 (prod-push, autonomous:false) BLOCKED on operator
-Next: Operator runs Plan 05 Task 2 checkpoint:human-action (§36.0..§36.4 against prod) and types `approved` — Plan 05 SUMMARY then amended with prod-deploy outcome + STATE/ROADMAP marked Phase 36 closed
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-05-PLAN.md (Task 2 checkpoint pending)
-Status: Executing Phase 36 — Wave 3 Plan 05 in flight (Task 1 done, Task 2 awaiting operator)
+Plan: 5 plans across 3 waves; ALL 5 PLANS COMPLETE — Phase 36 prod deploy succeeded 2026-05-11 (CAT-14 LIVE)
+Next: Run gsd-verifier for phase-level goal-backward check, then update memory file (project_db_wipeable_2026_05_09.md — prod has 12 seed auth.users from prior Claude sessions), close phase, advance chain to Phase 37
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-05-SUMMARY.md (Task 2 prod deploy outcome amended)
+Status: Phase 36 prod-ready — awaiting verifier
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%

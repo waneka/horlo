@@ -270,7 +270,7 @@ Plans:
 - [x] 36-04-PLAN.md — Local schema push (docker exec psql apply of 20260511000000_phase36_layer_c_variants.sql) + tests/integration/phase36-rls.test.ts (13 it() blocks covering V-01..V-11, all green) + V-12 parity grep (0 matches). drizzle-kit push deviation: skipped (interactive TTY prompt on pre-existing snapshot drift; live DB shape verified directly via 5/5 ACs — types match by construction). cause.code assertion fix applied for V-09/V-01 INSERT rejection tests (Rule 1 — drizzle wraps postgres-js errors).
 
 **Wave 3** *(depends on Wave 2; [BLOCKING] prod deploy — autonomous: false)*
-- [~] 36-05-PLAN.md — Task 1 (docs append) ✅ shipped at commit 9eec274 (docs/deploy-db-setup.md +196 lines covering §36.0 pg_depend JOIN form → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 supabase db push --linked + DEBT-12 SKIP note → §36.4 smoke tests → §36.5 hard-fail recovery → §36.6 local re-sync → §36.7 backout). Task 2 (checkpoint:human-action — operator runs §36.0..§36.4 + §36.6 against prod) BLOCKED on operator approval.
+- [x] 36-05-PLAN.md — Task 1 (docs append) shipped at commit 9eec274 + Task 2 (prod deploy) COMPLETED 2026-05-11: §36.0 pg_depend pre-check returned 2 benign rows (FK constraint + index — runbook's "expect 1" was conservative); §36.2a auth.users=12 (seed garbage from prior Claude sessions, user-confirmed safe — memory file update queued); §36.2b zero NULLs verified; §36.1 backfill skipped (vacuous — 0 watches); §36.3 supabase db push --linked succeeded cleanly (DO $$ pre-flight passed, 2 idempotent NOTICE lines, 0 errors); DEBT-12 drizzle-kit migrate SKIPPED per checkpoint guidance; §36.4 all 6 smoke tests green: anon SELECT priv=true, watches.catalog_id is_nullable=NO (**CAT-14 LIVE**), watch_variants=0 (D-06), watches.variant_id populated=0, parity 0=0 vs baseline; §36.6 UI walk skipped (empty post-Phase-35-wipe state — no regression surface). All 5 ROADMAP success criteria satisfied in prod.
 
 **Cross-cutting constraints:**
 - ROADMAP success #4 requires PRODUCTION state — Wave 3 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
@@ -384,7 +384,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 33. Discovery Audit | 0/? | Not started | - |
 | 34. Layer A — Brand + Family | 3/4 (Wave 4 ran out-of-order; Wave 3 prod push pending) | In progress | - |
 | 35. Layer B — Lineage + Movement | 7/7 | Complete    | 2026-05-10 |
-| 36. Layer C — Variants + Clean-Slate | 3/5 (Wave 1 complete: Plans 01 + 02 + 03 done; Wave 2 Plan 04 next) | In progress | - |
+| 36. Layer C — Variants + Clean-Slate | 5/5 (all plans complete; prod deployed 2026-05-11 — CAT-14 LIVE) | Complete (awaiting verifier) | 2026-05-11 |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
 | 38. CAT-13 Engine Rewire | 0/? | Not started | - |
 | 39. Audit-Driven Discovery Polish | 0/? | Not started | - |

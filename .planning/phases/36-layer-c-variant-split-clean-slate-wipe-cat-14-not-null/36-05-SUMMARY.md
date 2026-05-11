@@ -2,8 +2,10 @@
 phase: 36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null
 plan: 05
 subsystem: docs
-tags: [docs, runbook, deploy, pg-depend, prod-push-pending, human-action, checkpoint, partial]
-status: pending-checkpoint
+tags: [docs, runbook, deploy, pg-depend, prod-push-complete, cat-14-live, completed]
+status: completed
+prod_deployed: 2026-05-11
+prod_deploy_outcome: success
 
 # Dependency graph
 requires:
@@ -164,6 +166,51 @@ The orchestrator will surface the `## CHECKPOINT REACHED` block with the exact o
 4. Plan metadata commit ships all three (SUMMARY post-hoc, STATE.md, ROADMAP.md) in a single commit
 
 ---
+
+## Prod Deploy Outcome (Task 2) — 2026-05-11
+
+**Status:** ✓ SUCCESS — Phase 36 schema live in production. All ROADMAP success criteria #1-#5 satisfied.
+
+### Step results
+
+| Step | Check | Expected | Actual | Verdict |
+|------|-------|----------|--------|---------|
+| §36.0 | pg_depend JOIN-form pre-check on `watches.catalog_id` | ≤2 benign rows | **2 rows**: `pg_constraint` (FK `watches_catalog_id_watches_catalog_id_fk`, contype=`f`) + `pg_class` (`watches_catalog_id_idx`) — both AUTO-deps (`deptype='a'`) | ✓ (runbook's "expect 1" was conservative; both rows benign metadata) |
+| §36.2a | `auth.users` count | 1 (single-user) | **12 (seed garbage from prior Claude sessions — user-confirmed safe)** | ⚠ → manually cleared (memory file update queued) |
+| §36.2b | `watches WHERE catalog_id IS NULL` | 0 | **0** | ✓ CAT-14 pre-flight will pass |
+| baseline | `watches` pre-migration count | (capture) | **0** | post-Phase-35-wipe state |
+| baseline | `watches_catalog` pre-migration count | (capture) | **0** | post-Phase-35-wipe state |
+| §36.1 | safety re-link backfill (`npm run db:backfill-catalog`) | exit 0 vacuous | **SKIPPED** — provably vacuous (0 watches, 0 NULLs) | ✓ documented skip |
+| §36.3 | `supabase db push --linked` | clean apply | **success** — `Finished supabase db push`; 2 NOTICE lines for idempotent `DROP IF EXISTS` guards (trigger + policy); 0 ERROR lines | ✓ |
+| §36.3 | DEBT-12 — drizzle-kit migrate against prod | skipped | **SKIPPED per checkpoint guidance** | ✓ |
+| §36.4 | `has_table_privilege('anon', 'public.watch_variants', 'SELECT')` | `t` | **`true`** | ✓ |
+| §36.4 | `watches.catalog_id is_nullable` | `NO` | **`NO`** | ✓ **CAT-14 LIVE** |
+| §36.4 | `SELECT COUNT(*) FROM watch_variants` | 0 (D-06) | **0** | ✓ |
+| §36.4 | `SELECT COUNT(*) FROM watches WHERE variant_id IS NOT NULL` | 0 | **0** | ✓ |
+| §36.4 | `SELECT COUNT(*) FROM watches` parity vs baseline | 0 = 0 | **0 = 0** | ✓ (vacuous) |
+| §36.4 | `SELECT COUNT(*) FROM watches_catalog` parity vs baseline | 0 = 0 | **0 = 0** | ✓ (vacuous) |
+| §36.6 | UI smoke walk (`/collection`, `/profile`, watch page) | green | **SKIPPED — empty post-Phase-35-wipe state means all pages render empty states; no regression surface** | ✓ documented skip |
+| §36.5 | hard-fail recovery flow invocations | none | **none** | ✓ |
+
+### ROADMAP success criteria final coverage (prod state)
+
+1. ✓ `watch_variants` table exists with `(catalog_id FK, dial_color, bezel, bracelet_variant)` columns + `watches.variant_id` optional FK added — proven by Step §36.4 anon SELECT + column-shape verifications
+2. ✓ 6-step clean-slate runbook executed: (a)(b)(c) inherited from Phase 35 D-02 (verified by `watches_catalog=0` baseline); (d) skipped vacuously; (e) zero-NULL verified; (f) executed
+3. ✓ CAT-14 migration began with DO $$ pre-flight as FIRST statement — proven by supabase db push completing successfully (the pre-flight would have raised EXCEPTION and rolled back the transaction if any orphan existed)
+4. ✓ `watches.catalog_id` is NOT NULL in production schema — proven by `is_nullable = 'NO'`
+5. ✓ All existing collection-browsing, profile, verdict flows return correct data — proven by V-12 parity grep (Plan 04) + no DAL changes + zero rows to read; non-vacuous UI smoke walk deferred until Phase 39 catalog re-seed
+
+### Memory file follow-up
+
+`project_db_wipeable_2026_05_09.md` says prod is single-user (twwaneka@gmail.com). Prod is now multi-user (12 auth.users rows, but all empty seed accounts created by prior Claude sessions per user). Memory must be updated to reflect: "prod has 12 seed `auth.users` rows from prior Claude sessions — they are garbage; wipeability decisions should continue to treat prod as single-real-user (twwaneka@gmail.com)".
+
+### Operator notes
+
+- §36.6 UI smoke walk deferred — both `watches` and `watches_catalog` are empty post-Phase-35-wipe; canonical Reference seeding is a Phase 39 task per D-06 + Phase 33b Q2 verdict
+- §36.2a 12-user surprise was a runbook-required STOP that was manually cleared after operator confirmation that the users are seed garbage, not real signups. Phase 36 is user-count-independent (schema-only, no TRUNCATE, no `auth.users` reads)
+- DEBT-12 SKIP confirmed appropriate — `__drizzle_migrations` journal still contains only idx=0 in prod; Drizzle migration file 0009 is local-only support for `drizzle-kit push` after `supabase db reset`
+
+---
 *Phase: 36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null*
 *Task 1 committed: 2026-05-11 (commit 9eec274)*
-*Task 2 status: pending operator (checkpoint:human-action)*
+*Task 2 completed: 2026-05-11 — prod deploy SUCCESS (CAT-14 + watch_variants LIVE)*
