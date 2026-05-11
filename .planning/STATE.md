@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 36 COMPLETE 2026-05-11 — verifier PHASE_PASSED (5/5 ROADMAP + 7/7 D-NN + 12/13 Nyquist; V-13 deferred to Phase 38 as documented). CAT-14 + CAT-17 shipped. Next: Phase 37 (Layer D — Provenance + Divestments) per --no-transition chain handoff.
+stopped_at: Phase 37 context gathered 2026-05-11 — 15 decisions D-01..D-15 captured (3 pgEnums: condition_grade + currency_code + box_papers_status; divestments table with sale_currency added beyond ROADMAP letter; shadcn Accordion for disclosure; sold watches stay visible). Ready for planning.
 last_updated: "2026-05-11T21:47:52.000Z"
 last_activity: 2026-05-11
 progress:
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 36 (CLOSED) → 37 next
-Plan: Phase 36 complete — 5/5 plans shipped + prod deployed; verifier PHASE_PASSED 2026-05-11
-Next: `/gsd-discuss-phase 37` or `/gsd-plan-phase 37` (Layer D — Provenance Fields + Divestments Table)
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-VERIFICATION.md (PHASE_PASSED report)
-Status: Phase 36 closed — chain returned with --no-transition; user controls next-phase kickoff
+Phase: 37 (context gathered)
+Plan: Phase 37 CONTEXT.md committed at 77abde7 — 15 decisions D-01..D-15 across 4 user-selected gray areas + 2 follow-ups
+Next: `/gsd-plan-phase 37` (Layer D — Provenance Fields + Divestments Table)
+Resume file: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-CONTEXT.md
+Status: Phase 37 ready for planning
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%
