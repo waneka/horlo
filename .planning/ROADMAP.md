@@ -258,7 +258,27 @@ Plans:
   3. CAT-14 migration begins with a `DO $$ BEGIN ... END $$` pre-flight block asserting zero NULLs as its FIRST statement — the transaction aborts if any NULL exists before the `ALTER COLUMN SET NOT NULL` executes
   4. `watches.catalog_id` is NOT NULL in production schema after this phase
   5. All existing collection-browsing, profile, and verdict flows return correct watch data after the wipe and re-link; no user-visible watch data is lost
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+**Wave 1** *(parallel — schema sources of truth; no file overlap)*
+- [ ] 36-01-PLAN.md — Drizzle schema edits: add watchVariants pgTable + watches.variantId column + tighten watches.catalogId to .notNull() in src/db/schema.ts (D-02..D-05 + Pitfall 6 mitigation)
+- [ ] 36-02-PLAN.md — Supabase migration: write supabase/migrations/20260511000000_phase36_layer_c_variants.sql with DO $$ pre-flight FIRST + CREATE TABLE + RLS + GRANT + variant_id ADD COLUMN + CAT-14 SET NOT NULL + final DO $$ post-assertion (D-02..D-07; ROADMAP success #1/#3/#4)
+- [ ] 36-03-PLAN.md — Drizzle migration: write drizzle/0009_phase36_layer_c_variants.sql (idempotent structural twin) + append drizzle/meta/_journal.json idx=9 entry
+
+**Wave 2** *(depends on Waves 1-01/02/03; [BLOCKING] local schema push + integration test)*
+- [ ] 36-04-PLAN.md — Local schema push (drizzle-kit push + docker exec psql apply) + write tests/integration/phase36-rls.test.ts (12 it() blocks covering V-01..V-11) + run vitest green + V-12 parity grep
+
+**Wave 3** *(depends on Wave 2; [BLOCKING] prod deploy — autonomous: false)*
+- [ ] 36-05-PLAN.md — Append §36 deploy section to docs/deploy-db-setup.md (~150 lines covering §36.0 pg_depend → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 supabase db push --linked → §36.4 smoke tests → §36.5 hard-fail recovery → §36.6 local re-sync → §36.7 backout) + checkpoint:human-action operator gate for prod deploy
+
+**Cross-cutting constraints:**
+- ROADMAP success #4 requires PRODUCTION state — Wave 3 is BLOCKING; build/typecheck pass without prod push (false-positive verification state)
+- ROADMAP success #2 reinterpreted: steps (a)(b)(c) inherited from Phase 35 D-02 (TRUNCATE executed 2026-05-10); Phase 36 ships steps (d)(e)(f) only — runbook documents inheritance per D-01
+- Phase 17/34/35 RLS+GRANT 4-line block inherited verbatim (public-read + service-role-write; no INSERT/UPDATE/DELETE policy)
+- D-07 hard-fail pre-flight: DO $$ MUST be FIRST statement of supabase migration (ROADMAP success #3 verbatim)
+- DEBT-12 SKIP decision: drizzle-kit migrate against prod NOT run in Phase 36 (researcher recommendation; supabase db push --linked is sufficient)
+- 5 STRIDE threats T-36-01..T-36-05 mapped to plan threat_refs
 
 ### Phase 37: Layer D — Provenance Fields + Divestments Table
 **Goal**: Add collector-diary provenance columns to `watches` and create the `divestments` table that gives the future recommender a timestamped sold-signal for temporal decay, replacing the insufficient `watches.status = 'sold'` alone.
@@ -364,7 +384,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 33. Discovery Audit | 0/? | Not started | - |
 | 34. Layer A — Brand + Family | 3/4 (Wave 4 ran out-of-order; Wave 3 prod push pending) | In progress | - |
 | 35. Layer B — Lineage + Movement | 7/7 | Complete    | 2026-05-10 |
-| 36. Layer C — Variants + Clean-Slate | 0/? | Not started | - |
+| 36. Layer C — Variants + Clean-Slate | 0/5 | Planned (ready to execute) | - |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
 | 38. CAT-13 Engine Rewire | 0/? | Not started | - |
 | 39. Audit-Driven Discovery Polish | 0/? | Not started | - |

@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 36 context gathered
+stopped_at: Phase 36 plans ready to execute
 last_updated: "2026-05-11T00:00:00.000Z"
 last_activity: 2026-05-11
 progress:
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 ## Current Position
 
 Phase: 36
-Plan: Not started
-Next: `/gsd-plan-phase 36` (Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL)
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-CONTEXT.md
-Status: Executing Phase 35
-Last activity: 2026-05-10
+Plan: 5 plans, 3 waves (01/02/03 parallel → 04 [BLOCKING local push + integration test] → 05 [autonomous:false prod-deploy gate])
+Next: `/gsd-execute-phase 36` (Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL)
+Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-01-PLAN.md
+Status: Ready to execute
+Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%
 
