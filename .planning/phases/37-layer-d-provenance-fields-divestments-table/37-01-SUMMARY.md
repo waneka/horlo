@@ -166,3 +166,17 @@ None — no external service configuration required. Plan 02 (Supabase migration
 ---
 *Phase: 37-layer-d-provenance-fields-divestments-table*
 *Completed: 2026-05-11*
+
+## Self-Check: PASSED
+
+- FOUND: src/db/schema.ts
+- FOUND: src/lib/types.ts
+- FOUND: src/lib/constants.ts
+- FOUND: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-01-SUMMARY.md
+- FOUND: ce5a5cb (Task 1 commit)
+- FOUND: c111643 (Task 2 commit)
+- FOUND: 0a111eb (Task 3 commit)
+- FOUND: 1cefd16 (SUMMARY commit)
+- All 4 key schema exports verified
+- All 4 key type exports verified
+- All 3 key constants exports verified
