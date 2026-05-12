@@ -79,6 +79,12 @@ export interface Watch {
   // Used by Phase 20 composer to look up catalog taste attributes for the verdict bundle.
   catalogId?: string | null
 
+  // Phase 38 D-10 — catalog taste, populated by getWatchesByUser LEFT JOIN.
+  // `null` represents both "no catalog row" (legacy pre-Plan-A) AND "catalog row
+  // exists but no fields populated yet" — the engine gates on confidence >= 0.5
+  // in analyzeSimilarity, not at the type level (D-12).
+  catalogTaste?: CatalogTasteAttributes | null
+
   // Phase 37 D-01..D-08 — collector provenance fields (all nullable; CAT-18)
   serial?: string
   yearOfAcquisition?: number
