@@ -49,7 +49,7 @@ export function WatchCard({ watch, collection, preferences }: WatchCardProps) {
             </div>
           )}
           <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-            <Badge variant="outline">{watch.status}</Badge>
+            <Badge variant={watch.status === 'sold' ? 'secondary' : 'outline'}>{watch.status}</Badge>
             {isDeal && (
               <Badge variant="secondary" className="gap-1">
                 <Sparkles className="h-3 w-3" aria-hidden />

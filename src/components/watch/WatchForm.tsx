@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronDown } from 'lucide-react'
+import { Accordion } from '@base-ui/react/accordion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,8 +30,13 @@ import {
   STRAP_TYPES,
   CRYSTAL_TYPES,
   WATCH_STATUSES,
+  CONDITION_GRADES,
+  CONDITION_GRADE_LABELS,
+  CURRENCY_CODES,
+  BOX_PAPERS_STATUSES,
+  BOX_PAPERS_LABELS,
 } from '@/lib/constants'
-import type { Watch, WatchStatus, MovementType, StrapType, CrystalType } from '@/lib/types'
+import type { Watch, WatchStatus, MovementType, StrapType, CrystalType, ConditionGrade, BoxPapersStatus, CurrencyCode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface WatchFormProps {
@@ -83,6 +90,14 @@ const initialFormData: FormData = {
   notes: '',
   notesPublic: true,       // Phase 23 D-13/D-16 — matches DB default; non-negotiable
   imageUrl: '',
+  // Phase 37 D-01..D-08: collector provenance fields (all undefined by default)
+  serial: undefined,
+  yearOfAcquisition: undefined,
+  condition: undefined,
+  boxPapers: undefined,
+  serviceHistory: undefined,
+  paidCurrency: undefined,
+  purchaseDate: undefined,
 }
 
 export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, viewerUsername }: WatchFormProps) {
@@ -127,6 +142,14 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
           notes: watch.notes ?? '',
           notesPublic: watch.notesPublic ?? true,         // Phase 23 D-13 — defensive ?? true defends legacy rows
           imageUrl: watch.imageUrl ?? '',
+          // Phase 37 D-01..D-08: seed provenance fields from watch prop
+          serial: watch.serial,
+          yearOfAcquisition: watch.yearOfAcquisition,
+          condition: watch.condition,
+          boxPapers: watch.boxPapers,
+          serviceHistory: watch.serviceHistory,
+          paidCurrency: watch.paidCurrency,
+          purchaseDate: watch.purchaseDate,
         }
       : {
           ...initialFormData,
@@ -668,6 +691,169 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
           </div>
         </CardContent>
       </Card>
+
+      {/* Phase 37 D-15 — Collector's Record (edit mode only, collapsed by default) */}
+      {mode === 'edit' && (
+        <Card>
+          <Accordion.Root>
+            <Accordion.Item value="collectors-record">
+              <Accordion.Header>
+                <Accordion.Trigger
+                  className="flex w-full items-center justify-between px-6 py-4 text-sm font-semibold text-foreground data-[panel-open]:[&>svg]:rotate-180 [&>svg]:transition-transform"
+                >
+                  <span>Collector&apos;s Record</span>
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                </Accordion.Trigger>
+              </Accordion.Header>
+              <Accordion.Panel
+                className="overflow-hidden px-6 pb-4 data-[open]:animate-in data-[open]:fade-in-0 data-[ending-style]:animate-out data-[ending-style]:fade-out-0 duration-150"
+              >
+                {/* Group 1 — Acquisition */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaseDate">Purchase Date</Label>
+                    <Input
+                      id="purchaseDate"
+                      type="date"
+                      value={formData.purchaseDate ?? ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          purchaseDate: e.target.value || undefined,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="yearOfAcquisition">Year of Acquisition</Label>
+                    <Input
+                      id="yearOfAcquisition"
+                      type="number"
+                      min={1900}
+                      max={2100}
+                      value={formData.yearOfAcquisition ?? ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          yearOfAcquisition: e.target.value ? Number(e.target.value) : undefined,
+                        }))
+                      }
+                      placeholder="e.g., 2019"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serial">Serial Number</Label>
+                    <Input
+                      id="serial"
+                      type="text"
+                      value={formData.serial ?? ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          serial: e.target.value || undefined,
+                        }))
+                      }
+                      placeholder="e.g., F123456"
+                    />
+                  </div>
+                </div>
+
+                {/* Group 2 — Condition & Documentation */}
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="condition">Condition</Label>
+                    <Select
+                      value={formData.condition ?? ''}
+                      onValueChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          condition: value ? (value as ConditionGrade) : undefined,
+                        }))
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select condition" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CONDITION_GRADES.map((grade) => (
+                          <SelectItem key={grade} value={grade}>
+                            {CONDITION_GRADE_LABELS[grade]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="boxPapers">Box &amp; Papers</Label>
+                    <Select
+                      value={formData.boxPapers ?? ''}
+                      onValueChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          boxPapers: value ? (value as BoxPapersStatus) : undefined,
+                        }))
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select documentation" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BOX_PAPERS_STATUSES.map((bp) => (
+                          <SelectItem key={bp} value={bp}>
+                            {BOX_PAPERS_LABELS[bp]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Group 3 — Financials & Service */}
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="paidCurrency">Purchase Currency</Label>
+                    <Select
+                      value={formData.paidCurrency ?? ''}
+                      onValueChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          paidCurrency: value ? (value as CurrencyCode) : undefined,
+                        }))
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCY_CODES.map((code) => (
+                          <SelectItem key={code} value={code}>
+                            {code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceHistory">Service History</Label>
+                    <Textarea
+                      id="serviceHistory"
+                      value={formData.serviceHistory ?? ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          serviceHistory: e.target.value || undefined,
+                        }))
+                      }
+                      placeholder="e.g., Movement service 2022 by independent watchmaker..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion.Root>
+        </Card>
+      )}
 
       {/* Actions */}
       {/* Phase 25 UX-06 — hybrid feedback (D-16/D-17). Banner mounted ABOVE
