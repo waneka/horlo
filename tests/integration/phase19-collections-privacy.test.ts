@@ -19,10 +19,11 @@
  * tests/integration/home-privacy.test.ts pattern).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { users, profiles, profileSettings, watches } from '@/db/schema'
+import { users, profiles, profileSettings, watches, watchesCatalog } from '@/db/schema'
 import { searchCollections } from '@/data/search'
 
 const maybe = process.env.DATABASE_URL ? describe : describe.skip
@@ -86,7 +87,14 @@ maybe('Phase 19 Collections two-layer privacy + self-exclusion (SRCH-12)', () =>
       await db.update(profileSettings).set(settings).where(eq(profileSettings.userId, userId))
     }
 
-    // 4. Seed one matching Speedmaster watch per user (model contains TAG).
+    // 4. Phase 38 D-06: seed catalog row before watches inserts (catalogId is NOT NULL).
+    const catalogId = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values({ id: catalogId, brand: 'Omega', model: MATCH_MODEL, source: 'user_promoted' })
+      .onConflictDoNothing()
+
+    // Seed one matching Speedmaster watch per user (model contains TAG).
     await db.insert(watches).values(
       Object.values(ids).map((id) => ({
         userId: id,
@@ -94,6 +102,7 @@ maybe('Phase 19 Collections two-layer privacy + self-exclusion (SRCH-12)', () =>
         model: MATCH_MODEL,
         status: 'owned' as const,
         movement: 'manual' as const,
+        catalogId,
       })),
     )
   }, 60_000)
