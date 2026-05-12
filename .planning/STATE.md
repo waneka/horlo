@@ -3,11 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-active_phase: 38
-stopped_at: Phase 38 COMPLETE 2026-05-12 — re-verifier verdict PHASE_PASSED. All 5/5 ROADMAP success criteria verified; all 3 gap items from initial gaps_found verdict closed. CAT-13 engine rewire fully shipped: 9th taste dimension at 0.20 weight (D-05 transformation, no magic numbers); confidence >= 0.5 gate; cosine3D on numeric trio + archetype + era + motifs Jaccard. Watch.catalogTaste populated via getWatchesByUser LEFT JOIN with Number() coercion. 19/19 static guards pass. Phase 19.1 D-07 byte-lock intact, GOAL_THRESHOLDS/SimilarityResult/SimilarityLabel unchanged. Plan 38-04 gap closure shipped IDIOM A cascade across 5 tests/data + 4 tests/actions files + fail-loud rewrite of addwatch-catalog-resilience.test.ts; tsc back to 27-error pre-Phase-38 baseline (was 35 mid-phase, +8 regression now closed); 44/44 tests/actions pass; 0 production code lines modified by 38-04. Ready for Phase 39.
-last_updated: "2026-05-12T10:00:00.000Z"
-last_activity: 2026-05-12
-last_updated: "2026-05-12T03:00:00.000Z"
+active_phase: 39
+stopped_at: Phase 39 context gathered 2026-05-12 — discuss-phase complete. Major reframe: DISC-09 DROPPED from Phase 39 and promoted to a new v5.1 milestone (5-module Explore redesign per .planning/seeds/SEED-008-v5.1-explore-redesign.md). Phase 39 splits into TWO phases mirroring Phase 33 → 33b. Phase 39 = 3 cheap-patch items (NSV-01+15 mostSimilar Link wraps, NSV-08 Insights verify-and-patch, NSV-12 common-ground 404 → walk-back fallback). Phase 39b (to be inserted in ROADMAP via /gsd-phase) = 4 heavier items (NSV-06+20 fresh-account ReferenceIdentityCard, NSV-14 8-row Collector Profile sub-cluster, NSV-18 catalog other-owners roster, NSV-02+16 inline lineage rails with operator-curation seed pass ~20 families + ~15 lineage edges). Context + discussion log written; SEED-008 created. Follow-up paperwork: ROADMAP needs Phase 39b inserted + DISC-09 dropped from Phase 39 SC#3; REQUIREMENTS.md needs DISC-09 → v5.1 reshape; PROJECT.md needs v5.1 milestone insertion.
+last_updated: "2026-05-12T11:30:00.000Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 12
@@ -28,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 38 ✅ COMPLETE (re-verifier PHASE_PASSED 2026-05-12; all 5/5 ROADMAP criteria verified; all gaps closed)
-Plan: 4 plans / 4 waves all shipped. Engine + DAL + types + migrations + composer-engine alignment + gap closure all merged to main. 19/19 static guards green. tsc at 27-error pre-Phase-38 baseline. CAT-13 is the first phase where the Phase 19.1 LLM-enrichment investment produces observable behavior in collection fit verdicts.
-Next: `/gsd-discuss-phase 39` (Audit-Driven Discovery Polish — Phase 39 depends on Phase 38)
-Resume file: .planning/phases/38-cat-13-engine-rewire/38-VERIFICATION.md (contains both initial gaps_found report and re-verification PHASE_PASSED section)
-Status: Phase 38 complete
+Phase: 39 — context gathered 2026-05-12 via /gsd-discuss-phase. Major scope reframe: DISC-09 dropped & promoted to v5.1 (SEED-008); Phase 39 splits into Phase 39 + Phase 39b mirroring Phase 33 → 33b.
+Plan: Phase 39 = 3 items (NSV-01+15 + NSV-08 + NSV-12). Phase 39b (TBD-inserted) = 4 items (NSV-06+20 + NSV-14 + NSV-18 + NSV-02+16 lineage rails).
+Next: BEFORE planning: (1) /gsd-phase to insert Phase 39b in ROADMAP.md and drop DISC-09 from Phase 39 SC#3; (2) REQUIREMENTS.md edit to strike DISC-09 from v5.0 active and add v5.1 note pointing to SEED-008; (3) PROJECT.md edit to insert v5.1 milestone. AFTER paperwork: /gsd-plan-phase 39.
+Resume file: .planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md (decisions captured; § "Required follow-up paperwork" lists the bookkeeping steps).
+Status: Phase 39 context captured, awaiting follow-up paperwork before planning
 Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%
