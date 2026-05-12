@@ -13,6 +13,7 @@ import {
   OwnerMismatchError,
   SetMismatchError,
 } from '@/data/watches'
+import * as catalogDAL from '@/data/catalog'
 import { logActivity } from '@/data/activities'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { MovementType } from '@/lib/types'
@@ -117,11 +118,23 @@ export async function addToWishlistFromWearEvent(
   }
 
   try {
+    // Phase 38 D-06 step 2b (RESEARCH Pitfall 1): upsert catalog BEFORE createWatch.
+    // The wear_event row carries denormalized brand/model; no reference is available.
+    // Re-upsert is idempotent (first-write-wins per Phase 17 D-13); mirrors addWatch shape.
+    const catalogId = await catalogDAL.upsertCatalogFromUserInput({
+      brand: row.brand,
+      model: row.model,
+      reference: null, // wear_event row carries no reference; upsert tolerates null
+    })
+    if (!catalogId) {
+      throw new Error('[addToWishlistFromWearEvent] catalog upsert returned null — cannot insert watches row')
+    }
+
     // Create a NEW watch row under the viewer's account, snapshotted from
     // the source. Required fields per Watch domain type:
     // brand, model, status, movement, complications, styleTags, designTraits,
     // roleTags. Optional: imageUrl (undefined when source has none).
-    const watch = await createWatch(user.id, {
+    const watch = await createWatch(user.id, catalogId, {
       brand: row.brand,
       model: row.model,
       status: 'wishlist',
