@@ -1,4 +1,4 @@
-import type { MovementType } from './types'
+import type { MovementType, ConditionGrade, BoxPapersStatus } from './types'
 
 // Style: What TYPE of watch is this? (functional category)
 export const STYLE_TAGS = [
@@ -140,3 +140,43 @@ export type DesignTrait = (typeof DESIGN_TRAITS)[number]
 export type RoleTag = (typeof ROLE_TAGS)[number]
 export type Complication = (typeof COMPLICATIONS)[number]
 export type DialColor = (typeof DIAL_COLORS)[number]
+
+// ----- Phase 37 D-02: condition grade values (CAT-18) -----
+// Mirrors pgEnum condition_grade in src/db/schema.ts. WatchForm <Select> iterates
+// this array to render options (Plan 04).
+export const CONDITION_GRADES = [
+  'mint', 'near_mint', 'excellent', 'good', 'fair', 'poor',
+] as const
+
+// Display labels for the WatchForm <Select>. Mirrors MOVEMENT_LABELS pattern.
+// Persisted values are always the raw enum strings — labels are render-time only.
+export const CONDITION_GRADE_LABELS: Record<ConditionGrade, string> = {
+  mint:        'Mint',
+  near_mint:   'Near Mint',
+  excellent:   'Excellent',
+  good:        'Good',
+  fair:        'Fair',
+  poor:        'Poor',
+}
+
+// ----- Phase 37 D-03 / D-04: currency code values (CAT-18) -----
+// 10 common watch-collecting currencies (covers Swiss/Japanese/UK/EU/major-Asian-market
+// origins per D-03 rationale). Mirrors pgEnum currency_code.
+export const CURRENCY_CODES = [
+  'USD', 'EUR', 'GBP', 'JPY', 'CHF',
+  'AUD', 'CAD', 'HKD', 'SGD', 'CNY',
+] as const
+
+// ----- Phase 37 D-05: box/papers status values (CAT-18) -----
+// ROADMAP-locked 4 values. Mirrors pgEnum box_papers_status.
+export const BOX_PAPERS_STATUSES = [
+  'none', 'box_only', 'papers_only', 'full_set',
+] as const
+
+// Display labels per UI-SPEC §Copywriting Contract.
+export const BOX_PAPERS_LABELS: Record<BoxPapersStatus, string> = {
+  none:         'None',
+  box_only:     'Box only',
+  papers_only:  'Papers only',
+  full_set:     'Full set',
+}
