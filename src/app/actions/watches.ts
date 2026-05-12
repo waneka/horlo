@@ -2,6 +2,9 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
+import { eq, and } from 'drizzle-orm'
+import { db } from '@/db'
+import { divestments, watches } from '@/db/schema'
 import * as watchDAL from '@/data/watches'
 import * as catalogDAL from '@/data/catalog'
 import { logActivity } from '@/data/activities'
@@ -40,6 +43,14 @@ const insertWatchSchema = z.object({
   notes: z.string().optional(),
   notesPublic: z.boolean().optional(),
   imageUrl: z.string().optional(),
+  // Phase 37 D-01..D-08: collector provenance fields (all optional)
+  serial: z.string().optional(),
+  yearOfAcquisition: z.number().int().min(1900).max(2100).optional(),
+  condition: z.enum(['mint', 'near_mint', 'excellent', 'good', 'fair', 'poor']).optional(),
+  boxPapers: z.enum(['none', 'box_only', 'papers_only', 'full_set']).optional(),
+  serviceHistory: z.string().optional(),
+  paidCurrency: z.enum(['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'HKD', 'SGD', 'CNY']).optional(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (use YYYY-MM-DD)').optional(),
   // Phase 27 (D-03/D-04) — accepted in the schema so the action can pass it
   // through after computing maxSort + 1 server-side. Client-supplied values
   // are silently overwritten by addWatch/editWatch when status enters the
@@ -328,17 +339,91 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     void _ignoredSortOrder
     // Payload type widens cleanData to allow re-adding sortOrder server-side.
     let updatePayload: typeof parsed.data = cleanData
+
+    // Phase 37 — single hoisted fetch. priorRow is used by:
+    //   (1) the null/ownership early-return (WARNING #4 — prevents UPDATE on a
+    //       row that was deleted between fetch and write, mirrors the pattern
+    //       used inside recordDivestment in src/app/actions/divestments.ts);
+    //   (2) the existing wishlist/grail sort-order logic (was a separate
+    //       in-branch fetch — folded in so we only round-trip once);
+    //   (3) the owned→sold transition detection (CRITICAL OVERRIDE #2).
+    const priorRow = await watchDAL.getWatchById(user.id, watchId)
+    if (!priorRow) {
+      return { success: false, error: 'Watch not found' }
+    }
+
+    // Phase 27 D-04 — wishlist/grail sort-order assignment on transition INTO
+    // the group. Reuses priorRow (single fetch above — no duplicate round-trip).
     if (cleanData.status === 'wishlist' || cleanData.status === 'grail') {
-      const currentRow = await watchDAL.getWatchById(user.id, watchId)
       const wasInWishlistGroup =
-        currentRow?.status === 'wishlist' || currentRow?.status === 'grail'
+        priorRow.status === 'wishlist' || priorRow.status === 'grail'
       if (!wasInWishlistGroup) {
         const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
         updatePayload = { ...cleanData, sortOrder: maxSort + 1 }
       }
     }
 
-    const watch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
+    // Phase 37 D-11 + CRITICAL OVERRIDE #2 — owned→sold transition detection.
+    // If the user is flipping status to 'sold' AND the watch was not already
+    // 'sold', the dual-write (INSERT divestments + UPDATE watches.status='sold')
+    // MUST be atomic. Wrap both writes in db.transaction() — the FIRST
+    // transaction usage in this codebase per RESEARCH §4 Open Q #2.
+    //
+    // For all other status transitions (and non-status edits), the existing
+    // single-write updateWatch path is preserved. priorRow is non-null here
+    // by virtue of the early-return above.
+    let updatedWatch: Watch
+    const isTransitioningToSold =
+      updatePayload.status === 'sold' && priorRow.status !== 'sold'
+
+    if (isTransitioningToSold) {
+      // D-11 step 2: post-CAT-14 invariant — watches.catalog_id IS NOT NULL.
+      // Defensive guard because Drizzle .notNull() tightening is Phase 38 (L-09).
+      if (!priorRow.catalogId) {
+        return { success: false, error: 'Watch has no catalog link — cannot transition to sold' }
+      }
+
+      // D-11 step 3 + 4: atomic dual-write.
+      // Insert divestment row + apply the full update payload (which includes
+      // status='sold' and any other concurrent edits the user made on the form).
+      // divestedAt + createdAt + updatedAt default at DB level.
+      // Option (b): inline the watches UPDATE directly inside the transaction
+      // to avoid modifying updateWatch's signature (DAL accepts Partial<Watch>
+      // but db.transaction's tx type doesn't thread cleanly through the DAL
+      // without a signature change — inline is cleaner per plan Task 2 guidance).
+      updatedWatch = await db.transaction(async (tx) => {
+        await tx.insert(divestments).values({
+          catalogId: priorRow.catalogId!,
+          userId: user.id,
+          // Phase 37 D-12: status-chip click writes empty-metadata row.
+          // The future v5.x sell-dialog backfills salePrice / saleCurrency /
+          // replacedByCatalogId / notes via a separate recordDivestment call.
+        })
+        // Apply the full updatePayload INSIDE the transaction so any
+        // concurrent provenance edits the user made (e.g. condition, serial)
+        // land atomically with the status flip.
+        const rowData = Object.fromEntries(
+          Object.entries(updatePayload).filter(([, v]) => v !== undefined)
+        )
+        const [updated] = await tx
+          .update(watches)
+          .set({ ...rowData, updatedAt: new Date() })
+          .where(and(eq(watches.userId, user.id), eq(watches.id, watchId)))
+          .returning()
+        if (!updated) {
+          throw new Error(`Watch not found or access denied: watchId=${watchId}, userId=${user.id}`)
+        }
+        return updated as unknown as Watch
+      })
+    } else {
+      // Non-transition path — preserves existing behavior verbatim.
+      // priorRow is non-null here (early-return above guarantees it), so the
+      // updateWatch call cannot race a concurrent delete that started before
+      // priorRow was fetched.
+      updatedWatch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
+    }
+
+    const watch = updatedWatch
     revalidatePath('/')
     revalidatePath('/u/[username]', 'layout')
 

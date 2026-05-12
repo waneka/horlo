@@ -47,6 +47,14 @@ function mapRowToWatch(row: WatchRow): Watch {
     catalogId: row.catalogId ?? null,
     // Phase 27 — sort_order for wishlist drag-reorder (D-01).
     sortOrder: row.sortOrder,
+    // Phase 37 D-01..D-08 — collector provenance fields (all nullable; CAT-18)
+    serial: row.serial ?? undefined,
+    yearOfAcquisition: row.yearOfAcquisition ?? undefined,
+    condition: row.condition ?? undefined,
+    boxPapers: row.boxPapers ?? undefined,
+    serviceHistory: row.serviceHistory ?? undefined,
+    paidCurrency: row.paidCurrency ?? undefined,
+    purchaseDate: row.purchaseDate ?? undefined,
   }
 }
 
@@ -87,6 +95,15 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   // Phase 27 — sort_order is mappable from the domain layer so server
   // actions can pass `{ sortOrder: maxSort + 1 }` for D-03/D-04 bumps.
   if ('sortOrder' in data && data.sortOrder !== undefined) row.sortOrder = data.sortOrder
+
+  // Phase 37 D-01..D-08 — collector provenance fields (all nullable; CAT-18)
+  if ('serial' in data) row.serial = data.serial ?? null
+  if ('yearOfAcquisition' in data) row.yearOfAcquisition = data.yearOfAcquisition ?? null
+  if ('condition' in data) row.condition = data.condition ?? null
+  if ('boxPapers' in data) row.boxPapers = data.boxPapers ?? null
+  if ('serviceHistory' in data) row.serviceHistory = data.serviceHistory ?? null
+  if ('paidCurrency' in data) row.paidCurrency = data.paidCurrency ?? null
+  if ('purchaseDate' in data) row.purchaseDate = data.purchaseDate ?? null
 
   return row
 }
