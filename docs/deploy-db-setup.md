@@ -1019,3 +1019,203 @@ COMMIT;
 **Caveat:** Once Phase 37 / 38 ship and downstream consumers assume `watches.catalog_id` is NOT NULL (e.g., Phase 38 CAT-13 LEFT JOIN simplification), backing out the NOT NULL flip would re-introduce defensive null-checks. Treat §36.7 as a Phase-36-only window — after Phase 37 ships, schedule a forward-fix instead of a backout.
 
 **Drizzle-side backout:** Revert `src/db/schema.ts` to remove `watchVariants` table definition and `variantId` column on `watches`. Delete `drizzle/0009_phase36_layer_c_variants.sql` and remove the `idx=9` entry from `drizzle/meta/_journal.json`.
+
+## Phase 37 — Layer D: Provenance Fields + Divestments Table Deploy Steps
+
+### Preconditions
+
+- Phase 36 prod state: green (CAT-14 flip applied; watches.catalog_id IS NOT NULL; Phase 36 Plan 05 closed)
+- Migration file ready: `supabase/migrations/20260511010000_phase37_layer_d.sql` (strictly > Phase 36's `20260511000000` filename)
+- Plan 01 + 02 + 03 + 04 shipped: Drizzle schema + supabase migration + Drizzle migration twin + Server Action + UI wire-up committed
+- Plan 05 Task 2 green locally: integration test (including V-10 dual-write happy-path + rollback) + static tests pass against local Docker DB
+- Operator has `SUPABASE_ACCESS_TOKEN` set + linked horlo project (`supabase link`)
+- Operator has prod pooler `DATABASE_URL` available for §37.4 verification queries (NOT exported as DATABASE_URL — use inline `psql "<url>" -c "..."` invocation per Phase 34 Plan 04 T-34-04 footgun mitigation)
+
+Phase 37 is **purely additive**: 3 new pgEnums, 7 new nullable columns on watches, 1 new divestments table, 4 new RLS policies, 3 new indexes, 1 new updated_at trigger. NO drops, no type-changes on existing columns, no NOT NULL flips. There is **no pg_depend pre-check** required (Rule 4 of `project_drizzle_supabase_db_mismatch.md` is N/A because no existing column is dropped or retyped).
+
+### 37.0 — Overview
+
+The Phase 37 migration creates the data shape for the future recommender (SEED-002 — `divestments.divested_at` temporal decay) + the v6.0 market-value engine (SEED-005 — `watches.paid_currency` + `divestments.sale_price`). Phase 37 wires the Server Action that flips `owned → sold` and writes a `divestments` row atomically; the sell-dialog UI is deferred to v5.x.
+
+Threats mitigated by the migration:
+- **T-37-RLS-01** (anon SELECT divestments) — blocked by `ENABLE ROW LEVEL SECURITY` + 4 per-user policies + `GRANT` to `authenticated` ONLY + explicit `REVOKE ALL FROM anon` (NOT anon)
+- **T-37-RLS-02** (cross-user read) — blocked by `auth.uid() = user_id` predicate on `divestments_owner_select`
+- **T-37-FK-01** (FK orphan) — blocked by `catalog_id uuid NOT NULL REFERENCES watches_catalog(id) ON DELETE RESTRICT`
+- **T-37-TXN-01** (partial dual-write) — verified by automated `recordDivestment dual-write` describe in `tests/integration/phase37-rls.test.ts` (V-10; happy path + rollback)
+
+### 37.1 — Apply migration to local DB
+
+Local apply happens first to confirm the migration runs cleanly before prod. Plan 05 Task 2 already performs this — this section is the operator's reference for re-runs after a local DB reset.
+
+```bash
+# Ensure local Docker is running
+docker ps | grep supabase_db_horlo
+
+# Apply the migration
+docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260511010000_phase37_layer_d.sql
+
+# If re-applying after a previous successful apply, the CREATE TYPE statements will error
+# with `duplicate_object`. Either reset the DB first (`npx supabase db reset`) or skip the apply
+# and verify the existing state matches via the queries below.
+```
+
+**Local Docker auto-grant caveat:** Local Supabase Docker automatically grants all privileges to `anon`, `authenticated`, and `service_role` on newly created public-schema tables. The migration includes an explicit `REVOKE ALL ON divestments FROM anon` statement to close this gap. Verify with `docker exec supabase_db_horlo psql -U postgres -d postgres -tAc "SELECT has_table_privilege('anon', 'public.divestments', 'SELECT');"` — expect `f`.
+
+### 37.2 — Local verification queries
+
+After §37.1, verify all invariants via direct psql:
+
+```bash
+# 3 pgEnums exist
+docker exec supabase_db_horlo psql -U postgres -d postgres -c \
+  "SELECT typname FROM pg_type WHERE typname IN ('condition_grade','currency_code','box_papers_status') ORDER BY typname;"
+# Expect: condition_grade, currency_code, box_papers_status (3 rows)
+
+# 7 new watches columns
+docker exec supabase_db_horlo psql -U postgres -d postgres -c \
+  "SELECT column_name, data_type, is_nullable FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='watches'
+      AND column_name IN ('serial','year_of_acquisition','condition','box_papers','service_history','paid_currency','purchase_date')
+    ORDER BY column_name;"
+# Expect: 7 rows, all is_nullable=YES
+
+# divestments table shape (10 columns)
+docker exec supabase_db_horlo psql -U postgres -d postgres -c \
+  "SELECT column_name FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='divestments' ORDER BY ordinal_position;"
+
+# 4 RLS policies on divestments
+docker exec supabase_db_horlo psql -U postgres -d postgres -c \
+  "SELECT policyname, cmd FROM pg_policies WHERE schemaname='public' AND tablename='divestments' ORDER BY policyname;"
+# Expect: divestments_owner_select / _insert / _update / _delete (4 rows)
+
+# anon CANNOT SELECT (T-37-RLS-01)
+docker exec supabase_db_horlo psql -U postgres -d postgres -c \
+  "SELECT has_table_privilege('anon', 'public.divestments', 'SELECT');"
+# Expect: f
+
+# authenticated CAN SELECT/INSERT/UPDATE/DELETE
+docker exec supabase_db_horlo psql -U postgres -d postgres -c \
+  "SELECT has_table_privilege('authenticated', 'public.divestments', 'SELECT')
+    , has_table_privilege('authenticated', 'public.divestments', 'INSERT')
+    , has_table_privilege('authenticated', 'public.divestments', 'UPDATE')
+    , has_table_privilege('authenticated', 'public.divestments', 'DELETE');"
+# Expect: t, t, t, t
+
+# Run the integration test (vitest env-loading workaround per Phase 36 Plan 04 lesson).
+# Includes the new V-10 `recordDivestment dual-write` describe (happy path + rollback).
+set -a; source .env.local; set +a
+npx vitest run tests/integration/phase37-rls.test.ts
+```
+
+**V-10 (Server Action atomic dual-write) — AUTOMATED:**
+The `recordDivestment dual-write` describe block inside `tests/integration/phase37-rls.test.ts` covers V-10. It:
+1. Inserts a fixture watch (status='owned', valid catalog_id) via raw SQL.
+2. Calls `recordDivestment(watchId)` (Server Action under stubbed auth via `vi.mock('@/lib/auth', ...)`).
+3. Asserts BOTH side effects: divestments row inserted + watches.status='sold' + ActionResult success.
+4. Repeats with a forced FK violation (non-existent replacedByCatalogId) and asserts NEITHER side effect occurred (rollback verified) + ActionResult failure.
+
+No manual UI walkthrough is required for V-10. V-11 (Accordion mounts in edit mode), V-12 (Accordion absent on create page), V-13 (sold badge variant) remain manual UI verifications below.
+
+**Manual UI verification (V-11 + V-13 — Accordion + sold badge):**
+With the dev server running (`npm run dev`):
+1. Sign in as the test user.
+2. Add an `owned` watch via `/collection/new` (or use an existing owned row).
+3. Navigate to `/collection/[id]/edit`.
+4. Confirm the "Collector's Record" Accordion is COLLAPSED by default. Expand it. Confirm 7 fields render (Purchase Date, Year of Acquisition, Serial Number, Condition, Box & Papers, Purchase Currency, Service History). (V-11)
+5. Change Status to `sold` (top of the form). Click "Save Changes."
+6. Visit `/collection` — confirm the now-sold watch shows the differentiated badge (variant="secondary" — muted background, visually distinct from outline). (V-13)
+7. Smoke-confirm in DB: `docker exec supabase_db_horlo psql -U postgres -d postgres -c "SELECT count(*) FROM divestments WHERE user_id = '<test-user-uuid>'"` increments by 1 (this is double-coverage with V-10's automated assertion, but a sanity check that the UI path through `editWatch` produces the same dual-write behavior the automated test verifies on the `recordDivestment` path).
+
+**Manual create-page verification (V-12 Accordion absent on create):**
+Visit `/collection/new`. Confirm there is NO "Collector's Record" Accordion (edit-only gate per D-15).
+
+### 37.3 — Apply migration to prod (`supabase db push --linked`)
+
+**DEBT-12 contract:** `npx drizzle-kit migrate` is NOT run against prod. The `supabase db push --linked` path is authoritative. The Drizzle migration (`drizzle/0010_phase37_layer_d.sql`) is retained for local re-sync only.
+
+Prerequisite: operator must have `SUPABASE_ACCESS_TOKEN` set and the prod horlo project linked (`supabase link --project-ref <ref>` once; cached thereafter).
+
+```bash
+# Confirm linked project
+supabase projects list
+
+# Push the migration. Reads all unmigrated files from supabase/migrations/ in
+# lexical order. With Phase 36 already applied (idx=000000 < 010000), only
+# Phase 37 (idx=010000) is pending and will be applied.
+supabase db push --linked
+```
+
+Expected output: 1 migration applied (`20260511010000_phase37_layer_d.sql`); 0 errors; the final `DO $$` assertion block runs and confirms every invariant before COMMIT.
+
+If the migration fails:
+- The final `DO $$` block's `RAISE EXCEPTION` rolls back the entire transaction atomically — prod stays in pre-migration state.
+- The error message identifies WHICH invariant failed (e.g. "Phase 37 failed -- divestments expected 4 RLS policies, got 3").
+- Diagnose locally (re-run §37.1 + §37.2), fix, then retry.
+
+**D-07-style backout window caveat:** the migration MUST apply cleanly OR be rolled back by `RAISE EXCEPTION`. There is no "partial state" risk — the transaction wrapper guarantees atomicity. However, once COMMIT succeeds and the application code starts writing into divestments, a manual rollback requires the §37.5 rollback flow.
+
+### 37.4 — Post-deploy prod verification (smoke-test SELECTs)
+
+Inline pooler URL (per Phase 34 Plan 04 T-34-04 footgun mitigation — DO NOT export `DATABASE_URL=<prod>` as that risks running local tests against prod):
+
+```bash
+PROD_URL="<prod session-mode pooler URL from supabase dashboard>"
+
+# 3 pgEnums
+psql "$PROD_URL" -c \
+  "SELECT typname FROM pg_type WHERE typname IN ('condition_grade','currency_code','box_papers_status') ORDER BY typname;"
+
+# 7 watches columns
+psql "$PROD_URL" -c \
+  "SELECT column_name FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='watches'
+      AND column_name IN ('serial','year_of_acquisition','condition','box_papers','service_history','paid_currency','purchase_date')
+    ORDER BY column_name;"
+
+# divestments table + 4 RLS policies + 0 rows (no operator-side data shipped in Phase 37)
+psql "$PROD_URL" -c "SELECT count(*) FROM divestments;"
+psql "$PROD_URL" -c \
+  "SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='divestments' ORDER BY policyname;"
+
+# anon CANNOT SELECT (T-37-RLS-01)
+psql "$PROD_URL" -c "SELECT has_table_privilege('anon', 'public.divestments', 'SELECT');"
+# Expect: f
+```
+
+**UI smoke walk (V-11 + V-13 against prod):**
+Open the prod app:
+1. Sign in as twwaneka@gmail.com.
+2. Visit `/collection/[id]/edit` for any existing owned watch — confirm Accordion renders + collapsed by default. (V-11)
+3. Visit `/collection` — confirm any `status='sold'` watch shows the differentiated badge (variant="secondary" — muted background, visually distinct from outline). (V-13)
+4. OPTIONAL: flip an actual watch's status to sold (saved test row only — NOT a production-bearing watch) — confirm in psql that a divestments row inserted atomically. V-10 is automated locally; this prod smoke is double-coverage.
+
+### 37.5 — Rollback (if Phase 37 must be reverted)
+
+Phase 37 is additive; rollback is straightforward. Run in prod via `psql "$PROD_URL"`:
+
+```sql
+BEGIN;
+  -- Drop the table first (RLS policies + indexes + trigger cascade with DROP TABLE)
+  DROP TABLE IF EXISTS divestments CASCADE;
+
+  -- Drop the 7 new columns from watches (any data in them is LOST — confirm first)
+  ALTER TABLE watches
+    DROP COLUMN IF EXISTS serial,
+    DROP COLUMN IF EXISTS year_of_acquisition,
+    DROP COLUMN IF EXISTS condition,
+    DROP COLUMN IF EXISTS box_papers,
+    DROP COLUMN IF EXISTS service_history,
+    DROP COLUMN IF EXISTS paid_currency,
+    DROP COLUMN IF EXISTS purchase_date;
+
+  -- Drop the 3 pgEnums (must be after the columns referencing them are dropped)
+  DROP TYPE IF EXISTS condition_grade;
+  DROP TYPE IF EXISTS currency_code;
+  DROP TYPE IF EXISTS box_papers_status;
+COMMIT;
+```
+
+After rollback, the Drizzle migration journal entry idx=10 remains — drizzle-kit migrate is SKIPPED against prod so this is harmless, but if a future `supabase db push --linked` re-applies the file, the schema returns to post-Phase-37 state. To prevent this, either move the migration file out of `supabase/migrations/` temporarily OR fix the underlying issue and re-apply.
+
+**Backout limit:** rollback after the v5.x sell-dialog phase has shipped will lose any user-entered divestments data + provenance field data. This is acceptable for Phase 37 (user-count = 1 per memory `project_db_wipeable_2026_05_09.md`) but becomes a hard barrier once a second user signs up. Reconfirm before any rollback after second-user onboarding.
