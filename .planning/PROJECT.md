@@ -28,8 +28,8 @@ See `.planning/milestones/v4.1-MILESTONE-AUDIT.md` for the full audit (status: `
 
 *Discovery (audit-first per SEED-004):*
 - Discovery audit (read-only Phase 1; click-path map across `/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}`; answers "combine home and explore?")
-- Audit-driven discovery polish (wave shaped by audit findings — lineage browse, Family pages, dead-end fixes, missing affordances)
-- DISC-09 /explore Editorial Featured Collection (admin tooling)
+- Audit-driven discovery polish — split into Phase 39 (cheap-tier dead-end patches) + Phase 39b (heavier UX: fresh-account ReferenceIdentityCard, Collector Profile sub-cluster, catalog other-owners roster, inline lineage rails) per 2026-05-12 discuss-phase reframe
+- ~~DISC-09 /explore Editorial Featured Collection~~ — DROPPED 2026-05-12; promoted to new v5.1 milestone (SEED-008 — 5-module Explore page redesign)
 - SRCH-16 Search facets (Movement / Case size / Style) on /search Watches
 - FIT-05 pairwise drill-down ("Compare with watch I own") inside CollectionFitCard
 
@@ -59,8 +59,9 @@ See `.planning/milestones/v4.1-MILESTONE-AUDIT.md` for the full audit (status: `
 - **Recommender (SEED-002) NOT in v5.0** — but Layer D `sold` / `divestments` schema lands as prep so the recommender milestone (v6.0+) doesn't have to relitigate the data model.
 - **Phase numbering continues from v4.1** — Phase 32 onward (no `--reset-phase-numbers`).
 
-**Pre-v6.0 work (between v5.0 close and v6.0 start):**
-- Market pricing API spike via `/gsd-spike` (SEED-007) — Watch Charts vs Chrono24 vs eBay vs scraping vs manual
+**Post-v5.0 trajectory:**
+- **v5.1 Explore Page Redesign (SEED-008, promoted 2026-05-12)** — 5 modules: Hero (rotating, curated-list-sourced) / Collector Archetypes (chip rail) / Curated Lists Rail (CMS-authored) / Where Collections Go (collection paths) / Browse the Catalog (brand/era/genre/price-band indices). Replaces the original DISC-09 single-slot framing. Framing: Home = daily check-in (recency-driven, social-graph-in-motion); Explore = the rabbit hole (evergreen, structured, taste-driven). Pre-roadmap research: CMS approach decision (in-app admin vs Sanity vs Contentlayer) — candidate for a `/gsd-spike` before v5.1 roadmap.
+- Market pricing API spike via `/gsd-spike` (SEED-007) — Watch Charts vs Chrono24 vs eBay vs scraping vs manual. Runs between v5.1 close and v6.0 start.
 - v6.0 Market Value (SEED-005) — `market_prices` keyed on `catalog_id`; total collection value + paid-vs-market chart + per-watch market price (all free per SEED-006)
 
 ## Requirements
@@ -255,7 +256,9 @@ This document evolves at phase transitions and milestone boundaries.
 *2026-05-01 — Phase 23 (Settings Sections + Schema-Field UI) complete. SET-07/08/09/10/11/12 + FEAT-07/08 satisfied: collectionGoal + overlapTolerance lifted to top of Preferences tab as dedicated Cards (Brand Loyalist option added with locked em-dash copy); PreferencesClient gains embedded prop suppressing page chrome inside Settings tab; AppearanceSection mounts InlineThemeSegmented in SettingsSection title="Theme" (Server-renders-Client child per Next.js 16; UserMenu retains its segmented control — both sync via horlo-theme cookie); WatchForm exposes isChronometer Checkbox and notesPublic Public/Private pill below Notes textarea; WatchDetail renders only-if-true Certification row with text-foreground Check icon (Anti-Pattern 9 honored); addWatch/editWatch Zod accepts notesPublic and revalidates /u/[username] layout for cross-page sync (D-19); SET-09/SET-11/SET-12 verified-no-change via Phase 22 D-01/D-15; D-20 cleanup grep ZERO orphans. Zero schema changes, zero new DAL functions; 6 plans in 2 worktree-parallelized waves; 5 manual UAT items approved. Up next: Phase 24 (Notification Stub Cleanup + Test Fixture & Carryover).*</details>
 
 ---
-*Last updated: 2026-05-06 — v5.0 Discovery North Star milestone started. Goal: Rdio click-driven discovery as organizing principle + full catalog hierarchy (SEED-001 all 4 layers, schema-only) earning Reference granularity for the future recommender + v4.x carryover (DEBT-09, Nyquist sweep, deferred UAT triage). Audit-first per SEED-004 — Phase 32 is the discovery audit (read-only decisions doc); SEED-001 schema waves come after. Clean-slate DB wipe enabled by single-user state; CAT-14 `SET NOT NULL` lands alongside. No paywall (SEED-006 resolved 2026-05-06 — `.planning/research/PREMIUM-MAP.md`). Phase numbering continues from 32. Up next: research → requirements → roadmap.*
+*Last updated: 2026-05-12 — Phase 39 discuss-phase reframe. DISC-09 (single-slot Editorial Featured Collection) DROPPED from Phase 39 mid-discussion after the user inlined a comprehensive 5-module `/explore` page redesign spec — captured at `.planning/seeds/SEED-008-v5.1-explore-redesign.md` and promoted to a new v5.1 milestone scoped after v5.0 closes. Phase 39 splits into Phase 39 (cheap-tier dead-end patches: NSV-01+15 mostSimilar Link wraps + NSV-08 Insights verify-and-patch + NSV-12 common-ground 404 → walk-back fallback) + Phase 39b (heavier UX: NSV-06+20 fresh-account ReferenceIdentityCard + NSV-14 8-row Collector Profile sub-cluster + NSV-18 catalog other-owners roster + NSV-02+16 inline lineage rails with operator-curation seed pass). Mirrors Phase 33 → 33b pattern. Updated trajectory: v5.0 → **v5.1 Explore Redesign (SEED-008)** → SEED-007 pricing API spike → v6.0 Market Value. Framing solidified: Home = daily check-in (recency-driven); Explore = rabbit hole (evergreen, taste-driven). Up next: `/gsd-plan-phase 39`.*
+
+*Previous: 2026-05-06 — v5.0 Discovery North Star milestone started. Goal: Rdio click-driven discovery as organizing principle + full catalog hierarchy (SEED-001 all 4 layers, schema-only) earning Reference granularity for the future recommender + v4.x carryover (DEBT-09, Nyquist sweep, deferred UAT triage). Audit-first per SEED-004 — Phase 32 is the discovery audit (read-only decisions doc); SEED-001 schema waves come after. Clean-slate DB wipe enabled by single-user state; CAT-14 `SET NOT NULL` lands alongside. No paywall (SEED-006 resolved 2026-05-06 — `.planning/research/PREMIUM-MAP.md`). Phase numbering continues from 32. Up next: research → requirements → roadmap.*
 
 *Previous: 2026-05-05 after v4.1 milestone — Polish & Patch shipped. 5 phases (27-31), 21 plans + 1 quick task + 1 post-ship hotfix, 152 commits over 2 days. 12/12 v4.1 requirements satisfied at code level. Phase 31 audit surfaced DEBT-09 (HIGH severity Phase 23-era regression: `notesPublic` Zod field + `revalidatePath('/u/...')` absent from `src/app/actions/watches.ts` on `main`; commit `4d362ff` not in HEAD ancestry) — deferred to v5.0 carryover. Audit status: `tech_debt`.*
 

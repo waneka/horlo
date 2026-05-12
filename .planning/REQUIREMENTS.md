@@ -4,7 +4,7 @@
 **Started:** 2026-05-06
 **Goal:** Make Rdio-style click-driven discovery the organizing principle of Horlo by auditing every discovery surface, then rebuilding the catalog as a 5-level hierarchy that earns Reference granularity for the future recommender — clearing v4.x carryover (DEBT-09, Nyquist) along the way.
 
-**Scope posture:** Audit-first per SEED-004. Schema-only catalog seeding (no ~500 References pre-seeded). Clean-slate DB wipe enabled by single-user context. No paywall (SEED-006 resolved → `.planning/research/PREMIUM-MAP.md`). Recommender (SEED-002) and onboarding (SEED-003) NOT in v5.0; only Layer D `divestments` schema lands as recommender prep.
+**Scope posture:** Audit-first per SEED-004. Schema-only catalog seeding (no ~500 References pre-seeded). Clean-slate DB wipe enabled by single-user context. No paywall (SEED-006 resolved → `.planning/research/PREMIUM-MAP.md`). Recommender (SEED-002) and onboarding (SEED-003) NOT in v5.0; only Layer D `divestments` schema lands as recommender prep. **Explore page redesign NOT in v5.0** — DISC-09 dropped 2026-05-12 and promoted to a new v5.1 milestone (SEED-008); v5.0 ships `/explore` unchanged from Phase 18.
 
 ---
 
@@ -38,9 +38,12 @@
 
 ### Audit-Driven Discovery Polish
 
-- [ ] **DISC-09**: An "Editorial Featured Collection" slot ships on `/explore` with admin-only write surface. Curators (admin = owner user_id check in single-user app) can pin a featured catalog reference, family, or collector with a curator-written blurb. Free per SEED-006. Detailed UX shaped by audit findings.
+- ~~**DISC-09**~~: **DROPPED 2026-05-12 — promoted to v5.1 milestone.** The original single-slot Editorial Featured Collection framing was superseded mid-Phase-39 discuss-phase by a comprehensive 5-module Explore page redesign spec the user wrote inline. Captured at `.planning/seeds/SEED-008-v5.1-explore-redesign.md`. v5.0 ships `/explore` unchanged from Phase 18; v5.1 is a new milestone scoped after v5.0 closes and before SEED-007 pricing API spike. See `.planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md` § D-05/D-06 for the reframe rationale.
 
-- [ ] **DISC-11**: Audit-driven discovery surface polish closes specific row IDs from the DISC-10 click-path table AND addresses the missing drift vectors identified by the DISC-12 north-star audit. Each polish item is a separate plan within this phase, citing the DISC-AUDIT-NN row ID it closes and/or the DISC-12 north-star vector it addresses. Possible items (DISC-12 verdicts determine final scope): `/family/{familyId}` lineage browse pages, `/catalog/{id}` predecessor/successor affordances, home/explore consolidation if DISC-12 Q1 calls for it, dead-end fixes per the audit table prioritized by DISC-12 Q3 verdict. Scope is fully audit-conditional on Phase 33b verdicts.
+- [ ] **DISC-11** (split across Phase 39 + Phase 39b per 2026-05-12 discuss-phase): Audit-driven discovery surface polish closes specific row IDs from the DISC-10 click-path table AND addresses the missing drift vectors identified by the DISC-12 north-star audit. Each polish item is a separate plan citing the DISC-AUDIT-NN row id it closes and/or the DISC-12 NSV-NN vector it addresses.
+  - **Phase 39 (cheap tier)**: NSV-01 + NSV-15 mostSimilar Link wraps in `CollectionFitCard`; NSV-08 InsightsTabContent Link wraps (verify-before-patch — SleepingBeauties already wraps); NSV-12 common-ground 404 → walk-back fallback page.
+  - **Phase 39b (heavier tier + Q2 lineage absorption)**: NSV-06 + NSV-20 new `<ReferenceIdentityCard>` for fresh-account viewers on `/watch` + `/catalog` (renders CAT-13 taste signature at `confidence >= 0.5`, suppressed below); NSV-14 8-row Collector Profile sub-cluster (LockedTabCard CTAs / WornCalendar onClick / StatsTabContent Link wraps); NSV-18 catalog other-owners roster on `/catalog/{id}` with two-layer privacy; NSV-02 + NSV-16 inline "Same family" + "Lineage" rails on `/watch` + `/catalog` (no dedicated `/family/{id}` page) with operator-curation seed pass (~20 family_id updates + ~15 manual lineage edges via `scripts/seed-lineage.ts`).
+  - Med/low-leverage cells (NSV-03/04/07/09/10/13/17/21/23/24/25/27/29/30/31/33/34/36/37/38/39/41) explicitly DEFERRED to v5.x per Phase 33b § Decisions Q3.
 
 ### Search & Verdict Polish
 
@@ -110,8 +113,9 @@
 | CAT-14 | Phase 36 | Shipped 2026-05-11 |
 | CAT-18 | Phase 37 | Pending |
 | CAT-13 | Phase 38 | Pending |
-| DISC-09 | Phase 39 | Pending |
-| DISC-11 | Phase 39 | Pending |
+| ~~DISC-09~~ | ~~Phase 39~~ → v5.1 | Promoted to v5.1 milestone 2026-05-12 (SEED-008) |
+| DISC-11 (cheap tier) | Phase 39 | Pending |
+| DISC-11 (heavier tier + NSV-02/16) | Phase 39b | Pending |
 | SRCH-16 | Phase 40 | Pending |
 | FIT-05 | Phase 40 | Pending |
 | SET-13 | Phase 41 | Pending |
@@ -120,8 +124,15 @@
 | DEBT-11 | Phase 42 | Pending |
 | DEBT-12 | unscheduled (opportunistic — next prod deploy needing drizzle-kit migrate) | Pending |
 
-**Coverage: 17/17 v5.0 requirements mapped + 1 ad-hoc DEBT (DEBT-12) discovered during Phase 34 Wave 3 — pre-existing journal drift unrelated to v5.0 scope.**
+**Coverage: 16/16 in-scope v5.0 requirements mapped (17 → 16 after DISC-09 promotion to v5.1 milestone 2026-05-12) + 1 ad-hoc DEBT (DEBT-12). DISC-11 splits across Phase 39 + 39b per the Phase 39 discuss-phase reframe.**
+
+## v5.1 Forward References
+
+The following requirement was deferred to a new v5.1 milestone (Explore Page Redesign) during the 2026-05-12 Phase 39 discuss-phase:
+
+- **DISC-09 → v5.1**: Editorial Featured Collection slot. Superseded by a 5-module `/explore` redesign spec (Hero / Collector Archetypes / Curated Lists Rail / Where Collections Go / Browse the Catalog) captured at `.planning/seeds/SEED-008-v5.1-explore-redesign.md`. v5.1 starts after v5.0 closes; runs before SEED-007 pricing API spike and v6.0 Market Value per user intent. Pre-roadmap research item: CMS approach decision (in-app admin vs Sanity vs Contentlayer) — candidate for a `/gsd-spike` between v5.0 close and v5.1 roadmap.
 
 ---
 
-*Last updated: 2026-05-08 — DISC-12 (Phase 33b north-star audit) inserted between Phase 33 and Phase 34 after mid-execution scope reframe. 17 requirements across 8 categories mapped to Phases 32–42.*
+*Last updated: 2026-05-12 — Phase 39 discuss-phase reframe: DISC-09 dropped from v5.0 and promoted to new v5.1 milestone (SEED-008); DISC-11 split across Phase 39 (cheap tier) + Phase 39b (heavier tier + NSV-02/16 lineage absorption). 16 in-scope v5.0 requirements mapped to Phases 32–42 (39 now 39 + 39b).*
+*Previous: 2026-05-08 — DISC-12 (Phase 33b north-star audit) inserted between Phase 33 and Phase 34 after mid-execution scope reframe. 17 requirements across 8 categories mapped to Phases 32–42.*

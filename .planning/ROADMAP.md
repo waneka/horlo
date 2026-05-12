@@ -99,7 +99,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 
 **Milestone Goal:** Make Rdio-style click-driven discovery the organizing principle of Horlo by auditing every discovery surface, then rebuilding the catalog as a 5-level hierarchy that earns Reference granularity for the future recommender — clearing v4.x carryover along the way.
 
-**Build order:** Serial spine (Phases 32–40) with two parallel tracks (Phases 41–42). Serial phases have strict schema-layering dependencies. Parallel tracks run concurrently with any Phase 34+ serial work.
+**Build order:** Serial spine (Phases 32–40, with Phase 39 splitting into 39 + 39b after the 2026-05-12 discuss-phase reframe) with two parallel tracks (Phases 41–42). Serial phases have strict schema-layering dependencies. Parallel tracks run concurrently with any Phase 34+ serial work.
 
 - [x] **Phase 32: DEBT-09 notesPublic Fix** — Repair carryover data-loss regression; turn RED scaffold GREEN *(completed 2026-05-06)*
 - [ ] **Phase 33: Discovery Audit** — Read-only click-path audit of all discovery surfaces; decisions doc gates all polish phases
@@ -108,7 +108,8 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [x] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip *(completed 2026-05-11)*
 - [x] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep (shipped 2026-05-11)
 - [x] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first *(completed 2026-05-12: re-verifier PHASE_PASSED, 5/5 ROADMAP criteria verified, gap closure 38-04 shipped IDIOM A cascade + fail-loud rewrite; 19/19 static guards green; tsc back to 27-error pre-Phase-38 baseline)*
-- [ ] **Phase 39: Audit-Driven Discovery Polish** — Closes specific DISCOVERY-AUDIT.md row IDs; DISC-09 editorial slot + DISC-11 dead-end fixes
+- [ ] **Phase 39: Audit-Driven Discovery Polish — Cheap Patches** — DISC-11 cheap-tier dead-end closures only (NSV-01+15 mostSimilar Link wraps, NSV-08 Insights verify-and-patch, NSV-12 common-ground 404 → walk-back fallback). DISC-09 dropped 2026-05-12 and promoted to v5.1 (SEED-008).
+- [ ] **Phase 39b: Audit-Driven Discovery Polish — Heavier UX** — DISC-11 heavier-tier closures (NSV-06+20 fresh-account ReferenceIdentityCard, NSV-14 8-row Collector Profile sub-cluster, NSV-18 catalog other-owners roster, NSV-02+16 inline lineage rails with operator-curation seed pass)
 - [ ] **Phase 40: Search & Verdict Polish** — SRCH-16 faceted filters + FIT-05 pairwise drill-down in CollectionFitCard
 - [ ] **Phase 41: Account Danger Zone + Branded Auth Emails** *(parallel track)* — SET-13 Danger Zone; SET-14 react-email templates
 - [ ] **Phase 42: Nyquist Hardening + UAT Triage** *(parallel track)* — VALIDATION.md sweep; ~33 UAT items triaged
@@ -331,18 +332,43 @@ Plans:
 - CAT-13 success criterion #5 parity gate: `src/lib/extractors/llm.ts` body unchanged (Phase 19.1 D-07 byte-lock); `tests/static/CollectionFitCard.no-engine.test.ts` unchanged; `SimilarityResult` + `SimilarityLabel` + `GOAL_THRESHOLDS` unchanged
 - D-13 test-first ordering: Plan B Task 3 (taste-present test) commit MUST precede Plan B Task 4 (engine rewire) commit — enforced via git merge-base assertion in Task 4 AC
 
-### Phase 39: Audit-Driven Discovery Polish
-**Goal**: Close specific row IDs from the Phase 33 DISCOVERY-AUDIT.md click-path table and ship the missing drift vectors prioritized by the Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md verdicts — shipping exactly the dead-end fixes and surface improvements the audits identified as highest Rdio leverage.
-**Depends on**: Phase 38 (engine rewire needed for improved verdict quality on catalog pages); Phase 33b (DISC-12 north-star verdicts gate all polish scope; Phase 33 DISC-AUDIT-NN row IDs cited as backing data via Phase 33b)
-**Requirements**: DISC-09, DISC-11
+### Phase 39: Audit-Driven Discovery Polish — Cheap Patches
+**Goal**: Ship the cheapest tier of the Phase 33b Q3 sorted dead-end backlog as a momentum-win phase: single-component or single-route patches that close Rdio dead-end affordances without new data models or admin surfaces. Phase 38 (CAT-13) already shipped; this phase spends its scope on the dead-ends Phase 33b sorted by patch-cost ascending. DISC-09 dropped 2026-05-12 and promoted to v5.1 (SEED-008) — the throwaway hardcoded-ref slot would have been replaced by v5.1's curated-lists-sourced Hero module.
+**Depends on**: Phase 38 (engine rewire — though Phase 39 cheap patches don't directly read taste signal, the verdict-quality dependency holds for downstream Phase 39b); Phase 33b (DISC-12 north-star Q3 sorted backlog is the load-bearing input)
+**Requirements**: DISC-11 (cheap-tier subset only — see scope below)
+**Scope** (3 items only):
+  - **NSV-01 + NSV-15** — mostSimilar Link wraps in `src/components/insights/CollectionFitCard.tsx`. Single-component patch; affects both `/watch/{id}` (NSV-01) and `/catalog/{id}` (NSV-15) since the same component renders on both surfaces.
+  - **NSV-08** — InsightsTabContent Link wraps. Verify-before-patch required (`SleepingBeautiesSection.tsx:43-51` already wraps — codebase drifted since the Phase 33b 2026-05-08 snapshot; plan must grep `GoodDealsSection.tsx` and patch only what is actually missing).
+  - **NSV-12** — common-ground 404 → walk-back fallback at `src/app/u/[username]/[tab]/page.tsx:87`. Replace `notFound()` on the no-overlap branch with a soft fallback Card render + walk-back CTAs to `/u/{username}/collection` and `/explore`.
 **Success Criteria** (what must be TRUE):
-  1. Every plan in this phase cites EITHER a specific DISC-AUDIT-NN row ID from Phase 33's DISCOVERY-AUDIT.md OR a specific north-star vector from Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md — no un-cited polish items ship
-  2. Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md missing-vector list has zero high-leverage rows still unaddressed after this phase, OR each remaining high-leverage missing vector carries an explicit DEFERRED annotation with a v5.x target reason
-  3. DISC-09 Editorial Featured Collection slot exists on `/explore` — admin-only (owner user_id check) write surface; curator-written blurb; free per SEED-006; detailed UX shaped by Phase 33b north-star verdicts (esp. Q1 combine home+explore)
-  4. Each DISC-11 polish item ships as a separate plan within this phase with the DISC-AUDIT-NN row id and/or DISC-12 north-star vector id it closes documented in that plan's CONTEXT.md
-  5. Scope is audit-conditional on Phase 33b verdicts: if DISC-12 ranks a missing vector as low-leverage or DEFERRED, no work ships for that vector in v5.0
-**Plans**: TBD (scope pending Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md)
+  1. Every plan in this phase cites EITHER a specific DISC-AUDIT-NN row ID from Phase 33's DISCOVERY-AUDIT.md OR a specific NSV-NN row id from Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md
+  2. NSV-01 + NSV-15 closed: every `<li>` in `CollectionFitCard.tsx` mostSimilar list wraps in `<Link href="/watch/${watch.id}">`; Phase 20 import-boundary guard `tests/static/CollectionFitCard.no-engine.test.ts` still passes
+  3. NSV-08 closed OR explicitly marked "already shipped" with grep evidence in the plan SUMMARY (no fabricated patches)
+  4. NSV-12 closed: `/u/{username}/common-ground` returns HTTP 200 (not 404) when overlap is empty AND viewer follows owner; soft fallback Card renders with two walk-back CTAs; the other two common-ground gate failures (`!isOwner`, `!profile`) keep their existing `notFound()` behavior
+  5. Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md cheap-tier rows (NSV-01, NSV-15, NSV-08, NSV-12) have status updated from missing/partial to ship after this phase
+**Plans**: TBD (planner discretion — 1-3 plans cover the 3 items)
 **UI hint**: yes
+**Context**: `.planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md` (gathered 2026-05-12)
+
+### Phase 39b: Audit-Driven Discovery Polish — Heavier UX
+**Goal**: Close the heavier-tier Phase 33b Q3 dead-end items + Q2 lineage browse UI deferral — surfaces that require new components, aggregation queries, or operator-curation data work. Ships after Phase 39 is in production and observable.
+**Depends on**: Phase 39 (ships first; observe-then-decide gate); Phase 38 (CAT-13 — NSV-06/20 ReferenceIdentityCard reads catalog taste columns via `Watch.catalogTaste`); Phase 34 (CAT-15 brands + families schema), Phase 35 (CAT-16 lineage edges + `getLineageForReference` recursive CTE) for NSV-02/16 inline lineage rails.
+**Requirements**: DISC-11 (heavier-tier subset, plus NSV-02+16 absorbed from Phase 33b Q2 deferral)
+**Scope** (4 items):
+  - **NSV-06 + NSV-20** — New `<ReferenceIdentityCard>` component renders on `/watch/{id}` + `/catalog/{id}` when `collection.length === 0` and `catalogTaste.confidence >= 0.5`. Card content: era + primary archetype text headline; formality / sportiness / heritage as three sparkline-pill scales; design motifs as small chip cluster. Existing 3-CTA block (Add to Wishlist / Add to Collection / Skip) extends to render below the card in the empty-collection branch. Below the 0.5 confidence gate (or catalog_taste null) → suppress card, fall back to CTA-only render.
+  - **NSV-14** — Collector Profile 8-row dead-end sub-cluster: LockedTabCard Connect/Follow CTAs (collection / wishlist / notes / stats locked variants); WornCalendar day-cell onClick (drill into wear event detail); StatsTabContent stats-row `<Link>` wraps. DISC-AUDIT-99 wishlist drag-handle silent no-op is "wired-but-broken" per Phase 33b A2 — handle as own bugfix, not part of NSV-14.
+  - **NSV-18** — Catalog other-owners roster on `/catalog/{id}`. Aggregation query over `watches` × `profiles` × `profile_settings` with two-layer privacy (`profile_public = true` + `collection_public = true` + viewer self-exclusion). Card size TBD during 39b discuss-phase.
+  - **NSV-02 + NSV-16** — Inline "Same family" + "Lineage" rails on `/watch/{id}` and `/catalog/{id}` (no dedicated `/family/{familyId}` page — deferred to v5.x or absorbed by v5.1 Browse the Catalog module). Hide-rail-if-empty graceful degradation. Includes operator-curation seed pass during plan execution: ~20 high-signal `family_id` updates + ~15 manual `watch_lineage_edges` rows via `scripts/seed-lineage.ts` idempotent operator script.
+**Success Criteria** (what must be TRUE):
+  1. Every plan cites ≥1 NSV-NN row id from Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md
+  2. NSV-06 + NSV-20 closed: ReferenceIdentityCard renders identically on `/watch/{id}` and `/catalog/{id}` for fresh-account viewers when `confidence >= 0.5`; suppressed gracefully below threshold; CTAs render in both card-shown and card-suppressed branches
+  3. NSV-14 sub-cluster closed: each of the listed sub-cells (LockedTabCard CTAs, WornCalendar onClick, StatsTabContent Link wraps) has a passing test asserting the affordance is reachable
+  4. NSV-18 closed: `/catalog/{id}` renders an other-owners roster on cross-user framing with two-layer privacy gates verified by an integration test (anon viewer cannot see private-profile collectors)
+  5. NSV-02 + NSV-16 closed: inline rails render on `/watch/{id}` + `/catalog/{id}` when family or lineage data exists; hide gracefully when absent; ~20 family_id seeds + ~15 lineage edges committed via the operator script
+  6. Phase 33b Q3 high-leverage backlog has ZERO remaining unaddressed rows after Phase 39 + Phase 39b ship; med/low-leverage cells remain explicitly DEFERRED to v5.x per Phase 33b § Decisions Q3
+**Plans**: TBD (planner discretion; likely 4-5 plans + 1 curation plan)
+**UI hint**: yes
+**Carry-forward context**: Phase 39b decisions captured in `.planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md` (the Phase 39 discuss-phase covered both phases). A separate `/gsd-discuss-phase 39b` is optional — run it if refinement is needed before planning.
 
 ### Phase 40: Search & Verdict Polish
 **Goal**: Add three faceted filters to the `/search` Watches tab and ship the pairwise drill-down section in CollectionFitCard, giving collectors taste-aware search refinement and side-by-side comparison.
@@ -373,8 +399,8 @@ Plans:
 
 ### Phase 42: Nyquist Hardening Sweep + UAT Triage *(parallel track)*
 **Goal**: Retroactively bring v4.1 and v4.0 phases to Nyquist compliance and triage all ~33 deferred UAT items to explicit CLOSED / SUPERSEDED / DEFERRED states.
-**Depends on**: Phase 39 (audit-driven polish must ship before UAT triage — many UAT items touch surfaces v5.0 polish changes). Independent of catalog schema; runs concurrently with Phase 40 once Phase 39 is complete.
-**Parallel track note**: Numbered Phase 42 for ROADMAP.md tracking. Actual execution begins after Phase 39 completes and can overlap with Phase 40.
+**Depends on**: Phase 39b (audit-driven polish must ship before UAT triage — many UAT items touch surfaces the Phase 39 + 39b polish changes; Phase 39b is the load-bearing dependency since it ships the heavier UX reshapes that change UAT scope). Independent of catalog schema; runs concurrently with Phase 40 once Phase 39b is complete.
+**Parallel track note**: Numbered Phase 42 for ROADMAP.md tracking. Actual execution begins after Phase 39b completes and can overlap with Phase 40.
 **Requirements**: DEBT-10, DEBT-11
 **Success Criteria** (what must be TRUE):
   1. VALIDATION.md files exist for Phases 25 and 26 (currently missing); VALIDATION.md files for Phases 27, 28, 30, 31 are upgraded from `partial` to `nyquist_compliant: true` + `wave_0_complete: true`
@@ -413,7 +439,8 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 36. Layer C — Variants + Clean-Slate | 5/5 | Complete (verifier PHASE_PASSED) | 2026-05-11 |
 | 37. Layer D — Provenance + Divestments | 0/? | Not started | - |
 | 38. CAT-13 Engine Rewire | 0/? | Not started | - |
-| 39. Audit-Driven Discovery Polish | 0/? | Not started | - |
+| 39. Audit-Driven Discovery Polish — Cheap Patches | 0/? | Not started — context gathered 2026-05-12 | - |
+| 39b. Audit-Driven Discovery Polish — Heavier UX | 0/? | Not started — carry-forward context in 39-CONTEXT.md | - |
 | 40. Search & Verdict Polish | 0/? | Not started | - |
 | 41. Account Danger Zone + Branded Emails *(parallel)* | 0/? | Not started | - |
 | 42. Nyquist Hardening + UAT Triage *(parallel)* | 0/? | Not started | - |
@@ -432,8 +459,9 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | CAT-14 | 36 | SET NOT NULL on watches.catalog_id (bundled with CAT-17) |
 | CAT-18 | 37 | Layer D: Provenance fields + divestments table |
 | CAT-13 | 38 | Engine rewire — catalog taste as 9th similarity dimension |
-| DISC-09 | 39 | Editorial Featured Collection slot on /explore |
-| DISC-11 | 39 | Audit-driven discovery surface polish (closes DISC-AUDIT row IDs) |
+| ~~DISC-09~~ | ~~39~~ → v5.1 | ~~Editorial Featured Collection slot on /explore~~ — DROPPED 2026-05-12; promoted to v5.1 milestone per `.planning/seeds/SEED-008-v5.1-explore-redesign.md` (5-module Explore redesign supersedes single-slot framing) |
+| DISC-11 (cheap tier) | 39 | NSV-01+15 mostSimilar Link wraps + NSV-08 Insights verify-and-patch + NSV-12 common-ground 404 → walk-back fallback |
+| DISC-11 (heavier tier + Q2 lineage absorption) | 39b | NSV-06+20 ReferenceIdentityCard + NSV-14 sub-cluster + NSV-18 catalog roster + NSV-02+16 inline lineage rails |
 | SRCH-16 | 40 | Search facets: Movement / Case Size / Style |
 | FIT-05 | 40 | CollectionFitCard pairwise drill-down |
 | SET-13 | 41 | Account Danger Zone (Wipe Collection + Delete Account) |
@@ -441,4 +469,4 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | DEBT-10 | 42 | Nyquist hardening sweep (v4.0 / v4.1 phases) |
 | DEBT-11 | 42 | UAT triage (~33 deferred items) |
 
-**Coverage: 16/16 v5.0 requirements mapped. No orphans.**
+**Coverage: 15/15 in-scope v5.0 requirements mapped (16 → 15 after DISC-09 promotion to v5.1). DISC-11 splits across Phase 39 + 39b per 2026-05-12 discuss-phase reframe. No orphans.**
