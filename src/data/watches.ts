@@ -193,8 +193,16 @@ export async function getWatchByIdForViewer(
 
 /**
  * Insert a new watch for the given user. Returns the created Watch domain object.
+ *
+ * Phase 38 D-06: catalogId is now a required second positional argument (IDIOM A).
+ * Callers must upsert catalog BEFORE calling createWatch and pass the resulting catalogId.
+ * The column is NOT NULL in prod (Phase 36 shipped SET NOT NULL); Drizzle catches up in Task 7.
  */
-export async function createWatch(userId: string, data: Omit<Watch, 'id'>): Promise<Watch> {
+export async function createWatch(
+  userId: string,
+  catalogId: string,
+  data: Omit<Watch, 'id' | 'catalogId'>,
+): Promise<Watch> {
   const rowData = mapDomainToRow(data)
   const inserted = await db
     .insert(watches)
@@ -208,6 +216,7 @@ export async function createWatch(userId: string, data: Omit<Watch, 'id'>): Prom
       styleTags: data.styleTags,
       designTraits: data.designTraits,
       roleTags: data.roleTags,
+      catalogId, // Phase 38 D-06: catalogId now required, set atomically at insert
       userId,
     })
     .returning()
@@ -253,6 +262,9 @@ export async function deleteWatch(userId: string, watchId: string): Promise<void
  *   - backfill script (Plan 04)
  *
  * Failure semantics: caller MUST wrap in try/catch (fire-and-forget per CAT-08).
+ *
+ * @deprecated Phase 38 D-06: createWatch now sets catalogId atomically; this helper has no callers
+ * post-Plan-A. Mark for deletion in Polish.
  */
 export async function linkWatchToCatalog(
   userId: string,
