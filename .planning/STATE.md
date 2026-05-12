@@ -4,7 +4,9 @@ milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
 active_phase: 38
-stopped_at: Phase 38 planned 2026-05-12 — 3 plans across 3 waves committed. Plan A (38-01) catalogId .notNull() tightening: 7 tasks, ~23 files (schema + 3 production callsites including wishlist.ts:124 corrected per RESEARCH §Q1 + 17 fixtures + migration pair + journal idx=11). Plan B (38-02) engine rewire: 5+1 optional tasks, 7 files (Watch.catalogTaste type + getWatchesByUser LEFT JOIN with Number() coercion + tests/fixtures/catalogTaste.ts + taste-null/present static guards + similarity.ts WEIGHTS reweighting via D-05 transformation + 9th taste dim at 0.20). Plan C (38-03) composer-engine alignment: 2 tasks, 1 file (composer-engine-alignment.test.ts with 11 scenarios covering full D-15 matrix). All autonomous:true per D-09. Test-first ordering audit-trail enforced via git merge-base assertions in Plan B Task 4. Ready to execute.
+stopped_at: Phase 38 executed 2026-05-12 — verifier verdict PHASE_GAPS (5/5 ROADMAP criteria PASS, 1 test-layer regression gap). Production code (engine + DAL + types + migrations) is correct and ROADMAP success criteria #1-#5 are all VERIFIED. CAT-13 engine rewire shipped: 9th taste dimension at 0.20 weight (D-05 transformation, no magic numbers); confidence >= 0.5 gate; cosine3D on numeric trio + archetype + era + motifs Jaccard. Watch.catalogTaste populated via getWatchesByUser LEFT JOIN with Number() coercion. 19/19 static tests pass (3 taste-null + 2 taste-present + 11 composer-engine alignment + 3 CollectionFitCard.no-engine). Phase 19.1 D-07 byte-lock intact, GOAL_THRESHOLDS/SimilarityResult/SimilarityLabel unchanged. **Gap (non-blocking):** Plan A D-07 sweep covered tests/integration/phase*.test.ts but missed tests/data/ (5 files, 7 tsc TS2554 errors) and tests/actions/ (4 files, 13 vitest failures) — call createWatch with old 2-arg form and mock 2-arg signature; addwatch-catalog-resilience.test.ts asserts removed fire-and-forget behavior. Remediation: /gsd-plan-phase 38 --gaps.
+last_updated: "2026-05-12T05:00:00.000Z"
+last_activity: 2026-05-12
 last_updated: "2026-05-12T03:00:00.000Z"
 last_activity: 2026-05-12
 progress:
@@ -26,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 38 (planned — 3 plans, 3 waves, all autonomous)
-Plan: Phase 38 plans committed — 38-01 (Plan A catalogId .notNull() tightening, Wave 1, 7 tasks), 38-02 (Plan B engine rewire, Wave 2, 5+1 tasks, depends_on 38-01), 38-03 (Plan C composer-engine alignment, Wave 3, 2 tasks, depends_on 38-02). Plan-checker verdict: all 12 dimensions + 12 phase-specific checks PASS. RESEARCH §Q1 correction (third callsite is wishlist.ts:124, not extract-watch/route.ts) applied to CONTEXT.md D-06 + Plan A.
-Next: `/gsd-execute-phase 38` (or chain auto-advance — auto_chain_active=true)
-Resume file: .planning/phases/38-cat-13-engine-rewire/38-01-PLAN.md
-Status: Ready to execute
+Phase: 38 (executed — verifier PHASE_GAPS verdict; 5/5 ROADMAP criteria PASS; 1 test-layer regression gap)
+Plan: All 3 Phase 38 plans complete (38-01 catalogId .notNull(), 38-02 engine rewire, 38-03 composer-engine alignment). 20 commits + 3 merges. Static guards pass: 19/19. CAT-13 production code delivered.
+Next: `/gsd-plan-phase 38 --gaps` to close D-07 sweep miss (9 test files in tests/data/ + tests/actions/), OR proceed to Phase 39 if the gap is accepted as polish-deferred.
+Resume file: .planning/phases/38-cat-13-engine-rewire/38-VERIFICATION.md
+Status: Phase 38 executed with non-blocking gaps
 Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%

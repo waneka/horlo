@@ -107,7 +107,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [x] **Phase 35: Layer B — Lineage + Movement + Era/Material** — `watch_lineage_edges` with cycle-guard; `movement_type` enum; unblocks SRCH-16 (completed 2026-05-10)
 - [x] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip *(completed 2026-05-11)*
 - [x] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep (shipped 2026-05-11)
-- [ ] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first
+- [~] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first *(executed 2026-05-12: 5/5 ROADMAP criteria PASS; 1 non-blocking test-layer regression — Plan A D-07 sweep missed tests/data/ + tests/actions/; remediation via `/gsd-plan-phase 38 --gaps`)*
 - [ ] **Phase 39: Audit-Driven Discovery Polish** — Closes specific DISCOVERY-AUDIT.md row IDs; DISC-09 editorial slot + DISC-11 dead-end fixes
 - [ ] **Phase 40: Search & Verdict Polish** — SRCH-16 faceted filters + FIT-05 pairwise drill-down in CollectionFitCard
 - [ ] **Phase 41: Account Danger Zone + Branded Auth Emails** *(parallel track)* — SET-13 Danger Zone; SET-14 react-email templates
