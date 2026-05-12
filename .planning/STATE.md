@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 37 PLANNED 2026-05-11 — 5 plans across 3 waves; Wave 1 parallel (01 Drizzle schema / 02 Supabase migration / 03 Drizzle twin + journal idx=10); Wave 2 sequential (04 recordDivestment Server Action + editWatch transition branch with FIRST db.transaction() in codebase + base-ui Accordion + WatchCard sold-badge variant); Wave 3 sequential (05 phase37-rls integration test with V-10 dual-write coverage + 2 static guards + [BLOCKING] local schema push + [BLOCKING] prod deploy checkpoint:human-action). CONTEXT.md D-15 corrected post-RESEARCH: accordion primitive is @base-ui/react/accordion (NOT @/components/ui/accordion which does not exist). Ready to execute.
-last_updated: "2026-05-11T22:30:00.000Z"
+stopped_at: Phase 37 EXECUTED 2026-05-11 — Wave 1 (01/02/03) + Wave 2 (04) shipped autonomously; Wave 3 (05) Tasks 1-3 complete (19/19 integration tests + 7/7 static tests green locally; docs §37.0..§37.5 appended). Plan 05 Task 4 BLOCKED on operator checkpoint:human-action — prod deploy via `supabase db push --linked`. Local DB has full Layer D schema (3 pgEnums + divestments table + 7 watches columns); recordDivestment Server Action with atomic db.transaction() dual-write verified by both happy-path and FK-rollback integration tests. Operator pre-flight/push/post-flight runbook at docs/deploy-db-setup.md §37.0..§37.5.
+last_updated: "2026-05-11T23:30:00.000Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 12
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 37 (planned — ready to execute)
-Plan: Phase 37 has 5 plans across 3 waves; Wave 1 parallel (01+02+03), Wave 2 (04), Wave 3 (05 — gated on [BLOCKING] prod deploy checkpoint)
-Next: `/gsd-execute-phase 37` (auto-advance chain active)
-Resume file: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-01-PLAN.md
-Status: Phase 37 plans verified — VERIFICATION PASSED (2 non-blocking documentation warnings already addressed inline)
+Phase: 37 (4/5 plans complete — checkpoint:human-action pending)
+Plan: Plans 01/02/03/04 fully shipped + locally verified. Plan 05 Tasks 1-3 done (tests, local push, docs); Task 4 BLOCKED on operator checkpoint:human-action.
+Next: operator runs `supabase db push --linked` + post-flight psql verification (runbook in 37-05-SUMMARY.md and docs/deploy-db-setup.md §37.3-§37.4); then type `approved` to close Phase 37.
+Resume file: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-05-SUMMARY.md
+Status: Phase 37 awaiting operator prod deploy (mirrors Phase 36 close pattern)
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%
