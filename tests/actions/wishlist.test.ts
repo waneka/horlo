@@ -23,6 +23,14 @@ vi.mock('@/data/activities', () => ({
   logActivity: vi.fn(),
 }))
 
+// Phase 38 D-06: upsertCatalogFromUserInput fires BEFORE createWatch in addToWishlistFromWearEvent.
+// Must mock @/data/catalog so unit tests don't hit the real DAL (server-only module).
+vi.mock('@/data/catalog', () => ({
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('wishlist-cat-id-1'),
+  upsertCatalogFromExtractedUrl: vi.fn(),
+  getCatalogById: vi.fn(),
+}))
+
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 // Drizzle mock — the action calls db.select() TWICE on followers-tier non-self cases:
@@ -194,8 +202,9 @@ describe('addToWishlistFromWearEvent Server Action', () => {
     expect(result).toEqual({ success: true, data: { watchId: newWatchId } })
 
     expect(watchDAL.createWatch).toHaveBeenCalledTimes(1)
-    const [calledUserId, calledData] = (watchDAL.createWatch as Mock).mock.calls[0]
+    const [calledUserId, calledCatalogId, calledData] = (watchDAL.createWatch as Mock).mock.calls[0]
     expect(calledUserId).toBe(viewerUserId)
+    expect(calledCatalogId).toEqual(expect.any(String))
     expect(calledData).toMatchObject({
       brand: 'Rolex',
       model: 'Submariner',

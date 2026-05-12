@@ -50,7 +50,10 @@ maybe('IDOR isolation — AUTH-03', () => {
     cleanup = seed.cleanup
 
     // Seed a watch directly into UserB's collection via the DAL (bypassing the action).
-    const w = await watchDAL.createWatch(userB.id, {
+    const { upsertCatalogFromUserInput } = await import('@/data/catalog')
+    const catalogId = await upsertCatalogFromUserInput({ brand: 'Omega', model: 'Speedmaster', reference: null })
+    if (!catalogId) throw new Error('[test fixture] catalog upsert returned null for Omega Speedmaster')
+    const w = await watchDAL.createWatch(userB.id, catalogId, {
       brand: 'Omega', model: 'Speedmaster',
       status: 'owned', movement: 'manual',
       complications: [], styleTags: [], designTraits: [], roleTags: [],

@@ -13,6 +13,9 @@ vi.mock('@/data/watches', () => ({
   createWatch: vi.fn(),
   updateWatch: vi.fn(),
   deleteWatch: vi.fn(),
+  // Phase 37: editWatch calls getWatchById before updateWatch — must return a non-null watch for success paths.
+  getWatchById: vi.fn().mockResolvedValue({ id: 'w-1', brand: 'Omega', model: 'Seamaster', status: 'owned', movement: 'auto', complications: [], styleTags: [], designTraits: [], roleTags: [] }),
+  getMaxWishlistSortOrder: vi.fn().mockResolvedValue(0),
 }))
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
@@ -91,7 +94,7 @@ describe('watches Server Actions auth gate — AUTH-02', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
     vi.mocked(watchDAL.createWatch).mockResolvedValue({ id: 'w-1', ...validWatch } as any)
     await addWatch(validWatch)
-    expect(watchDAL.createWatch).toHaveBeenCalledWith('u-1', expect.objectContaining(validWatch))
+    expect(watchDAL.createWatch).toHaveBeenCalledWith('u-1', 'cat-id-1', expect.objectContaining(validWatch))
   })
 
   it('editWatch(watchId, data) uses new two-arg signature', async () => {

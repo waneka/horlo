@@ -34,6 +34,9 @@ vi.mock('@/data/watches', () => ({
   updateWatch: vi.fn(),
   deleteWatch: vi.fn(),
   linkWatchToCatalog: vi.fn().mockResolvedValue(undefined),
+  // Phase 37: editWatch calls getWatchById before updateWatch — must return a non-null watch for success paths.
+  getWatchById: vi.fn().mockResolvedValue({ id: 'w-1', brand: 'Rolex', model: 'Submariner', status: 'owned', movement: 'auto', complications: [], styleTags: [], designTraits: [], roleTags: [] }),
+  getMaxWishlistSortOrder: vi.fn().mockResolvedValue(0),
 }))
 
 vi.mock('next/cache', () => ({
@@ -49,9 +52,9 @@ vi.mock('@/data/notifications', () => ({ findOverlapRecipients: vi.fn().mockReso
 vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn().mockResolvedValue(null) }))
 vi.mock('@/data/activities', () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }))
 
-// Phase 19.1 catalog DAL mocks (fire-and-forget).
+// Phase 19.1 catalog DAL mocks (Phase 38 D-06: upsert BEFORE createWatch — must return non-null).
 vi.mock('@/data/catalog', () => ({
-  upsertCatalogFromUserInput: vi.fn().mockResolvedValue(null),
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('cat-id-1'),
   updateCatalogTaste: vi.fn().mockResolvedValue({ updated: true }),
   applyUserUploadedPhoto: vi.fn().mockResolvedValue({ applied: true }),
 }))
@@ -105,7 +108,7 @@ describe('addWatch / editWatch — notesPublic + revalidation (FEAT-07, Wave 0 R
     })
     expect(result.success).toBe(true)
     expect(watchDAL.createWatch).toHaveBeenCalled()
-    const passedData = vi.mocked(watchDAL.createWatch).mock.calls[0][1] as Record<
+    const passedData = vi.mocked(watchDAL.createWatch).mock.calls[0][2] as Record<
       string,
       unknown
     >
