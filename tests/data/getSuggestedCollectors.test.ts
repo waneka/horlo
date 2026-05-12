@@ -178,7 +178,10 @@ maybe('getSuggestedCollectors — integration', () => {
   }
 
   const seedOwned = async (userId: string, brand: string, model: string) => {
-    return watchDAL.createWatch(userId, {
+    const { upsertCatalogFromUserInput } = await import('@/data/catalog')
+    const catalogId = await upsertCatalogFromUserInput({ brand, model, reference: null })
+    if (!catalogId) throw new Error(`[test fixture] catalog upsert returned null for ${brand} ${model}`)
+    return watchDAL.createWatch(userId, catalogId, {
       brand,
       model,
       status: 'owned',

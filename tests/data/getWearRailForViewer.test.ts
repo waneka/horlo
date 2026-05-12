@@ -320,7 +320,10 @@ maybe('getWearRailForViewer — integration', () => {
   }
 
   const seedWatch = async (userId: string, brand = 'Rolex', model = 'Sub') => {
-    const w = await watchDAL.createWatch(userId, {
+    const { upsertCatalogFromUserInput } = await import('@/data/catalog')
+    const catalogId = await upsertCatalogFromUserInput({ brand, model, reference: null })
+    if (!catalogId) throw new Error(`[test fixture] catalog upsert returned null for ${brand} ${model}`)
+    const w = await watchDAL.createWatch(userId, catalogId, {
       brand,
       model,
       status: 'owned',

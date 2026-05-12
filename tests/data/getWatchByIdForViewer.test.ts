@@ -322,7 +322,11 @@ maybe('getWatchByIdForViewer — integration', () => {
     await upsertProfile(userB.id, `rdb-owner-${Date.now()}`)
 
     // Seed B with one owned + one wishlist watch
-    const owned = await dal.createWatch(userB.id, {
+    const { upsertCatalogFromUserInput } = await import('@/data/catalog')
+    const subCatalogId = await upsertCatalogFromUserInput({ brand: 'Rolex', model: 'Submariner', reference: null })
+    const speedyCatalogId = await upsertCatalogFromUserInput({ brand: 'Omega', model: 'Speedmaster', reference: null })
+    if (!subCatalogId || !speedyCatalogId) throw new Error('[test fixture] catalog upsert returned null')
+    const owned = await dal.createWatch(userB.id, subCatalogId, {
       brand: 'Rolex',
       model: 'Submariner',
       status: 'owned',
@@ -332,7 +336,7 @@ maybe('getWatchByIdForViewer — integration', () => {
       designTraits: [],
       roleTags: [],
     } as never)
-    const wishlist = await dal.createWatch(userB.id, {
+    const wishlist = await dal.createWatch(userB.id, speedyCatalogId, {
       brand: 'Omega',
       model: 'Speedmaster',
       status: 'wishlist',

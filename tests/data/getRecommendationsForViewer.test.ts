@@ -59,7 +59,10 @@ maybe('getRecommendationsForViewer — integration', () => {
     model: string,
     imageUrl?: string,
   ) => {
-    const w = await watchDAL.createWatch(userId, {
+    const { upsertCatalogFromUserInput } = await import('@/data/catalog')
+    const catalogId = await upsertCatalogFromUserInput({ brand, model, reference: null })
+    if (!catalogId) throw new Error(`[test fixture] catalog upsert returned null for ${brand} ${model}`)
+    const w = await watchDAL.createWatch(userId, catalogId, {
       brand,
       model,
       status: 'owned',
@@ -74,7 +77,10 @@ maybe('getRecommendationsForViewer — integration', () => {
   }
 
   const seedWishlist = async (userId: string, brand: string, model: string) => {
-    return watchDAL.createWatch(userId, {
+    const { upsertCatalogFromUserInput } = await import('@/data/catalog')
+    const catalogId = await upsertCatalogFromUserInput({ brand, model, reference: null })
+    if (!catalogId) throw new Error(`[test fixture] catalog upsert returned null for ${brand} ${model}`)
+    return watchDAL.createWatch(userId, catalogId, {
       brand,
       model,
       status: 'wishlist',
