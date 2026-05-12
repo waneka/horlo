@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 38 context gathered 2026-05-12 — 15 decisions D-01..D-15 across 8 user-selected gray areas (2 rounds of 4 questions each). Engine math LOCKED: 9th taste dimension at outer weight 0.20 (existing 8 reweighted to 0.80 sum); binary confidence gate at 0.5; internal split 0.08 numeric trio cosine + 0.04 archetype + 0.04 era + 0.04 motifs Jaccard. catalogId .notNull() tightening rides as Plan A (separate plan in same phase); engine rewire = Plan B; composer-engine alignment static test (~10 scenarios) = Plan C. CatalogTasteAttributes interface reused from src/lib/types.ts. Plan A commit strategy: one commit per test file family for 17 fixture updates. Ready for planning.
-last_updated: "2026-05-12T01:00:00.000Z"
+stopped_at: Phase 38 planned 2026-05-12 — 3 plans across 3 waves committed. Plan A (38-01) catalogId .notNull() tightening: 7 tasks, ~23 files (schema + 3 production callsites including wishlist.ts:124 corrected per RESEARCH §Q1 + 17 fixtures + migration pair + journal idx=11). Plan B (38-02) engine rewire: 5+1 optional tasks, 7 files (Watch.catalogTaste type + getWatchesByUser LEFT JOIN with Number() coercion + tests/fixtures/catalogTaste.ts + taste-null/present static guards + similarity.ts WEIGHTS reweighting via D-05 transformation + 9th taste dim at 0.20). Plan C (38-03) composer-engine alignment: 2 tasks, 1 file (composer-engine-alignment.test.ts with 11 scenarios covering full D-15 matrix). All autonomous:true per D-09. Test-first ordering audit-trail enforced via git merge-base assertions in Plan B Task 4. Ready to execute.
+last_updated: "2026-05-12T03:00:00.000Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 12
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 38 (context gathered)
-Plan: Phase 38 CONTEXT.md committed at d26affb — 15 decisions D-01..D-15 across 8 user-selected gray areas
-Next: `/gsd-plan-phase 38` (CAT-13 Engine Rewire — 3 plans expected: A NOT NULL tightening, B engine rewire, C composer alignment)
-Resume file: .planning/phases/38-cat-13-engine-rewire/38-CONTEXT.md
-Status: Phase 38 ready for planning
+Phase: 38 (planned — 3 plans, 3 waves, all autonomous)
+Plan: Phase 38 plans committed — 38-01 (Plan A catalogId .notNull() tightening, Wave 1, 7 tasks), 38-02 (Plan B engine rewire, Wave 2, 5+1 tasks, depends_on 38-01), 38-03 (Plan C composer-engine alignment, Wave 3, 2 tasks, depends_on 38-02). Plan-checker verdict: all 12 dimensions + 12 phase-specific checks PASS. RESEARCH §Q1 correction (third callsite is wishlist.ts:124, not extract-watch/route.ts) applied to CONTEXT.md D-06 + Plan A.
+Next: `/gsd-execute-phase 38` (or chain auto-advance — auto_chain_active=true)
+Resume file: .planning/phases/38-cat-13-engine-rewire/38-01-PLAN.md
+Status: Ready to execute
 Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%

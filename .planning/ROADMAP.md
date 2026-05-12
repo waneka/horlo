@@ -310,7 +310,23 @@ Plans:
   3. Both static guard tests continue passing after `similarity.ts` is modified — the rewire satisfies the guards, not just the pre-condition
   4. `Watch` type in `src/lib/types.ts` includes optional `catalogTaste` field; `getWatchesByUser` DAL LEFT JOINs `watches_catalog` to populate `catalogTaste` on each returned Watch object
   5. `tests/static/CollectionFitCard.no-engine.test.ts` import boundary guard remains unchanged and passing; `src/lib/extractors/llm.ts` D-07 byte-lock survives untouched
-**Plans**: TBD
+**Plans**: 3 plans (3 sequential waves; all autonomous)
+
+Plans:
+
+**Wave 1** *(no dependencies)*
+- [ ] 38-01-PLAN.md — watches.catalogId .notNull() Drizzle catch-up + DAL signature change + 3 callsite refactors + ~17 fixture cascade + supabase/drizzle migrations + journal idx=11
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 38-02-PLAN.md — Watch.catalogTaste type + getWatchesByUser LEFT JOIN + 9 typed fixtures + RED/GREEN static guards (taste-null + taste-present) + similarity.ts 9th-dimension rewire at 0.20 weight + optional DAL JOIN observability test
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 38-03-PLAN.md — composer-engine alignment static test (~10 D-15 scenarios) + parity verification (extractWithLlm body byte-lock, CollectionFitCard.no-engine, GOAL_THRESHOLDS, SimilarityResult/Label types)
+
+**Cross-cutting constraints:**
+- All plans `autonomous: true` (D-09 — no operator checkpoints; prod schema state already matches via Phase 36 SET NOT NULL)
+- CAT-13 success criterion #5 parity gate: `src/lib/extractors/llm.ts` body unchanged (Phase 19.1 D-07 byte-lock); `tests/static/CollectionFitCard.no-engine.test.ts` unchanged; `SimilarityResult` + `SimilarityLabel` + `GOAL_THRESHOLDS` unchanged
+- D-13 test-first ordering: Plan B Task 3 (taste-present test) commit MUST precede Plan B Task 4 (engine rewire) commit — enforced via git merge-base assertion in Task 4 AC
 
 ### Phase 39: Audit-Driven Discovery Polish
 **Goal**: Close specific row IDs from the Phase 33 DISCOVERY-AUDIT.md click-path table and ship the missing drift vectors prioritized by the Phase 33b DISCOVERY-NORTH-STAR-AUDIT.md verdicts — shipping exactly the dead-end fixes and surface improvements the audits identified as highest Rdio leverage.
