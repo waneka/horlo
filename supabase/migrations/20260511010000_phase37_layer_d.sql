@@ -118,7 +118,12 @@ CREATE POLICY "divestments_owner_delete" ON divestments
   FOR DELETE USING (auth.uid() = user_id);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON divestments TO authenticated;
--- Intentionally NO grant to anon — T-37-RLS-01 mitigation.
+-- Explicitly REVOKE from anon and public — T-37-RLS-01 mitigation.
+-- Supabase auto-grants SELECT/INSERT/UPDATE/DELETE to anon and service_role on
+-- newly created public-schema tables (default privileges). REVOKE ensures the
+-- has_table_privilege('anon', ...) assertion in the DO $$ block returns false.
+REVOKE ALL ON divestments FROM anon;
+REVOKE ALL ON divestments FROM public;
 
 -- ============================================================================
 -- STEP 6: Final assertion block (Phase 17 §8 / Phase 34 / Phase 35 / Phase 36 pattern).

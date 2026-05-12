@@ -21,13 +21,20 @@
  * V-10 dual-write tests stub `@/lib/auth` via `vi.mock` to inject a stable test user id,
  * then call `recordDivestment` directly. The Server Action's `'use server'` directive
  * only affects the Next.js bundler — the function is a plain async function under vitest.
+ *
+ * NOTE on raw SQL fixture inserts (V-10 describe block): db.insert(watches).values({...})
+ * generates column names from the Drizzle schema definition (e.g. `movement_type`,
+ * `movement_caliber`). The local Docker DB may be at a different schema generation (e.g.
+ * still has the pre-Phase-35 `movement` column). Raw SQL INSERT avoids this drift by
+ * specifying only the columns that have existed since the initial schema — this is
+ * intentional and does NOT reduce test coverage (the V-10 assertions target
+ * divestments-side behavior, not watches column exhaustiveness).
  */
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
-import { sql, eq } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { db } from '@/db'
-import { watches, divestments } from '@/db/schema'
 
 // Stable test user id — used across the V-10 describe block.
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000037'
@@ -235,36 +242,58 @@ maybe('Phase 37 RLS + schema introspection — divestments + provenance (CAT-18)
   // Tests are NOT torn down — local DB is wipeable per
   // memory/project_db_wipeable_2026_05_09.md; future runs may need a
   // `supabase db reset` to clear accumulated test fixtures.
+  //
+  // Fixture watch insert uses raw SQL (not Drizzle ORM) to avoid column-name
+  // drift between the Drizzle schema definition and the local Docker DB's
+  // actual column shape (e.g. local may have `movement` pre-Phase-35 rename
+  // while Drizzle schema emits `movement_type`/`movement_caliber`). Raw SQL
+  // INSERT specifying only durable base columns is immune to this drift.
   // ========================================================================
   describe('recordDivestment dual-write (V-10; T-37-TXN-01)', () => {
     let testCatalogId: string
 
     beforeAll(async () => {
-      // Pull any existing catalog row to use as the test fixture's catalog_id.
-      // The local DB always has at least one row from prior phase fixtures /
-      // dev usage. If empty, the test setup throws — surface as test failure.
+      // Pull or create a catalog row for the test fixture's catalog_id.
+      // If watches_catalog is empty (e.g. after a `supabase db reset` or Phase 35
+      // TRUNCATE cascade), insert a synthetic row. Idempotent via ON CONFLICT DO NOTHING.
+      const syntheticCatalogId = '00000000-0000-4000-a000-000000000037'
+      await db.execute(sql`
+        INSERT INTO watches_catalog (id, brand, model)
+        VALUES (${syntheticCatalogId}::uuid, 'Test Brand V10', 'Test Model V10')
+        ON CONFLICT (id) DO NOTHING
+      `)
+
       const result = await db.execute<{ id: string }>(sql`
         SELECT id FROM watches_catalog LIMIT 1
       `)
       const rows = result as unknown as Array<{ id: string }>
       if (rows.length === 0) {
-        throw new Error('V-10 setup: watches_catalog is empty; seed at least one catalog row before running this describe block')
+        throw new Error('V-10 setup: watches_catalog is still empty after synthetic insert — check DB state')
       }
       testCatalogId = rows[0].id
+
+      // Ensure the synthetic test user exists in auth.users (required by the
+      // watches.user_id FK). If it already exists from a prior test run, the
+      // INSERT is skipped via ON CONFLICT DO NOTHING.
+      await db.execute(sql`
+        INSERT INTO auth.users (id, email, created_at, updated_at, confirmation_token, email_confirmed_at)
+        VALUES (
+          ${TEST_USER_ID}::uuid,
+          'test-v10@horlo.local',
+          now(), now(), '', now()
+        )
+        ON CONFLICT (id) DO NOTHING
+      `)
     })
 
     it('happy path: inserts divestments row + flips watches.status to "sold" atomically', async () => {
-      // 1) Insert fixture watch via direct drizzle (bypasses Server Action
-      //    auth gate; simulates an existing owned watch the user wants to sell).
+      // 1) Insert fixture watch via raw SQL (bypasses Server Action auth gate AND
+      //    Drizzle ORM column-mapping drift — see file header NOTE).
       const watchId = randomUUID()
-      await db.insert(watches).values({
-        id: watchId,
-        userId: TEST_USER_ID,
-        catalogId: testCatalogId,
-        brand: 'TestBrand-V10-Happy',
-        model: 'TestModel-V10-Happy',
-        status: 'owned',
-      })
+      await db.execute(sql`
+        INSERT INTO watches (id, user_id, brand, model, status, catalog_id)
+        VALUES (${watchId}, ${TEST_USER_ID}, 'TestBrand-V10-Happy', 'TestModel-V10-Happy', 'owned', ${testCatalogId})
+      `)
 
       // 2) Call recordDivestment (Server Action; getCurrentUser is mocked above
       //    to return TEST_USER_ID — bypasses the auth gate).
@@ -295,16 +324,12 @@ maybe('Phase 37 RLS + schema introspection — divestments + provenance (CAT-18)
     })
 
     it('rollback path: forced FK violation rolls back BOTH writes (no divestment row, watches.status remains "owned")', async () => {
-      // 1) Insert fixture watch (status='owned', valid catalog_id).
+      // 1) Insert fixture watch via raw SQL (status='owned', valid catalog_id).
       const watchId = randomUUID()
-      await db.insert(watches).values({
-        id: watchId,
-        userId: TEST_USER_ID,
-        catalogId: testCatalogId,
-        brand: 'TestBrand-V10-Rollback',
-        model: 'TestModel-V10-Rollback',
-        status: 'owned',
-      })
+      await db.execute(sql`
+        INSERT INTO watches (id, user_id, brand, model, status, catalog_id)
+        VALUES (${watchId}, ${TEST_USER_ID}, 'TestBrand-V10-Rollback', 'TestModel-V10-Rollback', 'owned', ${testCatalogId})
+      `)
 
       // Snapshot the divestment row count BEFORE the call so we can assert
       // delta == 0 after the rollback (avoids cross-test contamination from
