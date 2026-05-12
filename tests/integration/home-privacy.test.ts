@@ -21,6 +21,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { eq, inArray } from 'drizzle-orm'
 
+import { randomUUID } from 'node:crypto'
+
 import { db } from '@/db'
 import {
   users,
@@ -28,6 +30,7 @@ import {
   profileSettings,
   follows,
   watches,
+  watchesCatalog,
   activities,
   wearEvents,
 } from '@/db/schema'
@@ -116,6 +119,17 @@ maybe('Phase 10 home privacy end-to-end', () => {
       { followerId: ids.V, followingId: ids.C },
     ])
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catalogByUser: Record<string, string> = {}
+    for (const [k, id] of Object.entries(ids)) {
+      const cid = randomUUID()
+      catalogByUser[id] = cid
+      await db
+        .insert(watchesCatalog)
+        .values({ id: cid, brand: `Brand-${k}`, model: `Model-${k}`, source: 'user_promoted' })
+        .onConflictDoNothing()
+    }
+
     // Seed one watch per user — activities + wear events reference these.
     const watchRows = await db
       .insert(watches)
@@ -126,6 +140,7 @@ maybe('Phase 10 home privacy end-to-end', () => {
           model: `Model-${k}`,
           status: 'owned' as const,
           movementType: 'auto' as const,
+          catalogId: catalogByUser[id],
         })),
       )
       .returning()

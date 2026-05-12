@@ -16,7 +16,7 @@ import { sql, eq, and, asc, inArray } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
 import { db } from '@/db'
-import { users, watches } from '@/db/schema'
+import { users, watches, watchesCatalog } from '@/db/schema'
 
 const maybe = process.env.DATABASE_URL ? describe : describe.skip
 const STAMP = `p27bf${Date.now().toString(36)}`
@@ -41,6 +41,18 @@ maybe(`Phase 27 backfill — sort_order ROW_NUMBER ranking per user (WISH-01) [$
       ])
       .onConflictDoNothing()
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    // 3 catalog rows (one per model index) shared across both test users.
+    const catalogIds: string[] = []
+    for (let i = 0; i < 3; i++) {
+      const cid = randomUUID()
+      catalogIds.push(cid)
+      await db
+        .insert(watchesCatalog)
+        .values({ id: cid, brand: `${STAMP}-Brand-${i}`, model: `Model-${i}`, source: 'user_promoted' })
+        .onConflictDoNothing()
+    }
+
     // Seed 3 wishlist watches per user with distinct createdAt.
     for (const uid of seededUserIds) {
       for (let i = 0; i < 3; i++) {
@@ -57,6 +69,7 @@ maybe(`Phase 27 backfill — sort_order ROW_NUMBER ranking per user (WISH-01) [$
           styleTags: [],
           designTraits: [],
           roleTags: [],
+          catalogId: catalogIds[i],
           createdAt: new Date(baseTime + i),
           updatedAt: new Date(baseTime + i),
         })

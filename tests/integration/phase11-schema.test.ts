@@ -15,8 +15,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { sql } from 'drizzle-orm'
 
+import { randomUUID } from 'node:crypto'
 import { db } from '@/db'
-import { users, wearEvents, profileSettings, watches } from '@/db/schema'
+import { users, wearEvents, profileSettings, watches, watchesCatalog } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 
 const maybe = process.env.DATABASE_URL ? describe : describe.skip
@@ -74,6 +75,12 @@ maybe('Phase 11 schema — WYWT-09 / WYWT-13 / SRCH-08 existence checks', () => 
         .insert(users)
         .values({ id: testUserId, email: `check-${Date.now()}@horlo.test` })
         .onConflictDoNothing()
+      // Phase 38 D-06: seed catalog row before watches insert (catalogId is NOT NULL).
+      const catalogId = randomUUID()
+      await db
+        .insert(watchesCatalog)
+        .values({ id: catalogId, brand: 'CheckBrand', model: 'CheckModel', source: 'user_promoted' })
+        .onConflictDoNothing()
       const [w] = await db
         .insert(watches)
         .values({
@@ -82,6 +89,7 @@ maybe('Phase 11 schema — WYWT-09 / WYWT-13 / SRCH-08 existence checks', () => 
           model: 'CheckModel',
           status: 'owned',
           movementType: 'auto',
+          catalogId,
         })
         .returning()
       testWatchId = w.id

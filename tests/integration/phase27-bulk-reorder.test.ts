@@ -19,7 +19,7 @@ import { eq, and, inArray } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
 import { db } from '@/db'
-import { users, watches } from '@/db/schema'
+import { users, watches, watchesCatalog } from '@/db/schema'
 import { bulkReorderWishlist } from '@/data/watches'
 
 const maybe = process.env.DATABASE_URL ? describe : describe.skip
@@ -46,6 +46,27 @@ maybe(`Phase 27 — bulkReorderWishlist owner-only enforcement (WISH-01 D-10) [$
       ])
       .onConflictDoNothing()
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catalogByWatch: Record<string, string> = {}
+    for (const [id, _status] of [
+      [a1, 'wishlist'],
+      [a2, 'wishlist'],
+      [a3, 'wishlist'],
+      [aOwned, 'owned'],
+    ] as const) {
+      const cid = randomUUID()
+      catalogByWatch[id] = cid
+      await db
+        .insert(watchesCatalog)
+        .values({ id: cid, brand: `${STAMP}-A`, model: `Model-${id.slice(0, 4)}`, source: 'user_promoted' })
+        .onConflictDoNothing()
+    }
+    const catB1 = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values({ id: catB1, brand: `${STAMP}-B`, model: 'Model-B', source: 'user_promoted' })
+      .onConflictDoNothing()
+
     // userA: 3 wishlist + 1 owned
     for (const [id, status] of [
       [a1, 'wishlist'],
@@ -64,6 +85,7 @@ maybe(`Phase 27 — bulkReorderWishlist owner-only enforcement (WISH-01 D-10) [$
         styleTags: [],
         designTraits: [],
         roleTags: [],
+        catalogId: catalogByWatch[id],
       })
     }
     // userB: 1 wishlist
@@ -78,6 +100,7 @@ maybe(`Phase 27 — bulkReorderWishlist owner-only enforcement (WISH-01 D-10) [$
       styleTags: [],
       designTraits: [],
       roleTags: [],
+      catalogId: catB1,
     })
   }, 30_000)
 

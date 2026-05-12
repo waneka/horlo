@@ -23,8 +23,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { eq, inArray, sql } from 'drizzle-orm'
 
+import { randomUUID } from 'node:crypto'
 import { db } from '@/db'
-import { users, wearEvents, watches, follows } from '@/db/schema'
+import { users, wearEvents, watches, watchesCatalog, follows } from '@/db/schema'
 
 const hasDrizzle = Boolean(process.env.DATABASE_URL)
 const hasAdmin =
@@ -77,6 +78,12 @@ maybe('Phase 11 storage RLS — WYWT-13 / WYWT-14 three-tier + folder enforcemen
     userS = await makeUser('s')
 
     // Watch for A (wear events reference watches).
+    // Phase 38 D-06: seed catalog row before watches insert (catalogId is NOT NULL).
+    const catalogId = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values({ id: catalogId, brand: 'TestBrand', model: 'TestModel', source: 'user_promoted' })
+      .onConflictDoNothing()
     const [w] = await db
       .insert(watches)
       .values({
@@ -85,6 +92,7 @@ maybe('Phase 11 storage RLS — WYWT-13 / WYWT-14 three-tier + folder enforcemen
         model: 'TestModel',
         status: 'owned',
         movementType: 'auto',
+        catalogId,
       })
       .returning()
     watchId = w.id

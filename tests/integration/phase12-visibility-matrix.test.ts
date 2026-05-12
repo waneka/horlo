@@ -26,6 +26,7 @@
  * surface that wear (Of does not follow V).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
 import {
@@ -34,6 +35,7 @@ import {
   profileSettings,
   follows,
   watches,
+  watchesCatalog,
   activities,
   wearEvents,
 } from '@/db/schema'
@@ -109,11 +111,23 @@ maybe('Phase 12 visibility matrix', () => {
       { followerId: ids.V, followingId: ids.Pp },
     ])
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catalogByUser = new Map<string, string>()
+    for (const [k, id] of Object.entries(ids)) {
+      const cid = randomUUID()
+      catalogByUser.set(id, cid)
+      await db
+        .insert(watchesCatalog)
+        .values({ id: cid, brand: `Brand-${k}`, model: `Model-${k}`, source: 'user_promoted' })
+        .onConflictDoNothing()
+    }
+
     // One watch per actor.
     const watchRows = await db.insert(watches).values(
       Object.entries(ids).map(([k, id]) => ({
         userId: id, brand: `Brand-${k}`, model: `Model-${k}`,
         status: 'owned' as const, movementType: 'auto' as const,
+        catalogId: catalogByUser.get(id)!,
       })),
     ).returning()
     const watchByUser = new Map(watchRows.map((w) => [w.userId, w]))

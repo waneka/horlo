@@ -16,9 +16,10 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { randomUUID } from 'node:crypto'
 
 import { db } from '@/db'
-import { users, watches, userPreferences } from '@/db/schema'
+import { users, watches, watchesCatalog, userPreferences } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 
 const hasLocalDb =
@@ -45,6 +46,13 @@ maybe('DEBT-02 ongoing regression — users/watches/user_preferences IDOR RLS', 
     userB = seed.userB
     cleanup = seed.cleanup
 
+    // Phase 38 D-06: seed catalog row before watches insert (catalogId is NOT NULL).
+    const catalogId = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values({ id: catalogId, brand: 'Debt02Brand', model: 'Debt02Model', source: 'user_promoted' })
+      .onConflictDoNothing()
+
     // Seed a watch owned by B (via service-role Drizzle — bypasses RLS) so A has a cross-user
     // row to attempt UPDATEs against.
     const [w] = await db
@@ -55,6 +63,7 @@ maybe('DEBT-02 ongoing regression — users/watches/user_preferences IDOR RLS', 
         model: 'Debt02Model',
         status: 'owned',
         movementType: 'auto',
+        catalogId,
       })
       .returning()
     userBWatchId = w.id

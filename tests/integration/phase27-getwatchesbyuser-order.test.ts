@@ -17,7 +17,7 @@ import { inArray } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 
 import { db } from '@/db'
-import { users, watches } from '@/db/schema'
+import { users, watches, watchesCatalog } from '@/db/schema'
 import { getWatchesByUser } from '@/data/watches'
 
 const maybe = process.env.DATABASE_URL ? describe : describe.skip
@@ -52,6 +52,23 @@ maybe(`Phase 27 — getWatchesByUser ORDER BY sort_order ASC, createdAt DESC (WI
       ])
       .onConflictDoNothing()
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catA = randomUUID()
+    const catB = randomUUID()
+    const catC = randomUUID()
+    const catOld = randomUUID()
+    const catNew = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values([
+        { id: catA, brand: `${STAMP}`, model: 'A', source: 'user_promoted' },
+        { id: catB, brand: `${STAMP}`, model: 'B', source: 'user_promoted' },
+        { id: catC, brand: `${STAMP}`, model: 'C', source: 'user_promoted' },
+        { id: catOld, brand: `${STAMP}-tie`, model: 'OLD', source: 'user_promoted' },
+        { id: catNew, brand: `${STAMP}-tie`, model: 'NEW', source: 'user_promoted' },
+      ])
+      .onConflictDoNothing()
+
     // Test 1 seed — three wishlist watches, explicit sortOrder, distinct createdAt.
     // Plan 02 maps domain sortOrder → row sort_order via mapDomainToRow extension.
     // For now, rely on sortOrder column existing post-migration; pass it as a row field.
@@ -68,6 +85,7 @@ maybe(`Phase 27 — getWatchesByUser ORDER BY sort_order ASC, createdAt DESC (WI
         styleTags: [],
         designTraits: [],
         roleTags: [],
+        catalogId: catA,
         sortOrder: 2,
         createdAt: new Date(baseTime),
         updatedAt: new Date(baseTime),
@@ -83,6 +101,7 @@ maybe(`Phase 27 — getWatchesByUser ORDER BY sort_order ASC, createdAt DESC (WI
         styleTags: [],
         designTraits: [],
         roleTags: [],
+        catalogId: catB,
         sortOrder: 0,
         createdAt: new Date(baseTime + 1),
         updatedAt: new Date(baseTime + 1),
@@ -98,6 +117,7 @@ maybe(`Phase 27 — getWatchesByUser ORDER BY sort_order ASC, createdAt DESC (WI
         styleTags: [],
         designTraits: [],
         roleTags: [],
+        catalogId: catC,
         sortOrder: 1,
         createdAt: new Date(baseTime + 2),
         updatedAt: new Date(baseTime + 2),
@@ -117,6 +137,7 @@ maybe(`Phase 27 — getWatchesByUser ORDER BY sort_order ASC, createdAt DESC (WI
         styleTags: [],
         designTraits: [],
         roleTags: [],
+        catalogId: catOld,
         sortOrder: 0,
         createdAt: new Date(baseTime),
         updatedAt: new Date(baseTime),
@@ -132,6 +153,7 @@ maybe(`Phase 27 — getWatchesByUser ORDER BY sort_order ASC, createdAt DESC (WI
         styleTags: [],
         designTraits: [],
         roleTags: [],
+        catalogId: catNew,
         sortOrder: 0,
         createdAt: new Date(baseTime + 1000),
         updatedAt: new Date(baseTime + 1000),

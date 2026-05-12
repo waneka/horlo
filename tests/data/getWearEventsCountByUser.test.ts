@@ -36,9 +36,18 @@ maybe('getWearEventsCountByUser — DAL integration', () => {
 
     // Seed a watch per user so we can insert wear events with valid FK targets.
     const { db } = await import('@/db')
-    const { watches } = await import('@/db/schema')
+    const { watches, watchesCatalog } = await import('@/db/schema')
     watchAId = randomUUID()
     watchBId = randomUUID()
+
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catalogIdA = randomUUID()
+    const catalogIdB = randomUUID()
+    await db.insert(watchesCatalog).values([
+      { id: catalogIdA, brand: 'Rolex', model: 'Submariner', source: 'user_promoted' },
+      { id: catalogIdB, brand: 'Tudor', model: 'Black Bay', source: 'user_promoted' },
+    ]).onConflictDoNothing()
+
     await db.insert(watches).values([
       {
         id: watchAId,
@@ -47,6 +56,7 @@ maybe('getWearEventsCountByUser — DAL integration', () => {
         model: 'Submariner',
         status: 'owned',
         movementType: 'auto',
+        catalogId: catalogIdA,
       },
       {
         id: watchBId,
@@ -55,6 +65,7 @@ maybe('getWearEventsCountByUser — DAL integration', () => {
         model: 'Black Bay',
         status: 'owned',
         movementType: 'auto',
+        catalogId: catalogIdB,
       },
     ])
   }, 30_000)

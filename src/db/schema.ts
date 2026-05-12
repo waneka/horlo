@@ -138,16 +138,12 @@ export const watches = pgTable(
     paidCurrency: currencyCodeEnum('paid_currency'),
     purchaseDate: date('purchase_date'),
 
-    // Phase 17 + Phase 36: catalog FK — prod becomes NOT NULL after Phase 36 CAT-14 flip
-    // (supabase/migrations/20260511000000_phase36_layer_c_variants.sql ships SET NOT NULL).
-    // Drizzle-side `.notNull()` tightening (Pitfall 6 mitigation in 36-RESEARCH.md §Common Pitfalls)
-    // is DEFERRED — see .planning/phases/36-…/deferred-items.md → "Pitfall 6 catalogId .notNull()
-    // deferred to Phase 38". Cascading type-error fix requires DAL flow rewrite (createWatch must
-    // accept catalog_id, two production call sites must upsert catalog BEFORE createWatch) plus
-    // updating 17 integration test fixtures. Per scope boundary (Plan 01 files_modified =
-    // src/db/schema.ts only) and per Rule 4 (architectural change), this is out of scope.
-    // ON DELETE SET NULL preserved (Phase 17 D-04).
-    catalogId: uuid('catalog_id').references(() => watchesCatalog.id, { onDelete: 'set null' }),
+    // Phase 17 + Phase 36 + Phase 38: catalog FK — NOT NULL.
+    // Phase 36 shipped SET NOT NULL to prod (20260511000000_phase36_layer_c_variants.sql).
+    // Phase 38 Plan 01 catches up Drizzle types: DAL rewrite (createWatch 3-arg), 3 callsite
+    // refactors, 17 fixture cascades, and this .notNull() flip. ON DELETE SET NULL preserved
+    // for catalog row cleanup safety (Phase 17 D-04).
+    catalogId: uuid('catalog_id').notNull().references(() => watchesCatalog.id, { onDelete: 'set null' }),
 
     // Phase 36 D-04: variant FK — nullable, ON DELETE SET NULL (CAT-17).
     // No NOT NULL flip scheduled — variants will never hit 100% coverage (D-04 rationale).

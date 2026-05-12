@@ -118,32 +118,27 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
       createPayload = { ...cleanData, sortOrder: maxSort + 1 }
     }
 
-    const watch = await watchDAL.createWatch(user.id, createPayload)
-
-    // CAT-08 — catalog wiring (fire-and-forget; mirrors logActivity pattern).
-    // Split try/catch so the failure mode is identifiable in logs:
-    //   - "catalog upsert failed" leaves the watch unlinked until URL extraction or
-    //     the next nightly backfill creates the catalog row.
-    //   - "catalog link failed" leaves a catalog row that exists but is not linked
-    //     to this watch; the next backfill auto-cures it (idempotent — see
-    //     phase17-backfill-idempotency.test.ts).
-    let catalogId: string | null = null
+    // Phase 38 D-06 step 2a: catalog upsert BEFORE createWatch (fail-loud).
+    // Pre-Phase-38 this was fire-and-forget after createWatch; post-Phase-38
+    // catalog_id is NOT NULL so a failed upsert must block the insert.
+    let catalogIdResult: string | null
     try {
-      catalogId = await catalogDAL.upsertCatalogFromUserInput({
+      catalogIdResult = await catalogDAL.upsertCatalogFromUserInput({
         brand: parsed.data.brand,
         model: parsed.data.model,
         reference: parsed.data.reference ?? null,
       })
     } catch (err) {
-      console.error('[addWatch] catalog upsert failed (non-fatal):', err)
+      console.error('[addWatch] catalog upsert failed (fatal post-Phase-38 — catalog_id is NOT NULL):', err)
+      throw err // fail-loud: cannot insert watches row without catalogId
     }
-    if (catalogId) {
-      try {
-        await watchDAL.linkWatchToCatalog(user.id, watch.id, catalogId)
-      } catch (err) {
-        console.error('[addWatch] catalog link failed (non-fatal):', err)
-      }
+    if (!catalogIdResult) {
+      throw new Error('[addWatch] catalog upsert returned null — cannot insert watches row without catalogId')
     }
+    const catalogId: string = catalogIdResult
+
+    const watch = await watchDAL.createWatch(user.id, catalogId, createPayload)
+    // linkWatchToCatalog call REMOVED — createWatch now sets catalogId atomically (Phase 38 D-06).
 
     // Phase 19.1 D-08, D-09: catalog taste enrichment (fire-and-forget).
     // - If photoSourcePath set: write photo through to catalog image_url first (D-21).
