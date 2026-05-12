@@ -4,8 +4,8 @@ milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
 active_phase: 38
-stopped_at: Phase 38 executed 2026-05-12 — verifier verdict PHASE_GAPS (5/5 ROADMAP criteria PASS, 1 test-layer regression gap). Production code (engine + DAL + types + migrations) is correct and ROADMAP success criteria #1-#5 are all VERIFIED. CAT-13 engine rewire shipped: 9th taste dimension at 0.20 weight (D-05 transformation, no magic numbers); confidence >= 0.5 gate; cosine3D on numeric trio + archetype + era + motifs Jaccard. Watch.catalogTaste populated via getWatchesByUser LEFT JOIN with Number() coercion. 19/19 static tests pass (3 taste-null + 2 taste-present + 11 composer-engine alignment + 3 CollectionFitCard.no-engine). Phase 19.1 D-07 byte-lock intact, GOAL_THRESHOLDS/SimilarityResult/SimilarityLabel unchanged. **Gap (non-blocking):** Plan A D-07 sweep covered tests/integration/phase*.test.ts but missed tests/data/ (5 files, 7 tsc TS2554 errors) and tests/actions/ (4 files, 13 vitest failures) — call createWatch with old 2-arg form and mock 2-arg signature; addwatch-catalog-resilience.test.ts asserts removed fire-and-forget behavior. Remediation: /gsd-plan-phase 38 --gaps.
-last_updated: "2026-05-12T05:00:00.000Z"
+stopped_at: Phase 38 COMPLETE 2026-05-12 — re-verifier verdict PHASE_PASSED. All 5/5 ROADMAP success criteria verified; all 3 gap items from initial gaps_found verdict closed. CAT-13 engine rewire fully shipped: 9th taste dimension at 0.20 weight (D-05 transformation, no magic numbers); confidence >= 0.5 gate; cosine3D on numeric trio + archetype + era + motifs Jaccard. Watch.catalogTaste populated via getWatchesByUser LEFT JOIN with Number() coercion. 19/19 static guards pass. Phase 19.1 D-07 byte-lock intact, GOAL_THRESHOLDS/SimilarityResult/SimilarityLabel unchanged. Plan 38-04 gap closure shipped IDIOM A cascade across 5 tests/data + 4 tests/actions files + fail-loud rewrite of addwatch-catalog-resilience.test.ts; tsc back to 27-error pre-Phase-38 baseline (was 35 mid-phase, +8 regression now closed); 44/44 tests/actions pass; 0 production code lines modified by 38-04. Ready for Phase 39.
+last_updated: "2026-05-12T10:00:00.000Z"
 last_activity: 2026-05-12
 last_updated: "2026-05-12T03:00:00.000Z"
 last_activity: 2026-05-12
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 38 (gap-closure plan 38-04 written; plan-checker PASSED)
-Plan: 38-01/02/03 production code shipped (verifier PHASE_GAPS 2026-05-12). Gap-closure plan 38-04 (Wave 4, autonomous, depends_on [38-01,02,03]) targets the 9-file test-layer regression: 5 tests/data/* IDIOM A cascade + 3 tests/actions/* mocks + 1 addwatch-catalog-resilience.test.ts fail-loud rewrite. Plan-checker verdict: PASSED all 10 standard + 10 gap-closure-specific dimensions.
-Next: `/gsd-execute-phase 38-04` (or `/gsd-execute-phase 38 --gaps-only`) to apply test edits and close the regression
-Resume file: .planning/phases/38-cat-13-engine-rewire/38-04-PLAN.md
-Status: Ready to execute (Wave 4 gap closure)
+Phase: 38 ✅ COMPLETE (re-verifier PHASE_PASSED 2026-05-12; all 5/5 ROADMAP criteria verified; all gaps closed)
+Plan: 4 plans / 4 waves all shipped. Engine + DAL + types + migrations + composer-engine alignment + gap closure all merged to main. 19/19 static guards green. tsc at 27-error pre-Phase-38 baseline. CAT-13 is the first phase where the Phase 19.1 LLM-enrichment investment produces observable behavior in collection fit verdicts.
+Next: `/gsd-discuss-phase 39` (Audit-Driven Discovery Polish — Phase 39 depends on Phase 38)
+Resume file: .planning/phases/38-cat-13-engine-rewire/38-VERIFICATION.md (contains both initial gaps_found report and re-verification PHASE_PASSED section)
+Status: Phase 38 complete
 Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%
