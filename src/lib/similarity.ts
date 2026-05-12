@@ -4,10 +4,13 @@ import type {
   SimilarityLabel,
   SimilarityResult,
   CollectionGoal,
+  CatalogTasteAttributes,
 } from './types'
 
-// Scoring weights for different dimensions
-const WEIGHTS = {
+// Phase 38 D-01/D-05 — preserve relative proportions while reserving 0.20 for taste.
+// Anti-pattern (forbidden): hardcoding rescaled values as magic numbers.
+// Verify: `grep -E "0\.20.*styleTags|styleTags.*0\.20" src/lib/similarity.ts` returns 0 matches.
+const EXISTING_WEIGHTS_BASE = {
   styleTags: 0.25,
   designTraits: 0.20,
   roleTags: 0.20,
@@ -16,7 +19,30 @@ const WEIGHTS = {
   caseSize: 0.05,
   strapType: 0.05,
   waterResistance: 0.05,
-}
+} as const
+
+const TASTE_WEIGHT = 0.20
+const EXISTING_SCALE = 1.0 - TASTE_WEIGHT  // 0.80
+
+const WEIGHTS = {
+  ...Object.fromEntries(
+    Object.entries(EXISTING_WEIGHTS_BASE).map(([k, v]) => [k, v * EXISTING_SCALE]),
+  ),
+  taste: TASTE_WEIGHT,
+} as { [K in keyof typeof EXISTING_WEIGHTS_BASE]: number } & { taste: number }
+
+// Phase 38 D-03 — internal split of the 0.20 taste budget (sub-weights sum to 1.0).
+// Per-component effective weight = sub-weight × TASTE_WEIGHT:
+//   numericTrioCosine: 0.40 × 0.20 = 0.08
+//   archetypeMatch:    0.20 × 0.20 = 0.04
+//   eraMatch:          0.20 × 0.20 = 0.04
+//   motifsJaccard:     0.20 × 0.20 = 0.04
+const TASTE_SUB_WEIGHTS = {
+  numericTrioCosine: 0.40,
+  archetypeMatch:    0.20,
+  eraMatch:          0.20,
+  motifsJaccard:     0.20,
+} as const
 
 // Thresholds for similarity labels (adjusted by overlap tolerance)
 const THRESHOLDS = {
@@ -57,6 +83,58 @@ function arrayOverlap(arr1: string[], arr2: string[]): number {
   const intersection = arr1.filter((item) => arr2.includes(item))
   const union = new Set([...arr1, ...arr2])
   return intersection.length / union.size
+}
+
+// Phase 38 D-03 — null-safe 3D cosine for the [formality, sportiness, heritageScore] trio.
+// 3-line helper; no numerical library needed (fixed dimensionality).
+function cosine3D(a: readonly [number, number, number], b: readonly [number, number, number]): number {
+  const dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
+  const ma = Math.hypot(a[0], a[1], a[2])
+  const mb = Math.hypot(b[0], b[1], b[2])
+  if (ma === 0 || mb === 0) return 0  // null-safe per D-03 edge: all-zero vectors → 0
+  // Defensive clamp per RESEARCH §Q10 watch-list #4 — prevents threshold mis-classify on numeric drift:
+  return Math.max(0, Math.min(1, dot / (ma * mb)))
+}
+
+// Phase 38 D-02 + D-03 — returns taste similarity in [0, 1]. Outer multiply by WEIGHTS.taste
+// happens at the caller (matches the existing 8-dim cadence: `score += WEIGHTS.foo * fooSimilarity(...)`).
+function tasteSimilarityRaw01(
+  t1: CatalogTasteAttributes | null | undefined,
+  t2: CatalogTasteAttributes | null | undefined,
+): number {
+  // D-02 binary gate — any nullish or below-floor confidence → 0 contribution (engine falls back to byte-identical 8-dim behavior)
+  if (!t1 || !t2) return 0
+  if (t1.confidence === null || t2.confidence === null) return 0
+  if (t1.confidence < 0.5 || t2.confidence < 0.5) return 0
+
+  let contrib = 0
+
+  // Numeric trio cosine (sub-weight 0.40 of the 0.20 taste budget = effective 0.08)
+  // Drop the contribution when ANY of the 6 numerics is null (D-03 edge: cosine of all-zero pair would be misleading)
+  const allNonNull1 = t1.formality !== null && t1.sportiness !== null && t1.heritageScore !== null
+  const allNonNull2 = t2.formality !== null && t2.sportiness !== null && t2.heritageScore !== null
+  if (allNonNull1 && allNonNull2) {
+    const cos = cosine3D(
+      [t1.formality as number, t1.sportiness as number, t1.heritageScore as number],
+      [t2.formality as number, t2.sportiness as number, t2.heritageScore as number],
+    )
+    contrib += TASTE_SUB_WEIGHTS.numericTrioCosine * cos
+  }
+
+  // Archetype categorical match (sub-weight 0.20 = effective 0.04)
+  if (t1.primaryArchetype !== null && t2.primaryArchetype !== null && t1.primaryArchetype === t2.primaryArchetype) {
+    contrib += TASTE_SUB_WEIGHTS.archetypeMatch * 1.0
+  }
+
+  // Era categorical match (sub-weight 0.20 = effective 0.04)
+  if (t1.eraSignal !== null && t2.eraSignal !== null && t1.eraSignal === t2.eraSignal) {
+    contrib += TASTE_SUB_WEIGHTS.eraMatch * 1.0
+  }
+
+  // Motifs Jaccard (sub-weight 0.20 = effective 0.04) — REUSE existing arrayOverlap (verified Jaccard per D-03)
+  contrib += TASTE_SUB_WEIGHTS.motifsJaccard * arrayOverlap(t1.designMotifs, t2.designMotifs)
+
+  return contrib  // in [0, 1]; outer multiply by WEIGHTS.taste happens at caller
 }
 
 function caseSizeSimilarity(size1?: number, size2?: number): number {
@@ -121,6 +199,9 @@ function calculatePairSimilarity(
     watch1.waterResistanceM,
     watch2.waterResistanceM
   )
+
+  // Phase 38 D-01..D-05 — 9th additive taste dimension (outer weight 0.20; gates on confidence >= 0.5)
+  score += WEIGHTS.taste * tasteSimilarityRaw01(watch1.catalogTaste, watch2.catalogTaste)
 
   return score
 }

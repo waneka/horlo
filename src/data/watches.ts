@@ -2,9 +2,9 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { watches, profileSettings } from '@/db/schema'
+import { watches, profileSettings, watchesCatalog } from '@/db/schema'
 import { eq, and, or, asc, desc, inArray, sql, type SQL } from 'drizzle-orm'
-import type { Watch } from '@/lib/types'
+import type { Watch, PrimaryArchetype, EraSignal } from '@/lib/types'
 
 // Row type inferred from the Drizzle schema — used for mapping only.
 type WatchRow = typeof watches.$inferSelect
@@ -116,14 +116,51 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
  *   - Tiebreaker: created_at DESC — defends against any rows sharing a
  *     sort_order; post-migration there should be no ties (DO $$ assertion
  *     in 20260504120000_phase27_sort_order.sql verifies), but cheap safety.
+ *
+ * Phase 38 D-11: LEFT JOINs watches_catalog to populate catalogTaste on every
+ * returned Watch. LEFT JOIN (not INNER) preserves graceful degradation in the
+ * rare race where a watches_catalog row is deleted while a watches row still
+ * references it (RESEARCH Pitfall 6). D-12: DAL does NOT pre-filter by
+ * confidence — the engine gates at its own boundary (analyzeSimilarity).
  */
 export async function getWatchesByUser(userId: string): Promise<Watch[]> {
   const rows = await db
-    .select()
+    .select({
+      watch: watches,
+      taste: {
+        formality: watchesCatalog.formality,
+        sportiness: watchesCatalog.sportiness,
+        heritageScore: watchesCatalog.heritageScore,
+        primaryArchetype: watchesCatalog.primaryArchetype,
+        eraSignal: watchesCatalog.eraSignal,
+        designMotifs: watchesCatalog.designMotifs,
+        confidence: watchesCatalog.confidence,
+        extractedFromPhoto: watchesCatalog.extractedFromPhoto,
+      },
+    })
     .from(watches)
+    .leftJoin(watchesCatalog, eq(watchesCatalog.id, watches.catalogId))
     .where(eq(watches.userId, userId))
     .orderBy(asc(watches.sortOrder), desc(watches.createdAt))
-  return rows.map(mapRowToWatch)
+
+  return rows.map(({ watch, taste }) => ({
+    ...mapRowToWatch(watch),
+    // Numeric columns surface as strings via postgres-js — coerce at the boundary.
+    // RESEARCH Pitfall 2: if forgotten, cosine3D produces NaN and all scores collapse.
+    // LEFT JOIN miss: taste itself is null when no catalog row matched.
+    catalogTaste: taste == null || (taste.confidence === null && taste.formality === null)
+      ? null
+      : {
+          formality: taste.formality !== null ? Number(taste.formality) : null,
+          sportiness: taste.sportiness !== null ? Number(taste.sportiness) : null,
+          heritageScore: taste.heritageScore !== null ? Number(taste.heritageScore) : null,
+          primaryArchetype: taste.primaryArchetype as PrimaryArchetype | null,
+          eraSignal: taste.eraSignal as EraSignal | null,
+          designMotifs: taste.designMotifs ?? [],
+          confidence: taste.confidence !== null ? Number(taste.confidence) : null,
+          extractedFromPhoto: taste.extractedFromPhoto ?? false,
+        },
+  }))
 }
 
 /**
