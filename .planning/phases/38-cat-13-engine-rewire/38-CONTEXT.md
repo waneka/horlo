@@ -10,7 +10,7 @@ Wire `analyzeSimilarity()` in `src/lib/similarity.ts` to consume the 8 LLM-deriv
 
 **In scope (locked by ROADMAP §Phase 38 + CAT-13 + this discussion):**
 
-1. **Drizzle `watches.catalogId .notNull()` tightening** (deferred from Phase 36 Plan 01 Rule 4 / Phase 37) — cascades to `createWatch` DAL signature change (catalogId becomes required), two production call sites must upsert catalog BEFORE `createWatch`, and ~17 integration test fixture updates. Lives as **Plan A** (Wave 1) so engine rewire (Plan B) ships against a clean type system.
+1. **Drizzle `watches.catalogId .notNull()` tightening** (deferred from Phase 36 Plan 01 Rule 4 / Phase 37) — cascades to `createWatch` DAL signature change (catalogId becomes required), **three** production call sites must upsert catalog BEFORE `createWatch` (`src/app/actions/watches.ts:121` `addWatch`, `src/app/actions/wishlist.ts:124` `addWishlistWatch`, plus the DAL definition `src/data/watches.ts:197`), and ~17 integration test fixture updates. Lives as **Plan A** (Wave 1) so engine rewire (Plan B) ships against a clean type system. *(Researcher correction 2026-05-12: CONTEXT-original mistakenly named `src/app/api/extract-watch/route.ts` as a callsite — that file does NOT call `createWatch`; the third callsite is `wishlist.ts:124`.)*
 
 2. **`Watch` type extension** — `Watch.catalogTaste: CatalogTasteAttributes | null` reusing the existing interface at `src/lib/types.ts` lines 214–223 (single source of truth per D-07).
 
@@ -64,7 +64,7 @@ Wire `analyzeSimilarity()` in `src/lib/similarity.ts` to consume the 8 LLM-deriv
 - **Phase 19.1 D-13 — confidence semantics:** `confidence >= 0.5` is the project-wide gate for taste consumption. Phase 20 composer uses 0.5 (and 0.7 for the two-tier copy threshold). Phase 38 D-02 keeps the engine on the same 0.5 gate for alignment.
 - **Phase 20 FIT-04 — CollectionFitCard pure-renderer:** No engine imports inside the React component. `tests/static/CollectionFitCard.no-engine.test.ts` enforces this. Phase 38 does NOT break this boundary; the composer-engine alignment test (D-04) calls them as separate library functions, not through the component.
 - **Phase 20 viewerTasteProfile:** Already aggregates user collection taste at `confidence >= 0.5`. Phase 38 engine reads INDIVIDUAL watch's `catalogTaste`, not the aggregate. Different surface, same gate.
-- **Phase 36 Plan 01 Rule 4 / Phase 37 deferral — `watches.catalogId .notNull()` tightening:** Phase 38 owns this. Cascade: 18 tsc errors + ~17 integration test fixture updates + `createWatch` DAL signature change (catalogId becomes required) + two production call sites must upsert catalog BEFORE `createWatch`. The two call sites — manual entry (`src/app/actions/watches.ts addWatch`) and URL extract (`src/app/api/extract-watch/route.ts`) — already have `upsertCatalogFromUserInput` / `upsertCatalogFromExtractedUrl` available from Phase 17. The work is reordering, not new functionality.
+- **Phase 36 Plan 01 Rule 4 / Phase 37 deferral — `watches.catalogId .notNull()` tightening:** Phase 38 owns this. Cascade: 18 tsc errors + ~17 integration test fixture updates + `createWatch` DAL signature change (catalogId becomes required) + **three** production call sites must upsert catalog BEFORE `createWatch`. The call sites are: manual entry (`src/app/actions/watches.ts:121` `addWatch`), wishlist add (`src/app/actions/wishlist.ts:124` `addWishlistWatch`), and the DAL definition itself (`src/data/watches.ts:197`). `upsertCatalogFromUserInput` is already available from Phase 17 for both action paths. The work is reordering, not new functionality. *(Researcher correction 2026-05-12: original CONTEXT named `extract-watch/route.ts` — that route does NOT call `createWatch`. The correct third callsite is `wishlist.ts:124`.)*
 - **Phase 17 D-06 — public-read RLS on `watches_catalog`:** The DAL JOIN doesn't need elevated permissions; existing public-read policy covers SELECT.
 - **Phase 17 D-13 — first-write-wins on `watches_catalog`:** Phase 38 does NOT write to `watches_catalog`. Read-only JOIN.
 
@@ -118,11 +118,16 @@ Wire `analyzeSimilarity()` in `src/lib/similarity.ts` to consume the 8 LLM-deriv
 - **D-06 — Plan A ships catalogId .notNull() FIRST in Phase 38 (separate plan from engine rewire):**
   Plan A scope:
   1. Drizzle `src/db/schema.ts` line 150 — `catalogId: uuid('catalog_id').notNull().references(...)`
-  2. New supabase migration (next sequential timestamp after Phase 37's `20260511010000`) — `ALTER TABLE watches ALTER COLUMN catalog_id SET NOT NULL` (Phase 36 already ran `SET NOT NULL` at the DB level; Drizzle just catches up to reality)
-  3. `createWatch` DAL signature change in `src/data/watches.ts` — `catalogId` becomes required parameter (was optional)
-  4. Two production call sites updated: `src/app/actions/watches.ts addWatch` and `src/app/api/extract-watch/route.ts` — both must `await upsertCatalogFromUserInput(...)` or `await upsertCatalogFromExtractedUrl(...)` BEFORE calling `createWatch`. The upsert helpers already exist from Phase 17.
-  5. ~17 integration test fixture updates — each fixture that constructs a Watch row directly must now include `catalogId: <uuid>` (or seed a `watches_catalog` row first).
+  2. New supabase migration `supabase/migrations/20260512000000_phase38_catalog_id_notnull.sql` (verified by researcher as next sequential timestamp after Phase 37's `20260511010000`) — `ALTER TABLE watches ALTER COLUMN catalog_id SET NOT NULL` (Phase 36 already ran `SET NOT NULL` at the DB level; Drizzle just catches up to reality)
+  3. Drizzle migration `drizzle/0011_phase38_catalog_id_notnull.sql` + journal idx=11 (researcher-verified next sequential)
+  4. `createWatch` DAL signature change in `src/data/watches.ts:197` — `catalogId` becomes required parameter (was optional)
+  5. **Three** production call sites updated:
+     - `src/app/actions/watches.ts:121` `addWatch` — already calls `upsertCatalogFromUserInput`; verify ordering puts upsert BEFORE `createWatch`
+     - `src/app/actions/wishlist.ts:124` `addWishlistWatch` — researcher recommends pass-through source `catalogId` rather than fresh `upsertCatalogFromUserInput` (wishlist watches typically inherit a catalog identity from the page they were added from; falling back to upsert is fine when the source has no catalogId)
+     - `src/data/watches.ts:197` `createWatch` DAL definition itself — signature now requires non-null catalogId
+  6. ~17 integration test fixture updates — each fixture that constructs a Watch row directly must now include `catalogId: <uuid>` (or seed a `watches_catalog` row first). Planner consumes RESEARCH.md §D-07 Commit Map for the exact file list.
   Plan B (engine rewire) depends_on Plan A.
+  *(Researcher correction 2026-05-12: original CONTEXT named `extract-watch/route.ts` — that route does NOT call `createWatch`; the correct third callsite is `wishlist.ts:124`. CONTEXT-original "two callsites" should read "three (`watches.ts:121`, `wishlist.ts:124`, plus the DAL definition).")*
 
 - **D-07 — Plan A test fixture commit strategy = one commit per test file family:**
   Group fixtures by file:
