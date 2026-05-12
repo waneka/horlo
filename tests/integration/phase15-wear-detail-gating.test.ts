@@ -18,6 +18,7 @@
  * Suite skips cleanly when DATABASE_URL is unset — mirrors home-privacy.test.ts.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { randomUUID } from 'node:crypto'
 import { eq, inArray } from 'drizzle-orm'
 
 import { db } from '@/db'
@@ -27,6 +28,7 @@ import {
   profileSettings,
   follows,
   watches,
+  watchesCatalog,
   wearEvents,
 } from '@/db/schema'
 import { getWearEventByIdForViewer } from '@/data/wearEvents'
@@ -91,6 +93,17 @@ maybe('Phase 15 wear detail gating', () => {
       .insert(follows)
       .values([{ followerId: ids.F, followingId: ids.A }])
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catalogIdA = randomUUID()
+    const catalogIdAp = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values([
+        { id: catalogIdA, brand: 'Brand-A', model: 'Model-A', source: 'user_promoted' },
+        { id: catalogIdAp, brand: 'Brand-Ap', model: 'Model-Ap', source: 'user_promoted' },
+      ])
+      .onConflictDoNothing()
+
     // One watch per actor (A + Ap — F/S do not post wears here).
     const watchRows = await db
       .insert(watches)
@@ -101,6 +114,7 @@ maybe('Phase 15 wear detail gating', () => {
           model: 'Model-A',
           status: 'owned' as const,
           movementType: 'auto' as const,
+          catalogId: catalogIdA,
         },
         {
           userId: ids.Ap,
@@ -108,6 +122,7 @@ maybe('Phase 15 wear detail gating', () => {
           model: 'Model-Ap',
           status: 'owned' as const,
           movementType: 'auto' as const,
+          catalogId: catalogIdAp,
         },
       ])
       .returning()

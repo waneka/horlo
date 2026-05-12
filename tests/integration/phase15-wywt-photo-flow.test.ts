@@ -27,8 +27,9 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { eq, inArray } from 'drizzle-orm'
 
+import { randomUUID } from 'node:crypto'
 import { db } from '@/db'
-import { users, watches, wearEvents, profileSettings } from '@/db/schema'
+import { users, watches, watchesCatalog, wearEvents, profileSettings } from '@/db/schema'
 import {
   getWornTodayIdsForUser,
   logWearEventWithPhoto,
@@ -106,6 +107,19 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
       .set({ profilePublic: true })
       .where(inArray(profileSettings.userId, [userA.id, userB.id]))
 
+    // Phase 38 D-06: seed catalog rows before watches inserts (catalogId is NOT NULL).
+    const catA1 = randomUUID()
+    const catA2 = randomUUID()
+    const catB1 = randomUUID()
+    await db
+      .insert(watchesCatalog)
+      .values([
+        { id: catA1, brand: 'TestBrandA1', model: 'TestModelA1', source: 'user_promoted' },
+        { id: catA2, brand: 'TestBrandA2', model: 'TestModelA2', source: 'user_promoted' },
+        { id: catB1, brand: 'TestBrandB1', model: 'TestModelB1', source: 'user_promoted' },
+      ])
+      .onConflictDoNothing()
+
     const [w1, w2, w3] = await db
       .insert(watches)
       .values([
@@ -115,6 +129,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           model: 'TestModelA1',
           status: 'owned',
           movementType: 'auto',
+          catalogId: catA1,
         },
         {
           userId: userA.id,
@@ -122,6 +137,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           model: 'TestModelA2',
           status: 'owned',
           movementType: 'auto',
+          catalogId: catA2,
         },
         {
           userId: userB.id,
@@ -129,6 +145,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           model: 'TestModelB1',
           status: 'owned',
           movementType: 'auto',
+          catalogId: catB1,
         },
       ])
       .returning()
