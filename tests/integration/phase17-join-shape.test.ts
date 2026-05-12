@@ -52,13 +52,23 @@ maybe('Phase 17 join shape — CAT-11 watches LEFT JOIN watches_catalog', () => 
     }).returning()
     watchWithCatalogId = w1.id
 
-    // Seed 1 watches row WITHOUT catalog_id (NULL)
+    // Seed a second catalog row for the second watches row.
+    // Phase 38 D-06: catalog_id is NOT NULL — every watches row needs a catalog entry.
+    // Test renamed: verifies that LEFT JOIN still works when catalog row exists.
+    const catalogId2 = randomUUID()
+    await db.insert(watchesCatalog).values({
+      id: catalogId2,
+      brand: `NoCatalog_${stamp}`,
+      model: `NoCatalogModel_${stamp}`,
+      source: 'user_promoted',
+    }).onConflictDoNothing()
     const [w2] = await db.insert(watches).values({
       userId,
       brand: `NoCatalog_${stamp}`,
       model: `NoCatalogModel_${stamp}`,
       status: 'wishlist',
       movementType: 'quartz',
+      catalogId: catalogId2,
     }).returning()
     watchWithoutCatalogId = w2.id
   }, 30_000)
@@ -90,7 +100,9 @@ maybe('Phase 17 join shape — CAT-11 watches LEFT JOIN watches_catalog', () => 
     expect(rows[0].catalogId).toBe(catalogId)
   })
 
-  it('leftJoin(watchesCatalog) returns null catalog columns when catalog_id IS NULL (does not drop the row)', async () => {
+  it('leftJoin(watchesCatalog) returns catalog columns for second watch (Phase 38: all rows have catalogId)', async () => {
+    // Phase 38 D-06: catalog_id is NOT NULL; every watches row has a catalog row.
+    // This test verifies the LEFT JOIN still returns the watch row (1 row) with catalog data.
     const rows = await db
       .select({
         watchId: watches.id,
@@ -102,12 +114,12 @@ maybe('Phase 17 join shape — CAT-11 watches LEFT JOIN watches_catalog', () => 
       .leftJoin(watchesCatalog, eq(watches.catalogId, watchesCatalog.id))
       .where(eq(watches.id, watchWithoutCatalogId))
 
-    // LEFT JOIN: the watches row is NOT dropped even with no matching catalog row
+    // LEFT JOIN: the watches row is returned with catalog data populated
     expect(rows).toHaveLength(1)
     expect(rows[0].watchId).toBe(watchWithoutCatalogId)
     expect(rows[0].watchBrand).toBeDefined()
-    // Catalog columns are null when no FK match
-    expect(rows[0].catalogBrand).toBeNull()
-    expect(rows[0].catalogId).toBeNull()
+    // Post-Phase-38: catalog columns are populated (NOT null) since every watch has catalogId
+    expect(rows[0].catalogBrand).toBeDefined()
+    expect(rows[0].catalogId).not.toBeNull()
   })
 })
