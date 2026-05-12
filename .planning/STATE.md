@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 37 context gathered 2026-05-11 — 15 decisions D-01..D-15 captured (3 pgEnums: condition_grade + currency_code + box_papers_status; divestments table with sale_currency added beyond ROADMAP letter; shadcn Accordion for disclosure; sold watches stay visible). Ready for planning.
-last_updated: "2026-05-11T21:47:52.000Z"
+stopped_at: Phase 37 PLANNED 2026-05-11 — 5 plans across 3 waves; Wave 1 parallel (01 Drizzle schema / 02 Supabase migration / 03 Drizzle twin + journal idx=10); Wave 2 sequential (04 recordDivestment Server Action + editWatch transition branch with FIRST db.transaction() in codebase + base-ui Accordion + WatchCard sold-badge variant); Wave 3 sequential (05 phase37-rls integration test with V-10 dual-write coverage + 2 static guards + [BLOCKING] local schema push + [BLOCKING] prod deploy checkpoint:human-action). CONTEXT.md D-15 corrected post-RESEARCH: accordion primitive is @base-ui/react/accordion (NOT @/components/ui/accordion which does not exist). Ready to execute.
+last_updated: "2026-05-11T22:30:00.000Z"
 last_activity: 2026-05-11
 progress:
   total_phases: 12
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 37 (context gathered)
-Plan: Phase 37 CONTEXT.md committed at 77abde7 — 15 decisions D-01..D-15 across 4 user-selected gray areas + 2 follow-ups
-Next: `/gsd-plan-phase 37` (Layer D — Provenance Fields + Divestments Table)
-Resume file: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-CONTEXT.md
-Status: Phase 37 ready for planning
+Phase: 37 (planned — ready to execute)
+Plan: Phase 37 has 5 plans across 3 waves; Wave 1 parallel (01+02+03), Wave 2 (04), Wave 3 (05 — gated on [BLOCKING] prod deploy checkpoint)
+Next: `/gsd-execute-phase 37` (auto-advance chain active)
+Resume file: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-01-PLAN.md
+Status: Phase 37 plans verified — VERIFICATION PASSED (2 non-blocking documentation warnings already addressed inline)
 Last activity: 2026-05-11
 
 Progress: [███████░░░] 31%

@@ -290,7 +290,14 @@ Plans:
   3. Status transition `owned → sold` in the UI writes a row to `divestments` with `divested_at = NOW()` via a Server Action; `watches.status = 'sold'` remains for UI display purposes
   4. WatchForm edit page shows a collapsed "Collector's Record" disclosure section exposing the 7 provenance fields — collapsed by default with no visual regression on the non-expanded state
   5. Divestment dialog UI (post-status-change "I just sold this watch" flow) is explicitly documented as deferred to v5.x in phase CONTEXT.md
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 37-01-PLAN.md — Drizzle schema additions: 3 pgEnums + 7 watches columns + divestments pgTable + types + constants
+- [ ] 37-02-PLAN.md — Supabase migration: authoritative DDL with pgEnums, ADD COLUMNs, divestments table, per-user RLS, GRANTs, indexes, trigger, DO $$ assertions
+- [ ] 37-03-PLAN.md — Drizzle migration twin (drizzle/0010_phase37_layer_d.sql) + journal idx=10 append
+- [ ] 37-04-PLAN.md — Server Action recordDivestment + editWatch owned→sold transition branch (atomic db.transaction) + WatchForm Accordion + WatchCard sold-badge variant
+- [ ] 37-05-PLAN.md — Integration test + static guards + local schema push + docs §37 append + [BLOCKING] prod deploy checkpoint
 **UI hint**: yes
 
 ### Phase 38: CAT-13 Engine Rewire

@@ -806,13 +806,13 @@ Neither `db:push` nor `db:migrate` are in `package.json` scripts [VERIFIED: grep
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Zod schema for `purchase_date` date field** — Should the `updateWatchSchema` in `watches.ts` accept `purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()` or use `z.coerce.date()`? The existing `acquisitionDate` uses `z.string().optional()` (free text). Since `purchase_date` is a Postgres `date` column, Drizzle's `date()` column expects a `string` in ISO format or a `Date` object. Recommendation: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()` to match `<input type="date">` output format.
+1. **Zod schema for `purchase_date` date field** — RESOLVED: `z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()` to match `<input type="date">` output format. Adopted by Plan 04 Task 1 (`recordDivestmentSchema`) and Plan 04 Task 3 (`updateWatchSchema` extension).
 
-2. **`recordDivestment` transaction wrapper** — Does the project currently use `db.transaction()` anywhere? If not, the planner should verify the Drizzle `db.transaction()` API is available in `drizzle-orm ^0.45.2`. [ASSUMED: it is; standard drizzle-orm API since v0.28+]
+2. **`recordDivestment` transaction wrapper** — RESOLVED: Drizzle `db.transaction()` API is available in `drizzle-orm ^0.45.2` (confirmed standard since v0.28+). Plan 04 Task 1 introduces the FIRST transaction in the codebase using `await db.transaction(async (tx) => { ... })` with `tx.insert(divestments)` + `tx.update(watches)` inside the closure.
 
-3. **Static test for WatchForm Accordion** — WatchForm is `'use client'` and uses `useRouter` from `next/navigation`. Static vitest tests with Next.js client components require mocking. The existing `tests/static/CollectionFitCard.no-engine.test.ts` is a static import-boundary test, not a render test. A render test for WatchForm would need `@testing-library/react` + next/navigation mock. Researcher recommends a simpler grep/static assertion for the accordion: `tests/static/WatchForm.accordion.guards.test.ts` that does a file-grep confirming the accordion import exists and the `mode === 'edit'` guard is present.
+3. **Static test for WatchForm Accordion** — RESOLVED: simpler grep/static assertion approach adopted. Plan 05 Task 1 ships `tests/static/WatchForm.accordion.guards.test.ts` doing file-grep assertions confirming the `@base-ui/react/accordion` import exists and the `mode === 'edit'` guard is present, rather than a full render test that would require `useRouter` mocking.
 
 ---
 

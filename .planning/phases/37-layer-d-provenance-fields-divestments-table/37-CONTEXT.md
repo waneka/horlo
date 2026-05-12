@@ -23,7 +23,7 @@ Ship Layer D of the v5.0 catalog hierarchy serial: collector-diary provenance co
 
 3. **Server Action `recordDivestment(watchId, divestmentData)`** — called when status flips `owned → sold`. Writes a row to `divestments` with `divested_at = NOW()`. Mirrors existing `updateWatch` action pattern in `src/app/actions/watches.ts`. `watches.status = 'sold'` is set in the SAME server action (dual-write — both status flag AND divestment row).
 
-4. **WatchForm "Collector's Record" disclosure** — shadcn Accordion (per D-05). Edit page only (not create page per ROADMAP). Collapsed by default with no visual regression on the non-expanded state. Exposes all 7 provenance fields.
+4. **WatchForm "Collector's Record" disclosure** — base-ui Accordion (`@base-ui/react/accordion`; see D-15 CORRECTION). Edit page only (not create page per ROADMAP). Collapsed by default with no visual regression on the non-expanded state. Exposes all 7 provenance fields.
 
 5. **Sold watches in `/collection`** — stay visible with a sold badge/treatment. Existing status filter chip group (owned/wishlist/sold/grail) controls visibility. No new surface required (per D-02). DAL `getWatchesByUser` already returns all statuses; UI filter chips handle the rest.
 
@@ -43,7 +43,7 @@ Ship Layer D of the v5.0 catalog hierarchy serial: collector-diary provenance co
 1. ✓ `watches` gains 7 nullable provenance columns — covered by Plan 01 (Drizzle schema) + Plan 02 (Supabase migration)
 2. ✓ `divestments` table with shape + RLS — covered by Plan 02 (schema) + Plan 02 (RLS)
 3. ✓ Status `owned → sold` writes a row via Server Action — covered by Plan 04 (action + WatchForm wire-up)
-4. ✓ WatchForm gains collapsed "Collector's Record" disclosure — covered by Plan 04 (shadcn Accordion + provenance fields)
+4. ✓ WatchForm gains collapsed "Collector's Record" disclosure — covered by Plan 04 (base-ui Accordion + provenance fields)
 5. ✓ Divestment dialog UI explicitly deferred — documented in this CONTEXT.md `<deferred>` section and to be re-cited in Phase 37 SUMMARY.md
 
 **Why this phase matters (user-facing value):**
@@ -176,10 +176,12 @@ Ship Layer D of the v5.0 catalog hierarchy serial: collector-diary provenance co
 
 ### Disclosure UI primitive (Area 4 — D-15)
 
-- **D-15 — "Collector's Record" disclosure uses shadcn Accordion:**
+- **D-15 — "Collector's Record" disclosure uses base-ui Accordion:**
   Single-section accordion (not multi-section). Collapsed by default. Header text: "Collector's Record" (or researcher's call — final copy in Plan 04). Body contains all 7 provenance field inputs in a logical grouping (acquisition info → condition+box_papers → financials → service_history).
-  Use `@/components/ui/accordion` (already in codebase per CollectionFitCard usage).
-  Rationale: matches CollectionFitCard accordion pattern already in the app; full keyboard a11y; consistent dark-mode visual treatment; existing animation behavior.
+  Use `@base-ui/react/accordion` (mirror `src/components/search/WatchSearchRowsAccordion.tsx` — the only accordion in the codebase).
+  Rationale: matches the existing accordion pattern in WatchSearchRowsAccordion; full keyboard a11y; consistent dark-mode visual treatment via Tailwind 4 `data-[open]:` selectors + `tw-animate-css` chain.
+
+  **CORRECTION 2026-05-11** (post-RESEARCH §10 / L-07): the original wording of this decision referenced `@/components/ui/accordion` and "CollectionFitCard accordion pattern." Both claims are factually wrong — there is no `src/components/ui/accordion.tsx` file in the codebase, and CollectionFitCard does not use an accordion. RESEARCH §10 corrects this: the only accordion in the project is `@base-ui/react/accordion` in `WatchSearchRowsAccordion.tsx`. The plans (37-04, 37-05) use the corrected import path.
 
 ### Plan structure preview (informational — planner has latitude)
 
@@ -190,7 +192,7 @@ Likely 4-5 plans, 3 waves:
   - Plan 02 — Supabase migration: single file `<14-digit>_phase37_layer_d.sql` with pgEnum CREATE TYPEs, 7 ADD COLUMNs, CREATE TABLE divestments, RLS policies, GRANTs, indexes (no DO $$ pre-flight needed — Phase 37 is purely additive)
   - Plan 03 — Drizzle migration twin: `drizzle/0010_phase37_layer_d.sql` + journal idx=10 (idempotent structural shape)
 - **Wave 2 (sequential, depends on Wave 1):**
-  - Plan 04 — Server Action `recordDivestment` + WatchForm "Collector's Record" disclosure (shadcn Accordion + 7 field inputs) + WatchCard sold-badge treatment + StatusToggle wire-up to call the action when status flips to sold
+  - Plan 04 — Server Action `recordDivestment` + WatchForm "Collector's Record" disclosure (base-ui Accordion + 7 field inputs) + WatchCard sold-badge treatment + editWatch transition-detection wire-up (no StatusToggle component exists; see RESEARCH §4)
 - **Wave 3 (sequential, depends on Wave 2):**
   - Plan 05 — Integration test (mirror `tests/integration/phase36-rls.test.ts` shape) + local schema push (docker exec psql + drizzle-kit push) + docs/deploy-db-setup.md append §37.0..§37.5 + checkpoint:human-action for prod deploy (`supabase db push --linked` against linked horlo project)
 
@@ -243,13 +245,13 @@ Likely 4-5 plans, 3 waves:
 - `src/data/watches.ts` — `getWatchesByUser` returns all statuses; Phase 37 does NOT change this. Sold watches continue to be returned; UI controls visibility per D-14.
 - `src/data/catalog.ts` — `upsertCatalogFromUserInput` ensures catalog_id is populated on watch creation (load-bearing for D-11 step 2 invariant).
 - `src/app/actions/watches.ts` — existing addWatch/updateWatch/deleteWatch action patterns (Phase 37 mirrors for `recordDivestment` per D-11).
-- `src/components/watch/WatchForm.tsx` — 737 lines; Phase 37 adds a shadcn Accordion section for provenance fields (D-15).
+- `src/components/watch/WatchForm.tsx` — 737 lines; Phase 37 adds a base-ui Accordion section for provenance fields (D-15 CORRECTION: `@base-ui/react/accordion`).
 - `src/components/watch/WatchCard.tsx` — Phase 37 adds sold-badge treatment (D-14).
 - `src/components/filters/FilterBar.tsx` — existing status filter chip group (researcher verifies the current chip default state per D-14a).
 - `src/lib/types.ts` line 30 `status: WatchStatus` — `WatchStatus` already includes 'sold'; Phase 37 does NOT modify this type.
 
 ### Existing primitives (reused by Phase 37)
-- `src/components/ui/accordion.tsx` — shadcn Accordion (used by CollectionFitCard); Phase 37 D-15 reuses for "Collector's Record" disclosure.
+- `@base-ui/react/accordion` (npm package, already installed) — base-ui Accordion. Mirror `src/components/search/WatchSearchRowsAccordion.tsx`. Phase 37 D-15 reuses this primitive for "Collector's Record" disclosure. **There is NO `src/components/ui/accordion.tsx`** — D-15 CORRECTION 2026-05-11.
 - Existing chip-group primitives in WatchForm — for condition, box_papers, paid_currency selectors (researcher confirms primitive names).
 
 ### NEW Phase 37 files (informational — planner finalizes)
@@ -257,7 +259,7 @@ Likely 4-5 plans, 3 waves:
 - `supabase/migrations/<14-digit>_phase37_layer_d.sql` — single migration with CREATE TYPE + ALTER TABLE ADDs + CREATE TABLE + RLS + GRANTs + indexes
 - `drizzle/0010_phase37_layer_d.sql` + `drizzle/meta/_journal.json` idx=10
 - `src/app/actions/watches.ts` OR `src/app/actions/divestments.ts` — recordDivestment Server Action
-- `src/components/watch/WatchForm.tsx` — shadcn Accordion + 7 field inputs
+- `src/components/watch/WatchForm.tsx` — base-ui Accordion (`@base-ui/react/accordion`) + 7 field inputs
 - `src/components/watch/WatchCard.tsx` — sold badge
 - `tests/integration/phase37-rls.test.ts` — vitest integration mirror of phase36-rls.test.ts
 - `docs/deploy-db-setup.md` — append §37.0..§37.5 section
@@ -289,7 +291,7 @@ Likely 4-5 plans, 3 waves:
 - **`watches` RLS policies** (Phase 17 supabase migration) — direct template for `divestments` policies. `auth.uid() = user_id` pattern verbatim across SELECT/INSERT/UPDATE/DELETE.
 - **`updateWatch` Server Action (`src/app/actions/watches.ts:301-341`)** — direct template for `recordDivestment` shape (zod validate input → verify user owns row via DAL → mutate DB → revalidatePath).
 - **`upsertCatalogFromUserInput` (`src/data/catalog.ts`)** — load-bearing for D-11 step 2 (post-CAT-14 invariant: `watches.catalog_id IS NOT NULL` always true).
-- **`shadcn Accordion` (`src/components/ui/accordion.tsx`)** — direct primitive for D-15 "Collector's Record" disclosure.
+- **`@base-ui/react/accordion` (npm package)** — direct primitive for D-15 "Collector's Record" disclosure. Mirror `src/components/search/WatchSearchRowsAccordion.tsx`. **No `src/components/ui/accordion.tsx` exists** — D-15 CORRECTION 2026-05-11.
 - **Existing chip-group patterns in `src/components/watch/WatchForm.tsx`** — direct template for condition / box_papers / paid_currency chip selectors.
 - **Existing date input patterns in `src/components/watch/WatchForm.tsx`** — direct template for purchase_date date picker.
 - **`tests/integration/phase36-rls.test.ts`** — direct template for `phase37-rls.test.ts` (Phase 37 swaps RLS test from public-read to per-user `auth.uid() = user_id`; pgEnum existence assertions; column nullability assertions).
@@ -302,7 +304,7 @@ Likely 4-5 plans, 3 waves:
 - **Idempotent Drizzle migration** — `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, FK guards via DO $$ pg_constraint.
 - **Per-user RLS** — `auth.uid() = user_id` for SELECT/INSERT/UPDATE/DELETE. GRANT to authenticated (NOT anon).
 - **Server Action shape** — zod validate input → DAL ownership check → mutate → revalidatePath → return `{ ok: true | false, ... }`.
-- **shadcn Accordion for disclosures** — single-section or multi-section; shadcn primitives in `@/components/ui/`.
+- **base-ui Accordion for disclosures** — `@base-ui/react/accordion` package; single-section or multi-section composition pattern; mirror `WatchSearchRowsAccordion.tsx`. (D-15 CORRECTION 2026-05-11: original "shadcn Accordion" wording was factually incorrect.)
 - **pgEnum for finite-known sets** — `condition_grade`, `currency_code`, `box_papers_status` mirror `movement_type`.
 
 ### Integration Points
