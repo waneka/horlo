@@ -3,6 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
+active_phase: 38
 stopped_at: Phase 38 planned 2026-05-12 — 3 plans across 3 waves committed. Plan A (38-01) catalogId .notNull() tightening: 7 tasks, ~23 files (schema + 3 production callsites including wishlist.ts:124 corrected per RESEARCH §Q1 + 17 fixtures + migration pair + journal idx=11). Plan B (38-02) engine rewire: 5+1 optional tasks, 7 files (Watch.catalogTaste type + getWatchesByUser LEFT JOIN with Number() coercion + tests/fixtures/catalogTaste.ts + taste-null/present static guards + similarity.ts WEIGHTS reweighting via D-05 transformation + 9th taste dim at 0.20). Plan C (38-03) composer-engine alignment: 2 tasks, 1 file (composer-engine-alignment.test.ts with 11 scenarios covering full D-15 matrix). All autonomous:true per D-09. Test-first ordering audit-trail enforced via git merge-base assertions in Plan B Task 4. Ready to execute.
 last_updated: "2026-05-12T03:00:00.000Z"
 last_activity: 2026-05-12
