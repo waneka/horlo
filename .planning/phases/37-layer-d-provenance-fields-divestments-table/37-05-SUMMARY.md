@@ -296,3 +296,16 @@ Test results:
 - 19/19 integration tests green (including V-10 dual-write)
 - 7/7 static tests green
 - 0 tsc errors from Phase 37 test files
+
+---
+
+## Task 4 — Prod Deploy (checkpoint:human-action) — APPROVED
+
+**Status:** complete
+**Approved at:** 2026-05-11
+**Operator signal:** "done - approved"
+**Approach:** operator ran `supabase db push --linked` against the linked horlo project per the §37.3 runbook; post-flight `psql` verification per §37.4 (3 pgEnums + 7 watches columns + 4 RLS policies + anon=f / authenticated=t).
+
+**DEBT-12 honored:** `npx drizzle-kit migrate` was NOT run against prod (skipped per Phase 36 closing note).
+
+**Phase 37 plan progress:** 5/5 complete.

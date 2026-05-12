@@ -106,7 +106,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [ ] **Phase 34: Layer A — Brand + Family Entities** — `brands` + `watch_families` tables; nullable FKs on `watches_catalog`
 - [x] **Phase 35: Layer B — Lineage + Movement + Era/Material** — `watch_lineage_edges` with cycle-guard; `movement_type` enum; unblocks SRCH-16 (completed 2026-05-10)
 - [x] **Phase 36: Layer C — Variants + Clean-Slate Wipe + NOT NULL** — `watch_variants`; 6-step catalog wipe + re-link; CAT-14 NOT NULL flip *(completed 2026-05-11)*
-- [ ] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep
+- [x] **Phase 37: Layer D — Provenance + Divestments** — 7 collector-diary columns on `watches`; `divestments` table for recommender prep (shipped 2026-05-11)
 - [ ] **Phase 38: CAT-13 Engine Rewire** — `analyzeSimilarity()` reads catalog taste as additive 9th dimension; static guards written first
 - [ ] **Phase 39: Audit-Driven Discovery Polish** — Closes specific DISCOVERY-AUDIT.md row IDs; DISC-09 editorial slot + DISC-11 dead-end fixes
 - [ ] **Phase 40: Search & Verdict Polish** — SRCH-16 faceted filters + FIT-05 pairwise drill-down in CollectionFitCard
@@ -293,11 +293,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 37-01-PLAN.md — Drizzle schema additions: 3 pgEnums + 7 watches columns + divestments pgTable + types + constants
-- [ ] 37-02-PLAN.md — Supabase migration: authoritative DDL with pgEnums, ADD COLUMNs, divestments table, per-user RLS, GRANTs, indexes, trigger, DO $$ assertions
-- [ ] 37-03-PLAN.md — Drizzle migration twin (drizzle/0010_phase37_layer_d.sql) + journal idx=10 append
-- [ ] 37-04-PLAN.md — Server Action recordDivestment + editWatch owned→sold transition branch (atomic db.transaction) + WatchForm Accordion + WatchCard sold-badge variant
-- [ ] 37-05-PLAN.md — Integration test + static guards + local schema push + docs §37 append + [BLOCKING] prod deploy checkpoint
+- [x] 37-01-PLAN.md — Drizzle schema additions: 3 pgEnums + 7 watches columns + divestments pgTable + types + constants
+- [x] 37-02-PLAN.md — Supabase migration: authoritative DDL with pgEnums, ADD COLUMNs, divestments table, per-user RLS, GRANTs, indexes, trigger, DO $$ assertions
+- [x] 37-03-PLAN.md — Drizzle migration twin (drizzle/0010_phase37_layer_d.sql) + journal idx=10 append
+- [x] 37-04-PLAN.md — Server Action recordDivestment + editWatch owned→sold transition branch (atomic db.transaction) + WatchForm Accordion + WatchCard sold-badge variant
+- [x] 37-05-PLAN.md — Integration test + static guards + local schema push + docs §37 append + prod deploy SUCCESS 2026-05-11
 **UI hint**: yes
 
 ### Phase 38: CAT-13 Engine Rewire

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 37 EXECUTED 2026-05-11 — Wave 1 (01/02/03) + Wave 2 (04) shipped autonomously; Wave 3 (05) Tasks 1-3 complete (19/19 integration tests + 7/7 static tests green locally; docs §37.0..§37.5 appended). Plan 05 Task 4 BLOCKED on operator checkpoint:human-action — prod deploy via `supabase db push --linked`. Local DB has full Layer D schema (3 pgEnums + divestments table + 7 watches columns); recordDivestment Server Action with atomic db.transaction() dual-write verified by both happy-path and FK-rollback integration tests. Operator pre-flight/push/post-flight runbook at docs/deploy-db-setup.md §37.0..§37.5.
-last_updated: "2026-05-11T23:30:00.000Z"
-last_activity: 2026-05-11
+stopped_at: Phase 37 SHIPPED 2026-05-11 — all 5 plans complete; prod deploy APPROVED via `supabase db push --linked` operator checkpoint. Layer D live in prod (3 pgEnums + divestments table + 7 nullable watches columns); recordDivestment Server Action with atomic db.transaction() dual-write verified locally by happy-path + FK-rollback integration tests; 19/19 integration + 7/7 static tests green. DEBT-12 honored (drizzle-kit migrate skipped for prod). Next: Phase 38 CAT-13 Engine Rewire (consumes catalog taste from Phases 19.5/34/35/36) and Drizzle catalogId .notNull() tightening deferred from Phase 36.
+last_updated: "2026-05-12T00:00:00.000Z"
+last_activity: 2026-05-12
 progress:
   total_phases: 12
   completed_phases: 5
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 37 (4/5 plans complete — checkpoint:human-action pending)
-Plan: Plans 01/02/03/04 fully shipped + locally verified. Plan 05 Tasks 1-3 done (tests, local push, docs); Task 4 BLOCKED on operator checkpoint:human-action.
-Next: operator runs `supabase db push --linked` + post-flight psql verification (runbook in 37-05-SUMMARY.md and docs/deploy-db-setup.md §37.3-§37.4); then type `approved` to close Phase 37.
-Resume file: .planning/phases/37-layer-d-provenance-fields-divestments-table/37-05-SUMMARY.md
-Status: Phase 37 awaiting operator prod deploy (mirrors Phase 36 close pattern)
-Last activity: 2026-05-11
+Phase: 37 SHIPPED (5/5 plans complete; prod deploy approved 2026-05-11)
+Plan: Layer D live in prod — `watches` has 7 new provenance columns; new `divestments` table with per-user RLS; recordDivestment Server Action with atomic dual-write transaction.
+Next: `/gsd-discuss-phase 38` (CAT-13 Engine Rewire — wire `analyzeSimilarity()` to consume catalog taste; also owns the Drizzle `catalogId .notNull()` tightening deferred from Phase 36).
+Resume file: .planning/ROADMAP.md §"Phase 38"
+Status: Phase 37 closed; ready for Phase 38
+Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%
 
