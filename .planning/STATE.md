@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 38 (executed — verifier PHASE_GAPS verdict; 5/5 ROADMAP criteria PASS; 1 test-layer regression gap)
-Plan: All 3 Phase 38 plans complete (38-01 catalogId .notNull(), 38-02 engine rewire, 38-03 composer-engine alignment). 20 commits + 3 merges. Static guards pass: 19/19. CAT-13 production code delivered.
-Next: `/gsd-plan-phase 38 --gaps` to close D-07 sweep miss (9 test files in tests/data/ + tests/actions/), OR proceed to Phase 39 if the gap is accepted as polish-deferred.
-Resume file: .planning/phases/38-cat-13-engine-rewire/38-VERIFICATION.md
-Status: Phase 38 executed with non-blocking gaps
+Phase: 38 (gap-closure plan 38-04 written; plan-checker PASSED)
+Plan: 38-01/02/03 production code shipped (verifier PHASE_GAPS 2026-05-12). Gap-closure plan 38-04 (Wave 4, autonomous, depends_on [38-01,02,03]) targets the 9-file test-layer regression: 5 tests/data/* IDIOM A cascade + 3 tests/actions/* mocks + 1 addwatch-catalog-resilience.test.ts fail-loud rewrite. Plan-checker verdict: PASSED all 10 standard + 10 gap-closure-specific dimensions.
+Next: `/gsd-execute-phase 38-04` (or `/gsd-execute-phase 38 --gaps-only`) to apply test edits and close the regression
+Resume file: .planning/phases/38-cat-13-engine-rewire/38-04-PLAN.md
+Status: Ready to execute (Wave 4 gap closure)
 Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%

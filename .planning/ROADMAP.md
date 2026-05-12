@@ -310,18 +310,21 @@ Plans:
   3. Both static guard tests continue passing after `similarity.ts` is modified — the rewire satisfies the guards, not just the pre-condition
   4. `Watch` type in `src/lib/types.ts` includes optional `catalogTaste` field; `getWatchesByUser` DAL LEFT JOINs `watches_catalog` to populate `catalogTaste` on each returned Watch object
   5. `tests/static/CollectionFitCard.no-engine.test.ts` import boundary guard remains unchanged and passing; `src/lib/extractors/llm.ts` D-07 byte-lock survives untouched
-**Plans**: 3 plans (3 sequential waves; all autonomous)
+**Plans**: 4 plans (3 original waves + Wave 4 gap closure; all autonomous)
 
 Plans:
 
 **Wave 1** *(no dependencies)*
-- [ ] 38-01-PLAN.md — watches.catalogId .notNull() Drizzle catch-up + DAL signature change + 3 callsite refactors + ~17 fixture cascade + supabase/drizzle migrations + journal idx=11
+- [x] 38-01-PLAN.md — watches.catalogId .notNull() Drizzle catch-up + DAL signature change + 3 callsite refactors + ~17 fixture cascade + supabase/drizzle migrations + journal idx=11
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 38-02-PLAN.md — Watch.catalogTaste type + getWatchesByUser LEFT JOIN + 9 typed fixtures + RED/GREEN static guards (taste-null + taste-present) + similarity.ts 9th-dimension rewire at 0.20 weight + optional DAL JOIN observability test
+- [x] 38-02-PLAN.md — Watch.catalogTaste type + getWatchesByUser LEFT JOIN + 9 typed fixtures + RED/GREEN static guards (taste-null + taste-present) + similarity.ts 9th-dimension rewire at 0.20 weight + optional DAL JOIN observability test
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 38-03-PLAN.md — composer-engine alignment static test (~10 D-15 scenarios) + parity verification (extractWithLlm body byte-lock, CollectionFitCard.no-engine, GOAL_THRESHOLDS, SimilarityResult/Label types)
+- [x] 38-03-PLAN.md — composer-engine alignment static test (~10 D-15 scenarios) + parity verification (extractWithLlm body byte-lock, CollectionFitCard.no-engine, GOAL_THRESHOLDS, SimilarityResult/Label types)
+
+**Wave 4** *(gap closure — blocked on Waves 1-3; created 2026-05-12 from 38-VERIFICATION.md)*
+- [ ] 38-04-PLAN.md — close Plan A D-07 sweep scope gap: 5 tests/data/*.test.ts files cascade to 3-arg IDIOM A createWatch + 4 tests/actions/*.test.ts files mock/expectation updates + rewrite addwatch-catalog-resilience.test.ts to assert Phase 38 fail-loud contract (test-only edits; production code untouched)
 
 **Cross-cutting constraints:**
 - All plans `autonomous: true` (D-09 — no operator checkpoints; prod schema state already matches via Phase 36 SET NOT NULL)
