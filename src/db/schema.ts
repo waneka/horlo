@@ -9,6 +9,7 @@ import {
   timestamp,
   jsonb,
   numeric,
+  date,           // Phase 37 D-08: purchase_date column
   index,
   unique,
 } from 'drizzle-orm/pg-core'
@@ -48,6 +49,21 @@ export const watchEraEnum = pgEnum('watch_era', [
   '1900-1910', '1910-1920', '1920-1930', '1930-1940', '1940-1950',
   '1950-1960', '1960-1970', '1970-1980', '1980-1990', '1990-2000',
   '2000-2010', '2010-2020', '2020-2030',
+] as const)
+
+// ----- Phase 37 D-02: condition grade pgEnum (CAT-18) -----
+export const conditionGradeEnum = pgEnum('condition_grade', [
+  'mint', 'near_mint', 'excellent', 'good', 'fair', 'poor',
+] as const)
+
+// ----- Phase 37 D-03 / D-04: currency code pgEnum (CAT-18) -----
+export const currencyCodeEnum = pgEnum('currency_code', [
+  'USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'HKD', 'SGD', 'CNY',
+] as const)
+
+// ----- Phase 37 D-05: box/papers status pgEnum (CAT-18) -----
+export const boxPapersStatusEnum = pgEnum('box_papers_status', [
+  'none', 'box_only', 'papers_only', 'full_set',
 ] as const)
 
 // Shadow users table for FK integrity.
@@ -112,6 +128,15 @@ export const watches = pgTable(
     notesPublic: boolean('notes_public').notNull().default(true),
     notesUpdatedAt: timestamp('notes_updated_at', { withTimezone: true }),
     imageUrl: text('image_url'),
+
+    // ----- Phase 37 D-01..D-08: collector provenance fields (all nullable; CAT-18) -----
+    serial: text('serial'),
+    yearOfAcquisition: integer('year_of_acquisition'),
+    condition: conditionGradeEnum('condition'),
+    boxPapers: boxPapersStatusEnum('box_papers'),
+    serviceHistory: text('service_history'),
+    paidCurrency: currencyCodeEnum('paid_currency'),
+    purchaseDate: date('purchase_date'),
 
     // Phase 17 + Phase 36: catalog FK — prod becomes NOT NULL after Phase 36 CAT-14 flip
     // (supabase/migrations/20260511000000_phase36_layer_c_variants.sql ships SET NOT NULL).
@@ -484,6 +509,53 @@ export const watchVariants = pgTable(
   (table) => [
     index('watch_variants_catalog_id_idx').on(table.catalogId),
     unique('watch_variants_catalog_slug_unique').on(table.catalogId, table.slug),
+  ],
+)
+
+// ============================================================
+// Phase 37 — Layer D (CAT-18, D-09): divestments table
+// Records every sale with timestamp / price / replacement / notes —
+// replaces watches.status='sold' single-bit signal with a structured
+// sold record the future recommender (SEED-002) consumes for
+// temporal decay weighting.
+// RLS = PER-USER (auth.uid() = user_id) — see Plan 02 Supabase migration
+// for ENABLE ROW LEVEL SECURITY + 4 policies + GRANT.
+// Drizzle-side carries column shapes only; no RLS, no GRANT, no triggers.
+// ============================================================
+export const divestments = pgTable(
+  'divestments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // D-09 + Phase 34 D-02: catalog_id NOT NULL FK ON DELETE RESTRICT.
+    catalogId: uuid('catalog_id')
+      .notNull()
+      .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    // D-09 + Phase 17 D-04: user_id NOT NULL FK ON DELETE CASCADE.
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // D-09: divested_at defaults to now() so Server Action does not pass it.
+    divestedAt: timestamp('divested_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    // D-09: replaced_by_catalog_id nullable FK ON DELETE SET NULL (soft hint).
+    replacedByCatalogId: uuid('replaced_by_catalog_id')
+      .references(() => watchesCatalog.id, { onDelete: 'set null' }),
+    // D-09: sale_price + sale_currency are nullable (sell-dialog deferred to v5.x).
+    salePrice: real('sale_price'),
+    saleCurrency: currencyCodeEnum('sale_currency'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('divestments_user_id_idx').on(table.userId),
+    index('divestments_catalog_id_idx').on(table.catalogId),
+    // D-09: composite index for "recent divestments per user" recommender query.
+    // Note: drizzle .on() does not express DESC; the Supabase migration creates
+    // the index with DESC explicitly. Drizzle uses ASC default — Postgres still
+    // uses the index for DESC queries (B-tree ordered both directions).
+    index('divestments_user_divested_at_idx').on(table.userId, table.divestedAt),
   ],
 )
 
