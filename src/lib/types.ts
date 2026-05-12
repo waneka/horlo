@@ -12,6 +12,21 @@ export type StrapType = 'bracelet' | 'leather' | 'rubber' | 'nato' | 'other'
 
 export type CrystalType = 'sapphire' | 'mineral' | 'acrylic' | 'hesalite' | 'hardlex'
 
+// Phase 37 D-02: collector-grade condition pgEnum mirror (CAT-18)
+export type ConditionGrade =
+  | 'mint' | 'near_mint' | 'excellent' | 'good' | 'fair' | 'poor'
+
+// Phase 37 D-03 / D-04: currency code pgEnum mirror (CAT-18)
+// Covers 99%+ of watch-collecting transactions per D-03 rationale.
+export type CurrencyCode =
+  | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CHF'
+  | 'AUD' | 'CAD' | 'HKD' | 'SGD' | 'CNY'
+
+// Phase 37 D-05: box/papers documentation pgEnum mirror (CAT-18)
+// ROADMAP-locked 4 values verbatim.
+export type BoxPapersStatus =
+  | 'none' | 'box_only' | 'papers_only' | 'full_set'
+
 export type OverlapTolerance = 'low' | 'medium' | 'high'
 
 export type CollectionGoal =
@@ -64,6 +79,15 @@ export interface Watch {
   // Used by Phase 20 composer to look up catalog taste attributes for the verdict bundle.
   catalogId?: string | null
 
+  // Phase 37 D-01..D-08 — collector provenance fields (all nullable; CAT-18)
+  serial?: string
+  yearOfAcquisition?: number
+  condition?: ConditionGrade
+  boxPapers?: BoxPapersStatus
+  serviceHistory?: string
+  paidCurrency?: CurrencyCode
+  purchaseDate?: string   // ISO date string 'YYYY-MM-DD' — matches <input type="date"> + Postgres date type
+
   // Phase 27 — sort_order for wishlist drag-reorder (D-01).
   // Optional in domain type; DB-side default 0 ensures it's always present
   // post-migration. Used by getWatchesByUser ORDER BY and the WishlistTabContent
@@ -74,6 +98,28 @@ export interface Watch {
 /** Watch with computed wear data from wear_events table */
 export interface WatchWithWear extends Watch {
   lastWornDate?: string  // computed from most recent wear_events row
+}
+
+/**
+ * Phase 37 D-09 — divestments row (CAT-18).
+ * Records the user's sale of a watch with timestamp / price / replacement / notes.
+ * Future recommender (SEED-002) reads `divestedAt` for temporal decay; v6.0
+ * market-value engine reads `salePrice` + `saleCurrency`.
+ * Linked to watches_catalog (not watches) per D-13 — cross-collector queries
+ * are intentional ("how many people sold this Sub?"). 1:1 with the sold watch
+ * is a soft convention only — no UNIQUE constraint in the DB.
+ */
+export interface Divestment {
+  id: string
+  catalogId: string
+  userId: string
+  divestedAt: string                       // ISO timestamp string from Postgres timestamptz
+  replacedByCatalogId?: string | null
+  salePrice?: number | null
+  saleCurrency?: CurrencyCode | null
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UserPreferences {
