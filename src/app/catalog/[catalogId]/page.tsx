@@ -11,10 +11,11 @@ import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
+import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
 import { CatalogPageActions, type CatalogActionsSpec } from '@/components/watch/CatalogPageActions'
 import { db } from '@/db'
 import { watches as watchesTable } from '@/db/schema'
-import type { Watch, MovementType, CrystalType } from '@/lib/types'
+import type { Watch, MovementType, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
 interface CatalogPageProps {
@@ -64,6 +65,22 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
 
   if (!catalogEntry) notFound()
 
+  // Phase 39b NSV-20 — adapt the top-level CatalogEntry taste fields to a
+  // CatalogTasteAttributes literal so ReferenceIdentityCard (which consumes the
+  // canonical Watch.catalogTaste shape) renders identically on both surfaces.
+  // Pitfall 9: catalog taste fields live at the top level on CatalogEntry, not
+  // nested under a `catalogTaste` key — explicit field-by-field projection.
+  const catalogTaste: CatalogTasteAttributes | null = {
+    formality: catalogEntry.formality,
+    sportiness: catalogEntry.sportiness,
+    heritageScore: catalogEntry.heritageScore,
+    primaryArchetype: catalogEntry.primaryArchetype,
+    eraSignal: catalogEntry.eraSignal,
+    designMotifs: catalogEntry.designMotifs,
+    confidence: catalogEntry.confidence,
+    extractedFromPhoto: catalogEntry.extractedFromPhoto,
+  }
+
   let verdict: VerdictBundle | null = null
   let actionsSpec: CatalogActionsSpec | null = null
 
@@ -108,9 +125,31 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
       designTraits: catalogEntry.designTraits ?? [],
       imageUrl: catalogEntry.imageUrl,
     }
+  } else {
+    // Phase 39b NSV-20 — fresh-account viewer (collection.length === 0). Verdict
+    // stays null (no collection to score against), but actionsSpec is built so
+    // the 3-CTA block (Add to Wishlist / Add to Collection / Skip) still renders.
+    // Above the CTAs, ReferenceIdentityCard or the fallback caption renders
+    // (D-39b-04 — identical to /watch/[id]). This supersedes the prior Phase 20
+    // "no card, no CTAs" suppression.
+    actionsSpec = {
+      brand: catalogEntry.brand,
+      model: catalogEntry.model,
+      reference: catalogEntry.reference,
+      movement: catalogEntry.movementType,
+      caseSizeMm: catalogEntry.caseSizeMm,
+      lugToLugMm: catalogEntry.lugToLugMm,
+      waterResistanceM: catalogEntry.waterResistanceM,
+      strapType: null,
+      crystalType: catalogEntry.crystalType as CrystalType | null,
+      dialColor: catalogEntry.dialColor,
+      isChronometer: catalogEntry.isChronometer,
+      complications: catalogEntry.complications ?? [],
+      styleTags: catalogEntry.styleTags ?? [],
+      designTraits: catalogEntry.designTraits ?? [],
+      imageUrl: catalogEntry.imageUrl,
+    }
   }
-  // else: collection.length === 0 → verdict stays null AND actionsSpec stays
-  // null → no card, no CTAs (D-05 + D-07 empty-collection rule)
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
@@ -144,10 +183,34 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
 
       {verdict && <CollectionFitCard verdict={verdict} />}
 
-      {/* Phase 20.1 D-05 — 3 CTAs only when in cross-user framing with non-empty
-          collection. actionsSpec is null in self-via-cross-user (D-05 keeps
-          "You own this") AND in empty-collection case (no actionable verdict
-          context). */}
+      {/* Phase 39b NSV-20 — Fresh-account viewer (collection.length === 0):
+          ReferenceIdentityCard OR fallback caption. D-39b-04: identical
+          conditional shape to /watch/[id]/page.tsx. D-39b-03 confidence gate
+          mirrored explicitly in caller; ReferenceIdentityCard also gates
+          internally as defense-in-depth. */}
+      {collection.length === 0 &&
+        catalogTaste &&
+        catalogTaste.confidence !== null &&
+        catalogTaste.confidence >= 0.5 && (
+          <ReferenceIdentityCard taste={catalogTaste} />
+        )}
+      {collection.length === 0 &&
+        (!catalogTaste ||
+          catalogTaste.confidence === null ||
+          catalogTaste.confidence < 0.5) && (
+          <p className="text-sm text-muted-foreground">
+            Add a few watches to see how this one fits your collection.
+          </p>
+        )}
+
+      {/* Plan 39b-04 mounts OtherOwnersRoster here */}
+
+      {/* Plan 39b-05 mounts SameFamilyRail + LineageRail here */}
+
+      {/* Phase 20.1 D-05 + Phase 39b NSV-20 — 3-CTA block. Now also rendered in
+          the fresh-account branch (collection.length === 0) so NSV-20 closes
+          the empty-collection dead-end. actionsSpec is null only in the
+          self-via-cross-user case (D-05 keeps "You own this"). */}
       {actionsSpec && (
         <CatalogPageActions
           catalogId={catalogId}
