@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: completed
-stopped_at: Phase 39b planned (5 plans / 4 waves; checker PASSED after 1 revision)
-last_updated: "2026-05-13T08:10:00.000Z"
+stopped_at: Phase 39b Wave 0 COMPLETE (39b-01 closed at 392fd90; ready to execute Wave 1)
+last_updated: "2026-05-13T17:45:00.000Z"
 last_activity: 2026-05-13
 progress:
   total_phases: 13
@@ -25,16 +25,19 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 39b — Audit-Driven Discovery Polish — Heavier UX — READY TO EXECUTE.
-Plan-phase ran via /gsd-plan-phase 39b --chain. 5 plans created across 4 waves:
-- Wave 0 (BLOCKING, autonomous:false): 39b-01 operator-curation seed (~20 family_id + ~15 lineage edges to prod DB) + getLineageForReference imageUrl + WearEventLite.note + getWatchesByUser numeric-cast verification
-- Wave 1 (parallel; depends_on 39b-01): 39b-02 ReferenceIdentityCard (NSV-06/20) + 39b-03 NSV-14 sub-cluster (LockedTabCard + WornCalendar + StatsTabContent)
-- Wave 2 (depends_on 39b-02): 39b-04 NSV-18 catalog other-owners roster (two-layer privacy)
-- Wave 3 (depends_on 39b-01/02/04): 39b-05 NSV-02/16 lineage rails (Same family + Lineage on /watch/{id} + /catalog/{id}); closes intentional RED from 39b-01 Task 2
+Phase: 39b — Audit-Driven Discovery Polish — Heavier UX — Wave 0 COMPLETE; ready to execute Wave 1.
 
-Session history: research → pattern-map → planner (5 plans) → checker found 2 blockers + 3 warnings → planner revised → re-check PASSED.
-Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-01-PLAN.md
-Status: Phase 39b planned; auto-advancing to /gsd-execute-phase 39b (--chain).
+**Wave 0 (BLOCKING, autonomous:false): 39b-01 CLOSED at 392fd90** (this finalization). Tasks 1-6 shipped in prior executor session (commits 12e4fc1 → c2d2821). Task 7 closed via **Option B scope expansion**: original plan named ~20 family_id + ~15 lineage edges via `scripts/seed-lineage.ts`; operator queried prod DB and found 0 catalog rows / 0 families / 0 edges (no rows to assign families to). Operator chose Option B — agent authored `scripts/watch-seed-data.md` (100-watch manifest) + `scripts/build-seed-sql.mjs` (parser) + generated `scripts/seed-bootstrap-2026-05-13.sql` and applied to prod via `supabase db query --linked`. Prod state delta: brands 6→16, families 0→32, catalog 0→100 (all with family_id), edges 0→52. Idempotency proven by second prod run (`INSERT 0 0` across all 4 passes). `scripts/seed-lineage.ts` ships intact with empty TODO arrays as forward-compatible infrastructure for future iterative curation.
+
+**Next: Wave 1** (parallel — depends_on 39b-01):
+- 39b-02 ReferenceIdentityCard (NSV-06/20)
+- 39b-03 NSV-14 sub-cluster (LockedTabCard + WornCalendar + StatsTabContent)
+
+**Wave 2** (depends_on 39b-02): 39b-04 NSV-18 catalog other-owners roster (two-layer privacy)
+**Wave 3** (depends_on 39b-01/02/04): 39b-05 NSV-02/16 lineage rails (Same family + Lineage on /watch/{id} + /catalog/{id}); closes intentional RED from 39b-01 Task 2
+
+Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-02-PLAN.md (Wave 1)
+Status: 39b-01 closed; Wave 1 ready to execute via /gsd-execute-phase 39b (--chain).
 Last activity: 2026-05-13
 
 Progress: [███████░░░] 31%
@@ -96,6 +99,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - **Phase 36 Plan 03 (2026-05-11):** Drizzle migration twin `drizzle/0009_phase36_layer_c_variants.sql` (64 lines) + `drizzle/meta/_journal.json` idx=9 entry shipped in a single commit (`04fdfe3`) with zero deviations. All 13 plan ACs verified by automated grep + jq + node JSON.parse. Mirrors Phase 35's `drizzle/0008_phase35_layer_b.sql` idempotent pattern verbatim (CREATE TABLE IF NOT EXISTS + ADD COLUMN IF NOT EXISTS + DO $$ IF NOT EXISTS pg_constraint FK guards + CREATE INDEX IF NOT EXISTS). Journal `when` field captured at execution time via `node -e "process.stdout.write(String(Date.now()))"` = 1778534674854 (plain integer literal, NOT a JS expression). Phase 34 Plan 01 lesson (journal-in-same-commit-as-SQL-file) honored — without idx=9, `drizzle-kit migrate` would silently skip 0009 in prod. Wave 1 of Phase 36 now closed; Wave 2 Plan 04 (BLOCKING local schema push + integration test) next.
 - **Phase 36 Plan 04 (2026-05-11):** Local Docker schema push + 13-block integration test shipped in commit `2347cd9` (189 lines in `tests/integration/phase36-rls.test.ts`). Phase 36 supabase migration applied via `docker exec -i supabase_db_horlo psql -U postgres -d postgres < supabase/migrations/20260511000000_phase36_layer_c_variants.sql` — DO $$ pre-flight passed (0 NULL catalog_id rows locally), final COMMIT clean. All 13 it() blocks green covering V-01..V-11 + an extra V-09 INSERT NULL rejection. V-12 parity grep returns 0 matches; tsc baseline preserved at 27. **Rule 1 fix:** drizzle-orm wraps postgres-js errors — SQLSTATE code lives on `.cause.code`, NOT top-level — V-09 + V-01 INSERT rejection assertions updated to `.toMatchObject({ cause: { code: '23502' } })` / `{ code: '23503' }`. Pattern now canonical for any future plan asserting on rejected `db.execute()` promises. **Rule 3 deviation:** drizzle-kit push skipped (interactive TTY prompt on snapshot drift — snapshots stop at 0006 while live DB has 0007/0008/0009 via supabase channel; `--force` and `script -q` did not bypass). The push is informational; the live DB shape ALREADY matches `src/db/schema.ts` because the supabase migration creates the exact same shape — types match by construction, verified by Task 1's 5/5 direct-DB acceptance criteria. **Must-have skipped:** "Drizzle types match prod constraint: `InferSelectModel<typeof watches>.catalogId` is `string`" — inherited from Plan 01's Rule 4 deferral to Phase 38 (18-error DAL cascade); cross-referenced in `36-04-SUMMARY.md` § "Plan Must-Have Not Met" and `deferred-items.md` Item 1. Wave 2 of Phase 36 now closed; Wave 3 Plan 05 (autonomous:false prod-deploy gate) next.
 - **Phase 36 Plan 04 lesson — vitest env loading:** Project `vitest.config.ts` does not auto-load `.env.local`; the localhost-guard `maybe = process.env.DATABASE_URL && ... ? describe : describe.skip` silently skips ALL tests when env vars are absent (no output indication of "you forgot env"). Required workaround: `set -a; source .env.local; set +a; npx vitest run …`. Future db-touching integration test plans should embed this in the verify command or add a setup file that calls `dotenv.config({ path: '.env.local' })`.
+- **Phase 39b Plan 01 (2026-05-13):** Wave 0 closed via **Option B scope expansion** at commit `392fd90`. Original plan named `scripts/seed-lineage.ts` + `npm run db:seed-lineage` to commit ~20 family_id seeds + ~15 lineage edges to existing catalog rows; operator queried prod and found 0 catalog rows / 0 families / 0 edges (catalog had never been seeded — prior phases shipped schema only). Operator chose Option B: bootstrap catalog + brands + families + edges inline rather than defer to a separate phase. Path diverged from plan command: agent authored `scripts/watch-seed-data.md` (100-watch TS manifest) + `scripts/build-seed-sql.mjs` (parser) → generated `scripts/seed-bootstrap-2026-05-13.sql` → applied via `supabase db query --linked`. Prod delta: brands 6→16, families 0→32, catalog 0→100 (all with family_id), edges 0→52 (5x SC#5 target). Idempotency proven by second prod run (`INSERT 0 0` across all 4 passes). `scripts/seed-lineage.ts` ships intact with empty TODO arrays as forward-compatible infrastructure for future iterative curation. **Pattern established:** Bootstrap (one-shot SQL transaction) ≠ Curation (iterative seed-lineage.ts) — choose path by scale. When prod is empty, bootstrap path is correct; ongoing additions go through seed-lineage.ts once UUIDs are known.
 - **Phase 36 Plan 05 Task 1 (2026-05-11):** Phase 36 deploy runbook section (§36.0..§36.7) appended to `docs/deploy-db-setup.md` at commit `9eec274` — +196 lines, append-only (Phase 34/35 sections untouched). All 9 structural acceptance criteria green via grep; pg_depend JOIN form (memory rule 4a) codified inline with Phase 35 T-35-PGDEPEND-ATTNUM footgun cross-reference; DEBT-12 SKIP decision codified in §36.3 (drizzle-kit migrate against prod NOT run for Phase 36 — prod __drizzle_migrations journal stops at idx=0 so the idx=1 attempt would fail on existing relations); D-07 hard-fail recovery flow + Phase-36-only-window backout caveat shipped. Plan 05 Task 2 (prod-push, checkpoint:human-action) BLOCKED on operator — operator runs §36.0 pg_depend pre-check → §36.1 safety backfill → §36.2 zero-NULL verify → §36.3 `supabase db push --linked` → §36.4 smoke-test SELECTs → §36.6 UI smoke walk against prod using operator-supplied pooler URL, then types `approved` to close Phase 36. SUMMARY at `36-05-SUMMARY.md` is in `status: pending-checkpoint` state — to be amended post-hoc with the prod-deploy outcome.
 
 ### Blockers/Concerns
@@ -111,7 +115,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-13T07:45:37.111Z
-Stopped at: Phase 39b UI-SPEC approved (6/6 dimensions, 2 revisions)
-Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-05-PLAN.md (Task 2 checkpoint pending)
-Next action: operator runs Plan 05 Task 2 commands against prod (see `## CHECKPOINT REACHED` block surfaced by the executor); on `approved`, executor amends 36-05-SUMMARY.md with prod-deploy outcome (pre/post baseline counts, is_nullable=NO, has_table_privilege=t, UI walk green/red) and updates STATE.md + ROADMAP.md to close Phase 36
+Last session: 2026-05-13T17:45:00.000Z
+Stopped at: Phase 39b Wave 0 COMPLETE (39b-01 closed at 392fd90 + finalization commit; Option B scope expansion bootstrapped prod catalog with 100 refs + 32 families + 52 lineage edges)
+Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-02-PLAN.md (Wave 1 entry)
+Next action: /gsd-execute-phase 39b --chain to execute Wave 1 (39b-02 + 39b-03 in parallel)

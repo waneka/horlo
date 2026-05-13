@@ -377,7 +377,7 @@ Plans:
 Plans:
 
 **Wave 0** *(BLOCKING — operator-curation seed + interface scaffolds; autonomous: false)*
-- [ ] 39b-01-PLAN.md — Operator seed script + getLineageForReference imageUrl extension + WearEventLite.note extension + getWatchesByUser numeric-cast verification + prod-DB curation checkpoint
+- [x] 39b-01-PLAN.md — Operator seed script + getLineageForReference imageUrl extension + WearEventLite.note extension + getWatchesByUser numeric-cast verification + prod-DB bootstrap (Option B scope expansion: 100 catalog refs + 32 families + 52 lineage edges shipped via `scripts/seed-bootstrap-2026-05-13.sql` at 392fd90; idempotency proven)
 
 **Wave 1** *(parallel — disjoint files_modified; depends_on 39b-01)*
 - [ ] 39b-02-PLAN.md — NSV-06 + NSV-20 / DISC-AUDIT-70/81/130/131: ReferenceIdentityCard new component + static guard + component tests + page mounts on /watch/{id} G-6 branch and /catalog/{id} G-4 branch

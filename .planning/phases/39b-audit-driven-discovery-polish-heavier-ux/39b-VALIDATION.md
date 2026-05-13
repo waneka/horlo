@@ -3,7 +3,7 @@ phase: 39b
 slug: audit-driven-discovery-polish-heavier-ux
 status: planned
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-05-13
 updated_at: 2026-05-13
 ---
@@ -48,7 +48,7 @@ updated_at: 2026-05-13
 | 01-T4 | 39b-01 | 0 | DISC-11 | — | getWatchesByUser numeric-cast verified (A3) | grep | `grep -E "formality:.*Number\(\|sportiness:.*Number\(\|heritageScore:.*Number\(\|confidence:.*Number\(" src/data/watches.ts` ≥ 4 lines | yes | ✅ green (A3 VERIFIED — no patch needed; 4 casts present at watches.ts:154-160) |
 | 01-T5 | 39b-01 | 0 | DISC-11 | T-39b-02 | Idempotent UPDATE WHERE family_id IS NULL + INSERT ON CONFLICT DO NOTHING | grep + tsc | `grep -c "ON CONFLICT (predecessor_catalog_id, successor_catalog_id, relationship_type)" scripts/seed-lineage.ts` ≥ 1 | yes | ✅ green (25d03fe; ON CONFLICT count=1, DO NOTHING count=3, summary print=3, T-34-04 ref present) |
 | 01-T6 | 39b-01 | 0 | DISC-11 | — | npm script wires tsx + .env.local | grep + JSON parse | `grep -c '"db:seed-lineage":' package.json` = 1; JSON parses | yes | ✅ green (c2d2821; smoke test prints `family_patched=0 family_skipped=0 edges_inserted=0 edges_skipped=0 elapsedMs=1`) |
-| 01-T7 | 39b-01 | 0 | DISC-11 | T-39b-02 | Operator commits ~20 family_id + ~15 lineage edges; idempotency proven by second-run zero-counts | manual | Operator UAT — second prod run prints `family_patched=0 edges_inserted=0` | n/a | ⏸ awaiting operator (checkpoint:human-action) |
+| 01-T7 | 39b-01 | 0 | DISC-11 | T-39b-02 | Operator commits family_id seeds + lineage edges; idempotency proven by second-run zero-counts | manual | Operator UAT — `supabase db query --linked < scripts/seed-bootstrap-2026-05-13.sql` second run prints `INSERT 0 0` for every INSERT across all 4 passes | n/a | ✅ green (392fd90; Option B scope expansion — 100 catalog + 32 families + 52 edges; idempotency proven by second prod run returning `INSERT 0 0` across all 4 passes) |
 | 02-T1 | 39b-02 | 1 | DISC-11 | — | Static guard for ReferenceIdentityCard (vacuous-pass pre-file) | static | `npx vitest run tests/static/ReferenceIdentityCard.no-engine.test.ts` exit 0 | yes | ⬜ pending |
 | 02-T2 | 39b-02 | 1 | DISC-11 (NSV-06/20) | bundle-leak | Pure renderer; zero engine imports; no 'use client' | static + grep | Same guard non-vacuously green + grep counts 0 for similarity/composer/server-only/'use client' | yes | ⬜ pending |
 | 02-T3 | 39b-02 | 1 | DISC-11 (NSV-06/20) | — | Confidence gate + suppression + headline + scale omission | unit | `npx vitest run tests/components/insights/ReferenceIdentityCard.test.tsx` (6 tests green) | yes | ⬜ pending |
@@ -83,8 +83,8 @@ New test files (all created in Wave 0 — before Wave 1 UI plans depend on them)
 - [ ] `tests/data/getCollectorsForCatalog.test.ts` (NEW) — 6 tests covering two-layer privacy + self-exclusion + sold filter + dedup — Plan 39b-04 Task 1
 
 Wave 0 also ships:
-- [ ] `scripts/seed-lineage.ts` — idempotent operator script — Plan 39b-01 Task 5
-- [ ] Operator commits ~20 family_id seeds + ~15 lineage edges to prod DB — Plan 39b-01 Task 7 (BLOCKING checkpoint; D-39b-19; autonomous: false)
+- [x] `scripts/seed-lineage.ts` — idempotent operator script — Plan 39b-01 Task 5 (commit 25d03fe; ships with empty TODO arrays as forward-compatible infrastructure for future iterative seeding)
+- [x] Operator commits family_id seeds + lineage edges to prod DB — Plan 39b-01 Task 7 (BLOCKING checkpoint; D-39b-19; autonomous: false). **Option B scope expansion** (commit 392fd90) — agent authored `scripts/watch-seed-data.md` + `scripts/build-seed-sql.mjs` + generated `scripts/seed-bootstrap-2026-05-13.sql` applied via `supabase db query --linked`. Prod state delta: brands 6→16, families 0→32, catalog 0→100 (all with family_id), edges 0→52. Idempotency proven by second prod run (`INSERT 0 0` across all 4 passes).
 
 ---
 
@@ -107,6 +107,6 @@ Wave 0 also ships:
 - [x] No watch-mode flags
 - [x] Feedback latency < 20s
 - [x] `nyquist_compliant: true` set in frontmatter
-- [ ] Wave 0 operator smoke (`scripts/seed-lineage.ts` idempotent second-run) verified
+- [x] Wave 0 operator smoke (idempotent second-run) verified — Option B bootstrap via `supabase db query --linked` returns `INSERT 0 0` for every INSERT across all 4 passes on the second run
 
-**Approval:** planner-approved 2026-05-13; awaiting Wave 0 execution
+**Approval:** planner-approved 2026-05-13; Wave 0 executed 2026-05-13 (Tasks 1-6 prior session; Task 7 Option B scope expansion at 392fd90)
