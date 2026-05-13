@@ -23,6 +23,7 @@ import { LockedTabCard } from '@/components/profile/LockedTabCard'
 import { CommonGroundTabContent } from '@/components/profile/CommonGroundTabContent'
 import { InsightsTabContent } from '@/components/profile/InsightsTabContent'
 import { resolveCommonGround } from '../common-ground-gate'
+import { isFollowing } from '@/data/follows'
 import {
   styleDistribution,
   roleDistribution,
@@ -67,6 +68,15 @@ export default async function ProfileTabPage({
   const settings = await getProfileSettings(profile.id)
   const displayName = profile.displayName ?? null
   const ownerDisplayLabel = profile.displayName ?? `@${profile.username}`
+
+  // Phase 39b D-39b-12 — LockedTabCard FollowButton/sign-in CTA prep.
+  // currentPath is a same-origin pathname built from server-side route params
+  // (T-39b-03 mitigation — never an absolute URL). initialIsFollowing is
+  // computed deterministically using the verified isFollowing helper at
+  // src/data/follows.ts:54.
+  const currentPath = `/u/${username}/${tab}`
+  const initialIsFollowing =
+    viewerId !== null ? await isFollowing(viewerId, profile.id) : false
 
   // Phase 25 D-09: server-side env-presence check. Only the resolved Boolean
   // crosses the server/client boundary — the API key value itself never does.
@@ -149,6 +159,10 @@ export default async function ProfileTabPage({
         tab="collection"
         displayName={displayName}
         username={profile.username}
+        viewerId={viewerId}
+        targetUserId={profile.id}
+        initialIsFollowing={initialIsFollowing}
+        currentPath={currentPath}
       />
     )
   }
@@ -158,6 +172,10 @@ export default async function ProfileTabPage({
         tab="wishlist"
         displayName={displayName}
         username={profile.username}
+        viewerId={viewerId}
+        targetUserId={profile.id}
+        initialIsFollowing={initialIsFollowing}
+        currentPath={currentPath}
       />
     )
   }
@@ -177,6 +195,10 @@ export default async function ProfileTabPage({
         tab="notes"
         displayName={displayName}
         username={profile.username}
+        viewerId={viewerId}
+        targetUserId={profile.id}
+        initialIsFollowing={initialIsFollowing}
+        currentPath={currentPath}
       />
     )
   }
@@ -276,6 +298,10 @@ export default async function ProfileTabPage({
         tab="stats"
         displayName={displayName}
         username={profile.username}
+        viewerId={viewerId}
+        targetUserId={profile.id}
+        initialIsFollowing={initialIsFollowing}
+        currentPath={currentPath}
       />
     )
   }
