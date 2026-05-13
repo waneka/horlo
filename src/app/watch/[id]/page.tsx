@@ -10,6 +10,9 @@ import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import type { VerdictBundle } from '@/lib/verdict/types'
 import { WatchDetail } from '@/components/watch/WatchDetail'
 import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
+import { SameFamilyRail } from '@/components/insights/SameFamilyRail'
+import { LineageRail } from '@/components/insights/LineageRail'
+import { getSameFamilyForCatalog, getLineageForReference } from '@/data/hierarchy'
 import { Button } from '@/components/ui/button'
 
 interface WatchPageProps {
@@ -56,6 +59,15 @@ export default async function WatchPage({ params }: WatchPageProps) {
     })
   }
 
+  // Phase 39b NSV-02 + NSV-16 — lineage rail data. watch.catalogId is nullable
+  // per Phase 36 deferred-items.md Item 1 (CAT-14 .notNull() Drizzle tightening
+  // deferred to Phase 38). Falsy-fallback to [] so rails self-hide via internal
+  // rows.length === 0 guard when catalogId is missing. Both rails render as
+  // Server-Component siblings of <WatchDetail/> below (B1 invariant — RSCs
+  // CANNOT be imported into the 'use client' WatchDetail island).
+  const sameFamily = watch.catalogId ? await getSameFamilyForCatalog(watch.catalogId) : []
+  const lineage = watch.catalogId ? await getLineageForReference(watch.catalogId) : []
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
       <WatchDetail
@@ -88,7 +100,15 @@ export default async function WatchPage({ params }: WatchPageProps) {
           </p>
         )}
 
-      {/* Plan 39b-05 mounts SameFamilyRail + LineageRail here */}
+      {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails. Server-
+          Component siblings of <WatchDetail/> per the B1 sibling-composition
+          pattern (WatchDetail is 'use client' and CANNOT import RSCs). Render
+          unconditionally on viewer state; each rail self-hides via internal
+          rows.length === 0 guard (D-39b-07). UI-SPEC §Render Order: position
+          between the verdict / ReferenceIdentityCard / caption block and the
+          3-CTA block. */}
+      <SameFamilyRail rows={sameFamily} />
+      <LineageRail rows={lineage} />
 
       {/* Phase 39b NSV-06 — Fresh-account 3-CTA block (Add to Wishlist /
           Add to Collection / Skip). UI-SPEC § Render Order line 266 — first
