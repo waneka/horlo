@@ -70,7 +70,7 @@ export function ReferenceIdentityCard({ taste }: ReferenceIdentityCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {hasHeadline && (
-          <p className="text-base font-medium text-foreground">
+          <p className="text-base font-semibold text-foreground">
             {eraLabel && <span className="truncate">{eraLabel}</span>}
             {eraLabel && archetypeLabel && ' · '}
             {archetypeLabel && <span className="truncate">{archetypeLabel}</span>}
