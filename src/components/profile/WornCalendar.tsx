@@ -17,6 +17,7 @@ interface WearEventLite {
   id: string
   watchId: string
   wornDate: string // YYYY-MM-DD
+  note: string | null // Phase 39b — parent (WornTabContent) passes from getAllWearEventsByUser
 }
 
 interface WornCalendarProps {
