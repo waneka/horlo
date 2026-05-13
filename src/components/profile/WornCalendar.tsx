@@ -246,7 +246,7 @@ export function WornCalendar({
       </div>
       {selectedDate !== null && (
         <div className="mt-4 border-t pt-4">
-          <p className="mb-3 text-sm font-medium text-foreground">
+          <p className="mb-3 text-sm font-semibold text-foreground">
             {formatDateLabel(selectedDate)}
           </p>
           {selectedEvents.length === 0 ? (
@@ -272,7 +272,7 @@ export function WornCalendar({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="truncate text-sm font-semibold text-foreground">
                         {watch?.brand} {watch?.model}
                       </p>
                       {event.note && (
