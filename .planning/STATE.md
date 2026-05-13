@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: completed
-stopped_at: Phase 39b context gathered — 12 refinement decisions on top of 39-CONTEXT.md carry-forward
-last_updated: "2026-05-13T07:26:23.622Z"
+stopped_at: Phase 39b UI-SPEC approved (6/6 dimensions, 2 revisions)
+last_updated: "2026-05-13T07:45:37.117Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 13
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 Phase: 39 — SHIPPED 2026-05-12 via /gsd-plan-phase 39 --chain → auto-advanced execute-phase. 3 plans / 2 waves all green. Verifier PHASE_PASSED 5/5.
 Plan: Wave 0 (Plan 39-01 test scaffold) + Wave 1 (Plan 39-02 NSV-12 privacy split + fallback Card + Plan 39-03 NSV-01+15 Link wraps + NSV-08 already-shipped closure).
 Next: Phase 39b (/gsd-discuss-phase 39b — heavier-UX sibling phase) OR /gsd-phase-progress to advance.
-Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-CONTEXT.md
+Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-UI-SPEC.md
 Status: Phase 39 complete; auto-chain finished.
 Last activity: 2026-05-12
 
@@ -106,7 +106,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-13T07:26:23.617Z
-Stopped at: Phase 39b context gathered — 12 refinement decisions on top of 39-CONTEXT.md carry-forward
+Last session: 2026-05-13T07:45:37.111Z
+Stopped at: Phase 39b UI-SPEC approved (6/6 dimensions, 2 revisions)
 Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-05-PLAN.md (Task 2 checkpoint pending)
 Next action: operator runs Plan 05 Task 2 commands against prod (see `## CHECKPOINT REACHED` block surfaced by the executor); on `approved`, executor amends 36-05-SUMMARY.md with prod-deploy outcome (pre/post baseline counts, is_nullable=NO, has_table_privilege=t, UI walk green/red) and updates STATE.md + ROADMAP.md to close Phase 36
