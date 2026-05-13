@@ -384,7 +384,7 @@ Plans:
 - [x] 39b-03-PLAN.md — NSV-14 / DISC-AUDIT-97/102/111/122/123/124: 3 sub-cells in 1 plan (LockedTabCard FollowButton + WornCalendar wear-detail panel + StatsTabContent Link wraps; T-39b-03 open-redirect mitigation via encodeURIComponent on producer) — shipped at 049b3f4 (6 tasks + 1 Rule 1 auto-fix font-medium→font-semibold; W1 fix initialSelectedDate test-only prop + W2 fix deterministic isFollowing import both shipped)
 
 **Wave 2** *(depends_on 39b-02 — shares /catalog/[catalogId]/page.tsx mount)*
-- [ ] 39b-04-PLAN.md — NSV-18 / DISC-AUDIT-70/72: getCollectorsForCatalog DAL with two-layer privacy + OtherOwnersRoster component + page mount on /catalog/{id} (T-39b-01 + T-39b-04 mitigation; integration test required)
+- [x] 39b-04-PLAN.md — NSV-18 / DISC-AUDIT-70/72: getCollectorsForCatalog DAL with two-layer privacy + OtherOwnersRoster component + page mount on /catalog/{id} (T-39b-01 + T-39b-04 mitigation; integration test required) — shipped at bc557bb (4 tasks: integration test RED→GREEN + DAL + Server Component + page mount; 1 Rule 1 auto-fix in tests/app/catalog-page.test.ts adding vi.mock('@/data/discovery'); Pitfall 1 A4 substitution AvatarDisplay size=36→40; Q1 verdict A1 SHIPPED — sold-status excluded; net regression delta 0)
 
 **Wave 3** *(depends_on 39b-01 + 39b-02 + 39b-04 — shares both pages + hierarchy.ts)*
 - [ ] 39b-05-PLAN.md — NSV-02 + NSV-16 / DISC-AUDIT-130: getSameFamilyForCatalog DAL (live COUNT — Q2 verdict) + SameFamilyRail + LineageRail server components + page mounts on /watch/{id} and /catalog/{id} (closes intentional RED state from 39b-01 Task 2)
