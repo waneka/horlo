@@ -115,13 +115,20 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 - ~~Phase 38 CAT-13 framing ("tech debt" vs "discovery improvement") shaped by Phase 33b Q4 verdict — affects how Phase 38 plans frame their motivation, not Phase 38's hard scope~~ — RESOLVED 2026-05-09 by Phase 33b Q4 verdict (discovery improvement framing)
 - Phase 33 click-path table (`33-DISCOVERY-AUDIT.md`) is IMMUTABLE for Phase 33b consumption — Phase 33b reads but does not modify it; Phase 33b produced a separate `33b-DISCOVERY-NORTH-STAR-AUDIT.md` artifact (T-33b-01 mitigation green throughout Phase 33b)
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260513-hvu | Hotfix: /search Watches tab returns empty results for seeded catalog rows — drop score-zero gate from `searchCatalogWatches` WHERE; popularity preserved in ORDER BY | 2026-05-13 | a2594a7 | [260513-hvu-hotfix-search-watches-tab-returns-empty-](./quick/260513-hvu-hotfix-search-watches-tab-returns-empty-/) |
+
 ### Pending Todos
 
 None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-13T19:00:08.000Z
-Stopped at: Phase 39b ALL WAVES COMPLETE (5/5 plans shipped) — 39b-05 closed at b681506 (NSV-02 + NSV-16 inline lineage rails: getSameFamilyForCatalog DAL with live COUNT Q2 verdict + SameFamilyRail + LineageRail Server Components + page mounts on /watch/{id} and /catalog/{id}; intentional RED from 39b-01 Task 2 closed → tests/static/hierarchy.lineage-3-node.test.ts 8/8 GREEN; 2 Rule 1 auto-fixes: font-medium→font-semibold lint flip + vi.mock('@/data/hierarchy') in catalog-page.test.ts; net regression delta -1; B1 invariant carried forward; Phase 33b Q3 high-leverage backlog fully discharged; Phase 39b SC#6 complete). Phase 39b ready to close.
+Last session: 2026-05-13
+Last activity: 2026-05-13 - Completed quick task 260513-hvu: Hotfix /search Watches tab returns empty results for seeded catalog rows
+Stopped at: Phase 39b ALL WAVES COMPLETE (5/5 plans shipped) — 39b-05 closed at b681506 (NSV-02 + NSV-16 inline lineage rails: getSameFamilyForCatalog DAL with live COUNT Q2 verdict + SameFamilyRail + LineageRail Server Components + page mounts on /watch/{id} and /catalog/{id}; intentional RED from 39b-01 Task 2 closed → tests/static/hierarchy.lineage-3-node.test.ts 8/8 GREEN; 2 Rule 1 auto-fixes: font-medium→font-semibold lint flip + vi.mock('@/data/hierarchy') in catalog-page.test.ts; net regression delta -1; B1 invariant carried forward; Phase 33b Q3 high-leverage backlog fully discharged; Phase 39b SC#6 complete). Phase 39b ready to close. Quick task 260513-hvu shipped post-39b (search hotfix, commit a2594a7).
 Resume file: TBD — Phase 39b complete; next phase determined by /gsd-execute-phase or roadmap chain.
 Next action: Operator to determine — close Phase 39b and advance to next phase (Phase 40 UAT triage per ROADMAP §Phase 40 depends_on 39b).
