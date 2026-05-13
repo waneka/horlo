@@ -387,7 +387,7 @@ Plans:
 - [x] 39b-04-PLAN.md — NSV-18 / DISC-AUDIT-70/72: getCollectorsForCatalog DAL with two-layer privacy + OtherOwnersRoster component + page mount on /catalog/{id} (T-39b-01 + T-39b-04 mitigation; integration test required) — shipped at bc557bb (4 tasks: integration test RED→GREEN + DAL + Server Component + page mount; 1 Rule 1 auto-fix in tests/app/catalog-page.test.ts adding vi.mock('@/data/discovery'); Pitfall 1 A4 substitution AvatarDisplay size=36→40; Q1 verdict A1 SHIPPED — sold-status excluded; net regression delta 0)
 
 **Wave 3** *(depends_on 39b-01 + 39b-02 + 39b-04 — shares both pages + hierarchy.ts)*
-- [ ] 39b-05-PLAN.md — NSV-02 + NSV-16 / DISC-AUDIT-130: getSameFamilyForCatalog DAL (live COUNT — Q2 verdict) + SameFamilyRail + LineageRail server components + page mounts on /watch/{id} and /catalog/{id} (closes intentional RED state from 39b-01 Task 2)
+- [x] 39b-05-PLAN.md — NSV-02 + NSV-16 / DISC-AUDIT-130: getSameFamilyForCatalog DAL (live COUNT — Q2 verdict) + SameFamilyRail + LineageRail server components + page mounts on /watch/{id} and /catalog/{id} (shipped at b681506; closes intentional RED state from 39b-01 Task 2 — lineage-3-node 8/8 pass; 4 tasks + 2 Rule 1 auto-fixes: font-medium→font-semibold lint + vi.mock('@/data/hierarchy') in catalog-page test; net regression delta -1 as intentional RED closed; Phase 33b Q3 high-leverage backlog now fully discharged; Phase 39b SC#6 complete)
 
 **Cross-cutting constraints:**
 - Wave 0 operator-curation seed pass to prod DB BLOCKS all Wave 1+ plans (D-39b-19); Wave 0 plan is `autonomous: false`
