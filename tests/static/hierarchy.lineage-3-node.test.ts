@@ -36,4 +36,26 @@ describe('Phase 35 CAT-16 SC#2/SC#3 — hierarchy.ts recursive CTE safety guards
     const src = readFileSync(HIERARCHY_PATH, 'utf-8')
     expect(src).toMatch(/import ['"]server-only['"]/)
   })
+
+  // Phase 39b Plan 01 Task 2 — added assertions for imageUrl + getSameFamilyForCatalog.
+  // The first two ship green with Plan 39b-01 Task 1; the third intentionally fails
+  // until Plan 39b-05 ships the getSameFamilyForCatalog function (RED-state guard).
+  it('CTE selects wc.image_url in both seed and recursive arms (Pitfall 5)', () => {
+    if (!existsSync(HIERARCHY_PATH)) return
+    const src = readFileSync(HIERARCHY_PATH, 'utf-8')
+    const matches = src.match(/wc\.image_url/g) ?? []
+    expect(matches.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('LineageRow interface declares imageUrl field', () => {
+    if (!existsSync(HIERARCHY_PATH)) return
+    const src = readFileSync(HIERARCHY_PATH, 'utf-8')
+    expect(src).toMatch(/imageUrl:\s*string\s*\|\s*null/)
+  })
+
+  it('getSameFamilyForCatalog function is exported', () => {
+    if (!existsSync(HIERARCHY_PATH)) return
+    const src = readFileSync(HIERARCHY_PATH, 'utf-8')
+    expect(src).toMatch(/export\s+(async\s+)?function\s+getSameFamilyForCatalog/)
+  })
 })
