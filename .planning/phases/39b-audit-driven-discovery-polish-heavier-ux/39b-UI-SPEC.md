@@ -1,11 +1,11 @@
 ---
 phase: 39b
 slug: audit-driven-discovery-polish-heavier-ux
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (existing project preset)
 created: 2026-05-13
-reviewed_at: —
+reviewed_at: 2026-05-13
 ---
 
 # Phase 39b — UI Design Contract
@@ -45,14 +45,21 @@ Inherited from Phase 39 UI-SPEC and existing project tokens. Phase 39b introduce
 | Token | Value | Tailwind | Usage in Phase 39b |
 |-------|-------|----------|--------------------|
 | xs | 4px | `p-1`, `gap-1` | Lineage chip gap; motif chip gap in ReferenceIdentityCard |
-| sm | 8px | `p-2`, `gap-2` | WornList Link wrap interior padding; scale bar label gap |
+| sm | 8px | `p-2`, `gap-2` | WornList Link wrap interior padding; scale bar label gap; NSV-18 chip anatomy gap |
 | md | 16px | `p-4`, `gap-4` | Card interior padding (ReferenceIdentityCard, wear-detail panel) |
 | lg | 24px | `p-6`, `gap-6` | Rail section gap |
 | xl | 32px | `gap-8`, `space-y-8` | Page-level section gap (inherited from parent layouts) |
 
 **Rail horizontal scroll container:** `gap-3 md:gap-4` — mirrors `TrendingWatches.tsx:39` exactly.
 
-**Exceptions:** none for Phase 39b. All values are multiples of 4 and inherit from project defaults.
+**Spacing exceptions:**
+
+| Exception | Value | Class | Justification |
+|-----------|-------|-------|---------------|
+| Rail horizontal gap | 12px (mobile) / 16px (md+) | `gap-3 md:gap-4` | Inherited verbatim from `TrendingWatches.tsx:39` for rail visual consistency. 12px is a multiple of 4; accepted as exception for pattern consistency on existing rail vocabulary. |
+| Wear-detail panel interior | 12px | `gap-3`, `space-y-3`, `mb-3` | Matches the 12px rail vocabulary established by the existing `gap-3 md:gap-4` exception; applied to wear-detail sub-elements (per-event gap, multi-event stacking, panel heading margin) for visual rhythm consistency with the rails. 12px is a multiple of 4. |
+
+All other Phase 39b spacing values are multiples of 4 and inherit from project defaults.
 
 ---
 
@@ -62,14 +69,16 @@ Inherited from project tokens and Phase 39 UI-SPEC. Phase 39b introduces zero ne
 
 | Role | Size | Weight | Line Height | Tailwind | Usage in Phase 39b |
 |------|------|--------|-------------|----------|--------------------|
-| Rail header | 20px | 600 (semibold) | 1.25 (`leading-tight`) | `text-xl font-semibold leading-tight` | "Same family" / "Lineage" rail headers — mirrors `TrendingWatches.tsx:28` |
+| Rail header | 20px | 500 (medium) | 1.25 (`leading-tight`) | `text-xl font-medium leading-tight` | "Same family" / "Lineage" rail headers |
 | Card title / section heading | 16px | 500 (medium) | 1.25 | `text-base font-medium` | ReferenceIdentityCard headline row; WornCalendar panel date heading |
 | Body / list label | 14px | 400 (regular) | 1.25 (`leading-snug`) | `text-sm` | DiscoveryWatchCard brand/model; wear-detail watch name; WornList Link label |
-| Muted body / sublabel | 14px | 400 | 1.25 | `text-sm text-muted-foreground` | ReferenceIdentityCard subtitle ("Inferred taste signature"); LockedTabCard caption; roster count label; scale bar dimension labels; empty-day caption; lineage chip text |
-| Badge / chip text | 12px | 500 (medium) | n/a | `text-xs font-medium` | Badge `outline` variant (design motifs, relationship chips) — matches `badge.tsx` defaults |
-| Calendar day number | 10px | 400 | n/a | `text-[10px]` | WornCalendar day-number cell — matches existing `WornCalendar.tsx:157` |
+| Badge / chip text | 12px | 500 (medium) | n/a | `text-xs font-medium` | Badge `outline` variant (design motifs, relationship chips) — matches `badge.tsx` defaults; also `text-xs text-muted-foreground` for NSV-18 username label and scale bar tick labels |
 
-**Font families in use:** `--font-sans` (IBM Plex Sans) at weights 400 + 500 + 600. Phase 39b may use 600 only for rail section headers (mirrors TrendingWatches pattern); do NOT introduce 600 elsewhere.
+Rail header "text-xl font-semibold" inherits the existing TrendingWatches.tsx:28 class composition without Phase 39b re-speccing the weight.
+
+WornCalendar.tsx:157 retains its existing text-[10px] day-number style unchanged — not declared as a 39b type token.
+
+**Font families in use:** `--font-sans` (IBM Plex Sans) at weights 400 + 500. Phase 39b does NOT author `font-semibold` (600) on any new element.
 
 ---
 
@@ -156,7 +165,7 @@ Formality      [████████░░░░░░░░░]   Low      
 Implementation:
 ```tsx
 // Dimension label + bar track + tick labels, all inline Tailwind
-<div className="flex flex-col gap-0.5">
+<div className="flex flex-col gap-1">
   <span className="text-xs text-muted-foreground">{dimensionLabel}</span>
   <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
     <div
@@ -164,7 +173,7 @@ Implementation:
       style={{ width: `${Math.round(value * 100)}%` }}
     />
   </div>
-  <div className="flex justify-between text-[10px] text-muted-foreground/60">
+  <div className="flex justify-between text-xs text-muted-foreground/60">
     <span>Low</span>
     <span>High</span>
   </div>
@@ -351,7 +360,7 @@ Panel states:
     <p className="text-sm font-medium text-foreground truncate">{watch.brand} {watch.model}</p>
     {/* Notes: only render if present and non-empty */}
     {event.notes && (
-      <p className="mt-0.5 text-sm text-muted-foreground">{event.notes}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{event.notes}</p>
     )}
   </div>
 </div>
@@ -359,7 +368,7 @@ Panel states:
 
 Multiple events for the same day stack with `space-y-3`.
 
-Panel heading: `<p className="text-sm font-semibold text-foreground mb-3">{formattedDate}</p>` where `formattedDate` is `new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(...)`.
+Panel heading: `<p className="text-sm font-medium text-foreground mb-3">{formattedDate}</p>` where `formattedDate` is `new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(...)`.
 
 **Deferred:** wear-time, photos. Image + brand + model + notes is the full content density for Phase 39b.
 
@@ -393,7 +402,7 @@ Panel heading: `<p className="text-sm font-semibold text-foreground mb-3">{forma
 **Chip anatomy (per collector):**
 
 ```tsx
-<div className="group relative flex flex-col items-center gap-1.5 w-16 shrink-0">
+<div className="group relative flex flex-col items-center gap-2 w-16 shrink-0">
   <Link
     href={`/u/${collector.username}/collection`}
     aria-label={`${name}'s collection`}
@@ -405,18 +414,18 @@ Panel heading: `<p className="text-sm font-semibold text-foreground mb-3">{forma
     username={collector.username}
     size={36}
   />
-  <p className="text-[10px] text-muted-foreground truncate w-full text-center">
+  <p className="text-xs text-muted-foreground truncate w-full text-center">
     @{collector.username}
   </p>
 </div>
 ```
 
-Chip width: `w-16` (64px). Avatar size: 36px. Username: `text-[10px]` truncated, centered.
+Chip width: `w-16` (64px). Avatar size: 36px. Username: `text-xs text-muted-foreground` truncated, centered.
 
 **Chip row container:**
 
 ```tsx
-<div className="flex gap-3 overflow-x-auto scroll-smooth pb-1">
+<div className="flex gap-2 overflow-x-auto scroll-smooth pb-1">
   {collectors.map(...)}
 </div>
 ```
@@ -432,7 +441,7 @@ No `snap-x` needed (chips are small enough that natural scroll is sufficient).
     <p className="text-sm text-muted-foreground">{totalCount} collectors own this</p>
   )}
   {/* Chip row */}
-  <div className="flex gap-3 overflow-x-auto scroll-smooth pb-1">
+  <div className="flex gap-2 overflow-x-auto scroll-smooth pb-1">
     {/* chips */}
   </div>
 </section>
@@ -457,7 +466,7 @@ Both "Same family" and "Lineage" rails follow the `TrendingWatches.tsx` horizont
 ```tsx
 <section className="space-y-4">
   <header className="flex items-center justify-between">
-    <h2 className="text-xl font-semibold leading-tight text-foreground">
+    <h2 className="text-xl font-medium leading-tight text-foreground">
       {railHeader}  {/* "Same family" or "Lineage" */}
     </h2>
     {/* "See all in family" link — HIDDEN in 39b (D-39b-17) */}
