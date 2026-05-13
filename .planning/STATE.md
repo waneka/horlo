@@ -120,6 +120,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260513-hvu | Hotfix: /search Watches tab returns empty results for seeded catalog rows — drop score-zero gate from `searchCatalogWatches` WHERE; popularity preserved in ORDER BY | 2026-05-13 | a2594a7 | [260513-hvu-hotfix-search-watches-tab-returns-empty-](./quick/260513-hvu-hotfix-search-watches-tab-returns-empty-/) |
+| 260513-m31 | Fix OtherOwnersRoster count label always-on (supersedes D-39b-09) + WornCalendar empty-day clickability — surfaced as UX gaps during Phase 39b UAT | 2026-05-13 | 5060d05 | [260513-m31-fix-otherownersroster-count-label-always](./quick/260513-m31-fix-otherownersroster-count-label-always/) |
 
 ### Pending Todos
 
@@ -128,7 +129,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-13
-Last activity: 2026-05-13 - Completed quick task 260513-hvu: Hotfix /search Watches tab returns empty results for seeded catalog rows
+Last activity: 2026-05-13 - Completed quick task 260513-m31: Fix OtherOwnersRoster count label always-on + WornCalendar empty-day clickability
 Stopped at: Phase 39b ALL WAVES COMPLETE (5/5 plans shipped) — 39b-05 closed at b681506 (NSV-02 + NSV-16 inline lineage rails: getSameFamilyForCatalog DAL with live COUNT Q2 verdict + SameFamilyRail + LineageRail Server Components + page mounts on /watch/{id} and /catalog/{id}; intentional RED from 39b-01 Task 2 closed → tests/static/hierarchy.lineage-3-node.test.ts 8/8 GREEN; 2 Rule 1 auto-fixes: font-medium→font-semibold lint flip + vi.mock('@/data/hierarchy') in catalog-page.test.ts; net regression delta -1; B1 invariant carried forward; Phase 33b Q3 high-leverage backlog fully discharged; Phase 39b SC#6 complete). Phase 39b ready to close. Quick task 260513-hvu shipped post-39b (search hotfix, commit a2594a7).
 Resume file: TBD — Phase 39b complete; next phase determined by /gsd-execute-phase or roadmap chain.
 Next action: Operator to determine — close Phase 39b and advance to next phase (Phase 40 UAT triage per ROADMAP §Phase 40 depends_on 39b).
