@@ -346,7 +346,14 @@ Plans:
   3. NSV-08 closed OR explicitly marked "already shipped" with grep evidence in the plan SUMMARY (no fabricated patches)
   4. NSV-12 closed: `/u/{username}/common-ground` returns HTTP 200 (not 404) when overlap is empty AND viewer follows owner; soft fallback Card renders with two walk-back CTAs; the other two common-ground gate failures (`!isOwner`, `!profile`) keep their existing `notFound()` behavior
   5. Phase 33b's DISCOVERY-NORTH-STAR-AUDIT.md cheap-tier rows (NSV-01, NSV-15, NSV-08, NSV-12) have status updated from missing/partial to ship after this phase
-**Plans**: TBD (planner discretion — 1-3 plans cover the 3 items)
+**Plans**: 3 plans
+Plans:
+**Wave 0** *(test scaffold — RED for the 200-path fallback assertion until Plan 02 lands)*
+- [ ] 39-01-PLAN.md — Create tests/app/common-ground-fallback.test.tsx (3 tests: 200 fallback Card, 404 gate failure T-39-01 privacy guard, 404 missing profile)
+
+**Wave 1** *(parallel — disjoint files_modified)*
+- [ ] 39-02-PLAN.md — NSV-12 / DISC-AUDIT-127: split line 87 guard into two distinct branches (privacy-preserving notFound() + soft fallback Card with D-10 verbatim copy and walk-back CTAs)
+- [ ] 39-03-PLAN.md — NSV-01 + NSV-15 / DISC-AUDIT-82 + DISC-AUDIT-71: CollectionFitCard mostSimilar Link wrap (D-07 className lock); PLUS NSV-08 / DISC-AUDIT-129 verify-before-patch protocol (D-08 grep evidence in SUMMARY — both Insights sections already wrap; close as "already shipped before Phase 39 began")
 **UI hint**: yes
 **Context**: `.planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md` (gathered 2026-05-12)
 
