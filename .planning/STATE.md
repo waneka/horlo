@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: phase-complete
-active_phase: 39
-stopped_at: Phase 39 SHIPPED 2026-05-12 — 3 plans across 2 waves, all green. Wave 0 Plan 39-01 created Wave 0 RED test scaffold (tests/app/common-ground-fallback.test.tsx, 3 cases — Test 1 RED at Wave 0, transitioned GREEN at Wave 1). Wave 1 Plan 39-02 shipped NSV-12 privacy split + soft fallback Card (T-39-01 ASVS V4 mitigation — single-line guard split into `if (!overlap) notFound()` + `if (!overlap.hasAny) return <Card>`, D-10 copy verbatim with `&apos;` escapes, page stays Server Component, no `'use client'`). Wave 1 Plan 39-03 shipped NSV-01+15 CollectionFitCard mostSimilar Link wraps (D-07 className lock `block hover:bg-accent rounded-md p-1` verbatim, Phase 20 D-04 import-boundary guard preserved) + NSV-08 verify-before-patch CLOSED as "already shipped before Phase 39 began" (Case A — both SleepingBeauties + GoodDeals already wrap at HEAD per grep evidence in 39-03-SUMMARY). Verifier PHASE_PASSED 5/5 ROADMAP criteria. 6/6 phase-specific tests green (3 common-ground-fallback + 3 CollectionFitCard.no-engine static guard). No regressions to sibling integration tests (profile-tab-insights + layout-common-ground-gate, 10/10 green). NSV-01/NSV-15/NSV-08/NSV-12 audit rows transition missing|partial → ship.
-last_updated: "2026-05-12T19:00:00.000Z"
+status: completed
+stopped_at: Phase 39b context gathered — 12 refinement decisions on top of 39-CONTEXT.md carry-forward
+last_updated: "2026-05-13T07:26:23.622Z"
 last_activity: 2026-05-12
 progress:
-  total_phases: 12
-  completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
+  total_phases: 13
+  completed_phases: 9
+  total_plans: 36
+  completed_plans: 36
   percent: 100
 ---
 
@@ -29,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 Phase: 39 — SHIPPED 2026-05-12 via /gsd-plan-phase 39 --chain → auto-advanced execute-phase. 3 plans / 2 waves all green. Verifier PHASE_PASSED 5/5.
 Plan: Wave 0 (Plan 39-01 test scaffold) + Wave 1 (Plan 39-02 NSV-12 privacy split + fallback Card + Plan 39-03 NSV-01+15 Link wraps + NSV-08 already-shipped closure).
 Next: Phase 39b (/gsd-discuss-phase 39b — heavier-UX sibling phase) OR /gsd-phase-progress to advance.
-Resume file: .planning/phases/39-audit-driven-discovery-polish/39-VERIFICATION.md (PHASE_PASSED report).
+Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-CONTEXT.md
 Status: Phase 39 complete; auto-chain finished.
 Last activity: 2026-05-12
 
@@ -107,7 +106,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-11T21:47:52.000Z
-Stopped at: Phase 36 Wave 3 Plan 05 Task 1 shipped at 9eec274 (docs/deploy-db-setup.md +196 lines, 8 H3 sub-sections §36.0..§36.7, all 9 structural ACs green); Plan 05 Task 2 (checkpoint:human-action — prod-push) BLOCKED on operator running §36.0..§36.4 + §36.6 UI walk and typing `approved`
+Last session: 2026-05-13T07:26:23.617Z
+Stopped at: Phase 39b context gathered — 12 refinement decisions on top of 39-CONTEXT.md carry-forward
 Resume file: .planning/phases/36-layer-c-variant-split-clean-slate-wipe-cat-14-not-null/36-05-PLAN.md (Task 2 checkpoint pending)
 Next action: operator runs Plan 05 Task 2 commands against prod (see `## CHECKPOINT REACHED` block surfaced by the executor); on `approved`, executor amends 36-05-SUMMARY.md with prod-deploy outcome (pre/post baseline counts, is_nullable=NO, has_table_privilege=t, UI walk green/red) and updates STATE.md + ROADMAP.md to close Phase 36
