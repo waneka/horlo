@@ -29,6 +29,7 @@ export interface LineageRow {
   brand: string                         // watches_catalog.brand
   model: string                         // watches_catalog.model
   reference: string | null              // watches_catalog.reference
+  imageUrl: string | null               // watches_catalog.image_url (Phase 39b — LineageRail card rendering)
   predecessor_catalog_id: string        // edge.predecessor_catalog_id
   successor_catalog_id: string          // edge.successor_catalog_id
   relationship_type: string             // edge.relationship_type (lineage_relationship_type)
@@ -40,14 +41,14 @@ export interface LineageRow {
 export async function getLineageForReference(catalogId: string): Promise<LineageRow[]> {
   const result = await db.execute(sql`
     WITH RECURSIVE lineage(
-      id, brand, model, reference,
+      id, brand, model, reference, image_url,
       predecessor_catalog_id, successor_catalog_id,
       relationship_type,
       depth, direction
     ) AS (
       -- Seed: edges that touch the input catalog row (both directions).
       SELECT
-        wc.id, wc.brand, wc.model, wc.reference,
+        wc.id, wc.brand, wc.model, wc.reference, wc.image_url,
         e.predecessor_catalog_id, e.successor_catalog_id,
         e.relationship_type::text,
         1 AS depth,
@@ -69,8 +70,9 @@ export async function getLineageForReference(catalogId: string): Promise<Lineage
 
       -- Recursive arm: follow edges from discovered catalog rows.
       -- depth < 10 guard bounds recursion (CAT-16 SC#2 mandatory).
+      -- Pitfall 5: BOTH arms must carry wc.image_url for the column list to type-check.
       SELECT
-        wc.id, wc.brand, wc.model, wc.reference,
+        wc.id, wc.brand, wc.model, wc.reference, wc.image_url,
         e.predecessor_catalog_id, e.successor_catalog_id,
         e.relationship_type::text,
         c.depth + 1,
@@ -94,7 +96,7 @@ export async function getLineageForReference(catalogId: string): Promise<Lineage
     -- Marks rows that participate in cycles; outer SELECT filters them out.
     CYCLE id SET is_cycle USING path
     SELECT
-      id, brand, model, reference,
+      id, brand, model, reference, image_url AS "imageUrl",
       predecessor_catalog_id, successor_catalog_id,
       relationship_type, depth, direction, is_cycle
     FROM lineage
