@@ -10,6 +10,7 @@ const {
   mockComputeViewerTasteProfile,
   mockNotFound,
   mockDbLimit,
+  mockGetCollectorsForCatalog,
 } = vi.hoisted(() => ({
   mockGetCurrentUser: vi.fn(),
   mockGetCatalogById: vi.fn(),
@@ -19,6 +20,7 @@ const {
   mockComputeViewerTasteProfile: vi.fn(),
   mockNotFound: vi.fn(() => { throw new Error('NOT_FOUND') }),
   mockDbLimit: vi.fn(),
+  mockGetCollectorsForCatalog: vi.fn(),
 }))
 
 // Mock the inline Drizzle SELECT via mocking @/db.
@@ -38,6 +40,13 @@ vi.mock('@/lib/auth', () => ({ getCurrentUser: mockGetCurrentUser }))
 vi.mock('@/data/catalog', () => ({ getCatalogById: mockGetCatalogById }))
 vi.mock('@/data/watches', () => ({ getWatchesByUser: mockGetWatchesByUser }))
 vi.mock('@/data/preferences', () => ({ getPreferencesByUser: mockGetPreferencesByUser }))
+// Phase 39b Plan 04 — NSV-18 roster DAL. Mock the new server fetch added to
+// the page Promise.all; default returns { collectors: [], totalCount: 0 } so
+// OtherOwnersRoster self-hides (D-39b-07) and existing assertions continue
+// to focus on the verdict/CTA props.
+vi.mock('@/data/discovery', () => ({
+  getCollectorsForCatalog: mockGetCollectorsForCatalog,
+}))
 vi.mock('@/lib/verdict/composer', () => ({ computeVerdictBundle: mockComputeVerdictBundle }))
 vi.mock('@/lib/verdict/viewerTasteProfile', () => ({
   computeViewerTasteProfile: mockComputeViewerTasteProfile,
@@ -103,6 +112,7 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
       contextualPhrasings: ['ok'], mostSimilar: [], roleOverlap: false,
     })
     mockDbLimit.mockResolvedValue([])  // viewer does NOT own a watch with this catalogId
+    mockGetCollectorsForCatalog.mockResolvedValue({ collectors: [], totalCount: 0 })
   })
 
   it('returns 404 when catalogId does not exist in watches_catalog', async () => {

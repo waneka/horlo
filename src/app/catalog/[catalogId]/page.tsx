@@ -12,7 +12,9 @@ import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
+import { OtherOwnersRoster } from '@/components/insights/OtherOwnersRoster'
 import { CatalogPageActions, type CatalogActionsSpec } from '@/components/watch/CatalogPageActions'
+import { getCollectorsForCatalog } from '@/data/discovery'
 import { db } from '@/db'
 import { watches as watchesTable } from '@/db/schema'
 import type { Watch, MovementType, CrystalType, CatalogTasteAttributes } from '@/lib/types'
@@ -54,12 +56,16 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   // as a typed prop. Null is a soft alarm — at v4.0+ every authenticated user
   // has a username via signup trigger. Folded into the existing Promise.all
   // to keep the parallel-fetch character intact.
-  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile] = await Promise.all([
+  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile, roster] = await Promise.all([
     getCatalogById(catalogId),
     getWatchesByUser(user.id),
     getPreferencesByUser(user.id),
     findViewerWatchByCatalogId(user.id, catalogId),
     getProfileById(user.id),
+    // Phase 39b NSV-18 — catalog other-owners roster (two-layer privacy +
+    // self-exclusion + sold-status filter inside the DAL; OtherOwnersRoster
+    // returns null when collectors.length === 0 per D-39b-07).
+    getCollectorsForCatalog(catalogId, user.id, { limit: 5 }),
   ])
   const viewerUsername = viewerProfile?.username ?? null
 
@@ -203,7 +209,12 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
           </p>
         )}
 
-      {/* Plan 39b-04 mounts OtherOwnersRoster here */}
+      {/* Phase 39b NSV-18 — Other-Owners Roster. Position #2 in UI-SPEC
+          §Render Order (between the verdict card and the family rails). The
+          component self-hides when collectors.length === 0 (D-39b-07), so
+          no caller-side conditional wrapper is needed. /watch/{id} does
+          NOT get this roster — catalog-only per UI-SPEC §Render Order. */}
+      <OtherOwnersRoster collectors={roster.collectors} totalCount={roster.totalCount} />
 
       {/* Plan 39b-05 mounts SameFamilyRail + LineageRail here */}
 
