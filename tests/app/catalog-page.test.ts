@@ -193,12 +193,20 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     expect(rendered).not.toMatch(/"spec":\{/)
   })
 
-  it('D-05 — does NOT render CTAs when collection is empty (no verdict per D-07)', async () => {
+  it('D-39b-04 — DOES render CTAs when collection is empty (NSV-20 fresh-account dead-end closure, supersedes Phase 20 D-05 "no CTAs when empty")', async () => {
+    // Phase 39b NSV-20 lock: fresh-account viewer (collection.length === 0)
+    // now sees the 3-CTA block (Add to Wishlist / Add to Collection / Skip)
+    // below either ReferenceIdentityCard (when catalogTaste.confidence >= 0.5)
+    // OR the fallback caption. This supersedes the Phase 20 D-05 "no card, no
+    // CTAs" suppression at the former lines 112-113 of catalog page.tsx.
     mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
     mockGetWatchesByUser.mockResolvedValue([])  // empty collection
     mockDbLimit.mockResolvedValue([])  // not owned
     const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
     const rendered = JSON.stringify(result)
-    expect(rendered).not.toMatch(/"spec":\{/)
+    // CatalogPageActions IS now rendered for the fresh-account viewer
+    // (actionsSpec is built in the new else branch at G-4).
+    expect(rendered).toMatch(/"spec":\{/)
+    expect(rendered).toMatch(/"framing":"cross-user"/)
   })
 })
