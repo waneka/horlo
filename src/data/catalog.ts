@@ -269,7 +269,10 @@ const SEARCH_WATCHES_DEFAULT_LIMIT = 20
  *   - model_normalized ILIKE %lowerQ%
  *   - reference_normalized ILIKE %refQ%   (refQ = lowerQ stripped of non-alphanumerics)
  *
- * Score-zero exclusion + popularity-DESC + alphabetical tie-break (D-02 / Phase 18 idiom).
+ * Popularity-DESC + alphabetical tie-break in ORDER BY (D-02 / Phase 18 idiom).
+ * 260513-hvu hotfix: WHERE no longer AND-gates by (owners_count + 0.5 * wishlist_count) > 0
+ * — that exclusion stranded the 100 seeded catalog rows from Phase 39b-01 whose
+ * pg_cron-maintained counters are still 0. Popularity stays load-bearing for ranking.
  * Pre-LIMIT 50 candidates → final slice to limit (D-04 default 20).
  *
  * Anti-N+1 viewer-state hydration (SRCH-10 / D-05): a SINGLE batched
@@ -315,18 +318,20 @@ export async function searchCatalogWatches({
       wishlistCount: watchesCatalog.wishlistCount,
     })
     .from(watchesCatalog)
+    // 260513-hvu hotfix: score-zero predicate moved OUT of WHERE. The Phase 18
+    // trending idiom AND-gated name-match by popularity, which excluded the 100
+    // seeded catalog rows bootstrapped in Phase 39b-01 whose pg_cron-maintained
+    // owners_count/wishlist_count are still 0 (no users have collected them yet).
+    // ORDER BY (below) preserves the identical popularity expression so popular
+    // rows still rank ahead of zero-popularity name-matches.
     .where(
-      and(
-        // Score-zero exclusion: matches Phase 18 trending idiom (RESEARCH Pitfall reference).
-        sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount}) > 0`,
-        or(
-          ilike(watchesCatalog.brandNormalized, pattern),
-          ilike(watchesCatalog.modelNormalized, pattern),
-          // Pitfall 1: only run reference branch when stripped query is non-empty.
-          refPattern
-            ? ilike(watchesCatalog.referenceNormalized, refPattern)
-            : sql`false`,
-        ),
+      or(
+        ilike(watchesCatalog.brandNormalized, pattern),
+        ilike(watchesCatalog.modelNormalized, pattern),
+        // Pitfall 1: only run reference branch when stripped query is non-empty.
+        refPattern
+          ? ilike(watchesCatalog.referenceNormalized, refPattern)
+          : sql`false`,
       ),
     )
     .orderBy(

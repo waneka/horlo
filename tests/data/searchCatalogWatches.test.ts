@@ -126,15 +126,12 @@ describe('searchCatalogWatches (SRCH-09, SRCH-10, D-01..D-06)', () => {
     expect(orderJson).toContain('model_normalized')
   })
 
-  it('Test 3 + 4: WHERE includes score-zero exclusion + ILIKE OR across 3 normalized cols (D-01, D-02)', async () => {
+  it('Test 3 + 4: WHERE is ILIKE OR across 3 normalized cols (D-01, D-02)', async () => {
     candidateRows = []
     await searchCatalogWatches({ q: 'rolex', viewerId: VIEWER })
     const whereCall = calls.find((c) => c.op === 'cand.where')
     expect(whereCall).toBeDefined()
     const json = safeStringify(whereCall!.args)
-    // Score-zero exclusion (Phase 18 idiom)
-    expect(json).toContain('owners_count')
-    expect(json).toContain('wishlist_count')
     // ILIKE OR across the three normalized columns
     expect(json).toContain('brand_normalized')
     expect(json).toContain('model_normalized')
@@ -278,5 +275,38 @@ describe('searchCatalogWatches (SRCH-09, SRCH-10, D-01..D-06)', () => {
       wishlistCount: 3,
       viewerState: null,
     })
+  })
+
+  it('Test 12 (hotfix 260513-hvu): zero-popularity name-match rows ARE returned by ILIKE — pre-fix the score-zero AND-gate excluded them', async () => {
+    // Pre-fix: rows with ownersCount=0 AND wishlistCount=0 were excluded by the
+    // (owners + 0.5*wishlist) > 0 AND-gate, stranding the 100 seeded catalog
+    // rows bootstrapped in Phase 39b-01. Post-fix: WHERE is ILIKE-OR-only,
+    // popularity moved to ORDER BY ranking.
+    candidateRows = [
+      {
+        id: 'cseed',
+        brand: 'Omega',
+        model: 'Speedmaster',
+        reference: '311.30.42.30.01.005',
+        imageUrl: null,
+        ownersCount: 0,
+        wishlistCount: 0,
+      },
+    ]
+    stateRows = []
+    const out = await searchCatalogWatches({ q: 'omega', viewerId: VIEWER })
+    expect(out.length).toBe(1)
+    expect(out[0].catalogId).toBe('cseed')
+    expect(out[0].ownersCount).toBe(0)
+    expect(out[0].wishlistCount).toBe(0)
+    expect(out[0].viewerState).toBeNull()
+    // Negative WHERE assertion: the score-zero predicate's `0.5 *` coefficient
+    // must NOT have leaked into the WHERE bind. (ORDER BY captures hit
+    // cand.orderBy, not cand.where, so this is a clean negative against the
+    // post-fix WHERE.)
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    expect(whereCall).toBeDefined()
+    const whereJson = safeStringify(whereCall!.args)
+    expect(whereJson).not.toContain('0.5')
   })
 })
