@@ -380,7 +380,7 @@ Plans:
 - [x] 39b-01-PLAN.md — Operator seed script + getLineageForReference imageUrl extension + WearEventLite.note extension + getWatchesByUser numeric-cast verification + prod-DB bootstrap (Option B scope expansion: 100 catalog refs + 32 families + 52 lineage edges shipped via `scripts/seed-bootstrap-2026-05-13.sql` at 392fd90; idempotency proven)
 
 **Wave 1** *(parallel — disjoint files_modified; depends_on 39b-01)*
-- [ ] 39b-02-PLAN.md — NSV-06 + NSV-20 / DISC-AUDIT-70/81/130/131: ReferenceIdentityCard new component + static guard + component tests + page mounts on /watch/{id} G-6 branch and /catalog/{id} G-4 branch
+- [x] 39b-02-PLAN.md — NSV-06 + NSV-20 / DISC-AUDIT-70/81/130/131: ReferenceIdentityCard new component + static guard + component tests + page mounts on /watch/{id} G-6 branch and /catalog/{id} G-4 branch (shipped at 1c224da; B1 server-tree sibling composition pattern + 3-CTA block on /watch/[id] first introduced here; 2 Rule 1 auto-fixes: font-medium→font-semibold lint, catalog-page D-05 test supersession)
 - [ ] 39b-03-PLAN.md — NSV-14 / DISC-AUDIT-97/102/111/122/123/124: 3 sub-cells in 1 plan (LockedTabCard FollowButton + WornCalendar wear-detail panel + StatsTabContent Link wraps; T-39b-03 open-redirect mitigation via encodeURIComponent on producer)
 
 **Wave 2** *(depends_on 39b-02 — shares /catalog/[catalogId]/page.tsx mount)*
