@@ -176,6 +176,15 @@ export function WornCalendar({
             {w}
           </div>
         ))}
+        {/* Quick task 260513-m31 — supersedes the dayEvents.length > 0 gate
+            that previously suppressed role/tabIndex/onClick/onKeyDown/aria-label
+            on empty days (Phase 39b UAT test 5). All day cells — event-bearing
+            OR empty, in-month OR adjacent-month (!inMonth leading/trailing) —
+            are now interactive so the "No wear events on [date]" caption
+            (below-grid panel, line ~252) is reachable via mouse + keyboard.
+            Adjacent-month cells are intentionally clickable for consistency:
+            formatDateLabel handles arbitrary YYYY-MM-DD so the wear-detail
+            panel renders correctly for those keys too. */}
         {grid.flat().map((day, i) => {
           const inMonth = day.getMonth() === cursor.month
           const key = dateKey(day.getFullYear(), day.getMonth(), day.getDate())
@@ -192,32 +201,25 @@ export function WornCalendar({
             : null
           const safe = firstWatch ? getSafeImageUrl(firstWatch.imageUrl) : null
           const extra = dayEvents.length > 1 ? dayEvents.length - 1 : 0
-          const interactive = dayEvents.length > 0
           const isSelected = selectedDate === key
           return (
             <div
               key={i}
-              role={interactive ? 'button' : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              onClick={interactive ? () => setSelectedDate(key) : undefined}
-              onKeyDown={
-                interactive
-                  ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setSelectedDate(key)
-                      }
-                    }
-                  : undefined
-              }
-              aria-label={
-                interactive ? `View wear events for ${key}` : undefined
-              }
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedDate(key)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setSelectedDate(key)
+                }
+              }}
+              aria-label={`View wear events for ${key}`}
               className={cn(
                 'flex min-h-12 flex-col items-center justify-start rounded-md border p-1 text-xs',
                 inMonth ? 'bg-background' : 'bg-muted/30 text-muted-foreground',
                 isToday && 'ring-1 ring-accent',
-                interactive && 'cursor-pointer hover:bg-muted/60',
+                'cursor-pointer hover:bg-muted/60',
                 isSelected && 'ring-2 ring-foreground/20',
               )}
             >

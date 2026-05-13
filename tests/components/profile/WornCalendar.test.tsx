@@ -97,4 +97,41 @@ describe('WornCalendar', () => {
     // formatDateLabel('2026-05-12') in en-US produces e.g. "Tue, May 12".
     expect(screen.getByText(/No wear events on /)).toBeTruthy()
   })
+
+  it('clicking an empty day cell selects it and surfaces the empty-state caption (260513-m31 — empty-day clickability)', () => {
+    // Quick task 260513-m31 — supersedes the dayEvents.length > 0 interactivity
+    // gate at WornCalendar.tsx:195. Empty days are now user-reachable via
+    // mouse + keyboard; the "No wear events on [date]" caption (existing
+    // branch at line 252) now surfaces without the test-only
+    // initialSelectedDate prop. Same fixture as test 2; click 2026-05-12
+    // (an empty day in May 2026).
+    render(
+      <WornCalendar
+        events={[
+          {
+            id: 'e1',
+            watchId: 'w1',
+            wornDate: '2026-05-03',
+            note: 'breakfast wear',
+          },
+          {
+            id: 'e2',
+            watchId: 'w1',
+            wornDate: '2026-05-10',
+            note: 'evening wear',
+          },
+        ]}
+        watchMap={{
+          w1: {
+            id: 'w1',
+            brand: 'Rolex',
+            model: 'Submariner',
+            imageUrl: null,
+          },
+        }}
+      />,
+    )
+    fireEvent.click(screen.getByLabelText('View wear events for 2026-05-12'))
+    expect(screen.getByText(/No wear events on /)).toBeTruthy()
+  })
 })
