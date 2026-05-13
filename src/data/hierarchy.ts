@@ -2,7 +2,8 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { watches, watchesCatalog } from '@/db/schema'
 
 /**
  * Phase 35 D-08 — getLineageForReference(catalogId)
@@ -36,6 +37,72 @@ export interface LineageRow {
   depth: number                         // 1-based depth from input catalog row
   direction: 'forward' | 'backward'     // 'forward' = successor side; 'backward' = predecessor side
   is_cycle: boolean                     // CYCLE clause output; outer SELECT filters NOT is_cycle
+}
+
+/**
+ * Phase 39b NSV-02+16 — same-family rail DAL (D-39b-15).
+ *
+ * Ranks siblings by LIVE COUNT(watches.catalog_id) (Q2 verdict — chosen over the
+ * 24h-stale denormalized owners_count for literal D-39b-15 compliance).
+ *
+ * Trade-off: live COUNT chosen over denormalized `watches_catalog.owners_count`
+ * for D-39b-15 literal compliance. Cost: ~1ms additional query overhead per
+ * request. Mitigation: rail caps at 6 cards (D-39b-17); GROUP BY is on indexed
+ * familyId.
+ */
+export interface SameFamilyWatch {
+  id: string                   // watches_catalog.id
+  brand: string
+  model: string
+  imageUrl: string | null
+  ownersCount: number
+}
+
+export async function getSameFamilyForCatalog(
+  catalogId: string,
+  opts: { limit?: number } = {},
+): Promise<SameFamilyWatch[]> {
+  const limit = opts.limit ?? 6
+
+  // Two-pass: (1) resolve family_id; (2) find siblings ranked by live owners count.
+  const rootRows = await db
+    .select({ familyId: watchesCatalog.familyId })
+    .from(watchesCatalog)
+    .where(eq(watchesCatalog.id, catalogId))
+    .limit(1)
+  const familyId = rootRows[0]?.familyId
+  if (!familyId) return []  // D-39b-07 hide-if-empty
+
+  const rows = await db
+    .select({
+      id: watchesCatalog.id,
+      brand: watchesCatalog.brand,
+      model: watchesCatalog.model,
+      imageUrl: watchesCatalog.imageUrl,
+      ownersCount: sql<number>`COUNT(${watches.id})::int`,
+    })
+    .from(watchesCatalog)
+    .leftJoin(watches, eq(watches.catalogId, watchesCatalog.id))
+    .where(
+      and(
+        eq(watchesCatalog.familyId, familyId),
+        sql`${watchesCatalog.id} != ${catalogId}::uuid`,
+      ),
+    )
+    .groupBy(
+      watchesCatalog.id,
+      watchesCatalog.brand,
+      watchesCatalog.model,
+      watchesCatalog.imageUrl,
+    )
+    .orderBy(
+      desc(sql`COUNT(${watches.id})`),
+      asc(watchesCatalog.brand),
+      asc(watchesCatalog.model),
+    )
+    .limit(limit)
+
+  return rows
 }
 
 export async function getLineageForReference(catalogId: string): Promise<LineageRow[]> {
