@@ -67,13 +67,18 @@ export function CollectionFitCard({ verdict }: CollectionFitCardProps) {
             </h4>
             <ul className="text-sm text-muted-foreground space-y-1">
               {verdict.mostSimilar.map(({ watch, score }) => (
-                <li key={watch.id} className="flex items-center justify-between">
-                  <span className="truncate">
-                    {watch.brand} {watch.model}
-                  </span>
-                  <span className="text-muted-foreground/70">
-                    {Math.round(score * 100)}% similar
-                  </span>
+                <li key={watch.id}>
+                  <Link
+                    href={`/watch/${watch.id}`}
+                    className="block hover:bg-accent rounded-md p-1"
+                  >
+                    <span className="flex items-center justify-between">
+                      <span className="truncate">{watch.brand} {watch.model}</span>
+                      <span className="text-muted-foreground/70">
+                        {Math.round(score * 100)}% similar
+                      </span>
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
