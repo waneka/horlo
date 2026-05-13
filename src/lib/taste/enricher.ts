@@ -29,6 +29,7 @@ const TASTE_TOOL = {
   description: 'Record structured taste attributes for a watch.',
   input_schema: {
     type: 'object',
+    additionalProperties: false,
     properties: {
       formality:      { type: 'number', minimum: 0, maximum: 1, description: 'How formal/dressy 0..1' },
       sportiness:     { type: 'number', minimum: 0, maximum: 1 },
@@ -48,7 +49,6 @@ const TASTE_TOOL = {
     },
     required: ['formality', 'sportiness', 'heritage_score', 'primary_archetype', 'era_signal', 'design_motifs', 'confidence'],
   },
-  strict: true,
 } satisfies Anthropic.Messages.Tool
 
 function logEvent(event: string, payload: Record<string, unknown>): void {
