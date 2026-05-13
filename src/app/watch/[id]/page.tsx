@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { getCurrentUser } from '@/lib/auth'
 import { getWatchByIdForViewer, getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
@@ -8,6 +9,8 @@ import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import type { VerdictBundle } from '@/lib/verdict/types'
 import { WatchDetail } from '@/components/watch/WatchDetail'
+import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
+import { Button } from '@/components/ui/button'
 
 interface WatchPageProps {
   params: Promise<{ id: string }>
@@ -54,7 +57,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
       <WatchDetail
         watch={watch}
         collection={collection}
@@ -63,6 +66,47 @@ export default async function WatchPage({ params }: WatchPageProps) {
         viewerCanEdit={isOwner}
         verdict={verdict}
       />
+
+      {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
+          fallback caption. Server-Component sibling of <WatchDetail/> (B1 fix —
+          RSC cannot be imported into the 'use client' WatchDetail island;
+          compose at the server tree level instead). D-39b-03 confidence gate
+          mirrored explicitly in the caller; ReferenceIdentityCard also gates
+          internally as defense-in-depth. */}
+      {collection.length === 0 &&
+        watch.catalogTaste &&
+        watch.catalogTaste.confidence !== null &&
+        watch.catalogTaste.confidence >= 0.5 && (
+          <ReferenceIdentityCard taste={watch.catalogTaste} />
+        )}
+      {collection.length === 0 &&
+        (!watch.catalogTaste ||
+          watch.catalogTaste.confidence === null ||
+          watch.catalogTaste.confidence < 0.5) && (
+          <p className="text-sm text-muted-foreground">
+            Add a few watches to see how this one fits your collection.
+          </p>
+        )}
+
+      {/* Plan 39b-05 mounts SameFamilyRail + LineageRail here */}
+
+      {/* Phase 39b NSV-06 — Fresh-account 3-CTA block (Add to Wishlist /
+          Add to Collection / Skip). UI-SPEC § Render Order line 266 — first
+          phase to introduce these CTAs on /watch/{id}. Owner-populated viewer
+          sees no CTAs (D-39b-04 / UI-SPEC). */}
+      {collection.length === 0 && (
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/watch/${watch.id}/edit?status=wishlist`}>
+            <Button variant="outline">Add to Wishlist</Button>
+          </Link>
+          <Link href={`/watch/${watch.id}/edit?status=owned`}>
+            <Button>Add to Collection</Button>
+          </Link>
+          <Link href="/">
+            <Button variant="ghost">Skip</Button>
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
