@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import { Watch as WatchIcon } from 'lucide-react'
 import { getSafeImageUrl } from '@/lib/images'
 import { StatsCard } from './StatsCard'
@@ -56,28 +57,33 @@ function WornList({ rows }: { rows: Array<{ watch: Watch; count: number }> }) {
       {rows.map(({ watch, count }) => {
         const safe = getSafeImageUrl(watch.imageUrl)
         return (
-          <li key={watch.id} className="flex items-center gap-3">
-            <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">
-              {safe ? (
-                <Image
-                  src={safe}
-                  alt=""
-                  fill
-                  sizes="40px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <WatchIcon className="size-4 text-muted-foreground/40" />
-                </div>
-              )}
-            </div>
-            <p className="flex-1 text-sm">
-              {watch.brand} {watch.model}
-            </p>
-            <span className="text-sm font-semibold text-foreground">
-              {count}
-            </span>
+          <li key={watch.id}>
+            <Link
+              href={`/watch/${watch.id}`}
+              className="flex items-center gap-3 rounded-md p-1 hover:bg-accent"
+            >
+              <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">
+                {safe ? (
+                  <Image
+                    src={safe}
+                    alt=""
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <WatchIcon className="size-4 text-muted-foreground/40" />
+                  </div>
+                )}
+              </div>
+              <p className="flex-1 text-sm">
+                {watch.brand} {watch.model}
+              </p>
+              <span className="text-sm font-semibold text-foreground">
+                {count}
+              </span>
+            </Link>
           </li>
         )
       })}
