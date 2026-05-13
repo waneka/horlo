@@ -1,4 +1,7 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import {
   getProfileByUsername,
@@ -84,7 +87,43 @@ export default async function ProfileTabPage({
       isOwner,
       collectionPublic: settings.collectionPublic,
     })
-    if (!overlap || !overlap.hasAny) notFound()
+    // Pitfall 1 / T-39-01 / D-09: split the previous single-line guard into
+    // TWO distinct branches. The `!overlap` branch is a privacy-gate failure
+    // (anonymous viewer, !collectionPublic, isOwner) — it MUST keep 404ing or
+    // the route leaks the existence of the common-ground tab. The
+    // `!overlap.hasAny` branch is a discoverable no-overlap state — it
+    // becomes a soft walk-back fallback (NSV-12 / DISC-AUDIT-127).
+    if (!overlap) notFound()
+    if (!overlap.hasAny) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>No shared watches yet.</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You and @{profile.username} don&apos;t share any watches in your
+              collections. That doesn&apos;t mean you don&apos;t share taste —
+              try one of these:
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+              <Link
+                href={`/u/${profile.username}/collection`}
+                className={buttonVariants({ variant: 'default', size: 'default' })}
+              >
+                Browse {displayName ?? `@${profile.username}`}&apos;s collection →
+              </Link>
+              <Link
+                href="/explore"
+                className={buttonVariants({ variant: 'outline', size: 'default' })}
+              >
+                Find collectors with shared watches →
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
     return (
       <CommonGroundTabContent
         overlap={overlap}
