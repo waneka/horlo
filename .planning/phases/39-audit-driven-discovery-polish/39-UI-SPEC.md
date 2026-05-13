@@ -1,10 +1,11 @@
 ---
 phase: 39
 slug: audit-driven-discovery-polish
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (existing project preset)
 created: 2026-05-12
+reviewed_at: 2026-05-12
 ---
 
 # Phase 39 — UI Design Contract
