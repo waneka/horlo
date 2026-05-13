@@ -13,8 +13,11 @@ import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
 import { OtherOwnersRoster } from '@/components/insights/OtherOwnersRoster'
+import { SameFamilyRail } from '@/components/insights/SameFamilyRail'
+import { LineageRail } from '@/components/insights/LineageRail'
 import { CatalogPageActions, type CatalogActionsSpec } from '@/components/watch/CatalogPageActions'
 import { getCollectorsForCatalog } from '@/data/discovery'
+import { getSameFamilyForCatalog, getLineageForReference } from '@/data/hierarchy'
 import { db } from '@/db'
 import { watches as watchesTable } from '@/db/schema'
 import type { Watch, MovementType, CrystalType, CatalogTasteAttributes } from '@/lib/types'
@@ -56,7 +59,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   // as a typed prop. Null is a soft alarm — at v4.0+ every authenticated user
   // has a username via signup trigger. Folded into the existing Promise.all
   // to keep the parallel-fetch character intact.
-  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile, roster] = await Promise.all([
+  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile, roster, sameFamily, lineage] = await Promise.all([
     getCatalogById(catalogId),
     getWatchesByUser(user.id),
     getPreferencesByUser(user.id),
@@ -66,6 +69,14 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
     // self-exclusion + sold-status filter inside the DAL; OtherOwnersRoster
     // returns null when collectors.length === 0 per D-39b-07).
     getCollectorsForCatalog(catalogId, user.id, { limit: 5 }),
+    // Phase 39b NSV-02 — same-family rail data. catalogId from route params
+    // is non-nullable (UUID regex gate at lines 49-51 ensures it exists), so
+    // no falsy-fallback is needed (unlike /watch/[id] which guards on
+    // watch.catalogId). D-39b-15 live COUNT ranking; D-39b-17 cap LIMIT 6.
+    getSameFamilyForCatalog(catalogId),
+    // Phase 39b NSV-16 — lineage rail data. Same non-nullable catalogId.
+    // LineageRail.tsx caps at 6 cards via .slice(0, 6).
+    getLineageForReference(catalogId),
   ])
   const viewerUsername = viewerProfile?.username ?? null
 
@@ -216,7 +227,12 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
           NOT get this roster — catalog-only per UI-SPEC §Render Order. */}
       <OtherOwnersRoster collectors={roster.collectors} totalCount={roster.totalCount} />
 
-      {/* Plan 39b-05 mounts SameFamilyRail + LineageRail here */}
+      {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails. UI-SPEC
+          §Render Order position #3/#4 — AFTER OtherOwnersRoster (Plan 39b-04)
+          and BEFORE the CTA block. Both rails self-hide via internal
+          rows.length === 0 guard (D-39b-07). */}
+      <SameFamilyRail rows={sameFamily} />
+      <LineageRail rows={lineage} />
 
       {/* Phase 20.1 D-05 + Phase 39b NSV-20 — 3-CTA block. Now also rendered in
           the fresh-account branch (collection.length === 0) so NSV-20 closes

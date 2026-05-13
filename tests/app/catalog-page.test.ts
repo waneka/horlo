@@ -11,6 +11,8 @@ const {
   mockNotFound,
   mockDbLimit,
   mockGetCollectorsForCatalog,
+  mockGetSameFamilyForCatalog,
+  mockGetLineageForReference,
 } = vi.hoisted(() => ({
   mockGetCurrentUser: vi.fn(),
   mockGetCatalogById: vi.fn(),
@@ -21,6 +23,8 @@ const {
   mockNotFound: vi.fn(() => { throw new Error('NOT_FOUND') }),
   mockDbLimit: vi.fn(),
   mockGetCollectorsForCatalog: vi.fn(),
+  mockGetSameFamilyForCatalog: vi.fn(),
+  mockGetLineageForReference: vi.fn(),
 }))
 
 // Mock the inline Drizzle SELECT via mocking @/db.
@@ -46,6 +50,15 @@ vi.mock('@/data/preferences', () => ({ getPreferencesByUser: mockGetPreferencesB
 // to focus on the verdict/CTA props.
 vi.mock('@/data/discovery', () => ({
   getCollectorsForCatalog: mockGetCollectorsForCatalog,
+}))
+// Phase 39b Plan 05 — NSV-02/16 rail DALs. Same pattern as Plan 04 (mock new
+// page-tree-level DAL imports so the shallow @/db mock doesn't have to cover
+// db.execute / db.leftJoin chains). Defaults to empty arrays so the rails
+// self-hide (D-39b-07) and existing assertions continue to focus on the
+// verdict / CTA props.
+vi.mock('@/data/hierarchy', () => ({
+  getSameFamilyForCatalog: mockGetSameFamilyForCatalog,
+  getLineageForReference: mockGetLineageForReference,
 }))
 vi.mock('@/lib/verdict/composer', () => ({ computeVerdictBundle: mockComputeVerdictBundle }))
 vi.mock('@/lib/verdict/viewerTasteProfile', () => ({
@@ -113,6 +126,8 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     })
     mockDbLimit.mockResolvedValue([])  // viewer does NOT own a watch with this catalogId
     mockGetCollectorsForCatalog.mockResolvedValue({ collectors: [], totalCount: 0 })
+    mockGetSameFamilyForCatalog.mockResolvedValue([])
+    mockGetLineageForReference.mockResolvedValue([])
   })
 
   it('returns 404 when catalogId does not exist in watches_catalog', async () => {
