@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: completed
-stopped_at: Phase 39b UI-SPEC approved (6/6 dimensions, 2 revisions)
-last_updated: "2026-05-13T07:45:37.117Z"
-last_activity: 2026-05-12
+stopped_at: Phase 39b planned (5 plans / 4 waves; checker PASSED after 1 revision)
+last_updated: "2026-05-13T08:10:00.000Z"
+last_activity: 2026-05-13
 progress:
   total_phases: 13
   completed_phases: 9
@@ -25,12 +25,17 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 39 — SHIPPED 2026-05-12 via /gsd-plan-phase 39 --chain → auto-advanced execute-phase. 3 plans / 2 waves all green. Verifier PHASE_PASSED 5/5.
-Plan: Wave 0 (Plan 39-01 test scaffold) + Wave 1 (Plan 39-02 NSV-12 privacy split + fallback Card + Plan 39-03 NSV-01+15 Link wraps + NSV-08 already-shipped closure).
-Next: Phase 39b (/gsd-discuss-phase 39b — heavier-UX sibling phase) OR /gsd-phase-progress to advance.
-Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-UI-SPEC.md
-Status: Phase 39 complete; auto-chain finished.
-Last activity: 2026-05-12
+Phase: 39b — Audit-Driven Discovery Polish — Heavier UX — READY TO EXECUTE.
+Plan-phase ran via /gsd-plan-phase 39b --chain. 5 plans created across 4 waves:
+- Wave 0 (BLOCKING, autonomous:false): 39b-01 operator-curation seed (~20 family_id + ~15 lineage edges to prod DB) + getLineageForReference imageUrl + WearEventLite.note + getWatchesByUser numeric-cast verification
+- Wave 1 (parallel; depends_on 39b-01): 39b-02 ReferenceIdentityCard (NSV-06/20) + 39b-03 NSV-14 sub-cluster (LockedTabCard + WornCalendar + StatsTabContent)
+- Wave 2 (depends_on 39b-02): 39b-04 NSV-18 catalog other-owners roster (two-layer privacy)
+- Wave 3 (depends_on 39b-01/02/04): 39b-05 NSV-02/16 lineage rails (Same family + Lineage on /watch/{id} + /catalog/{id}); closes intentional RED from 39b-01 Task 2
+
+Session history: research → pattern-map → planner (5 plans) → checker found 2 blockers + 3 warnings → planner revised → re-check PASSED.
+Resume file: .planning/phases/39b-audit-driven-discovery-polish-heavier-ux/39b-01-PLAN.md
+Status: Phase 39b planned; auto-advancing to /gsd-execute-phase 39b (--chain).
+Last activity: 2026-05-13
 
 Progress: [███████░░░] 31%
 

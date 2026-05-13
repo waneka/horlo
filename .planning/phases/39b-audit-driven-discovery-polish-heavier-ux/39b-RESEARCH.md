@@ -1105,32 +1105,32 @@ This dataset proves all 6 success criteria:
 
 **If this table appears with assumptions:** Surface during `/gsd-discuss-phase` if any decision needs locking before plan execution. Most assumptions (A1, A2, A3) are low-risk and resolvable at plan-check or runtime; A1 is the only one that affects visible product behavior.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **NSV-18: include or exclude `watches.status = 'sold'` rows?** (assumption A1)
    - What we know: D-39b-09 says "collectors **own** this." D-39b-10 says ranking by `created_at DESC`.
    - What's unclear: Does "own" include past ownership (sold)?
-   - Recommendation: Filter `status IN ('owned', 'wishlist', 'grail')` to exclude `sold`. Confirm in discuss-phase or accept as the inferred default.
+   - RESOLVED: Filter `status IN ('owned', 'wishlist', 'grail')` to exclude `sold`. Confirm in discuss-phase or accept as the inferred default.
 
 2. **Same-family ranking: denormalized `owners_count` or live COUNT JOIN?** (assumption A2)
    - What we know: D-39b-15 phrasing implies a live COUNT subquery.
    - What's unclear: Whether the ~24h staleness of `owners_count` is acceptable.
-   - Recommendation: Use `owners_count` for simplicity; document the trade-off explicitly in the plan SUMMARY.
+   - RESOLVED: Use `owners_count` for simplicity; document the trade-off explicitly in the plan SUMMARY.
 
 3. **Where does `getCollectorsForCatalog` live?** (assumption A6)
    - What we know: `getMostFollowedCollectors` lives in `src/data/discovery.ts`; `getLineageForReference` lives in `src/data/hierarchy.ts`; `getCatalogById` lives in `src/data/catalog.ts`.
    - What's unclear: Whether to extend `discovery.ts` or create new `src/data/collectors.ts`.
-   - Recommendation: extend `src/data/discovery.ts`. Lower file-count churn; co-located with the closest sibling function.
+   - RESOLVED: extend `src/data/discovery.ts`. Lower file-count churn; co-located with the closest sibling function.
 
 4. **AvatarDisplay size — extend primitive or substitute 40?** (assumption A4)
    - What we know: Primitive supports 40/64/96. UI-SPEC asks for 36 in chip row.
    - What's unclear: Whether to extend the primitive or substitute.
-   - Recommendation: Substitute size=40 for v1 ship; document the deviation in plan SUMMARY. If real-world chip row feels too large, extend primitive in a follow-up patch.
+   - RESOLVED: Substitute size=40 for v1 ship; document the deviation in plan SUMMARY. If real-world chip row feels too large, extend primitive in a follow-up patch.
 
 5. **`getWatchesByUser` numeric-cast verification.** (assumption A3 — verification step)
    - What we know: `getCatalogById` does `Number(row.formality)` etc.
    - What's unclear: Whether `getWatchesByUser` does the same for the LEFT-JOINed taste fields.
-   - Recommendation: Wave 0 plan AC includes a grep + visual confirmation; if missing, add the cast as a no-op patch.
+   - RESOLVED: Wave 0 plan AC includes a grep + visual confirmation; if missing, add the cast as a no-op patch.
 
 ## Sources
 

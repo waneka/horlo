@@ -373,7 +373,28 @@ Plans:
   4. NSV-18 closed: `/catalog/{id}` renders an other-owners roster on cross-user framing with two-layer privacy gates verified by an integration test (anon viewer cannot see private-profile collectors)
   5. NSV-02 + NSV-16 closed: inline rails render on `/watch/{id}` + `/catalog/{id}` when family or lineage data exists; hide gracefully when absent; ~20 family_id seeds + ~15 lineage edges committed via the operator script
   6. Phase 33b Q3 high-leverage backlog has ZERO remaining unaddressed rows after Phase 39 + Phase 39b ship; med/low-leverage cells remain explicitly DEFERRED to v5.x per Phase 33b § Decisions Q3
-**Plans**: TBD (planner discretion; likely 4-5 plans + 1 curation plan)
+**Plans**: 5 plans across 4 waves (Wave 0 BLOCKING; Wave 1-3 sequential page-mount layering)
+Plans:
+
+**Wave 0** *(BLOCKING — operator-curation seed + interface scaffolds; autonomous: false)*
+- [ ] 39b-01-PLAN.md — Operator seed script + getLineageForReference imageUrl extension + WearEventLite.note extension + getWatchesByUser numeric-cast verification + prod-DB curation checkpoint
+
+**Wave 1** *(parallel — disjoint files_modified; depends_on 39b-01)*
+- [ ] 39b-02-PLAN.md — NSV-06 + NSV-20 / DISC-AUDIT-70/81/130/131: ReferenceIdentityCard new component + static guard + component tests + page mounts on /watch/{id} G-6 branch and /catalog/{id} G-4 branch
+- [ ] 39b-03-PLAN.md — NSV-14 / DISC-AUDIT-97/102/111/122/123/124: 3 sub-cells in 1 plan (LockedTabCard FollowButton + WornCalendar wear-detail panel + StatsTabContent Link wraps; T-39b-03 open-redirect mitigation via encodeURIComponent on producer)
+
+**Wave 2** *(depends_on 39b-02 — shares /catalog/[catalogId]/page.tsx mount)*
+- [ ] 39b-04-PLAN.md — NSV-18 / DISC-AUDIT-70/72: getCollectorsForCatalog DAL with two-layer privacy + OtherOwnersRoster component + page mount on /catalog/{id} (T-39b-01 + T-39b-04 mitigation; integration test required)
+
+**Wave 3** *(depends_on 39b-01 + 39b-02 + 39b-04 — shares both pages + hierarchy.ts)*
+- [ ] 39b-05-PLAN.md — NSV-02 + NSV-16 / DISC-AUDIT-130: getSameFamilyForCatalog DAL (live COUNT — Q2 verdict) + SameFamilyRail + LineageRail server components + page mounts on /watch/{id} and /catalog/{id} (closes intentional RED state from 39b-01 Task 2)
+
+**Cross-cutting constraints:**
+- Wave 0 operator-curation seed pass to prod DB BLOCKS all Wave 1+ plans (D-39b-19); Wave 0 plan is `autonomous: false`
+- Hide-if-empty graceful degradation across ReferenceIdentityCard / Same family rail / Lineage rail / NSV-18 roster (D-39b-07 / D-39b-09 / D-39b-17) — modules absent, never empty-state cards
+- Two-layer privacy at the DAL layer is load-bearing for NSV-18 (`profileSettings.profilePublic` AND `collectionPublic` AND `profiles.id != viewerId`); RLS is the second layer (T-39b-01)
+- `/watch/{id}` page.tsx must remain a Server Component; all new RSCs (ReferenceIdentityCard, SameFamilyRail, LineageRail) mount as siblings of `<WatchDetail/>` at the page.tsx level, NOT inside the Client-Component `WatchDetail.tsx`
+- ReferenceIdentityCard import-boundary: NO imports from `@/lib/similarity` or `@/lib/verdict/composer` — enforced by `tests/static/ReferenceIdentityCard.no-engine.test.ts` (D-39b-01)
 **UI hint**: yes
 **Carry-forward context**: Phase 39b decisions captured in `.planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md` (the Phase 39 discuss-phase covered both phases). A separate `/gsd-discuss-phase 39b` is optional — run it if refinement is needed before planning.
 
