@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: executing
+status: ready-to-execute
 active_phase: 39
-stopped_at: Phase 39 context gathered 2026-05-12 — discuss-phase complete. Major reframe: DISC-09 DROPPED from Phase 39 and promoted to a new v5.1 milestone (5-module Explore redesign per .planning/seeds/SEED-008-v5.1-explore-redesign.md). Phase 39 splits into TWO phases mirroring Phase 33 → 33b. Phase 39 = 3 cheap-patch items (NSV-01+15 mostSimilar Link wraps, NSV-08 Insights verify-and-patch, NSV-12 common-ground 404 → walk-back fallback). Phase 39b (to be inserted in ROADMAP via /gsd-phase) = 4 heavier items (NSV-06+20 fresh-account ReferenceIdentityCard, NSV-14 8-row Collector Profile sub-cluster, NSV-18 catalog other-owners roster, NSV-02+16 inline lineage rails with operator-curation seed pass ~20 families + ~15 lineage edges). Context + discussion log written; SEED-008 created. Follow-up paperwork: ROADMAP needs Phase 39b inserted + DISC-09 dropped from Phase 39 SC#3; REQUIREMENTS.md needs DISC-09 → v5.1 reshape; PROJECT.md needs v5.1 milestone insertion.
-last_updated: "2026-05-12T11:30:00.000Z"
+stopped_at: Phase 39 plans created 2026-05-12 — 3 plans across 2 waves. Wave 0 = Plan 39-01 (test scaffold tests/app/common-ground-fallback.test.tsx, 3 cases — 1 RED, 2 GREEN). Wave 1 (parallel) = Plan 39-02 (NSV-12 privacy split + soft fallback Card, T-39-01 ASVS V4 mitigation) + Plan 39-03 (NSV-01+15 CollectionFitCard Link wraps per D-07 className lock + NSV-08 D-08 verify-before-patch — both Insights sections already wrap per RESEARCH, expecting "already shipped" closure). Plan checker 12/12 dimensions PASS, 2 minor non-blocking warnings (wave numbering on 39-03, RESEARCH §Open Questions lacks (RESOLVED) marker — substantively resolved). UI-SPEC 6/6 approved 91ceb86. Auto-chaining to /gsd-execute-phase 39.
+last_updated: "2026-05-12T16:00:00.000Z"
 last_activity: 2026-05-12
 progress:
   total_phases: 12
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 39 — context gathered 2026-05-12 via /gsd-discuss-phase. Major scope reframe: DISC-09 dropped & promoted to v5.1 (SEED-008); Phase 39 splits into Phase 39 + Phase 39b mirroring Phase 33 → 33b.
-Plan: Phase 39 = 3 items (NSV-01+15 + NSV-08 + NSV-12). Phase 39b (TBD-inserted) = 4 items (NSV-06+20 + NSV-14 + NSV-18 + NSV-02+16 lineage rails).
-Next: BEFORE planning: (1) /gsd-phase to insert Phase 39b in ROADMAP.md and drop DISC-09 from Phase 39 SC#3; (2) REQUIREMENTS.md edit to strike DISC-09 from v5.0 active and add v5.1 note pointing to SEED-008; (3) PROJECT.md edit to insert v5.1 milestone. AFTER paperwork: /gsd-plan-phase 39.
-Resume file: .planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md (decisions captured; § "Required follow-up paperwork" lists the bookkeeping steps).
-Status: Phase 39 context captured, awaiting follow-up paperwork before planning
+Phase: 39 — plans created 2026-05-12 via /gsd-plan-phase 39 --chain. 3 plans across 2 waves; checker 12/12 PASS; UI-SPEC 6/6 approved.
+Plan: Wave 0 → Plan 39-01 (RED test scaffold). Wave 1 (parallel) → Plan 39-02 (NSV-12 privacy split + fallback Card, T-39-01 mitigation) + Plan 39-03 (NSV-01+15 Link wraps + NSV-08 verify-before-patch).
+Next: /gsd-execute-phase 39 (auto-chained from --chain flag).
+Resume file: .planning/phases/39-audit-driven-discovery-polish/39-01-PLAN.md (Wave 0 entrypoint).
+Status: Ready to execute — auto-advancing.
 Last activity: 2026-05-12
 
 Progress: [███████░░░] 31%
