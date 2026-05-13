@@ -15,9 +15,12 @@ import type { CatalogCollector } from '@/data/discovery'
  * Contracts:
  * - D-39b-07 / D-39b-09 hide-if-empty: returns null when collectors.length === 0
  *   so the section is entirely absent from the DOM (no empty-state card).
- * - D-39b-09 count label is rendered ONLY when totalCount exceeds 5;
- *   suppressed at or below 5 (the chip row alone is enough signal at that
- *   scale). Copy is verbatim per UI-SPEC §Copywriting Contract.
+ * - Count label is rendered for any totalCount >= 1 with singular
+ *   ("1 collector owns this") / plural ("{N} collectors own this") copy.
+ *   Quick task 260513-m31 SUPERSEDES the shipped D-39b-09 "≤5 → suppress
+ *   label" rule per Phase 39b UAT test 7 product feedback — the count label
+ *   is useful at any non-zero count, so the prior `totalCount > 5 &&` gate
+ *   was reversed.
  * - D-39b-11 layout: vertical compact chip (`w-16 shrink-0 flex-col`) per
  *   collector, absolute-inset <Link> as the click surface (matches the
  *   PopularCollectorRow pattern). No FollowButton (browse-only, not
@@ -48,11 +51,13 @@ export function OtherOwnersRoster({
 
   return (
     <section className="space-y-2">
-      {totalCount > 5 && (
-        <p className="text-sm text-muted-foreground">
-          {totalCount} collectors own this
-        </p>
-      )}
+      {/* Quick task 260513-m31 — supersedes D-39b-09 "≤5 → suppress" rule;
+          count label renders for any totalCount >= 1 with singular/plural copy. */}
+      <p className="text-sm text-muted-foreground">
+        {totalCount === 1
+          ? '1 collector owns this'
+          : `${totalCount} collectors own this`}
+      </p>
       <div className="flex gap-2 overflow-x-auto scroll-smooth pb-1">
         {collectors.map((c) => {
           const name = c.displayName ?? `@${c.username}`
