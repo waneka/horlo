@@ -70,14 +70,12 @@ interface NavLinkProps {
   icon: LucideIcon
   label: string
   active: boolean
-  prefetch?: boolean
 }
 
-function NavLink({ href, icon: Icon, label, active, prefetch }: NavLinkProps) {
+function NavLink({ href, icon: Icon, label, active }: NavLinkProps) {
   return (
     <Link
       href={href}
-      prefetch={prefetch}
       aria-current={active ? 'page' : undefined}
       className="flex flex-1 flex-col items-center justify-end gap-1 pb-4 h-full min-h-11"
     >
@@ -154,7 +152,6 @@ export function BottomNav({ username, ownedWatches, viewerId }: BottomNavProps) 
         icon={User}
         label="Profile"
         active={isProfile}
-        prefetch={false}
       />
     </nav>
   )
