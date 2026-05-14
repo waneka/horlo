@@ -1,10 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { getCurrentUser } from '@/lib/auth'
 import * as wearEventDAL from '@/data/wearEvents'
 import * as watchDAL from '@/data/watches'
+import * as profilesDAL from '@/data/profiles'
 import { logActivity } from '@/data/activities'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/actionTypes'
@@ -53,6 +54,14 @@ export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
       console.error('[markAsWorn] activity log failed (non-fatal):', err)
     }
     revalidatePath('/')
+    // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so
+    // wear-event aggregates (most-worn / WornCalendar / WornTabContent) inside
+    // <ProfileShellResolver/> recompute. Cross-user fan-out: although caller IS
+    // owner, other viewers may have stale cached entries — SWR via revalidateTag(tag, 'max').
+    const ownerProfile = await profilesDAL.getProfileById(user.id)
+    if (ownerProfile?.username) {
+      revalidateTag(`profile:${ownerProfile.username}`, 'max')
+    }
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[markAsWorn] unexpected error:', err)
@@ -226,6 +235,14 @@ export async function logWearWithPhoto(input: {
   }
 
   revalidatePath('/')
+  // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so
+  // wear-event aggregates (most-worn / WornCalendar / WornTabContent) inside
+  // <ProfileShellResolver/> recompute. Cross-user fan-out: although caller IS
+  // owner, other viewers may have stale cached entries — SWR via revalidateTag(tag, 'max').
+  const ownerProfile = await profilesDAL.getProfileById(user.id)
+  if (ownerProfile?.username) {
+    revalidateTag(`profile:${ownerProfile.username}`, 'max')
+  }
   return { success: true, data: { wearEventId: parsed.data.wearEventId } }
 }
 

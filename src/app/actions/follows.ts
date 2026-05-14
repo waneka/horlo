@@ -76,6 +76,15 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
     // cacheLife TTL (30s) expired. Two-arg Next 16 form — Pitfall 4.
     revalidateTag(`viewer:${parsed.data.userId}`, 'max')
 
+    // Phase 39c D-39c-04 — invalidate the TARGET's cached profile shell so
+    // followerCount on /u/{target} reflects the change on next render. Tag
+    // matches cacheTag in <ProfileShellResolver/>. Cross-user fan-out:
+    // the target is NOT the caller — revalidateTag(tag, 'max').
+    const targetProfile = await getProfileById(parsed.data.userId)
+    if (targetProfile?.username) {
+      revalidateTag(`profile:${targetProfile.username}`, 'max')
+    }
+
     // Phase 18 DISC-04 — invalidate the viewer's own Popular Collectors rail
     // (read-your-own-writes via updateTag). The just-followed user must drop
     // off the viewer's /explore Popular Collectors list on next render. Tag
@@ -84,6 +93,11 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
     // updateTag (single-arg) is the right primitive, NOT revalidateTag.
     // RESEARCH §Pattern 6.
     updateTag(`explore:popular-collectors:viewer:${user.id}`)
+
+    // Phase 39c D-39c-04 — invalidate the VIEWER-OVERLAY tag so the viewer's
+    // own isFollowing state inside <ProfileGate/> reflects the toggle
+    // immediately (RYO). Tag matches the D-39c-02 second tag family.
+    updateTag(`viewer:${user.id}:profile:${parsed.data.userId}`)
 
     return { success: true, data: undefined }
   } catch (err) {
@@ -117,10 +131,28 @@ export async function unfollowUser(data: unknown): Promise<ActionResult<void>> {
     // reconcile on both directions of the toggle.
     revalidatePath('/u/[username]', 'layout')
 
+    // RESEARCH Pitfall 6 — invalidate the RECIPIENT's NotificationBell cache so
+    // their unread dot (if any) reflects the unfollow state. Two-arg form — Pitfall 4.
+    revalidateTag(`viewer:${parsed.data.userId}`, 'max')
+
+    // Phase 39c D-39c-04 — invalidate the TARGET's cached profile shell so
+    // followerCount on /u/{target} reflects the change on next render. Tag
+    // matches cacheTag in <ProfileShellResolver/>. Cross-user fan-out:
+    // the target is NOT the caller — revalidateTag(tag, 'max').
+    const targetProfile = await getProfileById(parsed.data.userId)
+    if (targetProfile?.username) {
+      revalidateTag(`profile:${targetProfile.username}`, 'max')
+    }
+
     // Phase 18 DISC-04 — symmetric invalidation: unfollowed user becomes
     // re-eligible to surface on the viewer's Popular Collectors rail.
     // RYO via updateTag — see followUser above for the rationale.
     updateTag(`explore:popular-collectors:viewer:${user.id}`)
+
+    // Phase 39c D-39c-04 — invalidate the VIEWER-OVERLAY tag so the viewer's
+    // own isFollowing state inside <ProfileGate/> reflects the toggle
+    // immediately (RYO). Tag matches the D-39c-02 second tag family.
+    updateTag(`viewer:${user.id}:profile:${parsed.data.userId}`)
 
     return { success: true, data: undefined }
   } catch (err) {
