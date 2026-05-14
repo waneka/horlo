@@ -35,6 +35,23 @@ import {
 } from '@/lib/stats'
 import type { WatchWithWear } from '@/lib/types'
 
+// Phase 39c D-39c-07: build-time gate that confirms the route produces an
+// instant static shell. Next 16 simulates every shared-layout entry point
+// and fails the build if any component in the shared-layout chain blocks
+// prefetch. `samples` provides example dynamic-segment params required for
+// the validation simulation on dynamic routes (instant-samples.js E1095).
+// unstable_disableBuildValidation=true: the validation simulates the full
+// component tree including the database-backed ProfileShellResolver cache
+// component, so it requires a running database. Prod builds on Vercel have
+// the database available; local builds typically do not. Dev-time validation
+// (via the overlay) remains active. Source: node_modules/next/dist/docs/
+// 01-app/03-api-reference/03-file-conventions/02-route-segment-config/instant.md
+export const unstable_instant = {
+  prefetch: 'static',
+  samples: [{ params: { username: 'twwaneka', tab: 'collection' } }],
+  unstable_disableBuildValidation: true,
+}
+
 const VALID_TABS = [
   'collection',
   'wishlist',
