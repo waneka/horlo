@@ -398,6 +398,40 @@ Plans:
 **UI hint**: yes
 **Carry-forward context**: Phase 39b decisions captured in `.planning/phases/39-audit-driven-discovery-polish/39-CONTEXT.md` (the Phase 39 discuss-phase covered both phases). A separate `/gsd-discuss-phase 39b` is optional — run it if refinement is needed before planning.
 
+### Phase 39c: Profile Layout Next 16 Conformance (INSERTED)
+**Goal**: Refactor `src/app/u/[username]/layout.tsx` to comply with Next 16 `cacheComponents: true` partial-prefetch semantics so prefetching can be restored on profile-bound `<Link>`s without re-introducing Router-Cache poisoning. Currently the layout performs ~8 uncached runtime calls (cookies-based auth, profile lookup, settings, follower counts, watches, wear events, follow state, common-ground overlap), which blocks every soft navigation. Move cacheable reads behind `'use cache'` with appropriate revalidation tags; wrap viewer-dependent fetches in `<Suspense>` boundaries with skeleton fallbacks; add `src/app/u/[username]/loading.tsx` so partial prefetch lands on the Suspense shell. Author a `ProfileShellSkeleton` matching the existing layout. Revert the diagnostic prefetch={false} commit (`2f42d00`) as part of this phase. Verify on prod that all three profile-link entry points (UserMenu avatar, ProfileTabs triggers, BottomNav Profile) prefetch + soft-nav cleanly with no 404 regression.
+**Depends on**: Phase 39b (the diagnostic mitigation `2f42d00` landed on top of Phase 39b's UAT findings; this phase reverts that mitigation and replaces it with a proper architectural fix)
+**Requirements**: NEXT16-CONFORMANCE (informal — debt closure driven by the profile-page-404-top-nav debug session)
+**Success Criteria** (what must be TRUE):
+  1. `src/app/u/[username]/layout.tsx` performs zero uncached runtime fetches at the top level — every uncached call site is either inside a `<Suspense>` boundary OR has been moved into a child Server Component that the layout renders inside `<Suspense>`
+  2. `getProfileByUsername` (and any other cacheable reads identified during planning) use the `'use cache'` directive with explicit revalidation tags; cache invalidation strategy is documented in the phase plan
+  3. `src/app/u/[username]/loading.tsx` exists and renders a `ProfileShellSkeleton` matching the prerendered layout chrome (avatar circle + name placeholder + tab pill row + content-card placeholder)
+  4. The diagnostic commit `2f42d00` (prefetch={false} on UserMenu avatar, ProfileTabs triggers, BottomNav Profile NavLink) is reverted in this phase — partial prefetching is restored on all three Link sites
+  5. Prod verification (the bug is prod-only): clicking "Profile" / any profile tab / any prefetched profile destination from a populated nav DOES NOT 404; hard reload still works; soft nav works
+  6. Private-profile gating still 404s correctly for non-owners (the existing `notFound()` short-circuit at `src/app/u/[username]/layout.tsx:47` is preserved, just routed through the cached/Suspense architecture)
+  7. No regression on Phase 39b affordances — ReferenceIdentityCard, OtherOwnersRoster, SameFamilyRail, LineageRail, LockedTabCard all still render correctly on `/u/[username]/[tab]` routes
+**Plans**: 7 plans
+
+Plans:
+**Wave 1** *(parallel — no inter-plan dependencies)*
+- [ ] 39c-01-PLAN.md — Author <ProfileShellSkeleton/> chrome-only skeleton + loading.tsx segment boundary (D-39c-06)
+- [ ] 39c-02-PLAN.md — Author <ProfileShellResolver/> 'use cache' Server Component with cacheTag('profile:${username}') + cacheLife({ revalidate: 300 }) preamble + Pitfall 1 mitigation (D-39c-03, T-39c-01)
+
+**Wave 2** *(blocked on Plan 02 for the resolver; can parallel with Plan 05)*
+- [ ] 39c-03-PLAN.md — Author <ProfileGate/> Server Component + refactor layout.tsx to thin Suspense shell (D-39c-05, T-39c-01, T-39c-04)
+- [ ] 39c-05-PLAN.md — Server Action invalidation wiring across profile.ts (updateTag RYO) + watches.ts (revalidateTag SWR ×3) + follows.ts (mixed RYO + cross-user) + wearEvents.ts (revalidateTag SWR ×2) (D-39c-04, T-39c-02, T-39c-03)
+
+**Wave 3** *(blocked on Plan 03 — unstable_instant validates against the refactored layout)*
+- [ ] 39c-04-PLAN.md — Add `export const unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx as the Next 16 build-time gate (D-39c-07)
+
+**Wave 4** *(blocked on Plans 04 + 05 — revert lands LAST per D-39c-08 lest the bug re-emerges between commits)*
+- [ ] 39c-06-PLAN.md — Revert diagnostic commit 2f42d00: remove prefetch={false} from UserMenu/ProfileTabs/BottomNav + drop NavLink prefetch?:boolean field (D-39c-08)
+
+**Wave 5** *(blocked on Plan 06 — prod-only verification per link.md:298)*
+- [ ] 39c-07-PLAN.md — Execute D-39c-09 7-step prod manual-checkpoint protocol (autonomous=false; deploys + verifies all three Link entry points + DevTools Network partial-prefetch evidence)
+**UI hint**: yes
+**Carry-forward context**: Full root-cause investigation, three architectural paths (A1 Suspense-in-layout / A2 move-data-down / A3 hybrid `'use cache'` + Suspense), and the prod verification of the Router-Cache poisoning hypothesis are captured in `.planning/debug/profile-page-404-top-nav.md`. The discuss-phase should consume that file as primary input.
+
 ### Phase 40: Search & Verdict Polish
 **Goal**: Add three faceted filters to the `/search` Watches tab and ship the pairwise drill-down section in CollectionFitCard, giving collectors taste-aware search refinement and side-by-side comparison.
 **Depends on**: Phase 35 (SRCH-16 hard-blocked on `movement_type` enum from Layer B), Phase 38 (FIT-05 verdict quality best after engine rewire populates taste dimensions)
