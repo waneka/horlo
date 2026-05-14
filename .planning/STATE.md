@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: ready_to_plan — Phase 40 (Search & Verdict Polish — SRCH-16 + FIT-05)
+status: completed
 stopped_at: Phase 40 context gathered
-last_updated: "2026-05-14T20:12:05.481Z"
-last_activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT (cf250b1 + 61706b7)
+last_updated: "2026-05-14T22:19:32.640Z"
+last_activity: 2026-05-14 -- Phase 40 marked complete
 progress:
   total_phases: 14
-  completed_phases: 11
-  total_plans: 48
-  completed_plans: 48
-  percent: 100
+  completed_phases: 12
+  total_plans: 55
+  completed_plans: 55
+  percent: 86
 ---
 
 # Project State
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 39c — profile-layout-next-16-conformance
+**Current focus:** Phase 40 — search-verdict-polish
 
 ## Current Position
 
-Phase: 40
-Plan: Not started
+Phase: 40 — COMPLETE
+Plan: 1 of 7
 
 **Phase 39c Wave 1 CLOSED** (plans 01 + 02 shipped per prior session — `bc24023` + `4706d3a` for the ProfileShellSkeleton + `loading.tsx` segment boundary, and `5004e1f` for the `'use cache'` `ProfileShellResolver`).
 
@@ -51,8 +51,8 @@ Plan: Not started
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
 Resume file: .planning/phases/40-search-verdict-polish/40-CONTEXT.md
-Status: ready_to_plan — Phase 40 (Search & Verdict Polish — SRCH-16 + FIT-05)
-Last activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT (cf250b1 + 61706b7)
+Status: Phase 40 complete
+Last activity: 2026-05-14 -- Phase 40 marked complete
 
 **Phase 39c post-close regressions + recovery (2026-05-14):** UAT immediately after the original fa22080 push surfaced two failure modes the false-positive D-39c-09 sign-off didn't catch — 404 on profile-link click (~98% rate on fast networks) AND infinite-skeleton-on-mobile-click. Root cause was `unstable_instant = { prefetch: 'static' }` on a dynamic page causing Next 16 to treat click-time RSC fetches as resolvable from the tree-only static prefetch. Removed in cf250b1; tab-nav UX polish (cached resolver shared by layout+page + narrow loading skeleton) shipped in 61706b7. Debug session archived at `.planning/debug/resolved/profile-page-404-top-nav.md`. Phase 39c original VERIFICATION.md is technically stale (verified against false-positive state) but the codebase now genuinely delivers the phase goal.
 
