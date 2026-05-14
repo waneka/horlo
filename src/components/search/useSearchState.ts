@@ -173,6 +173,9 @@ export function useSearchState(): UseSearchState {
   }, [debouncedQ, tab])
 
   // 3b. Watches sub-effect — fires when tab === 'all' || tab === 'watches'.
+  // Phase 40 D-01/D-02: facet changes trigger instant fetch (no debounce path);
+  // the existing AbortController abort-and-restart wiring covers facet dep changes
+  // automatically — no new controller needed (RESEARCH Q3 confirmed).
   useEffect(() => {
     const isActive = tab === 'all' || tab === 'watches'
     if (!isActive) {
@@ -181,7 +184,10 @@ export function useSearchState(): UseSearchState {
       setWatchesHasError(false)
       return
     }
-    if (debouncedQ.trim().length < CLIENT_MIN_CHARS) {
+    // Phase 40 D-01 — browse mode: facets fire fetches even with empty/short q.
+    // Guard lifted when at least one facet is active (hasActiveFacet === true).
+    const hasActiveFacet = !!(movement || size || styleArr.length)
+    if (debouncedQ.trim().length < CLIENT_MIN_CHARS && !hasActiveFacet) {
       setWatchesResults([])
       setWatchesIsLoading(false)
       setWatchesHasError(false)
@@ -194,7 +200,13 @@ export function useSearchState(): UseSearchState {
 
     void (async () => {
       try {
-        const res = await searchWatchesAction({ q: debouncedQ })
+        const res = await searchWatchesAction({
+          q: debouncedQ,
+          movement: movement ?? undefined,
+          size: size ?? undefined,
+          // Phase 40 D-03: styleArr is joined to comma string; DAL splits back to string[]
+          style: styleArr.length > 0 ? styleArr.join(',') : undefined,
+        })
         if (controller.signal.aborted) return // Pitfall 3 stale-result guard
         if (res.success) {
           setWatchesResults(
@@ -214,7 +226,7 @@ export function useSearchState(): UseSearchState {
     })()
 
     return () => controller.abort()
-  }, [debouncedQ, tab])
+  }, [debouncedQ, tab, movement, size, styleArr])
 
   // 3c. Collections sub-effect — fires when tab === 'all' || tab === 'collections'.
   useEffect(() => {
