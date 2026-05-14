@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: ready_to_plan
-stopped_at: Phase 39c Wave 4 complete (6/7 plans shipped — 01+02+03+04+05+06); Wave 5 awaiting operator prod-checkpoint
-last_updated: "2026-05-14T06:30:00.000Z"
-last_activity: 2026-05-14 -- Phase 39c Waves 3 + 4 closed (Plans 04 + 06 merged); Plan 07 manual prod-checkpoint blocking
+stopped_at: Phase 39c closed (7/7 plans + post-UAT regression recovered via cf250b1 + 61706b7); ready for Phase 40
+last_updated: "2026-05-14T19:20:00.000Z"
+last_activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT; Phase 40 next
 progress:
   total_phases: 14
   completed_phases: 11
@@ -49,9 +49,13 @@ Plan: Not started
 
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
-Resume file: .planning/phases/39c-profile-layout-next-16-conformance/39c-07-PLAN.md
-Status: Ready to plan
-Last activity: 2026-05-14
+Resume file: (Phase 39c closed — next is Phase 40 search-&-verdict-polish)
+Status: ready_to_plan — Phase 40 (Search & Verdict Polish — SRCH-16 + FIT-05)
+Last activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT (cf250b1 + 61706b7)
+
+**Phase 39c post-close regressions + recovery (2026-05-14):** UAT immediately after the original fa22080 push surfaced two failure modes the false-positive D-39c-09 sign-off didn't catch — 404 on profile-link click (~98% rate on fast networks) AND infinite-skeleton-on-mobile-click. Root cause was `unstable_instant = { prefetch: 'static' }` on a dynamic page causing Next 16 to treat click-time RSC fetches as resolvable from the tree-only static prefetch. Removed in cf250b1; tab-nav UX polish (cached resolver shared by layout+page + narrow loading skeleton) shipped in 61706b7. Debug session archived at `.planning/debug/resolved/profile-page-404-top-nav.md`. Phase 39c original VERIFICATION.md is technically stale (verified against false-positive state) but the codebase now genuinely delivers the phase goal.
+
+**Open follow-up from 39c UAT (NOT addressed):** Test 6 — `removeWatch` Server Action leaves stale state in the home "from collectors like you" rail AND `/watch/[id]` user-status projection still shows "owned" after server-side reload. Plan 39c-05's `revalidateTag('profile:${ownerUsername}', 'max')` doesn't reach the explore/discovery rail; the watch-detail page reads from a cached projection that wasn't invalidated. Tracked in `.planning/phases/39c-profile-layout-next-16-conformance/39c-UAT.md` Issue 2 — separate debug session or small fix phase when ready.
 
 Progress: [███████░░░] 31%
 
