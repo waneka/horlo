@@ -418,8 +418,8 @@ Plans:
 - [x] 39c-02-PLAN.md — Author <ProfileShellResolver/> 'use cache' Server Component with cacheTag('profile:${username}') + cacheLife({ revalidate: 300 }) preamble + Pitfall 1 mitigation (D-39c-03, T-39c-01)
 
 **Wave 2** *(blocked on Plan 02 for the resolver; can parallel with Plan 05)*
-- [ ] 39c-03-PLAN.md — Author <ProfileGate/> Server Component + refactor layout.tsx to thin Suspense shell (D-39c-05, T-39c-01, T-39c-04)
-- [ ] 39c-05-PLAN.md — Server Action invalidation wiring across profile.ts (updateTag RYO) + watches.ts (revalidateTag SWR ×3) + follows.ts (mixed RYO + cross-user) + wearEvents.ts (revalidateTag SWR ×2) (D-39c-04, T-39c-02, T-39c-03)
+- [x] 39c-03-PLAN.md — Author <ProfileGate/> Server Component + refactor layout.tsx to thin Suspense shell (D-39c-05, T-39c-01, T-39c-04)
+- [x] 39c-05-PLAN.md — Server Action invalidation wiring across profile.ts (updateTag RYO) + watches.ts (revalidateTag SWR ×3) + follows.ts (mixed RYO + cross-user) + wearEvents.ts (revalidateTag SWR ×2) (D-39c-04, T-39c-02, T-39c-03)
 
 **Wave 3** *(blocked on Plan 03 — unstable_instant validates against the refactored layout)*
 - [ ] 39c-04-PLAN.md — Add `export const unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx as the Next 16 build-time gate (D-39c-07)
