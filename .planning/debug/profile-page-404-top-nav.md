@@ -166,6 +166,33 @@ tdd_checkpoint:
   observation: **Page refresh NEVER 404s (user-confirmed).** Full document navigation skips the Router Cache entirely. Proxy sees the cookie on the full-doc request, falls through, Next renders the page → works. This confirms the bug lives in the Router Cache layer, not in the server-side route logic. Server-side rendering of `/u/[username]/collection` is healthy when reached directly.
 - timestamp: 2026-05-14T14:57:00Z
   observation: **SECOND FAILURE MODE — infinite skeleton (user-reported).** On the ~10% of mobile clicks that DON'T 404, the static shell (ProfileShellSkeleton via Suspense fallback in layout.tsx) renders correctly but the dynamic content never streams in. Indefinite skeleton state. This means: (a) Phase 39c's Path-A2 refactor IS working at the shell-render layer (the static shell prerenders + streams to the client correctly); (b) something inside `ProfileGate` or `ProfileShellResolver` either hangs or fails to stream when invoked on the click-time RSC fetch. Most likely culprits: `getCurrentUser()` hanging (supabase auth round-trip blocked during RSC streaming context), `ProfileShellResolver`'s 'use cache' lookup blocking on a cache-miss that can't compute (DB unreachable from edge/fluid runtime?), or RSC stream cut mid-response. The two failure modes (404 cache-poison vs infinite-skeleton stream-hang) may share a root cause (proxy interference) OR may be independent bugs that happen to coexist.
+- timestamp: 2026-05-14T15:05:00Z
+  observation: **CAPTURE A — P1 (proxy-intercept) REFUTED.** Hover-prefetch of `/u/twwaneka/collection?_rsc=1kl4s` returned **Status 200 OK** (not 307). `Cache-Control: public, max-age=0, must-revalidate`. Response body is a pure Next 16 segment-tree payload — resource hints (`HL[…]` rows for css + woff2 fonts) followed by row `0:` with `{tree: {…segment hierarchy…}, staleTime: 300, buildId: "4GshjGLop1GEGMNOYQDgw"}`. NO content rows (`J:`, `D:`, `L:`). This is exactly what `unstable_instant = { prefetch: 'static' }` is documented to produce: a tree-only prefetch that tells the router "this URL exists, here's its segment structure" — actual content is supposed to be fetched on click. Proxy is letting prefetches through with valid auth, and Phase 39c's static-shell prerender is working at the prefetch layer. The cache poisoning hypothesis based on a 307 was wrong.
+- timestamp: 2026-05-14T15:06:00Z
+  observation: **CAPTURE B — infinite-skeleton path Network panel evidence.** User clicked the "worn" tab and saw infinite skeleton. Network panel shows ~25 RSC requests, ALL completing (200 or 304) within ~2 seconds. None pending. No console errors. Notably:
+    - Many `collection?_rsc=…` and `worn?_rsc=…` requests with different RSC tokens (5x collection, 4x worn) — these are likely sibling-tab prefetches re-issued at click time
+    - `worn?_rsc=yo8s5` is the largest at **2.5 kB** — suspiciously small for a "real content" RSC payload (a WornCalendar + WornList + HorizontalBarChart tree should be at least 5–20 kB)
+    - All other `worn?_rsc=…` responses are 0.6–1.0 kB (tree-only sized)
+    - Several `new?returnTo=%2Fu%2Ftwwaneka%2Fworn&_rsc=…` requests (304) — prefetches of `/watch/new` CTA links
+  Interpretation: the click-time RSC fetch appears to ALSO return a tree-only payload (~2.5 kB max), not the full dynamic body. The page renders the static shell from the cached tree, then waits for content that never arrives because the click-time request also returned just tree. Network is healthy, server is responsive, but the body content is missing from every response.
+- timestamp: 2026-05-14T15:08:00Z
+  observation: **REFINED HYPOTHESIS (P2) — `unstable_instant` config misclassifies the dynamic body as static.** The combination on `[tab]/page.tsx`:
+    ```
+    export const unstable_instant = {
+      prefetch: 'static',
+      samples: [{ params: { username: 'twwaneka', tab: 'collection' } }],
+      unstable_disableBuildValidation: true,
+    }
+    ```
+  with `prefetch: 'static'` may be telling Next 16 "this entire route is statically prefetchable" — collapsing the dynamic body's RSC into the tree-only response. Both the hover-prefetch AND the click-time fetch then return tree-only because Next thinks the segment IS the static shell. Combined with `unstable_disableBuildValidation: true` (which skipped Vercel build-time validation), there's no prerendered dynamic-body fallback for the runtime to serve. The static shell prerenders fine (we see it), but there's no signal to the router that a *second-stage content fetch* is needed.
+  Possible fixes (need verification):
+    - Drop `unstable_instant` entirely — let Next 16's default partial-prefetch behavior apply
+    - Set `prefetch: 'partial'` instead of `'static'` (if the API supports it — needs doc check)
+    - Move `unstable_instant` from `[tab]/page.tsx` to `layout.tsx` and configure differently (the static shell IS the layout's Suspense fallback; the page itself isn't static)
+  All three are testable in a single deploy. We need server-side log evidence first to confirm the click-time RSC body is missing dynamic-segment content.
+
+eliminated_2026_05_14:
+  - **P1 — proxy 307s prefetches → Router Cache poisoning:** Capture A returned 200 with tree-only RSC payload. Proxy let it through with valid auth. The 404 outcome must come from somewhere else.
 
 ## Eliminated
 

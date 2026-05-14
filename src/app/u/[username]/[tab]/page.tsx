@@ -35,22 +35,18 @@ import {
 } from '@/lib/stats'
 import type { WatchWithWear } from '@/lib/types'
 
-// Phase 39c D-39c-07: build-time gate that confirms the route produces an
-// instant static shell. Next 16 simulates every shared-layout entry point
-// and fails the build if any component in the shared-layout chain blocks
-// prefetch. `samples` provides example dynamic-segment params required for
-// the validation simulation on dynamic routes (instant-samples.js E1095).
-// unstable_disableBuildValidation=true: the validation simulates the full
-// component tree including the database-backed ProfileShellResolver cache
-// component, so it requires a running database. Prod builds on Vercel have
-// the database available; local builds typically do not. Dev-time validation
-// (via the overlay) remains active. Source: node_modules/next/dist/docs/
-// 01-app/03-api-reference/03-file-conventions/02-route-segment-config/instant.md
-export const unstable_instant = {
-  prefetch: 'static',
-  samples: [{ params: { username: 'twwaneka', tab: 'collection' } }],
-  unstable_disableBuildValidation: true,
-}
+// Phase 39c D-39c-07 unstable_instant export REMOVED 2026-05-14 — debug
+// experiment for profile-page-404-top-nav. The page itself is dynamic
+// (uncached getProfileByUsername / getCurrentUser / getProfileSettings /
+// isFollowing reads at lines 71-96); marking `prefetch: 'static'` may
+// have caused Next 16 to treat the click-time RSC fetch as resolvable
+// from the tree-only static prefetch, returning ~2.5 kB tree-only
+// responses for click navigation → infinite skeleton + Router Cache
+// poisoning surface. Falling back to Next 16's default partial-prefetch
+// behavior (loading.tsx at src/app/u/[username]/loading.tsx already
+// signals the static-shell boundary). If this resolves the bug, replace
+// the unstable_instant block in a follow-up with the correct config
+// (likely `prefetch: 'partial'` or omit entirely).
 
 const VALID_TABS = [
   'collection',
