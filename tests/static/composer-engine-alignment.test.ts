@@ -11,6 +11,7 @@
 // library function. CollectionFitCard.tsx is NOT imported.
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import { analyzeSimilarity } from '@/lib/similarity'
 import { computeVerdictBundle } from '@/lib/verdict/composer'
 import type { CatalogEntry, Watch, CatalogTasteAttributes } from '@/lib/types'
@@ -163,6 +164,18 @@ const SCENARIOS: Scenario[] = [
     ownedTaste: emptyMotifsTaste,
   },
 ]
+
+describe('Phase 40 FIT-05 — candidateCatalogTaste threading (source-text guard)', () => {
+  it('composer.ts return literal includes candidateCatalogTaste field wired to catalogEntry', () => {
+    const composerSrc = readFileSync('src/lib/verdict/composer.ts', 'utf8')
+    expect(composerSrc).toMatch(/candidateCatalogTaste:\s*catalogEntry/)
+  })
+
+  it('types.ts VerdictBundleFull declares candidateCatalogTaste field', () => {
+    const typesSrc = readFileSync('src/lib/verdict/types.ts', 'utf8')
+    expect(typesSrc).toMatch(/candidateCatalogTaste/)
+  })
+})
 
 describe('Phase 38 D-04/D-15 — composer & engine agree at SimilarityLabel tier', () => {
   for (const s of SCENARIOS) {
