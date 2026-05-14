@@ -428,7 +428,7 @@ Plans:
 - [x] 39c-06-PLAN.md — Revert diagnostic commit 2f42d00: remove prefetch={false} from UserMenu/ProfileTabs/BottomNav + drop NavLink prefetch?:boolean field (D-39c-08)
 
 **Wave 5** *(blocked on Plan 06 — prod-only verification per link.md:298)*
-- [ ] 39c-07-PLAN.md — Execute D-39c-09 7-step prod manual-checkpoint protocol (autonomous=false; deploys + verifies all three Link entry points + DevTools Network partial-prefetch evidence)
+- [x] 39c-07-PLAN.md — Execute D-39c-09 7-step prod manual-checkpoint protocol (autonomous=false; deploys + verifies all three Link entry points + DevTools Network partial-prefetch evidence)
 **UI hint**: yes
 **Carry-forward context**: Full root-cause investigation, three architectural paths (A1 Suspense-in-layout / A2 move-data-down / A3 hybrid `'use cache'` + Suspense), and the prod verification of the Router-Cache poisoning hypothesis are captured in `.planning/debug/profile-page-404-top-nav.md`. The discuss-phase should consume that file as primary input.
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: executing
+status: ready_to_plan
 stopped_at: Phase 39c Wave 4 complete (6/7 plans shipped — 01+02+03+04+05+06); Wave 5 awaiting operator prod-checkpoint
 last_updated: "2026-05-14T06:30:00.000Z"
 last_activity: 2026-05-14 -- Phase 39c Waves 3 + 4 closed (Plans 04 + 06 merged); Plan 07 manual prod-checkpoint blocking
 progress:
   total_phases: 14
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 48
   completed_plans: 45
-  percent: 92
+  percent: 79
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 39c (profile-layout-next-16-conformance) — EXECUTING
-Plan: 7 of 7 (Wave 5 — manual prod-checkpoint pending operator)
+Phase: 40
+Plan: Not started
 
 **Phase 39c Wave 1 CLOSED** (plans 01 + 02 shipped per prior session — `bc24023` + `4706d3a` for the ProfileShellSkeleton + `loading.tsx` segment boundary, and `5004e1f` for the `'use cache'` `ProfileShellResolver`).
 
@@ -50,8 +50,8 @@ Plan: 7 of 7 (Wave 5 — manual prod-checkpoint pending operator)
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
 Resume file: .planning/phases/39c-profile-layout-next-16-conformance/39c-07-PLAN.md
-Status: Executing Phase 39c (Wave 5 manual prod-checkpoint — operator must run D-39c-09 7-step protocol on preview/prod)
-Last activity: 2026-05-14 -- Phase 39c Waves 3 + 4 closed (Plans 04 + 06 merged); Plan 07 blocking on operator
+Status: Ready to plan
+Last activity: 2026-05-14
 
 Progress: [███████░░░] 31%
 
@@ -71,7 +71,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 15 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plans 01+02+03+04 + Phase 39b Plan 04 — Phase 36 Plan 05 Task 1 docs portion shipped at 9eec274 but plan not closed: Task 2 prod-push pending operator)
+- Total plans completed: 22 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plans 01+02+03+04 + Phase 39b Plan 04 — Phase 36 Plan 05 Task 1 docs portion shipped at 9eec274 but plan not closed: Task 2 prod-push pending operator)
 - Average duration: ~6.6 min
 - Total execution time: ~59.9 min
 
@@ -82,6 +82,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 | 34 (Layer A) | 3/4 (out-of-order: 01→02→04; 03 prod push pending) | ~17 min | ~5.7 min |
 | 35 | 7 | - | - |
 | 36 (Layer C) | 4/5 closed + Plan 05 Task 1 done (Plans 01 Drizzle schema + 02 Supabase migration + 03 Drizzle migration twin + journal + 04 local push + 13-block integration test green; Plan 05 Task 1 docs append shipped at 9eec274 ~2min, Task 2 prod-push BLOCKED on operator) | ~28.2 min | ~6.3 min |
+| 39c | 7 | - | - |
 
 *Updated after each plan completion*
 
