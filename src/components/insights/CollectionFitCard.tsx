@@ -3,6 +3,7 @@ import { AlertTriangle, Watch as WatchIcon, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { VerdictBundle } from '@/lib/verdict/types'
+import { CollectionFitCompareTable } from '@/components/insights/CollectionFitCompareTable'
 
 /**
  * Phase 20 FIT-01 / D-04: pure-renderer Collection Fit card.
@@ -83,6 +84,22 @@ export function CollectionFitCard({ verdict }: CollectionFitCardProps) {
               ))}
             </ul>
           </div>
+        )}
+
+        {/* FIT-05 — Pairwise taste drill-down (D-12 through D-16; D-15 module-absent-not-empty) */}
+        {verdict.mostSimilar.length > 0 &&
+          verdict.candidateCatalogTaste !== null &&
+          verdict.candidateCatalogTaste.confidence !== null &&
+          verdict.candidateCatalogTaste.confidence >= 0.5 &&
+          verdict.mostSimilar[0].watch.catalogTaste != null &&
+          verdict.mostSimilar[0].watch.catalogTaste.confidence !== null &&
+          verdict.mostSimilar[0].watch.catalogTaste.confidence >= 0.5 && (
+          <CollectionFitCompareTable
+            candidate={verdict.candidateCatalogTaste}
+            owned={verdict.mostSimilar[0].watch.catalogTaste}
+            ownedBrand={verdict.mostSimilar[0].watch.brand}
+            ownedModel={verdict.mostSimilar[0].watch.model}
+          />
         )}
 
         {/* Role-overlap warning — verbatim copy from SimilarityBadge.tsx:78 */}
