@@ -26,6 +26,12 @@ const mockSearchState: {
   peopleHasError: boolean
   watchesHasError: boolean
   collectionsHasError: boolean
+  movement: string | null
+  setMovement: (next: string | null) => void
+  size: string | null
+  setSize: (next: string | null) => void
+  styleArr: string[]
+  setStyleArr: (next: string[]) => void
 } = {
   q: 'rolex',
   setQ: vi.fn(),
@@ -41,6 +47,12 @@ const mockSearchState: {
   peopleHasError: false,
   watchesHasError: false,
   collectionsHasError: false,
+  movement: null,
+  setMovement: vi.fn(),
+  size: null,
+  setSize: vi.fn(),
+  styleArr: [],
+  setStyleArr: vi.fn(),
 }
 
 vi.mock('@/components/search/useSearchState', () => ({
@@ -114,6 +126,9 @@ function resetMockState() {
   mockSearchState.peopleHasError = false
   mockSearchState.watchesHasError = false
   mockSearchState.collectionsHasError = false
+  mockSearchState.movement = null
+  mockSearchState.size = null
+  mockSearchState.styleArr = []
 }
 
 describe('SearchPageClient (Plan 06: SRCH-13, D-04, D-14)', () => {
@@ -135,7 +150,7 @@ describe('SearchPageClient (Plan 06: SRCH-13, D-04, D-14)', () => {
         viewerState: null,
       },
     ]
-    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     expect(screen.getByText(/Sub/)).toBeInTheDocument()
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
     // No coming-soon test ids
@@ -165,7 +180,7 @@ describe('SearchPageClient (Plan 06: SRCH-13, D-04, D-14)', () => {
         matchedTags: [],
       },
     ]
-    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     expect(screen.getByText(/Tyler/)).toBeInTheDocument()
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
   })
@@ -219,7 +234,7 @@ describe('SearchPageClient (Plan 06: SRCH-13, D-04, D-14)', () => {
       },
     ]
     const { container } = render(
-      <SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>,
+      <SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>,
     )
     const headings = Array.from(container.querySelectorAll('h2'))
     const labels = headings.map((h) => h.textContent ?? '')
@@ -243,7 +258,7 @@ describe('SearchPageClient (Plan 06: SRCH-13, D-04, D-14)', () => {
       wishlistCount: 0,
       viewerState: null,
     }))
-    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     const seeAllButtons = screen.getAllByText(/see all/i)
     expect(seeAllButtons.length).toBeGreaterThanOrEqual(1)
     fireEvent.click(seeAllButtons[0])
@@ -262,27 +277,27 @@ describe('SearchPageClient (Plan 06: SRCH-13, D-04, D-14)', () => {
       wishlistCount: 0,
       viewerState: null,
     }))
-    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    render(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     expect(screen.getByText(/Showing top 20/i)).toBeInTheDocument()
   })
 
   it('Test 6 — per-tab Input placeholder swaps based on active tab (UI-SPEC lines 220-221)', () => {
     mockSearchState.tab = 'watches'
     const { rerender } = render(
-      <SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>,
+      <SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>,
     )
     expect(screen.getByPlaceholderText(/search watches/i)).toBeInTheDocument()
 
     mockSearchState.tab = 'collections'
-    rerender(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    rerender(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     expect(screen.getByPlaceholderText(/search collections/i)).toBeInTheDocument()
 
     mockSearchState.tab = 'all'
-    rerender(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    rerender(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     expect(screen.getByPlaceholderText(/search everything/i)).toBeInTheDocument()
 
     mockSearchState.tab = 'people'
-    rerender(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null}>{null}</SearchPageClient>)
+    rerender(<SearchPageClient viewerId="v1" collectionRevision={0} viewerUsername={null} styleVocab={[]}>{null}</SearchPageClient>)
     expect(screen.getByPlaceholderText(/search collectors/i)).toBeInTheDocument()
   })
 })
