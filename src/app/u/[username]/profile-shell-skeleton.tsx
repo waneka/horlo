@@ -38,3 +38,22 @@ export function ProfileShellSkeleton() {
     </div>
   )
 }
+
+/**
+ * Narrower content-only skeleton used by `loading.tsx` for tab-segment
+ * navigations. When the user clicks between tabs (collection → wishlist →
+ * worn → ...), the `/u/[username]` layout segment stays mounted, the chrome
+ * (avatar, header, tab strip) rendered by ProfileGate stays on screen, and
+ * only the `[tab]/page.tsx` child suspends. Rendering only the content card
+ * placeholder here avoids visually duplicating the chrome skeleton during
+ * the brief in-flight window. For first-load cold cases where ProfileGate
+ * itself suspends, the layout's own `<Suspense fallback={<ProfileShellSkeleton/>}>`
+ * still renders the full chrome skeleton.
+ */
+export function ProfileTabContentSkeleton() {
+  return (
+    <div className="space-y-6" data-testid="profile-tab-content-skeleton">
+      <Skeleton className="h-64 w-full rounded-xl border" />
+    </div>
+  )
+}

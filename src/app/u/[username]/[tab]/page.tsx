@@ -3,15 +3,10 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
-import {
-  getProfileByUsername,
-  getProfileSettings,
-} from '@/data/profiles'
-import { getWatchesByUser } from '@/data/watches'
+import { ProfileShellResolver } from '../profile-shell-resolver'
 import {
   getMostRecentWearDates,
   getWearEventsForViewer,
-  getAllWearEventsByUser,
 } from '@/data/wearEvents'
 import { getPreferencesByUser } from '@/data/preferences'
 import { CollectionTabContent } from '@/components/profile/CollectionTabContent'
@@ -35,18 +30,13 @@ import {
 } from '@/lib/stats'
 import type { WatchWithWear } from '@/lib/types'
 
-// Phase 39c D-39c-07 unstable_instant export REMOVED 2026-05-14 — debug
-// experiment for profile-page-404-top-nav. The page itself is dynamic
-// (uncached getProfileByUsername / getCurrentUser / getProfileSettings /
-// isFollowing reads at lines 71-96); marking `prefetch: 'static'` may
-// have caused Next 16 to treat the click-time RSC fetch as resolvable
-// from the tree-only static prefetch, returning ~2.5 kB tree-only
-// responses for click navigation → infinite skeleton + Router Cache
-// poisoning surface. Falling back to Next 16's default partial-prefetch
-// behavior (loading.tsx at src/app/u/[username]/loading.tsx already
-// signals the static-shell boundary). If this resolves the bug, replace
-// the unstable_instant block in a follow-up with the correct config
-// (likely `prefetch: 'partial'` or omit entirely).
+// Phase 39c D-39c-07 unstable_instant export was REMOVED 2026-05-14 after
+// the post-deploy UAT showed that `{ prefetch: 'static' }` on a route whose
+// page body is dynamic caused click-time RSC fetches to return tree-only
+// payloads → infinite skeletons and Router Cache poisoning. Falling back to
+// Next 16's default partial-prefetch behavior (signalled by
+// src/app/u/[username]/loading.tsx) was the fix. See
+// .planning/debug/profile-page-404-top-nav.md.
 
 const VALID_TABS = [
   'collection',
@@ -67,18 +57,28 @@ export default async function ProfileTabPage({
   const { username, tab } = await params
   if (!VALID_TABS.includes(tab as Tab)) notFound()
 
-  const profile = await getProfileByUsername(username)
-  if (!profile) notFound()
-
-  // Resolve viewer (anonymous viewers stay null without throwing).
+  // Resolve viewer FIRST and OUTSIDE the cached ProfileShellResolver scope
+  // (Phase 39c Pitfall 1 — D-39c-03). The resolver caches on username only;
+  // mixing viewer state into its key would serve the first viewer's overlay
+  // data to subsequent viewers.
   let viewerId: string | null = null
   try {
     viewerId = (await getCurrentUser()).id
   } catch (err) {
     if (!(err instanceof UnauthorizedError)) throw err
   }
+
+  // Cached owner-scoped reads — shared with /u/[username]/layout.tsx's
+  // ProfileGate via the same `'use cache'` resolver. The second hit from
+  // this page is a cache lookup, not a DB roundtrip, so subsequent tab
+  // navigations within the 300s cacheLife window are sub-millisecond on
+  // the server side. The resolver's `cacheTag('profile:${username}')` is
+  // invalidated by the Server Actions wired in Plan 39c-05 (watches add/
+  // edit/remove, profile updates, follows, wear events).
+  const resolved = await ProfileShellResolver({ username })
+  if (!resolved.profile) notFound()
+  const { profile, settings, watches: ownerWatches, wearEvents: ownerWearEvents } = resolved
   const isOwner = viewerId === profile.id
-  const settings = await getProfileSettings(profile.id)
   const displayName = profile.displayName ?? null
   const ownerDisplayLabel = profile.displayName ?? `@${profile.username}`
 
@@ -217,8 +217,10 @@ export default async function ProfileTabPage({
   }
 
   // Collection / Wishlist / Notes share the watches+wear data fetch.
+  // `watches` comes from the cached resolver (shared with the layout);
+  // `wearDates` is a small per-tab fetch that stays uncached.
   if (tab === 'collection' || tab === 'wishlist' || tab === 'notes') {
-    const watches = await getWatchesByUser(profile.id)
+    const watches = ownerWatches
     const wearDates = await getMostRecentWearDates(
       profile.id,
       watches.map((w) => w.id),
@@ -271,9 +273,11 @@ export default async function ProfileTabPage({
 
   if (tab === 'worn') {
     // DAL visibility gate (PRIV-05 / Phase 12 WYWT-10): three-tier predicate;
-    // owner bypass handled inside getWearEventsForViewer.
+    // owner bypass handled inside getWearEventsForViewer. Events stay
+    // viewer-gated and uncached; `watches` comes from the cached resolver
+    // shared with the layout.
     const events = await getWearEventsForViewer(viewerId, profile.id)
-    const watches = await getWatchesByUser(profile.id)
+    const watches = ownerWatches
     const watchMap = Object.fromEntries(
       watches.map((w) => [
         w.id,
@@ -318,10 +322,14 @@ export default async function ProfileTabPage({
       />
     )
   }
-  const watches = await getWatchesByUser(profile.id)
+  // `watches` and the owner-view `events` come from the cached resolver
+  // (shared with the layout) — owner stats are cache hits within the 300s
+  // window. Non-owner views need the viewer-gated `getWearEventsForViewer`
+  // call (privacy-safe filtering by per-row visibility) and stay uncached.
+  const watches = ownerWatches
   const ownedAll = watches.filter((w) => w.status === 'owned')
   const events = isOwner
-    ? await getAllWearEventsByUser(profile.id)
+    ? ownerWearEvents
     : await getWearEventsForViewer(viewerId, profile.id)
   const wearCount = wearCountByWatchMap(events)
   // Build WatchWithWear list — populate lastWornDate from the first (most-recent) event per watch.
