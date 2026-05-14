@@ -1,6 +1,6 @@
 // Phase 20 D-04: pure-render type contract for <CollectionFitCard>. Types-only — no runtime exports.
 
-import type { Watch, SimilarityLabel, PrimaryArchetype, EraSignal } from '@/lib/types'
+import type { Watch, SimilarityLabel, PrimaryArchetype, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 
 /**
  * Phase 20 D-04: VerdictBundle is the pure-render contract for <CollectionFitCard>.
@@ -32,6 +32,8 @@ export interface VerdictBundleFull {
   rationalePhrasings: string[]
   mostSimilar: VerdictMostSimilar[]
   roleOverlap: boolean
+  /** Phase 40 FIT-05 D-14/D-15 — candidate's CAT-13 taste from catalogEntry; null when catalogEntry is null. Confidence-gate (>= 0.5) applied DOWNSTREAM in CollectionFitCard, not here. */
+  candidateCatalogTaste: CatalogTasteAttributes | null
 }
 
 export interface VerdictBundleSelfOwned {
