@@ -274,6 +274,15 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     revalidatePath('/')
     revalidatePath('/u/[username]', 'layout')
 
+    // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so the
+    // next /u/{owner} render reflects the new watch count, taste tags, and
+    // wear-event aggregates derived inside <ProfileShellResolver/>.
+    // Cross-user fan-out via revalidateTag(tag, 'max').
+    const ownerProfile = await getProfileById(user.id)
+    if (ownerProfile?.username) {
+      revalidateTag(`profile:${ownerProfile.username}`, 'max')
+    }
+
     // Phase 18 DISC-05 / DISC-06 — fan out 'explore' tag so the global
     // Trending + Gaining Traction rails (and the per-viewer Popular Collectors
     // rail, which also tags 'explore') recompute on next render. Cross-user
@@ -422,6 +431,15 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     revalidatePath('/')
     revalidatePath('/u/[username]', 'layout')
 
+    // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so the
+    // next /u/{owner} render reflects the new watch count, taste tags, and
+    // wear-event aggregates derived inside <ProfileShellResolver/>.
+    // Cross-user fan-out via revalidateTag(tag, 'max').
+    const ownerProfile = await getProfileById(user.id)
+    if (ownerProfile?.username) {
+      revalidateTag(`profile:${ownerProfile.username}`, 'max')
+    }
+
     // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch. editWatch can
     // change status (owned ↔ wishlist ↔ sold ↔ grail), and each transition
     // shifts the catalog's denormalized counts (owners_count, wishlist_count)
@@ -453,6 +471,15 @@ export async function removeWatch(watchId: string): Promise<ActionResult<void>> 
   try {
     await watchDAL.deleteWatch(user.id, watchId)
     revalidatePath('/')
+
+    // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so the
+    // next /u/{owner} render reflects the new watch count, taste tags, and
+    // wear-event aggregates derived inside <ProfileShellResolver/>.
+    // Cross-user fan-out via revalidateTag(tag, 'max').
+    const ownerProfile = await getProfileById(user.id)
+    if (ownerProfile?.username) {
+      revalidateTag(`profile:${ownerProfile.username}`, 'max')
+    }
 
     // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch/editWatch.
     // DELETE on watches table → owners_count or wishlist_count decrements
