@@ -1,9 +1,11 @@
 // DAL is server-only — importing this from a client component is a build-time error.
 import 'server-only'
 
+import { cacheLife } from 'next/cache'
+
 import { db } from '@/db'
 import { watches, watchesCatalog } from '@/db/schema'
-import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { and, arrayOverlaps, asc, between, desc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm'
 import type { CatalogEntry, CatalogSource, ImageSourceQuality, PrimaryArchetype, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
@@ -261,6 +263,34 @@ const SEARCH_WATCHES_TRIM_MIN_LEN = 2
 const SEARCH_WATCHES_CANDIDATE_CAP = 50
 const SEARCH_WATCHES_DEFAULT_LIMIT = 20
 
+// ---------------------------------------------------------------------------
+// Phase 40 SRCH-16: CatalogSearchFilters + SIZE_BAND_MAP
+// ---------------------------------------------------------------------------
+
+/**
+ * Optional facet filters for searchCatalogWatches (Phase 40 D-03/D-05/D-07).
+ * URL values for size are ASCII-safe: lt36 / 36-39 / 40-42 / 43-45 / 46plus.
+ */
+export interface CatalogSearchFilters {
+  movement?: 'auto' | 'manual' | 'quartz' | 'spring_drive'
+  size?: 'lt36' | '36-39' | '40-42' | '43-45' | '46plus'
+  style?: string[]
+}
+
+/**
+ * Inclusive [min, max] bounds in mm for each case-size chip band (D-05).
+ * lt36 upper bound is 35.9 to avoid overlap with 36-39 lower bound.
+ * case_size_mm values in the catalog are typically integer or half-step,
+ * so the 0.1mm gap is cosmetic but prevents any ambiguity.
+ */
+const SIZE_BAND_MAP: Record<NonNullable<CatalogSearchFilters['size']>, [number, number]> = {
+  lt36: [0, 35.9],
+  '36-39': [36, 39],
+  '40-42': [40, 42],
+  '43-45': [43, 45],
+  '46plus': [46, 999],
+}
+
 /**
  * Phase 19 Watches tab DAL (SRCH-09).
  *
@@ -294,13 +324,18 @@ export async function searchCatalogWatches({
   q,
   viewerId,
   limit = SEARCH_WATCHES_DEFAULT_LIMIT,
+  filters,
 }: {
   q: string
   viewerId: string
   limit?: number
+  filters?: CatalogSearchFilters
 }): Promise<SearchCatalogWatchResult[]> {
   const trimmed = q.trim()
-  if (trimmed.length < SEARCH_WATCHES_TRIM_MIN_LEN) return []
+  // Phase 40 D-01 browse-mode lift: when at least one facet is active, proceed
+  // even when q is shorter than the 2-char minimum.
+  const hasActiveFacet = !!(filters?.movement || filters?.size || filters?.style?.length)
+  if (trimmed.length < SEARCH_WATCHES_TRIM_MIN_LEN && !hasActiveFacet) return []
 
   const lowerQ = trimmed.toLowerCase()
   const pattern = `%${lowerQ}%`
@@ -324,16 +359,48 @@ export async function searchCatalogWatches({
     // owners_count/wishlist_count are still 0 (no users have collected them yet).
     // ORDER BY (below) preserves the identical popularity expression so popular
     // rows still rank ahead of zero-popularity name-matches.
-    .where(
-      or(
-        ilike(watchesCatalog.brandNormalized, pattern),
-        ilike(watchesCatalog.modelNormalized, pattern),
-        // Pitfall 1: only run reference branch when stripped query is non-empty.
-        refPattern
-          ? ilike(watchesCatalog.referenceNormalized, refPattern)
-          : sql`false`,
-      ),
-    )
+    //
+    // Phase 40 predicate composition: build a predicates array and AND-compose.
+    // Pitfall 1 guard: and(...predicates) with empty array → undefined → no WHERE.
+    .where((() => {
+      const predicates = []
+
+      // ILIKE OR for text query — only when trimmed query is long enough.
+      if (trimmed.length >= SEARCH_WATCHES_TRIM_MIN_LEN) {
+        predicates.push(
+          or(
+            ilike(watchesCatalog.brandNormalized, pattern),
+            ilike(watchesCatalog.modelNormalized, pattern),
+            // Pitfall 1: only run reference branch when stripped query is non-empty.
+            refPattern
+              ? ilike(watchesCatalog.referenceNormalized, refPattern)
+              : sql`false`,
+          )!,
+        )
+      }
+
+      // Movement Type facet — D-03/D-08: eq on pgEnum + isNotNull for NULL exclusion.
+      if (filters?.movement) {
+        predicates.push(isNotNull(watchesCatalog.movementType)!)
+        predicates.push(eq(watchesCatalog.movementType, filters.movement)!)
+      }
+
+      // Case Size facet — D-05/D-08: between() on numeric column + isNotNull.
+      if (filters?.size) {
+        const [min, max] = SIZE_BAND_MAP[filters.size]
+        predicates.push(isNotNull(watchesCatalog.caseSizeMm)!)
+        predicates.push(between(watchesCatalog.caseSizeMm, min, max)!)
+      }
+
+      // Style facet — D-07/D-08: arrayOverlaps (OR-logic within facet).
+      // No isNotNull needed: styleTags is notNull with default '{}' (D-08).
+      if (filters?.style?.length) {
+        predicates.push(arrayOverlaps(watchesCatalog.styleTags, filters.style)!)
+      }
+
+      // Pitfall 1: and() with 0 args → undefined → Drizzle omits WHERE clause.
+      return predicates.length > 0 ? and(...predicates) : undefined
+    })())
     .orderBy(
       desc(sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount})`),
       asc(watchesCatalog.brandNormalized),
@@ -386,6 +453,35 @@ export async function searchCatalogWatches({
     wishlistCount: r.wishlistCount,
     viewerState: stateMap.get(r.id) ?? null,
   }))
+}
+
+// ---------------------------------------------------------------------------
+// Phase 40 D-06: getTopStyleTags — cached top-N style tag vocabulary
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the top-N most frequent style_tags values from watches_catalog,
+ * ordered by frequency DESC.
+ *
+ * Used to populate the Style chip group in the SRCH-16 filter sheet (D-06).
+ * 'use cache' + cacheLife('hours') — catalog style_tags change only on admin
+ * seed/enrichment runs, so a 1-hour TTL is appropriate. Pitfall 3 safe:
+ * this function takes no user-specific inputs and is safe to cache globally.
+ *
+ * Called from the /search Server Component page; threaded as styleVocab prop
+ * into SearchPageClient → WatchFacetSheet.
+ */
+export async function getTopStyleTags(limit = 8): Promise<string[]> {
+  'use cache'
+  cacheLife('hours')
+  const rows = await db.execute(
+    sql`SELECT tag, COUNT(*) AS freq
+        FROM watches_catalog, unnest(style_tags) AS tag
+        GROUP BY tag
+        ORDER BY freq DESC
+        LIMIT ${limit}`,
+  )
+  return (rows as unknown as Array<{ tag: string }>).map((r) => r.tag)
 }
 
 // ---------------------------------------------------------------------------
