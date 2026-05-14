@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getSuggestedCollectors } from '@/data/suggestions'
 import { getWatchesByUser } from '@/data/watches'
 import { getProfileById } from '@/data/profiles'
+import { getTopStyleTags } from '@/data/catalog'
 import { SuggestedCollectorRow } from '@/components/home/SuggestedCollectorRow'
 import { SearchPageClient } from '@/components/search/SearchPageClient'
 
@@ -39,9 +40,11 @@ export default async function SearchPage() {
   // prop. Null is a soft alarm — at v4.0+ every authenticated user has a
   // username via signup trigger, so the action slot fallback rarely fires.
   // Folded into Promise.all to keep the fetch parallel with getWatchesByUser.
-  const [viewerCollection, viewerProfile] = await Promise.all([
+  const [viewerCollection, viewerProfile, styleVocab] = await Promise.all([
     getWatchesByUser(user.id),
     getProfileById(user.id),
+    // Phase 40 D-06 — top-8 distinct style tags by frequency (server-side fetch, 'use cache' + cacheLife('hours') in DAL).
+    getTopStyleTags(8),
   ])
   const viewerUsername = viewerProfile?.username ?? null
   return (
@@ -50,6 +53,7 @@ export default async function SearchPage() {
         viewerId={user.id}
         collectionRevision={viewerCollection.length}
         viewerUsername={viewerUsername}
+        styleVocab={styleVocab}
       >
         {/* D-29 Server Component child — renders inside Client Component's
             pre-query (D-11) and no-results (D-10) states. */}
