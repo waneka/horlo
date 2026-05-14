@@ -746,28 +746,25 @@ Note: Calling a `'use cache'` component as a function (Example 2 line `await Pro
 - `[VERIFIED: src/app/u/[username]/layout.tsx]` — 147 lines, 8 uncached top-level reads (lines 22-110) — confirms the refactor target shape.
 - `[VERIFIED: src/app/u/[username]/common-ground-gate.ts]` — pure module + single async export — pattern to mirror.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Tag-shape choice for `profile.ts.updateProfile`: username vs. userId?**
    - What we know: `profile.ts.updateProfile` only has `user.id` in hand. Username can be looked up via `getProfileById(user.id)` (adds 1 DB round-trip).
-   - What's unclear: Whether to (a) do the lookup and tag by username everywhere, OR (b) tag by userId in both the resolver and the actions, OR (c) tag by BOTH `profile:${userId}` and `profile:${username}` in the resolver and let either invalidation form work.
-   - Recommendation: **Option (c) — tag both** in the resolver. `cacheTag('profile:${profile.id}', 'profile:${profile.username}')` is two strings to one tag entry — idempotent (cacheTag.md:88) and cheap. Server Actions can then invalidate by whichever is in hand. **HIGH confidence this is the cleanest resolution.** Planner should adopt.
-   - **Note for planner:** If adopting Option (c), update D-39c-02 references to be tolerant of the dual-tag shape.
+   - Original recommendation (research-time): tag with both `profile:${profile.id}` and `profile:${profile.username}` in the resolver so either invalidation form works.
+   - **RESOLVED:** Single-tag `cacheTag('profile:${username}')` form per **D-39c-02 (CONTEXT.md, locked)**. The dual-tag recommendation is **superseded by the locked CONTEXT decision** and is NOT adopted. Rationale: D-39c-02 explicitly states "username is the natural cache key because the resolver receives username from route params before resolving profile.id." Server Actions derive `username` via the `getProfileById` bridge pattern (precedent: `follows.ts:44`, `watches.ts:235`). Planner does NOT update D-39c-02; plans implement the single-tag form. The minor cost is one extra DB round-trip in `profile.ts.updateProfile` and `follows.ts.followUser/unfollowUser`, which is acceptable.
 
 2. **Where to fetch `initialIsFollowing` and `resolveCommonGround` in the gate?**
    - What we know: D-39c-05 says these are fetched inside the gate (not the resolver) because they're viewer-dependent.
-   - What's unclear: Whether to wrap them in their OWN nested `<Suspense>` boundaries so the static shell can stream the chrome (header + tabs without follower-button hydration) before these resolve.
-   - Recommendation: For the v1 of this refactor, fetch them sequentially inside the gate (current shape). Don't nest extra Suspense boundaries — they add complexity. The gate IS the Suspense boundary. If the bug recurs because `isFollowing` + `resolveCommonGround` are slow, planner can revisit in a follow-up phase.
+   - What's unclear (research-time): Whether to wrap them in their OWN nested `<Suspense>` boundaries so the static shell can stream the chrome (header + tabs without follower-button hydration) before these resolve.
+   - **RESOLVED:** Fetch sequentially inside `<ProfileGate/>`; **do NOT nest extra Suspense boundaries**. The gate IS the single Suspense boundary per D-39c-05 ("One streaming hop"). Plan 03 implements this. If `isFollowing` + `resolveCommonGround` become a perf bottleneck, revisit in a follow-up phase.
 
 3. **Should `<ProfileShellResolver/>` be a separate cache scope for the locked-vs-public gate vs. full chrome?**
    - What we know: D-39c-05 / Claude's Discretion calls this out.
-   - What's unclear: Whether the additional cache entry per profile is worth saving the Promise.all on the locked branch.
-   - Recommendation: **Defer.** Use one resolver. The locked branch is rare in practice (single-user app today; most profiles will be public). If profile traffic to locked profiles grows, split later. Capture as a v5.x perf polish backlog item per the Deferred section.
+   - **RESOLVED: Defer.** One resolver. The locked branch is rare (single-user app today; most profiles are public). If profile traffic to locked profiles grows, split later. Captured as a v5.x perf polish backlog item in CONTEXT.md §Deferred Ideas. Plan 02 implements the single-resolver form.
 
 4. **Does `unstable_instant` validation pass on first attempt?**
    - What we know: Validation simulates every shared-layout entry point (instant.md:65-69).
-   - What's unclear: Whether the new gate or any of its children will trigger a validation failure on first build.
-   - Recommendation: Run `npm run build` after step 2 of the recommended order. If validation fails, fix the offending component and re-run. The validation error overlay identifies the specific component.
+   - **RESOLVED (operational, not planning):** Run `npm run build` as part of Plan 04's acceptance criteria. If validation fails, the build error overlay identifies the offending component; gap-close on the responsible plan (likely Plan 03). This is wired as an `<automated>` verify on Plan 04, so it is enforced at execution-time, not at planning-time.
 
 ## Environment Availability
 
