@@ -109,6 +109,7 @@ export function UserMenu({
     <div className="flex items-center gap-1">
       <Link
         href={`/u/${username}/collection`}
+        prefetch={false}
         aria-label={`Go to ${username}'s profile`}
         className="inline-flex size-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
