@@ -27,6 +27,7 @@ const baseFullVerdict: VerdictBundle = {
   rationalePhrasings: ['Lines up cleanly with the taste I have already built.'],
   mostSimilar: [],
   roleOverlap: false,
+  candidateCatalogTaste: null,
 }
 
 describe('FIT-01 CollectionFitCard (Plan 03)', () => {

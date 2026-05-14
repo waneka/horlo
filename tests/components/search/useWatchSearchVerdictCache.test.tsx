@@ -14,6 +14,7 @@ const fakeBundle: VerdictBundle = {
   rationalePhrasings: ['ok'],
   mostSimilar: [],
   roleOverlap: false,
+  candidateCatalogTaste: null,
 }
 
 describe('D-06 useWatchSearchVerdictCache (Plan 05)', () => {

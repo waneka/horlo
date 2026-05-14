@@ -1,6 +1,6 @@
 import 'server-only'
 import { analyzeSimilarity } from '@/lib/similarity'
-import type { Watch, UserPreferences, CatalogEntry } from '@/lib/types'
+import type { Watch, UserPreferences, CatalogEntry, CatalogTasteAttributes } from '@/lib/types'
 import type {
   VerdictBundleFull,
   Framing,
@@ -93,6 +93,21 @@ export function computeVerdictBundle(args: ComposeArgs): VerdictBundleFull {
       score,
     })),
     roleOverlap: result.roleOverlap,
+    // Phase 40 FIT-05 D-14/D-15 — full 8-field taste shape for the compare table.
+    // Numeric coercion is idempotent defense-in-depth (Pitfall 2 / Assumption A2):
+    // mapRowToCatalogEntry already coerces at the DAL boundary.
+    candidateCatalogTaste: catalogEntry
+      ? {
+          formality: catalogEntry.formality !== null ? Number(catalogEntry.formality) : null,
+          sportiness: catalogEntry.sportiness !== null ? Number(catalogEntry.sportiness) : null,
+          heritageScore: catalogEntry.heritageScore !== null ? Number(catalogEntry.heritageScore) : null,
+          primaryArchetype: catalogEntry.primaryArchetype,
+          eraSignal: catalogEntry.eraSignal,
+          designMotifs: catalogEntry.designMotifs ?? [],
+          confidence: catalogEntry.confidence !== null ? Number(catalogEntry.confidence) : null,
+          extractedFromPhoto: catalogEntry.extractedFromPhoto ?? false,
+        }
+      : null,
   }
 }
 

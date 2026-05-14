@@ -26,6 +26,7 @@ const verdictWithCopy: VerdictBundleFull = {
   ],
   mostSimilar: [],
   roleOverlap: false,
+  candidateCatalogTaste: null,
 }
 
 describe('Phase 20.1 Plan 03 — WishlistRationalePanel (ADD-02 + Pitfall 5)', () => {
@@ -112,6 +113,7 @@ describe('Phase 20.1 gap-closure regression guard — UAT gap 2 (Phase 28 D-20 m
       rationalePhrasings: ['Foo'],  // explicit pre-fill content (Phase 28 D-20)
       mostSimilar: [],
       roleOverlap: false,
+      candidateCatalogTaste: null,
     }
     render(
       <WishlistRationalePanel
