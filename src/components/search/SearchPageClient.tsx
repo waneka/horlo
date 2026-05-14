@@ -1,11 +1,14 @@
 'use client'
 
-import { Search } from 'lucide-react'
+import { useState } from 'react'
+import { Search, SlidersHorizontalIcon } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 import { useSearchState } from '@/components/search/useSearchState'
+import { WatchFacetSheet } from '@/components/search/FilterSheet'
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
 import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
@@ -31,6 +34,8 @@ interface SearchPageClientProps {
   viewerUsername: string | null
   /** SuggestedCollectors Server Component, rendered into pre-query + no-results states (D-29 carry-forward). */
   children: React.ReactNode
+  /** Phase 40 D-06 — top-8 style tags by frequency; threaded from /search Server Component. */
+  styleVocab: string[]
 }
 
 const CLIENT_MIN_CHARS = 2 // matches D-20 server gate
@@ -67,13 +72,19 @@ const ARIA_BY_TAB: Record<SearchTab, string> = {
  * The Phase 16 `results`/`isLoading`/`hasError` backward-compat aliases on the
  * hook contract are dropped here — this consumer reads per-tab slices directly.
  */
-export function SearchPageClient({ viewerId, collectionRevision, viewerUsername, children }: SearchPageClientProps) {
+export function SearchPageClient({ viewerId, collectionRevision, viewerUsername, children, styleVocab }: SearchPageClientProps) {
   const {
     q,
     setQ,
     debouncedQ,
     tab,
     setTab,
+    movement,
+    setMovement,
+    size,
+    setSize,
+    styleArr,
+    setStyleArr,
     peopleResults,
     watchesResults,
     collectionsResults,
@@ -86,6 +97,9 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
   } = useSearchState()
 
   const trimmed = debouncedQ.trim()
+  const [sheetOpen, setSheetOpen] = useState(false)
+  // D-09: style chips count individually (style=tool,diver adds 2 to badge)
+  const activeCount = (movement ? 1 : 0) + (size ? 1 : 0) + styleArr.length
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 space-y-6">
@@ -144,6 +158,19 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
         </TabsContent>
 
         <TabsContent value="watches" className="mt-6">
+          {/* D-09: Filter button inline above results; scrolls with page (not sticky) */}
+          <div className="flex items-center gap-2 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11 gap-1.5"
+              onClick={() => setSheetOpen(true)}
+              aria-expanded={sheetOpen}
+            >
+              <SlidersHorizontalIcon className="size-3.5" aria-hidden />
+              {activeCount > 0 ? `Filter (${activeCount})` : 'Filter'}
+            </Button>
+          </div>
           <WatchesPanel
             q={trimmed}
             results={watchesResults}
@@ -151,6 +178,18 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             hasError={watchesHasError}
             collectionRevision={collectionRevision}
             viewerUsername={viewerUsername}
+            hasActiveFacet={activeCount > 0}
+          />
+          <WatchFacetSheet
+            open={sheetOpen}
+            onOpenChange={setSheetOpen}
+            movement={movement}
+            size={size}
+            styleArr={styleArr}
+            onMovementChange={setMovement}
+            onSizeChange={setSize}
+            onStyleChange={setStyleArr}
+            styleVocab={styleVocab}
           />
         </TabsContent>
 
@@ -251,6 +290,7 @@ function WatchesPanel({
   hasError,
   collectionRevision,
   viewerUsername,
+  hasActiveFacet,
 }: {
   q: string
   results: SearchCatalogWatchResult[]
@@ -258,6 +298,7 @@ function WatchesPanel({
   hasError: boolean
   collectionRevision: number
   viewerUsername: string | null
+  hasActiveFacet: boolean
 }) {
   if (isLoading) return <WatchSearchResultsSkeleton />
   if (hasError) {
@@ -272,7 +313,8 @@ function WatchesPanel({
       </div>
     )
   }
-  if (q.length < CLIENT_MIN_CHARS) {
+  // D-01: pre-query state (q empty AND no facets active) — show existing pre-query copy
+  if (q.length < CLIENT_MIN_CHARS && !hasActiveFacet) {
     return (
       <section className="space-y-1">
         <h2 className="text-xl font-semibold leading-tight text-foreground">
@@ -281,6 +323,17 @@ function WatchesPanel({
         <p className="text-sm text-muted-foreground">
           Search by brand, model, or reference number
         </p>
+      </section>
+    )
+  }
+  // D-01: browse-mode empty state (q empty AND facets active AND 0 results)
+  if (q.length < CLIENT_MIN_CHARS && hasActiveFacet && results.length === 0) {
+    return (
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
+          No watches match these filters.
+        </h2>
+        <p className="text-sm text-muted-foreground">Try removing one.</p>
       </section>
     )
   }
