@@ -71,18 +71,27 @@ hypothesis: **Proxy intercepts prefetches before Next.js, poisoning Router Cache
 
 That refactor is non-trivial: the layout's data fetches power the visible ProfileHeader (avatar, taste tags, follower counts) AND the gating logic (private-profile short-circuit at line 47, common-ground band at line 130, ProfileTabs `showCommonGround`/`isOwner` flags at line 138). The gating logic in particular needs to resolve BEFORE deciding which children to render — it can't trivially be Suspense-deferred without architectural changes.
 
-test (refined 2026-05-14): Before adding code-level logging, capture the failing prefetch from production using DevTools — free, fast, and likely diagnostic:
+test (refined 2026-05-14 — TWO failure modes to capture): Before adding code-level logging, capture both failure modes from production using DevTools.
 
-  **Step T1 — observe the failing prefetch in Network panel:**
-  1. Open `https://www.horlo.app/` in a logged-in session.
-  2. Open DevTools → Network panel. Filter by `?_rsc=`.
-  3. Hover/scroll the UserMenu avatar Link (top nav) — this triggers prefetch.
-  4. Look for the prefetch request to `/u/{username}/collection?_rsc=…`. Capture:
-     - **Status code** — 307? 404? 200?
-     - **Request headers** — does `Cookie` carry `sb-…-auth-token` chunks? Is `Next-Router-Prefetch: 1` present?
-     - **Response headers** — what does `Location` say (if 307)? What's `Cache-Control`? `Set-Cookie`?
-     - **Response body** (first ~200 chars) — is it a redirect doc, a normal RSC payload, or something else?
-  5. Click the Profile Link. Capture the click-time RSC request — is it served from disk-cache (gray status), or does it re-fetch? If re-fetch, what does it return?
+  **Step T1A — capture the 404 path (Mode A — cache-poison):**
+  1. Open `https://www.horlo.app/` in a logged-in session on desktop wifi (fast network — maximizes Mode A reproduction).
+  2. DevTools → Network panel → filter by `_rsc=`.
+  3. Hover the UserMenu avatar (top nav) — triggers prefetch. Capture the prefetch request:
+     - **Status code** (307? 404? 200?)
+     - **Location response header** (if 307 — where does it redirect?)
+     - **Cache-Control response header**
+     - **Next-Router-Prefetch request header** present? (y/n)
+     - **Response body** first ~200 chars
+  4. Click the Profile Link. Capture the click-time request — served from disk-cache (gray status)? If re-fetch, status?
+
+  **Step T1B — capture the infinite-skeleton path (Mode B — stream hang):**
+  1. On mobile (or desktop with network throttled to "Slow 3G" in DevTools), click the Profile link from a populated home page UNTIL you hit a non-404 click.
+  2. When the skeleton shows and never resolves, observe:
+     - In Network panel: is there a pending RSC request (status: "(pending)")? What's its URL?
+     - Does the response status code show after a while (timeout, 200, 5xx)?
+     - Switch to the request's "EventStream" or "Response" tab — is there partial RSC payload? Is the stream open but silent?
+     - Open the browser console — any unhandled-promise warnings or RSC-specific errors?
+  3. Wait ~60 seconds with the skeleton on screen. Does the network request eventually fail/succeed/keep hanging?
 
   **Step T2 — if T1 status is 307 (proxy intercept):** the hypothesis is confirmed. Three fix paths to consider in order of cost:
     - **F1 (cheapest, gives ground):** add `'/u'` to `isPublicPath` so the proxy doesn't gate it. Page-level auth is preserved (`getCurrentUser` in ProfileGate throws UnauthorizedError if needed, which the gate swallows; `notFound()` short-circuits if profile doesn't exist; LockedProfileState handles private). Risk: the proxy was the SOLE chrome-level guard for the profile route — removing it exposes profile pages to anonymous visitors. That's fine for *public* profiles (LockedProfileState handles private), and arguably aligns with the Phase 39b "build for cross-collector discovery" direction. Need user sign-off.
@@ -151,6 +160,12 @@ tdd_checkpoint:
   observation: **The 2026-05-13 "approved" sign-off was a false-positive.** Reconstruction: when the operator ran the D-39c-09 7-step protocol on 2026-05-13, Phase 39c commits existed only on local main; origin/main was still at 2f42d00 (the prefetch={false} mitigation). The operator essentially re-verified the original mitigation, not the structural fix. The actual push of 37 commits (2f42d00..ca8ea2d, later fa22080) happened LATER in the same session when the user explicitly said "Yes, push". The UAT immediately after that push surfaced the regression. Phase 39c verifier PASS at fa22080 is stale and should be considered superseded.
 - timestamp: 2026-05-14T14:44:00Z
   observation: src/lib/supabase/proxy.ts:27-29 — `updateSession` calls `supabase.auth.getUser()` which is a network round-trip + token refresh. On Vercel edge or fluid compute, this is a sub-100ms call typically. But during prefetch (which fires on hover/viewport-entry), this call adds latency to every gated route. More importantly, IF `getUser()` returns null even once during the page lifecycle (e.g., supabase transient unavailable), the proxy 307s and the cache poisons.
+- timestamp: 2026-05-14T14:55:00Z
+  observation: **User-reported network-speed correlation (strongly supports prefetch-poisoning hypothesis).** Mobile cell-data session passes ~10% of clicks (vs ~2% on desktop wifi). Slower network = fewer prefetches complete in time = less Router Cache pre-population = more clicks fall through to a fresh fetch = fewer 404s. Inverse correlation between prefetch completion and bug rate. This is a textbook "race won by the cache poisoner on fast networks" signature.
+- timestamp: 2026-05-14T14:56:00Z
+  observation: **Page refresh NEVER 404s (user-confirmed).** Full document navigation skips the Router Cache entirely. Proxy sees the cookie on the full-doc request, falls through, Next renders the page → works. This confirms the bug lives in the Router Cache layer, not in the server-side route logic. Server-side rendering of `/u/[username]/collection` is healthy when reached directly.
+- timestamp: 2026-05-14T14:57:00Z
+  observation: **SECOND FAILURE MODE — infinite skeleton (user-reported).** On the ~10% of mobile clicks that DON'T 404, the static shell (ProfileShellSkeleton via Suspense fallback in layout.tsx) renders correctly but the dynamic content never streams in. Indefinite skeleton state. This means: (a) Phase 39c's Path-A2 refactor IS working at the shell-render layer (the static shell prerenders + streams to the client correctly); (b) something inside `ProfileGate` or `ProfileShellResolver` either hangs or fails to stream when invoked on the click-time RSC fetch. Most likely culprits: `getCurrentUser()` hanging (supabase auth round-trip blocked during RSC streaming context), `ProfileShellResolver`'s 'use cache' lookup blocking on a cache-miss that can't compute (DB unreachable from edge/fluid runtime?), or RSC stream cut mid-response. The two failure modes (404 cache-poison vs infinite-skeleton stream-hang) may share a root cause (proxy interference) OR may be independent bugs that happen to coexist.
 
 ## Eliminated
 
