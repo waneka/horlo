@@ -442,7 +442,14 @@ Plans:
   3. CollectionFitCard accordion gains a "Compare with the [X] you own" pairwise drill-down section — two-column layout (max 2 items on mobile per NN/Group pattern) showing only taste-relevant dimensions, with a delta row at the bottom summarizing the key taste difference
   4. SRCH-16 facets use the `movement_type` pgEnum column from Phase 35, not the deprecated free-text `movement` column — a test asserts the DAL query references `movement_type`
   5. If Phase 35 (Layer B) slipped, SRCH-16 does not ship in this phase — the dependency is enforced with an explicit v5.x deferral note in phase CONTEXT.md
-**Plans**: TBD
+**Plans**: 7 plans
+- [ ] 40-01-PLAN.md — DAL facet predicates + getTopStyleTags + Server Action Zod schema + ROADMAP SC#4 static test
+- [ ] 40-02-PLAN.md — VerdictBundleFull.candidateCatalogTaste + composer threading
+- [ ] 40-03-PLAN.md — fit-delta.ts pure helper with D-16 algorithm (RED→GREEN TDD)
+- [ ] 40-04-PLAN.md — useSearchState facet state + URL sync + Watches sub-effect facet deps
+- [ ] 40-05-PLAN.md — FilterSheet + 3 chip components + SearchPageClient mount + styleVocab thread
+- [ ] 40-06-PLAN.md — CollectionFitCompareTable + FIT-05 mount in CollectionFitCard
+- [ ] 40-07-PLAN.md — REQUIREMENTS.md paperwork (SRCH-16 chip group resolution)
 **UI hint**: yes
 
 ### Phase 41: Account Danger Zone + Branded Auth Emails *(parallel track)*
