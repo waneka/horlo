@@ -49,7 +49,7 @@ Declared values (multiples of 4 only):
 Exceptions:
 
 - Filter button row: `py-3` (12px) vertical padding above WatchSearchRowsAccordion — slightly denser than `md` to keep the affordance compact
-- FIT-05 grid cells: `px-2 py-1.5` (8px / 6px) — compressed horizontal cell padding per D-13 "max 2 items mobile with compressed cell padding"
+- FIT-05 grid cells: `px-2 py-2` (8px / 8px) — compressed cell padding per D-13 "max 2 items mobile with compressed cell padding"; `py-2` keeps grid compact while remaining on the 4pt grid
 - 44px minimum touch target on the Filter button: `Button` size="default" resolves to `h-8` (32px); must add `min-h-11` (44px) override to meet touch-target requirement on mobile. Auto-resolved decision: apply `min-h-11` to the Filter button via `className` override.
 
 ---
@@ -78,7 +78,7 @@ All values reference theme tokens — no raw palette classes.
 | Role | Token | OKLCH (light) | Usage |
 |------|-------|---------------|-------|
 | Dominant (60%) | `bg-background` / `text-foreground` | oklch(0.985 0.003 75) / oklch(0.18 0.01 75) | Page surface, sheet popup background (`bg-popover`), FIT-05 grid rows |
-| Secondary (30%) | `bg-card` / `text-card-foreground`, `bg-muted` / `text-muted-foreground` | oklch(1 0 0) / oklch(0.95 0.005 75) | FIT-05 compare grid alternating row background (`bg-muted`), unselected chip background |
+| Secondary (30%) | `bg-card` / `text-card-foreground`, `bg-secondary` / `text-secondary-foreground` | oklch(1 0 0) / oklch(0.96 0.005 75) | FIT-05 compare grid alternating row background (`bg-muted`), unselected chip background (`bg-secondary`) |
 | Accent (10%) | `bg-accent` / `text-accent-foreground` | oklch(0.76 0.12 75) / oklch(0.18 0.01 75) | Selected chip state (background + foreground); active-state focus ring |
 | Destructive | `text-destructive` / `bg-destructive/10` | oklch(0.55 0.22 27) | "Clear all" button in sheet footer — destructive-adjacent action (auto-resolved: use `variant="ghost"` with `text-destructive` class rather than full destructive variant, since "Clear all" is non-irreversible) |
 
@@ -159,10 +159,10 @@ Executor must add `className="max-h-[80vh] overflow-y-auto"` to the `SheetConten
 ```
 D-13: "max 2 items mobile — still 2 columns side-by-side, no third column ever"
   → Always-2-col decision (auto-resolved): grid-cols-2 at all breakpoints
-  → Mobile: grid-cols-2 with compressed cell padding (px-2 py-1.5)
+  → Mobile: grid-cols-2 with compressed cell padding (px-2 py-2)
   → No responsive grid-cols-1 fallback — D-13 explicitly keeps 2-col on mobile
   → CSS: `grid grid-cols-2 gap-px bg-border rounded-md overflow-hidden`
-  → Each cell: `bg-background px-2 py-1.5 text-sm`
+  → Each cell: `bg-background px-2 py-2 text-sm`
   → On 320px viewport (iPhone SE min): each column = (320 - 2*16px margin - 1px gap) / 2 ≈ 143px
   → 143px is sufficient to render "1.0" (scalar) or "Heritage Tool" (archetype) without overflow
 ```
@@ -172,6 +172,8 @@ Executor must use `grid-cols-2` (no `sm:grid-cols-2` responsive variant) per D-1
 ---
 
 ## Surface 1: SRCH-16 — Filter Button + Bottom-Sheet
+
+Primary visual anchor: the active chip group section headers within the bottom sheet — semibold text-base, dominate the panel hierarchy.
 
 ### Filter Trigger Button
 
@@ -341,6 +343,8 @@ The browse-mode empty state (facets active, no results) replaces the existing pr
 
 ## Surface 2: FIT-05 — Pairwise Drill-Down in CollectionFitCard
 
+Primary visual anchor: the FIT-05 section title (`Compare with the {Brand} {Model} you own`) — semibold text-base, sits above the 2-column grid.
+
 ### Mount Site
 
 Insert between line 86 (end of `mostSimilar` div) and line 89 (role-overlap warning) in `src/components/insights/CollectionFitCard.tsx`.
@@ -376,16 +380,16 @@ When false: renders `null` (no JSX, no empty `<div>`). Source: D-15 + Phase 39b 
     {/* 2-column compare grid */}
     <div className="grid grid-cols-2 gap-px bg-border rounded-md overflow-hidden text-sm">
       {/* Column headers row */}
-      <div className="bg-muted px-2 py-1.5 font-semibold text-foreground text-xs uppercase tracking-wide">
+      <div className="bg-muted px-2 py-2 font-semibold text-foreground text-xs uppercase tracking-wide">
         This watch
       </div>
-      <div className="bg-muted px-2 py-1.5 font-semibold text-foreground text-xs uppercase tracking-wide">
+      <div className="bg-muted px-2 py-2 font-semibold text-foreground text-xs uppercase tracking-wide">
         Your {ownedBrand} {ownedModel}
       </div>
 
       {/* Row: Formality */}
-      <div className="bg-background px-2 py-1.5 text-muted-foreground text-xs">Formality</div>
-      <div className="bg-background px-2 py-1.5 text-foreground text-xs">— {/* value rendering rules below */}</div>
+      <div className="bg-background px-2 py-2 text-muted-foreground text-xs">Formality</div>
+      <div className="bg-background px-2 py-2 text-foreground text-xs">— {/* value rendering rules below */}</div>
       {/* ... 5 more dimension rows ... */}
 
       {/* Row: Design Motifs (chip cluster) */}
