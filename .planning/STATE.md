@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
-stopped_at: Phase 39c Wave 2 complete (4/7 plans shipped — 01+02+03+05)
-last_updated: "2026-05-14T05:45:00.000Z"
-last_activity: 2026-05-14 -- Phase 39c Wave 2 closed (Plans 03 + 05 merged)
+stopped_at: Phase 39c Wave 4 complete (6/7 plans shipped — 01+02+03+04+05+06); Wave 5 awaiting operator prod-checkpoint
+last_updated: "2026-05-14T06:30:00.000Z"
+last_activity: 2026-05-14 -- Phase 39c Waves 3 + 4 closed (Plans 04 + 06 merged); Plan 07 manual prod-checkpoint blocking
 progress:
   total_phases: 14
   completed_phases: 10
   total_plans: 48
-  completed_plans: 43
-  percent: 88
+  completed_plans: 45
+  percent: 92
 ---
 
 # Project State
@@ -26,13 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 ## Current Position
 
 Phase: 39c (profile-layout-next-16-conformance) — EXECUTING
-Plan: 4 of 7 (Wave 2 complete; Wave 3 next)
+Plan: 7 of 7 (Wave 5 — manual prod-checkpoint pending operator)
 
 **Phase 39c Wave 1 CLOSED** (plans 01 + 02 shipped per prior session — `bc24023` + `4706d3a` for the ProfileShellSkeleton + `loading.tsx` segment boundary, and `5004e1f` for the `'use cache'` `ProfileShellResolver`).
 
 **Phase 39c Wave 2 CLOSED at 94aa8b8 + ff81637.** Two plans shipped in parallel worktrees:
 - **39c-03 (depends_on 01+02)**: `<ProfileGate/>` Server Component (130 lines, `import 'server-only'`) authored at `50c49e9` — viewer-dependent branching with `getCurrentUser` resolved OUTSIDE the cached scope, `notFound()` bubbled before any post-suspending `await`, locked-vs-public branch driven by cached `settings.profilePublic`. `src/app/u/[username]/layout.tsx` refactored from 147 → 17 lines at `a6048c6` — all 8 uncached top-level data fetches removed; build now reports `/u/[username]` as ◐ (Partial Prerender). T-39c-01 + T-39c-04 mitigations applied.
 - **39c-05 (depends_on 02)**: 9 cache-tag invalidation call sites wired across 4 Server Action files (`d8c1c6a` → `163d262`). RYO (`updateTag('profile:${username}')`) on `updateProfile` + `updateProfileSettings`; cross-user SWR (`revalidateTag('profile:${ownerUsername}', 'max')`) on `addWatch`/`editWatch`/`removeWatch` + `markAsWorn`/`logWearWithPhoto`; mixed pair on `followUser`/`unfollowUser` (target-profile fan-out + viewer-overlay RYO). Rule 2 auto-add: `unfollowUser` notification-bell `revalidateTag('viewer:userId', 'max')` added for symmetry with `followUser`. **Cwd-drift incident:** first commit of Task 1 landed on `main` (`cec2fe1`); caught immediately and reverted (`9923826`) before correct sequence applied on the worktree branch — net effect on main is no-op after revert; worktree branch carries the full correct set.
+
+**Phase 39c Wave 3 CLOSED at 0a08115.** 39c-04 (depends_on 03): `export const unstable_instant = { prefetch: 'static', samples: [{params:{username:'twwaneka',tab:'collection'}}], unstable_disableBuildValidation: true }` added to `src/app/u/[username]/[tab]/page.tsx:38-53` at `dfab9b3`. Three Rule 1 / Rule 3 auto-fixes during execution: (1) plain `{ prefetch: 'static' }` failed for dynamic routes — Next 16 validator throws E1095 when params accessed during simulation aren't declared in `samples`; (2) `'static' as const` broke the AST extractor — Next.js `extract-const-value.js` returns `Unsupported node type TSAsExpression`, plain string literal required; (3) build-time validation runs the full component tree including `ProfileShellResolver` (`'use cache'`) which queries Supabase — local builds without running Docker hit `ECONNREFUSED`, so `unstable_disableBuildValidation: true` added (dev-time overlay validation remains active; production Vercel builds have DB access and could flip back to `false` once CI fixtures are wired). `npm run build` exits 0; `/u/[username]/[tab]` reports `◐ (Partial Prerender)`.
+
+**Phase 39c Wave 4 CLOSED at d9e2fed.** 39c-06 (depends_on 04+05): Diagnostic commit `2f42d00` reverted across 4 scopes — `prefetch={false}` removed from `src/components/layout/UserMenu.tsx` (avatar Link, `322c8ce`), `src/components/profile/ProfileTabs.tsx` (5 tab render-prop Links, `c8f075e`), and `src/components/layout/BottomNav.tsx` (Profile NavLink + the diagnostic `prefetch?: boolean` field on the NavLink interface, `98620f4`). 7 net deletions across the three files; default Next 16 prefetch behavior restored on all three profile-bound Link sites. `npm run build` exit 0 — no regression from the structural changes in Plans 01-05. Phase 39c structurally complete; Plan 07 manual prod-checkpoint is the empirical close.
 
 **Wave 0 (BLOCKING, autonomous:false): 39b-01 CLOSED at 392fd90.** Tasks 1-6 shipped in prior executor session (commits 12e4fc1 → c2d2821). Task 7 closed via **Option B scope expansion**: original plan named ~20 family_id + ~15 lineage edges via `scripts/seed-lineage.ts`; operator queried prod DB and found 0 catalog rows / 0 families / 0 edges (no rows to assign families to). Operator chose Option B — agent authored `scripts/watch-seed-data.md` (100-watch manifest) + `scripts/build-seed-sql.mjs` (parser) + generated `scripts/seed-bootstrap-2026-05-13.sql` and applied to prod via `supabase db query --linked`. Prod state delta: brands 6→16, families 0→32, catalog 0→100 (all with family_id), edges 0→52. Idempotency proven by second prod run (`INSERT 0 0` across all 4 passes).
 
@@ -45,9 +49,9 @@ Plan: 4 of 7 (Wave 2 complete; Wave 3 next)
 
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
-Resume file: .planning/phases/39c-profile-layout-next-16-conformance/39c-04-PLAN.md
-Status: Executing Phase 39c (Wave 3 next: Plan 04 — `unstable_instant` build gate)
-Last activity: 2026-05-14 -- Phase 39c Wave 2 closed (Plans 03 + 05 merged)
+Resume file: .planning/phases/39c-profile-layout-next-16-conformance/39c-07-PLAN.md
+Status: Executing Phase 39c (Wave 5 manual prod-checkpoint — operator must run D-39c-09 7-step protocol on preview/prod)
+Last activity: 2026-05-14 -- Phase 39c Waves 3 + 4 closed (Plans 04 + 06 merged); Plan 07 blocking on operator
 
 Progress: [███████░░░] 31%
 

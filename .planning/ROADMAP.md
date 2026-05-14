@@ -422,10 +422,10 @@ Plans:
 - [x] 39c-05-PLAN.md — Server Action invalidation wiring across profile.ts (updateTag RYO) + watches.ts (revalidateTag SWR ×3) + follows.ts (mixed RYO + cross-user) + wearEvents.ts (revalidateTag SWR ×2) (D-39c-04, T-39c-02, T-39c-03)
 
 **Wave 3** *(blocked on Plan 03 — unstable_instant validates against the refactored layout)*
-- [ ] 39c-04-PLAN.md — Add `export const unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx as the Next 16 build-time gate (D-39c-07)
+- [x] 39c-04-PLAN.md — Add `export const unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx as the Next 16 build-time gate (D-39c-07)
 
 **Wave 4** *(blocked on Plans 04 + 05 — revert lands LAST per D-39c-08 lest the bug re-emerges between commits)*
-- [ ] 39c-06-PLAN.md — Revert diagnostic commit 2f42d00: remove prefetch={false} from UserMenu/ProfileTabs/BottomNav + drop NavLink prefetch?:boolean field (D-39c-08)
+- [x] 39c-06-PLAN.md — Revert diagnostic commit 2f42d00: remove prefetch={false} from UserMenu/ProfileTabs/BottomNav + drop NavLink prefetch?:boolean field (D-39c-08)
 
 **Wave 5** *(blocked on Plan 06 — prod-only verification per link.md:298)*
 - [ ] 39c-07-PLAN.md — Execute D-39c-09 7-step prod manual-checkpoint protocol (autonomous=false; deploys + verifies all three Link entry points + DevTools Network partial-prefetch evidence)
