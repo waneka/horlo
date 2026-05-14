@@ -25,6 +25,13 @@ export interface UseSearchState {
   debouncedQ: string
   tab: SearchTab
   setTab: (next: SearchTab) => void
+  // Phase 40 SRCH-16 facet state (D-03/D-04) — URL-synced, Watches-only consumers.
+  movement: string | null
+  setMovement: (v: string | null) => void
+  size: string | null
+  setSize: (v: string | null) => void
+  styleArr: string[]
+  setStyleArr: (v: string[]) => void
   peopleResults: SearchProfileResult[]
   watchesResults: SearchCatalogWatchResult[]
   collectionsResults: SearchCollectionResult[]
@@ -76,6 +83,18 @@ export function useSearchState(): UseSearchState {
   const [debouncedQ, setDebouncedQ] = useState(initialQ)
   const [tab, setTabState] = useState<SearchTab>(initialTab)
 
+  // Phase 40 SRCH-16 facet state — initialized from URL on mount (D-03/D-04 round-trip).
+  // Written to URL unconditionally (D-04 — survive tab switches); Watches sub-effect is the only consumer.
+  const [movement, setMovement] = useState<string | null>(
+    searchParams.get('movement') ?? null
+  )
+  const [size, setSize] = useState<string | null>(
+    searchParams.get('size') ?? null
+  )
+  const [styleArr, setStyleArr] = useState<string[]>(
+    searchParams.get('style')?.split(',').filter(Boolean) ?? []
+  )
+
   const [peopleResults, setPeopleResults] = useState<SearchProfileResult[]>([])
   const [watchesResults, setWatchesResults] = useState<SearchCatalogWatchResult[]>([])
   const [collectionsResults, setCollectionsResults] = useState<SearchCollectionResult[]>([])
@@ -95,14 +114,19 @@ export function useSearchState(): UseSearchState {
   }, [q])
 
   // 2. URL sync (D-04 router.replace, scroll: false; D-12 omit tab=all — Phase 16
-  //    carry-forward, byte-identical).
+  //    carry-forward). Phase 40: facet params written unconditionally (D-04 — survive
+  //    tab switches so user can navigate Watches → People → Watches and keep filters).
   useEffect(() => {
     const params = new URLSearchParams()
     if (debouncedQ.trim().length >= CLIENT_MIN_CHARS) params.set('q', debouncedQ)
     if (tab !== 'all') params.set('tab', tab)
+    // Phase 40 D-04 — facet params unconditional: survive tab switches
+    if (movement) params.set('movement', movement)
+    if (size) params.set('size', size)
+    if (styleArr.length > 0) params.set('style', styleArr.join(','))
     const qs = params.toString()
     router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
-  }, [debouncedQ, tab, router])
+  }, [debouncedQ, tab, movement, size, styleArr, router])
 
   // 3a. People sub-effect — fires when tab === 'all' || tab === 'people'.
   useEffect(() => {
@@ -244,6 +268,14 @@ export function useSearchState(): UseSearchState {
     debouncedQ,
     tab,
     setTab,
+    // Phase 40 SRCH-16 facet state + setters (D-03/D-04).
+    // 40-05 FilterSheet + chip groups consume these; URL is the single source of truth.
+    movement,
+    setMovement,
+    size,
+    setSize,
+    styleArr,
+    setStyleArr,
     peopleResults,
     watchesResults,
     collectionsResults,
