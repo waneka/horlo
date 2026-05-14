@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: 39b-01 + 39b-02 + 39b-03 + 39b-04 + 39b-05 ALL CLOSED. Phase 39b ready to close.
+status: executing
 stopped_at: Phase 39c planned and verified (7 plans, 5 waves)
-last_updated: "2026-05-14T02:11:31.524Z"
-last_activity: 2026-05-13
+last_updated: "2026-05-14T02:29:32.888Z"
+last_activity: 2026-05-14 -- Phase 39c execution started
 progress:
   total_phases: 14
   completed_phases: 10
@@ -21,11 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 36 — Layer C — Variant Split + CAT-14 NOT NULL
+**Current focus:** Phase 39c — profile-layout-next-16-conformance
 
 ## Current Position
 
-Phase: 39b — Audit-Driven Discovery Polish — Heavier UX — ALL 4 WAVES COMPLETE (5/5 plans shipped). Phase ready to close.
+Phase: 39c (profile-layout-next-16-conformance) — EXECUTING
+Plan: 1 of 7
 
 **Wave 0 (BLOCKING, autonomous:false): 39b-01 CLOSED at 392fd90.** Tasks 1-6 shipped in prior executor session (commits 12e4fc1 → c2d2821). Task 7 closed via **Option B scope expansion**: original plan named ~20 family_id + ~15 lineage edges via `scripts/seed-lineage.ts`; operator queried prod DB and found 0 catalog rows / 0 families / 0 edges (no rows to assign families to). Operator chose Option B — agent authored `scripts/watch-seed-data.md` (100-watch manifest) + `scripts/build-seed-sql.mjs` (parser) + generated `scripts/seed-bootstrap-2026-05-13.sql` and applied to prod via `supabase db query --linked`. Prod state delta: brands 6→16, families 0→32, catalog 0→100 (all with family_id), edges 0→52. Idempotency proven by second prod run (`INSERT 0 0` across all 4 passes).
 
@@ -39,8 +40,8 @@ Phase: 39b — Audit-Driven Discovery Polish — Heavier UX — ALL 4 WAVES COMP
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
 Resume file: .planning/phases/39c-profile-layout-next-16-conformance/39c-01-PLAN.md
-Status: 39b-01 + 39b-02 + 39b-03 + 39b-04 + 39b-05 ALL CLOSED. Phase 39b ready to close.
-Last activity: 2026-05-13
+Status: Executing Phase 39c
+Last activity: 2026-05-14 -- Phase 39c execution started
 
 Progress: [███████░░░] 31%
 

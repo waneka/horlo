@@ -414,8 +414,8 @@ Plans:
 
 Plans:
 **Wave 1** *(parallel — no inter-plan dependencies)*
-- [ ] 39c-01-PLAN.md — Author <ProfileShellSkeleton/> chrome-only skeleton + loading.tsx segment boundary (D-39c-06)
-- [ ] 39c-02-PLAN.md — Author <ProfileShellResolver/> 'use cache' Server Component with cacheTag('profile:${username}') + cacheLife({ revalidate: 300 }) preamble + Pitfall 1 mitigation (D-39c-03, T-39c-01)
+- [x] 39c-01-PLAN.md — Author <ProfileShellSkeleton/> chrome-only skeleton + loading.tsx segment boundary (D-39c-06)
+- [x] 39c-02-PLAN.md — Author <ProfileShellResolver/> 'use cache' Server Component with cacheTag('profile:${username}') + cacheLife({ revalidate: 300 }) preamble + Pitfall 1 mitigation (D-39c-03, T-39c-01)
 
 **Wave 2** *(blocked on Plan 02 for the resolver; can parallel with Plan 05)*
 - [ ] 39c-03-PLAN.md — Author <ProfileGate/> Server Component + refactor layout.tsx to thin Suspense shell (D-39c-05, T-39c-01, T-39c-04)
