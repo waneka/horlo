@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: in-progress
-stopped_at: Phase 39b COMPLETE (all 5 plans shipped) — 39b-05 closed at b681506 (NSV-02 + NSV-16 inline lineage rails shipped); intentional RED from 39b-01 Task 2 closed; Phase 33b Q3 high-leverage backlog fully discharged; Phase 39b SC#6 complete
-last_updated: "2026-05-13T19:00:08.000Z"
+status: 39b-01 + 39b-02 + 39b-03 + 39b-04 + 39b-05 ALL CLOSED. Phase 39b ready to close.
+stopped_at: Phase 39c context gathered
+last_updated: "2026-05-14T01:26:00.661Z"
 last_activity: 2026-05-13
 progress:
-  total_phases: 13
-  completed_phases: 9
-  total_plans: 36
-  completed_plans: 36
+  total_phases: 14
+  completed_phases: 10
+  total_plans: 41
+  completed_plans: 41
   percent: 100
 ---
 
@@ -38,7 +38,7 @@ Phase: 39b — Audit-Driven Discovery Polish — Heavier UX — ALL 4 WAVES COMP
 
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
-Resume file: TBD — next phase determined by /gsd-execute-phase or roadmap chain.
+Resume file: .planning/phases/39c-profile-layout-next-16-conformance/39C-CONTEXT.md
 Status: 39b-01 + 39b-02 + 39b-03 + 39b-04 + 39b-05 ALL CLOSED. Phase 39b ready to close.
 Last activity: 2026-05-13
 
@@ -75,6 +75,10 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 *Updated after each plan completion*
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 39c inserted after Phase 39b: Profile Layout Next 16 Conformance — proper fix for Router-Cache poisoning bug found during 39b UAT; refactor layout per cacheComponents=true partial-prefetch semantics (URGENT)
 
 ### Key Decisions (v5.0)
 
@@ -128,8 +132,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-13
+Last session: 2026-05-14T01:26:00.651Z
 Last activity: 2026-05-13 - Completed quick task 260513-m31: Fix OtherOwnersRoster count label always-on + WornCalendar empty-day clickability
-Stopped at: Phase 39b ALL WAVES COMPLETE (5/5 plans shipped) — 39b-05 closed at b681506 (NSV-02 + NSV-16 inline lineage rails: getSameFamilyForCatalog DAL with live COUNT Q2 verdict + SameFamilyRail + LineageRail Server Components + page mounts on /watch/{id} and /catalog/{id}; intentional RED from 39b-01 Task 2 closed → tests/static/hierarchy.lineage-3-node.test.ts 8/8 GREEN; 2 Rule 1 auto-fixes: font-medium→font-semibold lint flip + vi.mock('@/data/hierarchy') in catalog-page.test.ts; net regression delta -1; B1 invariant carried forward; Phase 33b Q3 high-leverage backlog fully discharged; Phase 39b SC#6 complete). Phase 39b ready to close. Quick task 260513-hvu shipped post-39b (search hotfix, commit a2594a7).
+Stopped at: Phase 39c context gathered
 Resume file: TBD — Phase 39b complete; next phase determined by /gsd-execute-phase or roadmap chain.
-Next action: Operator to determine — close Phase 39b and advance to next phase (Phase 40 UAT triage per ROADMAP §Phase 40 depends_on 39b).
+Next action: Phase 39c (INSERTED) — Profile Layout Next 16 Conformance refactor (cacheComponents + Suspense + skeletons) to replace the prefetch={false} diagnostic landed at commit 2f42d00. Verified Router-Cache poisoning hypothesis on prod 2026-05-13; full investigation in .planning/debug/profile-page-404-top-nav.md. Run /gsd-discuss-phase 39c next to surface architectural decisions (A1 Suspense-in-layout / A2 move-data-down / A3 hybrid 'use cache' + Suspense).
