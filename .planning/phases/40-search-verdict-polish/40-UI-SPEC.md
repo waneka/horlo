@@ -1,7 +1,8 @@
 ---
 phase: 40
 slug: search-verdict-polish
-status: draft
+status: approved
+reviewed_at: 2026-05-14
 shadcn_initialized: true
 preset: not applicable (shadcn CSS import via shadcn/tailwind.css; components.json absent; primitives sourced from @base-ui/react)
 created: 2026-05-14
