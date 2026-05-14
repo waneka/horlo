@@ -47,7 +47,7 @@
 
 ### Search & Verdict Polish
 
-- [ ] **SRCH-16**: `/search` Watches tab gains three faceted filters: Movement Type (auto/manual/quartz/spring_drive — sourced from `watches_catalog.movement_type` enum), Case Size (numeric range slider — sourced from `case_size_mm`), Style (multi-select chip group — sourced from existing `style_tags`). Mobile UX: bottom-sheet filter pattern. Hard-blocked on CAT-16 Layer B `movement_type` enum — if Layer B slips, SRCH-16 defers to v5.x.
+- [ ] **SRCH-16**: `/search` Watches tab gains three faceted filters: Movement Type (auto/manual/quartz/spring_drive — sourced from `watches_catalog.movement_type` enum), Case Size (chip group with 5 pre-defined size bands: `<36` / `36-39` / `40-42` / `43-45` / `46+` — sourced from `case_size_mm`), Style (multi-select chip group — sourced from existing `style_tags`). Mobile UX: bottom-sheet filter pattern. Hard-blocked on CAT-16 Layer B `movement_type` enum — if Layer B slips, SRCH-16 defers to v5.x. Resolved per Phase 40 D-05.
 
 - [ ] **FIT-05**: CollectionFitCard accordion gains a "Compare with the [X] you own" pairwise drill-down section. Two-column layout (max 2 items mobile per NN/Group pattern). Shows only taste-relevant dimensions (not all 20+ watch columns). Delta row at bottom summarizing the key taste difference. Best after CAT-13 so taste-attribute rows are populated.
 
