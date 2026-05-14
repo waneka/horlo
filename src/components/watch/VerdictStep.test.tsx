@@ -37,6 +37,7 @@ const fixtureVerdict: VerdictBundleFull = {
   rationalePhrasings: ['Lines up cleanly with the taste I have already built.'],
   mostSimilar: [],
   roleOverlap: false,
+  candidateCatalogTaste: null,
 }
 
 describe('Phase 20.1 Plan 03 — VerdictStep verdict-ready render', () => {

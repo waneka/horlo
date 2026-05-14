@@ -51,6 +51,7 @@ const fixtureFullVerdict: VerdictBundleFull = {
   rationalePhrasings: ['Lines up cleanly with the taste I have already built.'],
   mostSimilar: [],
   roleOverlap: false,
+  candidateCatalogTaste: null,
 }
 
 const fixtureExtracted: ExtractedWatchData = {
