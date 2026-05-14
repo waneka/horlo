@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: ready_to_plan
-stopped_at: Phase 39c closed (7/7 plans + post-UAT regression recovered via cf250b1 + 61706b7); ready for Phase 40
-last_updated: "2026-05-14T19:20:00.000Z"
-last_activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT; Phase 40 next
+status: ready_to_plan — Phase 40 (Search & Verdict Polish — SRCH-16 + FIT-05)
+stopped_at: Phase 40 context gathered
+last_updated: "2026-05-14T20:12:05.481Z"
+last_activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT (cf250b1 + 61706b7)
 progress:
   total_phases: 14
   completed_phases: 11
   total_plans: 48
-  completed_plans: 45
-  percent: 79
+  completed_plans: 48
+  percent: 100
 ---
 
 # Project State
@@ -31,6 +31,7 @@ Plan: Not started
 **Phase 39c Wave 1 CLOSED** (plans 01 + 02 shipped per prior session — `bc24023` + `4706d3a` for the ProfileShellSkeleton + `loading.tsx` segment boundary, and `5004e1f` for the `'use cache'` `ProfileShellResolver`).
 
 **Phase 39c Wave 2 CLOSED at 94aa8b8 + ff81637.** Two plans shipped in parallel worktrees:
+
 - **39c-03 (depends_on 01+02)**: `<ProfileGate/>` Server Component (130 lines, `import 'server-only'`) authored at `50c49e9` — viewer-dependent branching with `getCurrentUser` resolved OUTSIDE the cached scope, `notFound()` bubbled before any post-suspending `await`, locked-vs-public branch driven by cached `settings.profilePublic`. `src/app/u/[username]/layout.tsx` refactored from 147 → 17 lines at `a6048c6` — all 8 uncached top-level data fetches removed; build now reports `/u/[username]` as ◐ (Partial Prerender). T-39c-01 + T-39c-04 mitigations applied.
 - **39c-05 (depends_on 02)**: 9 cache-tag invalidation call sites wired across 4 Server Action files (`d8c1c6a` → `163d262`). RYO (`updateTag('profile:${username}')`) on `updateProfile` + `updateProfileSettings`; cross-user SWR (`revalidateTag('profile:${ownerUsername}', 'max')`) on `addWatch`/`editWatch`/`removeWatch` + `markAsWorn`/`logWearWithPhoto`; mixed pair on `followUser`/`unfollowUser` (target-profile fan-out + viewer-overlay RYO). Rule 2 auto-add: `unfollowUser` notification-bell `revalidateTag('viewer:userId', 'max')` added for symmetry with `followUser`. **Cwd-drift incident:** first commit of Task 1 landed on `main` (`cec2fe1`); caught immediately and reverted (`9923826`) before correct sequence applied on the worktree branch — net effect on main is no-op after revert; worktree branch carries the full correct set.
 
@@ -49,7 +50,7 @@ Plan: Not started
 
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
-Resume file: (Phase 39c closed — next is Phase 40 search-&-verdict-polish)
+Resume file: .planning/phases/40-search-verdict-polish/40-CONTEXT.md
 Status: ready_to_plan — Phase 40 (Search & Verdict Polish — SRCH-16 + FIT-05)
 Last activity: 2026-05-14 -- Phase 39c closed; 404 + tab-UX regressions fixed post-UAT (cf250b1 + 61706b7)
 
@@ -148,8 +149,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-14T02:11:31.510Z
+Last session: 2026-05-14T20:12:05.468Z
 Last activity: 2026-05-13 - Completed quick task 260513-m31: Fix OtherOwnersRoster count label always-on + WornCalendar empty-day clickability
-Stopped at: Phase 39c planned and verified (7 plans, 5 waves)
+Stopped at: Phase 40 context gathered
 Resume file: TBD — Phase 39b complete; next phase determined by /gsd-execute-phase or roadmap chain.
 Next action: Phase 39c (INSERTED) — Profile Layout Next 16 Conformance refactor (cacheComponents + Suspense + skeletons) to replace the prefetch={false} diagnostic landed at commit 2f42d00. Verified Router-Cache poisoning hypothesis on prod 2026-05-13; full investigation in .planning/debug/profile-page-404-top-nav.md. Run /gsd-discuss-phase 39c next to surface architectural decisions (A1 Suspense-in-layout / A2 move-data-down / A3 hybrid 'use cache' + Suspense).
