@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { z } from 'zod'
 import * as profilesDAL from '@/data/profiles'
 import { getCurrentUser } from '@/lib/auth'
@@ -31,6 +31,14 @@ export async function updateProfile(data: unknown): Promise<ActionResult<void>> 
 
   try {
     await profilesDAL.updateProfileFields(user.id, parsed.data)
+    // Phase 39c D-39c-04 — RYO invalidation of the cached owner-scoped profile
+    // shell. updateTag (single-arg) is the correct primitive: caller IS the viewer
+    // whose UI is being invalidated. See notifications.ts file-header comment for
+    // the source-level Next 16 rationale (notifications.ts:26-46).
+    const profile = await profilesDAL.getProfileById(user.id)
+    if (profile?.username) {
+      updateTag(`profile:${profile.username}`)
+    }
     revalidatePath('/u/[username]', 'layout')
     revalidatePath('/settings')
     return { success: true, data: undefined }
@@ -79,6 +87,14 @@ export async function updateProfileSettings(data: unknown): Promise<ActionResult
       parsed.data.field,
       parsed.data.value
     )
+    // Phase 39c D-39c-04 — RYO invalidation of the cached owner-scoped profile
+    // shell. updateTag (single-arg) is the correct primitive: caller IS the viewer
+    // whose UI is being invalidated. See notifications.ts file-header comment for
+    // the source-level Next 16 rationale (notifications.ts:26-46).
+    const profile = await profilesDAL.getProfileById(user.id)
+    if (profile?.username) {
+      updateTag(`profile:${profile.username}`)
+    }
     revalidatePath('/settings')
     revalidatePath('/u/[username]', 'layout')
     return { success: true, data: undefined }
