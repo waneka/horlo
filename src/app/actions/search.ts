@@ -15,9 +15,13 @@ import type {
 // Zod schema with .strict() rejects mass-assignment attempts. .max(200) bounds
 // the input length (Server Action will reject obviously-malicious giant strings
 // before they reach the DAL trim/length guard).
+// Phase 40 SRCH-16 — facets D-03/D-04/D-05/D-06. People + Collections actions accept-but-ignore.
 const searchSchema = z
   .object({
     q: z.string().max(200),
+    movement: z.enum(['auto', 'manual', 'quartz', 'spring_drive']).optional(),
+    size: z.enum(['lt36', '36-39', '40-42', '43-45', '46plus']).optional(),
+    style: z.string().max(500).optional(), // comma-joined; DAL splits
   })
   .strict()
 
@@ -98,6 +102,12 @@ export async function searchWatchesAction(
       q: parsed.data.q,
       viewerId: user.id,
       limit: 20, // D-04
+      filters: {
+        movement: parsed.data.movement,
+        size: parsed.data.size,
+        // style is comma-joined string from URL; split + trim + filter empty (A4)
+        style: parsed.data.style?.split(',').map((s) => s.trim()).filter(Boolean),
+      },
     })
     return { success: true, data: results }
   } catch (err) {
