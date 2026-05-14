@@ -70,7 +70,7 @@ export function ProfileTabs({
             value={tab.id}
             nativeButton={false}
             data-tab-id={tab.id}
-            render={<Link href={`/u/${username}/${tab.id}`} prefetch={false} />}
+            render={<Link href={`/u/${username}/${tab.id}`} />}
           >
             {tab.label}
           </TabsTrigger>
