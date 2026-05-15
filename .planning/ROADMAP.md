@@ -463,7 +463,17 @@ Plans:
   3. The cascade behavior of Account Delete on `notifications.actor_id` rows for other users is documented with a UX note in phase CONTEXT.md
   4. Three Supabase Auth email templates (Confirm signup, Reset Password, Change Email) are rebranded: 600px single-column HTML, Horlo header logo, brand color, single CTA button — built with `react-email` 6.1.1 + `@react-email/components`; cross-client verified on Apple Mail iOS dark mode + Outlook MSO conditional + Gmail web
   5. Existing Resend SMTP at `mail.horlo.app` and DKIM signature are unaffected — template changes are HTML content only pasted into Supabase Auth dashboard; no Next.js code change ships for the email templates themselves
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+- [ ] 41-01-PLAN.md — Wave 0 scaffold: install react-email tooling, create 5 RED test files, confirm service-role env var name (operator checkpoint)
+
+**Wave 2** *(parallel — blocked on Wave 1)*
+- [ ] 41-02-PLAN.md — Track A backend: service-role admin client + wipeCollection / deleteAccount server actions (storage purge before DB delete; explicit public.users delete)
+- [ ] 41-04-PLAN.md — Track B: react-email setup + HorloEmailLayout + 3 branded auth email templates + tsconfig exclude + Supabase dashboard paste (operator checkpoint)
+
+**Wave 3** *(blocked on 41-02)*
+- [ ] 41-03-PLAN.md — Track A UI: WipeCollectionModal + DeleteAccountModal (2-step, type-to-confirm) + DangerZoneSection wired into AccountSection
 **UI hint**: yes
 
 ### Phase 42: Nyquist Hardening Sweep + UAT Triage *(parallel track)*
