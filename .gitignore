@@ -47,3 +47,6 @@ next-env.d.ts
 supabase/.branches/
 supabase/.temp/
 supabase/snippets/
+
+# react-email — generated HTML exports are regenerable; source of truth is emails/*.tsx
+emails/out/
