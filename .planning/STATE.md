@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: completed
-stopped_at: Phase 41 context gathered
-last_updated: "2026-05-15T16:55:21.597Z"
-last_activity: 2026-05-14 -- Phase 40 marked complete
+status: executing
+stopped_at: Phase 41 UI-SPEC approved
+last_updated: "2026-05-15T18:53:32.365Z"
+last_activity: 2026-05-15 -- Phase 41 planning complete
 progress:
   total_phases: 14
   completed_phases: 12
-  total_plans: 55
+  total_plans: 59
   completed_plans: 55
-  percent: 100
+  percent: 93
 ---
 
 # Project State
@@ -50,9 +50,9 @@ Plan: 1 of 7
 
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
-Resume file: .planning/phases/41-account-danger-zone-branded-auth-emails-parallel-track/41-CONTEXT.md
-Status: Phase 40 complete
-Last activity: 2026-05-14 -- Phase 40 marked complete
+Resume file: .planning/phases/41-account-danger-zone-branded-auth-emails-parallel-track/41-UI-SPEC.md
+Status: Ready to execute
+Last activity: 2026-05-15 -- Phase 41 planning complete
 
 **Phase 39c post-close regressions + recovery (2026-05-14):** UAT immediately after the original fa22080 push surfaced two failure modes the false-positive D-39c-09 sign-off didn't catch — 404 on profile-link click (~98% rate on fast networks) AND infinite-skeleton-on-mobile-click. Root cause was `unstable_instant = { prefetch: 'static' }` on a dynamic page causing Next 16 to treat click-time RSC fetches as resolvable from the tree-only static prefetch. Removed in cf250b1; tab-nav UX polish (cached resolver shared by layout+page + narrow loading skeleton) shipped in 61706b7. Debug session archived at `.planning/debug/resolved/profile-page-404-top-nav.md`. Phase 39c original VERIFICATION.md is technically stale (verified against false-positive state) but the codebase now genuinely delivers the phase goal.
 
@@ -149,8 +149,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-15T16:55:21.585Z
+Last session: 2026-05-15T17:12:37.056Z
 Last activity: 2026-05-13 - Completed quick task 260513-m31: Fix OtherOwnersRoster count label always-on + WornCalendar empty-day clickability
-Stopped at: Phase 41 context gathered
+Stopped at: Phase 41 UI-SPEC approved
 Resume file: TBD — Phase 39b complete; next phase determined by /gsd-execute-phase or roadmap chain.
 Next action: Phase 39c (INSERTED) — Profile Layout Next 16 Conformance refactor (cacheComponents + Suspense + skeletons) to replace the prefetch={false} diagnostic landed at commit 2f42d00. Verified Router-Cache poisoning hypothesis on prod 2026-05-13; full investigation in .planning/debug/profile-page-404-top-nav.md. Run /gsd-discuss-phase 39c next to surface architectural decisions (A1 Suspense-in-layout / A2 move-data-down / A3 hybrid 'use cache' + Suspense).
