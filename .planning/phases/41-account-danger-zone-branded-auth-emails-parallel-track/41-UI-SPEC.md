@@ -1,10 +1,11 @@
 ---
 phase: 41
 slug: account-danger-zone-branded-auth-emails-parallel-track
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-15
+reviewed_at: 2026-05-15
 ---
 
 # Phase 41 — UI Design Contract
