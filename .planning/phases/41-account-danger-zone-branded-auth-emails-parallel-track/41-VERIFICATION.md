@@ -1,7 +1,8 @@
 ---
 phase: 41-account-danger-zone-branded-auth-emails-parallel-track
 verified: 2026-05-16T04:55:05Z
-status: human_needed
+status: approved
+milestone_close_approval: "2026-05-16 — operator approved at v5.0 milestone close; human-verification items (cross-client email rendering, Supabase dashboard install, DKIM/SMTP) accepted, not deferred"
 score: 8/9 must-haves verified
 overrides_applied: 0
 human_verification:
@@ -20,7 +21,7 @@ human_verification:
 
 **Phase Goal:** Ship the two Danger Zone account actions (Wipe Collection, Delete Account) and three branded Horlo auth email templates — both fully independent of the catalog hierarchy serial spine.
 **Verified:** 2026-05-16T04:55:05Z
-**Status:** human_needed
+**Status:** approved (operator-approved at v5.0 milestone close, 2026-05-16)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement

@@ -1,7 +1,8 @@
 ---
 phase: 40-search-verdict-polish
 verified: 2026-05-14T22:16:28Z
-status: gaps_found
+status: approved
+milestone_close_approval: "2026-05-16 — operator approved at v5.0 milestone close; SearchPageClient.test.tsx regression fixed at commit 083c251 (6/6 green, re-run verified), accepted"
 score: 4/5
 overrides_applied: 0
 gaps:
@@ -21,8 +22,8 @@ gaps:
 
 **Phase Goal:** Add three faceted filters to the `/search` Watches tab (SRCH-16) and ship the pairwise drill-down section in CollectionFitCard (FIT-05), giving collectors taste-aware search refinement and side-by-side comparison.
 **Verified:** 2026-05-14T22:16:28Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Status:** approved (operator-approved at v5.0 milestone close, 2026-05-16; SearchPageClient.test.tsx regression fixed at commit 083c251 — 6/6 green)
+**Re-verification:** No — initial verification; gap resolved post-verification
 
 ---
 

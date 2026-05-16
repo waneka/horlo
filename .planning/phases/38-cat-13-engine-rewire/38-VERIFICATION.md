@@ -1,7 +1,8 @@
 ---
 phase: 38-cat-13-engine-rewire
 verified: 2026-05-11T23:55:00Z
-status: gaps_found
+status: approved
+milestone_close_approval: "2026-05-16 — operator approved at v5.0 milestone close; D-07 test-fixture gap closed by Plan 38-04 (re-verified PASSED 2026-05-12), accepted"
 score: 5/5 must-haves verified
 overrides_applied: 0
 gaps:
@@ -39,8 +40,8 @@ gaps:
 
 **Phase Goal:** Wire `analyzeSimilarity()` to consume catalog taste columns as an additive 9th scoring dimension gated on confidence, making the Phase 19.1 LLM-enrichment investment visible in collection fit verdicts for the first time.
 **Verified:** 2026-05-11T23:55:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Status:** approved (operator-approved at v5.0 milestone close, 2026-05-16; gap closed by Plan 38-04, re-verified PASSED — see Re-Verification section below)
+**Re-verification:** Yes — Plan 38-04 gap closure re-verified PASSED 2026-05-12
 
 ---
 

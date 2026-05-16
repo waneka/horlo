@@ -1,10 +1,34 @@
 ---
 slug: profile-page-404-top-nav
-status: investigating
+status: resolved
 trigger: profile page 404 on top-nav click, refresh works
 created: 2026-05-13T23:00:00Z
-updated: 2026-05-14T14:45:00Z
+updated: 2026-05-14T19:15:21Z
+resolved_at: 2026-05-14T19:15:21Z
+resolved_by_commit: cf250b1
+follow_up_commit: 61706b7
 ---
+
+## Resolution Summary (2026-05-14)
+
+**Root cause:** `export const unstable_instant = { prefetch: 'static' }` on `[tab]/page.tsx` (Phase 39c Plan 04) was misconfigured for this route. With `prefetch: 'static'`, Next 16 treated both hover-prefetch AND click-time RSC fetches as resolvable from the tree-only static prefetch — returning ~2.5 kB tree-only payloads for click navigation. Two visible failure modes resulted:
+  - **404 (cache-poison):** Router Cache stored tree-only entries with no resolvable dynamic body; subsequent clicks rendered as missing routes.
+  - **Infinite skeleton (stream miss):** When the click bypassed cache, the static shell rendered correctly (Plan 03 refactor working) but no dynamic content was ever fetched — the route handler was never invoked because Next thought the static prefetch was the whole response.
+
+**Fix (cf250b1):** Remove the `unstable_instant` export. Fall back to Next 16's default partial-prefetch behavior, which uses `src/app/u/[username]/loading.tsx` (Plan 39c-01) as the static-shell boundary signal. The page body is dynamic; the layout's `'use cache'` resolver is what makes the static shell prerenderable. `unstable_instant` is for routes where the entire segment is statically prerenderable, which this one is not.
+
+**Follow-up (61706b7):** Tab UX polish — narrow `loading.tsx` skeleton to content-card-only (chrome stays on screen during tab nav) + refactor `[tab]/page.tsx` to consume the cached `ProfileShellResolver` instead of duplicating its DB reads. Tab switches within the 300s cacheLife window are sub-ms server-side hits, feeling instant.
+
+**Eliminated hypotheses (kept in Evidence below for reference):**
+  - P1: proxy 307s prefetches → Capture A returned 200, not 307 (refuted)
+  - P0 (original): Router-Cache poisoning from auth-cookie race during login → mitigation (prefetch={false}) worked but was a band-aid; root cause was unstable_instant misconfiguration that emerged after Phase 39c shipped
+
+**Phase 39c original "approved" sign-off retroactively understood:** The 2026-05-13 D-39c-09 prod-checkpoint passed because Phase 39c commits hadn't been pushed yet at that moment — operator re-verified the original 2f42d00 prefetch={false} mitigation, not the structural fix. The actual structural fix only failed once pushed at fa22080; UAT immediately surfaced it; cf250b1 fixed it for real.
+
+**Open follow-up (separate concern, not part of this session):** Phase 39c UAT Test 6 surfaced an unrelated bug — `removeWatch` action leaves stale state in home "from collectors like you" rail AND `/watch/[id]` user-status projection. That's a Plan 39c-05 cache-tag coverage gap + likely a derived-projection caching issue. Tracked in `.planning/phases/39c-profile-layout-next-16-conformance/39c-UAT.md` under Issue 2. Should be its own debug session or small fix phase.
+
+---
+
 
 ## Symptoms
 

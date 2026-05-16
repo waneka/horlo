@@ -1,7 +1,8 @@
 ---
 phase: 35-layer-b-lineage-edges-structured-movement-era-material
 verified: 2026-05-10T00:25:00Z
-status: human_needed
+status: approved
+milestone_close_approval: "2026-05-16 — operator approved at v5.0 milestone close; human-verification items (cycle-trigger smoke, G6 backfill counts) accepted, not deferred"
 score: 5/5 must-haves verified
 overrides_applied: 0
 human_verification:
@@ -17,7 +18,7 @@ human_verification:
 
 **Phase Goal:** Add the watch_lineage_edges junction table with cycle-safety guarantees, replace the free-text movement column with a structured pgEnum on BOTH watches_catalog AND watches, add lineage_relationship_type pgEnum, add watch_era pgEnum, and add three first-class catalog descriptor columns (era, case_material, bracelet_config) — unblocking SRCH-16's movement facet while staying schema-only (no UI).
 **Verified:** 2026-05-10T00:25:00Z
-**Status:** human_needed
+**Status:** approved (operator-approved at v5.0 milestone close, 2026-05-16)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
