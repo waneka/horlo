@@ -87,8 +87,13 @@ export async function wipeCollection(): Promise<ActionResult<void>> {
 
     // 3. Cache invalidation — mirror removeWatch's invalidation set
     //    (RESEARCH Open Question 3 — accept known explore-rail staleness
-    //    as pre-existing, not a Phase 41 regression)
+    //    as pre-existing, not a Phase 41 regression).
+    //    WR-03: revalidate the /u/[username] layout too — a wipe removes
+    //    every watch, so the owner's public profile grid would otherwise
+    //    keep serving a stale full collection until something else
+    //    revalidates that layout.
     revalidatePath('/')
+    revalidatePath('/u/[username]', 'layout')
     const ownerProfile = await getProfileById(user.id)
     if (ownerProfile?.username) {
       revalidateTag(`profile:${ownerProfile.username}`, 'max')
