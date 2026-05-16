@@ -25,6 +25,8 @@ findings:
   warning: 6
   info: 4
   total: 11
+  resolved: 4
+  resolved_ids: [CR-01, WR-02, WR-03, WR-04]
 status: issues_found
 ---
 
@@ -45,7 +47,10 @@ However, there is one **BLOCKER**: the storage-purge pagination loop silently sk
 
 ## Critical Issues
 
-### CR-01: Storage purge pagination skips files past the first 1000 — orphaned objects on large collections
+### CR-01: Storage purge pagination skips files past the first 1000 — orphaned objects on large collections [RESOLVED]
+
+**Resolution (2026-05-15):** Fixed in commit `a515814`. `purgeWearPhotos` now always re-lists from offset 0; each `remove()` consumes the head of the listing, so the loop terminates when `list()` returns empty.
+
 
 **File:** `src/app/actions/account.ts:27-47`
 **Issue:** `purgeWearPhotos` lists a page of objects at `offset`, removes them, then advances `offset += PAGE_SIZE`. But `remove()` deletes the listed objects, so the next `list()` call sees a *shrunk* listing. After deleting the first 1000 objects, the objects formerly at indices 1000–1999 shift down to indices 0–999. Advancing `offset` to 1000 then lists indices 1000–1999 of the now-shortened set — skipping the 1000 files that moved into the 0–999 window.
@@ -93,7 +98,10 @@ A secondary issue: a successful `signInWithPassword` issues a *fresh* session/re
 
 **Fix:** Treat the password as a confirmation token verified server-side. Pass the password to the action and re-verify within the action using a transient client, e.g. `await admin.auth.signInWithPassword(...)` against the session user's email before any destructive step, or have the action call `getUserById` + a dedicated reauth path. At minimum, document explicitly that the password check is non-authoritative UX-only so a future reader does not mistake it for a security boundary.
 
-### WR-02: Post-delete client sign-out failure is swallowed — user can stay logged into a deleted account
+### WR-02: Post-delete client sign-out failure is swallowed — user can stay logged into a deleted account [RESOLVED]
+
+**Resolution (2026-05-15):** Fixed in commit `0155a1c`. `signOut()` is now wrapped in try/catch and the modal hard-navigates with `window.location.assign('/')` so the redirect and client-state clear always happen even when sign-out fails. The unused `useRouter` import was dropped.
+
 
 **File:** `src/components/settings/DeleteAccountModal.tsx:91-95`
 **Issue:** After `deleteAccount()` succeeds, the modal calls `await createSupabaseBrowserClient().auth.signOut()` and `router.push('/')` with no error handling. If `signOut()` rejects or the network drops, the catch in `useFormFeedback.run` will fire `toast.error` and set error state — but the account is already destroyed. The user sees an error toast on a deleted account, is not redirected, and holds a now-invalid session cookie. The local browser session JWT remains valid until expiry even though the `auth.users` row is gone, so the app may render in a half-broken authenticated state until the next server round-trip 401s.
@@ -107,7 +115,10 @@ window.location.assign('/') // hard nav clears all client state + stale session
 return { success: true as const, data: undefined }
 ```
 
-### WR-03: `wipeCollection` cache invalidation does not mirror `removeWatch` as the comment claims
+### WR-03: `wipeCollection` cache invalidation does not mirror `removeWatch` as the comment claims [RESOLVED]
+
+**Resolution (2026-05-15):** Fixed in commit `e9de2a2`. `wipeCollection` now calls `revalidatePath('/u/[username]', 'layout')` so the owner's public profile grid is invalidated after a wipe. (Note: the live `removeWatch` does not itself call this path; the established convention used by `addWatch`/`editWatch`/`follows`/`divestments`/`notes`/`profile` was followed.)
+
 
 **File:** `src/app/actions/account.ts:85-93`
 **Issue:** The comment on line 86 states the invalidation set "mirror[s] removeWatch's invalidation set." It does not. `removeWatch` in `src/app/actions/watches.ts` (lines 473-488) calls `revalidatePath('/')`, `revalidatePath('/u/[username]', 'layout')`, `revalidateTag('profile:…', 'max')`, and `revalidateTag('explore', 'max')`. `wipeCollection` omits `revalidatePath('/u/[username]', 'layout')` entirely. After a wipe, the user's own public profile page at `/u/{username}` will continue serving a stale cached collection until something else revalidates that layout. Since wipe removes *all* watches, the staleness is maximally visible (a wiped collector still shows a full grid on their profile).
@@ -118,7 +129,10 @@ revalidatePath('/')
 revalidatePath('/u/[username]', 'layout')
 ```
 
-### WR-04: `deleteAccount` failure between `db.delete(users)` and `auth.admin.deleteUser()` leaves a deletable-but-orphaned auth user
+### WR-04: `deleteAccount` failure between `db.delete(users)` and `auth.admin.deleteUser()` leaves a deletable-but-orphaned auth user [RESOLVED]
+
+**Resolution (2026-05-15):** Fixed in commit `9f1bbd3` via option (b). `deleteAccount` is now idempotently re-runnable: in the partial state `getCurrentUser()` still succeeds, `db.delete(users)` no-ops on 0 rows, and the auth delete completes the cleanup. A `dbDeleted` flag drives a distinct partial-completion log line so an operator can see exactly where a run stopped.
+
 
 **File:** `src/app/actions/account.ts:141-148`
 **Issue:** The action deletes `public.users` (line 141), then calls `auth.admin.deleteUser()` (line 147). If the process crashes, the request times out, or `adminErr` is thrown between those two steps, the `public.users` row and its 9 cascade children are gone but the `auth.users` row survives. The user can still log in (auth succeeds) but the app has no `public.users` row for them — every authenticated query keyed on `users.id` will fail or render an empty/broken account with no recovery path from the UI (the Danger Zone itself may not render). There is no compensating retry or transactional guarantee, and the generic catch returns "Failed to delete account" without indicating partial completion.
