@@ -283,6 +283,58 @@
 
 ---
 
+## Milestone: v5.0 — Discovery North Star
+
+**Shipped:** 2026-05-16
+**Phases:** 14 (32, 33, 33b, 34, 35, 36, 37, 38, 39, 39b, 39c, 40, 41, 42) | **Plans:** 64 | **Tasks:** 97
+**Timeline:** 11 days (2026-05-06 → 2026-05-16)
+**Codebase:** 533 files changed (incl. `.planning/`), +92,757 / −30,489 lines, 433 commits since v4.1 tag; `src/` at ~38,600 LOC
+
+### What Was Built
+- Falsifiable discovery audit: a 136-row click-path table across 13 surfaces (Phase 33) and a 42-cell Rdio drift-vector matrix scoring each discovery vector ship/partial/missing (Phase 33b), with 4 product verdicts gating all downstream polish
+- Catalog 5-level hierarchy, Layers A–D: `brands` + `watch_families` (A); `watch_lineage_edges` junction with a BEFORE-INSERT cycle-detection trigger + recursive-CTE `CYCLE` guards, a structured `movement_type` enum, era/material columns (B); `watch_variants` + a clean-slate catalog wipe-and-relink + the `watches.catalog_id` NOT NULL flip (C); 7 provenance columns + the `divestments` table (D)
+- CAT-13 engine rewire: `analyzeSimilarity()` reads catalog taste as an additive 9th scoring dimension gated on `confidence >= 0.5`; static guards written and passing before `similarity.ts` was touched
+- Audit-driven discovery polish closing the entire Phase 33b high-leverage dead-end backlog (NSV-01/02/06/08/12/14/15/16/18/20): mostSimilar Link wraps, common-ground walk-back fallback, fresh-account ReferenceIdentityCard, 8-row Collector Profile sub-cluster, catalog other-owners roster with two-layer privacy, inline Same-family + Lineage rails — backed by a 100-watch / 32-family / 52-edge prod catalog bootstrap
+- Profile layout Next 16 conformance: `/u/[username]` refactored to a thin Suspense shell over a cached `ProfileShellResolver` + viewer-dependent `ProfileGate`, replacing 8 uncached top-level fetches and yielding Partial Prerender
+- Search & verdict polish (three faceted filters + mobile bottom-sheet on `/search`; pairwise drill-down in CollectionFitCard); Account Danger Zone + 3 branded react-email auth templates; Nyquist hardening sweep + ~33 deferred UAT items triaged; the DEBT-09 `notesPublic` regression fixed
+
+### What Worked
+- **Audit-first ordering with row-ID citation** — Phase 33 shipped a 136-row click-path table as an immutable research substrate; every later phase cited DISC-AUDIT-NN / NSV-NN ids rather than vibes. Falsifiable Pass/Fail criteria were written before the audit ran.
+- **Engineering-vs-product audit split (Phase 33 → 33b)** — separating the click-path enumeration (engineering) from the north-star verdict authoring (product) let each phase ship a clean artifact; the 4 verdicts cleanly gated Phases 34/35/38/39.
+- **Self-idempotent Drizzle migrations + journal-in-same-commit** — `CREATE TABLE IF NOT EXISTS` + `DO`-block FK guards survived `supabase db push` and `drizzle-kit migrate` running in either order; appending the `_journal.json` idx entry in the SAME commit as the SQL file closed the Phase 34 silent-skip footgun. Held verbatim across Phases 34–37.
+- **Static guards before implementation (CAT-13)** — `tests/static/similarity.taste-*.test.ts` were written and GREEN before `similarity.ts` changed, so the engine rewire was a guarded transformation, not a leap.
+- **Worktree-parallelized waves** — Phases 39b and 39c ran multi-plan waves in parallel git worktrees; dependency-ordered (Wave 0 blocking → Waves 1–4).
+- **`vi.mock` discipline triple-confirmed** — any new DAL imported by `/catalog/[catalogId]/page.tsx`'s `Promise.all` must be `vi.mock`'d in `catalog-page.test.ts`; the shallow `@/db` mock cannot cover `.leftJoin/.groupBy/.execute` chains. Established in 39b-04, reconfirmed in 39b-05.
+
+### What Was Inefficient
+- **`unstable_instant = { prefetch: 'static' }` on a dynamic route caused a prod 404.** Phase 39c shipped behind a false-positive D-39c-09 sign-off; UAT immediately after the push found a ~98% profile-link 404 rate plus infinite-skeleton-on-mobile. Root cause: Next 16 treated click-time RSC fetches as resolvable from a tree-only static prefetch. Removed in `cf250b1`; recovery (cached resolver shared by layout+page + narrow skeleton) in `61706b7`. A real recovery cycle that a correct verification would have prevented.
+- **`font-medium` → `font-semibold` UI-SPEC-vs-lint contradiction fired 3× in Phase 39b alone.** Every UI-SPEC drafting `font-medium` collides with `tests/no-raw-palette.test.ts`; each occurrence cost a Rule-1 auto-fix round-trip (39b-02, 39b-03, 39b-05).
+- **REQUIREMENTS.md + ROADMAP checkbox lag — now 5 milestones running.** All 16 in-scope requirements stayed `[ ]` post-ship; 5 ROADMAP phase checkboxes stayed unchecked despite disk-complete; Phase 39c was missing from the ROADMAP phase list entirely. Milestone close had to reconcile all of it.
+- **Prod-push operator checkpoints stalled serial progress** — Phase 34 Plan 03 and Phase 36 Plan 05 Task 2 both blocked on `checkpoint:human-action` prod pushes; STATE.md body carried stale "BLOCKED on operator" notes well after the pushes resolved.
+- **Turbopack `.next` cache served stale CSS during a light-mode debug** — a dev-server restart alone didn't invalidate `.next/`; `rm -rf .next` was required before the CSS fix could be confirmed (saved as memory `project_turbopack_next_cache_stale_css.md`).
+
+### Patterns Established
+- **Self-idempotent migration + journal-same-commit** — the canonical shape for any schema phase that ships both a Supabase migration and a Drizzle twin; the Drizzle `_journal.json` idx entry must land in the same commit as the `.sql` file or `drizzle-kit migrate` silently skips it in prod.
+- **Two-layer privacy + separate `count(DISTINCT)` totalCount with an IDENTICAL `WHERE` clause** — the canonical "top-N + total label" DAL shape for cross-user catalog reads; the `WHERE` block intentionally appears twice to defend against future refactor drift introducing a privacy hole.
+- **B1 server-tree sibling composition** — for surfaces that delegate rendering to a `'use client'` island (e.g. `WatchDetail.tsx`), new Server Components mount as SIBLINGS at the `page.tsx` level — never imported INTO the client component. `npm run build` is the Next 16 server/client boundary regression guard.
+- **Bootstrap (one-shot SQL transaction) ≠ Curation (iterative `seed-lineage.ts`)** — choose the path by scale: empty prod → bootstrap; ongoing additions → curation script once UUIDs are known.
+- **Cache Components conformance for viewer-dependent routes** — thin Suspense shell + a `'use cache'` resolver + a viewer-dependent gate with `getCurrentUser` resolved OUTSIDE the cached scope and `notFound()` bubbled before any post-suspending `await`.
+
+### Key Lessons
+1. **`unstable_instant` with `prefetch: 'static'` is unsafe on dynamic routes.** It tells Next 16 the page resolves from a tree-only static prefetch; click-time RSC fetches then 404. Dynamic pages need declared `samples` and accept that build-time validation may need `unstable_disableBuildValidation` when a `'use cache'` component queries the DB.
+2. **Verification must run against the actually-shipped state, not a claimed one.** Phase 39c's D-39c-09 sign-off was a false positive; the codebase only genuinely delivered the goal after the `cf250b1`/`61706b7` recovery. A VERIFICATION.md verified against a false-positive state is worse than no verification.
+3. **Pre-empt the `font-medium` lint collision in UI-SPEC.** When a UI-SPEC drafts a font weight for any component under `src/`, spec `font-semibold` — `tests/no-raw-palette.test.ts` forbids `font-medium`. Three round-trips in one phase is three too many.
+4. **Turbopack `.next` cache outlives a dev-server restart.** Before concluding a CSS fix failed, `rm -rf .next`. A restart alone does not invalidate the cache.
+5. **Checkbox lag is now a chronic 5-milestone workflow gap.** REQUIREMENTS.md and ROADMAP checkboxes have required audit-time reconciliation in every milestone since v2.0. The phase-complete tooling should flip both when a phase verifies.
+6. **Closing a milestone without `/gsd-audit-milestone` trades cross-phase-integration confidence for speed.** Acceptable at single-user scale with all phases disk-complete, but the formal audit is the only thing that systematically checks the seams between 14 phases.
+
+### Cost Observations
+- Model mix: ~70% Sonnet (executor + verifier + UAT-triage agents), ~30% Opus (orchestration, audit, planning, integration checks)
+- Sessions: many across 11 days; heavy worktree parallelization on Phases 39b/39c
+- Notable: the longest milestone by phase count (14) and commit volume (433); the Phase 39c false-positive sign-off + recovery cycle was the single largest avoidable cost — a correct verification gate would have caught the prod 404 before the push.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -294,6 +346,7 @@
 | v3.0 | 5 days | 7/7 | Added Wave 0 RED-test discipline, code-review-fix pipeline at phase close, architectural prop-acquisition for browser APIs, three-tier privacy enum pattern, EXPLAIN ANALYZE forced-plan evidence for index proofs |
 | v4.0 | 6 days | 12/12 | Added inline gap-closure pattern (3 phases used it), filesystem-absence static guards, D-07-style ordering gates for external-dependency rollouts, hybrid form-feedback (`useFormFeedback` + `FormStatusBanner`), worktree-based plan parallelization at scale (65 plans / 6 days), catalog-as-silent-infrastructure separation, LLM-derived structured taste enrichment with first-write-wins semantics, Postgres enum rename+recreate for cleanup, `@base-ui/react` vertical-tabs with `pushState` hash-routing |
 | v4.1 | 2 days | 5/5 | Added three-layer defense for cross-route remount contracts, module-scope Maps for cross-remount cache survival, speech-act split via type-required field, append-only audit edits with byte-equality invariant, auth-callback regex source-equality test, test-infra `<StrictMode>` wrapper as regression-class CI gate, post-ship hotfix workflow (no follow-up phase scoped), retroactive phase audit as DEBT-surfacing tool (DEBT-09 caught) |
+| v5.0 | 11 days | 14/14 | Added audit-first ordering with row-ID citation, engineering-vs-product audit split (33 → 33b), self-idempotent migrations + journal-in-same-commit, static-guards-before-implementation for engine rewires, two-layer-privacy + count(DISTINCT)-totalCount DAL shape, B1 server-tree sibling composition, bootstrap-vs-curation path distinction, Cache Components conformance for viewer-dependent routes (thin Suspense shell + `'use cache'` resolver + viewer gate). Largest milestone by phase count + commit volume; cost the one avoidable Phase 39c false-positive-sign-off recovery cycle |
 
 ### Cumulative Quality
 
@@ -304,12 +357,15 @@
 | v3.0 | 2813+ (87+ test files; 152 env-gated) | Not configured | 31 deferred human-verification UAT items; WristOverlaySvg redesign (user owns); 9 test files with stale `wornPublic` references; pre-existing `LayoutProps` TS error; Nyquist VALIDATION.md frontmatter drift |
 | v4.0 | ~3000+ (unit + RTL + integration-gated; TEST-04/05/06 finally landed; live-DB tests across phase 17/19/19.1/20/22/24) | Not configured | 2 phases without phase-level VERIFICATION.md (23, 24 — both backfilled in v4.1 Phase 31); ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23; Nyquist coverage partial (3/12 fully compliant; Phases 25 + 26 have no VALIDATION.md); REQUIREMENTS.md DISC-08/NAV-14 wording drift; pre-existing `LayoutProps` + tests/no-raw-palette + tests/app/explore failures |
 | v4.1 | ~3000+ (zero new failures introduced; 50/4187 pre-existing on `main`) | Not configured | DEBT-09 (NEW HIGH-severity Phase 23-era regression: `notesPublic` Zod field + `revalidatePath('/u/...')` absent on `main`); Nyquist 4/5 partial (only Phase 29 COMPLIANT); `useWatchSearchVerdictCache` not invalidated on signOut; cancel mid-flow doesn't honor `?returnTo=` (by spec); REQUIREMENTS.md checkbox lag (4 milestones running); ROADMAP Phase 30 stale `[ ]` checkbox |
+| v5.0 | ~3000+ (zero net new failures vs the ~48-51 pre-existing `main` baseline; v5.0 plans tracked net regression delta per plan) | Not configured | DEBT-12 (prod `drizzle.__drizzle_migrations` journal repair — opportunistic, unscheduled); Phase 39c UAT Issue 2 (stale `removeWatch` rail/projection); Phase 39c VERIFICATION.md stale vs post-recovery codebase; 4 verification + 2 human-UAT gaps operator-approved at close (not formally audited); milestone closed without `/gsd-audit-milestone`; REQUIREMENTS.md + ROADMAP checkbox lag (5 milestones running); 31 v3.0 + Phase-35/41 human-verification UAT items still open |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Run production runbooks manually before declaring them verified — the gap between "looks correct" and "actually works" is always larger than expected.
 2. Two-layer defenses (RLS + DAL, hooks + tests, grep gates + types, ordering gates + verification) consistently catch what single-layer defenses miss. Cost of the second layer is small; cost of a single-layer breach is large.
-3. Scope expansions should land with their requirement entry in the same phase. Deferring the REQUIREMENTS.md update creates traceability drift that audits then have to reconcile. **Workflow gap: this is now a 5-milestone-running issue (v2.0/v3.0/v4.0/v4.1 all required audit-time reconciliation).**
+3. Scope expansions should land with their requirement entry in the same phase. Deferring the REQUIREMENTS.md update creates traceability drift that audits then have to reconcile. **Workflow gap: this is now a 5-milestone-running issue (v2.0/v3.0/v4.0/v4.1/v5.0 all required milestone-close reconciliation of REQUIREMENTS.md AND ROADMAP checkboxes).**
+4. Verification gates must run against the actually-shipped state. v5.0's Phase 39c shipped behind a false-positive sign-off and a prod 404 reached users; the fix was only confirmed after a recovery cycle. A verification verified against a wrong state is a liability, not an asset.
+5. `'use cache'` / Cache Components features (`unstable_instant`, `prefetch: 'static'`) interact non-obviously with dynamic routes — validate cache behavior on a real deploy, not just a local build, before declaring a cache-conformance phase done.
 4. `human_needed` verification status is the natural close state for UI/social features. Build UAT batching into the milestone-close ritual rather than treating these as exceptions.
 5. Pre-existing errors in deferred-items.md across multiple phases need an explicit owner. The audit workflow should promote orphans to action items rather than letting them recur.
 6. **(v4.0)** Plan-level verify scripts must include the production build step, not just vitest. The cost is one extra command; the benefit is catching tsc-only errors before phase exit.
