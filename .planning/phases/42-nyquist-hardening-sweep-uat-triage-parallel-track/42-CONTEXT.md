@@ -227,7 +227,12 @@ None other — discussion stayed within phase scope.
 ## DEBT-11 Final Closure Table
 
 **Completed:** 2026-05-16 | **Total items:** 34 (33 UAT items + 1 D-04 note row)
-**Dispositions:** CLOSED: 23 | SUPERSEDED: 9 | DEFERRED: 2
+**Dispositions:** CLOSED: 24 | SUPERSEDED: 9 | DEFERRED: 1
+
+> **Post-phase update 2026-05-16:** Row 31 (Cross-surface theme sync) was originally
+> DEFERRED on a failed UAT verdict. The underlying Light-mode bug was subsequently
+> fixed in commit `f9fcb85` and user-verified — row 31 is now CLOSED. See debug
+> session `.planning/debug/resolved/light-mode-theme-not-applying.md`.
 
 All 33 deferred UAT items from v4.0 Phases 18/20/20.1/22/23 are accounted for below, plus one administrative note row (D-04). CLOSED rows are backed by real UAT pass verdicts from `42-HUMAN-UAT.md` (run 2026-05-16). SUPERSEDED rows are closed on cited evidence (no live run required per D-01). DEFERRED rows carry an explicit reason and forward target.
 
@@ -263,7 +268,7 @@ All 33 deferred UAT items from v4.0 Phases 18/20/20.1/22/23 are accounted for be
 | 28 | Email-change banner persistence: the "Confirmation sent to old@ and new@" banner remains visible across tab switches without clearing prematurely | 22 | CLOSED | UAT 2026-05-16: passed |
 | 29 | Preferences persistence — Brand Loyalist: selecting "Brand Loyalist" in Collection goal on `/settings#preferences` persists after page reload | 23 | CLOSED | UAT 2026-05-16: passed |
 | 30 | analyzeSimilarity reads new preference on next render: after changing Overlap tolerance, the verdict on `/watch/{id}` reflects the new preference | 23 | CLOSED | UAT 2026-05-16: passed |
-| 31 | Cross-surface theme sync: toggling Light/Dark/System in AppearanceSection and UserMenu InlineThemeSegmented stay in sync via the `horlo-theme` cookie | 23 | DEFERRED | UAT 2026-05-16 failed — Light-mode theme application broken (preference persists, applied theme stuck on dark); carry to v5.x gap-closure; see `42-HUMAN-UAT.md` Gaps section for root-cause hypothesis |
+| 31 | Cross-surface theme sync: toggling Light/Dark/System in AppearanceSection and UserMenu InlineThemeSegmented stay in sync via the `horlo-theme` cookie | 23 | CLOSED | UAT 2026-05-16 initially failed — Light-mode theme application broken. Root-caused and fixed post-phase: a leftover `@media (prefers-color-scheme: dark)` block in `globals.css` forced dark variables on dark-OS machines. Fixed in commit `f9fcb85`, user-verified 2026-05-16. See debug session `.planning/debug/resolved/light-mode-theme-not-applying.md` |
 | 32 | notesPublic cross-page revalidation: editing a watch's Public/Private pill updates the per-row NoteVisibilityPill on `/u/{username}/notes` | 23 | CLOSED | UAT 2026-05-16: passed |
 | 33 | Chronometer end-to-end: checking "Chronometer-certified" in WatchForm and submitting shows a "Certification: ✓ Chronometer" row in WatchDetail | 23 | CLOSED | UAT 2026-05-16: passed |
 | D-04 | 5 stale Phase 20.1 debug entries: `verdict-empty-collection-message`, `wishlist-textarea-not-prefilled`, `recently-evaluated-rail-missing`, `search-row-expand-broken`, `no-escape-from-manual-entry` | 20.1 | SUPERSEDED | Already resolved prior to Phase 42 execution by gap-closure plans 20.1-06/07/08; entries moved to `.planning/debug/resolved/`; no further action needed (per D-04 decision in 42-CONTEXT.md) |
