@@ -263,7 +263,7 @@ Plans:
 
 _Plans:_
 - [x] 42-01-PLAN.md — Wave 0: install @vitest/browser + playwright, vitest.workspace.ts, CSS-served smoke test
-- [ ] 42-02-PLAN.md — six Phase 25-30 browser CSS-chain test files (computed-style assertions)
+- [x] 42-02-PLAN.md — six Phase 25-30 browser CSS-chain test files (computed-style assertions)
 - [ ] 42-03-PLAN.md — recover/author six VALIDATION.md files under 42-validation-backfill/
 - [x] 42-04-PLAN.md — pre-triage all ~33 UAT items + build blocking 42-HUMAN-UAT.md
 - [ ] 42-05-PLAN.md — run blocking UAT checklist + append <triage> closure table to 42-CONTEXT.md
@@ -529,7 +529,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 39b. Audit-Driven Discovery Polish — Heavier UX | 0/? | Not started — carry-forward context in 39-CONTEXT.md | - |
 | 40. Search & Verdict Polish | 0/? | Not started | - |
 | 41. Account Danger Zone + Branded Emails *(parallel)* | 4/4 | Complete    | 2026-05-16 |
-| 42. Nyquist Hardening + UAT Triage *(parallel)* | 2/5 | In Progress|  |
+| 42. Nyquist Hardening + UAT Triage *(parallel)* | 3/5 | In Progress|  |
 
 ---
 
