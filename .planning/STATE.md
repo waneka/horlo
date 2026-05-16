@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Discovery North Star
-status: Awaiting next milestone
-stopped_at: v5.0 milestone complete
-last_updated: "2026-05-16T16:06:19.313Z"
-last_activity: 2026-05-16 — Milestone v5.0 completed and archived
+milestone: v5.1
+milestone_name: Explore Page Redesign
+status: planning
+last_updated: "2026-05-16T18:01:34.245Z"
+last_activity: 2026-05-16
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 64
-  completed_plans: 64
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,13 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-16 — v5.0 milestone close)
 
 ## Current Position
 
-Phase: Milestone v5.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-
-v5.0 Discovery North Star shipped 2026-05-16 — 14 phases (32-42, incl. inserted 33b + 39c), 64 plans, 97 tasks. Archived to `.planning/milestones/v5.0-ROADMAP.md` + `v5.0-REQUIREMENTS.md`. Tagged `v5.0`.
-
-Next action: `/clear`, then `/gsd-new-milestone` to start v5.1 Explore Page Redesign (SEED-008). A CMS-approach `/gsd-spike` (in-app admin vs Sanity vs Contentlayer) is a candidate before the v5.1 roadmap.
+Status: Defining requirements
+Last activity: 2026-05-16 — Milestone v5.1 started
 
 ## Accumulated Context
 
