@@ -1,5 +1,6 @@
 import { EmailChangeForm } from './EmailChangeForm'
 import { PasswordChangeForm } from './PasswordChangeForm'
+import { DangerZoneSection } from './DangerZoneSection'
 
 interface AccountSectionProps {
   currentEmail: string
@@ -11,6 +12,10 @@ interface AccountSectionProps {
  * Phase 22 SET-04 + SET-05 — Account tab content. Composes EmailChangeForm
  * (Plan 03) + PasswordChangeForm (Plan 04). UI-SPEC line 448 mandates the
  * `space-y-8` (32px) separation between Email and Password subsections.
+ *
+ * Phase 41 SET-13 — DangerZoneSection appended as 3rd child (client island
+ * mounted within this Server Component). AccountSection intentionally stays a
+ * Server Component — DangerZoneSection owns its own 'use client' boundary.
  */
 export function AccountSection({
   currentEmail,
@@ -27,6 +32,7 @@ export function AccountSection({
         currentEmail={currentEmail}
         lastSignInAt={lastSignInAt}
       />
+      <DangerZoneSection currentEmail={currentEmail} />
     </div>
   )
 }
