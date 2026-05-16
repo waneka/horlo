@@ -261,6 +261,13 @@ Plans:
   5. All existing collection-browsing, profile, and verdict flows return correct watch data after the wipe and re-link; no user-visible watch data is lost
 **Plans**: 5 plans
 
+_Plans:_
+- [ ] 42-01-PLAN.md — Wave 0: install @vitest/browser + playwright, vitest.workspace.ts, CSS-served smoke test
+- [ ] 42-02-PLAN.md — six Phase 25-30 browser CSS-chain test files (computed-style assertions)
+- [ ] 42-03-PLAN.md — recover/author six VALIDATION.md files under 42-validation-backfill/
+- [ ] 42-04-PLAN.md — pre-triage all ~33 UAT items + build blocking 42-HUMAN-UAT.md
+- [ ] 42-05-PLAN.md — run blocking UAT checklist + append <triage> closure table to 42-CONTEXT.md
+
 Plans:
 **Wave 1** *(parallel — schema sources of truth; no file overlap)*
 - [x] 36-01-PLAN.md — Drizzle schema edits: add watchVariants pgTable + watches.variantId column in src/db/schema.ts (D-02..D-05). Pitfall 6 .notNull() tightening on watches.catalogId DEFERRED to Phase 38 per Rule 4 — see 36-01-SUMMARY.md and deferred-items.md (18-error DAL-flow cascade outside Plan 01 scope)
@@ -487,7 +494,7 @@ Plans:
   3. All ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23 are triaged: each item is CLOSED (UAT run and passed), SUPERSEDED (overtaken by later phase work — citing the superseding phase), or DEFERRED (carry to v5.x with an explicit reason)
   4. Triage output exists as a closure table in phase CONTEXT.md — each row has: item description, original phase, disposition (CLOSED / SUPERSEDED / DEFERRED), resolution note
   5. No new test failures introduced; all new assertions use computed-style checks, not class-name checks
-**Plans**: TBD
+**Plans**: 5 plans
 
 ---
 
