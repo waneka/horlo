@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: executing
+status: ready_to_plan
 stopped_at: Phase 41 UI-SPEC approved
 last_updated: "2026-05-16T03:20:57.396Z"
 last_activity: 2026-05-16
 progress:
   total_phases: 14
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 59
   completed_plans: 56
-  percent: 95
+  percent: 93
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 ## Current Position
 
-Phase: 41 (account-danger-zone-branded-auth-emails-parallel-track) — EXECUTING
-Plan: 2 of 4
+Phase: 42
+Plan: Not started
 
 **Phase 39c Wave 1 CLOSED** (plans 01 + 02 shipped per prior session — `bc24023` + `4706d3a` for the ProfileShellSkeleton + `loading.tsx` segment boundary, and `5004e1f` for the `'use cache'` `ProfileShellResolver`).
 
@@ -51,7 +51,7 @@ Plan: 2 of 4
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
 Resume file: None
-Status: Ready to execute
+Status: Ready to plan
 Last activity: 2026-05-16
 
 **Phase 39c post-close regressions + recovery (2026-05-14):** UAT immediately after the original fa22080 push surfaced two failure modes the false-positive D-39c-09 sign-off didn't catch — 404 on profile-link click (~98% rate on fast networks) AND infinite-skeleton-on-mobile-click. Root cause was `unstable_instant = { prefetch: 'static' }` on a dynamic page causing Next 16 to treat click-time RSC fetches as resolvable from the tree-only static prefetch. Removed in cf250b1; tab-nav UX polish (cached resolver shared by layout+page + narrow loading skeleton) shipped in 61706b7. Debug session archived at `.planning/debug/resolved/profile-page-404-top-nav.md`. Phase 39c original VERIFICATION.md is technically stale (verified against false-positive state) but the codebase now genuinely delivers the phase goal.
@@ -76,7 +76,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 
 **Velocity:**
 
-- Total plans completed: 22 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plans 01+02+03+04 + Phase 39b Plan 04 — Phase 36 Plan 05 Task 1 docs portion shipped at 9eec274 but plan not closed: Task 2 prod-push pending operator)
+- Total plans completed: 26 (v5.0; Phase 34 Plans 01/02/04 + Phase 36 Plans 01+02+03+04 + Phase 39b Plan 04 — Phase 36 Plan 05 Task 1 docs portion shipped at 9eec274 but plan not closed: Task 2 prod-push pending operator)
 - Average duration: ~6.6 min
 - Total execution time: ~59.9 min
 
@@ -88,6 +88,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 | 35 | 7 | - | - |
 | 36 (Layer C) | 4/5 closed + Plan 05 Task 1 done (Plans 01 Drizzle schema + 02 Supabase migration + 03 Drizzle migration twin + journal + 04 local push + 13-block integration test green; Plan 05 Task 1 docs append shipped at 9eec274 ~2min, Task 2 prod-push BLOCKED on operator) | ~28.2 min | ~6.3 min |
 | 39c | 7 | - | - |
+| 41 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 41-account-danger-zone-branded-auth-emails-parallel-track P01 | multi-session | 4 tasks | 9 files |

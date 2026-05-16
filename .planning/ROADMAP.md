@@ -521,7 +521,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 39. Audit-Driven Discovery Polish — Cheap Patches | 0/? | Not started — context gathered 2026-05-12 | - |
 | 39b. Audit-Driven Discovery Polish — Heavier UX | 0/? | Not started — carry-forward context in 39-CONTEXT.md | - |
 | 40. Search & Verdict Polish | 0/? | Not started | - |
-| 41. Account Danger Zone + Branded Emails *(parallel)* | 4/4 | Complete   | 2026-05-16 |
+| 41. Account Danger Zone + Branded Emails *(parallel)* | 4/4 | Complete    | 2026-05-16 |
 | 42. Nyquist Hardening + UAT Triage *(parallel)* | 0/? | Not started | - |
 
 ---
