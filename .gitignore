@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+# Vitest browser mode failure screenshots (generated; not committed)
+tests/browser/__screenshots__/
 
 # next.js
 /.next/
