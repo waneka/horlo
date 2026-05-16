@@ -1,404 +1,411 @@
-# Feature Research — v5.0 Discovery North Star
+# Feature Research: v5.1 Explore Page Redesign
 
-**Domain:** Taste-aware watch collection intelligence — discovery, catalog hierarchy, engine rewire, polish
-**Researched:** 2026-05-06
-**Confidence:** HIGH (catalog hierarchy, engine rewire, account UX, email UX), MEDIUM (click-driven discovery methodology, editorial curation, pairwise drill-down), LOW (lineage UX in watch-collector-specific apps — no direct comparables found; patterns drawn from Discogs + Letterboxd analogues)
-
----
-
-## Categories
-
-- **A: Discovery Audit** — click-path methodology
-- **B: Catalog Hierarchy** — 5-level Brand/Family/Reference/Variant/Individual
-- **C: Engine Rewire** — CAT-13 + CAT-14
-- **D: Discovery Polish** — surfaces shaped by audit (DISC-09, SRCH-16, FIT-05)
-- **E: Carryover / Polish** — DEBT-09, SET-13, SET-14, Nyquist sweep, UAT triage
+**Domain:** Editorial / taste-driven discovery surface for a personal watch collection app
+**Researched:** 2026-05-16
+**Confidence:** MEDIUM — editorial and taste-media patterns are well-evidenced; watch-specific collector-path UX is lightly documented (community observation + adjacent domains)
 
 ---
 
-## A: Discovery Audit
+## Scope Note
 
-### A-1: Click-path audit (read-only Phase 1)
-
-**What it is.** Map every click-path users can take starting from each of the six surfaces: `/` (home), `/explore`, `/u/{user}`, `/catalog/{catalogId}`, `/search`, `/watch/{id}`. For each surface: what can a user click to navigate forward, where does each click land, and is there a forward exit from the landing page? Tag each path outcome as: Live (navigates to a real, non-empty state), Dead (clicks land on a 404, empty state, or page with no onward navigation), Redundant (same destination reachable from two surfaces without differentiation), or Missing (an obvious next step that has no affordance).
-
-**Why this has to be Phase 1.** SEED-004 is explicit: audit-first prevents premature consolidation. "Combine home and explore?" is exactly the kind of question that gets decided wrong by gut. The audit answers it with evidence. Any discovery polish phase that ships before the audit is shipping into the dark.
-
-**Making the audit falsifiable.** The audit is not useful if it produces impressionistic prose ("the explore page feels disconnected"). It is useful if it produces a closed set of specific, enumerable path outcomes with pass/fail criteria. Falsifiable methodology:
-
-1. Define the entry points exhaustively: every route in the app that an authenticated user can reach from the nav (Home `/`, Explore `/explore`, Search `/search`, Profile `/u/{username}`, Catalog detail `/catalog/{id}`, Watch detail `/watch/{id}`).
-2. For each entry point, enumerate every clickable element that produces navigation (links, buttons, cards, row items). This is an inventory step.
-3. For each clickable element, record: destination route, whether the destination has zero onward navigation options (dead end), whether this is the only path to that destination or one of N paths (redundancy score).
-4. Pass criteria per surface: every clickable element either (a) leads to a page with at least one onward navigation affordance, or (b) is explicitly a terminal action (Save, Delete — user-initiated finality). Fail criteria: a page with no onward navigation affordances that is NOT a terminal action page.
-5. The audit output is a table with one row per (surface × clickable element), not a report. That table is the falsifiable artifact; phases close rows.
-
-**Table stakes.** The audit pass/fail criteria must be written before the audit runs, not after. "Audit finds problems" is not falsifiable. "Audit finds zero dead ends per the enumerated criteria" is.
-
-**Complexity:** SMALL — no code ships, only a structured document. Output is a decisions doc (DECISIONS.md in the phase directory) with the click-path table and a prioritized list of gaps for subsequent phases.
-
-**Depends on:** Nothing new — reads existing app surfaces.
-
-**Anti-feature:** Pre-deciding that home and explore should be merged before the audit runs. The decision must follow evidence. SEED-004 explicitly forbids pre-deciding.
+SEED-008 already specifies the five module shapes. This file validates, enriches, and surfaces what the spec missed — organized per module with table stakes / differentiators / anti-features discipline, then cross-cutting concerns at the end. It does NOT restate the spec.
 
 ---
 
-## B: Catalog Hierarchy
+## Module 1: Hero
 
-### B-1: Layer A — Brand + Family entities (additive, schema-only)
+### Table Stakes
 
-**What it is.** Add `brands` and `watch_families` tables. Add nullable `brand_id` FK and nullable `family_id` FK to `watches_catalog`. No UI — this is a schema migration that makes Brand and Family first-class entities rather than normalized strings, without breaking any existing query.
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Single prominent visual at page top | Any editorial destination sets tone with a dominant image — Pitchfork, Hodinkee, Letterboxd journal all do this | LOW | Spec says full-bleed; that's correct |
+| Tap/click navigates to content | Hero that doesn't link is a dead end — violates Phase 33b dead-end audit principles | LOW | Spec has this |
+| Text overlay: title + short subtitle | Bare image gives no context for what it leads to; users don't click mystery boxes | LOW | Spec implies but does not enumerate minimum fields |
+| Graceful hide when no eligible content | Empty hero is worse than no hero; spec has this right | LOW | No empty-state placeholder |
+| Loading skeleton | LCP matters; bare white flash before image loads reads as broken | LOW | Spec has this |
 
-**Why additive matters.** The existing flat catalog is Reference-granularity (dial color is a column, not a separate row), so the existing social signal (owners_count, wishlist_count aggregated per Reference) is correct. Layer A only adds two new tables and two nullable FKs. Every existing DAL query continues to work unchanged. Backfill is manual curation (or deferred for catalog seeding) — no automated migration necessary.
+### Differentiators
 
-**Table stakes.** Brand and Family as first-class entities is the precondition for every higher-level feature: Family pages, lineage edges, faceted search by family, the eventual recommender taste graph at Reference granularity. Without them you have strings; with them you have navigable entities.
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Quality-gated auto-selection | Hero always feels intentional, not random; prevents a thin 1-watch list from headlining | MEDIUM | Spec calls for minimum watch count + cover image + intro copy thresholds — all three gates are necessary |
+| Manual pin with optional expiry date | Admin can spotlight a key list launch without indefinitely blocking auto-rotation | LOW | Spec has pin/clear; add an optional "expires at" date so admin doesn't need to remember to unpin |
+| Curator name visible in hero | Establishes editorial voice and gives collectors a person to follow; Hodinkee's byline model | LOW | Spec omits this — add curator attribution to hero layout |
+| Secondary format slot (featured collector) | Extend editorial surface beyond lists; data shape already planned | MEDIUM | Spec has discriminated union shape; don't wire it up initially but keep the slot in layout |
 
-**Complexity:** SMALL — two new tables, two nullable FKs, one migration. No DAL rewrites. No UI.
+### Anti-Features
 
-**Depends on:** Existing `watches_catalog` flat table (already shipped, Phase 17).
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Auto-rotating hero carousel (multiple slides cycling) | Feels dynamic and surfaces more content | NNG research: users see slide 1 only; rotation before reading = comprehension failure; banner blindness triggered; A/B noise introduced | Single static hero per page load — rotation happens between sessions (weekly cadence), not within a session |
+| Hero personalized to viewer's collection | Seems like obvious improvement over editorial | Violates SEED-008 non-goal: two users should see roughly the same page; personalization belongs on Home | Hold editorial hero; add "Fits your collection" badge on list cards if similarity data available later |
+| Countdown timer showing "refreshes in N days" | Transparency about rotation cadence | Creates pressure to return on a specific day rather than organic curiosity; exposes admin scheduling | No countdown; hero feels fresh or it doesn't |
 
-### B-2: Layer B — Lineage edges + structured movement + era/case_material/bracelet_config
+### Spec Gaps Found
 
-**What it is.** Add `watch_lineage_edges` table with `predecessor_catalog_id → successor_catalog_id` FK pairs (directed graph). Add structured `movement_caliber` (text) and `movement_type` (enum: auto/manual/quartz/spring_drive) columns to `watches_catalog` to replace free-text `movement`. Add first-class `era` (text enum), `case_material` (text), and `bracelet_config` (text) columns.
-
-**Why lineage edges matter for discovery.** The collector mental model for browse is: "I like the Submariner 16610 — what came before it? What came after?" That question is unanswerble without an explicit predecessor/successor edge. Lineage edges are the data model precondition for any "predecessor / successor" UX affordance. They're also the hook for SEED-002's recommender ("if you own this, you might like its predecessor") without ML.
-
-**Structured movement type** is required for SRCH-16 search facets (Movement filter needs clean enum values, not free text like "ETA 2824-2" and "Sellita SW200" mixed together).
-
-**Complexity:** MEDIUM — new `watch_lineage_edges` table, 3-4 new columns on `watches_catalog`, one migration. No UI yet. Lineage backfill is manual curation only — no automation.
-
-**Depends on:** Layer A (family_id exists before lineage edges are added, so edges can be scoped to a Family).
-
-**Anti-feature: Automated lineage inference.** Do not attempt to infer predecessor/successor relationships algorithmically from reference numbers or production years. The edge must be explicitly curated. Automated inference would introduce incorrect edges (e.g., "16610" → "116610" is correct for Submariner Date, but automated inference keyed on numeric prefix would generate false positives across unrelated families). Manual curation only.
-
-### B-3: Layer C — Variant split (clean-slate DB wipe + reseed)
-
-**What it is.** A clean-slate migration: wipe the existing `watches_catalog` rows, introduce a `watch_variants` table, and relink existing `watches.catalog_id` FKs to Reference-level rows (not Variant-level). This is safe because the app is single-user (owner) with a small DB and the owner is explicitly willing to wipe.
-
-**Why Variant fragmentation must be fixed.** SEED-001 documents Variant creep: the same Reference (e.g., Submariner 16610) can exist as two rows ("16610 Kermit" and "16610 black dial") when they're really the same Reference with different dial/bezel variants. Fragmentation at the Reference level destroys the social signal because owners_count and wishlist_count fragment across the same watch. The Discogs Master Release model demonstrates the right approach: one parent entity (Master Release / Reference), N child entities (Release / Variant) that share the parent's social aggregation.
-
-**Clean slate enabled by single-user context.** In a production multi-user system this migration would require a complex backfill with user communication. Here, one user, owner is explicitly willing to wipe and reseed. CAT-14 (`SET NOT NULL` on `watches.catalog_id`) also becomes feasible in this milestone for the same reason.
-
-**Complexity:** HIGH — new `watch_variants` table, migration that drops and reseeds `watches_catalog`, re-links `watches.catalog_id` FKs. Requires DAL updates for any query that selects variant-level columns directly.
-
-**Depends on:** Layer A (brand_id/family_id must exist before Variants reference them) and Layer B (structured movement must exist before Variants are created with clean data).
-
-**Anti-feature: Exhaustive variant enumeration.** Do not attempt to enumerate all known variants of every Reference at catalog-seeding time. The Variant table ships empty (or sparsely populated). Variants grow organically as users add watches with distinct dial/bezel/bracelet configurations. The Reference row is always the canonical social-graph unit.
-
-### B-4: Layer D — Provenance fields on `watches` + `divestments` table
-
-**What it is.** Add provenance fields to the `watches` table: `serialNumber` (text, nullable), `yearOfAcquisition` (integer, nullable), `boxAndPapers` (enum: none/box-only/papers-only/full-set, nullable), `serviceHistory` (text, nullable, collector's diary free-text), `conditionNotes` (text, nullable). Add a `divestments` table to record sold-watch events (catalog_id, sold_date, sold_price, provenance_notes) so the sold signal is Individual-level rather than Reference-level.
-
-**Why provenance fields matter.** For a collector, the Individual watch — this specific 16610 they've owned since 2019, with box and papers, two services — is distinct from an abstract Reference entry. Provenance is what makes the sold signal meaningful for SEED-002: a collector divesting a specific Individual (box+papers, low service cost, appreciated value) is a stronger negative signal than simply removing a Reference from a wishlist. Without Individual-level fields, the recommender milestone has to relitigate the data model.
-
-**No paywall.** SEED-006 resolved: provenance ships free. Do not add any paid-tier gating to provenance fields.
-
-**Collector UX pattern (from art/collectibles domain research).** The correct UI pattern for provenance fields is an optional "Collector's Record" section on the watch edit form, collapsed by default. Fields: Serial Number (text), Year Acquired (year picker), Box & Papers (chip group: None / Box Only / Papers Only / Full Set), Service History (free-text textarea labeled "Service notes, authenticity details"), Condition Notes (free-text). The section is disclosure-based — users who don't care about provenance never see it. Users who do find it where they expect it (on the watch record, not on a separate "portfolio" page).
-
-**divestments table.** When a watch transitions to `status = 'sold'`, the app should optionally prompt for a divestment record: sold date, sold price, notes. This is Layer D's second schema artifact. The sold workflow UI can be a simple follow-on dialog after the status change — one extra step, not a blocking form.
-
-**Complexity:** MEDIUM — 5 new columns on `watches`, 1 new `divestments` table, 1 migration, optional UI section in WatchForm edit mode.
-
-**Depends on:** Layer C (clean-slate DB enables CAT-14 NOT NULL; provenance fields are per-Individual so they belong on `watches`, not `watches_catalog`).
-
-**Not in scope for v5.0: Divestment workflow UI.** The `divestments` table schema lands in v5.0. The UI that captures a divestment record on status change (the "I just sold this watch" flow) may land in v5.0 or be deferred to v5.x. The data model must exist before the recommender milestone, but the UI can follow.
+- Minimum watch count threshold not specified — recommend 3 as floor (a 1- or 2-watch list is a stub, not a curated collection)
+- Cover image dimension requirements not specified — recommend 1200x630 minimum for hero full-bleed; must crop gracefully on mobile (object-fit: cover)
+- Intro copy length minimum not specified — recommend 50 characters minimum (one sentence) so hero subtitle has actual content
+- Curator attribution is absent from hero layout in spec — meaningful omission for editorial voice
 
 ---
 
-## C: Engine Rewire
+## Module 2: Collector Archetypes
 
-### C-1: CAT-13 — analyzeSimilarity() reads catalog taste columns at JOIN time
+### Table Stakes
 
-**What it is.** `analyzeSimilarity()` in `src/lib/similarity.ts` currently reads taste attributes (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs) from per-user `watches` data only — it cannot see the Phase 19.1 LLM-derived catalog columns unless the user's watch row has been enriched. CAT-13 rewires the engine to JOIN `watches` against `watches_catalog` at query time and feed catalog taste columns into the scoring when available.
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Chip rail renders all archetypes without overflow on mobile | Horizontal overflow at 375px reads as broken | LOW | Spec has this; enforce with wrapping or 2-row grid, not horizontal scroll on a fixed rail |
+| Tap produces non-empty results | Dead end on tap destroys trust; zero results reads as broken app | LOW | Spec mandates build-time validation |
+| Archetype filter state in URL | Shareable + browser-back works | LOW | Spec has this |
+| Short descriptive label per archetype | "Dive Watch Devotee" is clear; single-word chips like "Dive" lose identity context | LOW | Spec uses full descriptive names — maintain these |
+| Archetype-specific header copy above results | Confirms to the user that the filter is intentional, not a generic search dump | LOW | Spec has this |
 
-**Discovery framing.** Better verdicts produce better evaluative discovery: when a user adds a watch from search or catalog, the CollectionFitCard verdict becomes more accurate because it reads Brand/Family/Reference-level taste signal rather than per-user tag data. This is a discovery improvement, not just tech-debt cleanup.
+### Differentiators
 
-**Table stakes.** Without CAT-13, the Phase 19.1 taste enrichment columns are wasted. The LLM-derived attributes sit in `watches_catalog` but the scoring engine never reads them. The verdict shown to users is less accurate than the data supports. This is the engine rewire SEED-004 identifies as the "natural anchor" of v5.0.
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Archetype chip shows watch count | Sets expectations before tap ("Modern Sport · 18 watches" vs blank); Spotify genre tiles do this | LOW | Spec omits this — add count from catalog at build/ISR time |
+| Two additional archetypes covering under-served identities | Spec has 6 + "two TBD"; Tool Watch Minimalist and Complication Hunter fill the remaining identity space | MEDIUM | See taxonomy research below |
+| Archetype → curated list cross-link | "Browse Dive Watch Devotee curated lists" below results closes a dead end and connects modules | LOW | Not in spec — cheap to add |
 
-**Complexity:** MEDIUM — changes to `analyzeSimilarity()` (reading catalog columns via JOIN), likely a new DAL helper to fetch catalog taste data alongside the user's watches, updates to the verdict composer to integrate catalog-level taste when per-user data is sparse or absent.
+### Anti-Features
 
-**Depends on:** Layer A (brand_id/family_id must exist for the JOIN to be meaningful), Layer B (structured movement_type enables movement-dimension scoring), Phase 19.1 taste enrichment columns (already shipped — no new schema).
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| UGC / user-defined archetypes | Feels democratic | Requires moderation; dilutes editorial voice; naming inconsistency | Admin-only archetype config for now; revisit at 500+ users |
+| Personalized archetype ordering (reorder by viewer's collection fit) | Relevant-first feels smart | Breaks non-personalization principle; two users see different chip order and can't share the rail | Static editorial order |
+| Archetypes as a first-class /search filter type | Archetypes and search filters share vocabulary | Creates labeling conflicts with style/role tags | Archetypes deep-link into /search with presets but are not first-class filter types |
 
-**Byte-lock note.** `analyzeSimilarity()` has been byte-locked across multiple phases (v4.0). CAT-13 is an intentional, planned break of that lock. The lock served its purpose (preventing accidental mutation); CAT-13 is the planned migration.
+### Watch Collecting Archetype Taxonomy (Research-Derived)
 
-### C-2: CAT-14 — SET NOT NULL on watches.catalog_id
+Community evidence confirms these eight identity clusters cover the collector landscape:
 
-**What it is.** After Layer C's clean-slate DB wipe and reseed, every `watches` row has a valid `catalog_id`. CAT-14 drops the nullable constraint and adds `NOT NULL`.
+1. **Vintage Enthusiast** — patina, hand-wound, pre-1980 cases
+2. **Modern Sport** — ceramic bezels, in-house movements, 41-43mm
+3. **Dive Watch Devotee** — 200m+ WR, rotating bezel, tool-watch ethos
+4. **Dress Watch Aficionado** — sub-38mm, thin profile, leather strap
+5. **Microbrand Explorer** — independent design, direct-to-consumer, community-backed
+6. **Swiss Purist** — manufacture movements, Geneva Seal, finishing quality
+7. **Tool Watch Minimalist** (proposed TBD #1) — one watch for everything, functional over decorative, pilot/field watch style
+8. **Complication Hunter** (proposed TBD #2) — GMT, perpetual calendar, minute repeater, chronograph as primary buying driver
 
-**Why it matters.** The nullable FK was a deliberate choice in Phase 17 ("NEVER SET NOT NULL in v4.0") to avoid blocking the milestone while the backfill ran. Now that clean-slate is on the table, the backfill is provably complete (single-user, small DB). `NOT NULL` enables simpler DAL queries, eliminates null-guard branches, and makes the catalog FK a reliable join target.
+### Spec Gaps Found
 
-**Complexity:** SMALL — one migration statement. Depends entirely on clean-slate Layer C being verified before this lands.
-
-**Depends on:** Layer C (clean-slate DB wipe proves 100% backfill).
-
----
-
-## D: Discovery Polish
-
-### D-1: Audit-driven surface polish (shapes are TBD until audit runs)
-
-**What it is.** Based on the discovery audit (Phase A-1), specific surfaces receive targeted fixes: dead-end pages get onward navigation, missing affordances get added, redundant paths get differentiated or consolidated. The exact shape of this work is unknown until the audit document is written.
-
-**What research suggests is likely.** Based on the existing surface inventory and common discovery dead-end patterns (Letterboxd UX case studies, Rdio browse analysis), the most likely audit findings for Horlo:
-
-- `/catalog/{catalogId}` likely has insufficient onward navigation to Family or related References.
-- `/u/{username}` collection/wishlist tabs likely have no "explore similar watches" affordance after viewing a watch.
-- `/watch/{id}` detail likely exits to `/` or back-button only — no "compare" or "similar References" forward path.
-- `/explore` Trending/Gaining rails link to catalog detail, but catalog detail may not link back into explore rails.
-
-**Table stakes for any dead-end fix:** Every non-terminal page must have at least one forward navigation option. "Back" is not a forward option — it's a retreat. The audit defines which pages fail this test; the polish phase closes them.
-
-**Complexity:** MEDIUM — unknown until audit, likely 2-4 targeted surface fixes.
-
-**Depends on:** Phase A-1 discovery audit producing its decisions doc.
-
-### D-2: DISC-09 — /explore Editorial Featured Collection
-
-**What it is.** A manually curated editorial slot on `/explore` that surfaces a "Featured Collection" — a hand-picked set of watches organized around a theme (e.g., "Entry-level dress watches under 38mm", "Tool watches with documented lineage"). This is the Letterboxd HQ Lists / Spotify Editorial Playlists analog for Horlo.
-
-**How Letterboxd does it (MEDIUM confidence — from Letterboxd journal article).** Letterboxd's Featured Lists are hand-curated by the Letterboxd team and surfaced on a dedicated `/lists/featured/` page. Any member can make a list; featured designation is editorial. Key patterns: the featured collection has a title, a short editorial description (2-3 sentences), a curator attribution, and an ordered list of items. Featured lists appear in a dedicated module on the discovery surface — not mixed with algorithmic rails.
-
-**Table-stakes version (v5.0 scope).** A single Featured Collection slot on `/explore`, admin-only creation via a simple internal form or admin route. Fields: title, description (2-3 sentences), curator name, ordered list of `catalog_id` references (up to 12). The slot renders as a horizontal scroll rail with a title + description above it.
-
-**Anti-feature: Full admin CMS.** Do not build a full admin CMS with rich text, scheduling, image upload, or A/B testing for this slot. The editorial rhythm is infrequent (weekly or monthly); a minimal admin form is sufficient. Build the simplest thing that makes curation possible.
-
-**Anti-feature: Algorithmic "featured" determination.** The editorial slot must be manually curated. An algorithmic "staff picks" that selects from trending data is a different feature (and may conflict with existing Trending/Gaining rails). Keep the editorial slot explicitly human-curated and distinct.
-
-**Complexity:** MEDIUM — new DB table for featured collections (title, description, curator, ordered catalog IDs, published_at, expires_at), admin route for CRUD, rail component on `/explore`.
-
-**Depends on:** Existing `/explore` surface, existing `watches_catalog` table. Does NOT require catalog hierarchy layers to ship (can reference flat catalog rows by ID). Layer A is helpful (Family can be used as the editorial organizing principle) but not blocking.
-
-### D-3: SRCH-16 — Search facets (Movement / Case size / Style) on /search Watches tab
-
-**What it is.** Faceted filtering on the existing `/search` Watches tab. Three facets: Movement type (auto/manual/quartz/spring_drive — structured enum after Layer B), Case size (numeric range slider or chip group: under 36mm / 36-39mm / 40-42mm / over 42mm), Style tags (existing `styleTags` array — multi-select chips).
-
-**Table-stakes UX pattern.** Based on NN/Group, Algolia, and pencil-and-paper mobile filter research (HIGH confidence): on mobile, facets belong in a bottom drawer or modal (not a persistent sidebar), opened by a single "Filters" button. Selected filter counts appear on the button. Chips are correct for Movement type (3-4 categorical values) and Style tags (multi-select). Case size: a pre-defined chip group ("Under 36mm / 36-39mm / 40-42mm / 43mm+") is more mobile-friendly than a range slider at this small a value set. Apply button is sticky at bottom of the drawer; tapping Apply closes the drawer and fires the search.
-
-**Differentiator addition.** Show the active filter count on the Filters button. Highlight which facets have active selections inside the drawer (e.g., dot indicator on the Movement chip group label).
-
-**Anti-feature: Sidebar facets.** A persistent left-sidebar facet panel is the e-commerce pattern, not the collector-app pattern. Horlo's search surface is narrow (max-w-3xl per current search page); a sidebar would crush the result list on mobile. Drawer only.
-
-**Anti-feature: Free-text movement filter.** Movement must be faceted against the structured `movement_type` enum (requires Layer B). Do not ship SRCH-16 against the existing free-text `movement` column — the facet would produce inconsistent results ("automatic" vs "Automatic" vs "ETA 2824-2"). **SRCH-16 depends on Layer B landing first.** If Layer B is delayed, SRCH-16 must be deferred.
-
-**Complexity:** MEDIUM — filter drawer component, facet state in URL params (shareable filtered search URLs), DAL updates to `searchCatalogWatches` to accept facet filters.
-
-**Depends on:** Layer B (structured movement_type enum), existing `/search` Watches tab (Phase 19).
-
-### D-4: FIT-05 — Pairwise drill-down inside CollectionFitCard
-
-**What it is.** A "Compare with [Watch You Own]" action inside the CollectionFitCard. Currently the "Most Similar in Collection" list shows watch names and similarity scores (percent similar). FIT-05 deepens this: clicking a watch from the Most Similar list opens a pairwise comparison view showing both watches side-by-side with their key attributes and taste-attribute deltas.
-
-**What research says about comparison UX (NN/Group — HIGH confidence).** Best practices: products as columns, attributes as rows, max 2 items on mobile. Keep sticky headers. Show only attributes that differ (hide rows where both values are identical). Brief text — not full sentences. On mobile, 2-column comparison is the limit without scrolling off-screen.
-
-**Recommended pattern for FIT-05.** Two-panel layout: left column is the watch being evaluated (the "new" watch), right column is the owned watch being compared. Rows: Brand/Model/Reference, Case size, Movement type, Style tags (as chips), Taste attributes (formality/sportiness as labeled bars, not raw numbers). A "delta" row at the bottom summarizing the key difference: "This watch is more formal (+0.3) and less sporty (−0.2) than your [Submariner]." The pairwise view renders inside the CollectionFitCard as an expandable section (accordion), not a new page — keeping the user in context.
-
-**Anti-feature: Full spec-table comparison.** Do not show all 20+ columns from the watches table in the comparison. Show only the dimensions that the similarity engine weights: case size, movement type, style tags, role tags, and taste attributes. Full spec tables are the e-commerce pattern (laptop comparisons, airline seats); collector comparison is about taste alignment, not spec parity.
-
-**Anti-feature: Three-way or N-way comparison.** FIT-05 is explicitly pairwise — the evaluated watch vs. one owned watch. N-way comparison compounds cognitive load exponentially and is not motivated by the use case (a collector deciding whether a new watch duplicates their collection picks the most similar watch to compare against, not all similar watches simultaneously).
-
-**Complexity:** MEDIUM — new comparison sub-component in CollectionFitCard, taste attribute delta calculation, accordion expansion state.
-
-**Depends on:** Existing `CollectionFitCard` with `mostSimilar` list (Phase 20), CAT-13 (taste attributes from catalog JOIN — without CAT-13, taste-attribute rows in the comparison will be sparse). FIT-05 can ship without CAT-13 but the taste-attribute rows will be empty for many watches. **Recommended: ship FIT-05 after CAT-13.**
+- The two TBD archetypes need names — Tool Watch Minimalist and Complication Hunter are the recommendation
+- Chip rail layout not specified for desktop — recommend 4-column grid on >=768px
+- Count badge on chip not specified — strongly recommended for trust (non-empty guarantee before tap)
 
 ---
 
-## E: Carryover / Polish
+## Module 3: Curated Lists Rail
 
-### E-1: DEBT-09 — notesPublic + revalidatePath regression fix
+### Table Stakes
 
-**What it is.** `addWatch`/`editWatch` in `src/app/actions/watches.ts` do not persist `notesPublic` and do not call `revalidatePath('/u/{username}/{tab}')`. WatchForm sends `notesPublic` but Zod silently strips it (no schema field). RED test scaffold (`tests/actions/watches.notesPublic.test.ts`) is 4/4 FAIL. Surfaced by Phase 31 audit.
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Cover image per list card | Letterboxd evidence: visual-first browsing; cover image is the primary click attractor | LOW | Spec has this |
+| List title on card | Minimum identification | LOW | Spec has this |
+| Curator name on card | Attribution is editorial table stakes; Hodinkee bylines, Pitchfork bylines | LOW | Spec has this |
+| Watch count on card | Sets expectation before tap | LOW | Spec has this |
+| Optional 1-line description on card | Differentiates lists with similar titles | LOW | Spec has this |
+| List detail page: intro copy | What is this list about and why was it assembled? Without this, list is a gallery dump | LOW | Spec has this |
+| List detail page: per-item commentary | Separates editorial lists from search results; Letterboxd's per-film notes are the canonical model | MEDIUM | Spec has this — do not cut it |
+| Publish / unpublish toggle | Admin must prepare lists without publishing | LOW | Spec has this |
+| Zero-watch lists cannot publish | Validates list has substance before going live | LOW | Spec has this gate |
 
-**Complexity:** SMALL — add `notesPublic` to Zod schema in `addWatch`/`editWatch`, add `revalidatePath` call. Fix the 4 failing tests. Verifiable by the existing RED test scaffold.
+### Differentiators
 
-**Depends on:** Nothing new — the test scaffold already exists.
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Published date visible on list card | Signals freshness; "Published 3 days ago" vs "8 months ago" affects click-through | LOW | Not in spec — add `published_at` timestamp distinct from `created_at` |
+| List mood tags (2-3 short tags per list) | Fast-scan browsing: "Vintage · Sub-$5K · Tool Watches" without reading title | LOW | Not in spec; cross-links to archetype taxonomy naturally |
+| Preview image strip (3 watch thumbnails) | Spotify playlist-style mosaic — taste preview without opening; stronger than cover image alone | MEDIUM | Not in spec — add if cover image alone tests as insufficient |
+| "Add to wishlist" inline on list items | Converts discovery directly into intent; reuses existing wishlist infrastructure | MEDIUM | Not in spec; high value if wishlist is a core collector loop |
 
-### E-2: SET-13 — Account Delete / Wipe Collection (Danger Zone)
+### Anti-Features
 
-**What it is.** Two distinct destructive operations under a "Danger Zone" section in Settings → Account tab: (1) Wipe Collection — delete all watches but keep the account; (2) Delete Account — delete the account and all data.
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| UGC list submission | Community engagement | Moderation overhead; quality collapse; SEED-008 explicitly defers to 500+ users | Admin-only authoring now |
+| Pure chronological rail ordering with no editorial control | Simple, fair | Most recent list might be weak; stale top lists disappear from view | Admin drag-reorder or `display_order` field |
+| Infinite lists in rail | More content = more value | 12 cards is past scrolling attention; "View all" is the right pattern | Cap at 12 in rail, paginate on /explore/lists |
+| Rating or vote system on lists | Community engagement signal | Creates popularity bias crowding out new lists; gaming risk | Admin curates ordering |
 
-**UX pattern (GitHub model — HIGH confidence from search results).** The standard pattern is: Danger Zone section at the bottom of the account settings page, visually separated (red border, warning icon). Each action requires a multi-step confirm: (a) click the action button, (b) read a consequence description ("This will permanently delete your collection of N watches and cannot be undone"), (c) type the account username or a confirmation phrase to enable the final button, (d) final destructive button. GitHub uses this for account deletion; Vercel uses a simpler "type your username" single-confirm. Reddit's pattern includes a 30-day grace period before hard deletion.
+### Letterboxd Model — Validated Patterns
 
-**Recommended pattern for Horlo.** For Wipe Collection: two-step confirm (modal with consequence count + "Type your username to confirm" text input). For Delete Account: three-step confirm (modal → consequence list → "Type DELETE to confirm" text input). No grace period needed for Wipe Collection (reversible via re-adding watches). For Delete Account: soft-delete with a 30-day recovery window is the safe pattern, but at Horlo's scale (single user) an immediate hard delete of the Supabase Auth user + all data is acceptable — simpler to implement and no ambiguity for the user. Document the choice in CONTEXT.md.
+- Per-item note when adding to list (optional but editorially encouraged)
+- List has title + description (Markdown-formatted) + visible curator
+- Featured lists are editorially selected, not algorithmic
+- Lists tagged by curator for taxonomy context
 
-**Anti-feature: "Delete without confirming."** Any destructive operation that does not require explicit typed confirmation is a UX anti-pattern. The friction is intentional.
+### Spec Gaps Found
 
-**Anti-feature: Wipe + Delete in the same button.** Keep them separate. A collector who wants to start over (wipe collection) may not want to delete their account, and vice versa.
-
-**Complexity:** SMALL-MEDIUM — new Danger Zone section in Settings Account tab, two confirmation dialogs, two Server Actions (wipeCollection, deleteAccount) with proper auth checks.
-
-**Depends on:** Existing Settings Account tab (Phase 22), Supabase Auth user deletion API.
-
-### E-3: SET-14 — Branded HTML email templates
-
-**What it is.** Replace Supabase Auth's default email templates (plain text / generic HTML) with Horlo-branded HTML templates for: Confirm signup, Reset Password, Email Change.
-
-**Table-stakes pattern (Tabular.email research — HIGH confidence).** Required elements: (a) logo centered at top (the "anchor of trust"), (b) brief subject-relevant greeting, (c) 1-2 sentences of context, (d) single CTA button (44px min height, primary brand color, strong verb: "Confirm your email" / "Reset your password" / "Confirm email change"), (e) plaintext fallback link below the button for email clients that block images, (f) footer with legal name + physical address + unsubscribe link. Brand colors used ONLY on logo and CTA. All other elements neutral (off-white background, dark text). Single-column, max 600px width.
-
-**Anti-feature: Marketing content in transactional emails.** Do not add feature announcements, "check out what's new," or other promotional content to auth emails. Transactional emails have a single job; promotional content dilutes trust and increases spam scoring.
-
-**Anti-feature: Multiple CTAs.** Each auth email has exactly one CTA. No secondary links beyond the plaintext fallback.
-
-**Implementation note.** Supabase Auth templates are set in the Supabase project dashboard under Authentication → Email Templates. The template is raw HTML with Supabase template variables (`{{ .TokenHash }}`, `{{ .SiteURL }}`). The existing SMTP setup (Phase 21, Resend via `mail.horlo.app`) is already in place — this task is UI/HTML only.
-
-**Complexity:** SMALL — HTML/CSS email templates (3 templates: confirm, reset, email change). No code changes to Next.js app or DB.
-
-**Depends on:** Phase 21 SMTP setup (already shipped — Resend custom domain `mail.horlo.app` live).
-
-### E-4: Nyquist hardening sweep
-
-**What it is.** Close the 4/5 partial Nyquist coverage from v4.1 (Phases 27/28/30/31) and the two phases with no VALIDATION.md (25/26). Also address drift from v3.0+ phases flagged in PROJECT.md active items.
-
-**Complexity:** SMALL-MEDIUM — primarily documentation + targeted test additions for missing wave_0 coverage.
-
-**Depends on:** Phase execution in v5.0 — best done as a sweep phase near the end of the milestone rather than on each individual phase.
-
-### E-5: ~33 deferred UAT items (Phases 18/20/20.1/22/23)
-
-**What it is.** Triage the ~33 deferred human UAT items. Many in Phase 20.1 are likely overtaken by gap-closure plans 06/07/08. The triage step determines which items are: (a) already resolved, (b) still open and reproduced, (c) superseded by v5.0 changes and need re-evaluation after.
-
-**Complexity:** SMALL per item, variable total — depends on triage outcome.
-
-**Depends on:** Audit-driven polish phases landing first (many UAT items touch surfaces that v5.0 polish will change).
+- Per-item commentary is optional in spec — make it strongly encouraged in admin UX with a placeholder prompt ("Why does this watch belong on this list?")
+- List ordering within the rail is not specified — add `display_order` integer field + admin reorder UI
+- Published date not in data model — add `published_at` timestamp
+- Mood/thematic tags not in spec — add as optional admin-authored array field
 
 ---
 
-## Feature Landscape Summary
+## Module 4: Where Collections Go
 
-### Table Stakes (Users Expect These)
+### Table Stakes
 
-| Feature | Why Expected | Complexity | Category |
-|---------|--------------|------------|----------|
-| Discovery audit with falsifiable pass/fail criteria | Rdio-style click-driven discovery is the North Star — can't declare it achieved without measuring it | SMALL | A |
-| Brand + Family entities (schema) | Collector mental model starts with Brand and Family, not flat Reference list | SMALL | B |
-| Lineage edges (schema) | Collectors know Submariner lineage; surfacing predecessor/successor is expected behavior | MEDIUM | B |
-| Structured movement type (enum) | Free-text movement blocks faceted search | MEDIUM | B |
-| CAT-13 engine reads catalog taste | Taste enrichment columns sitting unused is an invisible quality gap | MEDIUM | C |
-| Search facets (Movement/Case size/Style) | Every collector catalog app has faceted search; /search Watches without facets feels incomplete | MEDIUM | D |
-| Account delete / Wipe collection (Danger Zone) | Every SaaS account settings page has a Danger Zone | SMALL-MEDIUM | E |
-| Branded auth emails | Default Supabase emails signal "unfinished product" | SMALL | E |
-| DEBT-09 notesPublic regression fix | Published notes not persisting is a data loss bug | SMALL | E |
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Seed watch → follow-on watches as a visual sequence | The "path" framing must be sequential, not a grid; horizontal arrow chain is expected | MEDIUM | Spec has this |
+| Tap any watch → reference detail page | No dead ends — every node must navigate | LOW | Spec has this |
+| Data model: source field (manual / computed) | Required for future algorithmic layer | LOW | Spec has this |
+| Deleted/unpublished reference does not break page | Defensive rendering | MEDIUM | Requires null-safe path rendering |
+| "Explore all paths" link | Module doesn't feel like the full content extent | LOW | Spec has this |
 
-### Differentiators (Competitive Advantage)
+### Differentiators
 
-| Feature | Value Proposition | Complexity | Category |
-|---------|-------------------|------------|----------|
-| FIT-05 pairwise drill-down | Taste-attribute delta between evaluated watch and most-similar owned watch is Horlo-native; Watch Charts/Chrono24 have no equivalent | MEDIUM | D |
-| Lineage browse / Family pages | Collector UX organized by Reference lineage (5513→1680→16800→16610→116610) has no analogue in current watch apps; Discogs has it for music | MEDIUM | B+D |
-| CAT-13 verdict quality from catalog taste | Verdict accuracy using LLM-derived formality/sportiness/archetype at Reference granularity is architecturally ahead of any watch marketplace | MEDIUM | C |
-| DISC-09 editorial featured collection | Letterboxd-style human-curated discovery slot differentiates from algorithmic-only explore | MEDIUM | D |
-| Layer D provenance fields (Individual level) | Serial/box+papers/service history as a collector's diary that compounds with time is genuinely Horlo-native | MEDIUM | B |
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Editorial rationale per path | Without the "why," this is a sequence with no insight — the insight IS the differentiator | LOW | Not in spec — add `rationale` text field to path data model |
+| Path type label (Gateway, Natural Upgrade, Lateral, Deep-Dive) | Tells the user what kind of progression this represents before reading the sequence | LOW | Not in spec — cheap admin-authored label on path |
+| 10 seed paths at launch | Volume matters for rotation (3 paths shown per session from the pool) | LOW | Requires editorial authoring work, not code complexity |
 
-### Anti-Features (Do Not Build in v5.0)
+### Anti-Features
 
-| Anti-Feature | Why Requested | Why Not | What Instead |
-|--------------|---------------|---------|--------------|
-| Home + Explore merger (pre-audit) | Feels like duplication to look at | The audit may find they serve distinct jobs; merging before evidence destroys a valid distinction | Let the audit decide |
-| Automated lineage inference | Seems like it would save manual curation effort | Will generate wrong edges (same numeric prefix ≠ same lineage) | Manual curation only |
-| Variant enumeration at seeding | "Complete" catalog feels more professional | Premature completeness fragments the Reference-level social graph; Variants should grow organically | Reference-only seeding, Variants organic |
-| Recommender or personalized explore rails | Would make discover feel smarter | SEED-002 prereqs unmet; would require onboarding cold-start (SEED-003) simultaneously | v6.0+ milestone |
-| Onboarding flow | Helps new users get started | SEED-003 pairs with recommender, not discovery | Post-recommender milestone |
-| Market value / portfolio valuation | Watch Charts has it free | Watch Charts does this better for free; charging or building it now is a non-starter | v6.0 milestone (SEED-005) |
-| Paywall / subscription tier | Revenue | SEED-006 resolved: no paywall in v5.0; worst pattern is gating the differentiator | Everything ships free |
-| Full admin CMS for editorial | "Real" editorial tooling | Infrequent editorial cadence doesn't justify CMS complexity | Minimal admin form or dev-only seeding |
-| Multiple CTAs in auth emails | Want to promote the product | Dilutes trust, increases spam scoring | Single-CTA, transactional only |
-| N-way watch comparison | "Compare all similar watches" | Cognitive load compounds; pairwise is the right granularity | FIT-05 pairwise only |
-| Slider for case size filter | "More precise than chips" | At the 30-50mm range with 5 meaningful bands, chips are faster to tap than a slider | Pre-defined size chip group |
-| Wipe + Delete as a single button | Simpler UI | Collectors who want a fresh start may not want to lose their account | Keep them separate with distinct confirms |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Algorithmic path generation from Day 1 | Scales automatically | No behavioral data yet (Phase D divestments schema just landed); algorithmic paths without signal produce noise | Hand-curate 10 seeds; data model supports computed layer later |
+| Social proof stats alongside paths ("42% of users who own X own Y") | Data-backed authority | Misleading at small user count; confuses editorial with social proof | Plain editorial rationale; add social data when n > 1000 |
+| Paths longer than 4 watches | Completeness | At 360px width, 4 nodes + arrows is already tight; 5+ overflow or lose visual identity | Cap at seed + 3 follow-ons per spec |
+
+### Collector Path Research — Natural Evolution Patterns
+
+From watch community research, the high-credibility collection evolution paths are:
+
+1. **Rolex Submariner → Explorer / GMT-Master / Sea-Dweller** (tool watch depth after entry)
+2. **Seiko Presage → Grand Seiko** (Japanese dial craft appreciation path)
+3. **Omega Speedmaster → Constellation / De Ville** (dress graduation from sport)
+4. **Microbrand → Swiss independent → Watchmaker ateliers** (indie collector escalation)
+5. **Rolex Datejust → Patek Calatrava** (dress watch graduation)
+
+These inform the 10 seed paths. Each needs an editorial rationale.
+
+### Spec Gaps Found
+
+- `rationale` text field missing from data model spec — add per-path editorial text (1-3 sentences)
+- Path type label not in spec — add optional admin-authored label
+- Mobile layout for path sequence not specified at 360px — recommend stacking seed + follow-ons vertically with numbered progression indicator on narrow screens
 
 ---
 
-## Feature Dependencies
+## Module 5: Browse the Catalog
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Brand index with counts | Any catalog surface shows "Rolex (42)" — expected pattern | LOW | Spec has this |
+| Era / Genre / Price band indices | The four natural browsing facets | LOW | All four must match /search facets (SRCH-16 synergy) |
+| Tap grouping → search results filtered | Navigation terminates in results, not another index page | LOW | Spec has this |
+| Empty groupings hidden | Zero-count entries create confusion | LOW | Spec has this |
+| Count accuracy with defined cache strategy | Stale counts destroy trust in the entire Browse surface | MEDIUM | Spec flags as open question — recommendation below |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Brand index: show representative watch image or brand logo | Visual recognition; Chrono24 uses this effectively | MEDIUM | Depends on catalog enrichment phase having brand imagery |
+| Era taxonomy: both decade and named era labels | "1970s" and "Neo-Vintage" are different semantic frames; collectors use both | MEDIUM | Spec flags era taxonomy as open question |
+| Alphabetical jump nav for Brand index | Standard on A-Z brand lists; essential once brand count exceeds ~20 | LOW | Not in spec |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Live count queries per page load | Exact accuracy | COUNT(*) overhead at scale; catalog grows slowly enough that live counts are unnecessary | ISR with 24h revalidation; `revalidateTag('catalog-counts')` on admin catalog mutation |
+| Dynamic quantile price bands | Statistical precision | Band labels shift as catalog grows, making URLs unstable and filter presets break | Fixed editorial bands: Under $500 / $500-2K / $2K-10K / $10K-50K / $50K+ |
+| More than 6 price band buckets | Granularity | Long index harder to scan than /search; at 100 watches, fine-grained quantiles are noise | 5 fixed buckets covers the meaningful collector price psychology |
+| Free-text search within Browse | Utility | Browse is for index-style intent; search intent belongs in /search header | Link "looking for something specific?" to global search |
+
+### Open Questions — Recommendations
+
+**Era taxonomy:** Dual-mode — decade facets (1960s, 1970s...) AND named era facets (Vintage pre-1980, Neo-Vintage 1980-2000, Modern 2000-2015, Contemporary 2015+) as separate Browse dimensions. Both exist in collector vocabulary.
+
+**Price band ranges:** Fixed editorial buckets: Under $500 / $500-2K / $2K-10K / $10K-50K / $50K+. Static bands are stable, linkable, matchable to /search filter presets.
+
+**Cache strategy:** ISR at 24h for Browse counts. `revalidateTag('catalog-counts')` called from any catalog admin mutation. Catalog grows slowly (admin-gated); live counts are unnecessary overhead.
+
+### Spec Gaps Found
+
+- Alphabetical jump nav for Brand index not specified — needed once brand count exceeds ~20
+- Dual-era taxonomy not specified — both decade and named-era recommended
+- Price band ranges not specified — 5 fixed buckets above recommended
+- Route paths not fully enumerated — confirm: `/explore/brands`, `/explore/eras`, `/explore/genres`, `/explore/price-bands`
+
+---
+
+## Module 6: In-App Admin CMS
+
+### Table Stakes
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Auth-gated admin route (`/admin/*`) | Non-admin users must not reach this surface | LOW | Next.js middleware gate; check admin role in session |
+| List CRUD: create / edit / delete | Basic content lifecycle | LOW | Standard Server Actions pattern already established |
+| Draft vs Published states | Admin must prepare lists without publishing | LOW | `status: 'draft' | 'published'` column; no review/approval for single-author |
+| Watch picker for list items | Admin must search and add catalog watches to a list | MEDIUM | Reuses `searchCatalogWatches` DAL from Phase 19 |
+| Per-item commentary editor | Table stakes of editorial lists; without this, admin just assigns watches without context | LOW | Plain textarea sufficient for MVP; rich text is a differentiator |
+| Publish / unpublish with zero-watch gate | Spec has this | LOW | Server Action checks `watch_count >= 1` before flipping |
+| Hero pin: set / clear | Admin override of auto-rotation | LOW | Single FK on `hero_settings` table; null = auto |
+| Rail display order control | Editorial control over list ordering in rail | MEDIUM | `display_order` integer + admin reorder UI (drag or up/down) |
+
+### Differentiators
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Rich text (Markdown) for intro copy and per-item commentary | Formatting adds polish; Letterboxd uses Markdown | MEDIUM | Plain textarea ships in v5.1; Markdown upgrade is v5.x |
+| Preview mode before publish | Admin sees rendered list before publishing | MEDIUM | Next.js Draft Mode (`draftMode()`) supports this pattern |
+| Cover image upload (not URL) | Consistent with Supabase Storage pattern already established | MEDIUM | Reuse `catalog-source-photos` bucket from Phase 19.1 |
+| Duplicate list | Start a new editorial list from an existing one | LOW | SQL INSERT SELECT with new title; useful for themed series |
+
+### Anti-Features
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| Multi-author / contributor roles | Future-proofing | Single-author for personal app; role system adds complexity with no current beneficiary | Single admin role via session check; revisit if co-curators needed |
+| Scheduled publish (publish at time T) | Content calendar workflow | Over-engineered for single author publishing manually | Admin publishes manually |
+| Version history / rollback | Editorial safety net | `updated_at` timestamp is sufficient; full version history is CMS complexity without collaborator need | Keep `updated_at`; no version history |
+| Approval workflow / review state | Editorial rigor | Single author doesn't review their own work; adds a step with zero value | Draft → Published directly; no review state |
+
+### Single-Author Editorial Loop
+
+The complete authoring flow should complete in under 10 minutes for a well-formed list:
+
+1. Create list (title, cover image, intro copy)
+2. Add watches from catalog via search picker
+3. Add per-item commentary per watch
+4. Preview → Publish
+5. Optionally pin as hero
+6. Reorder rail display position
+
+Any feature that adds steps without improving output quality is an anti-feature for a single-author workflow.
+
+---
+
+## Cross-Cutting Concerns
+
+### Feature Dependencies
 
 ```
-Layer A (brands + families)
-    └──required by──> Layer B (lineage edges scoped to family)
-                          └──required by──> Layer C (clean-slate with correct Reference granularity)
-                                               └──required by──> CAT-14 (NOT NULL after 100% backfill)
-                                               └──required by──> Layer D (provenance on well-linked individuals)
+Curated Lists Rail
+    └──requires──> Admin CMS (authoring)
+    └──requires──> Watch picker (catalog search DAL from Phase 19)
 
-Layer B (structured movement_type enum)
-    └──required by──> SRCH-16 (Movement facet needs enum, not free-text)
+Hero
+    └──requires──> Curated Lists Rail (at least 1 published, quality-gated list)
+    └──requires──> Quality-gating logic (min watch count, cover image, intro copy)
 
-CAT-13 (catalog taste JOIN)
-    └──enhances──> FIT-05 (taste-attribute rows in pairwise comparison are populated)
-    └──required by──> FIT-05 (for taste-attribute delta to be non-empty for most watches)
+Browse the Catalog
+    └──requires──> Catalog Enrichment phase (brand/era/genre fields populated)
+    └──requires──> ISR or mutation-triggered cache invalidation
 
-Discovery Audit (A-1)
-    └──required by──> Audit-Driven Polish (D-1) — audit shapes the work
+Collector Archetypes
+    └──requires──> /search accepting archetype preset in URL query string
+    └──requires──> Non-empty catalog results for each archetype filter
 
-Phase 21 SMTP (already shipped)
-    └──required by──> SET-14 (branded email templates use existing Resend route)
+Where Collections Go
+    └──requires──> catalog_id FK on path nodes (already in schema from v5.0 Layer C)
+    └──requires──> 10 seed paths authored before launch (editorial work, not code)
 
-DEBT-09 fix
-    └──independent (no blockers)
-
-SET-13 Account Delete
-    └──independent (no blockers beyond existing Settings Account tab, Phase 22)
+All modules
+    └──require──> /explore shell + responsive layout grid + nav integration
 ```
 
 ### Dependency Notes
 
-- **SRCH-16 requires Layer B:** Movement facet against free-text `movement` column produces inconsistent results. Defer SRCH-16 if Layer B slips.
-- **FIT-05 should follow CAT-13:** Can technically ship without CAT-13, but the taste-attribute comparison rows will be empty for most watches. Shipping FIT-05 before CAT-13 produces a degraded experience.
-- **Layer C (Variant split) requires clean-slate DB wipe:** This is safe only because of single-user context. Do not attempt Layer C without documenting the wipe in CONTEXT.md and verifying the owner's explicit consent.
-- **CAT-14 requires Layer C verification:** Two consecutive deploys with 100% backfill confirmed per PROJECT.md; clean-slate makes this feasible inside v5.0.
-- **Audit-driven polish (D-1) cannot be scoped until A-1 ships:** Do not write implementation plans for discovery polish before the audit document exists.
+- **Hero requires at least 1 published quality-gated list before it can show.** Hero and Curated Lists must be built in sequence — CMS first, then lists authored, then Hero enabled.
+- **Browse requires Catalog Enrichment.** A half-enriched catalog produces misleading brand/era/genre indices. The enrichment phase must land before Browse can be validated per spec.
+- **Archetypes require /search URL preset support.** Phase 40 (SRCH-16) landed faceted filters; confirm the archetype header slot was not included and needs to be added.
+- **Where Collections Go requires editorial authoring.** 10 seed paths must be authored before this module can be validated — this is an editorial dependency, not a code dependency.
 
----
+### Freshness / Staleness Risk by Module
 
-## What Must Not Ship in v5.0
+The largest UX failure mode for a non-personalized editorial surface is staleness. Research confirms users abandon editorial surfaces that feel stale.
 
-| Feature | Blocking Prereq | Correct Milestone |
-|---------|----------------|-------------------|
-| Recommender (SEED-002) | Catalog hierarchy, sold-signal schema, cold-start density | v6.0+ |
-| Onboarding cold-start (SEED-003) | Recommender | Post-recommender milestone |
-| Market value / portfolio (SEED-005) | Pricing API spike (SEED-007) | v6.0 |
-| Subscription tier / Stripe / entitlements | SEED-006 resolved: no paywall | Never (until recommender is serviceable + wedge proven) |
-| CAT-14 SET NOT NULL before Layer C clean-slate | Layer C must ship and be verified first | Late in v5.0, not early |
-| SRCH-16 Movement facet without Layer B | Free-text movement column produces bad facet results | After Layer B |
+| Module | Staleness Risk | Mitigation |
+|--------|---------------|------------|
+| Hero | LOW if 3+ quality-gated lists in pool | Weekly auto-rotation; admin pin override |
+| Curated Lists Rail | HIGH if admin doesn't publish new lists | Publish date visible on card; "View all" surfaces older content without polluting rail |
+| Collector Archetypes | NONE | Hardcoded config; evergreen by definition |
+| Where Collections Go | MEDIUM | 3 paths per session from 10-seed pool gives limited variety; data model supports computed paths later |
+| Browse the Catalog | LOW if ISR works | Catalog grows slowly; ISR 24h sufficient |
+
+### Complexity Summary
+
+| Module | Overall Complexity | Bottleneck |
+|--------|-------------------|------------|
+| Hero | MEDIUM | Quality-gating logic + rotation cron or weekly selection |
+| Collector Archetypes | LOW | URL preset format for /search + chip layout on mobile |
+| Curated Lists Rail | HIGH | Admin CMS build + per-item commentary editor + list data model |
+| Where Collections Go | MEDIUM | Path data model + seed content authoring + mobile layout at 360px |
+| Browse the Catalog | MEDIUM | Catalog enrichment dependency + era taxonomy decision + ISR cache |
+| Admin CMS | HIGH | Watch picker integration + cover image upload + publish workflow |
+
+### Existing Infrastructure Dependencies
+
+| Explore Feature | Existing System | Confidence |
+|----------------|-----------------|------------|
+| Watch picker in admin CMS | `searchCatalogWatches` DAL — Phase 19 | HIGH |
+| Archetype deep-links | `/search` URL query params — Phase 40 SRCH-16 | MEDIUM (facets landed; archetype header slot not confirmed) |
+| Browse catalog counts | `watches_catalog` + `brands` + `watch_families` — Layer A/B | HIGH |
+| Cover image upload | Supabase Storage — `catalog-source-photos` bucket, Phase 19.1 | HIGH |
+| Path nodes as catalog references | `catalog_id` FK — Layer C | HIGH |
+| Wishlist action from list items | Wishlist infrastructure — existing | MEDIUM (interaction design untested in this context) |
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Cost | Priority |
-|---------|------------|------|----------|
-| DEBT-09 notesPublic fix | HIGH (data loss bug) | LOW | P1 |
-| Discovery audit (A-1) | HIGH (shapes all polish) | LOW | P1 |
-| Layer A Brand+Family schema | HIGH (foundation) | LOW | P1 |
-| Layer B lineage+movement | HIGH (unblocks SRCH-16 + FIT-05 quality) | MEDIUM | P1 |
-| CAT-13 engine rewire | HIGH (verdict quality) | MEDIUM | P1 |
-| Layer C Variant split | HIGH (Reference integrity) | HIGH | P1 |
-| Audit-driven polish (D-1) | HIGH (shaped by audit) | MEDIUM | P1 |
-| SET-14 branded emails | MEDIUM (polish/trust) | LOW | P2 |
-| SET-13 account delete | MEDIUM (table-stakes SaaS) | MEDIUM | P2 |
-| FIT-05 pairwise drill-down | HIGH (differentiator) | MEDIUM | P2 |
-| DISC-09 editorial featured | MEDIUM (discovery quality) | MEDIUM | P2 |
-| SRCH-16 search facets | MEDIUM (catalog usability) | MEDIUM | P2 |
-| Layer D provenance schema | MEDIUM (SEED-002 prep) | MEDIUM | P2 |
-| CAT-14 NOT NULL | LOW (tech-debt cleanup, enabled by Layer C) | LOW | P3 |
-| Nyquist sweep | LOW (test coverage quality) | MEDIUM | P3 |
-| UAT triage (~33 items) | LOW-MEDIUM (depends on triage) | VARIABLE | P3 |
-
-**Priority key:** P1 = ships in v5.0 core wave; P2 = ships in v5.0 but after P1 blockers clear; P3 = late-v5.0 or v5.x polish.
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Page shell + nav integration | HIGH | LOW | P1 |
+| Browse the Catalog — all four indices | HIGH | MEDIUM | P1 |
+| Collector Archetypes chip rail | HIGH | LOW | P1 |
+| Admin CMS: list CRUD + watch picker | HIGH | HIGH | P1 |
+| Curated Lists Rail | HIGH | HIGH | P1 |
+| Hero auto-rotation + quality gate | HIGH | MEDIUM | P1 |
+| Where Collections Go — path data model + seeds | MEDIUM | MEDIUM | P1 |
+| Curator name in hero | MEDIUM | LOW | P1 |
+| Published date on list cards | MEDIUM | LOW | P2 |
+| `display_order` + rail reorder UI | MEDIUM | MEDIUM | P2 |
+| `rationale` field on paths | HIGH | LOW | P2 |
+| Path type label | MEDIUM | LOW | P2 |
+| Count badge on archetype chips | MEDIUM | LOW | P2 |
+| Hero pin optional expiry date | LOW | LOW | P2 |
+| Alphabetical jump nav for Brand index | MEDIUM | LOW | P2 |
+| Mood/thematic tags on lists | LOW | LOW | P3 |
+| Rich text / Markdown in CMS | LOW | MEDIUM | P3 |
+| Preview mode (Draft Mode) | LOW | MEDIUM | P3 |
+| "Add to wishlist" inline on list items | MEDIUM | MEDIUM | P3 |
+| Brand logos in Brand index | LOW | MEDIUM | P3 |
+| Duplicate list in admin CMS | LOW | LOW | P3 |
 
 ---
 
 ## Sources
 
-- SEED-001 catalog hierarchy seed (`.planning/seeds/SEED-001-catalog-hierarchy-and-attributes.md`) — Reference granularity rationale, Variant fragmentation analysis
-- SEED-004 v5.0 Discovery North Star (`.planning/seeds/SEED-004-v5-discovery-north-star.md`) — audit-first ordering, CAT-13 framing
-- PREMIUM-MAP.md (`.planning/research/PREMIUM-MAP.md`) — no-paywall constraint
-- PROJECT.md v5.0 milestone section — target features, hard constraints
-- Discogs Master Release UX model — hierarchy (Master/Release = Reference/Variant analogue) — [Discogs Database Guidelines 16](https://support.discogs.com/hc/en-us/articles/360005055493-Database-Guidelines-16-Master-Release)
-- NN/Group comparison tables — [Comparison Tables for Products, Services, and Features](https://www.nngroup.com/articles/comparison-tables/)
-- Pencil & Paper mobile filter patterns — [Mobile Filter UX Design Patterns & Best Practices](https://www.pencilandpaper.io/articles/ux-pattern-analysis-mobile-filters)
-- Tabular.email transactional email design — [How to Design Transactional Emails That Build Trust](https://tabular.email/blog/how-to-design-transactional-emails)
-- Letterboxd Featured Lists model — [There's a List for That!](https://letterboxd.com/journal/featured-lists-explainer/)
-- GitHub account deletion Danger Zone pattern — [community discussion #135123](https://github.com/orgs/community/discussions/135123)
-- Algolia search filter UX — [Search Filters: 5 Best Practices](https://www.algolia.com/blog/ux/search-filter-ux-best-practices)
-- Rdio UX analysis — musicux.com (2016) and Bryan Clark, Medium — Rdio's browse experience as the click-driven discovery reference
+- SEED-008 v5.1 Explore Page Redesign spec (primary source — this file validates and enriches)
+- Letterboxd lists FAQ and featured lists explainer — per-item notes, curator attribution, featured list selection patterns
+- Nielsen Norman Group — carousel usability research; single static hero over rotation
+- Logical UX — rotating banner anti-pattern; static hero vs carousel engagement data
+- Baymard Institute — homepage carousel UX requirements
+- Hodinkee Reference Points series — editorial voice, byline attribution, collector-depth content patterns
+- Watch collecting community guides (Chrono24 Magazine, Teddy Baldassarre, Von Rieste, GearPatrol, Two Broke Watch Snobs) — collector archetype taxonomy, gateway watch patterns, collection evolution paths
+- Spotify Browse UX — genre/mood chip rail patterns, editorial playlist structure (mood + identity categories)
+- Material Design 3 Chips guidelines — chip component patterns for archetype rail
+- Next.js Draft Mode documentation — preview pattern for admin CMS
+- Revolution Watch — editorial coverage driving collecting behavior
+- Matt Crawford — Letterboxd lists organization patterns
 
 ---
-
-*Feature research for: Horlo v5.0 Discovery North Star*
-*Researched: 2026-05-06*
+*Feature research for: v5.1 Explore Page Redesign — editorial / taste-driven discovery surface*
+*Researched: 2026-05-16*

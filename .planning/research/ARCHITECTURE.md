@@ -1,8 +1,8 @@
 # Architecture Research
 
-**Domain:** Catalog hierarchy integration + engine rewire — v5.0 Discovery North Star
-**Researched:** 2026-05-06
-**Confidence:** HIGH (based on first-party source code + seed documents; no external lookup required)
+**Domain:** v5.1 Explore Page Redesign — editorial CMS, catalog enrichment pipeline, /explore route tree, in-app admin CMS, avatar upload
+**Researched:** 2026-05-16
+**Confidence:** HIGH — grounded directly in the existing codebase (schema.ts, explore/page.tsx, discovery.ts, auth.ts, backfill-taste.ts, storage utilities), PROJECT.md, SEED-008, and sibling STACK.md + PITFALLS.md outputs.
 
 ---
 
@@ -10,630 +10,891 @@
 
 ### System Overview
 
-The existing architecture does not change. v5.0 extends it vertically (new tables below
-`watches_catalog`) and horizontally (new columns on existing tables). No layer changes.
-
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Browser (Client Components — filter state only via Zustand 31 LOC)  │
-├──────────────────────────────────────────────────────────────────────┤
-│  Next.js 16 App Router — Server Components by default                │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────────┐    │
-│  │  pages/     │  │  Server      │  │  Cache Components         │    │
-│  │  layouts    │  │  Actions     │  │  cacheLife per rail       │    │
-│  │  (RSC)      │  │  src/app/    │  │  updateTag / revalidate   │    │
-│  └──────┬──────┘  │  actions/*   │  │  Tag for cross-user       │    │
-│         │         └──────┬───────┘  └──────────────────────────┘    │
-├─────────┴────────────────┴──────────────────────────────────────────┤
-│  Server-only DAL  src/data/*   (import 'server-only')                │
-│  Two-layer privacy: RLS at DB + DAL WHERE on every cross-user read   │
-│  ┌────────────┐ ┌───────────┐ ┌────────────┐ ┌───────────────────┐  │
-│  │ catalog.ts │ │watches.ts │ │discovery.ts│ │ NEW: hierarchy.ts │  │
-│  └─────┬──────┘ └─────┬─────┘ └─────┬──────┘ └────────┬──────────┘  │
-├────────┴──────────────┴─────────────┴───────────────────┴───────────┤
-│  Drizzle ORM  →  Supabase Postgres (RLS project-wide)                │
-│  ┌──────────┐  ┌──────────────┐  ┌───────────────────────────────┐  │
-│  │  watches │  │watches_catalog│  │  NEW: brands / watch_families │  │
-│  │  (user)  │  │  (reference) │  │  watch_variants               │  │
-│  └──────────┘  └──────────────┘  │  watch_lineage_edges          │  │
-│                                   │  divestments                  │  │
-│                                   └───────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│  Browser / Client                                                      │
+│  ┌─────────────┐  ┌──────────────────┐  ┌───────────────────────────┐ │
+│  │ Zustand     │  │ Client Components │  │  Direct Supabase Storage  │ │
+│  │ filter-only │  │ (filter sheets,   │  │  upload (avatar, wear     │ │
+│  │ ephemeral   │  │  carousels, CMS   │  │  photos, cover images)    │ │
+│  │ state only  │  │  forms)           │  │                           │ │
+│  └─────────────┘  └──────────────────┘  └───────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────────┘
+         | Server Actions / Next.js navigation
+         v
+┌───────────────────────────────────────────────────────────────────────┐
+│  Next.js 16 App Router (Server Layer)                                  │
+│  ┌────────────────────────────────────────────────────────────────┐   │
+│  │ proxy.ts — edge auth gate; blocks /admin/* + unauthenticated   │   │
+│  └────────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │ Server Components  ('use cache' + cacheLife + cacheTag)       │     │
+│  │  /explore            — page shell (uncached: viewer gate)     │     │
+│  │  /explore/lists      — published lists index (ISR 1h)         │     │
+│  │  /explore/paths      — paths index (ISR 1h)                   │     │
+│  │  /explore/brands     — brand index (ISR 1h, tag:catalog:browse)│    │
+│  │  /explore/eras       — era index (ISR 1h, tag:catalog:browse) │     │
+│  │  HeroFeature         — cached weekly (tag:explore:hero)       │     │
+│  │  CuratedListsRail    — cached 5m (tag:explore:lists)          │     │
+│  │  CollectionPathsModule — cached 1h (tag:explore:paths)        │     │
+│  │  BrowseCatalogModule — cached 1h (tag:catalog:browse)         │     │
+│  └──────────────────────────────────────────────────────────────┘     │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │ Server Actions  (mutations, always auth-gated)                │     │
+│  │  src/app/actions/cms.ts — createList, updateList,             │     │
+│  │    publishList, unpublishList, deleteList,                    │     │
+│  │    createListItem, updateListItem, deleteListItem,            │     │
+│  │    setPinnedHero, clearPinnedHero                             │     │
+│  │  src/app/actions/paths.ts — createPath, updatePath, deletePath│     │
+│  │  src/app/actions/profile.ts — uploadAvatar (updated)          │     │
+│  └──────────────────────────────────────────────────────────────┘     │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │ DAL  src/data/ (server-only, two-layer privacy)               │     │
+│  │  cms.ts       — getCuratedLists, getCuratedList, getHeroFeature│    │
+│  │  paths.ts     — getCollectionPaths                            │     │
+│  │  browse.ts    — getBrandIndex, getEraIndex, getGenreIndex,    │     │
+│  │                 getPriceBandIndex                             │     │
+│  └──────────────────────────────────────────────────────────────┘     │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │ API Routes (one existing, no new ones for v5.1)               │     │
+│  │  POST /api/extract-watch  — existing, unchanged               │     │
+│  └──────────────────────────────────────────────────────────────┘     │
+└───────────────────────────────────────────────────────────────────────┘
+         | Drizzle ORM / SQL
+         v
+┌───────────────────────────────────────────────────────────────────────┐
+│  Supabase Postgres  (RLS enabled project-wide)                         │
+│  ┌─────────────────────┐  ┌──────────────────────────────────────┐   │
+│  │ Existing tables      │  │ New v5.1 tables                       │   │
+│  │  watches_catalog     │  │  curated_lists                        │   │
+│  │  brands              │  │  curated_list_items                   │   │
+│  │  watch_families      │  │  collection_paths                     │   │
+│  │  watch_variants      │  │  collection_path_nodes                │   │
+│  │  watch_lineage_edges │  │  cms_settings (hero pin + config)     │   │
+│  │  watches, profiles   │  └──────────────────────────────────────┘   │
+│  │  follows, etc.       │                                              │
+│  └─────────────────────┘                                              │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │ Supabase Storage                                              │     │
+│  │  catalog-source-photos (existing, private, signed URLs)       │     │
+│  │  wear-photos           (existing, private, signed URLs)       │     │
+│  │  avatars               (NEW, public bucket, getPublicUrl)     │     │
+│  │  explore-covers        (NEW, public bucket, getPublicUrl)     │     │
+│  └──────────────────────────────────────────────────────────────┘     │
+└───────────────────────────────────────────────────────────────────────┘
+         |
+┌───────────────────────────────────────────────────────────────────────┐
+│  Operator Tooling  scripts/                                            │
+│  backfill-taste.ts     (existing — extend for v5.1 enrichment run)    │
+│  reenrich-taste.ts     (existing — add --min-confidence-threshold)     │
+│  refresh-counts.ts     (existing — call revalidateTag after run)       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## FK Chain: 5-Level Hierarchy
+## New Database Tables — Schema Sketches
 
-### Correct FK topology
+### (a) `curated_lists`
 
-```
-brands
-  id  PK
+The primary CMS entity. One row per editorial list authored by the admin.
 
-watch_families
-  id      PK
-  brand_id  FK → brands.id  ON DELETE SET NULL   ← nullable so families survive brand record gaps
+```typescript
+// Drizzle schema sketch (src/db/schema.ts addition)
+export const curatedListStatusEnum = pgEnum('curated_list_status', ['draft', 'published'])
 
-watches_catalog  (Reference level — canonical unit for recommender + social graph)
-  id        PK
-  brand_id    FK → brands.id        NULLABLE  ON DELETE SET NULL
-  family_id   FK → watch_families.id NULLABLE  ON DELETE SET NULL
-  [existing columns unchanged]
-
-watch_variants
-  id         PK
-  catalog_id   FK → watches_catalog.id  NOT NULL  ON DELETE CASCADE
-
-watch_lineage_edges
-  predecessor_catalog_id  FK → watches_catalog.id  NOT NULL  ON DELETE CASCADE
-  successor_catalog_id    FK → watches_catalog.id  NOT NULL  ON DELETE CASCADE
-  relationship_type       text  CHECK IN ('direct_successor','reissue','homage','inspired_by')
-
-watches  (per-user Individual level)
-  catalog_id  FK → watches_catalog.id  NULLABLE → SET NOT NULL in CAT-14
-  variant_id  FK → watch_variants.id   NULLABLE  (new; see Variant FK section below)
-```
-
-### What stays NULLABLE vs what gets SET NOT NULL
-
-| Column | Phase added | Nullable rule |
-|---|---|---|
-| `watches_catalog.brand_id` | Layer A | NULLABLE for incremental backfill; no SET NOT NULL target |
-| `watches_catalog.family_id` | Layer A | NULLABLE — many References have no Family yet |
-| `watch_families.brand_id` | Layer A | NULLABLE — see cascade safety note |
-| `watches.catalog_id` | Phase 17 (existing) | NULLABLE until CAT-14; SET NOT NULL in Layer C (clean slate unlocks it) |
-| `watches.variant_id` | Layer C | NULLABLE forever — variant assignment is optional |
-| `watch_lineage_edges.predecessor_catalog_id` | Layer B | NOT NULL — edge is meaningless without both endpoints |
-| `watch_lineage_edges.successor_catalog_id` | Layer B | NOT NULL |
-| `watch_variants.catalog_id` | Layer C | NOT NULL — variant must belong to a reference |
-
-**Clean-slate enables CAT-14.** Because this is a single-user DB and the owner consents to a wipe-and-reseed, `watches.catalog_id` can be SET NOT NULL in the same milestone (Layer C phase). Without the clean slate, CAT-14 would require two consecutive deploys with zero NULL rows verified — the documented v4.0 deferral rationale.
-
-### RLS interaction
-
-`watches_catalog` already has public-read RLS and service-role-write only. The new hierarchy tables (`brands`, `watch_families`, `watch_variants`, `watch_lineage_edges`) should follow the same pattern:
-
-- **Public read** — catalog hierarchy is discovery-level data; no personal information
-- **Service-role write only** — all writes are admin-curated or via service-role scripts
-- No per-user row ownership, so no `auth.uid()` predicate needed on reads
-
-The `divestments` table (or `watches.status += 'sold'`) is per-user and must follow `watches` RLS: `auth.uid() = user_id` for all operations.
-
----
-
-## Lineage Edges: Separate Junction Table vs Self-Reference
-
-**Use a separate `watch_lineage_edges` junction table.** This is the idiomatic Postgres choice for graph edges and is unambiguously correct here.
-
-**Why not a self-referencing FK on `watches_catalog`:**
-- Self-reference only supports a single predecessor, which breaks the multi-predecessor case (e.g., 5513 had regional variants that all feed into 1680)
-- Querying multi-hop paths on a self-referencing FK requires ugly lateral joins or recursive CTEs anchored on a single column
-- Adding `relationship_type` requires a second self-referencing column, which is awkward
-- The junction table cleanly represents an M:N graph edge with metadata
-
-**`watch_lineage_edges` schema:**
-
-```sql
-CREATE TABLE watch_lineage_edges (
-  predecessor_catalog_id  uuid NOT NULL REFERENCES watches_catalog(id) ON DELETE CASCADE,
-  successor_catalog_id    uuid NOT NULL REFERENCES watches_catalog(id) ON DELETE CASCADE,
-  relationship_type       text NOT NULL DEFAULT 'direct_successor'
-    CHECK (relationship_type IN ('direct_successor','reissue','homage','inspired_by')),
-  notes                   text,
-  created_at              timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (predecessor_catalog_id, successor_catalog_id, relationship_type)
-);
-```
-
-**Recursive CTE vs application-side traversal:**
-
-Use a recursive CTE for multi-hop path queries. Application-side traversal requires N+1 round-trips and is appropriate only when hop count is known to be 1 (e.g., "immediate predecessor only").
-
-For discovery ("show me the full lineage of this Reference"), a recursive CTE is the correct primitive:
-
-```sql
-WITH RECURSIVE lineage AS (
-  SELECT successor_catalog_id AS id, 0 AS depth
-  FROM watch_lineage_edges
-  WHERE predecessor_catalog_id = $targetId
-
-  UNION ALL
-
-  SELECT e.successor_catalog_id, l.depth + 1
-  FROM watch_lineage_edges e
-  JOIN lineage l ON e.predecessor_catalog_id = l.id
-  WHERE l.depth < 10  -- cycle guard
+export const curatedLists = pgTable(
+  'curated_lists',
+  {
+    id:           uuid('id').defaultRandom().primaryKey(),
+    // authorId references the owner user (admin only ever writes this table)
+    authorId:     uuid('author_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+    title:        text('title').notNull(),
+    slug:         text('slug').notNull(),
+    introCopy:    text('intro_copy'),            // rendered as markdown via react-markdown
+    coverImagePath: text('cover_image_path'),    // Supabase Storage path in explore-covers bucket
+    status:       curatedListStatusEnum('status').notNull().default('draft'),
+    // watchCount cached to avoid subquery per card on the rail
+    watchCount:   integer('watch_count').notNull().default(0),
+    // hero quality gate flags: set on publish
+    hasIntroCopy:  boolean('has_intro_copy').notNull().default(false),
+    hasCoverImage: boolean('has_cover_image').notNull().default(false),
+    publishedAt:  timestamp('published_at', { withTimezone: true }),
+    createdAt:    timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:    timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('curated_lists_slug_unique').on(table.slug),
+    index('curated_lists_status_published_at_idx').on(table.status, table.publishedAt),
+  ]
 )
-SELECT DISTINCT id, depth FROM lineage;
 ```
 
-**Cycle guard is mandatory.** The collector taxonomy is not always a clean DAG (homage relationships can be circular in edge cases). Depth limit of 10 is sufficient for any real lineage chain.
-
-For v5.0 scope, implement the recursive CTE in a dedicated DAL function (`getLineageForReference`) and call it application-side only from discovery surfaces (`/catalog/[id]`). Do not embed recursive CTEs inside larger joins used by hot paths (explore rails, search).
-
----
-
-## Variant FK: where does `watches.variant_id` resolve?
-
-**`watches` points to `watches_catalog` (Reference) as the primary FK.** `watches.variant_id` is an optional secondary FK to `watch_variants`. This is backwards-compatible and is the only safe choice for v5.0.
-
-**Why Reference, not Variant, remains the primary FK:**
-
-- `watches.catalog_id` is already the established FK used by all existing DAL functions, caches, and the engine rewire target (CAT-13)
-- The recommendation signal (SEED-002 Layer 1) is built at Reference granularity — all social graph aggregates (`ownersCount`, `wishlistCount`, `watchesCatalogDailySnapshots`) key on `catalog_id`
-- Forcing `watches.catalog_id` → `watch_variants.catalog_id` would require a JOIN through variants to reach Reference in every query — a performance and complexity regression
-- The explicit SEED-001 guidance: "Reference is the canonical unit for the social graph and recommender. Not Variant, not Individual."
-
-**Variant FK as additive secondary field:**
-
-```typescript
-// watches table — Layer C addition
-variantId: uuid('variant_id').references(() => watchVariants.id, { onDelete: 'set null' })
-```
-
-- When null: the user's watch resolves to the Reference level (existing behavior)
-- When set: the user has optionally pinned their instance to a specific variant (dial, bezel, bracelet)
-- Never used as a JOIN anchor in aggregate queries; only for display enrichment on watch detail pages
-
-**Backwards compatibility:** `watches.catalog_id` is unchanged. All existing code (`searchCatalogWatches`, `getTrendingCatalogWatches`, `getGainingTractionCatalogWatches`, `analyzeSimilarity` post-CAT-13) continues to work without modification.
-
----
-
-## Divestments: Separate Table vs `watches.status` += 'sold'
-
-### Current state
-
-`watches.status` already includes `'sold'` as an enum value. The schema at line 58:
-```typescript
-status: text('status', { enum: ['owned', 'wishlist', 'sold', 'grail'] }).notNull()
-```
-
-`'sold'` is a live enum value and already used by the `stateMap` logic in `searchCatalogWatches` (the "sold + grail are NOT badged" branch). It is NOT dead code.
-
-### Analysis for SEED-002 recommender prereq
-
-The recommender needs the "sold" signal as a **negative interaction** weighted at -0.3. What the recommender actually needs is:
-- Which user sold which Reference
-- When they sold it (for temporal decay)
-- Optionally: what they replaced it with (a strong positive signal)
-
-**Option A: `watches.status = 'sold'` (extend existing)**
-
-Advantages:
-- Already exists and is used
-- No schema change required for the status bit
-- Provenance fields added in Layer D (`purchase_date`, `condition`, `paid_currency`) land on the same row, which is the Individual
-
-Disadvantages:
-- The "sold" watch row persists in the user's `watches` table indefinitely — it clutters collection views and requires filter-on-read everywhere
-- No first-class "sold date" or "sold to" fields unless added as provenance columns (Layer D adds `purchase_date` but not a sale date)
-- For SEED-002, the recommender signal is "user_id × catalog_id → -0.3 at timestamp"; this is expressible from a `watches` row where `status = 'sold'` if a `sold_at` timestamp is added
-
-**Option B: `divestments` table**
+**RLS policy shape (in Supabase migration SQL — not expressible in Drizzle DSL):**
 
 ```sql
-CREATE TABLE divestments (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  catalog_id   uuid NOT NULL REFERENCES watches_catalog(id) ON DELETE SET NULL,
-  variant_id   uuid REFERENCES watch_variants(id) ON DELETE SET NULL,
-  sold_at      timestamptz NOT NULL DEFAULT now(),
-  sold_price   numeric(10,2),
-  sold_currency text,
-  condition    text CHECK (condition IN ('mint','excellent','good','fair','poor')),
-  replaced_by_catalog_id  uuid REFERENCES watches_catalog(id) ON DELETE SET NULL,
-  notes        text,
-  created_at   timestamptz NOT NULL DEFAULT now()
-);
+-- Public readers see ONLY published rows
+CREATE POLICY "curated_lists_public_read"
+  ON curated_lists FOR SELECT
+  TO anon, authenticated
+  USING (status = 'published');
+
+-- Admin (author) can read their own drafts too
+CREATE POLICY "curated_lists_author_read_own"
+  ON curated_lists FOR SELECT
+  TO authenticated
+  USING (status = 'published' OR author_id = auth.uid());
+
+-- Author can write; WITH CHECK enforces ownership on INSERT/UPDATE
+CREATE POLICY "curated_lists_author_write"
+  ON curated_lists FOR ALL
+  TO authenticated
+  USING (author_id = auth.uid())
+  WITH CHECK (author_id = auth.uid());
 ```
 
-Advantages:
-- Clean separation: collection stays in `watches`; divestment history is its own table
-- Allows `sold_at` timestamp as a first-class field (critical for temporal decay in recommender)
-- `replaced_by_catalog_id` enables the "transition signal" SEED-002 describes: "moved from 16610 to vintage Heuer"
-- RLS: `auth.uid() = user_id` on all operations; same pattern as `watches`
-- The recommender's signal extractor reads `divestments` as a dedicated negative-signal source rather than filtering `watches` by status
-
-Disadvantages:
-- Requires a Server Action transition flow: "Mark as sold" would insert a `divestments` row AND either delete the `watches` row or set `status = 'sold'`
-- Two tables to keep in sync if the user edits provenance data later
-- More complex than extending `watches`
-
-### Recommendation: Divestments table
-
-Use a `divestments` table for the following reasons:
-
-1. **SEED-002 first-class requirement:** The recommender needs `sold_at` timestamp for temporal decay. Adding `sold_at` to `watches` means a sold watch from 2019 looks like a recent signal unless timestamp is tracked. The `divestments` table makes this a primary key concern, not an afterthought.
-
-2. **Collection view cleanliness:** The user's collection page should not have to filter out sold watches. With a divestments table, `watches` only contains active inventory (owned, wishlist, grail). Sold → archive flow is one-way and explicit.
-
-3. **Transition signal:** `replaced_by_catalog_id` is only natural in a dedicated divestment record, not on the original `watches` row.
-
-4. **`watches.status = 'sold'`:** Keep the existing enum value as a transitional state during the "mark as sold" flow (before the divestment record is created and the watch is archived). This preserves backwards compat with any code that currently checks for `sold` status. After the divestment record is committed, either delete the `watches` row or hard-filter it from collection views.
-
-**Server Action pattern:**
-
-```typescript
-// src/app/actions/watches.ts — new action
-async function divestWatch(watchId: string, divestmentData: DivestmentInput): Promise<ActionResult<void>> {
-  // 1. Verify ownership (double-verified: session + DAL WHERE)
-  // 2. Read watch to get catalog_id
-  // 3. Insert into divestments
-  // 4. Delete (or status='sold') the watches row
-  // 5. revalidateTag('explore', 'max')  — counts shift
-  // 6. revalidatePath('/')
-}
-```
-
-**RLS for divestments:** Mirror `watches` RLS exactly:
-- `SELECT WHERE user_id = auth.uid()`
-- `INSERT WITH CHECK (user_id = auth.uid())`
-- `UPDATE USING (user_id = auth.uid())`
-- `DELETE USING (user_id = auth.uid())`
+Two-layer defense: DAL public-read functions must also include `WHERE status = 'published'` — do not rely on RLS alone. This is the two-layer privacy posture established in Phase 11 and required per PITFALLS.md CP-01.
 
 ---
 
-## CAT-13 Engine Rewire: Migration Path
+### (b) `curated_list_items`
 
-### Current state (byte-locked)
-
-`analyzeSimilarity(targetWatch, collection, preferences)` in `src/lib/similarity.ts` receives `Watch[]` and `UserPreferences`. It reads `styleTags`, `designTraits`, `roleTags`, `dialColor`, `complications`, `caseSizeMm`, `strapType`, `waterResistanceM` from per-user `Watch` objects. It does NOT read `watches_catalog` taste columns (`formality`, `sportiness`, `heritageScore`, `primaryArchetype`, `eraSignal`, `designMotifs`, `confidence`).
-
-The taste columns were added in Phase 19.1 but the engine was explicitly byte-locked per D-09. The verdict copy in Phase 20 reads taste attributes via a separate `viewerTasteProfile` aggregate — this is the pattern CAT-13 should extend.
-
-### Safe migration path
-
-**Do not modify `analyzeSimilarity()` as a standalone function.** The migration is in how callers assemble the `Watch` objects passed to it. Specifically:
-
-**Step 1: Extend the `Watch` type with optional taste fields.**
+Junction table: one row per watch in a list, with per-item editorial commentary.
 
 ```typescript
-// src/lib/types.ts — additive, never breaking
-interface Watch {
-  // ... existing fields ...
-  // CAT-13: catalog taste attributes (present when catalogId is set + catalog row has taste data)
-  catalogTaste?: {
-    formality: number | null
-    sportiness: number | null
-    heritageScore: number | null
-    primaryArchetype: string | null
-    eraSignal: string | null
-    designMotifs: string[]
-    confidence: number | null
+export const curatedListItems = pgTable(
+  'curated_list_items',
+  {
+    id:        uuid('id').defaultRandom().primaryKey(),
+    listId:    uuid('list_id').notNull()
+                 .references(() => curatedLists.id, { onDelete: 'cascade' }),
+    // ON DELETE RESTRICT: deleting a catalog row referenced in any list item is blocked.
+    // Admin must remove the watch from the list (or unpublish the list) before deleting
+    // the catalog row. Prevents silent broken cards on /explore.
+    catalogId: uuid('catalog_id').notNull()
+                 .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    commentary: text('commentary'),             // per-item editorial note; markdown
+    sortOrder:  integer('sort_order').notNull().default(0),
+    createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:  timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('curated_list_items_list_catalog_unique').on(table.listId, table.catalogId),
+    index('curated_list_items_list_id_sort_idx').on(table.listId, table.sortOrder),
+  ]
+)
+```
+
+**FK shape rationale:** `ON DELETE CASCADE` from list (list deleted → items deleted, correct); `ON DELETE RESTRICT` from catalog (catalog deletion blocked if referenced by any list item — forces operator to clean up the list before deleting a catalog row). This prevents PITFALLS.md CP-05.
+
+**RLS:** DAL join always filters by `curated_lists.status = 'published'` for public reads. A direct SELECT on `curated_list_items` by non-admin readers surfaces only items whose parent list is published via the JOIN-through strategy.
+
+---
+
+### (c) `collection_paths` and `collection_path_nodes`
+
+Curated traversal patterns. Two tables: one for the path entity, one for the ordered sequence of catalog references.
+
+```typescript
+export const collectionPathSourceEnum = pgEnum('collection_path_source', ['manual', 'computed'])
+
+export const collectionPaths = pgTable(
+  'collection_paths',
+  {
+    id:        uuid('id').defaultRandom().primaryKey(),
+    title:     text('title').notNull(),         // e.g. "The Diver's Journey"
+    rationale: text('rationale'),               // editorial copy; markdown
+    source:    collectionPathSourceEnum('source').notNull().default('manual'),
+    status:    curatedListStatusEnum('status').notNull().default('draft'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('collection_paths_status_idx').on(table.status),
+  ]
+)
+
+export const collectionPathNodes = pgTable(
+  'collection_path_nodes',
+  {
+    id:        uuid('id').defaultRandom().primaryKey(),
+    pathId:    uuid('path_id').notNull()
+                 .references(() => collectionPaths.id, { onDelete: 'cascade' }),
+    // ON DELETE RESTRICT: a path node cannot be orphaned. Operator must remove
+    // the node or unpublish the path before deleting the referenced catalog row.
+    catalogId: uuid('catalog_id').notNull()
+                 .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    position:  integer('position').notNull(),   // 0 = seed; 1, 2, 3 = follow-on
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('collection_path_nodes_path_position_unique').on(table.pathId, table.position),
+    index('collection_path_nodes_path_id_idx').on(table.pathId, table.position),
+  ]
+)
+```
+
+**RLS:** Same shape as `curated_lists` — `USING (status = 'published')` for public reads. Admin reads own drafts via the `OR author_id = auth.uid()` fallback (collection_paths does not have a direct author_id; use a service-role read in the admin CMS or add an `author_id` column matching the same pattern).
+
+---
+
+### (d) `cms_settings`
+
+Single-row config table for Hero pin and quality-gate thresholds. Storing this in the DB (not environment variables) ensures the Hero Server Component reads live state on every cache refresh cycle.
+
+```typescript
+export const cmsSettings = pgTable(
+  'cms_settings',
+  {
+    id:                    uuid('id').defaultRandom().primaryKey(),
+    // Manual hero pin — overrides auto-selection while non-NULL
+    pinnedListId:          uuid('pinned_list_id')
+                             .references(() => curatedLists.id, { onDelete: 'set null' }),
+    // Hero quality gate thresholds (configurable without a deploy)
+    heroMinWatchCount:     integer('hero_min_watch_count').notNull().default(3),
+    heroRequiresIntroCopy: boolean('hero_requires_intro_copy').notNull().default(true),
+    heroRequiresCoverImage: boolean('hero_requires_cover_image').notNull().default(true),
+    updatedAt:             timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   }
+)
+```
+
+The `pinnedListId` FK uses `ON DELETE SET NULL` — if the pinned list is deleted, the pin clears automatically and auto-selection resumes.
+
+---
+
+### FK Shape Summary
+
+| Relationship | FK Column | ON DELETE | Rationale |
+|---|---|---|---|
+| `curated_list_items.list_id → curated_lists.id` | `list_id` | CASCADE | Items deleted when parent list is deleted |
+| `curated_list_items.catalog_id → watches_catalog.id` | `catalog_id` | **RESTRICT** | Blocks catalog deletion if referenced in any list |
+| `collection_path_nodes.path_id → collection_paths.id` | `path_id` | CASCADE | Nodes deleted when path is deleted |
+| `collection_path_nodes.catalog_id → watches_catalog.id` | `catalog_id` | **RESTRICT** | Blocks catalog deletion if referenced in any path |
+| `cms_settings.pinned_list_id → curated_lists.id` | `pinned_list_id` | SET NULL | Pin clears automatically if the pinned list is deleted |
+| `curated_lists.author_id → users.id` | `author_id` | RESTRICT | Prevents orphaned lists if author account were deleted |
+
+---
+
+### Migration Path
+
+All new tables follow the established Drizzle + Supabase split pattern:
+
+- **`src/db/schema.ts`** — column shapes, FK references, TypeScript type inference only
+- **Supabase migration `.sql` file** — authoritative DDL including RLS policies, GIN indexes, GRANT/REVOKE, CHECK constraints, enum creation
+- **Production push** — `supabase db push --linked` only (never `drizzle-kit push` to prod)
+
+Suggested single migration file for the initial schema: `supabase/migrations/20260516000000_phase_v51_cms_tables.sql` covering all five new tables and both new Storage buckets. The `curated_list_status` enum (shared by `curated_lists` and `collection_paths`) and the `collection_path_source` enum must be created before the tables that reference them.
+
+---
+
+## `/explore` Route Tree + Rendering Strategy
+
+### Route Tree
+
+```
+src/app/
+├── explore/
+│   ├── page.tsx                    -- /explore shell (MODIFIED: 5-module layout)
+│   ├── collectors/
+│   │   └── page.tsx                -- existing /explore/collectors (unchanged)
+│   ├── watches/
+│   │   └── page.tsx                -- existing /explore/watches (unchanged)
+│   ├── lists/
+│   │   ├── page.tsx                -- NEW /explore/lists — all published lists
+│   │   └── [slug]/
+│   │       └── page.tsx            -- NEW /explore/lists/[slug] — list detail
+│   ├── paths/
+│   │   ├── page.tsx                -- NEW /explore/paths — all paths
+│   │   └── [id]/
+│   │       └── page.tsx            -- NEW /explore/paths/[id] — path detail
+│   ├── brands/
+│   │   └── page.tsx                -- NEW /explore/brands — brand index
+│   ├── eras/
+│   │   └── page.tsx                -- NEW /explore/eras — era index
+│   ├── genres/
+│   │   └── page.tsx                -- NEW /explore/genres — genre/style index
+│   └── price-bands/
+│       └── page.tsx                -- NEW /explore/price-bands — price-band index
+├── admin/
+│   ├── layout.tsx                  -- NEW — owner gate at layout level
+│   ├── lists/
+│   │   ├── page.tsx                -- NEW /admin/lists — list dashboard
+│   │   ├── new/
+│   │   │   └── page.tsx            -- NEW /admin/lists/new
+│   │   └── [id]/
+│   │       └── page.tsx            -- NEW /admin/lists/[id] — edit + publish
+│   └── paths/
+│       ├── page.tsx                -- NEW /admin/paths
+│       ├── new/
+│       │   └── page.tsx            -- NEW /admin/paths/new
+│       └── [id]/
+│           └── page.tsx            -- NEW /admin/paths/[id]
+```
+
+---
+
+### Rendering Strategy
+
+#### `/explore` main shell
+
+The page-level Server Component remains uncached to preserve viewer-dependent logic (the sparse-network hero gate that checks `followingCount` and `wearEventsCount`). Each of the 5 modules is a separately-cached nested Server Component. This is an extension of the existing Phase 18/25 rail pattern.
+
+```
+ExplorePage (Server Component, uncached — viewer-dependent gate)
+├── HeroFeature ('use cache', cacheLife 604800, cacheTag('explore:hero'))
+├── CollectorArchetypes (hardcoded config — no DB fetch, no cache needed)
+├── CuratedListsRail ('use cache', cacheLife 300, cacheTag('explore:lists'))
+├── CollectionPathsModule ('use cache', cacheLife 3600, cacheTag('explore:paths'))
+└── BrowseCatalogModule ('use cache', cacheLife 3600, cacheTag('catalog:browse'))
+```
+
+**Cache scopes by module:**
+
+| Module | Cache TTL | Cache Tags | What Invalidates It |
+|---|---|---|---|
+| HeroFeature | 604800s (weekly) | `explore:hero` | `setPinnedHero`, `clearPinnedHero`, `publishList`, `unpublishList` |
+| CuratedListsRail | 300s (5m) | `explore:lists` | `publishList`, `unpublishList`, `updateList` (cover, title changes) |
+| CollectionPathsModule | 3600s (1h) | `explore:paths` | `createPath`, `updatePath`, `deletePath` |
+| BrowseCatalogModule | 3600s (1h) | `catalog:browse` | Enrichment script writes, `refresh-counts.ts` run |
+| CollectorArchetypes | N/A — no fetch | N/A | Config change requires a deploy |
+
+**Critical constraint — `revalidateTag`, not `revalidatePath`.** Nested `'use cache'` Server Components are not invalidated by `revalidatePath('/explore')`. Every Server Action that mutates CMS data must call `revalidateTag(tag)` for each affected module. This is the established codebase pattern (Phase 13 `updateTag` vs `revalidateTag` distinction; Phase 18 `revalidateTag('explore', 'max')` for SWR fan-out). PITFALLS.md MP-07 documents the specific Hero pin cache-miss failure mode.
+
+#### Browse index sub-routes
+
+Each of `/explore/brands`, `/explore/eras`, `/explore/genres`, `/explore/price-bands` is a Server Component that runs a GROUP BY aggregation query and caches the result under the `catalog:browse` tag.
+
+```typescript
+// Pattern for each Browse index page (e.g., src/app/explore/brands/page.tsx)
+export default async function BrandsIndexPage() {
+  const brands = await getBrandIndex()
+  // render groups with counts
+}
+
+// src/data/browse.ts
+async function getBrandIndex() {
+  'use cache'
+  cacheTag('catalog:browse')
+  cacheLife({ revalidate: 3600 })
+  return db
+    .select({ name: brands.name, slug: brands.slug, count: sql<number>`count(*)::int` })
+    .from(watchesCatalog)
+    .innerJoin(brands, eq(watchesCatalog.brandId, brands.id))
+    .groupBy(brands.id, brands.name, brands.slug)
+    .orderBy(desc(sql`count(*)`))
 }
 ```
 
-**Step 2: Extend the DAL read path to JOIN catalog taste.**
+These sub-routes share the `catalog:browse` cache tag with the BrowseCatalogModule on the main `/explore` page, so enrichment writes invalidate all of them simultaneously.
 
-In `src/data/watches.ts`, wherever `getWatchesByUser` (or equivalent) loads the collection for engine input, add a LEFT JOIN to `watches_catalog` and populate `catalogTaste` on each row. The LEFT JOIN is safe because `catalog_id` is nullable (pre-CAT-14 rows have no catalog row).
+#### List detail (`/explore/lists/[slug]`)
 
+A Server Component with its own cache scope:
+
+```typescript
+'use cache'
+cacheTag('explore:lists', `list:${slug}`)
+cacheLife({ revalidate: 3600 })
+```
+
+`publishList` and `unpublishList` call `revalidateTag('explore:lists')` to invalidate all list pages. `updateList` on a specific list can call `revalidateTag(`list:${id}`)` for precision invalidation.
+
+#### `/admin/*` routes
+
+No cache — always fresh. Admin routes must render live draft state so the operator sees current content. Since `proxy.ts` blocks these routes for non-owners at the edge, no cache security risk.
+
+---
+
+## In-App Admin CMS — Owner Gating
+
+### Route Guard (layout level)
+
+`src/app/admin/layout.tsx` performs owner verification at the layout level:
+
+```typescript
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+const OWNER_USER_ID = process.env.OWNER_USER_ID!
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser()
+  if (user.id !== OWNER_USER_ID) redirect('/explore')
+  return <>{children}</>
+}
+```
+
+Add `/admin` to the non-public paths in `proxy.ts` (the `PUBLIC_PATHS` constant from Phase 14) so unauthenticated users are redirected to `/login` before the layout gate runs.
+
+### Server Action Pattern — Every CMS Action
+
+Route-level gating is insufficient because Server Actions are directly callable HTTP endpoints. Every Server Action in `src/app/actions/cms.ts` must assert ownership as its literal first statement:
+
+```typescript
+'use server'
+import { getCurrentUser } from '@/lib/auth'
+
+const OWNER_USER_ID = process.env.OWNER_USER_ID!
+
+async function assertOwner() {
+  const user = await getCurrentUser()
+  if (user.id !== OWNER_USER_ID) throw new Error('Unauthorized')
+  return user
+}
+
+export async function createCuratedList(data: CreateListInput) {
+  const user = await assertOwner()  // ALWAYS FIRST — see PITFALLS.md CP-02
+  // ... mutation logic
+  revalidateTag('explore:lists')
+}
+
+export async function publishList(listId: string) {
+  const user = await assertOwner()  // ALWAYS FIRST
+  // validate: watch_count >= 1 (cannot publish empty list)
+  // set status = 'published', publishedAt = now(), has_intro_copy, has_cover_image flags
+  revalidateTag('explore:lists')
+  revalidateTag('explore:hero')     // hero eligibility pool changes when a list publishes
+}
+
+export async function setPinnedHero(listId: string) {
+  const user = await assertOwner()  // ALWAYS FIRST
+  // UPDATE cms_settings SET pinned_list_id = listId
+  revalidateTag('explore:hero')     // NOT revalidatePath — see PITFALLS.md MP-07
+}
+```
+
+The RLS `WITH CHECK (author_id = auth.uid())` on `curated_lists` provides database-layer defense-in-depth — even a crafted request reaching the Supabase client directly is blocked.
+
+### Server Actions vs API Routes
+
+All CMS mutations are Server Actions, not API routes. The sole API route (`POST /api/extract-watch`) exists specifically because it must proxy external fetches server-side to avoid CORS and keep the Anthropic API key off the client. CMS mutations are direct DB writes — no such requirement exists. Server Actions are the correct pattern for this codebase.
+
+### `OWNER_USER_ID` Environment Variable
+
+The owner's Supabase Auth UUID is stored in `OWNER_USER_ID` env var — set in Vercel environment variables and `.env.local`. Never hardcode the UUID in source code; it must not appear in git history.
+
+---
+
+## Catalog Enrichment — Where It Runs
+
+### Where: Operator Script (extend `scripts/backfill-taste.ts`)
+
+The v5.1 catalog enrichment is a one-time operator-run backfill of ~100 existing `watches_catalog` rows. The established precedent in `scripts/backfill-taste.ts` is the correct approach at this scale.
+
+Do not use:
+- An API route — exposes enrichment as an HTTP endpoint, creates a security surface, cannot exceed Vercel's function timeout for 100 rows
+- pg_cron — enrichment is a one-time fill, not a recurring scheduled task
+- Anthropic Batch API — appropriate for 1,000+ rows; adds async polling complexity for no benefit at 100 rows (STACK.md confirmed)
+
+### Idempotency and Resumability
+
+The existing `backfill-taste.ts` already handles idempotency via first-write-wins (`AND confidence IS NULL` predicate in `updateCatalogTaste`). Running the script multiple times is safe; already-enriched rows are skipped.
+
+Required additions before the v5.1 prod run (see PITFALLS.md MP-04 and MP-05):
+
+1. **Rate-limit retry** — exponential backoff (2s/4s/8s, 3 attempts) triggered on `Anthropic.RateLimitError` inside the batch loop. The existing `catch (err) { totalFailed++ }` handler must distinguish rate-limit errors from other failures.
+2. **Inter-row delay** — `await new Promise(r => setTimeout(r, 800))` between rows. At 800ms/row, 100 rows takes ~80 seconds, safely within the RPM limit.
+3. **Per-row failure logging** — log each failed `catalog_id` explicitly, not just a cumulative count.
+4. **`--min-confidence-threshold` flag on `reenrich-taste.ts`** — only re-enriches rows where existing confidence is BELOW the threshold, preventing high-confidence vision-enriched rows from being silently downgraded (PITFALLS.md CP-03, MP-05).
+5. **Photo-existence pre-check** — when re-enriching a vision-enriched row (`extracted_from_photo = true`), verify the photo path still resolves before running the LLM call. Warn the operator if the photo is missing instead of silently falling back to text mode.
+
+### After the Enrichment Run
+
+The enrichment script calls `revalidateTag('catalog:browse')` after successful completion (or the operator runs `npm run db:refresh-counts` which is extended to do the same). This invalidates the Browse index cache so updated archetype/era data is reflected immediately.
+
+Post-run assertion before any Archetypes-module ship:
 ```sql
-SELECT w.*, wc.formality, wc.sportiness, wc.heritage_score, ...
-FROM watches w
-LEFT JOIN watches_catalog wc ON wc.id = w.catalog_id
-WHERE w.user_id = $userId
+SELECT primary_archetype, count(*) FROM watches_catalog GROUP BY primary_archetype ORDER BY count DESC;
+```
+Each archetype config entry must have at least one matching row in the catalog.
+
+---
+
+## Avatar Upload — Supabase Storage
+
+### Bucket: `avatars` (new, public)
+
+A separate public-read bucket distinct from `catalog-source-photos` (private, signed URLs). Profile avatars must be publicly accessible without expiry. Signed URLs expire (60s in the existing enricher pattern) — an expiring avatar URL breaks navigation headers on every page after expiry (PITFALLS.md MP-06).
+
+```
+Supabase Storage buckets after v5.1:
+  catalog-source-photos  — private; signed URLs (existing)
+  wear-photos            — private; signed URLs (existing)
+  avatars                — PUBLIC; getPublicUrl (NEW)
+  explore-covers         — PUBLIC; getPublicUrl (NEW — curated list covers + hero images)
 ```
 
-**Step 3: Modify `analyzeSimilarity()` to use taste columns when present.**
+### Upload Pattern
 
-This is the only modification to `similarity.ts`. The engine should weight taste columns as additional scoring dimensions when present, falling back to the existing per-user-watch scoring when they are absent. The byte-lock from Phase 17/19.1/20 was a constraint on those specific phases. CAT-13 is explicitly the rewire phase — the lock is lifted.
-
-**Step 4: Static guard tests (regression protection).**
-
-Before touching `similarity.ts`, add to the test suite:
-- `tests/static/similarity.taste-null.test.ts` — verifies that when `catalogTaste` is undefined/null on all Watch objects, all existing test cases produce byte-identical outputs (snapshot test against current labels)
-- `tests/static/similarity.taste-present.test.ts` — verifies that when `catalogTaste` is present with known values, scores shift in the expected direction (formality-heavy catalog + formal preference → higher alignment score)
-
-The existing 6-label coverage in `tests/lib/similarity.test.ts` should be run as a regression baseline before the rewire.
-
-**Step 5: No dual-read shadow phase needed.**
-
-A shadow phase (run both old and new scoring in parallel, compare) is appropriate when the old engine is in production and a regression is catastrophic. Here:
-- It's a single-user system (one collector)
-- The clean-slate DB wipe in Layer C precedes CAT-13
-- Static guard tests provide the regression net
-- The taste columns have `confidence` scores — the engine can implement a confidence gate (only use taste columns when `confidence >= 0.5`, same threshold as Phase 20 verdict copy)
-
-**Confidence gate pattern:**
+The client-side EXIF-strip + canvas-resize-to-JPEG-1080px pipeline exists in `src/lib/storage/catalogSourcePhotos.ts` and `src/lib/storage/wearPhotos.ts`. For avatar upload, extract the shared resize+encode logic into `src/lib/storage/imageUtils.ts` and call it from a new `src/lib/storage/avatars.ts` with `getPublicUrl` retrieval:
 
 ```typescript
-// Inside analyzeSimilarity or a new calculatePairSimilarityWithTaste function
-const tasteWeight = 0.15  // additive; does not displace existing weights
-if (watch.catalogTaste?.confidence != null && watch.catalogTaste.confidence >= 0.5) {
-  score += tasteWeight * tasteAlignmentScore(watch.catalogTaste, preferences)
+// src/lib/storage/avatars.ts
+const AVATARS_BUCKET = 'avatars'
+
+export function buildAvatarPath(userId: string): string {
+  return `${userId}/avatar.jpg`   // fixed path; upload overwrites previous avatar
+}
+
+export function getAvatarPublicUrl(path: string): string {
+  const supabase = createSupabaseClient()
+  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path)
+  return data.publicUrl            // no expiry; public bucket
 }
 ```
 
-This is additive, not a replacement. The existing 8-dimension scoring continues to run. Taste columns provide a 9th dimension with a confidence gate.
+After upload, `uploadAvatar` Server Action (in `src/app/actions/profile.ts`) updates `profiles.avatar_url` to the public URL. The URL stored in the column must not contain an expiry parameter — verify this in acceptance testing.
+
+Add the Supabase Storage CDN hostname for the `avatars` bucket to `next.config.ts` `remotePatterns` if it differs from the existing `catalog-source-photos` entry.
 
 ---
 
-## DEBT-09: Why Was the Fix Not Merged?
+## Architectural Patterns
 
-**Finding: Process miss, not an architectural reason.**
+### Pattern 1: Nested 'use cache' with Tag-Based Invalidation
 
-From PROJECT.md Active requirements:
+**What:** Page-level Server Component renders uncached (preserves viewer-dependent logic). Module-level Server Components each have their own `'use cache'` scope with named tags. Server Actions that mutate data call `revalidateTag(tag)` — not `revalidatePath`.
 
-> Phase 23 SUMMARY claimed both shipped via commit `4d362ff`, but `git merge-base --is-ancestor 4d362ff HEAD` returns exit 1 — that commit never reached `main`.
+**When to use:** Any page that mixes viewer-dependent gating with globally-cacheable editorial content. The existing `/explore` page uses this pattern; v5.1 extends it to 5 modules.
 
-The commit `4d362ff` existed in a worktree or local branch that was not merged before the Phase 23 plan was closed. The Phase 31 audit surfaced this via a direct ancestry check.
+**Trade-off:** Requires maintaining an explicit invalidation matrix for every write path. Worth it — the alternative (page-level caching) would either serve stale viewer-dependent state or skip caching entirely.
 
-**What the fix requires (architectural context):**
+### Pattern 2: Two-Layer Privacy on Draft/Published Content
 
-1. **`notesPublic` Zod field:** `insertWatchSchema` in `src/app/actions/watches.ts` does not include `notesPublic`. The WatchForm sends it; Zod strips it at the schema boundary before it reaches `watchDAL.createWatch`. Fix: add `notesPublic: z.boolean().optional()` to `insertWatchSchema` and `updateWatchSchema`.
+**What:** RLS `USING (status = 'published')` at the DB layer + explicit `WHERE status = 'published'` in every DAL public-read function. Neither layer alone is sufficient.
 
-2. **`revalidatePath('/u/{username}/{tab}')` missing:** After `addWatch` and `editWatch`, only `revalidatePath('/')` is called. Profile tab pages (`/u/{username}/collection`, `/u/{username}/wishlist`, etc.) use cached Server Components and do not see the mutation. Fix: call `revalidatePath('/u/[username]/[tab]', 'page')` with the viewer's username after every write. This requires resolving the viewer's username inside the action — either by reading from `getProfileById(user.id)` (already called in `addWatch` for the overlap notification path) or by caching the username on the session.
+**When to use:** Any table with a draft/published lifecycle: `curated_lists`, `collection_paths`.
 
-**Build note for DEBT-09 phase:** Add `notesPublic` to both Zod schemas AND verify it flows through `createWatch` / `updateWatch` in the DAL (check `src/data/watches.ts` insert/update shapes). The test scaffold at `tests/actions/watches.notesPublic.test.ts` is already in place and will go GREEN once the schema field and revalidation call land.
+**Trade-off:** Slightly more DAL code. Required — single-layer is fragile (Phase 11 established this as a project-wide constraint).
 
----
+### Pattern 3: Owner-Asserting Server Actions
 
-## SET-13 Account Delete: Architecture
+**What:** `assertOwner()` called as the literal first statement in every CMS Server Action. Route-level layout gating is defense-in-depth only.
 
-### Cascade vs soft-delete + cron
+**When to use:** Any Server Action that performs admin-only writes.
 
-**Use hard cascade with a multi-step confirm flow.** This is a single-user system; the owner consents explicitly. Soft-delete introduces complexity (filtering deleted rows from every query, RLS becomes conditional) that is not justified at this scale.
+**Trade-off:** Minor repetition of the owner check. Required — Server Actions are HTTP-callable endpoints that bypass layout-level gates.
 
-**Cascade behavior from schema (already correct):**
+### Pattern 4: ON DELETE RESTRICT for Editorial Catalog References
 
-All tables that reference `users.id` already use `ON DELETE CASCADE`:
-- `watches` → cascade (users row delete removes all watches)
-- `user_preferences` → cascade
-- `profiles` → cascade
-- `follows` → cascade (both follower_id and following_id)
-- `profile_settings` → cascade
-- `activities` → cascade
-- `wear_events` → cascade
-- `notifications` → cascade (both user_id and actor_id)
-- `divestments` (new) → cascade
+**What:** `curated_list_items.catalog_id` and `collection_path_nodes.catalog_id` use `ON DELETE RESTRICT`. This prevents catalog deletion from silently breaking published editorial content.
 
-**Edge cases — what happens to public-profile reads for other users:**
+**Contrast with:** `watches.catalog_id` which uses `ON DELETE SET NULL` — per-user watch entries survive catalog cleanup gracefully because the user still owns the physical watch.
 
-After a user deletes their account:
-- `follows` rows (where deleted user was followed) cascade-delete, so follower counts for other users' pages reflect the removal on next cache revalidation
-- `activities` cascade-delete; their wear events no longer appear in other users' feeds
-- `wear_events` cascade-delete; no orphaned wear photos accessible via the API (Supabase Storage bucket files must be purged separately — see below)
-- `notifications` where `actor_id = deleted_user_id` cascade-delete; recipients' notification inboxes lose those rows on next revalidation
-
-**Storage bucket orphan cleanup:**
-
-Cascade deletes DB rows but NOT Supabase Storage files. The account delete Server Action must explicitly:
-1. List all files in `wear-photos/{userId}/` bucket folder
-2. Delete them (Supabase Storage admin client, service-role key)
-3. Then delete the `users` row (which cascades the rest)
-
-This must be synchronous within the Server Action, not deferred to a cron, because the user expects their data to be gone immediately on confirm.
-
-**Multi-step confirm pattern:**
-
-```
-Settings → Account → "Delete Account" button
-  → Step 1: "This will permanently delete your account and all data." + type-to-confirm input (type "DELETE")
-  → Step 2: Password re-auth (same pattern as Phase 22 password change re-auth dialog)
-  → Commit: deleteAccount() Server Action
-```
-
-**RLS implications:** The `deleteAccount` Server Action calls `supabase.auth.admin.deleteUser(userId)` using the service-role client (not the user's session client). This is the only safe path — Supabase Auth does not allow users to delete themselves via the user-session client. The service-role call must be double-verified: read the session inside the action, confirm the authenticated user's ID matches the deletion target before calling admin.deleteUser.
-
-**No soft-delete + cron needed:** The collector is the single user. There is no need for a 30-day grace period or recovery window. If they want this later, soft-delete can be added as a Layer 2 on top of hard cascade.
+**When to use:** Any table that references a catalog row in a way that would produce a broken user-facing UI if the catalog row disappeared.
 
 ---
 
-## Cache Invalidation Matrix: New Keys Needed
+## Data Flow
 
-### Existing cache tags
+### Hero Selection Flow
 
-| Tag | Scope | Used by |
-|---|---|---|
-| `'explore'` | Global | `addWatch`, `editWatch`, `removeWatch` → `revalidateTag('explore', 'max')` |
-| `'notifications'` | Per-user | NotificationBell Server Component |
-| `'viewer:{userId}'` | Per-user | Recipient's notification bell after overlap write |
-| `'explore:popular-collectors:viewer:{userId}'` | Per-viewer | Follow/unfollow Server Actions |
+```
+Server request to /explore
+  -> ExplorePage (uncached)
+    -> HeroFeature ('use cache', weekly TTL)
+      -> getCmsSettings()  -- read pinnedListId
+      IF pinnedListId IS NOT NULL:
+        -> getCuratedList(pinnedListId)  -- return pinned list as hero
+      ELSE:
+        -> SELECT FROM curated_lists
+             WHERE status = 'published'
+             AND watch_count >= heroMinWatchCount
+             AND has_intro_copy = true
+             AND has_cover_image = true
+             ORDER BY published_at DESC
+             LIMIT 1
+      -> render HeroFeature with resolved HeroFeatureData
+      -> IF no eligible list: return null (module hidden, not empty container)
 
-### New tags required for hierarchy
+Admin sets pin -> setPinnedHero(listId) Server Action
+  -> assertOwner()
+  -> UPDATE cms_settings SET pinned_list_id = listId
+  -> revalidateTag('explore:hero')   -- NOT revalidatePath('/explore')
+  -> hero updates on next request cycle
+```
 
-| New tag | Scope | When to invalidate |
-|---|---|---|
-| `'catalog:brand:{brandId}'` | Per-brand | When any `brands` row is updated; when `watches_catalog.brand_id` FK changes for that brand |
-| `'catalog:family:{familyId}'` | Per-family | When any `watch_families` row is updated; when References are assigned/removed from a family |
-| `'catalog:reference:{catalogId}'` | Per-reference | When `watches_catalog` row is updated (taste enrichment, image update, spec change) |
-| `'catalog:lineage:{catalogId}'` | Per-reference | When `watch_lineage_edges` rows for this reference change |
+### CMS Authoring Flow
 
-**For v5.0 scope:** Only `'catalog:reference:{catalogId}'` needs to be wired immediately (the `/catalog/[catalogId]` route uses this pattern already via the Phase 20 verdict surface). Brand and family tags are needed only when brand/family browse pages ship (audit-driven polish phase).
+```
+Admin visits /admin/lists/new
+  -> proxy.ts blocks unauthenticated users -> /login
+  -> AdminLayout assertOwner() -- server-side
+  -> renders CMS form (Server Component shell, Client form)
 
-**Invalidation rule:** Admin writes to hierarchy tables (`brands`, `watch_families`, `watch_lineage_edges`) are service-role operations, not user-session Server Actions. Invalidation should be triggered by an admin Server Action wrapper that:
-1. Performs the write with service-role client
-2. Calls `revalidateTag('catalog:brand:{id}', 'max')` or equivalent
-3. Calls `revalidateTag('explore', 'max')` for any Reference count change
+Admin submits create form
+  -> createCuratedList Server Action
+    -> assertOwner()               -- FIRST
+    -> validate: title required, slug unique
+    -> INSERT INTO curated_lists (status = 'draft')
+    -> revalidateTag('explore:lists')
+    -> redirect to /admin/lists/{id}
 
-**Do not invalidate `'explore'` on every hierarchy write.** Brand/Family/Lineage changes do not affect `ownersCount`/`wishlistCount` denormalized counts, so the explore rails do not need revalidation.
+Admin adds watches to list
+  -> addListItem Server Action
+    -> assertOwner()
+    -> INSERT INTO curated_list_items
+    -> UPDATE curated_lists SET watch_count = watch_count + 1, updated_at = now()
+    -> revalidateTag(`list:${listId}`)
+
+Admin publishes list
+  -> publishList Server Action
+    -> assertOwner()
+    -> validate: watch_count >= 1 (cannot publish empty list)
+    -> UPDATE status = 'published', publishedAt = now()
+    -> UPDATE has_intro_copy, has_cover_image quality-gate flags
+    -> revalidateTag('explore:lists')
+    -> revalidateTag('explore:hero')  -- list now in hero eligibility pool
+```
+
+### Catalog Enrichment Flow
+
+```
+Operator runs: npm run db:backfill-taste (extended for v5.1)
+  -> scripts/backfill-taste.ts
+    -> SELECT catalog rows WHERE confidence IS NULL (idempotent predicate)
+    -> FOR EACH row:
+        -> IF photoPath exists AND storage resolves: vision mode
+        -> ELSE: text-only mode (log warning if photo was expected)
+        -> call claude-sonnet-4-6 with strict tool_use
+        -> write taste columns via updateCatalogTaste (first-write-wins DAL)
+        -> await 800ms (rate limit buffer between rows)
+        -> ON RateLimitError: exponential backoff retry (2s / 4s / 8s)
+        -> ON other failure: log catalog_id + error; continue
+    -> log coverage distribution: SELECT primary_archetype, count(*) GROUP BY ...
+    -> revalidateTag('catalog:browse')
+```
+
+### Avatar Upload Flow
+
+```
+User visits /settings -> Profile tab (ProfileSection.tsx)
+  -> AvatarUpload Client Component renders
+  -> user selects file
+    -> EXIF strip (client-side, via imageUtils.ts shared utility)
+    -> canvas resize to JPEG <= 1080px
+    -> supabase.storage.from('avatars').upload(buildAvatarPath(userId), blob)
+    -> supabase.storage.from('avatars').getPublicUrl(path) -> publicUrl
+  -> uploadAvatar Server Action
+    -> getCurrentUser()               -- auth gate
+    -> UPDATE profiles SET avatar_url = publicUrl
+    -> revalidateTag(`profile:${user.id}`)
+    -> return new publicUrl
+  -> AvatarUpload renders new avatar from publicUrl (no expiry, public bucket)
+```
 
 ---
 
-## Test Architecture: Hierarchy Tree Fixtures
+## Component Boundaries
 
-### Existing factory patterns
+| Component | Location | Responsibility | Renders As |
+|---|---|---|---|
+| `ExplorePage` | `src/app/explore/page.tsx` | Shell, viewer gate, 5-module composition | Server Component (uncached) |
+| `HeroFeature` | `src/components/explore/HeroFeature.tsx` | Hero selection, quality gate, render | Server Component ('use cache') |
+| `CollectorArchetypes` | `src/components/explore/CollectorArchetypes.tsx` | Hardcoded archetype chip rail | Server Component (no cache needed) |
+| `CuratedListsRail` | `src/components/explore/CuratedListsRail.tsx` | Published list rail (up to 12) | Server Component ('use cache') |
+| `CollectionPathsModule` | `src/components/explore/CollectionPathsModule.tsx` | 3 rotating published paths | Server Component ('use cache') |
+| `BrowseCatalogModule` | `src/components/explore/BrowseCatalogModule.tsx` | 4-facet entry points with counts | Server Component ('use cache') |
+| `AdminLayout` | `src/app/admin/layout.tsx` | Owner gate (layout level) | Server Component (uncached) |
+| `CmsListForm` | `src/components/admin/CmsListForm.tsx` | Create/edit list (title, intro, cover) | Client Component (form state) |
+| `CmsListItemsEditor` | `src/components/admin/CmsListItemsEditor.tsx` | Add/reorder/annotate watches in list | Client Component |
+| `AvatarUpload` | `src/components/profile/AvatarUpload.tsx` | File picker + resize + upload | Client Component |
 
-The test suite does not use a formal factory pattern. Tests construct objects inline or import fixture types directly. The Vitest setup in `src/test/` includes `StrictMode` wrapper and MSW for API routes. Integration tests use `src/db/` directly against the local Supabase instance.
+**New DAL files:**
 
-### Recommended hierarchy fixture pattern for v5.0 tests
+| File | Functions |
+|---|---|
+| `src/data/cms.ts` | `getPublishedLists`, `getCuratedList`, `getHeroFeature`, `getPublishedPaths` |
+| `src/data/browse.ts` | `getBrandIndex`, `getEraIndex`, `getGenreIndex`, `getPriceBandIndex` |
 
-For unit tests (no DB), define in-memory fixture builders:
+**New storage files:**
 
-```typescript
-// tests/fixtures/catalog-hierarchy.ts
-import type { CatalogEntry } from '@/lib/types'
-
-export function makeBrand(overrides: Partial<Brand> = {}): Brand {
-  return { id: crypto.randomUUID(), name: 'Rolex', country: 'CH', ...overrides }
-}
-
-export function makeFamily(overrides: Partial<WatchFamily> = {}): WatchFamily {
-  return { id: crypto.randomUUID(), brandId: makeBrand().id, name: 'Submariner', ...overrides }
-}
-
-export function makeCatalogEntry(overrides: Partial<CatalogEntry> = {}): CatalogEntry {
-  return {
-    id: crypto.randomUUID(), brand: 'Rolex', model: 'Submariner Date',
-    reference: '16610', brandId: null, familyId: null,
-    formality: 0.3, sportiness: 0.9, heritageScore: 0.85,
-    confidence: 0.92, ...overrides
-  }
-}
-
-export function makeLineageChain(length: number): { entries: CatalogEntry[], edges: LineageEdge[] }
-```
-
-For integration tests (with DB), use `beforeEach` + `afterEach` to insert and clean up hierarchy rows. The existing integration test pattern (insert rows directly via Drizzle, verify DAL output, delete rows) applies without modification.
-
-**Static guard for CAT-13 rewire** (described above in the engine rewire section) should live at `tests/static/similarity.taste-null.test.ts` and `tests/static/similarity.taste-present.test.ts`. These are snapshot tests, not unit tests — they establish the byte-identical baseline before the rewire and verify directional correctness after.
-
----
-
-## Discovery Audit Output as Architecture Artifact
-
-**The audit's output document is a decisions doc, not an abstract recommendations list.** This distinction matters for how the roadmap cites it.
-
-### Format
-
-The audit should produce `.planning/research/DISCOVERY-AUDIT.md` with:
-- Click-path map: a text diagram of every path from every surface, including dead ends and missing affordances
-- Three decision tables:
-  1. "Combine home and explore?" — YES/NO with rationale
-  2. "Which dead ends to close in audit-driven polish?" — enumerated list with priority
-  3. "What does CAT-13 unlock that isn't currently possible?" — direct evidence for the engine rewire being a discovery feature
-
-The downstream phases (audit-driven polish, CAT-13) cite specific items from these tables. This keeps the roadmap falsifiable: a phase can be "Phase 35 closes DISC-AUDIT items 3, 4, 7" rather than "Phase 35 improves discovery."
-
-**PLAN.md citation format:**
-```
-Closes: DISC-AUDIT-[item number] from .planning/research/DISCOVERY-AUDIT.md
-```
+| File | Functions |
+|---|---|
+| `src/lib/storage/avatars.ts` | `buildAvatarPath`, `getAvatarPublicUrl` |
+| `src/lib/storage/exploreCovers.ts` | `buildCoverPath`, `getCoverPublicUrl` |
+| `src/lib/storage/imageUtils.ts` | Shared EXIF-strip + canvas-resize (extracted from existing storage files) |
 
 ---
 
 ## Suggested Build Order
 
-### Dependencies graph
+Dependencies drive this order. Each phase builds on stable foundations from the previous one.
 
-```
-Phase 32: Discovery Audit (read-only; no schema)
-    ↓ (audit findings shape scope of polish phases)
-Phase 33: Layer A — Brand + Family entities (additive FKs on watches_catalog)
-    ↓ (brands/families exist before lineage can reference them)
-Phase 34: Layer B — Lineage edges + structured movement + era/material/bracelet
-    |                (can overlap with Phase 33 for movement/era; lineage needs Layer A for brand context)
-    ↓
-Phase 35: Layer C — Variant split + clean-slate DB wipe + CAT-14 SET NOT NULL
-    ↓ (clean slate makes CAT-14 safe; CAT-14 must precede engine rewire that relies on 100% catalog_id coverage)
-Phase 36: Layer D — Provenance fields on watches + divestments table (SEED-002 prereq)
-    |
-    ↓ (can overlap with Phase 37 if Layer C is complete)
-Phase 37: CAT-13 engine rewire + CAT-14 SET NOT NULL enforcement
-    |
-    ↓ (rewired engine enables better verdicts → discovery surfaces can use them)
-Phase 38+: Audit-driven polish (interleaved with DEBT-09, SET-13, SET-14, Nyquist)
-```
+### Phase 1: Polish (no new DB tables; standalone)
 
-### Phases that can run in parallel
+- Filter drawer dismiss bug fix + `@base-ui/react/drawer` migration in `sheet.tsx`
+- Wishlist card wear-UI gate (`status === 'owned'` guard in `ProfileWatchCard.tsx`)
+- Watch card fixed-height metadata block
+- Avatar upload: create `avatars` public bucket + `src/lib/storage/avatars.ts` + `AvatarUpload` component + `ProfileSection.tsx` rewrite
+- Update `claude-sonnet-4-20250514` → `claude-sonnet-4-6` in `src/lib/extractors/llm.ts` (model deprecates June 15, 2026)
 
-- **Phase 34 (Layer B movement/era/material columns) can be partially parallelized with Phase 33** if the Drizzle migration work is split by concern: movement/era/material columns on `watches_catalog` do not depend on brand or family FKs. Only the `watch_lineage_edges` table strictly depends on brand entities being seeded (you need Reference rows before you can write edges, but the table schema can be created independently).
+Avatar upload belongs in Polish because it requires only the new `avatars` bucket and an update to `profiles.avatar_url` — no new tables.
 
-- **DEBT-09, SET-13, SET-14, Nyquist** are independent of the catalog hierarchy and can be interleaved at any point after Phase 32. DEBT-09 is a Server Action fix with no schema changes; SET-13 requires no catalog hierarchy; SET-14 is HTML email templates. These can run in parallel with any Layer A/B/C phase as separate plans within a phase.
+### Phase 2: Catalog Enrichment (prerequisite for Browse + Archetypes)
 
-- **Phase 36 (Layer D provenance) can overlap with Phase 37 (CAT-13 rewire)** if split into separate plans. The `watches` provenance fields (serial, year_of_acquisition, etc.) do not interact with the engine rewire. The `divestments` table similarly. Only the decision "which columns go on watches vs divestments" must be locked before either DAL is written.
+- Extend `backfill-taste.ts`: rate-limit retry, 800ms inter-row delay, per-row failure logging
+- Add `--min-confidence-threshold` to `reenrich-taste.ts`
+- Add photo-existence pre-check to `reenrich-taste.ts`
+- Run backfill against production
+- Verify archetype coverage via `SELECT primary_archetype, count(*) GROUP BY ...` before proceeding to Phase 4
 
-### Hard serialization constraints
+This phase must complete and be verified in prod before Phase 4 (Browse + Archetypes) ships, because:
+- Browse indices show counts derived from enriched `era`, `style_tags`, `primary_archetype` columns
+- Collector Archetype deep-links produce empty results if `primary_archetype` is NULL on all catalog rows
 
-1. **Phase 32 before all schema work** — audit-first per SEED-004; audit findings may reduce or expand Layer B scope (e.g., if the audit shows lineage browse is low-priority, lineage edges can be deferred to v6.0)
-2. **Layer A before Layer B lineage edges** — `watch_lineage_edges` FK to `watches_catalog` is already present, but seeding edges is meaningless without at least some brand/family context in the data
-3. **Layer C (clean slate) before CAT-14 SET NOT NULL** — the clean slate ensures 100% of `watches` rows have a `catalog_id` before making it NOT NULL
-4. **CAT-14 before or concurrent with CAT-13** — the engine rewire assumes catalog_id is always resolvable; if any watches rows lack catalog_id, the LEFT JOIN fallback must be in place or queries break
-5. **CAT-13 engine rewire before audit-driven polish phases that depend on improved verdicts** — if the audit identifies "verdicts on catalog pages are weak because taste attributes aren't used," those polish phases need the rewired engine
+### Phase 3: CMS Data Model + Admin Routes (prerequisite for Curated Lists Rail and Hero)
 
-### Phase numbering (continuing from Phase 31)
+- DB migration: all 5 new tables + RLS policies + enum types
+- Create `explore-covers` public Storage bucket
+- `src/data/cms.ts` DAL (public reads with `WHERE status = 'published'`)
+- `src/app/actions/cms.ts` Server Actions (owner-gated, `assertOwner()` first)
+- `src/app/actions/paths.ts` Server Actions
+- `/admin/lists/*` and `/admin/paths/*` routes + CMS forms
+- Seed initial 10 collection paths via admin UI
 
-| Phase | Name | Parallelizable? |
-|---|---|---|
-| 32 | Discovery Audit (read-only) | No — must come first |
-| 33 | Layer A: Brand + Family schema | Yes, after 32 |
-| 34 | Layer B: Lineage + Movement + Era | Partially (movement/era after 32; lineage edges after 33) |
-| 35 | Layer C: Variant split + clean-slate + CAT-14 | After 34 |
-| 36 | Layer D: Provenance + Divestments | After 35; parallel with 37 plans |
-| 37 | CAT-13 engine rewire | After 35 (needs CAT-14 precondition) |
-| 38 | Audit-driven polish wave 1 | After 32 (audit findings); engine-dependent polish after 37 |
-| 39 | DEBT-09 + SET-13 + SET-14 + Nyquist | Parallel with any of 33-38 |
+The admin routes and CMS data model must exist before any front-end module reads from them (Curated Lists Rail, Hero). Without content in `curated_lists`, those modules render null — which is correct graceful degradation, but they cannot be meaningfully tested.
+
+### Phase 4: Explore Shell + Browse + Archetypes
+
+- New `/explore` page shell (5-module grid layout; replaces existing)
+- `src/data/browse.ts` with `cacheTag('catalog:browse')` + `cacheLife({ revalidate: 3600 })`
+- Browse the Catalog module + 4 sub-routes (`/explore/brands`, `/explore/eras`, `/explore/genres`, `/explore/price-bands`)
+- Collector Archetypes chip rail (hardcoded config, no new DB queries)
+- Add `catalog:browse` `revalidateTag` call to `refresh-counts.ts`
+
+Catalog enrichment (Phase 2) must be complete in prod before this phase ships so archetype deep-links return non-empty results.
+
+### Phase 5: Curated Lists Rail + Hero + Where Collections Go
+
+- Curated Lists Rail component (reads `curated_lists` via `src/data/cms.ts`)
+- `/explore/lists` all-lists page + `/explore/lists/[slug]` detail page
+- Hero module with auto-selection logic, quality gate, and manual-pin support
+- `cms_settings` read/write (pin + quality threshold)
+- Where Collections Go module (`collection_paths` + `collection_path_nodes`)
+- `/explore/paths` all-paths page + `/explore/paths/[id]` detail page
+- Invalidation matrix for Hero: `setPinnedHero`, `clearPinnedHero`, `publishList`, `unpublishList` all call `revalidateTag('explore:hero')`
+
+Hero depends on: curated lists existing in the DB (Phase 3) AND at least one published list meeting quality thresholds (admin-authored content). Hero must hide gracefully (return `null`, not an empty container) when no eligible list exists.
 
 ---
 
-## Integration Points: Existing Code That Needs to Know About Hierarchy
+## Modified vs New — Explicit Inventory
 
-### Unchanged — no modification required
+### Modified Files (extend; do not break existing contracts)
 
-- `src/lib/similarity.ts` — until CAT-13 phase
-- `src/app/api/extract-watch/route.ts` — URL extraction upserts to `watches_catalog` via `upsertCatalogFromExtractedUrl`; adding `brand_id` / `family_id` to `upsertCatalogFromExtractedUrl` is Layer A scope but the upsert shape can remain backwards-compatible with nullable new fields
-- `src/data/discovery.ts` — explore rails read `watches_catalog` directly; no hierarchy needed until family/brand browse pages ship
-- `tests/static/CollectionFitCard.no-engine.test.ts` — static guard; survives if the engine signature is unchanged (which it is until CAT-13)
+| File | What Changes |
+|---|---|
+| `src/app/explore/page.tsx` | Add 5-module layout; replace existing 3-rail composition |
+| `src/db/schema.ts` | Add 5 new table exports + 2 new enum exports |
+| `src/lib/types.ts` | Add `CuratedList`, `CuratedListItem`, `CollectionPath`, `HeroFeature` discriminated union types |
+| `scripts/backfill-taste.ts` | Rate-limit retry + inter-row delay + per-row failure logging |
+| `scripts/reenrich-taste.ts` | `--min-confidence-threshold` flag + photo-existence pre-check |
+| `scripts/refresh-counts.ts` | Call `revalidateTag('catalog:browse')` after count refresh |
+| `src/components/ui/sheet.tsx` | Migrate `@base-ui/react/dialog` -> `@base-ui/react/drawer`; public API unchanged |
+| `src/components/profile/ProfileSection.tsx` | Add `AvatarUpload` component; replace URL-string stub |
+| `src/components/watch/ProfileWatchCard.tsx` | Gate all wear UI on `status === 'owned'` |
+| `next.config.ts` | Add `avatars` + `explore-covers` bucket CDN domains to `remotePatterns` |
+| `proxy.ts` (PUBLIC_PATHS) | Add `/admin` prefix to non-public path list |
+| `src/lib/extractors/llm.ts` | `claude-sonnet-4-20250514` -> `claude-sonnet-4-6` (one-line change, deprecation June 15 2026) |
 
-### Modified — Layer A
+### New Files
 
-- `src/db/schema.ts` — add `brands`, `watch_families` tables; add `brand_id`, `family_id` FKs to `watchesCatalog`
-- `src/data/catalog.ts` — `upsertCatalogFromUserInput` and `upsertCatalogFromExtractedUrl` accept optional `brandId`/`familyId` (nullable; they remain null until admin backfill assigns them)
-- `src/lib/types.ts` — extend `CatalogEntry` with `brandId`, `familyId`, `brandName`, `familyName` (denormalized for display)
-- `mapRowToCatalogEntry` in `src/data/catalog.ts` — include new fields when present
+| File | What It Is |
+|---|---|
+| `src/data/cms.ts` | DAL for public reads of curated lists + hero + paths |
+| `src/data/browse.ts` | DAL for Browse index aggregation queries |
+| `src/app/actions/cms.ts` | Owner-gated Server Actions for all CMS mutations |
+| `src/app/actions/paths.ts` | Owner-gated Server Actions for path authoring |
+| `src/app/admin/layout.tsx` | Owner gate layout |
+| `src/app/admin/lists/**` | Admin CMS pages for list authoring |
+| `src/app/admin/paths/**` | Admin CMS pages for path authoring |
+| `src/app/explore/lists/**` | Public list index + list detail routes |
+| `src/app/explore/paths/**` | Public paths index + path detail routes |
+| `src/app/explore/brands/page.tsx` | Brand index |
+| `src/app/explore/eras/page.tsx` | Era index |
+| `src/app/explore/genres/page.tsx` | Genre/style index |
+| `src/app/explore/price-bands/page.tsx` | Price-band index |
+| `src/components/explore/HeroFeature.tsx` | Hero module |
+| `src/components/explore/CuratedListsRail.tsx` | Lists rail |
+| `src/components/explore/CollectorArchetypes.tsx` | Archetype chip rail |
+| `src/components/explore/CollectionPathsModule.tsx` | Paths module |
+| `src/components/explore/BrowseCatalogModule.tsx` | Browse module |
+| `src/components/admin/CmsListForm.tsx` | List authoring form |
+| `src/components/admin/CmsListItemsEditor.tsx` | Per-item commentary + reorder editor |
+| `src/lib/storage/avatars.ts` | Avatar upload helpers |
+| `src/lib/storage/exploreCovers.ts` | Cover image upload helpers |
+| `src/lib/storage/imageUtils.ts` | Shared EXIF-strip + canvas-resize (extracted from existing) |
+| `supabase/migrations/20260516000000_phase_v51_cms_tables.sql` | Authoritative DDL for all new tables + RLS policies |
 
-### Modified — Layer B
+---
 
-- `src/db/schema.ts` — add `watch_lineage_edges` table; extend `watchesCatalog` with `movementCaliber`, `movementType` enum, `era`, `caseMaterial`, `braceletConfig`, `countryOfOrigin`
-- New DAL: `src/data/hierarchy.ts` — `getLineageForReference(catalogId)`, `getBrandById(brandId)`, `getFamilyById(familyId)`, `getReferencesForFamily(familyId)`
+## Anti-Patterns
 
-### Modified — Layer C
+### Anti-Pattern 1: `revalidatePath('/explore')` for nested cached modules
 
-- `src/db/schema.ts` — add `watch_variants` table; add `variant_id` FK to `watches`
-- `src/data/catalog.ts` — `upsertCatalogFromUserInput` gains variant-awareness (low priority; organic path)
+**What people do:** Call `revalidatePath('/explore')` in a CMS Server Action after publishing a list.
+**Why it's wrong:** Nested `'use cache'` Server Components (HeroFeature, CuratedListsRail) are not invalidated by path revalidation. The cache persists until TTL expiry — up to 7 days for the Hero.
+**Do this instead:** `revalidateTag('explore:hero')` and `revalidateTag('explore:lists')` explicitly in every mutation that affects those modules.
 
-### Modified — Layer D
+### Anti-Pattern 2: Route-level owner gate without Server Action assertion
 
-- `src/db/schema.ts` — add `divestments` table; extend `watches` with `serial`, `yearOfAcquisition`, `condition`, `boxPapers`, `serviceHistory`, `paidCurrency`, `purchaseDate`
-- `src/app/actions/watches.ts` — new `divestWatch` Server Action
-- `src/app/actions/watches.ts` — `insertWatchSchema` extended with new provenance fields
+**What people do:** Check `user.id !== OWNER_USER_ID` in `AdminLayout` and assume that is sufficient.
+**Why it's wrong:** Server Actions are directly-callable HTTP endpoints. Any authenticated user who knows the action's URL can POST to it, bypassing the layout.
+**Do this instead:** `assertOwner()` as the literal first statement in every CMS Server Action.
 
-### Modified — CAT-13
+### Anti-Pattern 3: Signed URLs for public avatar retrieval
 
-- `src/lib/similarity.ts` — engine rewire (see migration path section above)
-- `src/data/watches.ts` — `getWatchesByUser` (or equivalent collection reader) gains LEFT JOIN to `watches_catalog` for taste columns
-- `src/lib/types.ts` — `Watch` gains optional `catalogTaste` field
+**What people do:** Reuse `createSignedUrl` from the existing catalog-source-photos pattern for avatar retrieval.
+**Why it's wrong:** Signed URLs expire (60s default in the enricher pattern). Avatar URLs appear in navigation headers — an expiring URL breaks the header on every page.
+**Do this instead:** `getPublicUrl()` from the `avatars` public bucket. No expiry parameter in the returned URL.
 
-### Data flow change: addWatch → upsertCatalog → upsertFamily
+### Anti-Pattern 4: Copying catalog `USING (true)` RLS to CMS tables
 
-The addWatch → catalog upsert flow in `src/app/actions/watches.ts` currently calls `upsertCatalogFromUserInput` which only writes `(brand, model, reference, source)`. After Layer A:
+**What people do:** Apply `USING (true)` public-read RLS to `curated_lists` the way `watches_catalog` uses it.
+**Why it's wrong:** `watches_catalog` is intentionally public with no draft state. `curated_lists` has a draft/published lifecycle — `USING (true)` exposes every draft the admin is writing.
+**Do this instead:** `USING (status = 'published')` for public reads; a separate `OR author_id = auth.uid()` predicate for admin self-reads.
 
-1. `addWatch` continues to call `upsertCatalogFromUserInput` — no change to the hot path
-2. `brand_id` and `family_id` are NOT set during user-promoted catalog upsert — they remain null until admin backfill
-3. Admin backfill script (`scripts/backfill-brand-family.ts`) runs separately to assign `brand_id`/`family_id` to existing References, matching on `brand_normalized`
+### Anti-Pattern 5: LLM enrichment writes to factual spec columns
 
-This keeps the hot path (addWatch latency) unchanged and does not require brand/family lookup during the user-facing write path.
+**What people do:** Extend the enrichment LLM call to produce `case_size_mm`, `movement_type`, `dial_color` alongside taste attributes.
+**Why it's wrong:** LLM hallucination on factual specs corrupts search filter results silently. A user filtering for 38-40mm watches gets wrong results without any visible error.
+**Do this instead:** LLM writes taste columns only (existing scope: formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence, extracted_from_photo). Spec column backfill requires manual operator entry or a human-reviewed scrape step.
+
+---
+
+## Integration Points Summary
+
+| New Feature | Integrates With | How |
+|---|---|---|
+| Curated Lists Rail | `watches_catalog` | FK + JOIN for watch card data on list detail pages |
+| Curated Lists Rail | `explore-covers` bucket | `getPublicUrl` for cover images |
+| Hero | `curated_lists` | quality-gate SELECT + `cms_settings` pin read |
+| Hero | `explore:hero` cache tag | `revalidateTag` in publish, unpublish, setPinnedHero, clearPinnedHero |
+| Browse Indices | `watches_catalog`, `brands`, `watch_families` | GROUP BY aggregation; same public-read RLS |
+| Collector Archetypes | `/search` route | Deep-link with archetype filter in query string (no new DB queries) |
+| Where Collections Go | `watches_catalog` | FK via `collection_path_nodes.catalog_id` |
+| Admin CMS | `users` + Supabase Auth | `OWNER_USER_ID` assertion in every Server Action |
+| Avatar Upload | `avatars` public bucket | `getPublicUrl` (no signed URLs); `profiles.avatar_url` updated |
+| Catalog Enrichment | `scripts/backfill-taste.ts` | Extend existing script; first-write-wins idempotency preserved |
 
 ---
 
 ## Sources
 
-All findings sourced from first-party codebase artifacts:
-
-- `/Users/tylerwaneka/Documents/horlo/src/db/schema.ts` — full schema state
-- `/Users/tylerwaneka/Documents/horlo/src/lib/similarity.ts` — byte-locked engine
-- `/Users/tylerwaneka/Documents/horlo/src/data/catalog.ts` — DAL surface
-- `/Users/tylerwaneka/Documents/horlo/src/data/discovery.ts` — explore rails DAL
-- `/Users/tylerwaneka/Documents/horlo/src/app/actions/watches.ts` — mutation surface
-- `/Users/tylerwaneka/Documents/horlo/src/app/api/extract-watch/route.ts` — catalog upsert path
-- `/Users/tylerwaneka/Documents/horlo/.planning/PROJECT.md` — architecture decisions + requirements
-- `/Users/tylerwaneka/Documents/horlo/.planning/seeds/SEED-001-catalog-hierarchy-and-attributes.md`
-- `/Users/tylerwaneka/Documents/horlo/.planning/seeds/SEED-002-hybrid-recommender.md`
-- `/Users/tylerwaneka/Documents/horlo/.planning/seeds/SEED-004-v5-discovery-north-star.md`
+- `src/db/schema.ts` — existing table definitions, FK shapes, enum patterns, ON DELETE behaviors (HIGH confidence — read directly)
+- `src/app/explore/page.tsx` — existing /explore Server Component shell, nested rail pattern (HIGH confidence — read directly)
+- `src/data/discovery.ts` — DAL two-layer privacy pattern, `cacheTag`/`cacheLife` usage, `::int` cast convention (HIGH confidence — read directly)
+- `src/lib/auth.ts` — `getCurrentUser()`, `UnauthorizedError`, `getCurrentUserFull()` patterns (HIGH confidence — read directly)
+- `scripts/backfill-taste.ts` — sequential enrichment pattern, idempotency, missing rate-limit handling (HIGH confidence — referenced in PITFALLS.md + STACK.md)
+- `.planning/PROJECT.md` — current architecture state post-v5.0, key decisions log, current milestone scope (HIGH confidence — read directly)
+- `.planning/seeds/SEED-008-v5.1-explore-redesign.md` — module specs, implementation order, open questions, success conditions (HIGH confidence — read directly)
+- `.planning/research/STACK.md` (sibling) — technology decisions: `@base-ui/react/drawer`, `react-markdown`, image storage strategy, enrichment approach (HIGH confidence — reconciled; all guidance consistent)
+- `.planning/research/PITFALLS.md` (sibling) — CP-01/02/05/06, MP-01/06/07 referenced throughout; all guidance consistent (HIGH confidence — reconciled)
+- CLAUDE.md memory: `project_drizzle_supabase_db_mismatch.md` — prod push via `supabase db push --linked` only (HIGH confidence)
+- CLAUDE.md memory: `project_supabase_secdef_grants.md` — REVOKE pattern for any SECDEF functions added (HIGH confidence)
 
 ---
-
-*Architecture research for: Horlo v5.0 catalog hierarchy + engine rewire integration*
-*Researched: 2026-05-06*
+*Architecture research for: v5.1 Explore Page Redesign (Horlo)*
+*Researched: 2026-05-16*

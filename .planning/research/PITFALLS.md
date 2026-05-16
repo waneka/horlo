@@ -1,395 +1,473 @@
-# Domain Pitfalls — v5.0 Discovery North Star
+# Domain Pitfalls — v5.1 Explore Page Redesign
 
-**Domain:** Catalog hierarchy migration + engine rewire + clean-slate DB wipe + audit-driven discovery polish on horlo (Next.js 16 App Router, Supabase, Drizzle ORM, single-user)
-**Researched:** 2026-05-06
-**Based on:** SEED-001, SEED-002, SEED-004, v4.0-MILESTONE-AUDIT.md, v4.1-MILESTONE-AUDIT.md, src/db/schema.ts, src/lib/similarity.ts, docs/deploy-db-setup.md, tests/static/CollectionFitCard.no-engine.test.ts, tests/actions/watches.notesPublic.test.ts
+**Domain:** Editorial CMS + catalog-enrichment pipeline + Explore page modules on Horlo (Next.js 16, Supabase, Drizzle ORM)
+**Researched:** 2026-05-16
+**Confidence:** HIGH — grounded in the existing codebase (FilterSheet.tsx, enricher.ts, backfill-taste.ts, catalogSourcePhotos.ts, PROJECT.md, SEED-008), v5.0 post-mortem pitfalls, and known system-level patterns from prior milestones.
 
 ---
 
 ## Critical Pitfalls
 
-These cause rewrites, data loss, or silent regressions that are hard to detect post-ship.
+These cause data corruption, security holes, or features that are silently wrong in production.
 
 ---
 
-### CP-01: Brand/Family backfill applied in wrong order before NOT NULL constraint
+### CP-01: Published-draft RLS gap leaks unpublished curated lists to public readers
 
-**What goes wrong:** In the Layer A phase, `brand_id` and `family_id` are added as nullable columns on `watches_catalog`. A later migration flips them `NOT NULL`. If the `NOT NULL` ALTER runs before the backfill script completes — or if `brand_id` is made NOT NULL before `family_id` exists for every row — the migration aborts midway and leaves the catalog in a partial state.
+**What goes wrong:**
+The curated-lists CMS will have a `status` column (`draft` | `published`). If the `watches_catalog` public-read RLS pattern is copied naively to `curated_lists` — `FOR SELECT TO anon, authenticated USING (true)` — every draft the admin is writing is immediately readable by any authenticated user via the DAL or direct Supabase client call. The UI does not surface drafts, but the API does.
 
-**Why it happens:** The three operations (add nullable column, backfill data, add NOT NULL constraint) are tempting to collapse into a single migration for cleanliness. Postgres evaluates the constraint immediately; any row with a NULL brand_id at that moment fails the constraint.
+**Why it happens:**
+The catalog tables use `USING (true)` (catalog data is intentionally public). The CMS table is different: only published rows are public. Copying the catalog RLS pattern without adding a `status = 'published'` predicate is a copy-paste error with a security consequence.
 
-**Consequences:** Migration fails in production, requiring manual intervention. If not caught before Drizzle migration tracking records the migration as applied (the T-05-06-EMPTYMIGRATE footgun), you cannot cleanly re-run.
+**How to avoid:**
+The curated_lists RLS SELECT policy for non-owner readers must be:
+`USING (status = 'published')`.
+Owner reads (admin CMS editing their own draft) require a separate policy:
+`USING (status = 'published' OR author_id = auth.uid())`.
+Two-layer defense: DAL functions for public reads must also include `WHERE status = 'published'` — do not rely on RLS alone (consistent with the project's two-layer privacy posture established in Phase 11).
+Verify via: `SELECT * FROM curated_lists` in a Supabase Studio session authenticated as a non-admin user. Zero draft rows should appear.
 
-**Prevention:**
-- Layer A migration structure (Phase 33): ADD COLUMN brand_id nullable, ADD COLUMN family_id nullable — one migration.
-- Backfill script runs separately, verifies zero NULLs remain.
-- Only then: ALTER COLUMN brand_id SET NOT NULL in a separate migration.
-- Same sequence for family_id.
-- The sequence is: brand rows must exist BEFORE family rows BEFORE family_id can be assigned BEFORE brand_id can be NOT NULL.
-- Explicitly: in Phase 33, `brands` table created first, then `watch_families` (FK to brands), then backfill `watches_catalog.brand_id`, then backfill `watches_catalog.family_id`, then optionally add NOT NULL on both.
+**Warning signs:**
+A non-admin user visits `/explore/lists` and can see a list by its URL (`/explore/lists/[slug]`) that was never published. Or: a DAL integration test queries curated_lists without the status filter and returns draft rows.
 
-**Detection:** Run `SELECT count(*) FROM watches_catalog WHERE brand_id IS NULL` after each backfill step. Any non-zero result blocks the NOT NULL flip.
-
-**Phase owner:** Layer A phase (Phase 33 or equivalent).
-
----
-
-### CP-02: CAT-13 engine rewire breaks the byte-lock invariant already spanning 3 phases
-
-**What goes wrong:** `analyzeSimilarity()` is byte-locked across Phases 17, 19.1, and 20 (D-09 in Phase 17, reinforced in Phase 20). The static guard test `tests/static/CollectionFitCard.no-engine.test.ts` ensures `<CollectionFitCard>` never imports the engine. CAT-13 rewires the engine to read catalog taste columns at JOIN time. If the rewire modifies `analyzeSimilarity`'s function signature, its export name, or moves it to a different module path, every phase that cited the byte-lock becomes stale — but the lock is not re-verified and the static guard continues to pass vacuously (because it tests file-level imports, not function internals).
-
-**Why it happens:** The byte-lock was documented as "NEVER MODIFY" but that instruction does not survive the CAT-13 rewire unchanged. The rewire necessarily changes the inputs (adding a catalog JOIN result) or the data path even if the signature stays the same.
-
-**Consequences:** Static guard `tests/static/CollectionFitCard.no-engine.test.ts` continues to pass but the behavior contract it was protecting has silently shifted. Verdict labels regress on collections where catalog taste data is absent (NULL confidence rows) because the old per-user-tag fallback path is no longer exercised.
-
-**Prevention:**
-- In the CAT-13 phase, explicitly decide: does `analyzeSimilarity`'s signature change? If catalog taste columns are injected as a new optional parameter, document that as a deliberate signature extension, not a lock violation.
-- Add a new static guard test: `tests/static/analyzeSimilarity.catalog-gate.test.ts` that asserts: when catalog taste data has NULL confidence, the engine returns a verdict using only per-user tag data (regression guard for the NULL-confidence fallback path). This is distinct from the existing `CollectionFitCard.no-engine.test.ts` which guards import boundaries, not behavioral correctness.
-- The old byte-lock language ("byte-locked") should be updated in the CAT-13 phase's CONTEXT.md to "engine rewire under CAT-13 — see Phase 3X CONTEXT for the new invariant."
-- The `no-engine` test name remains accurate post-rewire because the test guards that `<CollectionFitCard>` is still a pure renderer — the rewire moves computation server-side, which STRENGTHENS the rationale for the test. Do not rename the test.
-- The `analyzeSimilarity.confidence-gate.test.ts` guard must assert that at confidence < 0.5, the catalog taste path is skipped and the verdict falls back to per-user-tag behavior. This matches the existing 0.5/0.7 threshold pattern from Phase 20.
-
-**Detection:** If any of the 6 SimilarityLabel outputs regresses in tests after CAT-13 ships, it is a confidence-gate logic error in the rewire. Run `npx vitest run tests/similarity` immediately after the rewire.
-
-**Phase owner:** CAT-13 phase (Phase 35 or equivalent).
+**Phase to address:** Curated Lists + CMS phase (Phase 46 or equivalent). The RLS migration and DAL WHERE clauses must both be present in the same plan before any list authoring begins.
 
 ---
 
-### CP-03: Clean-slate DB wipe with user data not exported before DROP
+### CP-02: Server Action auth bypass on CMS mutations — owner-gate implemented in UI only
 
-**What goes wrong:** Layer C (Variant split) requires a clean-slate DB wipe so the user can manually curate dedup'd catalog rows. The user's small collection in `watches` needs to survive. The wipe sequence drops `watches_catalog` rows and re-seeds from a clean curated set, then re-links `watches.catalog_id`. If the user's `watches` rows are not exported (or if `watches.catalog_id` FKs are left pointing at to-be-deleted catalog rows before re-link), the user loses their collection or their watches become orphaned.
+**What goes wrong:**
+The in-app admin CMS route is "owner-gated" — only the operator (single user) can author lists. If the ownership check lives only in the route rendering logic (e.g., `if (user.id !== OWNER_ID) redirect('/explore')`) but not in the Server Actions that handle create/update/delete, any authenticated user who crafts a direct POST to the Server Action can mutate curated lists.
 
-**Why it happens:** `watches.catalog_id` is nullable `ON DELETE SET NULL`. So a DROP of `watches_catalog` rows does NOT delete the user's watches — it NULLs out the `catalog_id` FKs. This is actually correct behavior. But it requires a deliberate re-link pass after the new catalog seed is in place, or the collection loses all catalog associations (breaks CAT-13 verdicts, breaks `/catalog/{id}` ownership counts, breaks discover surfaces).
+**Why it happens:**
+UI-layer gates feel sufficient when there is only one user. But the app has multi-user auth already live (follows, public profiles). Any future user can hit Server Actions directly. "It's a single-user app" is not a durable security argument.
 
-**Consequences:** Collection exists but every watch has `catalog_id = NULL`. CAT-14 (SET NOT NULL) cannot be applied until re-link is complete. CAT-13 engine rewire produces empty-collection verdicts (no catalog JOIN hits) for every watch.
+**How to avoid:**
+Every CMS Server Action (`createCuratedList`, `updateCuratedList`, `publishList`, `unpublishList`, `deleteCuratedList`) must begin with:
+```ts
+const user = await getCurrentUser()
+if (user.id !== process.env.OWNER_USER_ID) {
+  throw new Error('Unauthorized')
+}
+```
+This is the same pattern as the DAL's `double-verified` auth gate used throughout the existing actions. Use a named constant `OWNER_USER_ID` from an env var — do not hardcode the UUID in source.
+Additionally: RLS on `curated_lists` should enforce `WITH CHECK (author_id = auth.uid())` on INSERT/UPDATE/DELETE, so even a service-role bypass would require the correct user.
 
-**Prevention (exact sequence for Layer C phase):**
-1. Export the user's `watches` table as a CSV backup BEFORE any wipe (`SELECT * FROM watches INTO OUTFILE` or `pg_dump --table=watches`).
-2. Do NOT drop the `watches_catalog` table. Instead: DELETE the catalog rows that are being replaced, INSERT the curated dedup'd rows.
-3. Run `SELECT id, brand, model, catalog_id FROM watches WHERE catalog_id IS NULL` after the wipe to see which watches lost their FK.
-4. Run the re-link backfill (`npm run db:backfill-catalog` is idempotent per `WHERE catalog_id IS NULL`) to re-associate watches to the new curated catalog rows.
-5. Verify: `SELECT count(*) FROM watches WHERE catalog_id IS NULL` must return 0 before CAT-14 can proceed.
-6. If count > 0, these are watches that cannot be matched to any row in the new curated catalog — they need manual assignment or a new catalog row created.
+**Warning signs:**
+A Server Action file for CMS operations exists but does not call `getCurrentUser()` as its first statement. Or: the action calls `getCurrentUser()` but then only uses the result for display logic, not to enforce ownership.
 
-**Detection:** After wipe, `catalog_id IS NULL` count is the progress indicator. Before Layer C ships, run this query against the local DB with a dry-run of the wipe to verify recovery is possible.
-
-**Phase owner:** Layer C phase.
-
----
-
-### CP-04: Lineage CTE infinite recursion from undirected cycle in `watch_lineage_edges`
-
-**What goes wrong:** `watch_lineage_edges` stores (predecessor_id, successor_id) pairs. If even one cycle exists — e.g., row A says 5513 → 16610 and row B says 16610 → 5513 — then `WITH RECURSIVE lineage AS (...)` will loop forever and the query will either time out or crash the connection.
-
-**Why it happens:** The schema has no CHECK constraint preventing (A,B) and (B,A) from coexisting. Manual data entry of lineage edges (which is the seeding strategy) is prone to accidental reversal. Postgres does not detect lineage graph cycles at INSERT time.
-
-**Consequences:** Any query that traverses the lineage graph (e.g., "show predecessors of this reference") hangs. In Next.js App Router this surfaces as a request that never resolves (timeout, or RSC stream never closes), not a thrown error — hard to debug.
-
-**Prevention:**
-- Add a `BEFORE INSERT` trigger on `watch_lineage_edges` that checks for cycle introduction via a bounded recursive query (depth limit: 20 hops is enough for any real watch lineage).
-- Alternatively: at INSERT time, query `WITH RECURSIVE check_cycle AS (SELECT predecessor_id FROM watch_lineage_edges WHERE successor_id = NEW.predecessor_id UNION ALL ...) SELECT 1 FROM check_cycle WHERE predecessor_id = NEW.successor_id`. If this returns a row, RAISE EXCEPTION and reject the insert.
-- All lineage CTE queries must include a depth counter (`depth INT`, stop at depth > 20) and CYCLE detection (`CYCLE reference_id SET is_cycle USING path` — Postgres 14+ syntax available on Supabase). Supabase runs Postgres 15+; use `CYCLE` clause.
-- In the Layer B phase's CONTEXT.md, document that lineage edges are unidirectional: predecessor → successor represents "this reference came before and influenced that one." "Tribute" and "homage" are NOT lineage edges — they are a separate edge type (`relation_type` enum: `'successor' | 'tribute' | 'homage' | 'regional_variant'`).
-- Seed lineage data with a seed script that validates the full graph for cycles after each batch insert before committing.
-
-**Detection:** Warning sign: a `/catalog/{id}` page that renders the lineage tree takes more than 2 seconds. Expected render is under 200ms for 10-hop chains.
-
-**Phase owner:** Layer B phase.
+**Phase to address:** Curated Lists + CMS phase. Document as a success criterion: "Run `createCuratedList` as non-owner user — verify it throws Unauthorized."
 
 ---
 
-### CP-05: Variant fragmentation creep resumes post-clean-slate via user_promoted inserts
+### CP-03: LLM enrichment re-run overwrites high-confidence catalog data already in production
 
-**What goes wrong:** Layer C dedup collapses "Submariner Date 16610" and "16610 black dial" into one canonical Reference row. But the `upsertCatalogFromUserInput` and `upsertCatalogFromExtractedUrl` helpers use a NULLS NOT DISTINCT UNIQUE on `(brand_normalized, model_normalized, reference_normalized)`. The normalized reference for "16610LV" and "16610 LV" differ after `regexp_replace(lower(trim(reference)), '[^a-z0-9]+', '', 'g')` — actually they collapse to the same string ("16610lv") because the regex strips non-alphanumerics. But "16610 LV" vs "Kermit 16610" vs "16610LV (Kermit)" do NOT collapse the same way.
+**What goes wrong:**
+The existing `updateCatalogTaste` uses first-write-wins (`WHERE confidence IS NULL`). The v5.1 catalog enrichment phase will run a richer backfill — potentially with photos, more spec data, or a better prompt. If the operator runs `db:reenrich-taste --force` without understanding that `--force` overwrites ALL rows regardless of confidence, high-confidence rows enriched from official photos get replaced by lower-quality text-only enrichments. The production catalog taste data degrades silently — `analyzeSimilarity()` starts producing worse verdicts.
 
-**Consequences:** Within 6 months of the clean-slate wipe, the catalog fragments again. The taste graph for the recommender (SEED-002) fractions because "16610lv" and "16610lvkermit" are separate Reference rows even though they are the same watch.
+**Why it happens:**
+The `reenrich-taste.ts` script exists and accepts `--force`. The v5.1 enrichment phase has better inputs (more spec columns populated, better photos from the enrichment run). It is tempting to `--force` everything to get the "better" enrichment. But some rows already have `confidence = 0.9` from official photos in Phase 19.1. Force-overwriting those with text-only calls (confidence ~0.6) is a regression.
 
-**Prevention:**
-- In Layer C, establish a written dedup policy (not just schema): model string normalization rules and which fields constitute Variant-level vs Reference-level identity.
-- The Variant table (if shipped in Layer C) is the structural prevention: Variants are legitimate differences (dial color, bezel inscription); if "Kermit" and "black 16610" exist as Variants of Reference 16610, they correctly collapse to the same Reference in the taste graph.
-- Add a post-insert linter (a cron script or admin page) that runs weekly: `SELECT brand, model, reference_normalized, count(*) FROM watches_catalog GROUP BY brand, model, reference_normalized HAVING count(*) > 1`. This surfaces fragmentation before it accumulates.
-- Document in the Layer C CONTEXT.md that user_promoted rows with identical normalized tuples are correctly deduped by the UNIQUE constraint, but rows with slightly different model strings that represent the same watch require manual admin merging. Build a minimal admin merge endpoint in Layer C (merges two catalog rows: reassigns all FK references in `watches`, adopts the winning row's taste data, deletes the loser).
+**How to avoid:**
+For the v5.1 backfill run: use the default `db:backfill-taste` (NULL confidence only) to fill gaps, then `db:reenrich-taste --catalog-id=<uuid>` only for specific rows where the operator has identified that existing taste data is wrong.
+Add a new flag to `reenrich-taste.ts`: `--min-confidence-threshold=0.7` — only re-enriches rows where existing confidence is BELOW the threshold. This makes intentional upgrades safe without risking regression on high-confidence rows.
+Pre-run assertion: before any backfill/reenrich run in prod, log the count and distribution of existing confidence values: `SELECT confidence, count(*) FROM watches_catalog WHERE confidence IS NOT NULL GROUP BY confidence ORDER BY confidence`.
 
-**Detection:** The weekly linter finding count > 0 rows is the warning sign. Any time `/explore` Trending shows the same Reference at multiple ranks under slightly different model strings, fragmentation has occurred.
+**Warning signs:**
+After a backfill run, the average `confidence` across `watches_catalog` rows DECREASES. Or: a row previously enriched from a photo now has `extracted_from_photo = false`.
 
-**Phase owner:** Layer C phase. Linter is ongoing operator tooling.
+**Phase to address:** Catalog Enrichment phase (before Explore module work). Add the confidence-threshold flag as a requirement.
 
 ---
 
-### CP-06: CAT-14 SET NOT NULL applied before zero-NULL verification across two consecutive deploys
+### CP-04: LLM hallucination corrupts factual spec fields — no validation boundary between taste and spec columns
 
-**What goes wrong:** `watches.catalog_id` is currently nullable. CAT-14 flips it NOT NULL. If any watch row still has `catalog_id = NULL` at flip time, the ALTER fails with a constraint violation and rolls back. Worse: if the migration is applied in a transaction that also modifies other columns, a partial state may require manual recovery.
+**What goes wrong:**
+v5.1 enrichment extends beyond taste attributes to factual spec backfill: movement type, case size, dial color, complications, photos. If the LLM is asked to produce both taste attributes (subjective, soft) AND factual specs (objective, hard) in the same call, it may hallucinate specs — e.g., reporting `case_size_mm = 40` for a watch that is 38mm, or `movement_type = 'manual'` for a watch that is automatic. These errors flow directly into the catalog's factual columns and affect `/search` filter results (a user filtering for 38-40mm case sizes finds or misses watches incorrectly).
 
-**Why it happens:** The backfill is documented as "must be verified across two consecutive deploys" (SEED-004 and PROJECT.md). This verification discipline is easy to skip in practice — it requires two separate deploy-and-check cycles rather than a single migration.
+**Why it happens:**
+The existing enricher is strictly scoped to taste attributes (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence). There is a clean boundary: the enricher never writes factual spec columns. If v5.1 tries to use the LLM to also backfill `movement_type`, `case_size_mm`, etc., it removes that boundary.
 
-**Consequences:** Migration fails in prod. If the Drizzle migration tracking row was written before the constraint check (depends on transaction ordering), re-running the migration errors with "column already NOT NULL." Manual psql recovery required.
+**How to avoid:**
+Maintain the existing separation: the LLM enricher writes ONLY taste columns. Factual spec backfill (`movement_type`, `case_size_mm`, `dial_color`, etc.) must come from a different source — either manual operator entry, web scraping from known authoritative sources (brand.com, watch databases), or a separate LLM call with explicit confidence gating and a human review step before write.
+If the enrichment phase does use LLM for specs, require: (a) a `spec_confidence` field separate from `taste_confidence`; (b) a `spec_needs_review` boolean that gates spec writes behind operator approval; (c) never auto-write factual specs to production without a review step.
+The safest approach: enrichment phase uses LLM only for taste columns (existing pattern), uses manual operator data entry + scraping for spec columns.
 
-**Prevention:**
-- CAT-14 migration must include a pre-flight assertion as the FIRST statement: `DO $$ BEGIN IF EXISTS (SELECT 1 FROM watches WHERE catalog_id IS NULL) THEN RAISE EXCEPTION 'CAT-14 pre-flight failed: % watches have NULL catalog_id', (SELECT count(*) FROM watches WHERE catalog_id IS NULL); END IF; END $$;`
-- This is the same DO $$ pattern used in Phase 24 T-24-PRODAPPLY. It fires before the ALTER and rolls back the entire transaction if any NULLs remain.
-- Two-deploy verification means: deploy 1 runs the backfill and logs the count; deploy 2 (next day) verifies count is still 0 (no new NULLs from new add-watch operations that missed catalog linkage); only then does deploy 3 include the NOT NULL migration.
-- In the v5.0 clean-slate context: the clean-slate gives a fresh start with a fully controlled catalog, making CAT-14 achievable within the milestone. But the two-deploy gate still applies — do not shortcut.
+**Warning signs:**
+The enrichment plan proposes a single LLM call that outputs both taste attributes and factual specs in one tool-use block. Or: spec columns are being written from LLM output without a human review step.
 
-**Detection:** `SELECT count(*) FROM watches WHERE catalog_id IS NULL` must return 0 before CAT-14 migration is written.
+**Phase to address:** Catalog Enrichment phase. Document as a hard constraint: "LLM output writes taste columns only. Spec columns require either manual entry or a human-reviewed scrape."
 
-**Phase owner:** CAT-14 phase (after Layer C and after backfill verified).
+---
+
+### CP-05: Broken catalog references in curated lists when a catalog row is deleted or replaced
+
+**What goes wrong:**
+A curated list contains FK references to `watches_catalog.id`. If a catalog row is deleted (e.g., during a future catalog cleanup or merge operation), the FK reference in the list either CASCADE DELETEs the list item (making the list silently shorter) or sets it to NULL (making the list render a broken card). Neither is surfaced to the admin — the published list is now broken in production.
+
+**Why it happens:**
+The `watches_catalog` table uses `ON DELETE SET NULL` for `watches.catalog_id`. If the same pattern is used for the curated list items junction table, list item rows survive but with a NULL `catalog_id` — the component tries to render a watch card with no data. If `ON DELETE CASCADE` is used instead, list items silently disappear.
+
+**How to avoid:**
+The curated list items table must use `ON DELETE RESTRICT` on `catalog_id` FK — blocking deletion of catalog rows that are referenced by a published list. This forces the operator to either: (a) remove the watch from the list before deleting the catalog row, or (b) unpublish the list first.
+For the `Where Collections Go` path module: same constraint — a path node that references a deleted catalog row must block the delete.
+In both cases, add a pre-delete check in the admin UI that warns: "This watch is referenced in [N] curated lists. Remove it from those lists before deleting."
+
+**Warning signs:**
+An admin deletes a catalog row and the published list on `/explore` renders a broken card or silently shows fewer watches than the list's advertised count.
+
+**Phase to address:** Curated Lists + CMS phase. The schema design decision (RESTRICT vs CASCADE vs SET NULL) must be explicit in the plan.
+
+---
+
+### CP-06: Supabase SECDEF functions auto-granting EXECUTE to anon breaks admin-CMS isolation
+
+**What goes wrong:**
+The existing memory note (`project_supabase_secdef_grants.md`) documents that Supabase auto-grants EXECUTE to `anon`, `authenticated`, and `service_role` on public-schema functions by default. If any CMS-related SECURITY DEFINER function is created (e.g., a function to publish a list, refresh browse counts) without explicit `REVOKE EXECUTE FROM anon, authenticated` followed by `GRANT EXECUTE TO service_role`, any authenticated user can call the function directly from the Supabase client.
+
+**Why it happens:**
+This is a Supabase-specific behavior, not standard Postgres. Prior milestones (Phase 11) hit this: `REVOKE FROM PUBLIC` alone does not block anon. The grant to `authenticated` happens automatically and must be explicitly revoked per-role.
+
+**How to avoid:**
+Every SECURITY DEFINER function created in v5.1 (count refresh, publish trigger, etc.) must follow the existing pattern:
+```sql
+REVOKE ALL ON FUNCTION fn_name() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION fn_name() FROM anon;
+REVOKE EXECUTE ON FUNCTION fn_name() FROM authenticated;
+GRANT EXECUTE ON FUNCTION fn_name() TO service_role;
+```
+Add this to the migration template for any new SECDEF function. Verify post-migration: attempt to call the function as `authenticated` role — it must return a permission error.
+
+**Warning signs:**
+A new SECDEF function is created in a migration file without explicit REVOKE statements after the function body. Or: the function appears in `information_schema.routines` with `SECURITY_TYPE = 'DEFINER'` but no REVOKE migration lines.
+
+**Phase to address:** Any phase that adds SECDEF functions (count refresh cache, publish helpers). The Catalog Enrichment phase is the most likely candidate.
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause incorrect behavior or significant rework but not data loss.
+Mistakes that cause incorrect behavior, UX regressions, or significant rework.
 
 ---
 
-### MP-01: RLS policies on new hierarchy tables not extended from watches_catalog pattern
+### MP-01: Catalog-derived count caching strategy not decided before Browse the Catalog ships
 
-**What goes wrong:** `watches_catalog` has public-read RLS (authenticated + anon can SELECT; only service_role can INSERT/UPDATE/DELETE — per CAT-02). The new `brands`, `watch_families`, `watch_variants`, and `watch_lineage_edges` tables are catalog-level data and must share this same public-read policy. If they are created without RLS enabled, or with default Postgres behavior (no row-level policies = anon blocked), then Server Components that render Brand pages or Family browse pages fail with 403/empty results in the browser.
+**What goes wrong:**
+The Browse the Catalog module shows brand/era/genre/price-band indices with counts (e.g., "Rolex (42)"). These counts are derived from `watches_catalog` via SQL aggregation. If no caching strategy is decided, two bad outcomes are possible: (a) live queries on every page load make Browse the Catalog slow for a count that barely changes; (b) `cacheLife({ revalidate: 86400 })` is applied blindly and counts are stale for a full day after catalog enrichment adds new rows.
 
-**Why it happens:** Drizzle ORM `pgTable()` does not emit `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` or `CREATE POLICY` statements — these always live in Supabase raw SQL migrations. New tables land without RLS until a follow-up migration adds it. If the phase ships without the RLS migration, the tables appear to work in local dev (Drizzle `drizzle-kit push` does not apply RLS) but fail in prod where Supabase enforces it.
+**Why it happens:**
+SEED-008 explicitly flags "Caching strategy for catalog-derived counts in Browse indices: static at build, ISR, or live?" as an open question. The temptation is to defer this to the phase and figure it out then. But the choice affects the data model: if count materialization requires a cron job or a pre-computed `counts_cache` table, that infrastructure must exist before the Browse module renders.
 
-**Prevention:**
-- Every new catalog-level table in Layer A/B/C must have its RLS migration in the SAME migration file as the table DDL — not as a follow-up.
-- Template: `ALTER TABLE public.brands ENABLE ROW LEVEL SECURITY; CREATE POLICY "Public read brands" ON public.brands FOR SELECT TO anon, authenticated USING (true); CREATE POLICY "Service role write brands" ON public.brands FOR ALL TO service_role USING (true) WITH CHECK (true);`
-- The Layer A phase CONTEXT.md must list all four tables (brands, watch_families, watch_lineage_edges, watch_variants) and explicitly confirm RLS policy for each.
-- Verify with `has_table_privilege('anon', 'public.brands', 'SELECT')` in the post-migration step of the deploy runbook.
+**How to avoid:**
+Decide at roadmap time, not during the phase. Recommendation: use Next.js `cacheLife({ revalidate: 3600 })` (1-hour ISR) on the Browse index Server Component, paired with explicit `revalidateTag('catalog:browse')` calls in any Server Action that modifies `watches_catalog` (enrichment writes, admin edits). This is the same pattern as the existing `/explore` rails (5-minute TTL + revalidateTag on watch mutations). The existing `refresh-counts.ts` script (daily pg_cron) can also call `revalidateTag` after it runs.
+Document the tag name convention in the Browse phase plan.
 
-**Detection:** Warning sign: `/explore/families` or a brand page returns empty results when viewed in a private browser (anon session), but works when logged in. This is the classic Supabase RLS miss.
+**Warning signs:**
+The Browse the Catalog module is shipped without a `cacheLife` declaration. Or: the phase CONTEXT.md says "we'll use live queries for now" — this will cause noticeable latency on the browse index pages.
 
-**Phase owner:** Layer A phase for brands and watch_families; Layer B for watch_lineage_edges; Layer C for watch_variants.
-
----
-
-### MP-02: divestments table vs sold status — wrong choice makes SEED-002 signal unqueryable
-
-**What goes wrong:** SEED-002 requires a "sold (negative): -0.3" signal for the collaborative filtering layer. Currently `watches.status` has a `'sold'` value. If the divestments architecture is "just use status = sold," the sold signal is queryable but lacks the provenance fields needed for the negative-signal layer: specifically, when was the watch sold, what was the sale price, and was it sold vs given away vs traded. Without a timestamp, the -0.3 weight cannot be time-decayed (recent sells are stronger signal than sells from 5 years ago).
-
-**Why it happens:** Adding a `divestments` table feels like over-engineering for a "sold" toggle. But the recommender's signal-extraction layer (SEED-002) needs at minimum: `(user_id, catalog_id, sold_at, sale_price_optional)`. This is exactly a `divestments` table, not a status column.
-
-**Prevention:**
-- Prefer a `divestments` table over status-only for Layer D. Schema: `(id uuid PK, user_id FK → users, watch_id FK → watches ON DELETE SET NULL, catalog_id FK → watches_catalog ON DELETE CASCADE, divested_at timestamp NOT NULL DEFAULT now(), sale_price real, divestment_type text CHECK IN ('sold', 'traded', 'gifted', 'lost'))`.
-- The `watches.status = 'sold'` enum value can STAY as a convenience UI state (the watch card shows "Sold" in the collection grid), but the recommender signal-extraction query reads from `divestments`, not from `watches.status`.
-- Note: `watches.status` already includes `'sold'` as a value (schema.ts line 58). Layer D should ADD the `divestments` table and wire `status = 'sold'` transitions to INSERT a divestments row. Do not try to remove the status value — it's an enum, and enum value removal requires T-24-PARTIDX surgery.
-- The key queryable field for SEED-002: `SELECT catalog_id, divested_at FROM divestments WHERE user_id = $userId ORDER BY divested_at DESC` — this is the negative signal query. Make `catalog_id` NOT NULL on `divestments` (unlike watches.catalog_id) because a divestment with no catalog association is meaningless as a recommender signal.
-
-**Detection:** Warning sign in SEED-002 planning: "we'll derive sold signal from watches.status." That path cannot produce a `sold_at` timestamp without createdAt/updatedAt approximations, which are noisy.
-
-**Phase owner:** Layer D phase.
+**Phase to address:** Explore Shell + Browse the Catalog phase. The caching decision must be in the plan before implementation.
 
 ---
 
-### MP-03: updateTag vs revalidateTag wiring missing on new hierarchy mutation paths
+### MP-02: Empty-module degradation not tested — modules render empty containers instead of hiding
 
-**What goes wrong:** Phase 13 documented the `updateTag` vs `revalidateTag` distinction (NOTIF-04). The `/explore` rails use `updateTag` for read-your-own-writes (per-viewer tag) and `revalidateTag` for SWR fan-out (global explore tag). When Layer A adds Brand and Family mutations (admin: create brand, assign family), these mutations touch catalog data that affects Brand pages, Family pages, and possibly `/explore` Trending (if Family-level counts aggregate onto the explore rails).
+**What goes wrong:**
+SEED-008 states: "Modules with missing data degrade gracefully — never empty." The Hero must hide itself when no quality-gated list exists. The Curated Lists Rail must hide the entire module when there are zero published lists. In practice, components render their container (heading, padding, section chrome) but with no content — a visible empty box on the page.
 
-If the hierarchy mutation Server Actions only call `revalidatePath()` and forget the tag-based cache, the `/explore` Rails page stays stale for up to 5 minutes. If they forget invalidation entirely, the cached Brand/Family page never reflects the edit.
+**Why it happens:**
+Developers test the happy path. The empty-state check is conditional logic that only runs when the data array is length 0, which never happens in a dev environment where the admin has seeded content. The empty container only surfaces in production before any lists are authored, or if all lists are unpublished.
 
-**Prevention:**
-- In Layer A/B phases, define cache tag naming convention before writing any mutation. Proposed: `'catalog:brand:{brandId}'`, `'catalog:family:{familyId}'`, `'catalog:lineage:{referenceId}'`.
-- Any Server Action that mutates a Brand row must call `revalidateTag('catalog:brand:${brandId}')` AND `revalidateTag('explore', 'max')` if the brand mutation could affect Trending or Gaining Traction counts.
-- The Layer A phase CONTEXT.md must include an invalidation matrix (same pattern as Phase 18's Server Action invalidation matrix in the Requirements doc) listing every mutation and every tag it must invalidate.
-- Admin-only mutations (brand create/edit) can use `revalidateTag` only (no `updateTag` needed — no per-user read-your-own-writes for admin ops).
+**How to avoid:**
+Each module component must have an explicit early return of `null` (not an empty `<section>`) when its data is empty. The acceptance criteria for each module must include: "Render with empty data — module is absent from the DOM, no empty container."
+Write a test for each module with empty props: `expect(container).toBeEmptyDOMElement()` or `expect(queryByRole('region', { name: 'Curated Lists' })).not.toBeInTheDocument()`.
+The Hero's quality-gate logic (minimum watch count, has cover image, has intro copy) must be tested with lists that fail exactly one criterion at a time.
 
-**Detection:** Warning sign: edit a brand name in the admin UI and the Brand page still shows the old name after navigating away and back. This is a cache tag miss.
+**Warning signs:**
+A screenshot of `/explore` on a fresh environment (no lists authored yet) shows section headings with blank content beneath them. Or: the Hero renders a broken image placeholder when no list has a cover image.
 
-**Phase owner:** Layer A/B phases. Lineage edges in Layer B.
-
----
-
-### MP-04: Phase 19.1 taste columns disagree after Variant dedup collapses catalog rows
-
-**What goes wrong:** Before Layer C, catalog rows "Submariner Date 16610 (black)" and "Submariner 16610 LV (Kermit)" each have their own Phase 19.1 taste columns (formality, sportiness, heritage_score, etc.), enriched independently by LLM calls. After dedup, one row survives. The surviving row's taste data may have been enriched from the black dial variant's description/photo, not the green Kermit. The Kermit's taste signal (slightly higher sportiness, different era_signal) is lost.
-
-**Why it happens:** The admin merge endpoint (CP-05 prevention) picks a "winning" row and deletes the "loser." There is no mechanism to blend the taste data from two rows.
-
-**Prevention:**
-- In Layer C, the admin merge procedure should: compare the two rows' `confidence` scores; if one is materially higher (>0.1 difference), adopt the higher-confidence row's taste data wholesale. If similar confidence, flag the merged row for re-enrichment by setting `confidence = NULL` — this triggers the next `npm run db:reenrich-taste` run to re-enrich from scratch using the canonical Reference description/photo.
-- The `reenrich-taste.ts` script already supports `--catalog-id=<uuid>` for individual rows. Add a Layer C merge script that: merges FKs, adopts higher-confidence taste data (or nulls it), and logs a list of merged catalog_ids that need re-enrichment.
-- Cost is low: at ~$0.005–$0.013 per row and a small catalog (<500 rows total), re-enriching 20–50 collapsed rows is under $0.65.
-
-**Detection:** Warning sign: after Layer C, a Reference row for a recognizable watch (e.g., the 5513 vintage Submariner) has `primary_archetype = 'dress'` — clearly wrong, suggests the taste data was adopted from a misidentified merge source. Re-enrichment fixes this.
-
-**Phase owner:** Layer C phase.
+**Phase to address:** Explore Shell (for the shell empty-module pattern) + Curated Lists Rail phase (for the specific list module). Each module acceptance checklist must include the zero-data test.
 
 ---
 
-### MP-05: DEBT-09 fix falls into the same hole as the original Phase 23 ship
+### MP-03: Bottom-sheet gated-open-change bug class — dismiss blocked during loading
 
-**What goes wrong:** DEBT-09 is: `addWatch`/`editWatch` in `src/app/actions/watches.ts` do not persist `notesPublic` and do not call `revalidatePath('/u/{username}/{tab}')`. The Phase 23 SUMMARY claimed both shipped via commit `4d362ff` which never reached main. The fix risk is repeating the same pattern: writing the fix in a branch, getting interrupted, and the commit not making it to main before the milestone closes.
+**What goes wrong:**
+The v5.0 FilterSheet bug: the sheet "could not be dismissed while a filtered query was in flight." The root cause: something in the parent was calling `onOpenChange` with a function that checked loading state before allowing close. The `WatchFacetSheet` component in `FilterSheet.tsx` passes `onOpenChange={setSheetOpen}` directly, which is correct. The bug likely manifested where a parent wrapped the open-state setter in a guard: `(open) => { if (!watchesIsLoading) setSheetOpen(open) }` — or where closing the sheet triggered a re-render that set loading state which re-opened the sheet.
 
-**Why it happens:** The original miss was a commit that existed (4d362ff) but was not an ancestor of HEAD — suggesting a rebase or force-push dropped it silently. The RED test scaffold (4/4 FAIL) is now in the repo and will catch any future ship of the fix. But the scaffold only helps if the test suite is run before the phase closes.
+This class of bug recurs any time a modal/sheet's dismiss handler is made conditional on async state.
 
-**Prevention:**
-- In the DEBT-09 fix phase, the RED scaffold (`tests/actions/watches.notesPublic.test.ts`) must be explicitly listed as a success criterion: "4/4 tests must be GREEN at phase close."
-- The fix is straightforward (add `notesPublic: z.boolean().optional().default(true)` to `insertWatchSchema` in watches.ts, pass through to createWatch/updateWatch, add `revalidatePath('/u/[username]', 'layout')`). Write the fix against the test scaffold first; verify 4/4 GREEN locally before any other Phase work.
-- Do NOT rely on "it was claimed in SUMMARY" — verify via grep: `grep -cnE "notesPublic|notes_public" src/app/actions/watches.ts` must return > 0 before phase closes.
-- Add the DEBT-09 fix as Phase 32 (first phase of v5.0, since it is pre-existing carryover that should not be mixed with hierarchy schema work).
+**Why it happens:**
+The intent is usually "don't close the filter sheet while results are loading, because the user might not realize their filter is in flight." But this inverts user intent: the user explicitly dismissed the sheet. Loading state should never gate a user-initiated dismiss.
 
-**Detection:** The RED scaffold is already there. Any CI run that includes `npx vitest run tests/actions/watches.notesPublic.test.ts` will show 4/4 FAIL until the fix ships. This should be blocked as a merge-gate.
+**How to avoid:**
+The pattern to enforce in v5.1 (and for the v5.0 fix in the Polish phase): the `onOpenChange` prop passed to any Sheet/Dialog/BottomSheet must NEVER be wrapped in a loading-state guard. Dismiss is always allowed.
+If the concern is "the user dismissed the sheet before seeing the results," show a loading indicator inside the sheet or in the results area — do not block dismiss.
+For drag-to-dismiss: implement using `@base-ui/react` Dialog or a CSS `transition` on `transform: translateY` with a pointer-move handler. Do not reuse the Shadcn Sheet for drag-to-dismiss — Shadcn Sheet does not have native swipe-dismiss; adding it via `onPointerDown` / `onPointerMove` / `onPointerUp` handlers risks interfering with scroll.
+Success criterion: "Sheet can be dismissed at any point during a pending search query — loading state does not gate close."
 
-**Phase owner:** v5.0 Phase 32 (carryover patch before hierarchy work begins).
+**Warning signs:**
+`onOpenChange` in any Sheet consumer is wrapped in a function with a conditional before calling `set*Open`. Or: the Sheet's `open` prop is derived from a loading state rather than a dedicated `boolean` state variable.
 
----
-
-### MP-06: Audit methodology produces vibes-check conclusions that later phases cannot cite
-
-**What goes wrong:** The discovery audit (Phase 1 of v5.0 per SEED-004) is meant to answer "which surfaces are dead ends, which overlap, should home and explore combine?" If the audit produces a narrative document with prose conclusions ("the explore page feels redundant"), later phases (33, 34, etc.) cannot deterministically cite it. "Audit said lineage browse is needed" can be disputed. Phases get re-litigated at planning time.
-
-**Why it happens:** Discovery audits naturally produce qualitative output. The temptation is to write a memo. The artifact needed is a falsifiable click-path map with specific YES/NO/DEFERRED decisions per surface.
-
-**Prevention:**
-- The discovery audit phase must produce TWO artifacts, both committed to `.planning/`:
-  1. A **click-path map** — a table or diagram listing every surface (`/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}`) with all outbound click targets, whether each target exists, and whether it dead-ends.
-  2. A **decisions doc** — a table of specific decisions: `"combine home + explore? [YES | NO | DEFERRED]"`, `"lineage browse: urgency [HIGH | MEDIUM | DEFER]"`, `"Family pages: needed before CAT-13? [YES | NO]"`. Each decision row must cite its evidence (e.g., "home page has 0 outbound clicks to catalog — dead end confirmed by click-path map row 2").
-- Subsequent phases cite the decisions doc by row ID (e.g., "per audit decision DISC-A-03, lineage browse is HIGH urgency"). This makes the audit falsifiable and prevents re-litigation.
-- The audit is READ-ONLY: no code changes, no schema changes. It must be a pure CONTEXT + VERIFICATION output.
-
-**Detection:** Warning sign: the audit phase SUMMARY says "we concluded X" without citing a specific artifact row. If a phase planner later challenges X and there is no row to point at, the audit was not structured correctly.
-
-**Phase owner:** v5.0 Phase 1 (discovery audit, Phase 32 if DEBT-09 is Phase 31.5 or 32 and audit is Phase 33).
+**Phase to address:** Polish phase (first phase of v5.1). Fix the dismiss-guard bug in the existing FilterSheet before building new sheet surfaces.
 
 ---
 
-### MP-07: Nyquist sweep re-validation runs on shipped code but fails to catch the CSS chain blind spot
+### MP-04: LLM enrichment rate limits cause silent partial failure at batch scale
 
-**What goes wrong:** The v4.1 audit documented a UI-SPEC CSS chain blind spot: the 6-pillar checker validates declared tokens, not whether the CSS chain actually produces the claimed visual contract. Phase 30's black-bar shipped through 6/6 PASS. The Nyquist hardening sweep for v5.0 (targeting Phases 25, 26, 27, 28, 30, 31) will re-run the checker on these phases. If the sweep does not explicitly add CSS chain assertions for aspect-ratio / object-fit phases, it will pass the same blind-spot phases again — and produce false confidence.
+**What goes wrong:**
+The existing `backfill-taste.ts` processes rows sequentially with no rate-limit handling. At ~100 rows, the Anthropic API's `claude-sonnet-4-6` rate limits (requests-per-minute and tokens-per-minute) may cause 429 errors mid-batch. The current error handler catches the error, logs it, increments `totalFailed`, and continues — leaving those rows with `confidence = NULL`. The script reports "22 rows still have NULL confidence" at the end, but there is no retry logic and no distinction between "failed due to rate limit" vs "failed due to bad input."
 
-**Prevention:**
-- For each phase being swept, identify if it touches aspect-ratio, object-fit, or overflow layout properties. If yes, add explicit CSS chain assertions to the VALIDATION.md Wave 0:
-  - `aspect-ratio` assertions: confirm the element receives a computed aspect ratio in DevTools (not just a class name in source).
-  - `object-fit: cover` on `<video>` or `<img>`: assert `h-full` is present on the element AND on its container when inside an aspect-square wrapper (Phase 30's hotfix pattern).
-  - `overflow-x` scroll assertions: confirm `scrollbar-width: none` and `-webkit-scrollbar: hidden` both appear in the rendered CSS, not just as Tailwind classes (Phase 29 ProfileTabs pattern).
-- Phase 30 specifically: the VALIDATION.md Wave 0 must cite the hotfix commit (`2dd7377`) and assert the `h-full` fix is present on `<video>` in `CameraCaptureView.tsx`.
+**Why it happens:**
+At Phase 19.1 scale (<20 rows in the initial bootstrap), rate limits were never hit. At 100 rows, depending on vision vs text mode and prompt token count, the RPM limit (~50 for Tier 1 Sonnet) can be reached within 2 minutes of the script starting.
 
-**Detection:** Warning sign: a VALIDATION.md passes Wave 0 with 6/6 on a phase that contains `aspect-square` or `object-fit: cover`. Check whether the assertions are on computed styles vs class names in source.
+**How to avoid:**
+Add exponential backoff + retry (3 attempts, 2s/4s/8s delays) inside `enrichTasteAttributes` or in the batch loop, triggered on `status 429` or Anthropic SDK `RateLimitError`. Existing error handler: `catch (err) { ... totalFailed++ }` — add a pre-catch check for `err instanceof Anthropic.RateLimitError` and sleep before retrying.
+Add inter-row delay: `await new Promise(r => setTimeout(r, 800))` between rows in the batch loop. At 800ms/row, 100 rows takes ~80 seconds — well within the RPM limit.
+Add a `--delay-ms=N` CLI flag to the backfill script so the operator can tune the rate.
+After a run with failures, the script already instructs "re-run later" — but the operator needs to know WHICH rows failed. Log each failed `catalog_id` explicitly rather than just a count.
 
-**Phase owner:** Nyquist hardening sweep phase (v5.0 late phase).
+**Warning signs:**
+A dry-run reports 100 rows; the live run reports 22 failed. All 22 failures are the same error type (`RateLimitError`). Or: the script completes in under 60 seconds for 100 rows (suspiciously fast — likely hitting rate limits and silently skipping).
 
----
-
-### MP-08: SET-13 Account Delete leaves orphaned rows in follows, wear_events, notifications, activities
-
-**What goes wrong:** `SET-13` adds an Account Delete / Wipe Collection Danger Zone. The `users` table has `ON DELETE CASCADE` wired to `watches`, `user_preferences`, `profiles`, `follows`, `activities`, `wearEvents`, `notifications`, and `profile_settings`. Deleting the `users` row should cascade to all of these. But `notifications` has two FK columns: `user_id` (the recipient) and `actor_id` (the sender). The `actor_id` FK uses `ON DELETE CASCADE` (schema.ts line 263). If the deleted user was an actor in another user's notifications, those notification rows CASCADE DELETE too — which is correct but may surprise the receiving user (their notifications for follows/overlaps from the deleted user disappear silently).
-
-Additionally: `activities.watch_id` uses `ON DELETE SET NULL` (schema.ts line 223). After cascade delete of the user's watches, the activities rows remain (with watch_id = NULL) even though the user is deleted. This is a data hygiene issue: activities rows for a deleted user_id reference a non-existent user via user_id FK.
-
-**Prevention:**
-- The SET-13 phase CONTEXT.md must include a cascade map: which tables have direct FKs to `users`, and what happens on delete. Specifically flag:
-  - `activities.user_id` ON DELETE CASCADE: all user's activities deleted. OK.
-  - `activities.watch_id` ON DELETE SET NULL: watch_id goes null on activity rows. The activity's user_id FK cascades delete separately, so these rows are deleted via user_id cascade before watch_id can be set null. No orphan.
-  - `notifications.actor_id` ON DELETE CASCADE: a deleted user's outbound notifications (follow alerts sent to others) are deleted. This is a side effect on OTHER users' notification inboxes. Document and accept.
-  - `wearEvents.watch_id` ON DELETE CASCADE: all wear events deleted. OK.
-  - `profiles`: ON DELETE CASCADE from users. Public profile snapshots cached by Next.js caching are NOT cleared by the DB delete. Must `revalidateTag('profile:{username}')` after the user deletion.
-- The multi-step confirm UI must show the user what will be deleted (collection, wishlist, wear history, profile). "This will permanently delete [N] watches, [M] wear events, and your public profile" — not just a generic warning.
-- Soft-delete is NOT recommended for SET-13. A single user wanting to wipe their account wants hard delete. Soft-delete adds complexity and leaves PII in the database.
-
-**Detection:** Warning sign: after an account delete, another user's notification inbox shows a row for a follow action but the actor's avatar shows a fallback/error. This means the notification row was NOT cascade-deleted (actor_id FK not wiring correctly).
-
-**Phase owner:** SET-13 phase.
+**Phase to address:** Catalog Enrichment phase. The rate-limit retry and inter-row delay must be in the enrichment script before the prod run.
 
 ---
 
-### MP-09: SET-14 HTML email dark mode and Outlook MSO conditional on branded templates
+### MP-05: Non-idempotent enrichment re-run creates duplicate state via vision vs text mode flip
 
-**What goes wrong:** The existing Supabase Auth email templates (Confirm signup, Reset Password, Change Email) route through Resend at `mail.horlo.app`. A template overhaul (SET-14) introduces branded HTML: Horlo logo, brand colors, improved typography. Apple Mail iOS dark mode inverts colors defined via `background-color` inline styles unless wrapped in `prefers-color-scheme` media queries. Outlook MSO (Office 365 web and desktop) ignores most CSS except inline styles and specific MSO conditional comment syntax.
+**What goes wrong:**
+A row has `extracted_from_photo = true` and `confidence = 0.85` from a vision-mode enrichment. The operator re-runs `db:reenrich-taste` for that row (e.g., because the photo was replaced). If the `photoSourcePath` is now NULL (the old photo was deleted from Storage), the enricher falls back to text mode and writes `extracted_from_photo = false` with lower confidence. The DB now has contradictory history: the row says it was NOT extracted from a photo, but the changelog (if any) shows it was. More practically: the Browse the Catalog module may show different taste groupings than expected because a high-confidence vision-enriched archetype was downgraded to a lower-confidence text guess.
 
-**Consequences:** Branded email looks correct in Gmail but renders as dark-background-with-dark-text in Apple Mail dark mode (invisible). In Outlook, the layout collapses because flexbox is not supported.
+**Why it happens:**
+The enricher already handles this gracefully (falls back to text on photo fetch failure). The issue is operator awareness: running reenrich on a row without confirming the photo still exists will silently downgrade the enrichment quality.
 
-**Prevention:**
-- Use table-based layout for the email HTML body (not flexbox/grid). Every cell padded via `cellpadding`/`cellspacing` attributes, not CSS.
-- For dark mode: wrap background colors in `@media (prefers-color-scheme: dark)` with a `<style>` block in `<head>`. Apple Mail respects this. Use `!important` on dark-mode overrides.
-- Supabase email template `{{ .TokenHash }}` and `{{ .SiteURL }}` variables must remain untouched through the overhaul — they are what triggers Supabase Auth to inject the magic link. Any template that accidentally wraps the link in a `<span>` instead of an `<a>` will break.
-- DKIM signature: Resend signs outgoing email at the DKIM level based on the sender domain and API key, NOT based on template content. Changing template HTML does not affect DKIM. The DKIM signature only regresses if the Resend API key or DNS records change. SET-14 template overhaul is safe re: DKIM.
-- Test via Resend's test-send feature against a Gmail address AND an Apple Mail address (iPhone) before shipping to prod. Check: does the confirmation link work? Does the layout look correct in dark mode?
+**How to avoid:**
+Before re-enriching a row that has `extracted_from_photo = true`, confirm the photo path is still valid: attempt a signed-URL generation for the path. If it fails, warn the operator instead of silently falling back.
+Add a pre-run assertion to `reenrich-taste.ts`: when re-enriching a vision row, log a warning: "Photo not found for catalog_id={id} — will enrich text-only; confidence may be lower than existing value."
+Add a `--skip-if-higher-confidence` flag: if the existing confidence is above a threshold, skip rather than risk downgrade.
 
-**Detection:** Warning sign: confirmation email works (link is valid) but visual review shows black text on black background in Apple Mail. This is the `prefers-color-scheme` miss, not a deliverability issue.
+**Warning signs:**
+After a targeted reenrich, the row's `extracted_from_photo` flips from `true` to `false` unexpectedly. Or: confidence drops from 0.85 to 0.55 on a row that was previously vision-enriched.
 
-**Phase owner:** SET-14 phase.
-
----
-
-## Minor Pitfalls
-
-Mistakes that degrade UX or require a follow-up fix but do not lose data or break features.
+**Phase to address:** Catalog Enrichment phase. The `reenrich-taste.ts` script must include the photo-existence check before the prod run.
 
 ---
 
-### MiP-01: pg_cron schedule drifts after clean-slate wipe
+### MP-06: Avatar upload reuses wrong bucket — mixing profile photos into catalog-source-photos
 
-**What goes wrong:** The `refresh_watches_catalog_counts_daily` pg_cron job (installed by Phase 17, `0 3 * * *`) is registered in `cron.job` table which persists across schema wipes. If the clean-slate wipe drops and re-creates the `watches_catalog` table (not just deletes rows), the cron job's SECDEF function is referencing the old table OID. Re-running `supabase db push --linked` with the pg_cron migration is idempotent (`cron.schedule` uses ON CONFLICT DO UPDATE) but only if the migration file is still in `supabase/migrations/`.
+**What goes wrong:**
+The v5.1 Polish phase adds avatar upload via Supabase Storage. The existing photo upload path (`catalog-source-photos` bucket, `src/lib/storage/catalogSourcePhotos.ts`) is well-established. The temptation is to reuse it for profile photos by just adding a new path convention (e.g., `{userId}/avatar/avatar.jpg`). But `catalog-source-photos` has RLS scoped to watch-catalog operations (its policies are tied to the catalog enricher's service-role access). Profile avatars have different access patterns: they should be publicly readable (like CDN-served profile photos) without signed URLs.
 
-**Prevention:** The clean-slate wipe for Layer C must NOT drop and re-create `watches_catalog`. It must DELETE rows and INSERT replacements. If the table DDL needs changes (e.g., adding `variant_id` FK), those are ALTER TABLE operations, not DROP/CREATE. This preserves the table OID and the cron function reference.
+**Why it happens:**
+The bucket already exists, the upload helper is already written, and the EXIF-strip + JPEG-resize pipeline is already implemented. Reusing it for avatars seems like minimal friction.
 
-**Phase owner:** Layer C phase.
+**How to avoid:**
+Create a separate `avatars` bucket (or `profile-photos` bucket) with public-read policy, not signed-URL access. Profile photos need to be served directly via a public URL (`supabase.storage.from('avatars').getPublicUrl(path)`) so they can be used in `<img src>` without expiring. Signed URLs expire (60s in the existing enricher pattern) — unacceptable for a profile avatar rendered in navigation headers on every page.
+The upload pipeline (EXIF strip, canvas re-encode to JPEG, ≤1080px) can be reused as a utility function — just change the bucket name and the URL retrieval pattern (public URL vs signed URL).
+Add `remotePatterns` entry in `next.config.ts` for the new bucket's CDN hostname if it differs from the existing `catalog-source-photos` pattern.
 
----
+**Warning signs:**
+`ProfileSection.tsx` calls `uploadCatalogSourcePhoto` or `getCatalogSourcePhotoSignedUrl`. Or: the avatar URL stored in `profiles.avatar_url` is a signed URL with an expiry timestamp.
 
-### MiP-02: Sequence values reset after clean-slate wipe create unexpected UUID collisions
-
-**What goes wrong:** `watches_catalog.id` uses `uuid_generate_v4()` (random UUIDs). UUIDs do not use sequences so there is no collision risk. However, if the admin merge script (CP-05 prevention) reuses the surviving row's UUID and a client has that UUID cached in `useWatchSearchVerdictCache` (module-scoped Map), the cache hit returns stale verdict data for the new row.
-
-**Prevention:** After Layer C ships, invalidate the module-scope verdict cache by bumping `collectionRevision` via a write (e.g., add/remove a watch). The `useWatchSearchVerdictCache` key is `(catalogId, collectionRevision)` — if collectionRevision increments, all cache entries for that viewer expire. A simple `touch` write on any watch in the collection accomplishes this.
-
-**Phase owner:** Layer C phase (operator runbook note).
-
----
-
-### MiP-03: Discovery audit conclusion on "combine home and explore" pre-decided before audit runs
-
-**What goes wrong:** v5.0 planning has strong prior belief that home and explore should merge. If the audit phase CONTEXT.md is written with "expected outcome: merge," the auditor (agent or human) anchors on confirmation and produces a click-path map that supports the conclusion rather than testing it.
-
-**Prevention:** The audit phase CONTEXT.md must explicitly state: "The answer to 'combine home and explore?' is UNKNOWN and must emerge from the click-path map. Do not assume the answer." The audit decision doc (MP-06 prevention) must include a row for this decision that is left blank until the click-path evidence is reviewed.
-
-**Phase owner:** v5.0 Phase 1 (discovery audit).
+**Phase to address:** Polish phase. Avatar upload must use a new bucket, not the existing catalog bucket.
 
 ---
 
-### MiP-04: extractWithLlm body byte-lock (D-07) interacts with CAT-13 enrichment path
+### MP-07: Hero auto-rotation logic creates a stale-cache collision with manual pin
 
-**What goes wrong:** Phase 19.1 D-07 locks the `extractWithLlm()` body byte-for-byte. CAT-13 rewires `analyzeSimilarity()` to read catalog taste columns at JOIN time. These are separate code paths: `extractWithLlm` is in `src/lib/extractors/llm.ts` and calls the Anthropic API for URL extraction; `analyzeSimilarity` is in `src/lib/similarity.ts` and runs in-process. The concern is: does CAT-13 need changes to the extraction-time enrichment path?
+**What goes wrong:**
+The Hero has two selection modes: auto (most recently published quality-gated list) and manual pin (admin sets a specific list). If the Hero's Server Component is cached with `cacheLife({ revalidate: 604800 })` (weekly), and the admin sets a manual pin mid-week, the cache serves the old auto-selected hero for up to 7 days before revalidation. Unpinning has the same problem in reverse.
 
-Answer: No. CAT-13 changes where `analyzeSimilarity` reads taste data FROM (catalog JOIN instead of re-deriving from per-user tag arrays), not HOW taste data gets INTO the catalog. The `extractWithLlm()` extraction path populates `watches_catalog` taste columns via the fire-and-forget `enrichTasteAttributes` call. This path is unchanged by CAT-13. The D-07 byte-lock on `extractWithLlm()` survives CAT-13 intact.
+**Why it happens:**
+The cache tag for the Hero is likely `'explore:hero'`. If the pin-setting Server Action calls `revalidateTag('explore:hero')`, this works correctly. But if the action only calls `revalidatePath('/explore')` (path-based invalidation), and the Hero component is a nested cached Server Component using `'use cache'`, the cache tag invalidation does not propagate to the nested component.
 
-**Prevention:** In the CAT-13 CONTEXT.md, explicitly state: "D-07 byte-lock on `extractWithLlm()` is UNAFFECTED by this rewire. The rewire is entirely within `src/lib/similarity.ts` and the server-side verdict composition layer." Do not touch `src/lib/extractors/llm.ts` during CAT-13.
+**How to avoid:**
+The manual-pin Server Action must call `revalidateTag('explore:hero')` explicitly — not just `revalidatePath('/explore')`. This is consistent with the existing pattern (Phase 13 documented `updateTag` vs `revalidateTag` distinction; Phase 18 used `revalidateTag('explore', 'max')` for SWR fan-out).
+The pin status must be stored in the DB (a `config` or `cms_settings` table row), not in environment variables or a JSON file — so the Server Component always reads live pin state when cache is refreshed.
+Document the invalidation matrix for the Hero in the plan: what writes must call `revalidateTag('explore:hero')`? Answer: `publishList`, `unpublishList`, `setPinnedHero`, `clearPinnedHero`.
 
-**Phase owner:** CAT-13 phase.
+**Warning signs:**
+Admin sets a manual pin; the `/explore` hero still shows the previous auto-selected list after navigating away and back. This is a cache tag miss on the pin action.
+
+**Phase to address:** Curated Lists + Hero phase. The invalidation matrix must be in the plan before the Hero cache scope is written.
 
 ---
 
-## Phase-Specific Warnings Summary
+### MP-08: Turbopack `.next` cache serves stale Explore CSS — known prior pitfall
 
-| Phase Topic | Pitfall | Mitigation Reference |
-|---|---|---|
-| DEBT-09 fix (v5.0 Phase 32) | Fix commit must reach main — same hole as original miss | MP-05: RED scaffold (4/4) is merge-gate |
-| Discovery audit (v5.0 Phase 1) | Vibes-check conclusions, pre-decided merge outcome | MP-06, MiP-03: decisions doc with falsifiable rows |
-| Layer A — Brand/Family schema | Brand backfill before family backfill before NOT NULL | CP-01: explicit sequence; pre-flight DO $$ assertion |
-| Layer A — Brand/Family schema | RLS policies on new tables omitted (Drizzle doesn't emit them) | MP-01: RLS migration co-located with DDL |
-| Layer A — Brand/Family mutations | Cache tag invalidation matrix missing | MP-03: define tag naming before writing mutations |
-| Layer B — Lineage edges | Cycles in predecessor/successor graph crash recursive CTEs | CP-04: BEFORE INSERT trigger + CYCLE clause on all lineage CTEs |
-| Layer C — Variant dedup/clean-slate | User watches lose catalog_id FK after catalog row wipe | CP-03: exact 6-step re-link sequence; backup first |
-| Layer C — Variant dedup | Fragmentation creep resumes via user_promoted | CP-05: weekly linter + admin merge endpoint |
-| Layer C — Taste column adoption | Collapsed rows inherit wrong taste data | MP-04: confidence-based adoption + flag for re-enrichment |
-| Layer C — Clean-slate | pg_cron function OID breaks if table is dropped/re-created | MiP-01: DELETE rows, not DROP TABLE |
-| Layer D — divestments | `watches.status = 'sold'` alone is not recommender-queryable | MP-02: `divestments` table with `catalog_id NOT NULL` |
-| CAT-13 engine rewire | Byte-lock invariant needs explicit migration to new invariant | CP-02: new static guard for NULL-confidence fallback path |
-| CAT-13 engine rewire | D-07 extractWithLlm byte-lock mistakenly touched | MiP-04: rewire is entirely in similarity.ts |
-| CAT-14 NOT NULL | Applied before zero-NULL verification | CP-06: DO $$ pre-flight as FIRST migration statement |
-| SET-13 Account Delete | actor_id cascade deletes other users' notifications | MP-08: cascade map in CONTEXT.md; accept as design |
-| SET-14 HTML email | Dark mode invisible in Apple Mail, layout collapses in Outlook | MP-09: table layout + prefers-color-scheme; DKIM unaffected |
-| Nyquist hardening sweep | CSS chain blind spot passes again on aspect-ratio/object-fit phases | MP-07: computed style assertions, not just class-name assertions |
+**What goes wrong:**
+The v5.1 Explore page is a new route with its own layout grid, module spacing, and responsive breakpoints. Turbopack's `.next/` cache has caused stale CSS in prior milestones (Phase 30's black bar, documented in `project_turbopack_next_cache_stale_css.md`). Responsive layout bugs on `/explore` may appear to be code errors but are actually stale cached CSS.
+
+**Why it happens:**
+Turbopack does not always invalidate `.next/` on CSS changes, particularly for global styles or newly added Tailwind utility classes. Dev server restart alone does not clear the cache.
+
+**How to avoid:**
+The Polish phase and Explore Shell phase verification steps must include: "Clear `.next/` (`rm -rf .next`) and restart dev server before confirming any layout fix." Add this to the phase completion checklist.
+For the Explore page specifically: the `aspect-[4/5]` watch card fix (cards with variable metadata height) is a CSS chain that must be verified with computed styles in DevTools, not just source inspection — per the MP-07 pattern documented in the v5.0 PITFALLS.md.
+
+**Warning signs:**
+A Tailwind class is present in the JSX but the computed style in DevTools does not reflect it. Or: a layout regression appears on first load but disappears after a hard refresh.
+
+**Phase to address:** Polish phase (watch-card height fix) and Explore Shell phase. Both verification steps must include the `.next/` cache clear.
+
+---
+
+### MP-09: Collector Archetype filter deep-links produce empty results if catalog lacks the tagged data
+
+**What goes wrong:**
+SEED-008 acceptance: "Every archetype produces a non-empty results page (validate at build time)." If the catalog enrichment has not been completed before the Archetypes module ships, a user taps "Dive Watch Devotee" and gets zero results — because `primary_archetype = 'dive'` matches zero catalog rows with sufficient confidence. The module renders but is functionally broken.
+
+**Why it happens:**
+The implementation order in SEED-008 is: (1) Polish, (2) Catalog Enrichment, (3) Page Shell + Browse + Archetypes. If the Archetypes phase is implemented before the enrichment run completes in production, the archetype filter deep-links are broken in prod even though they work in dev (where the developer seeded their own test data).
+
+**How to avoid:**
+The Archetypes phase must include a build-time or CI assertion: for each archetype config entry, verify the filter returns ≥1 result from the production catalog via a test against the staging DB or a snapshot. Do not ship Archetypes to prod until the catalog enrichment run is verified complete with sufficient coverage per archetype.
+Alternatively: add a runtime guard — if an archetype's prefiltered results page returns zero results, show a "No results yet — catalog expanding soon" placeholder rather than an empty search page. This is graceful degradation, not a fix.
+
+**Warning signs:**
+Archetypes module ships before `db:backfill-taste` has been run in production. Or: the archetype config maps to `primary_archetype = 'field'` but zero catalog rows have `primary_archetype = 'field'` after enrichment.
+
+**Phase to address:** Catalog Enrichment phase (run first, verify coverage). Archetypes phase (include post-enrichment coverage assertion in acceptance criteria).
+
+---
+
+## Technical Debt Patterns
+
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Hardcode `OWNER_USER_ID` in source instead of env var | No env var setup needed | Owner changes (unlikely but possible); UUID visible in repo history | Never — use env var |
+| Single bucket for all photos (avatars + catalog photos) | Fewer Supabase buckets | RLS policies conflict; signed URLs used for public avatars (expiry issues) | Never |
+| Skip `status = 'published'` filter in DAL (rely on RLS only) | Simpler queries | One-layer privacy; RLS bypass via service role exposes drafts | Never for data with draft/published lifecycle |
+| `onOpenChange` wrapped in loading guard | "Prevents accidental dismiss" | Blocks user-initiated dismiss; violates UX contract | Never |
+| Use `revalidatePath('/explore')` instead of tagged cache invalidation | Simpler | Nested `'use cache'` components not invalidated by path revalidation | Never for nested Cache Components |
+| LLM for factual spec backfill without human review | Faster backfill | Hallucinated specs corrupt filter results silently | Never for factual spec columns |
+| Run `db:reenrich-taste --force` on all rows before verifying photo availability | Simpler invocation | Vision-enriched rows downgraded to text-only without awareness | Never without photo-existence pre-check |
+| Copy `watches_catalog` public-read RLS to `curated_lists` | Faster schema setup | Leaks drafts to all authenticated users | Never |
+
+---
+
+## Integration Gotchas
+
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Supabase Storage (avatar upload) | Use `createSignedUrl` for avatar retrieval | Use `getPublicUrl` — avatars must be publicly readable without expiry |
+| Supabase Storage (avatar upload) | Upload to existing `catalog-source-photos` bucket | Create a separate `avatars` bucket with public-read policy |
+| Anthropic API (enrichment) | No inter-row delay → silent 429s mid-batch | Add 800ms+ delay between rows; add exponential backoff on `RateLimitError` |
+| Anthropic API (enrichment) | Force-reenrich all rows regardless of confidence | Use `--min-confidence-threshold` flag; never downgrade high-confidence rows |
+| Supabase RLS on CMS tables | Copy `USING (true)` from catalog tables | Add `status = 'published'` predicate for public reads |
+| Supabase SECDEF functions | Omit explicit REVOKE after function creation | Always: `REVOKE EXECUTE FROM anon, authenticated` immediately after function definition |
+| Next.js `'use cache'` + manual pin | `revalidatePath` does not reach nested cached components | Use `revalidateTag('explore:hero')` in pin/unpin Server Actions |
+| Drizzle + Supabase migrations | `drizzle-kit push` for prod | Always use `supabase db push --linked` for production schema changes |
+
+---
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Live SQL count aggregation on Browse indices per request | Browse the Catalog page takes 500ms+; slow under concurrent users | `cacheLife({ revalidate: 3600 })` + `revalidateTag('catalog:browse')` on enrichment writes | At any scale — aggregation is expensive without caching |
+| No inter-row delay in enrichment batch at 100 rows | 22 silent failures, `totalFailed = 22` at end | 800ms delay between rows; retry on 429 | Hits rate limit within 2 minutes at 100 rows |
+| Hero Server Component without cache scope | `/explore` page re-fetches hero data on every request | `'use cache'` with `cacheLife({ revalidate: 604800 })` + tag-based invalidation | At any traffic level — server renders are synchronous and block page delivery |
+| Curated list items JOIN at render time for count display | Rail card shows wrong count if items are added/removed without count column | Cache a `watch_count` on `curated_lists` row; update on item mutations | As list item count grows — N+1 risk if count is computed via subquery per card |
+
+---
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Owner check only in route rendering, not in Server Actions | Any authenticated user can POST to CMS Server Actions | `getCurrentUser()` + owner ID assertion as first statement in every CMS Server Action |
+| `curated_lists` RLS allows reads of draft rows by authenticated users | Unpublished editorial content visible to non-admin collectors | RLS SELECT policy: `USING (status = 'published' OR author_id = auth.uid())` |
+| SECDEF function without explicit REVOKE | Authenticated users can call admin-only functions directly | Always REVOKE from anon and authenticated; GRANT to service_role only |
+| Avatar upload path traversal via malformed filename | Attacker uploads to another user's folder | Reuse `buildCatalogSourcePhotoPath` validation (UUID/pending check, no slashes in filename) |
+| CMS admin route accessible without auth check | Unauthenticated access to list authoring UI | Proxy.ts must block `/admin/*` routes; add to PUBLIC_PATHS exclusion |
+
+---
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Sheet dismiss blocked during loading | User feels stuck; cannot close filter drawer mid-query | Never gate `onOpenChange` on loading state; always allow user-initiated dismiss |
+| Wishlist cards show wear badges for wishlist watches | Confusing UI ("Never worn" on a watch you don't own) | Gate all wear UI on `status === 'owned'` |
+| Watch card height varies by metadata length | Grid looks inconsistent; some cards are taller than others | Fix metadata block to a consistent height; use `line-clamp` for overflowing text |
+| Hero shows broken image when list has no cover | First impression is broken | Hero quality gate must require `has cover image` — no cover, no hero eligibility |
+| Curated list rail shows rail heading + empty space | Signals emptiness to user before CMS has any content | Module must return `null` when zero published lists exist (no heading, no container) |
+| Where Collections Go path wraps on very narrow (360px) screens | Horizontal chain unreadable on smallest phones | Stack the path sequence vertically on screens <400px |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Curated Lists CMS:** Draft/publish status is gated in BOTH RLS AND DAL WHERE clause — verify by querying as non-owner authenticated user.
+- [ ] **CMS Server Actions:** Every mutation begins with `getCurrentUser()` + owner ID assertion — verify by calling createCuratedList as a non-owner user.
+- [ ] **Hero manual pin:** `revalidateTag('explore:hero')` is called in both `setPinnedHero` and `clearPinnedHero` Server Actions — verify by setting/clearing pin and confirming hero updates within one request.
+- [ ] **Catalog Enrichment:** `db:backfill-taste --dry-run` run before prod backfill to confirm cost estimate and row count.
+- [ ] **Catalog Enrichment:** After prod backfill, `SELECT primary_archetype, count(*) FROM watches_catalog GROUP BY primary_archetype` — verify each archetype has ≥1 row before Archetypes module ships.
+- [ ] **Avatar Upload:** Avatar bucket uses `getPublicUrl` not `createSignedUrl` — verify the URL stored in `profiles.avatar_url` does not contain an expiry parameter.
+- [ ] **Avatar Upload:** New bucket has public-read RLS and is listed in `next.config.ts` `remotePatterns`.
+- [ ] **Bottom-sheet dismiss:** Sheet can be closed while `watchesIsLoading = true` — verify by opening FilterSheet, starting a query, and dismissing before it resolves.
+- [ ] **Drag-to-dismiss:** Bottom-sheet drag gesture triggers close and does not scroll the page behind the sheet simultaneously.
+- [ ] **Empty-module degradation:** Each Explore module returns `null` (not an empty container) when its data array is empty — verify with a test using empty props.
+- [ ] **SECDEF functions:** Any new function has explicit `REVOKE EXECUTE FROM anon, authenticated` in its migration — check migration file before applying to prod.
+- [ ] **Where Collections Go:** A path with a deleted/unpublished catalog reference does not crash the page — verify by removing a catalog row referenced in a path.
+
+---
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Draft lists leaked to public via RLS miss | LOW | Add `status = 'published'` predicate to RLS policy via new migration; unpublish any exposed drafts immediately |
+| Enrichment run downgrades high-confidence rows | MEDIUM | Run `reenrich-taste.ts --catalog-id=<uuid>` with vision inputs for each downgraded row; verify confidence restores |
+| Factual spec hallucination in catalog | HIGH | Manual operator review + correction for each affected row via admin edit UI; add `spec_needs_review` flag to catch future cases |
+| CMS Server Action unauthorized access discovered | LOW (single user) | Immediately add owner-gate assertion to affected actions; audit Server Action logs for unauthorized calls |
+| Avatar URL expiring (signed URL used instead of public) | LOW | Migrate `profiles.avatar_url` values to public URLs; update upload helper to use `getPublicUrl`; no data loss |
+| Rate-limit batch failure (22 NULL confidence rows) | LOW | Re-run `db:backfill-taste` (idempotent — processes only NULL rows); add delay flag to prevent recurrence |
+| Browse counts stale for 1 hour after enrichment | LOW | Call `revalidateTag('catalog:browse')` manually from admin script; counts refresh on next ISR cycle |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| CP-01: Draft RLS leak | Curated Lists + CMS phase | Query as non-owner authenticated user; zero draft rows returned |
+| CP-02: CMS Server Action auth bypass | Curated Lists + CMS phase | Call createCuratedList as non-owner; verify Unauthorized error |
+| CP-03: Force-reenrich overwrites high-confidence rows | Catalog Enrichment phase | Pre-run confidence distribution query; use NULL-only backfill by default |
+| CP-04: LLM hallucination in spec columns | Catalog Enrichment phase | LLM writes taste columns only; spec columns require manual/scrape + human review |
+| CP-05: Catalog FK breaks published lists | Curated Lists + CMS phase | Schema uses ON DELETE RESTRICT; pre-delete warning in admin UI |
+| CP-06: SECDEF auto-grant to anon | Any phase adding SECDEF functions | Post-migration: attempt function call as authenticated role; verify permission error |
+| MP-01: Browse count caching undefined | Explore Shell + Browse phase | cacheLife declared; revalidateTag called on enrichment writes |
+| MP-02: Empty-module renders container | All Explore module phases | Unit test each module with empty props; verify null return |
+| MP-03: Dismiss-blocked-during-loading | Polish phase (first phase) | Sheet can close while watchesIsLoading = true |
+| MP-04: Rate limits cause silent failures | Catalog Enrichment phase | Dry-run cost estimate; add 800ms delay + retry; log each failed catalog_id |
+| MP-05: Vision→text flip on reenrich | Catalog Enrichment phase | Photo-existence check before reenrich; log warning if photo missing |
+| MP-06: Avatar in wrong bucket | Polish phase | Avatar URL is public (no expiry); stored in separate bucket |
+| MP-07: Hero pin cache miss | Curated Lists + Hero phase | Set/clear pin; verify hero updates within one request |
+| MP-08: Turbopack stale CSS | Polish phase + Explore Shell phase | `rm -rf .next` before layout verification; computed styles in DevTools |
+| MP-09: Archetypes without catalog coverage | Archetypes phase | Each archetype filter returns ≥1 result from prod catalog post-enrichment |
 
 ---
 
 ## Sources
 
-- `src/db/schema.ts` — watches, watches_catalog, follows, notifications, wearEvents, users schema
-- `src/lib/similarity.ts` — byte-locked engine; signature and export pattern
-- `tests/static/CollectionFitCard.no-engine.test.ts` — static guard; guards import boundary not behavioral contract
-- `tests/actions/watches.notesPublic.test.ts` — DEBT-09 RED scaffold; 4/4 FAIL reproducible
-- `docs/deploy-db-setup.md` — Footguns T-05-06-EMPTYMIGRATE, T-17-BACKFILL-PROD-DB, T-24-PRODAPPLY, T-24-PARTIDX, T-21-PREVIEWMAIL, T-21-WWWALLOWLIST; clean-slate and re-link runbook patterns
-- `.planning/seeds/SEED-001` — Variant fragmentation creep note; hierarchy scope; backfill ordering strategy
-- `.planning/seeds/SEED-002` — sold negative signal (-0.3); `divestments` table necessity; Reference granularity prereq
-- `.planning/seeds/SEED-004` — Audit-first ordering; click-path map requirement; CAT-14 two-deploy gate
-- `.planning/milestones/v4.0-MILESTONE-AUDIT.md` — byte-lock documentation across Phases 17/19.1/20; T-24-PARTIDX enum-bound partial index pattern; Phase 17 SECDEF + REVOKE pattern
-- `.planning/milestones/v4.1-MILESTONE-AUDIT.md` — DEBT-09 evidence (grep -cnE returns 0); Nyquist partial posture; UI-SPEC CSS chain blind spot (Phase 30 black-bar); verdict cache signOut leak
-- `CLAUDE.md` — project_supabase_secdef_grants.md memory; project_drizzle_supabase_db_mismatch.md (prod push = supabase db push --linked, not drizzle-kit push)
+- `src/components/search/FilterSheet.tsx` — bottom-sheet dismiss pattern; `onOpenChange={setSheetOpen}` is correct; dismiss-gate bug is in callers
+- `src/components/search/SearchPageClient.tsx` — `sheetOpen` state is independent of loading state; confirms dismiss bug was caller-side
+- `src/lib/taste/enricher.ts` — existing enricher scope (taste only); vision fallback to text; no retry logic; rate limit gap identified
+- `scripts/backfill-taste.ts` — sequential processing; no inter-row delay; `totalFailed` count only (no per-row logging); rate limit vulnerability at 100 rows
+- `src/lib/storage/catalogSourcePhotos.ts` — `createSignedUrl` pattern (60s TTL); signed URLs inappropriate for public avatars
+- `src/lib/types.ts` — `CatalogEntry`, `CatalogTasteAttributes` — confirms taste and spec columns are in the same table; boundary between them is enforced by convention only
+- `src/data/catalog.ts` — `sanitizeHttpUrl`, `sanitizeTagArray` — existing write-time validation for URL extractor output; confirms spec columns need similar write-time validation if LLM is used
+- `.planning/seeds/SEED-008-v5.1-explore-redesign.md` — module specs, acceptance criteria, open questions (caching strategy, CMS approach)
+- `.planning/PROJECT.md` — v5.1 scope, CMS decision (in-app admin), enrichment as "enrich half" before Explore modules
+- `CLAUDE.md` memory: `project_supabase_secdef_grants.md` — REVOKE FROM PUBLIC alone does not block anon; explicit per-role REVOKE required
+- `CLAUDE.md` memory: `project_turbopack_next_cache_stale_css.md` — dev server restart does not clear `.next/`; must `rm -rf .next`
+- `CLAUDE.md` memory: `project_drizzle_supabase_db_mismatch.md` — prod push via `supabase db push --linked` only
+- `.planning/research/PITFALLS.md` (v5.0) — MP-07 CSS chain blind spot; SECDEF grant pattern (Phase 11); revalidateTag vs revalidatePath distinction
+
+---
+*Pitfalls research for: v5.1 Explore Page Redesign (editorial CMS + catalog enrichment + Explore modules)*
+*Researched: 2026-05-16*

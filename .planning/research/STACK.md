@@ -1,8 +1,8 @@
 # Stack Research
 
-**Domain:** Catalog hierarchy + engine rewire + discovery polish (v5.0 Discovery North Star)
-**Researched:** 2026-05-06
-**Confidence:** HIGH — all version claims verified against npm registry, Context7, or Anthropic official docs
+**Domain:** v5.1 Explore Page Redesign — in-app CMS, catalog enrichment, polish pass, /explore
+**Researched:** 2026-05-16
+**Confidence:** HIGH — all version claims verified via Context7, official Anthropic docs, and npm
 
 ---
 
@@ -10,256 +10,148 @@
 
 | Technology | Version | Status |
 |------------|---------|--------|
-| Next.js App Router | 16.2.3 | Locked — no upgrade in scope |
+| Next.js App Router | 16.2.3 | Locked |
 | React | 19.2.4 | Locked |
 | TypeScript | ^5 | Locked |
-| Drizzle ORM | 0.45.2 | Current latest — confirmed on npm |
-| drizzle-kit | 0.31.10 | Current latest — confirmed on npm |
-| @supabase/supabase-js | ^2.103.0 | Locked |
-| @anthropic-ai/sdk | ^0.88.0 | Upgrade available — see below |
-| Vitest + RTL + MSW | 2.x | Locked |
 | Tailwind CSS 4 | ^4 | Locked |
-| Zustand | ^5.0.12 | Locked (filter-only, 31 lines) |
+| Zustand | ^5.0.12 | Locked |
+| Supabase (Postgres + Auth + Storage + RLS) | @supabase/supabase-js ^2.103.0 | Locked |
+| Drizzle ORM | ^0.45.2 | Locked |
+| @anthropic-ai/sdk | ^0.88.0 | Locked — see enrichment section |
+| @base-ui/react | 1.3.0 | Locked — includes Drawer (see below) |
+| embla-carousel-react | 8.6.0 | Already installed |
+| lucide-react | ^1.8.0 | Locked |
 
 ---
 
-## v5.0 New Capabilities — Stack Analysis by Area
+## v5.1 Stack Analysis by Feature Area
 
-### 1. Catalog Hierarchy Schema (Layers A–D)
+### (a) In-App CMS: Rich Text vs Plain Textarea + Markdown Renderer
 
-**Verdict: No new libraries needed. Existing Drizzle 0.45.2 covers everything.**
+**Verdict: Plain `<textarea>` inputs + `react-markdown` renderer. No rich-text editor.**
 
-Drizzle 0.45.2 supports self-referencing foreign keys via the `AnyPgColumn` callback pattern — confirmed in Context7 official docs (`/drizzle-team/drizzle-orm-docs`):
+**Rationale:**
 
-```typescript
-import type { AnyPgColumn } from 'drizzle-orm/pg-core'
+The CMS authors two content types: list intro copy (a few sentences of editorial context) and per-item watch commentary (1-3 sentence callouts per watch). Neither requires embedded images, tables, footnotes, or inline media. The audience is a single owner on a personal app — the authoring surface is not a public editorial tool.
 
-export const watchFamilies = pgTable('watch_families', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
-  // ...
-})
-```
+A rich-text editor (TipTap, Quill, Slate.js, Lexical) introduces 150–400 kB of bundle weight, a shadow DOM or ProseMirror/Y.js dependency, and serialization complexity (HTML vs JSON vs markdown storage). None of that complexity is justified here.
 
-For the FK chain `brands → watch_families → watches_catalog → watch_variants`, all four tables can be modeled with `.references(() => targetTable.col)` callbacks. No circular dependency issues because each layer references upward only.
+The right split is:
+- **Authoring:** plain `<textarea>` (already in `src/components/ui/textarea.tsx`). Store the value as a markdown string column on the DB row (text, no special type).
+- **Reading/display:** render with `react-markdown` on the list detail page and the hero. This is a pure renderer — no editor runtime, no interactive state. Bundle weight is ~11 kB gzip (no plugins). It handles `**bold**`, `_italic_`, `[links](url)`, paragraph breaks, and numbered/bulleted lists — everything the CMS copy needs.
 
-For `watch_lineage_edges` (predecessor/successor DAG), self-referencing on `watches_catalog.id` uses the same `AnyPgColumn` callback:
+`react-markdown` at latest (10.1.0 as of 2026-05-16) is React 19 compatible and has no peer dependency conflicts with the existing stack.
 
-```typescript
-export const watchLineageEdges = pgTable('watch_lineage_edges', {
-  predecessorId: uuid('predecessor_id').notNull().references((): AnyPgColumn => watchesCatalog.id, { onDelete: 'cascade' }),
-  successorId: uuid('successor_id').notNull().references((): AnyPgColumn => watchesCatalog.id, { onDelete: 'cascade' }),
-  // ...
-})
-```
+**What NOT to add:** TipTap, Quill, Slate.js, Lexical, Contentlayer, Sanity, or any third-party CMS. The CMS decision was already resolved in PROJECT.md (2026-05-16): in-app admin route only.
 
-**Movement enum:** Use `pgEnum` — Drizzle 0.45.2 supports this natively. Extend the pattern already used in `schema.ts` (`wearVisibilityEnum`, `notificationTypeEnum`).
+**Integration point:** The existing `<Textarea>` component in `src/components/ui/textarea.tsx` is used as-is. The markdown renderer is added alongside it on the display side.
 
----
-
-### 2. DAG Traversal (Lineage Browse — WITH RECURSIVE)
-
-**Verdict: Drizzle does NOT support WITH RECURSIVE natively. Use `db.execute(sql\`...\`)` for lineage CTE queries.**
-
-Drizzle issue #209 ("Support WITH RECURSIVE") is open with a PR in progress but not merged as of 0.45.2. This is confirmed by the issue tracker and the absence of a `$withRecursive` API in the current release.
-
-**Pattern to use for lineage traversal:**
-
-```typescript
-import { sql } from 'drizzle-orm'
-
-// Traverse successors from a given reference_id
-const result = await db.execute(sql`
-  WITH RECURSIVE lineage AS (
-    SELECT successor_id, 1 AS depth
-    FROM watch_lineage_edges
-    WHERE predecessor_id = ${catalogId}
-    UNION ALL
-    SELECT e.successor_id, l.depth + 1
-    FROM watch_lineage_edges e
-    INNER JOIN lineage l ON l.successor_id = e.predecessor_id
-    WHERE l.depth < 10  -- cycle guard
-  )
-  SELECT wc.* FROM lineage
-  JOIN watches_catalog wc ON wc.id = lineage.successor_id
-  ORDER BY lineage.depth
-`)
-```
-
-This is the recommended pattern — `db.execute(sql\`...\`)` is fully typed (returns `postgres.RowList`) and the project already uses it in migrations. No additional library needed.
-
-**Cycle prevention:** Add a `CHECK (predecessor_id != successor_id)` constraint in the migration SQL, and use depth-limited CTEs in application queries. Postgres enforces referential integrity; cycles only exist within the DAG logic itself.
-
----
-
-### 3. DB Wipe + Re-Seed Flow (Clean Slate for Layer C)
-
-**Verdict: No new tooling needed. Existing drizzle-kit push + supabase db push --linked covers this.**
-
-The clean-slate DB wipe (single user, single environment) is an operational step, not a library problem. Existing flow per memory file `project_drizzle_supabase_db_mismatch.md`:
-
-- Local: `supabase db reset` → `drizzle push` (per `project_local_db_reset.md` workflow)
-- Prod: `supabase db push --linked` with the 4 gotchas already documented
-
-For the Layer C variant split, the migration is a DDL-only wipe + reseed using existing `tsx` scripts (pattern: `npm run db:backfill-catalog`). No pg-format or additional migration tooling warranted — raw SQL in Drizzle `db.execute(sql\`...\`)` handles data seeding inline.
-
-**What to avoid:** Do not add `pg-format` as a runtime dependency. It's a string formatter for dynamic SQL, not needed here since the catalog seed will be a curated static script, not dynamic SQL generation.
-
----
-
-### 4. CAT-13: analyzeSimilarity() Engine Rewire
-
-**Verdict: No new libraries. The rewire is a JOIN pattern change in the existing DAL + `src/lib/similarity.ts` refactor.**
-
-The current `analyzeSimilarity()` reads from per-user `Watch` objects in memory (all taste attributes are duplicated on the `watches` table). CAT-13 rewires it to read catalog taste columns at JOIN time via the DAL.
-
-The shape of the change:
-- `src/data/watches.ts` DAL query adds `LEFT JOIN watches_catalog` to return `CatalogTasteAttributes` alongside each `Watch`
-- `analyzeSimilarity()` signature extends to accept catalog taste columns merged onto the watch type
-- No new ORM features needed — `leftJoin` + `eq` are supported in Drizzle 0.45.2
-
-CAT-14 (`SET NOT NULL` on `watches.catalog_id`) is a DDL migration with no application code change beyond removing null-guards in the DAL.
-
----
-
-### 5. Discovery Audit (Phase 1 — Read-Only)
-
-**Verdict: No new libraries. This is a documentation exercise, not a code feature.**
-
-The discovery audit maps click-paths across existing routes (`/`, `/explore`, `/u/{user}`, `/catalog/{id}`, `/search`, `/watch/{id}`). Output is a decisions document (`.planning/phases/32-discovery-audit/` or similar). No instrumentation, analytics SDK, or tracking library needed. Reading source code + manual click-through + writing a structured Markdown doc is the correct approach.
-
-If lightweight UX flow tracing is desired, Next.js App Router Server Components already log requests via `console.log` or the Vercel platform's built-in request logs. No Hotjar, Mixpanel, or similar.
-
----
-
-### 6. Branded HTML Email Templates (SET-14)
-
-**Recommendation: react-email 6.1.1 + @react-email/components 1.0.12**
-
-React Email is the correct choice for this stack because:
-- **Existing stack alignment:** TypeScript + React. Maizzle requires learning a separate Tailwind-based email templating paradigm. react-email uses familiar JSX.
-- **Resend first-party integration:** react-email is published by Resend. The `resend` npm package accepts `react` as a first-class prop for the `from` field. No render step needed — Resend handles `ReactElement → HTML` internally.
-- **Tailwind 4 support:** React Email 5.0 added Tailwind 4 support. Version 6.1.1 (current) includes the unified package and open-source visual editor.
-- **2M weekly npm downloads** as of the v6.0 announcement — active, not abandoned.
+**New dependency: `react-markdown@^10.1.0`**
 
 ```bash
-npm install react-email @react-email/components
+npm install react-markdown
 ```
-
-Note: `react-email` (6.1.1) and `@react-email/components` (1.0.12) are the two packages needed. The `resend` npm package is NOT yet in the project — add it when SET-14 is implemented.
-
-**Maizzle is not recommended** because it requires a Node.js build step outside the Next.js pipeline, a separate config, and a different mental model. The Tailwind-for-email appeal doesn't offset the DX friction when the codebase is already React/TypeScript.
-
-**Hand-rolling is not recommended** because table-based email layout CSS is a maintenance trap. react-email's components handle inbox compatibility (Outlook, Gmail, Apple Mail) automatically.
 
 ---
 
-### 7. Variant Dedup Tooling (Post-User-Promoted Catalog Growth)
+### (b) Images: Hero, Curated-List Covers, Avatars
 
-**Recommendation: pg_trgm Postgres extension (already available in Supabase) — no npm library needed.**
+**Verdict: Supabase Storage for upload/serving + Next.js `<Image>` for display. No image transformation library needed. Supabase image transforms are NOT available on the free plan.**
 
-The dedup problem — "Submariner Date" vs "Submariner Date 16610" being ingested twice — is best solved at the database layer using `pg_trgm` trigram similarity, not in application code.
+**Rationale:**
 
-**Why pg_trgm:**
-- Available as a Supabase extension (enable via dashboard or `CREATE EXTENSION pg_trgm;`)
-- `similarity('Submariner Date', 'Submariner Date 16610')` returns a float 0..1
-- A GIN index on `(model_normalized || ' ' || brand_normalized)` makes dedup queries fast even at thousands of catalog rows
-- Dedup can run as a one-time curation script (`npm run db:dedup-catalog`) using `db.execute(sql\`...\`)` — no application runtime path needed for v5.0
+**Supabase Storage image transformation is a Pro Plan feature** (confirmed via official Supabase docs, 2026-05-16). The project runs on the free tier. Do not add the Supabase custom Next.js image loader — it would silently fail on the free plan.
 
-**Pattern for a curation script:**
+The existing `next.config.ts` already has `images: { unoptimized: true }` to avoid SSRF risk from arbitrary watch page URLs. This setting applies project-wide. For user-controlled Supabase storage images (avatars, cover photos), the approach is:
+- Upload pre-resized JPEGs from the client (the existing pattern in `src/lib/storage/catalogSourcePhotos.ts` and `src/lib/storage/wearPhotos.ts` already does canvas-reencoded JPEG ≤1080px with EXIF strip before upload).
+- Serve via signed URLs for private buckets, or via public bucket URLs for public cover/hero images. Use standard `<img>` tags or Next.js `<Image unoptimized>` for display.
+- Hero and curated-list cover images should live in a new **public** Supabase Storage bucket (no signed URL required — public read RLS). This avoids signed URL expiry on the `/explore` page which is globally cached.
 
-```sql
--- Find candidate duplicates before the Layer C wipe
-SELECT a.id, a.brand, a.model, a.reference, b.id, b.brand, b.model, b.reference,
-       similarity(
-         lower(trim(a.brand)) || ' ' || lower(trim(a.model)),
-         lower(trim(b.brand)) || ' ' || lower(trim(b.model))
-       ) AS sim
-FROM watches_catalog a
-JOIN watches_catalog b ON a.id < b.id
-WHERE similarity(
-  lower(trim(a.brand)) || ' ' || lower(trim(a.model)),
-  lower(trim(b.brand)) || ' ' || lower(trim(b.model))
-) > 0.7
-ORDER BY sim DESC;
-```
+**Avatar upload** reuses the EXIF-strip + ≤1080px JPEG canvas pattern already in place from the WYWT photo flow (`heic2any`, canvas re-encode, client-direct upload). No new tooling needed. The existing `exifr` devDependency handles EXIF stripping during development.
 
-**npm libraries to avoid:** `fuzzysort`, `fuse.js`, `natural` — these run in application memory and can't leverage Postgres indexes. The catalog is the source of truth; dedup belongs in the DB.
+**What NOT to add:** Cloudinary, Imgix, Sharp, or any server-side image processing library. Sharp would require a native Node.js binary and complicates Vercel deploys. The client-side canvas resize approach already ships and works.
+
+**No new dependencies.**
 
 ---
 
-### 8. AI SDK / Model Upgrade (LLM-Driven Curation)
+### (c) Bottom-Sheet Drag/Swipe-to-Dismiss
 
-**Recommendation: Upgrade @anthropic-ai/sdk from ^0.88.0 to ^0.94.0. Keep model string `claude-sonnet-4-6` — no change needed.**
+**Verdict: Migrate `FilterSheet.tsx` from `@base-ui/react/dialog` to `@base-ui/react/drawer`. No new library needed. Do NOT add vaul.**
 
-Verified against Anthropic official docs (platform.claude.com/docs/en/about-claude/models/overview):
+**Rationale:**
 
-- `claude-sonnet-4-6` is the **current production alias** for Claude Sonnet 4.6 (latest generation Sonnet). It is NOT deprecated.
-- `claude-sonnet-4-20250514` (the old model ID used in `enricher.ts` comments) IS deprecated — retirement June 15, 2026. The codebase already uses `claude-sonnet-4-6` in `enricher.ts` (`model: 'claude-sonnet-4-6'`), which is correct.
-- The SDK is at 0.94.0 on npm (last published within 24 hours as of research date). ^0.88.0 is 6 minor versions behind but compatible — bump is safe and gives access to any tool-use or streaming improvements.
+The existing `src/components/ui/sheet.tsx` wraps `@base-ui/react/dialog` (a Dialog primitive — `import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"`). The Dialog does not handle touch-swipe gestures. The fix from the bug report ("filter sheet felt stuck, could not be dismissed during a pending query") is a separate logical issue — but drag-to-dismiss requires switching the primitive.
 
-```bash
-npm install @anthropic-ai/sdk@^0.94.0
-```
+`@base-ui/react` version 1.3.0 is already installed and ships a `drawer` package at `@base-ui/react/drawer`. The Drawer component includes:
+- Native swipe-to-dismiss with `swipeDirection` prop (`'up' | 'down' | 'left' | 'right'`; default `'down'` for bottom sheets)
+- CSS data attributes for swipe-direction-aware exit animations (`data-swipe-direction`, `data-ending-style`)
+- A `Drawer.SwipeArea` sub-component for drag handle affordance
+- `data-base-ui-swipe-ignore` attribute to opt specific children out of swipe dismissal (important for filter chip scroll areas)
 
-**No model change for v5.0:** `claude-sonnet-4-6` remains the right choice for taste enrichment — fast, cost-effective, already proven in Phase 19.1. `claude-opus-4-7` (the new flagship) is significantly more expensive ($5/MTok input vs $3/MTok) and not warranted for batch catalog enrichment.
+The correct migration is: replace `@base-ui/react/dialog` with `@base-ui/react/drawer` inside `sheet.tsx`, add `swipeDirection="down"`, and add CSS exit animations keyed on `data-swipe-direction`. The component's public API (`Sheet`, `SheetContent`, `SheetTrigger`, etc.) stays identical — `FilterSheet.tsx` (now `WatchFacetSheet`) needs no changes beyond the import.
 
----
+**vaul is NOT needed.** vaul (Emil Kowalski's drawer) is a React-specific gesture library that predates base-ui's Drawer. Since `@base-ui/react` 1.3.0 is already installed and provides equivalent functionality natively, adding vaul would be redundant weight. vaul also has a different component API that would require a larger migration surface.
 
-### 9. Testing Additions for Hierarchical Data
+**No new dependencies.** The change is a refactor of `src/components/ui/sheet.tsx` to use the already-installed `@base-ui/react/drawer`.
 
-**Recommendation: @electric-sql/pglite 0.4.5 + @praha/drizzle-factory 1.4.2**
-
-The existing Vitest + RTL + MSW stack tests application logic well but has no in-process database for schema-level tests. Hierarchy tests (e.g., "brand_id FK resolves through family to catalog row", "lineage edge prevents self-reference") need a real Postgres schema, not mocks.
-
-**@electric-sql/pglite 0.4.5** runs WASM-compiled Postgres in-process inside Vitest. Confirmed by the drizzle-orm community docs and GitHub discussions (#4205, #4216). Pattern:
-- `vitest.config.ts` global setup pushes Drizzle schema to PGLite
-- Each test file gets an isolated PGLite instance
-- No Docker, no external Postgres, works in CI
-
-**@praha/drizzle-factory 1.4.2** generates typed test fixtures from Drizzle schema tables. Pattern from Context7 community docs:
-- `createFactory(db, brandSchema)` produces a `BrandFactory`
-- `BrandFactory.create({ name: 'Rolex' })` inserts and returns a typed row
-- `composeFactory([BrandFactory, FamilyFactory, CatalogFactory])` builds a full hierarchy tree in one call
-
-These two libraries together solve the "how do I create a valid 4-level hierarchy (Brand → Family → Reference → Variant) as a test fixture" problem without writing 40-line setup helpers per test.
-
-```bash
-npm install -D @electric-sql/pglite @praha/drizzle-factory
-```
-
-**Note on MSW:** The existing MSW setup handles API route mocking. PGLite + drizzle-factory is additive for DB-layer tests, not a replacement for MSW's HTTP-level tests.
+**Integration note:** The "fix dismiss during pending query" bug is orthogonal to swipe-to-dismiss and should be handled separately — it is a state management issue in `FilterSheet.tsx`, not a primitive issue. Do not conflate the two fixes.
 
 ---
 
-## Summary: What to Add vs What Already Ships
+### (d) Catalog Enrichment: Anthropic Vision + Model Verification
 
-| Capability | Add? | Package | Version | Notes |
-|------------|------|---------|---------|-------|
-| Self-referencing FK (Brand/Family/Variant) | No | — | — | Drizzle 0.45.2 `AnyPgColumn` pattern |
-| WITH RECURSIVE lineage traversal | No | — | — | `db.execute(sql\`WITH RECURSIVE...\`)` pattern |
-| Clean-slate DB wipe + reseed | No | — | — | Existing drizzle-kit + supabase db push flow |
-| CAT-13 analyzeSimilarity() rewire | No | — | — | DAL JOIN + type extension, no new lib |
-| Discovery audit | No | — | — | Read-only documentation exercise |
-| Branded HTML email (SET-14) | YES | `react-email`, `@react-email/components`, `resend` | 6.1.1, 1.0.12, latest | Add when SET-14 phase starts |
-| Variant dedup | No (app lib) | pg_trgm | Postgres ext | Enable extension; use `db.execute(sql\`...\`)` |
-| AI SDK upgrade | YES | `@anthropic-ai/sdk` | ^0.94.0 | Bump from ^0.88.0; keep `claude-sonnet-4-6` |
-| Hierarchy test fixtures | YES | `@electric-sql/pglite`, `@praha/drizzle-factory` | 0.4.5, 1.4.2 | Dev dependency only |
+**Verdict: Everything already in place. No new dependencies. Use sequential processing, not the Batch API. Model ID `claude-sonnet-4-6` is current.**
+
+**Model ID:**
+
+`claude-sonnet-4-6` is confirmed as the **current recommended API ID** for Claude Sonnet, verified against the official Anthropic models overview page (2026-05-16). It is a pinned snapshot (not an evergreen pointer). The existing `src/lib/taste/enricher.ts` already uses this exact model ID. No change needed.
+
+Note: `claude-sonnet-4-20250514` (the previous ID used in `src/lib/extractors/llm.ts`) is **deprecated and retires June 15, 2026**. That file should be updated to `claude-sonnet-4-6` as part of v5.1 — but this is a one-line change, not a new dependency.
+
+**Vision input mechanics:**
+
+The existing enricher already implements vision mode correctly:
+- Fetches photo bytes from Supabase Storage via a 60-second signed URL
+- Re-encodes as base64 JPEG
+- Passes `{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photoBase64 } }` in the `messages` content array alongside a text prompt
+- Degrades to text-only mode if photo fetch fails
+
+This pattern is confirmed correct against current Anthropic SDK docs. No changes needed.
+
+**Batch API vs Sequential:**
+
+The v5.1 enrichment task is ~100 rows. The Anthropic Batch API is appropriate for 1,000+ rows where 24-hour async processing is acceptable. The existing `scripts/backfill-taste.ts` runs sequentially with a configurable `--batch-size` flag (default 20 rows per invocation), which is the right approach for a one-time ~100-row operator task. The sequential script already handles idempotency (first-write-wins via `AND confidence IS NULL` predicate), resume, dry-run, and cost logging.
+
+The Batch API DOES support tool_use and vision (confirmed via official Anthropic batch processing docs) — it is technically usable here. But it is overkill: most batches of 100 finish in under an hour sequentially anyway, and the existing sequential script already has all the scaffolding. The Batch API would require additional polling logic to wait for results before writing to the DB.
+
+**Recommendation:** Reuse `scripts/backfill-taste.ts` directly or extend it with a `--catalog-v5-1` flag. Do not introduce the Batch API for this scale.
+
+**No new dependencies.**
 
 ---
 
-## Installation Snapshot
+### (e) Hero + Curated Lists Rail: Carousel
 
-```bash
-# Runtime additions (add at milestone start)
-npm install @anthropic-ai/sdk@^0.94.0
+**embla-carousel-react 8.6.0 is already installed.** The rotating hero does not require a carousel library — it shows one item per page load (server-selected). The curated lists rail is a horizontally scrollable container; CSS `overflow-x: auto` with `-webkit-overflow-scrolling: touch` suffices on mobile. If a snap-scroll rail is needed, embla-carousel-react is already available.
 
-# Email (add when SET-14 phase starts — defer until that phase)
-npm install react-email @react-email/components resend
+**No new dependencies.**
 
-# Dev additions (add at milestone start)
-npm install -D @electric-sql/pglite @praha/drizzle-factory
-```
+---
+
+### (f) Admin CMS Route: Auth Gating
+
+The admin route (`/admin/lists`, `/admin/lists/[id]`) must be owner-gated. The existing auth system (Supabase Auth + `src/lib/auth.ts` proxy enforcement) handles this. Add a server-side check comparing the session user to a hardcoded owner email constant (the single-user pattern already used in the codebase). No new auth library or middleware needed.
+
+---
+
+## Summary: New Dependencies
+
+| Package | Version | Why Needed | Justified? |
+|---------|---------|------------|------------|
+| `react-markdown` | `^10.1.0` | Render markdown intro copy + per-item commentary on list detail + hero | YES — lightest viable renderer; no rich-text editor needed |
+
+**All other v5.1 features are covered by the existing stack.** The base-ui/drawer migration, avatar upload, hero images, and catalog enrichment are refactors and configuration changes, not new dependencies.
 
 ---
 
@@ -267,36 +159,43 @@ npm install -D @electric-sql/pglite @praha/drizzle-factory
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| pg-format | Runtime SQL string formatting; not needed for static migration scripts | Raw SQL in `db.execute(sql\`...\`)` |
-| fuse.js / fuzzysort | In-memory fuzzy matching for catalog dedup | pg_trgm Postgres extension |
-| Stripe / entitlements | SEED-006 resolved: no paywall in v5.0 | Nothing — stay fully free |
-| Hotjar / Mixpanel | Overkill for a discovery audit phase | Manual click-path walkthrough + Markdown output |
-| Maizzle | Separate build pipeline, non-React paradigm | react-email |
-| @anthropic-ai/sdk Bedrock variant | Not needed — direct API usage is correct | Keep direct `@anthropic-ai/sdk` |
-| drizzle-seeder / knex | Redundant with tsx scripts already in package.json | `npm run db:*` tsx scripts |
+| TipTap / Quill / Slate / Lexical | Rich-text editors are overkill for single-owner editorial copy; 150–400 kB bundle | Plain `<Textarea>` + `react-markdown` |
+| vaul | `@base-ui/react/drawer` (already installed, v1.3.0) provides equivalent swipe-to-dismiss natively | `@base-ui/react/drawer` |
+| Sanity / Contentlayer / any third-party CMS | Rejected in PROJECT.md — adds auth surface, webhook complexity, and external billing | In-app admin route (Next.js) |
+| Supabase image transform loader | Requires Pro Plan; project is on free tier | Client-side canvas resize before upload (already in place) |
+| Sharp / Imgix / Cloudinary | Native binaries, server-side complexity, not needed at this scale | Client-side canvas resize (already in place) |
+| Anthropic Batch API | Appropriate for 1,000+ rows; 100 rows is sequential territory | Existing `scripts/backfill-taste.ts` sequential script |
 
 ---
 
-## Deprecation Notice (Action Required Before June 15, 2026)
+## Version Compatibility Notes
 
-The `claude-sonnet-4-20250514` model ID (used in old comments and the enricher.ts comment block) is deprecated by Anthropic. The codebase currently passes `claude-sonnet-4-6` to the API, which is correct and is the current production alias. No code change is needed — the model string in `enricher.ts` is already correct. The deprecation only affects old snapshot IDs; `claude-sonnet-4-6` is a live alias.
+| Change | Impact |
+|--------|--------|
+| `@base-ui/react/drawer` replaces `@base-ui/react/dialog` in `sheet.tsx` | Internal to `sheet.tsx`; external API (`Sheet`, `SheetContent`, etc.) unchanged. `WatchFacetSheet.tsx` has no import changes. |
+| `react-markdown@^10.1.0` | React 19 compatible; no peer conflicts. Server Component safe (pure renderer, no client hooks). |
+| `claude-sonnet-4-6` model ID | Already in `enricher.ts`. Update `src/lib/extractors/llm.ts` to replace deprecated `claude-sonnet-4-20250514` before June 15, 2026. |
+
+---
+
+## Installation
+
+```bash
+# Only one new runtime dependency for v5.1
+npm install react-markdown
+```
 
 ---
 
 ## Sources
 
-- Context7 `/drizzle-team/drizzle-orm-docs` — self-referencing FK (`AnyPgColumn`), CTE patterns, `db.execute(sql\`...\`)` raw queries — HIGH confidence
-- GitHub `drizzle-team/drizzle-orm` issue #209 — WITH RECURSIVE not yet supported; raw SQL workaround confirmed — HIGH confidence
-- `npm show drizzle-orm version` → 0.45.2 (current latest); `npm show drizzle-kit version` → 0.31.10 — HIGH confidence
-- Anthropic official docs `platform.claude.com/docs/en/about-claude/models/overview` — `claude-sonnet-4-6` is current alias, `claude-sonnet-4-20250514` deprecated June 15 2026 — HIGH confidence
-- `npm show @anthropic-ai/sdk version` → 0.94.0 — HIGH confidence
-- `npm show react-email version` → 6.1.1; `npm show @react-email/components version` → 1.0.12 — HIGH confidence
-- `resend.com/blog/react-email-6` — v6.0 Resend integration, Tailwind 4 support, 2M weekly downloads — MEDIUM confidence (official Resend blog)
-- `npm show @electric-sql/pglite version` → 0.4.5; `npm show @praha/drizzle-factory version` → 1.4.2 — HIGH confidence
-- PostgreSQL docs `pg_trgm` extension; Supabase extensions docs — MEDIUM confidence (pg_trgm must be explicitly enabled, not auto-enabled)
-- WebSearch: react-email vs Maizzle comparison (2026 sources on trybuildpilot.com, websyro.com) — MEDIUM confidence
+- `@base-ui/react` Drawer docs — Context7 `/mui/base-ui`, verified swipe-to-dismiss, `swipeDirection` prop, `data-base-ui-swipe-ignore` attribute (HIGH confidence)
+- Anthropic models overview — https://platform.claude.com/docs/en/about-claude/models/overview — confirmed `claude-sonnet-4-6` as current Sonnet ID; `claude-sonnet-4-20250514` deprecated June 15, 2026 (HIGH confidence)
+- Anthropic batch processing — https://platform.claude.com/docs/en/build-with-claude/batch-processing — confirmed tool_use + vision supported in Batch API; 100,000 request limit; 50% cost reduction (HIGH confidence)
+- Supabase Storage image transformations — https://supabase.com/docs/guides/storage/serving/image-transformations — confirmed Pro Plan required; free tier excluded (HIGH confidence)
+- `react-markdown` — Context7 `/remarkjs/react-markdown`; npm latest 10.1.0 (HIGH confidence)
+- Existing codebase — `src/components/ui/sheet.tsx`, `src/lib/taste/enricher.ts`, `scripts/backfill-taste.ts`, `next.config.ts` — read directly (HIGH confidence)
 
 ---
-
-*Stack research for: Horlo v5.0 Discovery North Star*
-*Researched: 2026-05-06*
+*Stack research for: Horlo v5.1 Explore Page Redesign*
+*Researched: 2026-05-16*
