@@ -1,9 +1,6 @@
 /**
  * Phase 41 — Track A (SET-13) integration test: deleteAccount server action.
  *
- * RED scaffold — `deleteAccount` does not exist yet (ships in plan 41-02).
- * This file is RED because the import resolves to a missing module.
- *
  * Env-gate: tests skip when DATABASE_URL or SUPABASE_SERVICE_ROLE_KEY is absent.
  * To run locally: set -a; source .env.local; set +a; npx vitest run tests/integration/account-delete.test.ts
  *
@@ -23,10 +20,14 @@ const maybe =
     : describe.skip
 
 // ---- Mocks ----
-const mockAdminDeleteUser = vi.fn().mockResolvedValue({ error: null })
-const mockStorageList = vi.fn().mockResolvedValue({ data: [], error: null })
-const mockStorageRemove = vi.fn().mockResolvedValue({ error: null })
-const mockDbExecute = vi.fn().mockResolvedValue([])
+// vi.hoisted() runs before vi.mock() factories so these refs are available
+// to both the factory closures and the test body.
+const { mockAdminDeleteUser, mockStorageList, mockStorageRemove, mockDbExecute } = vi.hoisted(() => ({
+  mockAdminDeleteUser: vi.fn().mockResolvedValue({ error: null }),
+  mockStorageList: vi.fn().mockResolvedValue({ data: [], error: null }),
+  mockStorageRemove: vi.fn().mockResolvedValue({ error: null }),
+  mockDbExecute: vi.fn().mockResolvedValue([]),
+}))
 
 vi.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: vi.fn().mockResolvedValue({
@@ -71,6 +72,15 @@ vi.mock('drizzle-orm', () => ({
   sql: vi.fn().mockReturnValue('mocked-sql'),
 }))
 
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}))
+
+vi.mock('@/data/profiles', () => ({
+  getProfileById: vi.fn().mockResolvedValue(null),
+}))
+
 maybe('deleteAccount — SET-13 storage-before-DB ordering + public.users cascade', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -96,10 +106,13 @@ maybe('deleteAccount — SET-13 storage-before-DB ordering + public.users cascad
       data: [{ name: 'event1.jpg' }],
       error: null,
     })
-    mockDbExecute.mockImplementation(async () => {
-      callOrder.push('db-delete-users')
-      return []
-    })
+    // db.delete().where() is used for public.users delete; track it via the mock
+    const { db } = await import('@/db')
+    vi.mocked(db.delete).mockReturnValue({
+      where: vi.fn().mockImplementation(async () => {
+        callOrder.push('db-delete-users')
+      }),
+    } as never)
 
     await deleteAccount()
 
@@ -132,10 +145,8 @@ maybe('deleteAccount — SET-13 storage-before-DB ordering + public.users cascad
 })
 
 // Stub test: always runs — confirms the module shape expectation.
-describe('deleteAccount — module contract (RED until 41-02 ships)', () => {
+describe('deleteAccount — module contract', () => {
   it('deleteAccount is exported from @/app/actions/account', () => {
-    // RED: This assertion documents the contract. The import will fail until
-    // 41-02 creates src/app/actions/account.ts with deleteAccount export.
     expect(deleteAccount).toBeDefined()
   })
 })
