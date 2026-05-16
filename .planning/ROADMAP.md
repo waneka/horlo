@@ -111,7 +111,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [x] **Phase 39: Audit-Driven Discovery Polish — Cheap Patches** — DISC-11 cheap-tier dead-end closures only (NSV-01+15 mostSimilar Link wraps, NSV-08 Insights verify-and-patch, NSV-12 common-ground 404 → walk-back fallback). DISC-09 dropped 2026-05-12 and promoted to v5.1 (SEED-008). *(completed 2026-05-12: 3 plans / 2 waves; verifier PHASE_PASSED 5/5; T-39-01 ASVS V4 privacy split shipped; NSV-08 confirmed shipped-before-Phase-39 with grep evidence; 6/6 phase tests green)*
 - [ ] **Phase 39b: Audit-Driven Discovery Polish — Heavier UX** — DISC-11 heavier-tier closures (NSV-06+20 fresh-account ReferenceIdentityCard, NSV-14 8-row Collector Profile sub-cluster, NSV-18 catalog other-owners roster, NSV-02+16 inline lineage rails with operator-curation seed pass)
 - [ ] **Phase 40: Search & Verdict Polish** — SRCH-16 faceted filters + FIT-05 pairwise drill-down in CollectionFitCard
-- [ ] **Phase 41: Account Danger Zone + Branded Auth Emails** *(parallel track)* — SET-13 Danger Zone; SET-14 react-email templates
+- [x] **Phase 41: Account Danger Zone + Branded Auth Emails** *(parallel track)* — SET-13 Danger Zone; SET-14 react-email templates (completed 2026-05-16)
 - [ ] **Phase 42: Nyquist Hardening + UAT Triage** *(parallel track)* — VALIDATION.md sweep; ~33 UAT items triaged
 
 ## Phase Details
@@ -473,7 +473,7 @@ Plans:
 - [x] 41-04-PLAN.md — Track B: react-email setup + HorloEmailLayout + 3 branded auth email templates + tsconfig exclude + Supabase dashboard paste (operator checkpoint)
 
 **Wave 3** *(blocked on 41-02)*
-- [ ] 41-03-PLAN.md — Track A UI: WipeCollectionModal + DeleteAccountModal (2-step, type-to-confirm) + DangerZoneSection wired into AccountSection
+- [x] 41-03-PLAN.md — Track A UI: WipeCollectionModal + DeleteAccountModal (2-step, type-to-confirm) + DangerZoneSection wired into AccountSection
 **UI hint**: yes
 
 ### Phase 42: Nyquist Hardening Sweep + UAT Triage *(parallel track)*
@@ -521,7 +521,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 39. Audit-Driven Discovery Polish — Cheap Patches | 0/? | Not started — context gathered 2026-05-12 | - |
 | 39b. Audit-Driven Discovery Polish — Heavier UX | 0/? | Not started — carry-forward context in 39-CONTEXT.md | - |
 | 40. Search & Verdict Polish | 0/? | Not started | - |
-| 41. Account Danger Zone + Branded Emails *(parallel)* | 3/4 | In Progress|  |
+| 41. Account Danger Zone + Branded Emails *(parallel)* | 4/4 | Complete   | 2026-05-16 |
 | 42. Nyquist Hardening + UAT Triage *(parallel)* | 0/? | Not started | - |
 
 ---
