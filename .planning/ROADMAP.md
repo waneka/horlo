@@ -469,7 +469,7 @@ Plans:
 - [x] 41-01-PLAN.md — Wave 0 scaffold: install react-email tooling, create 5 RED test files, confirm service-role env var name (operator checkpoint)
 
 **Wave 2** *(parallel — blocked on Wave 1)*
-- [ ] 41-02-PLAN.md — Track A backend: service-role admin client + wipeCollection / deleteAccount server actions (storage purge before DB delete; explicit public.users delete)
+- [x] 41-02-PLAN.md — Track A backend: service-role admin client + wipeCollection / deleteAccount server actions (storage purge before DB delete; explicit public.users delete)
 - [ ] 41-04-PLAN.md — Track B: react-email setup + HorloEmailLayout + 3 branded auth email templates + tsconfig exclude + Supabase dashboard paste (operator checkpoint)
 
 **Wave 3** *(blocked on 41-02)*
@@ -521,7 +521,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 39. Audit-Driven Discovery Polish — Cheap Patches | 0/? | Not started — context gathered 2026-05-12 | - |
 | 39b. Audit-Driven Discovery Polish — Heavier UX | 0/? | Not started — carry-forward context in 39-CONTEXT.md | - |
 | 40. Search & Verdict Polish | 0/? | Not started | - |
-| 41. Account Danger Zone + Branded Emails *(parallel)* | 1/4 | In Progress|  |
+| 41. Account Danger Zone + Branded Emails *(parallel)* | 2/4 | In Progress|  |
 | 42. Nyquist Hardening + UAT Triage *(parallel)* | 0/? | Not started | - |
 
 ---
