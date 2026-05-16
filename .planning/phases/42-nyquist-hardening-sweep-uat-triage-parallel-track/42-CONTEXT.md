@@ -222,3 +222,50 @@ None other — discussion stayed within phase scope.
 
 *Phase: 42-Nyquist Hardening Sweep + UAT Triage*
 *Context gathered: 2026-05-15*
+
+<triage>
+## DEBT-11 Final Closure Table
+
+**Completed:** 2026-05-16 | **Total items:** 34 (33 UAT items + 1 D-04 note row)
+**Dispositions:** CLOSED: 23 | SUPERSEDED: 9 | DEFERRED: 2
+
+All 33 deferred UAT items from v4.0 Phases 18/20/20.1/22/23 are accounted for below, plus one administrative note row (D-04). CLOSED rows are backed by real UAT pass verdicts from `42-HUMAN-UAT.md` (run 2026-05-16). SUPERSEDED rows are closed on cited evidence (no live run required per D-01). DEFERRED rows carry an explicit reason and forward target.
+
+| # | Item Description | Original Phase | Disposition | Resolution Note |
+|---|-----------------|----------------|-------------|-----------------|
+| 1 | Sparse-network hero render: visiting `/explore` as a user with <3 follows and zero wear events shows the sparse-network welcome hero | 18 | CLOSED | UAT 2026-05-16: passed |
+| 2 | See-all surfaces: Popular Collectors and Gaining Traction "See all" navigation clicks lead to correctly populated full-list pages | 18 | CLOSED | UAT 2026-05-16: passed |
+| 3 | Mobile BottomNav: the Explore slot appears correctly in the mobile bottom navigation at the correct position with the correct icon | 18 | CLOSED | UAT 2026-05-16: passed |
+| 4 | Follow→/explore SWR revalidation: after following a new collector from `/explore`, the discover surface refreshes to reflect the new follow | 18 | CLOSED | UAT 2026-05-16: passed |
+| 5 | Add-watch→/explore SWR fan-out: adding a watch from the extract flow causes the /explore Trending and Gaining Traction rails to recompute on next visit | 18 | CLOSED | UAT 2026-05-16: passed |
+| 6 | Popular Collectors rail: the most-followed public profiles (excluding self and already-followed) are shown, with correct follow counts | 18 | CLOSED | UAT 2026-05-16: passed |
+| 7 | Trending Watches rail: catalog watches with highest recent view velocity are surfaced correctly in the Trending rail | 18 | CLOSED | UAT 2026-05-16: passed |
+| 8 | Gaining Traction rail: watches with rising ownership delta (new owners in last 7d vs prior 7d) surface correctly | 18 | DEFERRED | Requires specific DB state (two time-period catalog snapshots) not reproducible in a single test session; carry to v5.x when catalog snapshot data is more populated (per 42-PRE-TRIAGE.md evidence) |
+| 9 | /explore/collectors full-list: full popular-collectors list page renders correctly with pagination | 18 | CLOSED | UAT 2026-05-16: passed |
+| 10 | CollectionFitCard visual rhythm: the card's layout, spacing, and visual hierarchy look correct on a real collection | 20 | SUPERSEDED | Superseded by Phase 39 NSV-01 — `CollectionFitCard.tsx:62-81` was reshaped (mostSimilar `<li>` elements gained `<Link>` wraps with hover styles); the Phase 20 UAT targeted the original layout; Phase 39 NSV-01+15 are the correct post-modification baseline (39-CONTEXT D-07) |
+| 11 | D-08 self-via-cross-user callout: viewing your own watch page as a cross-user session surfaces the correct self-identification callout | 20 | CLOSED | UAT 2026-05-16: passed |
+| 12 | Accordion inline preview interaction: the inline preview accordion on `/catalog/[catalogId]` expands and collapses correctly | 20 | SUPERSEDED | Superseded by Phase 39b NSV-06+20 — `/catalog/{id}` was substantially reshaped (ReferenceIdentityCard added, 3-CTA block restructured for empty-collection branch, owners roster added by NSV-18); the Phase 20 accordion premise is no longer valid (39b-CONTEXT D-39b-04, 39b-VERIFICATION.md) |
+| 13 | Discovery click-through to /catalog/[catalogId]: clicking a watch in a discovery rail navigates correctly to the catalog detail page | 20 | SUPERSEDED | Superseded by Phase 39 NSV-01+15 (Link wraps in CollectionFitCard) and Phase 39b NSV-02+16 (DiscoveryWatchCard components on `/catalog/{id}` and `/watch/{id}` lineage rails clicking through to `/catalog/{id}`); the entire click-through surface was reshaped |
+| 14 | FIT-02 phrasing quality: the verdict copy reads naturally on real collection data (not formulaic or repetitive) | 20 | CLOSED | UAT 2026-05-16: passed |
+| 15 | Visual smoke: the full URL-extract → verdict → 3-button decision flow works end-to-end on a real watch URL | 20.1 | SUPERSEDED | Superseded by gap-closure plan 20.1-06 (fixed catalogId-null bug causing empty-collection fallback for all users, debug entry `verdict-empty-collection-message`) and Phase 28-05 (commit `fbe3522`, full AddWatchFlow + WatchForm submit handler rewrite); post-fix the flow works end-to-end by definition |
+| 16 | Wishlist commit smoke: clicking "Add to Wishlist" from verdict-ready opens WishlistRationalePanel with textarea pre-filled by verdict.contextualPhrasings[0] | 20.1 | SUPERSEDED | Superseded by gap-closure plan 20.1-06 (fixed `verdict !== null` path, debug entry `wishlist-textarea-not-prefilled`); pre-fill now works by definition |
+| 17 | Skip + rail smoke: clicking Skip from verdict-ready clears the input AND adds a chip to the "Recently evaluated" rail | 20.1 | SUPERSEDED | Superseded by gap-closure plan 20.1-06 (fixed `state.catalogId` falsy guard that silently skipped the rail entry push, debug entry `recently-evaluated-rail-missing`) |
+| 18 | Manual entry inline flow (entry + escape): clicking "or enter manually" transitions to inline WatchForm AND a Cancel CTA escapes back to URL entry mode | 20.1 | CLOSED | UAT 2026-05-16: passed |
+| 19 | Extraction failure recovery: when URL extraction fails, the user is shown a categorized error card (`ExtractErrorCard`) with continuation options | 20.1 | CLOSED | UAT 2026-05-16: passed |
+| 20 | /search inline 3 CTAs: on `/search?tab=watches`, clicking a result row expands the accordion inline to show the verdict and 3-button CTAs | 20.1 | SUPERSEDED | Superseded by gap-closure plan 20.1-07 (fixed `search-row-expand-broken` — accordion expand was entirely non-functional, debug entry resolved) and Phase 39b NSV-14 (StatsTabContent Link wraps and LockedTabCard CTAs touching adjacent search/profile surfaces) |
+| 21 | /catalog cross-user 3 CTAs: on `/catalog/[catalogId]`, a cross-user viewer sees the 3-button CTAs (Add to Wishlist / Add to Collection / Skip) inline | 20.1 | SUPERSEDED | Superseded by Phase 39b NSV-06+20 (3-CTA block now renders for empty-collection viewers below the new ReferenceIdentityCard, 39b-CONTEXT D-39b-04; owners roster added by NSV-18); cross-user CTA surface was substantially modified |
+| 22 | Deep-link /watch/new?catalogId smoke: navigating to `/watch/new?catalogId=<id>` pre-fills the extract flow from the catalog entry | 20.1 | CLOSED | UAT 2026-05-16: passed |
+| 23 | Email change end-to-end with live Resend SMTP: trigger an email address change, receive confirmation emails at both addresses, click the link, confirm success toast | 22 | CLOSED | UAT 2026-05-16: passed |
+| 24 | Password change — fresh session: the password change flow works directly from a fresh session without triggering re-auth | 22 | CLOSED | UAT 2026-05-16: passed |
+| 25 | Password change — stale session re-auth: changing the password from a session older than 24h triggers the re-auth dialog before the change applies | 22 | CLOSED | UAT 2026-05-16: passed |
+| 26 | /settings vertical-tabs visual: the Settings page renders the correct vertical-tabs layout (Account / Profile / Preferences / Privacy / Notifications / Appearance) with correct visual hierarchy | 22 | CLOSED | UAT 2026-05-16: passed |
+| 27 | /preferences redirect: navigating to `/preferences` redirects correctly to `/settings#preferences` | 22 | CLOSED | UAT 2026-05-16: passed |
+| 28 | Email-change banner persistence: the "Confirmation sent to old@ and new@" banner remains visible across tab switches without clearing prematurely | 22 | CLOSED | UAT 2026-05-16: passed |
+| 29 | Preferences persistence — Brand Loyalist: selecting "Brand Loyalist" in Collection goal on `/settings#preferences` persists after page reload | 23 | CLOSED | UAT 2026-05-16: passed |
+| 30 | analyzeSimilarity reads new preference on next render: after changing Overlap tolerance, the verdict on `/watch/{id}` reflects the new preference | 23 | CLOSED | UAT 2026-05-16: passed |
+| 31 | Cross-surface theme sync: toggling Light/Dark/System in AppearanceSection and UserMenu InlineThemeSegmented stay in sync via the `horlo-theme` cookie | 23 | DEFERRED | UAT 2026-05-16 failed — Light-mode theme application broken (preference persists, applied theme stuck on dark); carry to v5.x gap-closure; see `42-HUMAN-UAT.md` Gaps section for root-cause hypothesis |
+| 32 | notesPublic cross-page revalidation: editing a watch's Public/Private pill updates the per-row NoteVisibilityPill on `/u/{username}/notes` | 23 | CLOSED | UAT 2026-05-16: passed |
+| 33 | Chronometer end-to-end: checking "Chronometer-certified" in WatchForm and submitting shows a "Certification: ✓ Chronometer" row in WatchDetail | 23 | CLOSED | UAT 2026-05-16: passed |
+| D-04 | 5 stale Phase 20.1 debug entries: `verdict-empty-collection-message`, `wishlist-textarea-not-prefilled`, `recently-evaluated-rail-missing`, `search-row-expand-broken`, `no-escape-from-manual-entry` | 20.1 | SUPERSEDED | Already resolved prior to Phase 42 execution by gap-closure plans 20.1-06/07/08; entries moved to `.planning/debug/resolved/`; no further action needed (per D-04 decision in 42-CONTEXT.md) |
+
+</triage>
