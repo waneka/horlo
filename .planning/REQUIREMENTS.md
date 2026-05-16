@@ -53,9 +53,9 @@
 
 ### Account & Email Polish
 
-- [ ] **SET-13**: Account → Danger Zone section in `/settings#account` exposes two distinct actions: "Wipe Collection" (deletes all `watches` + `wear_events` + storage files for the owner; preserves account, profile, follows) and "Delete Account" (full hard delete via service-role `supabase.auth.admin.deleteUser()`). Both actions: type-to-confirm input + Phase 22 password re-auth + multi-step modal. Storage `wear-photos/{userId}/` files explicitly purged before DB delete. Documented side effect: Account Delete cascades `notifications.actor_id` rows on other users' inboxes (schema-correct; warrants UX note in CONTEXT.md). No grace period at single-user scale.
+- [x] **SET-13**: Account → Danger Zone section in `/settings#account` exposes two distinct actions: "Wipe Collection" (deletes all `watches` + `wear_events` + storage files for the owner; preserves account, profile, follows) and "Delete Account" (full hard delete via service-role `supabase.auth.admin.deleteUser()`). Both actions: type-to-confirm input + Phase 22 password re-auth + multi-step modal. Storage `wear-photos/{userId}/` files explicitly purged before DB delete. Documented side effect: Account Delete cascades `notifications.actor_id` rows on other users' inboxes (schema-correct; warrants UX note in CONTEXT.md). No grace period at single-user scale.
 
-- [ ] **SET-14**: Three Supabase Auth email templates (Confirm signup, Reset Password, Change Email) are rebranded with horlo identity: 600px single-column HTML, header logo, brand color, single CTA button. Templates designed with `react-email` 6.1.1 + `@react-email/components` (renders to static HTML for paste into Supabase Auth dashboard). Cross-client compatibility verified on Apple Mail iOS dark mode + Outlook MSO conditional + Gmail web. Existing Resend SMTP at `mail.horlo.app` and DKIM signature unaffected (template content does not affect signing). No Next.js code change — HTML pasted into Supabase Auth dashboard.
+- [x] **SET-14**: Three Supabase Auth email templates (Confirm signup, Reset Password, Change Email) are rebranded with horlo identity: 600px single-column HTML, header logo, brand color, single CTA button. Templates designed with `react-email` 6.1.1 + `@react-email/components` (renders to static HTML for paste into Supabase Auth dashboard). Cross-client compatibility verified on Apple Mail iOS dark mode + Outlook MSO conditional + Gmail web. Existing Resend SMTP at `mail.horlo.app` and DKIM signature unaffected (template content does not affect signing). No Next.js code change — HTML pasted into Supabase Auth dashboard.
 
 ### Test & Validation Hardening
 
@@ -118,8 +118,8 @@
 | DISC-11 (heavier tier + NSV-02/16) | Phase 39b | Pending |
 | SRCH-16 | Phase 40 | Pending |
 | FIT-05 | Phase 40 | Pending |
-| SET-13 | Phase 41 | Pending |
-| SET-14 | Phase 41 | Pending |
+| SET-13 | Phase 41 | Complete |
+| SET-14 | Phase 41 | Complete |
 | DEBT-10 | Phase 42 | Pending |
 | DEBT-11 | Phase 42 | Pending |
 | DEBT-12 | unscheduled (opportunistic — next prod deploy needing drizzle-kit migrate) | Pending |

@@ -4,14 +4,14 @@ milestone: v5.0
 milestone_name: Discovery North Star
 status: executing
 stopped_at: Phase 41 UI-SPEC approved
-last_updated: "2026-05-15T18:53:32.365Z"
-last_activity: 2026-05-15 -- Phase 41 planning complete
+last_updated: "2026-05-16T03:20:57.396Z"
+last_activity: 2026-05-16
 progress:
   total_phases: 14
   completed_phases: 12
   total_plans: 59
-  completed_plans: 55
-  percent: 93
+  completed_plans: 56
+  percent: 95
 ---
 
 # Project State
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-06 — v5.0 requirements defined)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 40 — search-verdict-polish
+**Current focus:** Phase 41 — account-danger-zone-branded-auth-emails-parallel-track
 
 ## Current Position
 
-Phase: 40 — COMPLETE
-Plan: 1 of 7
+Phase: 41 (account-danger-zone-branded-auth-emails-parallel-track) — EXECUTING
+Plan: 2 of 4
 
 **Phase 39c Wave 1 CLOSED** (plans 01 + 02 shipped per prior session — `bc24023` + `4706d3a` for the ProfileShellSkeleton + `loading.tsx` segment boundary, and `5004e1f` for the `'use cache'` `ProfileShellResolver`).
 
@@ -50,15 +50,15 @@ Plan: 1 of 7
 
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
-Resume file: .planning/phases/41-account-danger-zone-branded-auth-emails-parallel-track/41-UI-SPEC.md
+Resume file: None
 Status: Ready to execute
-Last activity: 2026-05-15 -- Phase 41 planning complete
+Last activity: 2026-05-16
 
 **Phase 39c post-close regressions + recovery (2026-05-14):** UAT immediately after the original fa22080 push surfaced two failure modes the false-positive D-39c-09 sign-off didn't catch — 404 on profile-link click (~98% rate on fast networks) AND infinite-skeleton-on-mobile-click. Root cause was `unstable_instant = { prefetch: 'static' }` on a dynamic page causing Next 16 to treat click-time RSC fetches as resolvable from the tree-only static prefetch. Removed in cf250b1; tab-nav UX polish (cached resolver shared by layout+page + narrow loading skeleton) shipped in 61706b7. Debug session archived at `.planning/debug/resolved/profile-page-404-top-nav.md`. Phase 39c original VERIFICATION.md is technically stale (verified against false-positive state) but the codebase now genuinely delivers the phase goal.
 
 **Open follow-up from 39c UAT (NOT addressed):** Test 6 — `removeWatch` Server Action leaves stale state in the home "from collectors like you" rail AND `/watch/[id]` user-status projection still shows "owned" after server-side reload. Plan 39c-05's `revalidateTag('profile:${ownerUsername}', 'max')` doesn't reach the explore/discovery rail; the watch-detail page reads from a cached projection that wasn't invalidated. Tracked in `.planning/phases/39c-profile-layout-next-16-conformance/39c-UAT.md` Issue 2 — separate debug session or small fix phase when ready.
 
-Progress: [███████░░░] 31%
+Progress: [██████████] 95%
 
 ```
 v1.0 MVP                          [x] shipped 2026-04-19
@@ -90,6 +90,7 @@ v6.0 Market Value                 [ ] planted (SEED-005)
 | 39c | 7 | - | - |
 
 *Updated after each plan completion*
+| Phase 41-account-danger-zone-branded-auth-emails-parallel-track P01 | multi-session | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -149,7 +150,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-15T17:12:37.056Z
+Last session: 2026-05-16T03:20:50.237Z
 Last activity: 2026-05-13 - Completed quick task 260513-m31: Fix OtherOwnersRoster count label always-on + WornCalendar empty-day clickability
 Stopped at: Phase 41 UI-SPEC approved
 Resume file: TBD — Phase 39b complete; next phase determined by /gsd-execute-phase or roadmap chain.
