@@ -1,5 +1,37 @@
 # Milestones
 
+## v5.0 Discovery North Star (Shipped: 2026-05-16)
+
+**Phases completed:** 14 phases (32, 33, 33b, 34, 35, 36, 37, 38, 39, 39b, 39c, 40, 41, 42), 64 plans, 97 tasks
+**Timeline:** 11 days (2026-05-06 → 2026-05-16)
+**Scope:** 533 files changed (incl. `.planning/`), +92,757 / −30,489 lines; `src/` at 38,625 LOC
+**Git range:** 433 commits since v4.1 tag
+**Requirements:** 16/16 in-scope v5.0 requirements shipped; 1 ad-hoc DEBT-12 (drizzle journal repair) carried to v5.x as opportunistic housekeeping
+
+**Delivered:** Made Rdio-style click-driven discovery the organizing principle of Horlo — audited every discovery surface, rebuilt the catalog as a 5-level Brand/Family/Reference/Variant/Individual hierarchy, wired catalog taste into the fit engine, and closed the high-leverage dead-end backlog.
+
+**Key accomplishments:**
+
+- **Discovery audit + product north-star (Phases 33 + 33b)** — produced a falsifiable 136-row click-path audit of every clickable affordance across 13 surfaces, then a 42-cell Rdio drift-vector matrix scoring each discovery vector ship/partial/missing; authored 4 product verdicts (combine home+explore=NO, lineage browse=DEFERRED, dead-end closure=YES, CAT-13 framing=discovery) that gated all downstream polish phases.
+- **Catalog 5-level hierarchy, Layers A–D (Phases 34–37)** — shipped `brands` + `watch_families` (Layer A); `watch_lineage_edges` junction with BEFORE-INSERT cycle-detection trigger + recursive-CTE `CYCLE` guards and a structured `movement_type` enum + era/material columns (Layer B); `watch_variants` table + clean-slate catalog wipe-and-relink + the `watches.catalog_id` NOT NULL flip (Layer C); 7 collector-diary provenance columns + the `divestments` table as recommender prep (Layer D).
+- **CAT-13 engine rewire (Phase 38)** — `analyzeSimilarity()` now consumes catalog taste columns as an additive 9th scoring dimension gated on `confidence >= 0.5`, making the Phase 19.1 LLM-enrichment investment visible in fit verdicts for the first time; 19/19 static guards green.
+- **Audit-driven discovery polish (Phases 39 + 39b)** — closed the entire Phase 33b Q3 high-leverage dead-end backlog (NSV-01/02/06/08/12/14/15/16/18/20): mostSimilar Link wraps, common-ground walk-back fallback, fresh-account ReferenceIdentityCard, 8-row Collector Profile sub-cluster, catalog other-owners roster with two-layer privacy, and inline Same-family + Lineage rails — backed by a 100-watch / 32-family / 52-edge prod catalog bootstrap.
+- **Profile layout Next 16 conformance (Phase 39c)** — refactored `/u/[username]` to Cache Components + Suspense (ProfileGate Server Component + cached ProfileShellResolver replacing 8 uncached top-level fetches), achieving Partial Prerender and fixing the Router-Cache-poisoning 404 bug surfaced during 39b UAT.
+- **Search & verdict polish (Phase 40)** — three faceted filters (movement / size band / style) on the `/search` Watches tab with a mobile bottom-sheet (SRCH-16), plus the pairwise "Compare with what you own" drill-down in CollectionFitCard (FIT-05).
+- **Account & email polish (Phase 41)** — Danger Zone (Wipe Collection / Delete Account) with type-to-confirm + password re-auth two-step modals, and three branded react-email Supabase Auth templates installed in the dashboard.
+- **Test & validation hardening (Phases 32 + 42)** — restored the DEBT-09 `notesPublic` persistence regression carried from v4.0; ran the Nyquist hardening sweep and triaged ~33 deferred human-UAT items across v4.0 phases.
+
+**Milestone close (2026-05-16):** Pre-close audit surfaced 4 verification gaps (Phases 35/38/40/41) and 2 human-UAT gaps (Phases 35/41) — all operator-approved at close (not deferred). Phase 40's `SearchPageClient.test.tsx` regression was already fixed at commit `083c251` (6/6 green); Phase 38's D-07 test-fixture gap was closed by Plan 38-04 (re-verified PASSED 2026-05-12).
+
+**Known deferred items:**
+- **DEBT-12** — repair prod's `drizzle.__drizzle_migrations` journal (1 row vs N expected). Never mapped to a v5.0 phase; opportunistic — fold into the next prod-deploy phase that needs `drizzle-kit migrate` to run cleanly.
+- Phase 39c VERIFICATION.md is technically stale (verified against a false-positive sign-off state), but the post-recovery codebase genuinely delivers the phase goal — see `.planning/debug/resolved/profile-page-404-top-nav.md`.
+- v5.1 Explore Page Redesign (SEED-008) — DISC-09 was dropped from v5.0 on 2026-05-12 and promoted to a dedicated v5.1 milestone.
+
+**No milestone audit run:** `/gsd-audit-milestone` was not run for v5.0; close proceeded on the disk-complete + operator-approval basis.
+
+---
+
 ## v4.1 Polish & Patch (Shipped: 2026-05-05)
 
 **Phases completed:** 5 phases (27, 28, 29, 30, 31), 21 plans + 1 quick task + 1 post-ship hotfix
@@ -85,6 +117,7 @@ See `.planning/milestones/v4.0-MILESTONE-AUDIT.md` for the full audit detail.
 7. **Phase 5 code-review follow-ups (Phase 999.1)** — `PreferencesClient` surfaces save failures via `role="alert"` inline banner (MR-01); dead `UnauthorizedError` imports removed (MR-02); MR-03 closed paperwork-only with in-tree note citing Phase 6 RLS migration + Phase 11 DEBT-02 audit migration
 
 **Tech debt deferred:**
+
 - 31 human-verification UAT items (iOS device tests, multi-session flows, FOUC checks, prod browser smoke tests)
 - WristOverlaySvg geometry redesign (user owns)
 - 9 test files with stale `wornPublic` references (Phase 12 fallout fixture cleanup)
