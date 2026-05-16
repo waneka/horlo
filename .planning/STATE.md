@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Discovery North Star
-status: planning
+status: executing
 stopped_at: Phase 42 context gathered
-last_updated: "2026-05-16T05:50:48.538Z"
-last_activity: 2026-05-16
+last_updated: "2026-05-16T06:24:42.259Z"
+last_activity: 2026-05-16 -- Phase 42 planning complete
 progress:
   total_phases: 14
   completed_phases: 13
-  total_plans: 59
+  total_plans: 64
   completed_plans: 59
-  percent: 100
+  percent: 92
 ---
 
 # Project State
@@ -51,8 +51,8 @@ Plan: Not started
 **Phase 39b COMPLETE.** All 5 plans shipped (Wave 0: 39b-01; Wave 1: 39b-02 + 39b-03; Wave 2: 39b-04; Wave 3: 39b-05). Phase 33b Q3 high-leverage discovery dead-end backlog has ZERO remaining unaddressed rows: NSV-01/06/08/15 (39b-02), NSV-12/14 (39b-03), NSV-18 (39b-04), NSV-02/16 (39b-05), NSV-20 (39b-02 + 39b-04). ROADMAP §39b SC#6 satisfied.
 
 Resume file: .planning/phases/42-nyquist-hardening-sweep-uat-triage-parallel-track/42-CONTEXT.md
-Status: Ready to plan
-Last activity: 2026-05-16
+Status: Ready to execute
+Last activity: 2026-05-16 -- Phase 42 planning complete
 
 **Phase 39c post-close regressions + recovery (2026-05-14):** UAT immediately after the original fa22080 push surfaced two failure modes the false-positive D-39c-09 sign-off didn't catch — 404 on profile-link click (~98% rate on fast networks) AND infinite-skeleton-on-mobile-click. Root cause was `unstable_instant = { prefetch: 'static' }` on a dynamic page causing Next 16 to treat click-time RSC fetches as resolvable from the tree-only static prefetch. Removed in cf250b1; tab-nav UX polish (cached resolver shared by layout+page + narrow loading skeleton) shipped in 61706b7. Debug session archived at `.planning/debug/resolved/profile-page-404-top-nav.md`. Phase 39c original VERIFICATION.md is technically stale (verified against false-positive state) but the codebase now genuinely delivers the phase goal.
 
