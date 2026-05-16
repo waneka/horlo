@@ -134,6 +134,17 @@ export async function deleteAccount(): Promise<ActionResult<void>> {
     return { success: false, error: 'Not authenticated' }
   }
 
+  // WR-04: deleteAccount spans two systems (Postgres + GoTrue) with no
+  // distributed transaction. If the process crashes between step 2
+  // (db.delete(users)) and step 3 (auth.admin.deleteUser()), the
+  // public.users row is gone but auth.users survives — the user can still
+  // authenticate but has no public.users row. This action is therefore
+  // written to be idempotently re-runnable: getCurrentUser() still
+  // succeeds in that partial state, so a re-invocation re-enters here,
+  // db.delete(users) tolerates 0 matching rows as a no-op, and the auth
+  // delete completes the cleanup. The two failure points are logged
+  // distinctly so an operator can see exactly where a partial run stopped.
+  let dbDeleted = false
   try {
     // 1. Storage purge FIRST — before any DB delete and before auth delete
     //    (RESEARCH Pitfall 2 + Pitfall 8: session-scoped client cannot
@@ -146,7 +157,9 @@ export async function deleteAccount(): Promise<ActionResult<void>> {
     //    follows, activities, notifications (user_id + actor_id).
     //    This is the load-bearing line: auth.admin.deleteUser() does NOT
     //    cascade to public.users (RESEARCH Pitfall 1 / FK Cascade Map).
+    //    Idempotent: a re-run after a partial failure deletes 0 rows here.
     await db.delete(users).where(eq(users.id, user.id))
+    dbDeleted = true
 
     // 3. Auth delete — removes the auth.users row. divestments auto-cascade
     //    via the auth.users FK (supabase/migrations/20260511010000_phase37_layer_d.sql).
@@ -159,7 +172,21 @@ export async function deleteAccount(): Promise<ActionResult<void>> {
     // client (plan 41-03) after this action resolves.
     return { success: true, data: undefined }
   } catch (err) {
-    console.error('[deleteAccount] unexpected error:', err)
+    if (dbDeleted) {
+      // WR-04: partial completion — public.users (and its 9 cascade
+      // children) are deleted but auth.users still exists. The account is
+      // in a half-deleted state. A re-run of deleteAccount completes the
+      // auth delete (db.delete above no-ops on 0 rows). Log distinctly so
+      // an operator can finish the cleanup if the re-run never happens.
+      console.error(
+        `[deleteAccount] PARTIAL DELETE — public.users deleted but auth.users ` +
+          `for ${user.id} still exists. Re-invoke deleteAccount or delete ` +
+          `the auth user manually to finish cleanup. Cause:`,
+        err,
+      )
+    } else {
+      console.error('[deleteAccount] unexpected error:', err)
+    }
     return { success: false, error: 'Failed to delete account' }
   }
 }
