@@ -78,7 +78,9 @@ root_cause: `globals.css` line 121 uses `:root:not(.light)` as the guard for the
 
 fix: Deleted the entire `@media (prefers-color-scheme: dark) { :root:not(.light) { ... } }` block from `globals.css` (former lines 120-154), replacing it with an explanatory comment. The `.dark { ... }` block already defines the full dark variable set, and the inline no-flash script in `layout.tsx` resolves Dark / Light / System into the presence/absence of the `.dark` class pre-paint. With the media query gone, `.dark`-presence is the single source of truth: Light → no `.dark` → `:root` light variables; Dark / System-dark → `.dark` → dark variables. No DOM state is ambiguous. (The debugger's initial `:root:not(.dark)` proposal was rejected — see the REJECTED FIX evidence entry.)
 
-verification: `npm run build` passes (exit 0). On a dark-OS machine — select Light → page turns light; select Dark → page turns dark; select System → page follows OS; refresh with Light selected → stays light; refresh with Dark selected → stays dark. (Browser verification by the user recommended — see Phase 42 UAT item 22.)
+verification: `npm run build` passes (exit 0). User-confirmed in the browser 2026-05-16: the Light toggle now correctly switches the theme (both the UserMenu segmented control and `/settings#appearance`). Closes Phase 42 UAT item 22.
+
+  GOTCHA — stale Turbopack cache: after the fix landed, the bug appeared to persist on `npm run dev` even after a dev-server restart AND a hard refresh. Cause of the false negative: Turbopack's `.next/` build cache served the OLD `globals.css` (still containing the `@media` block, which on a dark-OS machine matched `:root:not(.light)` and forced `--background` dark). A plain dev-server restart reuses `.next/`. The fix only became visible after `rm -rf .next && npm run dev` + hard refresh. When debugging CSS on this project, treat `.next/` as a suspect — clear it before concluding a CSS fix did not work.
 
 files_changed:
   - src/app/globals.css (removed the @media (prefers-color-scheme: dark) block, former lines 120-154)
