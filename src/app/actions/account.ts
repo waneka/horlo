@@ -24,13 +24,19 @@ async function purgeWearPhotos(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   userId: string,
 ): Promise<void> {
-  let offset = 0
   const PAGE_SIZE = 1000
 
+  // CR-01: Always re-list from offset 0. Each remove() consumes the head of
+  // the listing, so the wear-photos/{userId}/ prefix is a flat layout
+  // ({userId}/{wearEventId}.jpg, no nested folders) that shrinks every
+  // iteration. Advancing an offset would skip the files that shifted into
+  // the 0..PAGE_SIZE-1 window after the prior remove(). The loop terminates
+  // because each iteration deletes min(PAGE_SIZE, remaining) objects until
+  // list() returns empty.
   while (true) {
     const { data: files, error: listErr } = await supabase.storage
       .from('wear-photos')
-      .list(userId, { limit: PAGE_SIZE, offset })
+      .list(userId, { limit: PAGE_SIZE })
 
     if (listErr) throw listErr
 
@@ -41,9 +47,6 @@ async function purgeWearPhotos(
       .from('wear-photos')
       .remove(paths)
     if (removeErr) throw removeErr
-
-    if (files.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
   }
 }
 
