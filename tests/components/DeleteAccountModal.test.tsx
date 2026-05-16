@@ -39,8 +39,12 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock sonner — DeleteAccountModal must NOT call toast.success (UI-SPEC line 195)
-const mockToastSuccess = vi.fn()
-const mockToastError = vi.fn()
+// vi.hoisted() runs before Vitest hoists vi.mock() calls, so the refs are
+// available to both the factory closure and the test body (same fix as 41-02).
+const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+  mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
+}))
 vi.mock('sonner', () => ({
   toast: {
     success: mockToastSuccess,
