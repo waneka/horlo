@@ -39,6 +39,27 @@ A top-level surface for **evergreen, taste-driven discovery** — distinct from 
 - Marketplace, listings, or transactional surfaces.
 - UGC list submission. Revisit when ~500 active users and ~50 quality user-authored lists exist.
 
+## Additional v5.1 Scope — Polish + Catalog Enrichment (added 2026-05-16)
+
+Beyond the `/explore` redesign, v5.1 absorbs two non-Explore phases triaged from a 2026-05-16 bug/feature review. Both run **early in the milestone, before the Explore module work**, so the redesign builds on cleaner cards and a populated catalog.
+
+### Phase: Polish (run first)
+
+A focused polish pass on issues found in v5.0:
+
+- **Filter drawer fix** — the `/search` bottom-sheet (`FilterSheet.tsx`) felt "stuck": it could not be dismissed while a filtered query was in flight. The sheet must be dismissable during a pending query (never gate close on loading state). Also add drag/swipe-to-dismiss.
+- **Wishlist cards drop wear details** — `ProfileWatchCard.tsx` is shared by collection and wishlist; it renders "Never worn" + wear badges unconditionally. Gate all wear UI on `status === 'owned'`.
+- **Watch card height consistency** — the image is fixed at `aspect-[4/5]` but the metadata block below is variable, so total card height varies. Fix the metadata block to a consistent height. Separately, pull the "add to collection/wishlist" CTA out of the end-of-grid `AddWatchCard` into a plain button above the grid.
+- **Avatar upload** — replace the `profiles.avatarUrl` URL-string field with a real Supabase Storage photo upload. `ProfileSection.tsx` is currently a read-only stub ("Profile editing coming in the next update"). Reuse the existing EXIF-strip / ≤1080px JPEG upload path from the add-watch flow (`catalog-source-photos` pattern). Profile editing was previously earmarked as a future phase — this folds the avatar slice forward.
+
+### Phase: Catalog Enrichment (run before the Browse the Catalog module)
+
+The "enrich" half of an enrich-then-expand catalog-data decision. The "expand" half is its own milestone — see SEED-009 / v5.2.
+
+- LLM/vision backfill of the ~100 existing `watches_catalog` rows so every `/search` filter (movement type, case size, style tags) is fully populated.
+- Backfill photos and other missing metadata (dimensions, dial color, complications, taste attributes).
+- Direct prerequisite for the Browse the Catalog module — brand/era/genre/price-band indices are only as good as the catalog data behind them.
+
 ## Page Composition
 
 Top to bottom on mobile (stacked), responsive grid on desktop:
@@ -201,6 +222,6 @@ The page shell is a hard prerequisite. Beyond that, suggested order — reshuffl
 
 ## Open milestone-level questions for v5.1 roadmapping
 
-- Phase count: 3-4 phases looks right (page shell + browse + archetypes ; curated lists + hero ; paths). Roadmap will refine.
+- Phase count: 5-6 phases (polish ; catalog enrichment ; page shell + browse + archetypes ; curated lists + hero ; paths). Polish and catalog enrichment run first — see "Additional v5.1 Scope" above. Roadmap will refine.
 - CMS decision (in-app admin vs Sanity vs Contentlayer) is the biggest pre-roadmap research item. Run a `/gsd-spike` before milestone planning?
 - v5.1 sequencing against v6.0 Market Value (SEED-005) + SEED-007 pricing API spike — does v5.1 come BEFORE the pricing spike, or run in parallel? User intent in this discuss-phase: v5.1 comes AFTER v5.0 closes, no parallel work assumed.

@@ -9,6 +9,8 @@
 - ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
 - ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
 - 📋 **v5.1 Explore Page Redesign** — planted (SEED-008)
+- 📋 **v5.2 Catalog Expansion** — planted (SEED-009)
+- 📋 **v5.3 Add-Watch Redesign** — planted (SEED-010)
 - 📋 **v6.0 Market Value** — planted (SEED-005)
 
 ## Phases

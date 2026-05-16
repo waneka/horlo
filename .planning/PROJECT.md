@@ -22,15 +22,15 @@ See `.planning/MILESTONES.md` and `.planning/milestones/v5.0-ROADMAP.md` for ful
 
 ## Next Milestone
 
-v5.0 is closed. The next milestone is **v5.1 Explore Page Redesign** (SEED-008) — a 5-module `/explore` redesign: Hero (rotating, curated-list-sourced) / Collector Archetypes (chip rail) / Curated Lists Rail (CMS-authored) / Where Collections Go (collection paths) / Browse the Catalog (brand/era/genre/price-band indices). It inherits DISC-09, dropped from v5.0 on 2026-05-12 and promoted to its own milestone. Framing: Home = daily check-in (recency-driven, social-graph-in-motion); Explore = the rabbit hole (evergreen, structured, taste-driven). A CMS-approach decision (in-app admin vs Sanity vs Contentlayer) is a `/gsd-spike` candidate before the v5.1 roadmap.
+v5.0 is closed. The next milestone is **v5.1 Explore Page Redesign** (SEED-008) — a 5-module `/explore` redesign: Hero (rotating, curated-list-sourced) / Collector Archetypes (chip rail) / Curated Lists Rail (CMS-authored) / Where Collections Go (collection paths) / Browse the Catalog (brand/era/genre/price-band indices). It inherits DISC-09, dropped from v5.0 on 2026-05-12 and promoted to its own milestone. Framing: Home = daily check-in (recency-driven, social-graph-in-motion); Explore = the rabbit hole (evergreen, structured, taste-driven). A CMS-approach decision (in-app admin vs Sanity vs Contentlayer) is a `/gsd-spike` candidate before the v5.1 roadmap. v5.1 also absorbs two non-Explore phases from a 2026-05-16 triage: a **polish phase** (filter-drawer dismiss bug, wishlist wear-detail removal, watch-card height + CTA, avatar upload) and a **catalog-enrichment phase** (LLM/vision backfill of the ~100 existing catalog rows) — both run early, before the Explore module work. See SEED-008 "Additional v5.1 Scope".
 
-**Trajectory:** v5.1 Explore Page Redesign (SEED-008) → SEED-007 market-pricing API spike → v6.0 Market Value (SEED-005 — `market_prices` keyed on `catalog_id`, total collection value, paid-vs-market chart, all free per SEED-006). Phase numbering continues from 43 (no reset).
+**Trajectory:** v5.1 Explore Page Redesign (SEED-008 — Explore redesign + polish + catalog enrichment) → v5.2 Catalog Expansion (SEED-009 — the "expand" half of enrich-then-expand) → v5.3 Add-Watch Redesign (SEED-010 — search-first add flow; needs catalog depth) → SEED-007 market-pricing API spike → v6.0 Market Value (SEED-005 — `market_prices` keyed on `catalog_id`, total collection value, paid-vs-market chart, all free per SEED-006). Phase numbering continues from 43 (no reset).
 
 **Standing context for the next milestone:**
 
 - **No paywall** — SEED-006 resolved 2026-05-06 → Horlo ships fully free; no Subscription tab, no Stripe, no entitlements scaffolding. See `.planning/research/PREMIUM-MAP.md`.
 - **Recommender (SEED-002) is future paid-candidate but built free** — Layer C Reference granularity + Layer D `divestments` schema landed in v5.0 as prep; the recommender itself is v6.0+ at earliest.
-- **Catalog seeding is organic** — v5.0 shipped the hierarchy + a 100-watch prod bootstrap; no pre-seeded ~500-Reference editorial catalog. Grows via `user_promoted` + URL extract; iterative curation via `scripts/seed-lineage.ts`.
+- **Catalog seeding — enrich then expand** (updated 2026-05-16) — v5.0 shipped the hierarchy + a 100-watch prod bootstrap. The original "organic growth only" stance is superseded: v5.1 **enriches** the existing 100 rows (LLM/vision backfill), and v5.2 (SEED-009) deliberately **expands** catalog breadth. Sourcing method for the expand half is an open roadmap/spike decision.
 
 Start the next milestone with `/gsd-new-milestone`.
 
