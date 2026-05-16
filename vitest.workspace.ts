@@ -36,6 +36,10 @@ export default defineWorkspace([
     test: {
       name: 'browser',
       include: ['tests/browser/**/*.browser.test.{ts,tsx}'],
+      // Import globals.css so Tailwind 4 PostCSS output reaches the Chromium iframe.
+      // Without this, getComputedStyle() returns empty strings / browser defaults.
+      // (A3 assumption from 42-RESEARCH.md confirmed to require explicit CSS import.)
+      setupFiles: ['./tests/browser/setup.browser.ts'],
       browser: {
         enabled: true,
         provider: 'playwright',  // v2.x: string literal — NOT the function-import form
