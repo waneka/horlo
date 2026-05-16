@@ -44,12 +44,24 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  // When a non-button element is composed via the render prop (e.g. Next.js
+  // <Link>, which renders an <a>), Base UI's nativeButton must be false.
+  // nativeButton defaults to true in Base UI, which causes a console error
+  // when the rendered element is not a <button>. We infer the correct value:
+  // if render is provided and the caller didn't explicitly pass nativeButton,
+  // set nativeButton=false to suppress the warning and restore correct semantics.
+  const resolvedNativeButton = nativeButton ?? (render !== undefined ? false : true)
+
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      render={render}
+      nativeButton={resolvedNativeButton}
       {...props}
     />
   )
