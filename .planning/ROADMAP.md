@@ -112,7 +112,7 @@ See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4
 - [ ] **Phase 39b: Audit-Driven Discovery Polish — Heavier UX** — DISC-11 heavier-tier closures (NSV-06+20 fresh-account ReferenceIdentityCard, NSV-14 8-row Collector Profile sub-cluster, NSV-18 catalog other-owners roster, NSV-02+16 inline lineage rails with operator-curation seed pass)
 - [ ] **Phase 40: Search & Verdict Polish** — SRCH-16 faceted filters + FIT-05 pairwise drill-down in CollectionFitCard
 - [x] **Phase 41: Account Danger Zone + Branded Auth Emails** *(parallel track)* — SET-13 Danger Zone; SET-14 react-email templates (completed 2026-05-16)
-- [ ] **Phase 42: Nyquist Hardening + UAT Triage** *(parallel track)* — VALIDATION.md sweep; ~33 UAT items triaged
+- [x] **Phase 42: Nyquist Hardening + UAT Triage** *(parallel track)* — VALIDATION.md sweep; ~33 UAT items triaged (completed 2026-05-16)
 
 ## Phase Details
 
@@ -266,7 +266,7 @@ _Plans:_
 - [x] 42-02-PLAN.md — six Phase 25-30 browser CSS-chain test files (computed-style assertions)
 - [x] 42-03-PLAN.md — recover/author six VALIDATION.md files under 42-validation-backfill/
 - [x] 42-04-PLAN.md — pre-triage all ~33 UAT items + build blocking 42-HUMAN-UAT.md
-- [ ] 42-05-PLAN.md — run blocking UAT checklist + append <triage> closure table to 42-CONTEXT.md
+- [x] 42-05-PLAN.md — run blocking UAT checklist + append <triage> closure table to 42-CONTEXT.md
 
 Plans:
 **Wave 1** *(parallel — schema sources of truth; no file overlap)*
@@ -529,7 +529,7 @@ Parallel tracks: 41 (alongside 34–40), 42 (alongside 40, after 39)
 | 39b. Audit-Driven Discovery Polish — Heavier UX | 0/? | Not started — carry-forward context in 39-CONTEXT.md | - |
 | 40. Search & Verdict Polish | 0/? | Not started | - |
 | 41. Account Danger Zone + Branded Emails *(parallel)* | 4/4 | Complete    | 2026-05-16 |
-| 42. Nyquist Hardening + UAT Triage *(parallel)* | 4/5 | In Progress|  |
+| 42. Nyquist Hardening + UAT Triage *(parallel)* | 5/5 | Complete   | 2026-05-16 |
 
 ---
 
