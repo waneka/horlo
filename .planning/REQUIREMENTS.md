@@ -59,9 +59,9 @@
 
 ### Test & Validation Hardening
 
-- [ ] **DEBT-10**: Nyquist hardening sweep retroactively brings v3.0+ phases to `nyquist_compliant: true` + `wave_0_complete: true`. Targets: v4.1 Phases 27, 28, 30, 31 (currently PARTIAL — only Phase 29 COMPLIANT); v4.0 Phases 25, 26 (no VALIDATION.md); aspect-ratio / object-fit phases (Phase 30) gain CSS-chain assertions per the v4.1 feedback memory. Tests assert *computed styles*, not class names.
+- [x] **DEBT-10**: Nyquist hardening sweep retroactively brings v3.0+ phases to `nyquist_compliant: true` + `wave_0_complete: true`. Targets: v4.1 Phases 27, 28, 30, 31 (currently PARTIAL — only Phase 29 COMPLIANT); v4.0 Phases 25, 26 (no VALIDATION.md); aspect-ratio / object-fit phases (Phase 30) gain CSS-chain assertions per the v4.1 feedback memory. Tests assert *computed styles*, not class names.
 
-- [ ] **DEBT-11**: ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23 are triaged. Each item: closed (run UAT and pass), invalidated (overtaken by later phase work — many in 20.1 likely overtaken by gap-closure plans 06/07/08), or deferred-with-explicit-reason (carry forward to v5.x). Triage output is a closure table in the phase CONTEXT.md.
+- [x] **DEBT-11**: ~33 deferred human UAT items across v4.0 Phases 18 / 20 / 20.1 / 22 / 23 are triaged. Each item: closed (run UAT and pass), invalidated (overtaken by later phase work — many in 20.1 likely overtaken by gap-closure plans 06/07/08), or deferred-with-explicit-reason (carry forward to v5.x). Triage output is a closure table in the phase CONTEXT.md.
 
 - [ ] **DEBT-12**: Repair prod's `drizzle.__drizzle_migrations` journal — currently contains only 1 row (`idx=0 0000_flaky_lenny_balinger`, hash `cf60a4...`). All subsequent migrations (Phase 8 / 12 / 17 / 19.1 / 27 / 34) shipped via `supabase db push --linked` only; their journal rows were never recorded on prod. Discovered during Phase 34 Wave 3 prod push — `drizzle-kit migrate` on prod tried to apply 0001..0007 in sequence, errored on 0001 (`relation "watches" already exists` — 0001 lacks IF NOT EXISTS guards), aborted before recording 0007. Phase 34 schema is still correctly on prod (supabase db push shipped it); journal sync is bookkeeping that future drizzle-kit runs need. **Repair**: write a one-shot `scripts/repair-drizzle-journal.ts` that computes SHA256 of each `drizzle/0001..NNNN.sql` file, INSERTs rows into `drizzle.__drizzle_migrations` with `(hash, created_at)` matching local `drizzle/meta/_journal.json` entries, idempotent via `ON CONFLICT (hash) DO NOTHING`. Verify via `SELECT count(*) FROM drizzle.__drizzle_migrations` returns the local `_journal.json` entry count. Acceptance: post-repair `npx drizzle-kit migrate` against prod is a clean no-op. Schedule: opportunistic (next prod-deploy phase that needs `drizzle-kit migrate` to work normally — most likely Phase 35 / 36 / 37 since they all add Drizzle migrations too).
 
@@ -120,8 +120,8 @@
 | FIT-05 | Phase 40 | Pending |
 | SET-13 | Phase 41 | Complete |
 | SET-14 | Phase 41 | Complete |
-| DEBT-10 | Phase 42 | Pending |
-| DEBT-11 | Phase 42 | Pending |
+| DEBT-10 | Phase 42 | Complete |
+| DEBT-11 | Phase 42 | Complete |
 | DEBT-12 | unscheduled (opportunistic — next prod deploy needing drizzle-kit migrate) | Pending |
 
 **Coverage: 16/16 in-scope v5.0 requirements mapped (17 → 16 after DISC-09 promotion to v5.1 milestone 2026-05-12) + 1 ad-hoc DEBT (DEBT-12). DISC-11 splits across Phase 39 + 39b per the Phase 39 discuss-phase reframe.**
