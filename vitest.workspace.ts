@@ -33,6 +33,13 @@ export default defineWorkspace([
     },
   },
   {
+    // `resolve` is a Vite-level option — it sits as a sibling of `test`, not inside it.
+    // Replicate the @/* alias — the browser project does not inherit vitest.config.ts.
+    resolve: {
+      alias: {
+        '@': new URL('./src', import.meta.url).pathname,
+      },
+    },
     test: {
       name: 'browser',
       include: ['tests/browser/**/*.browser.test.{ts,tsx}'],
@@ -45,12 +52,6 @@ export default defineWorkspace([
         provider: 'playwright',  // v2.x: string literal — NOT the function-import form
         name: 'chromium',        // v2.x: `name` field — NOT `instances[0].browser`
         headless: true,
-      },
-      resolve: {
-        alias: {
-          // Replicate the @/* alias — browser project does not inherit vitest.config.ts
-          '@': new URL('./src', import.meta.url).pathname,
-        },
       },
     },
   },
