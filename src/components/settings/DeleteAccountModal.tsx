@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -34,7 +33,10 @@ interface DeleteAccountModalProps {
  *
  * D-04: fixed keyword DELETE.
  * D-05: execute button disabled until typed === 'DELETE' AND password is non-empty.
- * D-07: on success, browser client signs out, router navigates to /.
+ * D-07: on success, browser client signs out, then a hard navigation to /
+ *        (window.location.assign) clears all client state. WR-02: a failing
+ *        signOut() is swallowed so it cannot block the redirect or surface
+ *        as a user-facing error on an already-deleted account.
  * D-08: NO notifications.actor_id cascade copy in modal UI.
  * UI-SPEC line 195: NO success toast — user is signed out and redirected, not toasted.
  */
@@ -46,7 +48,6 @@ export function DeleteAccountModal({
   const [step, setStep] = useState<1 | 2>(1)
   const [typed, setTyped] = useState('')
   const [password, setPassword] = useState('')
-  const router = useRouter()
 
   const { pending, message, run, reset: resetFeedback } = useFormFeedback({
     dialogMode: true,
@@ -89,9 +90,16 @@ export function DeleteAccountModal({
       }
 
       // D-07: sign the user out on the browser client, then redirect to /.
-      // Do not cache session objects across re-auth -> action -> signOut (RESEARCH Pitfall 8).
-      await createSupabaseBrowserClient().auth.signOut()
-      router.push('/')
+      // WR-02: the account is already destroyed at this point — a failing
+      // signOut() must NOT surface as a user-facing error and must NOT
+      // block the redirect. Swallow any signOut() error and hard-navigate
+      // so all client state + the now-stale session cookie are cleared.
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // Account is already gone; the stale session JWT will 401 server-side.
+      }
+      window.location.assign('/')
       return { success: true as const, data: undefined }
     })
   }
