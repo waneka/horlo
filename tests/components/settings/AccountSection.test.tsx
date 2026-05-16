@@ -18,6 +18,14 @@ vi.mock('@/components/settings/PasswordChangeForm', () => ({
     <div data-testid="password-form">PasswordChangeForm: {currentEmail}</div>
   ),
 }))
+// Phase 41 SET-13 — AccountSection now also composes DangerZoneSection, which
+// renders the wipe/delete modals (useRouter / sonner surface). Mock it for the
+// same reason the other children are mocked.
+vi.mock('@/components/settings/DangerZoneSection', () => ({
+  DangerZoneSection: ({ currentEmail }: { currentEmail: string }) => (
+    <div data-testid="danger-zone">DangerZoneSection: {currentEmail}</div>
+  ),
+}))
 
 // Import AFTER mocks.
 import { AccountSection } from '@/components/settings/AccountSection'
@@ -46,6 +54,20 @@ describe('AccountSection — Phase 22 SET-04 + SET-05 composition', () => {
     expect(screen.getByTestId('password-form')).toBeInTheDocument()
     expect(
       screen.getByText('PasswordChangeForm: a@example.com'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders Danger Zone with DangerZoneSection', () => {
+    render(
+      <AccountSection
+        currentEmail="a@example.com"
+        pendingNewEmail={null}
+        lastSignInAt={null}
+      />,
+    )
+    expect(screen.getByTestId('danger-zone')).toBeInTheDocument()
+    expect(
+      screen.getByText('DangerZoneSection: a@example.com'),
     ).toBeInTheDocument()
   })
 
