@@ -106,10 +106,19 @@ phase, not a UI phase.
   reviewed SQL.
 - **D-15:** Verification is a **committed npm script** (e.g.
   `db:verify-catalog-coverage`): asserts every row has populated taste +
-  factual columns AND all 8 Collector Archetypes resolve to ≥1 row
-  (`GROUP BY primary_archetype`); exits non-zero on any gap. Run locally
-  before generating the migration and against prod after applying. Phase 46
-  can re-run it as a ship gate.
+  factual columns; reports the `GROUP BY primary_archetype` distribution.
+  Run locally before generating the migration and against prod after
+  applying. Phase 46 can re-run it as a ship gate.
+- **D-16:** Archetype-coverage check (ENRH-06) asserts against the
+  **10-value `PRIMARY_ARCHETYPES` vocab** in `src/lib/taste/vocab.ts` (code
+  is ground truth — the "8" in ROADMAP/REQUIREMENTS is a stale doc number;
+  SEED-008's "six to eight" referred to the separate hardcoded Explore UI
+  chip rail, built in Phase 46). The verification script **soft-warns** on
+  any archetype with 0 catalog rows — it does NOT hard-fail, because a
+  ~100-watch catalog may legitimately contain no watch of some archetype
+  (e.g. `racing`). Populating-the-gap by catalog expansion is v5.2 scope.
+  ENRH-06 is satisfied by: full taste+factual population (hard) + a
+  reviewed archetype distribution with empties surfaced as warnings (soft).
 
 ### Claude's Discretion
 
