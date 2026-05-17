@@ -64,8 +64,8 @@ export function ProfileWatchCard({
           <p className="text-sm font-normal text-muted-foreground truncate">{watch.brand}</p>
           <p className="text-base font-semibold leading-tight truncate">{watch.model}</p>
         </div>
-        {/* Image area — aspect-[3/4] on THIS div, not on Card (PLSH-04 pitfall) */}
-        <div className="relative aspect-[3/4] bg-muted">
+        {/* Image area — aspect-square on THIS div, not on Card (PLSH-04 pitfall) */}
+        <div className="relative aspect-square bg-muted">
           {safeUrl ? (
             <Image
               src={safeUrl}

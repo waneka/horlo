@@ -119,7 +119,7 @@ describe('ProfileWatchCard — layout structure (PLSH-04, D-04)', () => {
     const brandEl = allElements.find(
       (el) => el.textContent?.trim() === 'Omega' && el.tagName === 'P',
     )
-    // Find the image container (has aspect-[3/4] class in className or data)
+    // Find the image container (has aspect-square class in className or data)
     const imageContainer = allElements.find(
       (el) => el.className.includes('aspect-') && el.tagName === 'DIV',
     )
@@ -130,6 +130,40 @@ describe('ProfileWatchCard — layout structure (PLSH-04, D-04)', () => {
     // Node.DOCUMENT_POSITION_FOLLOWING means imageContainer comes after brandEl
     const position = brandEl!.compareDocumentPosition(imageContainer!)
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  // Test 4b: image container is aspect-square (GAP-43-04), NOT aspect-[3/4];
+  //          equal-height chain: Card has h-full + flex + flex-col, CardContent has flex-1.
+  it('image container has aspect-square (not aspect-[3/4]); Card and CardContent preserve equal-height chain', () => {
+    const { container } = render(
+      <ProfileWatchCard
+        watch={makeWatch()}
+        lastWornDate={null}
+      />,
+    )
+    const allElements = Array.from(container.querySelectorAll('*'))
+
+    // Image container: the only <div> whose className includes "aspect-"
+    const imageContainer = allElements.find(
+      (el) => el.className.includes('aspect-') && el.tagName === 'DIV',
+    ) as HTMLElement | undefined
+    expect(imageContainer).toBeTruthy()
+    expect(imageContainer!.className).toContain('aspect-square')
+    expect(imageContainer!.className).not.toContain('aspect-[3/4]')
+
+    // Card element: the outermost element rendered by <Card> (a <div> carrying h-full)
+    const cardEl = container.querySelector('div.h-full') as HTMLElement | null
+    expect(cardEl).not.toBeNull()
+    expect(cardEl!.className).toContain('h-full')
+    expect(cardEl!.className).toContain('flex')
+    expect(cardEl!.className).toContain('flex-col')
+    // Card must NOT have any aspect-* class — that would violate PLSH-04 pitfall
+    expect(cardEl!.className).not.toContain('aspect-')
+
+    // CardContent: the only element carrying flex-1 (absorbs remaining height)
+    const cardContent = container.querySelector('div.flex-1') as HTMLElement | null
+    expect(cardContent).not.toBeNull()
+    expect(cardContent!.className).toContain('flex-1')
   })
 
   // Test 5: a watch with no photo renders the WatchIcon placeholder, not a broken image
