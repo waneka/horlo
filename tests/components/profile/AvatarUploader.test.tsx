@@ -20,13 +20,20 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 // ---- Module mocks ----
 
 // Mock react-easy-crop — renders a simple div so we can verify it's shown.
-vi.mock('react-easy-crop', () => ({
-  default: vi.fn(({ onCropComplete }: { onCropComplete: (a: unknown, b: unknown) => void }) => {
-    // Immediately invoke onCropComplete with mock pixel area so croppedAreaPixels is set.
-    onCropComplete({}, { x: 0, y: 0, width: 100, height: 100 })
-    return <div data-testid="cropper" />
-  }),
-}))
+// We call onCropComplete once via useEffect to avoid infinite render loops.
+vi.mock('react-easy-crop', () => {
+  const { useEffect } = require('react')
+  return {
+    default: vi.fn(({ onCropComplete }: { onCropComplete: (a: unknown, b: unknown) => void }) => {
+      // Call once after mount so croppedAreaPixels gets set without causing infinite re-renders.
+      useEffect(() => {
+        onCropComplete({}, { x: 0, y: 0, width: 100, height: 100 })
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [])
+      return <div data-testid="cropper" />
+    }),
+  }
+})
 
 // Mock uploadAvatarPhoto
 const mockUploadAvatarPhoto = vi.fn()
@@ -69,26 +76,35 @@ HTMLCanvasElement.prototype.toBlob = function (
   callback(blob)
 }
 
-// Mock Image — instantly fires onload
+// Mock HTMLCanvasElement.getContext to return a minimal 2D context
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+;(HTMLCanvasElement.prototype as any).getContext = function () {
+  return {
+    drawImage: vi.fn(),
+    fillRect: vi.fn(),
+    clearRect: vi.fn(),
+  }
+}
+
+// Mock window.Image — instantly fires onload after src assignment
+const OriginalImage = globalThis.Image
 class MockImage {
-  src = ''
-  onload: (() => void) | null = null
-  set srcValue(v: string) {
-    this.src = v
+  private _src = ''
+  public onload: (() => void) | null = null
+  public onerror: (() => void) | null = null
+  get src() {
+    return this._src
+  }
+  set src(v: string) {
+    this._src = v
+    // Fire onload async so the component's `await new Promise` resolves
     queueMicrotask(() => this.onload?.())
   }
 }
 Object.defineProperty(globalThis, 'Image', {
   writable: true,
   configurable: true,
-  value: class extends MockImage {
-    set src(v: string) {
-      this.srcValue = v
-    }
-    get src() {
-      return (this as MockImage).src
-    }
-  },
+  value: MockImage,
 })
 
 import { AvatarUploader } from '@/components/profile/AvatarUploader'
