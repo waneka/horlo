@@ -43,12 +43,26 @@ async function convertHeic(file: File): Promise<Blob> {
   )
   const buffer = await file.arrayBuffer()
   return new Promise<Blob>((resolve, reject) => {
-    worker.onmessage = (e: MessageEvent) => {
-      const { buffer: ab, type } = e.data as { buffer: ArrayBuffer; type: string }
+    // WR-02: a hung decoder (malformed HEIC) would otherwise leak the worker
+    // thread and never settle the Promise — time it out and terminate.
+    const timer = setTimeout(() => {
       worker.terminate()
-      resolve(new Blob([ab], { type }))
+      reject(new Error('HEIC conversion timed out'))
+    }, 30_000)
+    worker.onmessage = (e: MessageEvent) => {
+      clearTimeout(timer)
+      worker.terminate()
+      // WR-02: guard the payload shape — an unexpected message must reject,
+      // not resolve with a broken Blob.
+      const data = e.data as { buffer?: ArrayBuffer; type?: string }
+      if (!data?.buffer) {
+        reject(new Error('HEIC worker returned no buffer'))
+        return
+      }
+      resolve(new Blob([data.buffer], { type: data.type ?? 'image/jpeg' }))
     }
     worker.onerror = (err) => {
+      clearTimeout(timer)
       worker.terminate()
       reject(err)
     }
