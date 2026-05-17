@@ -97,7 +97,15 @@ export async function extractWithLlm(
     throw new Error('No JSON found in LLM response')
   }
 
-  const parsed = JSON.parse(jsonMatch[0])
+  // WR-06: the greedy {…} match can capture invalid JSON (prose with braces,
+  // two objects). Wrap the parse so malformed LLM output surfaces as a domain
+  // error the extraction pipeline can classify, not a raw SyntaxError.
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(jsonMatch[0])
+  } catch {
+    throw new Error('LLM response was not valid JSON')
+  }
   return validateAndCleanData(parsed)
 }
 
