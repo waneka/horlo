@@ -40,26 +40,55 @@ blocked: 0
 ## Gaps
 
 ### GAP-43-01: Watch cards run too tall
-status: failed
+status: resolved (partial — padding tightened by 43-05; remaining height addressed by GAP-43-04)
 source: user UAT feedback (item 2 — equal-height cards pass, but overall card is too tall)
-detail: Equal-height behavior works correctly, but cards are taller than desired. Tighten
-  vertical spacing in `ProfileWatchCard`: reduce the top/bottom padding of the card and the
-  padding above and below the watch image. Keep the equal-height CSS chain intact
-  (`h-full flex flex-col` on Card, `flex-1` on CardContent, `aspect-[3/4]` on the image div).
+detail: 43-05 tightened ProfileWatchCard padding (header pt-3→pt-2, content p-3→px-3 py-2).
+  Padding is now near its floor; the remaining excess height is the portrait image aspect —
+  see GAP-43-04.
 files: [src/components/profile/ProfileWatchCard.tsx]
 requirement: PLSH-04
 
 ### GAP-43-02: Add-watch buttons should not use the primary variant
-status: failed
+status: resolved (approved — 43-05 changed both buttons to variant="outline")
 source: user UAT feedback (new — button placement approved, variant changed)
-detail: The "Add to Collection" / "Add to Wishlist" buttons above the populated grids use
-  `variant="default"` (primary). Change both to `variant="outline"` (user-selected). Placement
-  and copy stay as-is.
+detail: The "Add to Collection" / "Add to Wishlist" buttons above the populated grids changed
+  from `variant="default"` to `variant="outline"`. Approved by user.
 files: [src/components/profile/CollectionTabContent.tsx, src/components/profile/WishlistTabContent.tsx]
 requirement: PLSH-05
 
-### GAP-43-03: Avatar upload rejected by Storage RLS (missing SELECT policy)
+### GAP-43-04: Watch card image still too tall — change aspect ratio
 status: failed
+source: user UAT feedback (round 2 — padding trim was not enough)
+detail: After 43-05 tightened padding, cards are still too tall. The dominant height driver
+  is the portrait `aspect-[3/4]` image. User decision: change the image container aspect from
+  `aspect-[3/4]` to `aspect-square` (1:1) in `ProfileWatchCard`. This shortens each card by
+  roughly 60px. Keep the equal-height CSS chain intact (`h-full flex flex-col` on Card,
+  `flex-1` on CardContent, aspect class stays on the image div only — NEVER on the Card).
+  Update any test that asserts `aspect-[3/4]`.
+files: [src/components/profile/ProfileWatchCard.tsx]
+requirement: PLSH-04
+
+### GAP-43-05: Settings profile section is a non-functional stub
+status: failed
+source: user UAT feedback (new — /settings#profile shows "Profile editing coming in the next update.")
+detail: `src/components/settings/ProfileSection.tsx` is an intentional read-only stub (Phase 22
+  D-19; the comment notes "Phase 25 (UX-08) replaces this stub with a profile-edit form" — that
+  never happened). It renders avatar + name + a "View public profile" link + the footer note
+  "Profile editing coming in the next update." User wants the settings Profile section to
+  actually edit the profile, using the SAME options that already exist — i.e. the existing
+  `ProfileEditForm` (`src/components/profile/ProfileEditForm.tsx`), which provides display name,
+  bio, and the device avatar upload (Phase 43 AvatarUploader).
+fix: Replace the `ProfileSection` stub body with the existing `ProfileEditForm`. `ProfileEditForm`
+  requires `initial` (displayName, bio, avatarUrl), `userId`, and `onDone` props — the settings
+  page (`src/app/settings/page.tsx`) must fetch `bio` and the current user's `userId` and pass
+  them through `SettingsTabsShell` → `ProfileSection`. Remove the "coming in the next update"
+  footer note. Reuse the existing `updateProfile` Server Action (already wired in ProfileEditForm) —
+  no new mutation path. Keep the "View public profile" link.
+files: [src/components/settings/ProfileSection.tsx, src/app/settings/page.tsx, src/components/settings/SettingsTabsShell.tsx]
+requirement: PLSH (polish — no dedicated REQ; settings profile-editing was deferred from Phase 25 UX-08)
+
+### GAP-43-03: Avatar upload rejected by Storage RLS (missing SELECT policy)
+status: resolved (approved — 43-06 added avatars_select_own_folder SELECT policy, applied to prod)
 source: user UAT feedback (item 4)
 detail: Avatar upload fails — Supabase Storage `POST .../object/avatars/{uid}/avatar.jpg`
   returns 403 "new row violates row-level security policy". Diagnosis (confirmed via
