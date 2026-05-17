@@ -157,7 +157,11 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   4. A button above the watch grid lets the user add a watch to their collection or wishlist — the end-of-grid AddWatchCard is removed
   5. User can upload a profile photo from their device; it is stored in Supabase Storage and displayed on profile surfaces, replacing the URL text field
   6. The watch-extraction LLM call uses the current non-deprecated Claude model ID (`claude-sonnet-4-6`)
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 43-01-PLAN.md — FilterDrawer migration (swipe/backdrop dismiss) + Claude model ID fix
+- [ ] 43-02-PLAN.md — ProfileWatchCard restructure (equal-height) + wishlist wear-UI suppression
+- [ ] 43-03-PLAN.md — Add-watch button relocation in collection + wishlist tabs
+- [ ] 43-04-PLAN.md — Device avatar upload with circular crop + Supabase Storage bucket
 **UI hint**: yes
 
 ### Phase 44: Catalog Enrichment
@@ -218,7 +222,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 43. Polish Pass | 0/TBD | Not started | - |
+| 43. Polish Pass | 0/4 | Planned | - |
 | 44. Catalog Enrichment | 0/TBD | Not started | - |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
@@ -226,4 +230,4 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 ## Next Up
 
-Run `/gsd-plan-phase 43` to plan the Polish Pass.
+Run `/gsd-execute-phase 43` to execute the Polish Pass (4 plans, 1 wave).
