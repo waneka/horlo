@@ -124,7 +124,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 
 ### 🚧 v5.1 Explore Page Redesign (In Progress — SEED-008)
 
-- [ ] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (4 plans shipped 2026-05-17; gap closure in progress — 3 UAT gaps)
+- [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (4 plans shipped 2026-05-17; gap closure in progress — 3 UAT gaps) (completed 2026-05-17)
 - [ ] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows
 - [ ] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 10 seed paths authored
 - [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
@@ -163,7 +163,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 43-03-PLAN.md — Add-watch button relocation in collection + wishlist tabs
 - [x] 43-04-PLAN.md — Device avatar upload with circular crop + Supabase Storage bucket
 - [x] 43-05-PLAN.md — GAP CLOSURE: tighten ProfileWatchCard height (GAP-43-01) + outline-variant add buttons (GAP-43-02)
-- [ ] 43-06-PLAN.md — GAP CLOSURE: avatar bucket SELECT-policy migration (GAP-43-03, [BLOCKING] schema push)
+- [x] 43-06-PLAN.md — GAP CLOSURE: avatar bucket SELECT-policy migration (GAP-43-03, [BLOCKING] schema push)
 **UI hint**: yes
 
 ### Phase 44: Catalog Enrichment
@@ -224,7 +224,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 43. Polish Pass | 5/6 | In Progress|  |
+| 43. Polish Pass | 6/6 | Complete   | 2026-05-17 |
 | 44. Catalog Enrichment | 0/TBD | Not started | - |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
