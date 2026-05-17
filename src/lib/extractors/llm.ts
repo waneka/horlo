@@ -65,10 +65,12 @@ export async function extractWithLlm(
 
   let content = EXTRACTION_PROMPT + '\n\n'
   if (structuredContext) {
-    const truncatedStructured = structuredContext.length > 2000
-      ? structuredContext.substring(0, 2000) + '...[truncated]'
-      : structuredContext
-    content += truncatedStructured + '\n\n'
+    // WR-05: only include structured data if it fits whole. Truncating
+    // JSON-LD mid-object hands the model syntactically broken JSON, which is
+    // worse than no structured data — drop it entirely rather than split it.
+    if (structuredContext.length <= 2000) {
+      content += structuredContext + '\n\n'
+    }
   }
   content += 'Page content:\n' + truncatedText
 
