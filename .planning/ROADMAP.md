@@ -176,8 +176,13 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   2. A full ~100-row enrichment run completes without silent failures — rate-limited requests are retried with backoff and each row's `catalog_id` is logged as success or failure
   3. All ~100 `watches_catalog` rows have populated `primary_archetype`, `era_signal`, and taste columns after the production enrichment run
   4. Every `/search` filter dimension (movement type, case size, style tags) is populated for all catalog rows; factual fields remain human-reviewed and are not auto-written by LLM output
-  5. Every Collector Archetype (all 8) resolves to at least one catalog row — verified by a `GROUP BY primary_archetype` query before the Archetypes module ships
-**Plans**: TBD
+  5. Archetype coverage is verified by a `GROUP BY primary_archetype` query against the 10-value `PRIMARY_ARCHETYPES` vocab (code ground truth — the "8" in prior docs is stale, D-16); empty archetypes are surfaced as soft warnings, not hard failures, before the Archetypes module ships
+**Plans**: 4 plans
+- [ ] 44-01-PLAN.md — Two-turn web_search helper + enricher reshape + backfill/reenrich script hardening (ENRH-01, ENRH-02)
+- [ ] 44-02-PLAN.md — Downgrade guard in updateCatalogTaste + integration tests (ENRH-03)
+- [ ] 44-03-PLAN.md — Factual propose/apply scripts with editable review file + SQL migration emit (ENRH-05)
+- [ ] 44-04-PLAN.md — verify-catalog-coverage script + operator run playbook + production enrichment run (ENRH-04, ENRH-06)
+**UI hint**: no
 
 ### Phase 45: CMS Data Model + Admin Routes
 **Goal**: The owner can author and publish curated lists and collection paths through admin routes, with all content correctly gated behind RLS
@@ -226,11 +231,11 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
-| 44. Catalog Enrichment | 0/TBD | Not started | - |
+| 44. Catalog Enrichment | 0/4 | Planned | - |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
 ## Next Up
 
-Run `/gsd-execute-phase 43 --gaps-only` to execute the Phase 43 gap-closure plans (43-05, 43-06).
+Run `/gsd-execute-phase 44` to execute the Phase 44 catalog-enrichment plans.
