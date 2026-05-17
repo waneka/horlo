@@ -166,6 +166,16 @@ export function CollectionTabContent({
             aria-label="Search watches"
           />
         </div>
+        {isOwner && (
+          <Button
+            variant="default"
+            size="sm"
+            className="shrink-0 min-h-[44px]"
+            render={<Link href={returnTo ? `/watch/new?returnTo=${returnTo}` : '/watch/new'} />}
+          >
+            Add to Collection
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {filtered.map((watch) => (
@@ -175,7 +185,7 @@ export function CollectionTabContent({
             lastWornDate={wearDates[watch.id] ?? null}
           />
         ))}
-        {isOwner && <AddWatchCard returnTo={pathname || null} />}
+        {/* AddWatchCard removed from grid end — button above the grid owns the CTA (D-06, PLSH-05) */}
       </div>
     </>
   )
