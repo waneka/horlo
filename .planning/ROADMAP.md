@@ -157,13 +157,14 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   4. A button above the watch grid lets the user add a watch to their collection or wishlist — the end-of-grid AddWatchCard is removed
   5. User can upload a profile photo from their device; it is stored in Supabase Storage and displayed on profile surfaces, replacing the URL text field
   6. The watch-extraction LLM call uses the current non-deprecated Claude model ID (`claude-sonnet-4-6`)
-**Plans**: 6 plans (4 original + 2 gap-closure from UAT)
+**Plans**: 7 plans (4 original + 3 gap-closure from UAT)
 - [x] 43-01-PLAN.md — FilterDrawer migration (swipe/backdrop dismiss) + Claude model ID fix
 - [x] 43-02-PLAN.md — ProfileWatchCard restructure (equal-height) + wishlist wear-UI suppression
 - [x] 43-03-PLAN.md — Add-watch button relocation in collection + wishlist tabs
 - [x] 43-04-PLAN.md — Device avatar upload with circular crop + Supabase Storage bucket
 - [x] 43-05-PLAN.md — GAP CLOSURE: tighten ProfileWatchCard height (GAP-43-01) + outline-variant add buttons (GAP-43-02)
 - [x] 43-06-PLAN.md — GAP CLOSURE: avatar bucket SELECT-policy migration (GAP-43-03, [BLOCKING] schema push)
+- [ ] 43-07-PLAN.md — GAP CLOSURE: square watch-card image (GAP-43-04) + functional Settings profile-edit section (GAP-43-05)
 **UI hint**: yes
 
 ### Phase 44: Catalog Enrichment
