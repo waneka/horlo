@@ -124,7 +124,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 
 ### 🚧 v5.1 Explore Page Redesign (In Progress — SEED-008)
 
-- [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (completed 2026-05-17)
+- [ ] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (4 plans shipped 2026-05-17; gap closure in progress — 3 UAT gaps)
 - [ ] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows
 - [ ] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 10 seed paths authored
 - [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
@@ -157,11 +157,13 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   4. A button above the watch grid lets the user add a watch to their collection or wishlist — the end-of-grid AddWatchCard is removed
   5. User can upload a profile photo from their device; it is stored in Supabase Storage and displayed on profile surfaces, replacing the URL text field
   6. The watch-extraction LLM call uses the current non-deprecated Claude model ID (`claude-sonnet-4-6`)
-**Plans**: 4 plans
+**Plans**: 6 plans (4 original + 2 gap-closure from UAT)
 - [x] 43-01-PLAN.md — FilterDrawer migration (swipe/backdrop dismiss) + Claude model ID fix
 - [x] 43-02-PLAN.md — ProfileWatchCard restructure (equal-height) + wishlist wear-UI suppression
 - [x] 43-03-PLAN.md — Add-watch button relocation in collection + wishlist tabs
 - [x] 43-04-PLAN.md — Device avatar upload with circular crop + Supabase Storage bucket
+- [ ] 43-05-PLAN.md — GAP CLOSURE: tighten ProfileWatchCard height (GAP-43-01) + outline-variant add buttons (GAP-43-02)
+- [ ] 43-06-PLAN.md — GAP CLOSURE: avatar bucket SELECT-policy migration (GAP-43-03, [BLOCKING] schema push)
 **UI hint**: yes
 
 ### Phase 44: Catalog Enrichment
@@ -222,7 +224,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 43. Polish Pass | 4/4 | Complete   | 2026-05-17 |
+| 43. Polish Pass | 4/6 | Gap closure in progress | - |
 | 44. Catalog Enrichment | 0/TBD | Not started | - |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
@@ -230,4 +232,4 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 ## Next Up
 
-Run `/gsd-execute-phase 43` to execute the Polish Pass (4 plans, 1 wave).
+Run `/gsd-execute-phase 43 --gaps-only` to execute the Phase 43 gap-closure plans (43-05, 43-06).
