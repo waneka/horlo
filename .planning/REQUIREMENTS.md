@@ -18,7 +18,7 @@
 - [ ] **PLSH-03**: Wishlist watch cards render no wear details — "Never worn", wear badges, and the last-worn line appear only on owned watches.
 - [ ] **PLSH-04**: Watch cards in the collection and wishlist grids have a consistent height regardless of a watch's metadata or photo.
 - [ ] **PLSH-05**: The add-to-collection / add-to-wishlist action is a button above the watch grid rather than a card at the end of the grid.
-- [ ] **PLSH-06**: User can upload a profile photo from their device; it is stored in Supabase Storage and served on profile surfaces, replacing the avatar-URL text field.
+- [x] **PLSH-06**: User can upload a profile photo from their device; it is stored in Supabase Storage and served on profile surfaces, replacing the avatar-URL text field.
 - [ ] **PLSH-07**: The watch-extraction LLM integration uses a current, non-deprecated Claude model ID.
 
 ### Catalog Enrichment (ENRH)
@@ -99,7 +99,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | PLSH-03 | Phase 43 | Pending |
 | PLSH-04 | Phase 43 | Pending |
 | PLSH-05 | Phase 43 | Pending |
-| PLSH-06 | Phase 43 | Pending |
+| PLSH-06 | Phase 43 | Complete |
 | PLSH-07 | Phase 43 | Pending |
 | ENRH-01 | Phase 44 | Pending |
 | ENRH-02 | Phase 44 | Pending |
