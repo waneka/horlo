@@ -17,7 +17,9 @@
     "db:backfill-catalog-brands": "tsx --env-file=.env.local scripts/backfill-catalog-brands.ts",
     "db:backfill-catalog-families": "tsx --env-file=.env.local scripts/backfill-catalog-families.ts",
     "db:backfill-catalog-lineage": "tsx --env-file=.env.local scripts/backfill-catalog-lineage.ts",
-    "db:seed-lineage": "tsx --env-file=.env.local scripts/seed-lineage.ts"
+    "db:seed-lineage": "tsx --env-file=.env.local scripts/seed-lineage.ts",
+    "db:factual-propose": "tsx --env-file=.env.local scripts/factual-propose.ts",
+    "db:factual-apply": "tsx --env-file=.env.local scripts/factual-apply.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

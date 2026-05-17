@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { execSync } from 'node:child_process'
-import { readFileSync as fsReadFileSync } from 'node:fs'
+import { readFileSync as fsReadFileSync, writeFileSync, unlinkSync, readdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 describe('scripts/backfill-taste.ts --dry-run', () => {
   it('dry run reports row count and cost without API calls', () => {
@@ -93,6 +95,61 @@ describe('src/lib/taste/webSearch.ts', () => {
     ]
     const urls = extractSourceUrls(content as unknown as Parameters<typeof extractSourceUrls>[0])
     expect(urls).toEqual([])
+  })
+})
+
+describe('scripts/factual-apply.ts --dry-run', () => {
+  it('prints DRY RUN and UPDATE statement for approved row, not for rejected row, and writes no migration file', () => {
+    // Write a temp JSONL review file with one approved and one rejected entry
+    const tempFile = join(tmpdir(), `factual-apply-test-${Date.now()}.jsonl`)
+    const approvedEntry = JSON.stringify({
+      catalog_id: '00000000-0000-0000-0000-000000000001',
+      field: 'movement_type',
+      current: null,
+      proposed: 'auto',
+      source_url: 'https://example.com/watch',
+      approved: true,
+    })
+    const rejectedEntry = JSON.stringify({
+      catalog_id: '00000000-0000-0000-0000-000000000002',
+      field: 'movement_type',
+      current: null,
+      proposed: 'manual',
+      source_url: 'https://example.com/watch2',
+      approved: false,
+    })
+    writeFileSync(tempFile, `${approvedEntry}\n${rejectedEntry}\n`, 'utf-8')
+
+    try {
+      // Record migrations dir state before the dry-run
+      const migrationsDir = join(process.cwd(), 'supabase', 'migrations')
+      const beforeFiles = readdirSync(migrationsDir)
+
+      // Run factual-apply --dry-run
+      const output = execSync(
+        `npx tsx --env-file=/Users/tylerwaneka/Documents/horlo/.env.local scripts/factual-apply.ts --dry-run --review-file=${tempFile}`,
+        { encoding: 'utf-8', timeout: 30_000 },
+      )
+
+      // Should print DRY RUN
+      expect(output).toMatch(/DRY RUN/)
+
+      // Should include an UPDATE for the approved catalog_id
+      expect(output).toContain('UPDATE watches_catalog')
+      expect(output).toContain('00000000-0000-0000-0000-000000000001')
+
+      // Should NOT include an UPDATE for the rejected catalog_id
+      expect(output).not.toContain('00000000-0000-0000-0000-000000000002')
+
+      // No new migration file should have appeared in supabase/migrations/
+      const afterFiles = readdirSync(migrationsDir)
+      const newFiles = afterFiles.filter((f) => !beforeFiles.includes(f))
+      const newMigrations = newFiles.filter((f) => f.includes('phase44_factual_data'))
+      expect(newMigrations).toHaveLength(0)
+    } finally {
+      // Clean up temp file
+      try { unlinkSync(tempFile) } catch { /* ignore */ }
+    }
   })
 })
 
