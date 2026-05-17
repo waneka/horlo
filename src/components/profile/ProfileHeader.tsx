@@ -41,6 +41,7 @@ export function ProfileHeader(props: ProfileHeaderProps) {
             bio: props.bio,
           }}
           onDone={() => setEditing(false)}
+          userId={props.targetUserId}
         />
       </header>
     )

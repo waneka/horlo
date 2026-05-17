@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { updateProfile } from '@/app/actions/profile'
 import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
+import { AvatarUploader } from '@/components/profile/AvatarUploader'
 
 interface ProfileEditFormProps {
   initial: {
@@ -15,11 +16,11 @@ interface ProfileEditFormProps {
     bio: string | null
   }
   onDone: () => void
+  userId: string
 }
 
-export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
+export function ProfileEditForm({ initial, onDone, userId }: ProfileEditFormProps) {
   const [displayName, setDisplayName] = useState(initial.displayName ?? '')
-  const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl ?? '')
   const [bio, setBio] = useState(initial.bio ?? '')
   // Phase 25 / UX-08 (D-21) — toast-only feedback via hook in dialogMode:true
   // (D-19). The dialog dismounts on success so no inline banner is rendered;
@@ -32,10 +33,9 @@ export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
     run(async () => {
       // Send only the fields the Server Action's strict schema accepts.
       // Empty trimmed values become null (clears the field).
-      const trimmedAvatar = avatarUrl.trim()
+      // Avatar is saved immediately by AvatarUploader on upload complete (D-10).
       const result = await updateProfile({
         displayName: displayName.trim() || null,
-        avatarUrl: trimmedAvatar === '' ? null : trimmedAvatar,
         bio: bio.trim() || null,
       })
       if (result.success) {
@@ -49,6 +49,14 @@ export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Phase 43 D-10: avatar upload replaces the URL text field */}
+      <div className="flex flex-col gap-1">
+        <AvatarUploader
+          userId={userId}
+          initialUrl={initial.avatarUrl}
+          onUploadComplete={() => {}}
+        />
+      </div>
       <div className="flex flex-col gap-1">
         <Label htmlFor="profile-display-name">Display name</Label>
         <Input
@@ -57,17 +65,6 @@ export function ProfileEditForm({ initial, onDone }: ProfileEditFormProps) {
           onChange={(e) => setDisplayName(e.target.value)}
           maxLength={80}
           placeholder="Your name"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor="profile-avatar-url">Avatar URL</Label>
-        <Input
-          id="profile-avatar-url"
-          type="url"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          maxLength={500}
-          placeholder="https://..."
         />
       </div>
       <div className="flex flex-col gap-1">
