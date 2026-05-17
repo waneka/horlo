@@ -1,9 +1,10 @@
 ---
 phase: 43-polish-pass
 verified: 2026-05-17T00:00:00Z
-status: human_needed
+status: passed
 score: 14/14
 overrides_applied: 0
+human_verification_outcome: "All 4 human-verification items + all 5 UAT gap fixes verified by the user on production (www.horlo.app) and approved 2026-05-17."
 human_verification:
   - test: "Swipe-to-dismiss on /search filter sheet"
     expected: "On a touch device, opening the filter sheet and swiping downward dismisses it without a JS error. Sheet also dismisses on backdrop tap."

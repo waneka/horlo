@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 43-polish-pass
 source: [43-VERIFICATION.md]
 started: 2026-05-17T00:00:00Z
@@ -8,7 +8,7 @@ updated: 2026-05-17T00:00:00Z
 
 ## Current Test
 
-[testing complete — 2 passed, 2 issues]
+[testing complete — all 4 UAT items pass; all 5 gaps resolved and approved by user 2026-05-17]
 
 ## Tests
 
@@ -26,13 +26,13 @@ result: pass
 
 ### 4. Avatar upload end-to-end cycle
 expected: In ProfileEditForm, picking an image opens the circular crop; drag/zoom positions the crop; confirming uploads the cropped square image to the Supabase `avatars` bucket and the new avatar displays on profile surfaces. The avatar-URL text field is gone.
-result: issue — upload fails. Supabase Storage returns 403 "new row violates row-level security policy". Root cause diagnosed (see Gaps GAP-43-03).
+result: pass — avatar upload works after the GAP-43-03 SELECT-policy fix (applied to prod, user-verified 2026-05-17).
 
 ## Summary
 
 total: 4
-passed: 3
-issues: 1
+passed: 4
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -57,7 +57,7 @@ files: [src/components/profile/CollectionTabContent.tsx, src/components/profile/
 requirement: PLSH-05
 
 ### GAP-43-04: Watch card image still too tall — change aspect ratio
-status: failed
+status: resolved (approved — 43-07 changed ProfileWatchCard image to aspect-square; ~60px shorter; user-verified)
 source: user UAT feedback (round 2 — padding trim was not enough)
 detail: After 43-05 tightened padding, cards are still too tall. The dominant height driver
   is the portrait `aspect-[3/4]` image. User decision: change the image container aspect from
@@ -69,7 +69,7 @@ files: [src/components/profile/ProfileWatchCard.tsx]
 requirement: PLSH-04
 
 ### GAP-43-05: Settings profile section is a non-functional stub
-status: failed
+status: resolved (approved — 43-07 replaced the stub with the real ProfileEditForm; user-verified)
 source: user UAT feedback (new — /settings#profile shows "Profile editing coming in the next update.")
 detail: `src/components/settings/ProfileSection.tsx` is an intentional read-only stub (Phase 22
   D-19; the comment notes "Phase 25 (UX-08) replaces this stub with a profile-edit form" — that
