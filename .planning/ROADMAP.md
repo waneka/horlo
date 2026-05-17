@@ -162,7 +162,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 43-02-PLAN.md — ProfileWatchCard restructure (equal-height) + wishlist wear-UI suppression
 - [x] 43-03-PLAN.md — Add-watch button relocation in collection + wishlist tabs
 - [x] 43-04-PLAN.md — Device avatar upload with circular crop + Supabase Storage bucket
-- [ ] 43-05-PLAN.md — GAP CLOSURE: tighten ProfileWatchCard height (GAP-43-01) + outline-variant add buttons (GAP-43-02)
+- [x] 43-05-PLAN.md — GAP CLOSURE: tighten ProfileWatchCard height (GAP-43-01) + outline-variant add buttons (GAP-43-02)
 - [ ] 43-06-PLAN.md — GAP CLOSURE: avatar bucket SELECT-policy migration (GAP-43-03, [BLOCKING] schema push)
 **UI hint**: yes
 
@@ -224,7 +224,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 43. Polish Pass | 4/6 | Gap closure in progress | - |
+| 43. Polish Pass | 5/6 | In Progress|  |
 | 44. Catalog Enrichment | 0/TBD | Not started | - |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
