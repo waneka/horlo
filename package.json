@@ -19,7 +19,8 @@
     "db:backfill-catalog-lineage": "tsx --env-file=.env.local scripts/backfill-catalog-lineage.ts",
     "db:seed-lineage": "tsx --env-file=.env.local scripts/seed-lineage.ts",
     "db:factual-propose": "tsx --env-file=.env.local scripts/factual-propose.ts",
-    "db:factual-apply": "tsx --env-file=.env.local scripts/factual-apply.ts"
+    "db:factual-apply": "tsx --env-file=.env.local scripts/factual-apply.ts",
+    "db:verify-catalog-coverage": "tsx --env-file=.env.local scripts/verify-catalog-coverage.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

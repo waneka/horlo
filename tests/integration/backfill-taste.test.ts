@@ -153,6 +153,40 @@ describe('scripts/factual-apply.ts --dry-run', () => {
   })
 })
 
+describe('scripts/verify-catalog-coverage.ts', () => {
+  it('source imports PRIMARY_ARCHETYPES from ../src/lib/taste/vocab', () => {
+    const src = fsReadFileSync('scripts/verify-catalog-coverage.ts', 'utf-8')
+    expect(src).toContain("PRIMARY_ARCHETYPES")
+    expect(src).toContain("../src/lib/taste/vocab")
+  })
+
+  it('source contains confidence IS NULL taste hard-assertion', () => {
+    const src = fsReadFileSync('scripts/verify-catalog-coverage.ts', 'utf-8')
+    expect(src).toContain('confidence IS NULL')
+  })
+
+  it('source contains movement_type IS NULL factual hard-assertion', () => {
+    const src = fsReadFileSync('scripts/verify-catalog-coverage.ts', 'utf-8')
+    expect(src).toContain('movement_type IS NULL')
+  })
+
+  it('source contains array_length(style_tags, 1) IS NULL factual hard-assertion (ENRH-05 style_tags emptiness check)', () => {
+    const src = fsReadFileSync('scripts/verify-catalog-coverage.ts', 'utf-8')
+    expect(src).toContain('array_length(style_tags, 1) IS NULL')
+  })
+
+  // Integration test: requires a populated local DB (skip if DATABASE_URL not pointing at local).
+  // Unskip once Task 2 (production enrichment run) has been completed.
+  describe.skip('integration — requires populated local DB (unskip after Task 2 run)', () => {
+    it('exits 0 against fully-populated local catalog', () => {
+      execSync('tsx --env-file=.env.local scripts/verify-catalog-coverage.ts', {
+        encoding: 'utf-8',
+        timeout: 30_000,
+      })
+    })
+  })
+})
+
 describe('scripts/backfill-taste.ts — source assertions (ENRH-01/D-14)', () => {
   const src = fsReadFileSync('scripts/backfill-taste.ts', 'utf-8')
 
