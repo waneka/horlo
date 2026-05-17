@@ -66,7 +66,7 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
     vi.clearAllMocks()
   })
 
-  it('isOwner=true with watches — renders sortable card rows AND exactly one end-of-grid "Add to Wishlist" CTA card', () => {
+  it('isOwner=true with watches — renders sortable card rows AND exactly one "Add to Wishlist" CTA above the grid (PLSH-05)', () => {
     render(
       <WishlistTabContent
         watches={[buildWatch('w1'), buildWatch('w2')]}
@@ -79,11 +79,13 @@ describe('Phase 20.1 Plan 02 — WishlistTabContent end-of-grid (D-16)', () => {
     // SortableProfileWatchCard (still wraps the same presentational card).
     // The 2 fixture watches render via the mocked SortableProfileWatchCard.
     expect(screen.getAllByTestId('sortable-pwc')).toHaveLength(2)
-    // D-16 end-of-grid card text + aria-label (rendered as final grid cell
-    // OUTSIDE SortableContext per Phase 27 RESEARCH Open Q #3).
+    // Phase 43 PLSH-05 (D-06): end-of-grid AddWatchCard tile replaced by a
+    // Button above the grid. The CTA text "Add to Wishlist" appears exactly once.
     const ctas = screen.getAllByText('Add to Wishlist')
     expect(ctas).toHaveLength(1)
-    expect(screen.getByLabelText('Add to Wishlist')).toBeInTheDocument()
+    // In this test context next/link is mocked as a plain <a> (no role="button"),
+    // so it renders as a link role accessible element.
+    expect(screen.getByRole('link', { name: 'Add to Wishlist' })).toBeInTheDocument()
   })
 
   it('isOwner=false — no AddToWishlist CTA card rendered', () => {

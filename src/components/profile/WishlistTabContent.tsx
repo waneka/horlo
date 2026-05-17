@@ -25,7 +25,6 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ProfileWatchCard } from './ProfileWatchCard'
 import { SortableProfileWatchCard } from './SortableProfileWatchCard'
-import { AddWatchCard } from './AddWatchCard'
 import { reorderWishlist } from '@/app/actions/wishlist'
 import type { Watch } from '@/lib/types'
 
@@ -105,7 +104,25 @@ export function WishlistTabContent({
   // POPULATED — owner branch (DnD wired; grid-cols-2 per VIS-07).
   // Delegated to a sub-component so the hooks below this branch don't violate
   // React rules-of-hooks (would otherwise run conditionally after early returns).
-  return <OwnerWishlistGrid watches={watches} wearDates={wearDates} returnTo={pathname || null} />
+  // PLSH-05 (D-06, D-07): Add-wishlist button placed above the grid here in
+  // WishlistTabContent so isOwner is in scope without threading a new prop.
+  return (
+    <>
+      {isOwner && (
+        <div className="mb-4 flex justify-end">
+          <Button
+            variant="default"
+            size="sm"
+            className="shrink-0 min-h-[44px]"
+            render={<Link href={wishlistHref} />}
+          >
+            Add to Wishlist
+          </Button>
+        </div>
+      )}
+      <OwnerWishlistGrid watches={watches} wearDates={wearDates} />
+    </>
+  )
 }
 
 /**
@@ -125,12 +142,9 @@ export function WishlistTabContent({
 function OwnerWishlistGrid({
   watches,
   wearDates,
-  returnTo,
 }: {
   watches: Watch[]
   wearDates: Record<string, string>
-  /** Phase 28 D-08 — entry pathname captured by parent; threaded into AddWatchCard. */
-  returnTo: string | null
 }) {
   const watchesById = useMemo(
     () => Object.fromEntries(watches.map((w) => [w.id, w])),
@@ -240,11 +254,7 @@ function OwnerWishlistGrid({
               showWishlistMeta
             />
           ))}
-          {/* AddWatchCard intentionally OUTSIDE SortableContext.items
-              AND rendered AFTER the SortableContext children block —
-              it's an action affordance, not sortable, and must land as
-              the final grid cell (UI-SPEC line 236-237; RESEARCH Open Q #3). */}
-          <AddWatchCard variant="wishlist" returnTo={returnTo} />
+          {/* AddWatchCard removed — button above the grid owns the CTA (D-06, PLSH-05) */}
         </div>
       </SortableContext>
       <DragOverlay>
