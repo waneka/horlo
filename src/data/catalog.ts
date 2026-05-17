@@ -512,6 +512,38 @@ export async function updateCatalogTaste(
 ): Promise<{ updated: boolean }> {
   const force = options?.force === true
 
+  // D-07/D-08: downgrade guard — block a text-mode force write that would overwrite
+  // a vision-derived high-confidence row. Vision-mode incoming writes bypass this guard
+  // entirely. Only applies on the force path (non-force writes already check confidence IS NULL).
+  if (force && !taste.extractedFromPhoto) {
+    const existing = await db.execute<{
+      confidence: string | null
+      extracted_from_photo: boolean
+    }>(sql`
+      SELECT confidence, extracted_from_photo
+      FROM watches_catalog
+      WHERE id = ${catalogId}
+    `)
+    const row = (existing as unknown as Array<{
+      confidence: string | null
+      extracted_from_photo: boolean
+    }>)[0]
+    if (
+      row &&
+      row.extracted_from_photo === true &&
+      row.confidence !== null &&
+      Number(row.confidence) >= 0.7
+    ) {
+      console.warn(JSON.stringify({
+        event: 'taste_downgrade_guard_blocked',
+        catalog_id: catalogId,
+        existing_confidence: row.confidence,
+        timestamp: new Date().toISOString(),
+      }))
+      return { updated: false }
+    }
+  }
+
   // For empty arrays, postgres.js renders `()::text[]` which is invalid SQL —
   // emit `'{}'::text[]` literal instead.
   const motifsSql =

@@ -113,6 +113,35 @@ maybe('updateCatalogTaste', () => {
       .where(eq(watchesCatalog.id, id))
     expect(row.designMotifs).toEqual([])
   })
+
+  // D-08 downgrade guard: block text-mode force write on vision+high-confidence row
+  it('guard blocks text-mode force write on vision row with confidence >= 0.7 (D-08)', async () => {
+    const id = await insertTestRow()
+    // Establish: vision-derived, high-confidence
+    await updateCatalogTaste(id, { ...VALID_TASTE, extractedFromPhoto: true, confidence: 0.9 }, { force: true })
+    // Attempt: text-mode force write — should be blocked
+    const result = await updateCatalogTaste(id, { ...VALID_TASTE, extractedFromPhoto: false, formality: 0.01 }, { force: true })
+    expect(result.updated).toBe(false)
+    // Original formality value remains unchanged
+    const [row] = await db.select().from(watchesCatalog).where(eq(watchesCatalog.id, id))
+    expect(Number(row.formality)).toBeCloseTo(VALID_TASTE.formality, 5)
+  })
+
+  // D-08 downgrade guard: vision-mode force write on vision+high-confidence row is allowed
+  it('guard allows vision-mode force write on vision row (D-08 — legit refresh)', async () => {
+    const id = await insertTestRow()
+    await updateCatalogTaste(id, { ...VALID_TASTE, extractedFromPhoto: true, confidence: 0.9 }, { force: true })
+    const result = await updateCatalogTaste(id, { ...VALID_TASTE, extractedFromPhoto: true, formality: 0.01 }, { force: true })
+    expect(result.updated).toBe(true)
+  })
+
+  // D-08 downgrade guard: text-mode force write is allowed when existing confidence < 0.7
+  it('guard allows text-mode force write when existing confidence < 0.7', async () => {
+    const id = await insertTestRow()
+    await updateCatalogTaste(id, { ...VALID_TASTE, extractedFromPhoto: true, confidence: 0.5 }, { force: true })
+    const result = await updateCatalogTaste(id, { ...VALID_TASTE, extractedFromPhoto: false, formality: 0.01 }, { force: true })
+    expect(result.updated).toBe(true)
+  })
 })
 
 maybe('applyUserUploadedPhoto', () => {
