@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 import { useSearchState } from '@/components/search/useSearchState'
-import { WatchFacetSheet } from '@/components/search/FilterSheet'
+import { FilterDrawer } from '@/components/search/FilterDrawer'
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
 import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
@@ -180,7 +180,7 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             viewerUsername={viewerUsername}
             hasActiveFacet={activeCount > 0}
           />
-          <WatchFacetSheet
+          <FilterDrawer
             open={sheetOpen}
             onOpenChange={setSheetOpen}
             movement={movement}
