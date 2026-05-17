@@ -530,14 +530,14 @@ import { updateCatalogTaste } from '../src/data/catalog'
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Archetype count: 10 vs "8"**
+1. **Archetype count: 10 vs "8"** — RESOLVED: 10-value vocab per D-16; the verify script uses `PRIMARY_ARCHETYPES` from `src/lib/taste/vocab.ts` as ground truth.
    - What we know: `vocab.ts` has 10; CHECK constraint has 10; REQUIREMENTS.md/CONTEXT.md say "8"
    - What's unclear: Whether the discrepancy is intentional (two archetypes not yet fully supported in the Explore UI) or stale docs
    - Recommendation: Ask user to confirm. If 10 is correct (most likely), update the verification script to assert all 10. ENRH-06's "all 8 archetypes" language needs to be interpreted as "all archetypes in PRIMARY_ARCHETYPES."
 
-2. **web_search model billing enablement**
+2. **web_search model billing enablement** — RESOLVED: graceful text-only fallback implemented in the Plan 01 enricher and the Plan 03 factual-propose script (a `web_search_tool_result` error of type `unavailable` sets `webSearchUnavailable: true` and Turn 2 still runs).
    - What we know: Anthropic docs note "Your organization's administrator must enable web search in the Claude Console"
    - What's unclear: Whether the current Anthropic account has web search enabled
    - Recommendation: Include a preflight check in the backfill script; if Turn 1 returns a `web_search_tool_result_error` with `unavailable`, fall back to text-only mode gracefully (consistent with enricher's never-throws posture).

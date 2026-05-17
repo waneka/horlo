@@ -75,7 +75,9 @@ phase, not a UI phase.
 
 ### Script Surface — ENRH-01, ENRH-02
 
-- **D-10:** **Four scripts, separated by write semantics:**
+- **D-10 [informational]:** **Four scripts, separated by write semantics**
+  — organizing umbrella; the trackable sub-decisions D-11–D-14 each cover a
+  concrete behavior and are individually cited in plans:
   1. `backfill-taste.ts` — hardened in place; taste columns; auto-writes via
      first-write-wins (`updateCatalogTaste` default mode).
   2. `reenrich-taste.ts` — force-overwrite path; now subject to the
