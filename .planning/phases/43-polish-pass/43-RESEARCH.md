@@ -601,7 +601,9 @@ Confirmed: `src/lib/taste/enricher.ts` already uses `claude-sonnet-4-6` (verifie
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All questions below are answered inline — kept for traceability.
 
 1. **Drawer.Viewport requirement**
    - What we know: The official docs show `Drawer.Viewport` wrapping `Drawer.Popup`. The type definitions confirm `DrawerViewport` exists in v1.3.0.
