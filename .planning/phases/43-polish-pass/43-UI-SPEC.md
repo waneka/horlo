@@ -1,10 +1,11 @@
 ---
 phase: 43
 slug: polish-pass
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-16
+reviewed_at: 2026-05-16T00:00:00Z
 ---
 
 # Phase 43 — UI Design Contract
@@ -45,7 +46,7 @@ Registry safety: shadcn official components only. `react-easy-crop` is a new npm
 
 Exceptions:
 - **Touch targets**: Add-watch button minimum touch target 44px tall — `size="sm"` Button in shadcn is 36px; add `min-h-[44px]` on mobile breakpoints.
-- **Drawer drag handle**: 6px tall × 40px wide, centered (existing `h-1.5 w-10` pattern from FilterSheet.tsx — preserve exactly).
+- **Drawer drag handle**: 8px tall × 40px wide, centered — `h-2 w-10` (8 is a multiple of 4; updated from the non-conforming 6px/`h-1.5` that existed in the pattern source).
 - **Avatar crop modal**: Cropper UI occupies a container of at least 300px × 300px to allow drag interaction — no fixed pixel token, but executor must ensure the modal panel is at least 320px wide.
 
 ---
@@ -59,9 +60,9 @@ All sizes inherited from the existing shadcn base-nova token chain. No new font 
 | Body | 16px (`text-base`) | 400 (`font-normal`) | 1.5 | Watch model name above image; form labels; filter section headers |
 | Label | 14px (`text-sm`) | 400 (`font-normal`) | 1.5 | Watch brand name above image; filter chip copy; add-button label; avatar uploader helper text |
 | Caption | 12px (`text-xs`) | 400 (`font-normal`) | 1.4 | Tag pill, price line, wear line (owned only), wishlist notes — all in the ProfileWatchCard text block |
-| Heading | 16px (`text-base`) | 500 (`font-medium`) | 1.2 | "Filters" drawer title (existing `SheetTitle` pattern) |
+| Heading | 16px (`text-base`) | 600 (`font-semibold`) | 1.2 | "Filters" drawer title (existing `SheetTitle` pattern — promoted from 500 to 600 to comply with 2-weight maximum) |
 
-Weights used: regular 400 + medium 500. Semibold 600 used only for the watch model name (`font-semibold`) — preserved from existing card.
+Weights used: **regular 400 + semibold 600** (two weights only). Watch model name (`font-semibold`) and the "Filters" drawer title both use 600. Weight 500 (`font-medium`) is not used in Phase 43.
 
 Source: RESEARCH.md Pattern 2 code example + direct read of ProfileWatchCard.tsx.
 
@@ -86,6 +87,8 @@ All values from globals.css `:root` / `.dark` CSS custom properties. Phase 43 us
 
 Accent is NOT used for: the add-watch button (uses `variant="default"` — primary, not accent), filter chips, drawer backdrop, price lines.
 
+**Primary focal point (profile page):** The collection grid is the primary focal point — the ProfileWatchCard watch image is the first visual element the eye lands on.
+
 Source: globals.css direct read. Color roles confirmed against ProfileWatchCard.tsx lines 78-80.
 
 ---
@@ -103,9 +106,9 @@ Drawer.Root (open, onOpenChange, swipeDirection="down")
     Drawer.Backdrop  className="fixed inset-0 z-50 bg-black/10"
     Drawer.Viewport  className="fixed inset-0 z-50 flex flex-col justify-end pointer-events-none"
       Drawer.Popup   className="max-h-[80vh] overflow-y-auto bg-popover rounded-t-xl border-t border-border pb-[env(safe-area-inset-bottom)] pointer-events-auto"
-        drag handle  div  mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted-foreground/30 shrink-0
+        drag handle  div  mx-auto mt-2 h-2 w-10 rounded-full bg-muted-foreground/30 shrink-0
         Drawer.Content  flex flex-col gap-6 px-4 pb-2 pt-2
-          Drawer.Title  (font-heading text-base font-medium text-foreground) → "Filters"
+          Drawer.Title  (font-heading text-base font-semibold text-foreground) → "Filters"
           MovementChips
           CaseSizeChips
           StyleChips
@@ -242,7 +245,7 @@ State B — File selected, crop UI shown (modal/overlay)
   │  (circular mask — drag to reframe)  │
   │                                     │
   │  ──────────────────────────────     │
-  │  [ Cancel ]    [ Confirm crop ]     │
+  │  [ Discard crop ]  [ Confirm crop ] │
   └─────────────────────────────────────┘
 
 State C — Processing (crop confirmed, upload in flight)
@@ -260,7 +263,7 @@ State D — Done (success)
 - Circular mask is the standard `react-easy-crop` `cropShape="round"` — no custom clip-path
 - Background of crop container: `bg-black` (dark overlay behind image area — standard for photo cropping UIs)
 - "Confirm crop" button: `variant="default"` (primary)
-- "Cancel" button: `variant="outline"`
+- "Discard crop" button: `variant="outline"`
 - No zoom slider in Phase 43 — pinch-zoom gesture on mobile and scroll-wheel on desktop only
 
 **Avatar preview (in ProfileEditForm and on profile surfaces):**
@@ -289,7 +292,7 @@ State D — Done (success)
 | Add to wishlist CTA | "Add to Wishlist" | WishlistTabContent header row button | CONTEXT.md D-06, AddWatchCard.tsx |
 | Avatar upload button | "Upload photo" | AvatarUploader State A | Default — consistent with photo upload conventions |
 | Avatar crop confirm | "Confirm crop" | AvatarUploader State B | Default — clear action label |
-| Avatar crop cancel | "Cancel" | AvatarUploader State B | Default |
+| Avatar crop cancel | "Discard crop" | AvatarUploader State B | Specific verb+noun — replaces generic "Cancel" |
 | Avatar upload processing | "Uploading…" | AvatarUploader State C | Default |
 | Avatar success toast | "Profile photo updated" | Toast (Sonner) | Default — consistent with "Profile updated" from ProfileEditForm |
 | Avatar error — file too large | "Photo too large. Maximum size is 8 MB." | AvatarUploader inline error | Default |
@@ -334,7 +337,7 @@ Destructive actions in this phase: None. "Clear all" filters is reversible (no c
 |-------|---------|--------|
 | Idle — no avatar | Initial render with `initialUrl = null` | Placeholder circle (muted bg, 64px) + "Upload photo" outline button |
 | Idle — has avatar | Initial render with `initialUrl` set | Circular avatar preview (64px, `rounded-full object-cover`) + "Upload photo" outline button |
-| File selected | `<input type="file">` change | Crop UI shown (300px container, circular mask, dark bg) + Cancel + Confirm crop buttons |
+| File selected | `<input type="file">` change | Crop UI shown (300px container, circular mask, dark bg) + "Discard crop" + "Confirm crop" buttons |
 | Processing | Confirm crop clicked | Buttons disabled; spinner or "Uploading…" label |
 | Success | Upload + `updateProfile` complete | Returns to idle with new avatar URL; toast "Profile photo updated" |
 | Error — oversized | File > 8 MB | Inline error below button; crop UI not shown |
