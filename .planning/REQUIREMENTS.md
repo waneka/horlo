@@ -94,13 +94,44 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(filled by roadmapper)_ | — | Pending |
+| PLSH-01 | Phase 43 | Pending |
+| PLSH-02 | Phase 43 | Pending |
+| PLSH-03 | Phase 43 | Pending |
+| PLSH-04 | Phase 43 | Pending |
+| PLSH-05 | Phase 43 | Pending |
+| PLSH-06 | Phase 43 | Pending |
+| PLSH-07 | Phase 43 | Pending |
+| ENRH-01 | Phase 44 | Pending |
+| ENRH-02 | Phase 44 | Pending |
+| ENRH-03 | Phase 44 | Pending |
+| ENRH-04 | Phase 44 | Pending |
+| ENRH-05 | Phase 44 | Pending |
+| ENRH-06 | Phase 44 | Pending |
+| CMS-01 | Phase 45 | Pending |
+| CMS-02 | Phase 45 | Pending |
+| CMS-03 | Phase 45 | Pending |
+| CMS-04 | Phase 45 | Pending |
+| CMS-05 | Phase 45 | Pending |
+| CMS-06 | Phase 45 | Pending |
+| CMS-07 | Phase 45 | Pending |
+| CMS-08 | Phase 45 | Pending |
+| CMS-09 | Phase 45 | Pending |
+| CMS-10 | Phase 45 | Pending |
+| EXPL-01 | Phase 46 | Pending |
+| EXPL-02 | Phase 46 | Pending |
+| EXPL-03 | Phase 46 | Pending |
+| EXPL-04 | Phase 46 | Pending |
+| EXPL-05 | Phase 46 | Pending |
+| EXPL-06 | Phase 47 | Pending |
+| EXPL-07 | Phase 47 | Pending |
+| EXPL-08 | Phase 47 | Pending |
+| EXPL-09 | Phase 47 | Pending |
 
 **Coverage:**
 - v5.1 requirements: 32 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 32 ⚠️
+- Mapped to phases: 32 (complete)
+- Unmapped: 0 — full coverage
 
 ---
 *Requirements defined: 2026-05-16*
-*Last updated: 2026-05-16 after initial definition*
+*Last updated: 2026-05-16 — traceability populated after roadmap creation*

@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v5.1
 milestone_name: Explore Page Redesign
-status: planning
-last_updated: "2026-05-16T18:01:34.245Z"
+status: roadmapped
+last_updated: "2026-05-16T00:00:00.000Z"
 last_activity: 2026-05-16
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,28 +20,53 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16 — v5.0 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Planning the next milestone — v5.1 Explore Page Redesign (SEED-008).
+**Current focus:** v5.1 Explore Page Redesign — roadmap created, ready to plan Phase 43.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 43 — Polish Pass (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-16 — Milestone v5.1 started
+Status: Roadmap approved, ready to plan
+Last activity: 2026-05-16 — v5.1 roadmap created (Phases 43–47)
+
+[==========          ] 0% — 0/5 phases complete
+
+## Performance Metrics
+
+- Phases completed this milestone: 0
+- Plans completed this milestone: 0
+- Blockers encountered: 0
 
 ## Accumulated Context
 
-### Open items carried into the next milestone
+### Key Decisions
+
+- **CMS approach (2026-05-16):** In-app admin routes (`/admin/*`) chosen over third-party CMS (Sanity, Contentlayer). No external dependency; fits single-user / free / personal-first stance.
+- **New runtime dependency:** `react-markdown@^10.1.0` — lightest viable markdown renderer, React 19 compatible, no editor runtime.
+- **Phase ordering is non-negotiable:** Enrichment (44) before Browse/Archetypes (46); CMS model (45) before Rail/Hero (47). Hard data dependencies drive this order.
+- **Claude model ID:** `claude-sonnet-4-6` is the current ID; `claude-sonnet-4-20250514` is deprecated June 15, 2026. Update in Phase 43.
+- **Avatar storage:** New `avatars` public Supabase Storage bucket; reuse existing EXIF-strip / ≤1080px JPEG upload path from the add-watch flow.
+- **Hero cache invalidation:** Must use `revalidateTag('explore:hero')` in all four write paths (`setPinnedHero`, `clearPinnedHero`, `publishList`, `unpublishList`) — NOT `revalidatePath`.
+- **RLS pattern:** `USING (status = 'published')` for public reads on `curated_lists`, plus explicit `WHERE status = 'published'` in every DAL public-read function. Two-layer defense against draft leaks.
+- **`assertOwner()` in every CMS Server Action:** Owner check in `AdminLayout` alone is insufficient — Server Actions are HTTP-callable endpoints that bypass layout gates.
+- **Supabase SECDEF grants (Phase 45):** Any SECURITY DEFINER functions added in the migration require explicit `REVOKE EXECUTE FROM anon, authenticated` — see `project_supabase_secdef_grants.md` memory note.
+- **Where Collections Go mobile layout (Phase 47):** 360px layout is underspecified — vertical stacking with numbered progression indicator is recommended; prototype before finalizing the component.
+
+### Open Items Carried from v5.0
 
 - **DEBT-12** — repair prod's `drizzle.__drizzle_migrations` journal (1 row vs N expected). Unscheduled / opportunistic — fold into the next prod-deploy phase that needs `drizzle-kit migrate` to run cleanly.
-- **Phase 39c UAT Issue 2** — `removeWatch` leaves stale state in the home "from collectors like you" rail; `/watch/[id]` user-status projection still shows "owned" after server reload. Tracked in `.planning/phases/39c-profile-layout-next-16-conformance/39c-UAT.md` Issue 2.
-- **Phase 35 + Phase 41 human-verification items** — operator-approved at v5.0 close (not deferred): Phase 35 lineage cycle-trigger smoke + G6 backfill counts (prod-DB follow-ups once catalog grows); Phase 41 cross-client email rendering + Supabase dashboard install + DKIM/SMTP. See the respective `*-HUMAN-UAT.md` files.
-- **31 v3.0 deferred human-verification UAT items** — iOS device tests, multi-session flows, FOUC checks (see `.planning/milestones/v3.0-MILESTONE-AUDIT.md`).
-- Smaller carryover (full list in PROJECT.md § Active): pre-existing `LayoutProps` TS error (re-confirm post-39c refactor), `useWatchSearchVerdictCache` signOut leak, Phase 999.1 directory archival, WatchForm unused imports, SMTP-06 staging sender split, Phase 17 local-DB-reset hygiene, WristOverlaySvg geometry redesign.
+- **Phase 39c UAT Issue 2** — `removeWatch` leaves stale state in the home "from collectors like you" rail. Tracked in `.planning/phases/39c-profile-layout-next-16-conformance/39c-UAT.md` Issue 2.
+- **Phase 35 + Phase 41 human-verification items** — operator-approved at v5.0 close. See respective `*-HUMAN-UAT.md` files.
+- **31 v3.0 deferred human-verification UAT items** — iOS device tests, multi-session flows, FOUC checks.
+- Smaller carryover: pre-existing `LayoutProps` TS error, `useWatchSearchVerdictCache` signOut leak, Phase 999.1 directory archival, WatchForm unused imports, SMTP-06 staging sender split, WristOverlaySvg geometry redesign.
 
 ### Blockers/Concerns
 
-None blocking. v5.0 closed without a formal `/gsd-audit-milestone`; cross-phase integration was not systematically audited — acceptable at single-user scale but worth a milestone audit if scope or users grow.
+None blocking.
+
+Research flags to address during planning:
+- **Phase 45 plan:** Verify Supabase SECDEF REVOKE pattern for any DB functions added in the 5-table migration; verify enum ordering before writing enum-bound dependent columns (4 prod-push gotchas from `project_drizzle_supabase_db_mismatch.md`).
+- **Phase 47 plan:** Where Collections Go 360px mobile layout is underspecified — prototype vertical stacking with numbered progression indicator before finalizing `CollectionPathsModule`.
 
 ### Pending Todos
 
@@ -49,8 +74,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-05-16 — v5.0 milestone close
-Last activity: 2026-05-16 — Milestone v5.0 completed, archived, and tagged
-Stopped at: v5.0 milestone complete
+Last session: 2026-05-16 — v5.1 roadmap created
+Last activity: 2026-05-16 — ROADMAP.md written, STATE.md updated, REQUIREMENTS.md traceability populated
+Stopped at: Roadmap created; Phase 43 ready to plan
 Resume file: —
-Next action: `/clear`, then `/gsd-new-milestone` for v5.1 Explore Page Redesign (SEED-008).
+Next action: `/gsd-plan-phase 43`

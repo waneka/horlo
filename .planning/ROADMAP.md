@@ -8,7 +8,7 @@
 - ✅ **v4.0 Discovery & Polish** — Phases 17-26 + 19.1 + 20.1 (shipped 2026-05-03) — [archive](milestones/v4.0-ROADMAP.md)
 - ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
 - ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
-- 📋 **v5.1 Explore Page Redesign** — planted (SEED-008)
+- 🚧 **v5.1 Explore Page Redesign** — Phases 43-47 (in progress — SEED-008)
 - 📋 **v5.2 Catalog Expansion** — planted (SEED-009)
 - 📋 **v5.3 Add-Watch Redesign** — planted (SEED-010)
 - 📋 **v6.0 Market Value** — planted (SEED-005)
@@ -122,14 +122,108 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 
 </details>
 
-### 📋 v5.1 Explore Page Redesign (Planned)
+### 🚧 v5.1 Explore Page Redesign (In Progress — SEED-008)
 
-Not yet roadmapped — seeded as SEED-008 (`.planning/seeds/SEED-008-v5.1-explore-redesign.md`). A 5-module `/explore` redesign (Hero / Collector Archetypes / Curated Lists Rail / Where Collections Go / Browse the Catalog), inheriting DISC-09 promoted out of v5.0 on 2026-05-12. A CMS-approach spike (in-app admin vs Sanity vs Contentlayer) is a candidate before the v5.1 roadmap. Runs before SEED-007 pricing API spike and v6.0.
+- [ ] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID
+- [ ] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows
+- [ ] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 10 seed paths authored
+- [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
+- [ ] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module
 
-### 📋 v6.0 Market Value (Planned)
+### 📋 v5.2 Catalog Expansion (Planted)
+
+Not yet roadmapped — seeded as SEED-009. Catalog breadth expansion beyond the ~100 existing rows. Runs after v5.1.
+
+### 📋 v5.3 Add-Watch Redesign (Planted)
+
+Not yet roadmapped — seeded as SEED-010. Add-Watch flow redesign. Runs after v5.1.
+
+### 📋 v6.0 Market Value (Planted)
 
 Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-value insights. Requires the SEED-007 market-pricing API spike first.
 
+---
+
+## Phase Details — v5.1 Explore Page Redesign
+
+### Phase 43: Polish Pass
+**Goal**: Users experience a polished, consistent UI before new surfaces are added — existing UX bugs resolved and avatar upload live
+**Depends on**: Nothing (standalone, no new DB tables required)
+**Requirements**: PLSH-01, PLSH-02, PLSH-03, PLSH-04, PLSH-05, PLSH-06, PLSH-07
+**Success Criteria** (what must be TRUE):
+  1. User can dismiss the `/search` filter bottom-sheet by swiping down or tapping outside — close is never blocked when a filtered query is in flight
+  2. Wishlist watch cards show no wear information ("Never worn" label, wear badges, last-worn line) — those details appear only on owned watch cards
+  3. Watch cards in the collection and wishlist grids have a consistent height regardless of the watch's metadata completeness or whether it has a photo
+  4. A button above the watch grid lets the user add a watch to their collection or wishlist — the end-of-grid AddWatchCard is removed
+  5. User can upload a profile photo from their device; it is stored in Supabase Storage and displayed on profile surfaces, replacing the URL text field
+  6. The watch-extraction LLM call uses the current non-deprecated Claude model ID (`claude-sonnet-4-6`)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 44: Catalog Enrichment
+**Goal**: All ~100 `watches_catalog` rows have populated taste attributes and filter metadata so Browse and Archetypes can return non-empty results
+**Depends on**: Phase 43 (can run in parallel with 43 if needed, but logically follows polish)
+**Requirements**: ENRH-01, ENRH-02, ENRH-03, ENRH-04, ENRH-05, ENRH-06
+**Success Criteria** (what must be TRUE):
+  1. Re-running the enrichment script on an already-enriched high-confidence (vision-derived) row does not downgrade it — a confidence-threshold guard and photo-existence check block force re-enrichment
+  2. A full ~100-row enrichment run completes without silent failures — rate-limited requests are retried with backoff and each row's `catalog_id` is logged as success or failure
+  3. All ~100 `watches_catalog` rows have populated `primary_archetype`, `era_signal`, and taste columns after the production enrichment run
+  4. Every `/search` filter dimension (movement type, case size, style tags) is populated for all catalog rows; factual fields remain human-reviewed and are not auto-written by LLM output
+  5. Every Collector Archetype (all 8) resolves to at least one catalog row — verified by a `GROUP BY primary_archetype` query before the Archetypes module ships
+**Plans**: TBD
+
+### Phase 45: CMS Data Model + Admin Routes
+**Goal**: The owner can author and publish curated lists and collection paths through admin routes, with all content correctly gated behind RLS
+**Depends on**: Phase 43
+**Requirements**: CMS-01, CMS-02, CMS-03, CMS-04, CMS-05, CMS-06, CMS-07, CMS-08, CMS-09, CMS-10
+**Success Criteria** (what must be TRUE):
+  1. The five new tables (`curated_lists`, `curated_list_items`, `collection_paths`, `collection_path_nodes`, `cms_settings`) exist with RLS that exposes only published content to non-owners — verified by querying as a non-owner authenticated user
+  2. The `/admin/lists` and `/admin/paths` routes are unreachable by any non-owner — both a route guard and an `assertOwner()` call at the start of every CMS Server Action enforce this independently
+  3. Owner can create, edit, delete, and reorder curated lists; each list has title, curator name, cover image, and markdown intro copy; per-item editorial commentary can be written for each catalog watch in a list
+  4. Owner can save a curated list as draft or publish/unpublish it; a list with zero watches cannot be published; unpublished lists never appear on public-facing pages
+  5. Owner can create, edit, and delete collection paths (seed watch + up to 3 follow-ons with rationale and path-type label); owner can pin a list as the hero with an optional expiry date and can clear the pin
+  6. Deleting a catalog watch referenced by a published list or path is blocked at the database layer; the admin UI warns before attempting such a delete
+  7. Ten seed collection paths are authored through the admin UI and are in published state
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 46: Explore Shell + Browse + Archetypes
+**Goal**: `/explore` renders as a 5-module shell and users can browse the catalog by brand, era, genre, and price band, and deep-link into archetype-filtered search results
+**Depends on**: Phase 44 (enrichment data must be verified in prod), Phase 45 (shell structure must exist before editorial modules are added, though Browse and Archetypes have no editorial dependency)
+**Requirements**: EXPL-01, EXPL-02, EXPL-03, EXPL-04, EXPL-05
+**Success Criteria** (what must be TRUE):
+  1. `/explore` renders a five-module page (Hero, Collector Archetypes, Curated Lists Rail, Where Collections Go, Browse the Catalog) — stacked on mobile, grid on desktop; any module with no available content hides itself entirely (no empty containers)
+  2. Browse the Catalog presents brand, era, genre, and price-band indices with accurate counts; price bands use the fixed editorial buckets (Under $500 / $500–2K / $2K–10K / $10K–50K / $50K+); tapping a grouping opens `/search` prefiltered by that facet
+  3. The Brands index includes A–Z jump navigation allowing the user to jump to any letter section
+  4. Collector Archetypes renders a chip rail with all 8 archetypes, each showing a watch-count badge; tapping a chip opens prefiltered search results with an archetype header; all 8 chips resolve to at least one result
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 47: Curated Lists Rail + Hero + Where Collections Go
+**Goal**: The editorial half of `/explore` is live — users can discover curated lists, see the hero feature, and explore collection paths authored by the curator
+**Depends on**: Phase 45 (published CMS content must exist), Phase 46 (Explore shell must be stable)
+**Requirements**: EXPL-06, EXPL-07, EXPL-08, EXPL-09
+**Success Criteria** (what must be TRUE):
+  1. The Curated Lists Rail shows up to 12 published lists (cover image, title, curator name, watch count, freshness indicator) with a "View all" link to `/explore/lists`; a curated list detail page renders the list's intro copy and per-item editorial commentary
+  2. The Hero shows a single full-bleed image with title and curator name from a quality-gated published list (minimum 3 watches + cover image + intro copy); it auto-selects unless a manual pin overrides it; when no eligible content exists the Hero hides itself entirely
+  3. Pinning and unpublishing a list causes the Hero to update without waiting for cache TTL — manual pin changes propagate immediately via `revalidateTag('explore:hero')`
+  4. Where Collections Go shows rotating published collection paths (seed watch plus follow-on watches, each with editorial rationale and a path-type label); tapping any watch opens its detail page; "Explore all paths" links to `/explore/paths`
+  5. The Where Collections Go module renders correctly at 360px mobile width — progression through the path is legible with a numbered indicator and vertical stacking
+**Plans**: TBD
+**UI hint**: yes
+
+---
+
+## Progress — v5.1 Explore Page Redesign
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 43. Polish Pass | 0/TBD | Not started | - |
+| 44. Catalog Enrichment | 0/TBD | Not started | - |
+| 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
+| 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
+| 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
+
 ## Next Up
 
-Start the next milestone with `/gsd-new-milestone` — questioning → research → requirements → roadmap. Phase numbering continues from 43.
+Run `/gsd-plan-phase 43` to plan the Polish Pass.
