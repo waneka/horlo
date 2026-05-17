@@ -124,7 +124,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 
 ### 🚧 v5.1 Explore Page Redesign (In Progress — SEED-008)
 
-- [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (4 plans shipped 2026-05-17; gap closure in progress — 3 UAT gaps) (completed 2026-05-17)
+- [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (7 plans: 4 original + 3 gap-closure; all 5 UAT gaps resolved and user-verified on prod) (completed 2026-05-17)
 - [ ] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows
 - [ ] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 10 seed paths authored
 - [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
