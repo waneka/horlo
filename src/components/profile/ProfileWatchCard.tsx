@@ -57,8 +57,15 @@ export function ProfileWatchCard({
 
   return (
     <Link href={`/watch/${watch.id}`}>
-      <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
-        <div className="relative aspect-[4/5] bg-muted">
+      {/* h-full flex flex-col on Card — NOT height:auto — is the equal-height key */}
+      <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg h-full flex flex-col">
+        {/* Brand + model ABOVE image (D-04) */}
+        <div className="px-3 pt-3 pb-1">
+          <p className="text-sm font-normal text-muted-foreground truncate">{watch.brand}</p>
+          <p className="text-base font-semibold leading-tight truncate">{watch.model}</p>
+        </div>
+        {/* Image area — aspect-[3/4] on THIS div, not on Card (PLSH-04 pitfall) */}
+        <div className="relative aspect-[3/4] bg-muted">
           {safeUrl ? (
             <Image
               src={safeUrl}
@@ -72,7 +79,8 @@ export function ProfileWatchCard({
               <WatchIcon className="size-10 text-muted-foreground/40" />
             </div>
           )}
-          {(isWornToday || isStale) && (
+          {/* Wear badge — OWNED watches only (D-12, PLSH-03) */}
+          {!isWishlistLike && (isWornToday || isStale) && (
             <span
               className={cn(
                 'absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-normal',
@@ -85,29 +93,22 @@ export function ProfileWatchCard({
             </span>
           )}
         </div>
-        <CardContent className="p-4">
-          <p className="text-sm font-normal text-muted-foreground">
-            {watch.brand}
-          </p>
-          <p className="text-base font-semibold leading-tight">{watch.model}</p>
+        {/* Text block — flex-1 absorbs height; content top-aligned (equal-height mechanism) */}
+        <CardContent className="p-3 flex flex-col gap-1 flex-1">
           {tag && (
-            <Badge
-              variant="secondary"
-              className="mt-2 rounded-full text-xs font-normal"
-            >
+            <Badge variant="secondary" className="rounded-full text-xs font-normal self-start">
               {tag}
             </Badge>
           )}
-          <p className="mt-2 text-xs text-muted-foreground">{lastWornLabel}</p>
+          {/* Wear line — OWNED watches only (D-12, PLSH-03) */}
+          {!isWishlistLike && (
+            <p className="text-xs text-muted-foreground">{lastWornLabel}</p>
+          )}
           {priceLine && (
-            <p className="mt-1 text-xs font-normal text-foreground">
-              {priceLine}
-            </p>
+            <p className="text-xs font-normal text-foreground">{priceLine}</p>
           )}
           {showWishlistMeta && watch.notes && (
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-              Notes: {watch.notes}
-            </p>
+            <p className="line-clamp-2 text-xs text-muted-foreground">Notes: {watch.notes}</p>
           )}
         </CardContent>
       </Card>
