@@ -168,7 +168,7 @@ export function CollectionTabContent({
         </div>
         {isOwner && (
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
             className="shrink-0 min-h-[44px]"
             render={<Link href={returnTo ? `/watch/new?returnTo=${returnTo}` : '/watch/new'} />}

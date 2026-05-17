@@ -60,7 +60,7 @@ export function ProfileWatchCard({
       {/* h-full flex flex-col on Card — NOT height:auto — is the equal-height key */}
       <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg h-full flex flex-col">
         {/* Brand + model ABOVE image (D-04) */}
-        <div className="px-3 pt-3 pb-1">
+        <div className="px-3 pt-2 pb-1">
           <p className="text-sm font-normal text-muted-foreground truncate">{watch.brand}</p>
           <p className="text-base font-semibold leading-tight truncate">{watch.model}</p>
         </div>
@@ -94,7 +94,7 @@ export function ProfileWatchCard({
           )}
         </div>
         {/* Text block — flex-1 absorbs height; content top-aligned (equal-height mechanism) */}
-        <CardContent className="p-3 flex flex-col gap-1 flex-1">
+        <CardContent className="px-3 py-2 flex flex-col gap-1 flex-1">
           {tag && (
             <Badge variant="secondary" className="rounded-full text-xs font-normal self-start">
               {tag}

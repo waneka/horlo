@@ -111,7 +111,7 @@ export function WishlistTabContent({
       {isOwner && (
         <div className="mb-4 flex justify-end">
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
             className="shrink-0 min-h-[44px]"
             render={<Link href={wishlistHref} />}
