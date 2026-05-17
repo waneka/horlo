@@ -1,103 +1,105 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 // ---------------------------------------------------------------------------
-// Phase 22 D-19 — Profile tab read-only stub GREEN tests.
-// Phase 22 ships a non-interactive panel (displayName / @username / avatar /
-// "View public profile" link / "Profile editing coming in the next update"
-// footer note); editable form lands in Phase 25 (UX-08).
+// Phase 43 GAP-43-05 — ProfileSection now renders the real ProfileEditForm
+// instead of the Phase 22 read-only stub.
+//
+// Strategy: mock ProfileEditForm (and its dependencies that fail under jsdom:
+// AvatarUploader / react-easy-crop / Server Actions) so the test focuses on
+// ProfileSection's own composition — the "View public profile" link, the
+// ProfileEditForm mount, and the absence of the old stub footer note.
 // ---------------------------------------------------------------------------
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
+
+vi.mock('next/link', () => ({
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
+}))
+
+// Mock ProfileEditForm with a minimal stub that exposes the Display name and
+// Bio labels so tests can assert they are rendered by the composition.
+vi.mock('@/components/profile/ProfileEditForm', () => ({
+  ProfileEditForm: ({
+    initial,
+    userId,
+  }: {
+    initial: { displayName: string | null; avatarUrl: string | null; bio: string | null }
+    userId: string
+    onDone: () => void
+  }) => (
+    <div data-testid="profile-edit-form" data-user-id={userId}>
+      <label htmlFor="profile-display-name">Display name</label>
+      <input
+        id="profile-display-name"
+        defaultValue={initial.displayName ?? ''}
+      />
+      <label htmlFor="profile-bio">Bio</label>
+      <textarea id="profile-bio" defaultValue={initial.bio ?? ''} />
+    </div>
+  ),
+}))
+
+// Import AFTER mocks.
 import { ProfileSection } from '@/components/settings/ProfileSection'
 
-describe('ProfileSection — Phase 22 D-19 read-only stub', () => {
-  it('renders displayName when present, falls back to username', () => {
-    const { rerender } = render(
-      <ProfileSection
-        username="alice"
-        displayName="Alice"
-        avatarUrl={null}
-      />,
-    )
-    expect(screen.getByText('Alice')).toBeInTheDocument()
+const DEFAULT_PROPS = {
+  username: 'alice',
+  displayName: 'Alice',
+  avatarUrl: null,
+  bio: 'Vintage enthusiast.',
+  userId: 'user-abc-123',
+}
 
-    rerender(
-      <ProfileSection
-        username="alice"
-        displayName={null}
-        avatarUrl={null}
-      />,
-    )
-    // displayName null -> username used as the display heading. The handle
-    // text "@alice" also exists, so use a more targeted assertion that
-    // matches the heading paragraph (not the muted handle).
-    const headings = screen.getAllByText(/^alice$/i)
-    expect(headings.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('renders @username at text-sm text-muted-foreground', () => {
-    render(
-      <ProfileSection
-        username="alice"
-        displayName="Alice"
-        avatarUrl={null}
-      />,
-    )
-    const handle = screen.getByText('@alice')
-    expect(handle).toHaveClass('text-sm')
-    expect(handle).toHaveClass('text-muted-foreground')
-  })
-
-  it('renders View public profile link to /u/{username}', () => {
-    render(
-      <ProfileSection
-        username="alice"
-        displayName="Alice"
-        avatarUrl={null}
-      />,
-    )
+describe('ProfileSection — GAP-43-05 live ProfileEditForm', () => {
+  it('renders the View public profile link to /u/{username}', () => {
+    render(<ProfileSection {...DEFAULT_PROPS} />)
     const link = screen.getByRole('link', { name: 'View public profile' })
     expect(link).toHaveAttribute('href', '/u/alice')
   })
 
-  it('renders avatar image when avatarUrl is present', () => {
-    const { container } = render(
-      <ProfileSection
-        username="alice"
-        displayName="Alice"
-        avatarUrl="https://cdn.example.com/avatar.jpg"
-      />,
-    )
-    const img = container.querySelector('img')
-    expect(img).not.toBeNull()
-    expect(img).toHaveAttribute('src', 'https://cdn.example.com/avatar.jpg')
-    expect(img).toHaveClass('rounded-full')
+  it('does NOT render the old stub footer note', () => {
+    render(<ProfileSection {...DEFAULT_PROPS} />)
+    expect(
+      screen.queryByText('Profile editing coming in the next update.'),
+    ).toBeNull()
   })
 
-  it('renders muted bg-muted placeholder when avatarUrl is null', () => {
-    const { container } = render(
-      <ProfileSection
-        username="alice"
-        displayName="Alice"
-        avatarUrl={null}
-      />,
-    )
-    expect(container.querySelector('img')).toBeNull()
-    // Placeholder div with bg-muted + rounded-full classes.
-    const placeholder = container.querySelector('div.bg-muted.rounded-full')
-    expect(placeholder).not.toBeNull()
+  it('renders ProfileEditForm (Display name field present)', () => {
+    render(<ProfileSection {...DEFAULT_PROPS} />)
+    expect(screen.getByTestId('profile-edit-form')).toBeInTheDocument()
+    expect(screen.getByLabelText('Display name')).toBeInTheDocument()
   })
 
-  it('renders "Profile editing coming in the next update." footer note', () => {
+  it('renders ProfileEditForm (Bio field present)', () => {
+    render(<ProfileSection {...DEFAULT_PROPS} />)
+    expect(screen.getByLabelText('Bio')).toBeInTheDocument()
+  })
+
+  it('passes userId to ProfileEditForm', () => {
+    render(<ProfileSection {...DEFAULT_PROPS} />)
+    expect(screen.getByTestId('profile-edit-form')).toHaveAttribute(
+      'data-user-id',
+      'user-abc-123',
+    )
+  })
+
+  it('renders with null bio and null displayName without crashing', () => {
     render(
       <ProfileSection
-        username="alice"
-        displayName="Alice"
+        username="bob"
+        displayName={null}
         avatarUrl={null}
+        bio={null}
+        userId="user-bob-456"
       />,
     )
-    expect(
-      screen.getByText('Profile editing coming in the next update.'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('profile-edit-form')).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: 'View public profile' })
+    expect(link).toHaveAttribute('href', '/u/bob')
   })
 })

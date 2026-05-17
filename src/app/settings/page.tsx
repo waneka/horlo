@@ -53,6 +53,8 @@ export default async function SettingsPage() {
         username={profile?.username ?? ''}
         displayName={profile?.displayName ?? null}
         avatarUrl={profile?.avatarUrl ?? null}
+        bio={profile?.bio ?? null}
+        userId={userId}
         profilePublic={settings.profilePublic}
         currentEmail={userEmail}
         pendingNewEmail={fullUser.new_email ?? null}

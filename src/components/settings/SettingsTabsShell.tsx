@@ -42,6 +42,8 @@ interface SettingsTabsShellProps {
   username: string
   displayName: string | null
   avatarUrl: string | null
+  bio: string | null
+  userId: string
   profilePublic: boolean
   // Account state
   currentEmail: string
@@ -144,6 +146,8 @@ export function SettingsTabsShell(props: SettingsTabsShellProps) {
               username={props.username}
               displayName={props.displayName}
               avatarUrl={props.avatarUrl}
+              bio={props.bio}
+              userId={props.userId}
             />
           </TabsContent>
           <TabsContent value="preferences">

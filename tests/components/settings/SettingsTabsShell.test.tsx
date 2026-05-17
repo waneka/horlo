@@ -33,6 +33,8 @@ const stubProps = {
   username: 'alice',
   displayName: 'Alice',
   avatarUrl: null,
+  bio: null,
+  userId: 'user-stub-id',
   profilePublic: true,
   currentEmail: 'alice@example.com',
   pendingNewEmail: null,
