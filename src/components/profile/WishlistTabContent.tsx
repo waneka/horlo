@@ -243,17 +243,28 @@ function OwnerWishlistGrid({
       }}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={optimisticIds} strategy={rectSortingStrategy}>
+      {/* WR-04: while a reorder transition is in flight, optimisticIds can
+          reference a watch that no longer exists in `watches` (e.g. deleted
+          in another tab between drag start and a server revalidatePath).
+          watchesById[id] would then be undefined and ProfileWatchCard throws
+          on watch.imageUrl/watch.status. Filter to ids that still resolve —
+          and keep SortableContext's items in sync with what actually renders. */}
+      <SortableContext
+        items={optimisticIds.filter((id) => watchesById[id])}
+        strategy={rectSortingStrategy}
+      >
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {optimisticIds.map((id) => (
-            <SortableProfileWatchCard
-              key={id}
-              id={id}
-              watch={watchesById[id]}
-              lastWornDate={wearDates[id] ?? null}
-              showWishlistMeta
-            />
-          ))}
+          {optimisticIds
+            .filter((id) => watchesById[id])
+            .map((id) => (
+              <SortableProfileWatchCard
+                key={id}
+                id={id}
+                watch={watchesById[id]}
+                lastWornDate={wearDates[id] ?? null}
+                showWishlistMeta
+              />
+            ))}
           {/* AddWatchCard removed — button above the grid owns the CTA (D-06, PLSH-05) */}
         </div>
       </SortableContext>
