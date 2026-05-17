@@ -18,6 +18,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { TasteSchema, validateAndCleanTaste, PRIMARY_ARCHETYPES, ERA_SIGNALS, DESIGN_MOTIFS } from './vocab'
 import { buildTextPrompt, buildVisionPrompt } from './prompt'
+import { enrichWithWebSearch } from './webSearch'
 import type { EnrichmentInput, EnrichmentResult, EnrichmentMode } from './types'
 import type { CatalogTasteAttributes } from '@/lib/types'
 
@@ -59,12 +60,22 @@ function logError(event: string, payload: Record<string, unknown>): void {
   console.error(JSON.stringify({ event, ...payload, timestamp: new Date().toISOString() }))
 }
 
+export interface EnrichmentClientOptions {
+  /** Override SDK default maxRetries (default: 2). Use 3+ for batch runs (ENRH-01). */
+  maxRetries?: number
+}
+
 /**
  * D-08 + D-11: Enrich a catalog row's taste attributes via Anthropic tool-use.
  * Returns null on ANY failure (D-09 + D-10 fire-and-forget posture).
+ *
+ * @param input         Enrichment input spec (catalogId, source, spec, photoSourcePath)
+ * @param clientOptions Optional Anthropic client options (e.g. maxRetries for batch runs).
+ *                      Existing callers with no second argument are unaffected.
  */
 export async function enrichTasteAttributes(
   input: EnrichmentInput,
+  clientOptions?: EnrichmentClientOptions,
 ): Promise<EnrichmentResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -84,7 +95,10 @@ export async function enrichTasteAttributes(
   })
 
   try {
-    const client = new Anthropic({ apiKey })
+    const client = new Anthropic({
+      apiKey,
+      ...(clientOptions?.maxRetries !== undefined ? { maxRetries: clientOptions.maxRetries } : {}),
+    })
 
     let messages: Anthropic.Messages.MessageParam[]
 
@@ -111,25 +125,26 @@ export async function enrichTasteAttributes(
       messages = [{ role: 'user', content: buildTextPrompt(input.spec) }]
     }
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      tools: [TASTE_TOOL],
-      tool_choice: { type: 'tool', name: 'record_taste_attributes' },
+    // D-06: Two-turn web_search pattern — Turn 1 auto (let Claude search for grounding),
+    // Turn 2 forced tool (emit structured taste attributes with web context loaded).
+    // webSearchUnavailable: true when org has not enabled web_search — still runs Turn 2
+    // in text-only mode (graceful fallback per RESEARCH Open Question 2).
+    const { toolUse, webSearchUnavailable } = await enrichWithWebSearch(
+      client,
+      [TASTE_TOOL],
       messages,
-    })
-
-    // Sanity-log the actual model id Anthropic routed to (per Plan-time check below).
-    // Surfaces silent model rotation in observability without breaking flow.
-    logEvent('taste_enrichment_model_resolved', {
-      catalog_id: input.catalogId,
-      requested_model: 'claude-sonnet-4-6',
-      resolved_model: response.model,
-    })
-
-    const toolUse = response.content.find(
-      (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use',
+      'record_taste_attributes',
     )
+
+    if (webSearchUnavailable) {
+      logEvent('taste_enrichment_web_search_unavailable', {
+        catalog_id: input.catalogId,
+        source: input.source,
+        mode,
+        note: 'web_search org-disabled; completed in text-only mode',
+      })
+    }
+
     if (!toolUse) {
       logError('taste_enrichment_failed', {
         catalog_id: input.catalogId,
