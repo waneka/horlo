@@ -208,14 +208,17 @@ describe('enrichTasteAttributes', () => {
 
   it('calls Anthropic with model claude-sonnet-4-6', async () => {
     await enrichTasteAttributes(BASE_INPUT)
-    expect(mockCreate).toHaveBeenCalledOnce()
-    const callArgs = mockCreate.mock.calls[0][0]
-    expect(callArgs.model).toBe('claude-sonnet-4-6')
+    // D-06 two-turn web_search pattern: Turn 1 (auto search) + Turn 2 (forced tool).
+    expect(mockCreate).toHaveBeenCalledTimes(2)
+    expect(mockCreate.mock.calls[0][0].model).toBe('claude-sonnet-4-6')
+    expect(mockCreate.mock.calls[1][0].model).toBe('claude-sonnet-4-6')
   })
 
-  it('forces tool_choice to record_taste_attributes', async () => {
+  it('forces tool_choice to record_taste_attributes on the second turn', async () => {
     await enrichTasteAttributes(BASE_INPUT)
-    const callArgs = mockCreate.mock.calls[0][0]
-    expect(callArgs.tool_choice).toEqual({ type: 'tool', name: 'record_taste_attributes' })
+    // D-06 two-turn shape: Turn 1 is auto (lets Claude web_search for grounding),
+    // Turn 2 forces the custom tool to emit structured taste attributes.
+    expect(mockCreate.mock.calls[0][0].tool_choice).toEqual({ type: 'auto' })
+    expect(mockCreate.mock.calls[1][0].tool_choice).toEqual({ type: 'tool', name: 'record_taste_attributes' })
   })
 })
