@@ -13,13 +13,13 @@
 
 ### Polish (PLSH)
 
-- [ ] **PLSH-01**: The `/search` filter bottom-sheet can be dismissed (tap-outside or close control) while a filtered query is still loading — close is never blocked by pending state.
-- [ ] **PLSH-02**: The `/search` filter bottom-sheet can be dismissed with a downward swipe gesture.
-- [ ] **PLSH-03**: Wishlist watch cards render no wear details — "Never worn", wear badges, and the last-worn line appear only on owned watches.
+- [x] **PLSH-01**: The `/search` filter bottom-sheet can be dismissed (tap-outside or close control) while a filtered query is still loading — close is never blocked by pending state.
+- [x] **PLSH-02**: The `/search` filter bottom-sheet can be dismissed with a downward swipe gesture.
+- [x] **PLSH-03**: Wishlist watch cards render no wear details — "Never worn", wear badges, and the last-worn line appear only on owned watches.
 - [x] **PLSH-04**: Watch cards in the collection and wishlist grids have a consistent height regardless of a watch's metadata or photo.
-- [ ] **PLSH-05**: The add-to-collection / add-to-wishlist action is a button above the watch grid rather than a card at the end of the grid.
+- [x] **PLSH-05**: The add-to-collection / add-to-wishlist action is a button above the watch grid rather than a card at the end of the grid.
 - [x] **PLSH-06**: User can upload a profile photo from their device; it is stored in Supabase Storage and served on profile surfaces, replacing the avatar-URL text field.
-- [ ] **PLSH-07**: The watch-extraction LLM integration uses a current, non-deprecated Claude model ID.
+- [x] **PLSH-07**: The watch-extraction LLM integration uses a current, non-deprecated Claude model ID.
 
 ### Catalog Enrichment (ENRH)
 
@@ -94,13 +94,13 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLSH-01 | Phase 43 | Pending |
-| PLSH-02 | Phase 43 | Pending |
-| PLSH-03 | Phase 43 | Pending |
+| PLSH-01 | Phase 43 | Complete |
+| PLSH-02 | Phase 43 | Complete |
+| PLSH-03 | Phase 43 | Complete |
 | PLSH-04 | Phase 43 | Complete |
-| PLSH-05 | Phase 43 | Pending |
-| PLSH-06 | Phase 43 | Gap closure (43-06) |
-| PLSH-07 | Phase 43 | Pending |
+| PLSH-05 | Phase 43 | Complete |
+| PLSH-06 | Phase 43 | Complete |
+| PLSH-07 | Phase 43 | Complete |
 | ENRH-01 | Phase 44 | Pending |
 | ENRH-02 | Phase 44 | Pending |
 | ENRH-03 | Phase 44 | Pending |
