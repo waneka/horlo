@@ -58,14 +58,26 @@ async function convertHeic(file: File): Promise<Blob> {
 
 async function getCroppedBlob(src: string, cropArea: Area): Promise<Blob> {
   const image = new window.Image()
-  image.src = src
-  await new Promise<void>((r) => {
-    image.onload = () => r()
+  // CR-01: wire onerror so a corrupt/undecodable image rejects the Promise
+  // instead of hanging `uploading` forever — the rejection propagates into
+  // handleConfirmCrop's catch, which surfaces the error and clears uploading.
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve()
+    image.onerror = () => reject(new Error('Image failed to decode'))
+    image.src = src
   })
+  // CR-01: guard against zero-dimension decodes (some partial decodes) so a
+  // blank canvas is never silently uploaded as the user's avatar.
+  if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+    throw new Error('Image decoded with zero dimensions')
+  }
   const canvas = document.createElement('canvas')
   canvas.width = cropArea.width
   canvas.height = cropArea.height
-  const ctx = canvas.getContext('2d')!
+  // WR-01: getContext('2d') can legitimately return null (context lost,
+  // canvas disabled) — guard explicitly rather than asserting non-null.
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('2D canvas context unavailable')
   ctx.drawImage(
     image,
     cropArea.x,
