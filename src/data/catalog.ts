@@ -19,7 +19,7 @@ import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
  * subsequently flow into <img src> in /search Watches (Phase 19) — must reject at write.
  * Reuses the existing protocol allowlist pattern from src/app/api/extract-watch/route.ts.
  */
-function sanitizeHttpUrl(input: string | null | undefined): string | null {
+export function sanitizeHttpUrl(input: string | null | undefined): string | null {
   if (!input || typeof input !== 'string') return null
   try {
     const u = new URL(input)
