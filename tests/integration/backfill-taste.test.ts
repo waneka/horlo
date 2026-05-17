@@ -61,7 +61,7 @@ describe('src/lib/taste/webSearch.ts', () => {
         ],
       },
     ]
-    const urls = extractSourceUrls(content as Parameters<typeof extractSourceUrls>[0])
+    const urls = extractSourceUrls(content as unknown as Parameters<typeof extractSourceUrls>[0])
     expect(urls).toEqual([
       'https://example.com/rolex-submariner',
       'https://watchtime.com/review',
@@ -74,7 +74,7 @@ describe('src/lib/taste/webSearch.ts', () => {
       { type: 'text' as const, text: 'Some text' },
       { type: 'tool_use' as const, id: 'tu_01', name: 'record_taste_attributes', input: {} },
     ]
-    const urls = extractSourceUrls(content as Parameters<typeof extractSourceUrls>[0])
+    const urls = extractSourceUrls(content as unknown as Parameters<typeof extractSourceUrls>[0])
     expect(urls).toEqual([])
   })
 
@@ -91,7 +91,7 @@ describe('src/lib/taste/webSearch.ts', () => {
         },
       },
     ]
-    const urls = extractSourceUrls(content as Parameters<typeof extractSourceUrls>[0])
+    const urls = extractSourceUrls(content as unknown as Parameters<typeof extractSourceUrls>[0])
     expect(urls).toEqual([])
   })
 })

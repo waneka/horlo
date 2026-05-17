@@ -1,5 +1,5 @@
 /**
- * Phase 19.1 re-enrichment script — D-13.
+ * Phase 19.1 / Phase 44 re-enrichment script — D-13, ENRH-01/02.
  *
  * Usage:
  *   npm run db:reenrich-taste -- --force --confidence-below=0.5
@@ -12,6 +12,13 @@
  *
  * Safety: --force is required for any actual write. Without --force, the script
  * exits with a usage hint.
+ *
+ * Phase 44 hardening (ENRH-01/02):
+ *   - INTER_ROW_DELAY_MS pacing keeps sustained request rate ~1/sec
+ *   - SDK_MAX_RETRIES raised from default 2 to 3 for batch resilience
+ *   - Per-row structured JSON log: event reenrich_row_result with status
+ *     success | guard_blocked (based on updateCatalogTaste return value)
+ *   - guard_blocked surfaces when D-07/D-08 downgrade guard rejects a write
  */
 // Use relative imports — tsx does not resolve @/* path aliases.
 import { db } from '../src/db'
@@ -19,6 +26,14 @@ import { watchesCatalog } from '../src/db/schema'
 import { sql, eq, lt, and } from 'drizzle-orm'
 import { enrichTasteAttributes } from '../src/lib/taste/enricher'
 import { updateCatalogTaste } from '../src/data/catalog'
+
+// ENRH-01: Pacing and retry constants (Phase 44 hardening)
+const INTER_ROW_DELAY_MS = 1000  // 1 req/sec sustained — well below Anthropic limits
+const SDK_MAX_RETRIES = 3        // raise from SDK default 2 for batch runs
+
+async function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
 
 interface ParsedArgs {
   dryRun: boolean
@@ -95,6 +110,7 @@ async function main() {
 
   let totalProcessed = 0
   let totalSucceeded = 0
+  let totalGuardBlocked = 0
   let pass = 0
   const startedAt = Date.now()
 
@@ -145,23 +161,43 @@ async function main() {
             complications: row.complications,
           },
           photoSourcePath: row.imageSourceQuality === 'user_uploaded' ? row.imageSourceUrl : null,
-        })
+        }, { maxRetries: SDK_MAX_RETRIES })
+
         if (taste) {
-          await updateCatalogTaste(row.id, taste, { force: true })  // FORCE
-          totalSucceeded++
+          // ENRH-02: Capture D-07/D-08 guard result from updateCatalogTaste return value
+          const writeResult = await updateCatalogTaste(row.id, taste, { force: true })  // FORCE
+          if (writeResult.updated) {
+            totalSucceeded++
+            console.log(JSON.stringify({
+              event: 'reenrich_row_result',
+              catalog_id: row.id,
+              status: 'success',
+              timestamp: new Date().toISOString(),
+            }))
+          } else {
+            totalGuardBlocked++
+            console.log(JSON.stringify({
+              event: 'reenrich_row_result',
+              catalog_id: row.id,
+              status: 'guard_blocked',
+              timestamp: new Date().toISOString(),
+            }))
+          }
         }
       } catch (err) {
         console.error(`[reenrich-taste] row ${row.id} failed:`, err)
       }
+      // ENRH-01: Inter-row pacing — keeps sustained rate ~1 req/sec
+      await sleep(INTER_ROW_DELAY_MS)
     }
 
-    console.log(`[reenrich-taste] pass ${pass}: processed ${rows.length} (cumulative success ${totalSucceeded}/${totalProcessed})`)
+    console.log(`[reenrich-taste] pass ${pass}: processed ${rows.length} (cumulative success ${totalSucceeded}/${totalProcessed}, guard_blocked ${totalGuardBlocked})`)
 
     // Single catalog-id mode: only one pass needed.
     if (args.catalogId) break
   }
 
-  console.log(`[reenrich-taste] DONE — succeeded ${totalSucceeded}/${totalProcessed}, elapsed ${Date.now() - startedAt}ms`)
+  console.log(`[reenrich-taste] DONE — succeeded ${totalSucceeded}/${totalProcessed}, guard_blocked ${totalGuardBlocked}, elapsed ${Date.now() - startedAt}ms`)
   process.exit(0)
 }
 

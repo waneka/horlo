@@ -60,12 +60,22 @@ function logError(event: string, payload: Record<string, unknown>): void {
   console.error(JSON.stringify({ event, ...payload, timestamp: new Date().toISOString() }))
 }
 
+export interface EnrichmentClientOptions {
+  /** Override SDK default maxRetries (default: 2). Use 3+ for batch runs (ENRH-01). */
+  maxRetries?: number
+}
+
 /**
  * D-08 + D-11: Enrich a catalog row's taste attributes via Anthropic tool-use.
  * Returns null on ANY failure (D-09 + D-10 fire-and-forget posture).
+ *
+ * @param input         Enrichment input spec (catalogId, source, spec, photoSourcePath)
+ * @param clientOptions Optional Anthropic client options (e.g. maxRetries for batch runs).
+ *                      Existing callers with no second argument are unaffected.
  */
 export async function enrichTasteAttributes(
   input: EnrichmentInput,
+  clientOptions?: EnrichmentClientOptions,
 ): Promise<EnrichmentResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -85,7 +95,10 @@ export async function enrichTasteAttributes(
   })
 
   try {
-    const client = new Anthropic({ apiKey })
+    const client = new Anthropic({
+      apiKey,
+      ...(clientOptions?.maxRetries !== undefined ? { maxRetries: clientOptions.maxRetries } : {}),
+    })
 
     let messages: Anthropic.Messages.MessageParam[]
 
