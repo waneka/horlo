@@ -164,7 +164,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 43-04-PLAN.md — Device avatar upload with circular crop + Supabase Storage bucket
 - [x] 43-05-PLAN.md — GAP CLOSURE: tighten ProfileWatchCard height (GAP-43-01) + outline-variant add buttons (GAP-43-02)
 - [x] 43-06-PLAN.md — GAP CLOSURE: avatar bucket SELECT-policy migration (GAP-43-03, [BLOCKING] schema push)
-- [ ] 43-07-PLAN.md — GAP CLOSURE: square watch-card image (GAP-43-04) + functional Settings profile-edit section (GAP-43-05)
+- [x] 43-07-PLAN.md — GAP CLOSURE: square watch-card image (GAP-43-04) + functional Settings profile-edit section (GAP-43-05)
 **UI hint**: yes
 
 ### Phase 44: Catalog Enrichment
@@ -225,7 +225,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 43. Polish Pass | 6/6 | Complete   | 2026-05-17 |
+| 43. Polish Pass | 7/7 | Complete   | 2026-05-17 |
 | 44. Catalog Enrichment | 0/TBD | Not started | - |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
