@@ -18,7 +18,7 @@
  *   - movement_type: allow-list enum check (auto|manual|quartz|spring_drive)
  *   - case_size_mm: finite number in sane range [20, 60]
  *   - style_tags: array of strings
- *   - URL fields (image_source_page_url, image_source_url): sanitizeHttpUrl (reject non-http/https)
+ *   - URL fields (image_url, image_source_page_url, image_source_url): sanitizeHttpUrl (reject non-http/https)
  *   - Invalid entries are dropped and logged — never emitted to SQL
  */
 // Use relative imports — tsx does not resolve @/* path aliases.
@@ -45,7 +45,7 @@ function parseArgs(): ParsedArgs {
 
 interface ReviewEntry {
   catalog_id: string
-  field: 'movement_type' | 'case_size_mm' | 'style_tags' | 'image_source_page_url' | 'image_source_url'
+  field: 'movement_type' | 'case_size_mm' | 'style_tags' | 'image_url' | 'image_source_page_url' | 'image_source_url'
   current: unknown
   proposed: unknown
   source_url: string
@@ -123,6 +123,7 @@ function validateEntry(entry: ReviewEntry): boolean {
       return true
     }
 
+    case 'image_url':
     case 'image_source_page_url':
     case 'image_source_url': {
       if (proposed === null || proposed === undefined) return true  // null is valid
@@ -168,6 +169,7 @@ function toSqlLiteral(field: ReviewEntry['field'], proposed: unknown): string {
       return `ARRAY[${escaped}]::text[]`
     }
 
+    case 'image_url':
     case 'image_source_page_url':
     case 'image_source_url': {
       // URL: sanitize (already validated) then single-quote-escape
@@ -189,6 +191,7 @@ function fieldToColumn(field: ReviewEntry['field']): string {
     movement_type: 'movement_type',
     case_size_mm: 'case_size_mm',
     style_tags: 'style_tags',
+    image_url: 'image_url',  // operator-sourced cover photo → displayed image column
     image_source_page_url: 'image_source_url',  // D-04: page URL is stored in image_source_url column
     image_source_url: 'image_source_url',
   }

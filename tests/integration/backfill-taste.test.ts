@@ -118,7 +118,16 @@ describe('scripts/factual-apply.ts --dry-run', () => {
       source_url: 'https://example.com/watch2',
       approved: false,
     })
-    writeFileSync(tempFile, `${approvedEntry}\n${rejectedEntry}\n`, 'utf-8')
+    // image_url: operator-sourced cover photo → watches_catalog.image_url column
+    const imageEntry = JSON.stringify({
+      catalog_id: '00000000-0000-0000-0000-000000000003',
+      field: 'image_url',
+      current: null,
+      proposed: 'https://example.com/photo.jpg',
+      source_url: 'https://example.com/watch3',
+      approved: true,
+    })
+    writeFileSync(tempFile, `${approvedEntry}\n${rejectedEntry}\n${imageEntry}\n`, 'utf-8')
 
     try {
       // Record migrations dir state before the dry-run
@@ -140,6 +149,10 @@ describe('scripts/factual-apply.ts --dry-run', () => {
 
       // Should NOT include an UPDATE for the rejected catalog_id
       expect(output).not.toContain('00000000-0000-0000-0000-000000000002')
+
+      // Should map an approved image_url entry to the image_url column
+      expect(output).toContain('00000000-0000-0000-0000-000000000003')
+      expect(output).toContain("image_url = 'https://example.com/photo.jpg'")
 
       // No new migration file should have appeared in supabase/migrations/
       const afterFiles = readdirSync(migrationsDir)

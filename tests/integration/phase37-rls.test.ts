@@ -30,7 +30,7 @@
  * intentional and does NOT reduce test coverage (the V-10 assertions target
  * divestments-side behavior, not watches column exhaustiveness).
  */
-import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
@@ -239,9 +239,10 @@ maybe('Phase 37 RLS + schema introspection — divestments + provenance (CAT-18)
   //
   // Setup: each test inserts its own fixture watch (status='owned', valid
   // catalog_id pulled from existing watches_catalog) so tests are independent.
-  // Tests are NOT torn down — local DB is wipeable per
-  // memory/project_db_wipeable_2026_05_09.md; future runs may need a
-  // `supabase db reset` to clear accumulated test fixtures.
+  // Teardown: afterAll() removes the synthetic catalog row, fixture watches,
+  // divestments, and the test user. A leaked synthetic catalog row otherwise
+  // pollutes the catalog-coverage tooling (backfill-taste / factual-propose /
+  // verify-catalog-coverage) — see Phase 44.
   //
   // Fixture watch insert uses raw SQL (not Drizzle ORM) to avoid column-name
   // drift between the Drizzle schema definition and the local Docker DB's
@@ -251,12 +252,14 @@ maybe('Phase 37 RLS + schema introspection — divestments + provenance (CAT-18)
   // ========================================================================
   describe('recordDivestment dual-write (V-10; T-37-TXN-01)', () => {
     let testCatalogId: string
+    // Synthetic catalog id for this block's fixtures — inserted in beforeAll,
+    // removed in afterAll so it never leaks into the shared local DB.
+    const syntheticCatalogId = '00000000-0000-4000-a000-000000000037'
 
     beforeAll(async () => {
       // Pull or create a catalog row for the test fixture's catalog_id.
       // If watches_catalog is empty (e.g. after a `supabase db reset` or Phase 35
       // TRUNCATE cascade), insert a synthetic row. Idempotent via ON CONFLICT DO NOTHING.
-      const syntheticCatalogId = '00000000-0000-4000-a000-000000000037'
       await db.execute(sql`
         INSERT INTO watches_catalog (id, brand, model)
         VALUES (${syntheticCatalogId}::uuid, 'Test Brand V10', 'Test Model V10')
@@ -284,6 +287,17 @@ maybe('Phase 37 RLS + schema introspection — divestments + provenance (CAT-18)
         )
         ON CONFLICT (id) DO NOTHING
       `)
+    })
+
+    // Teardown: delete this block's fixtures in FK-safe order (dependents
+    // first). divestments.catalog_id is ON DELETE RESTRICT, so divestments and
+    // fixture watches must go before the synthetic catalog row.
+    afterAll(async () => {
+      await db.execute(sql`DELETE FROM divestments WHERE user_id = ${TEST_USER_ID}`)
+      await db.execute(sql`DELETE FROM watches WHERE user_id = ${TEST_USER_ID}`)
+      await db.execute(sql`DELETE FROM watches_catalog WHERE id = ${syntheticCatalogId}::uuid`)
+      await db.execute(sql`DELETE FROM profiles WHERE id = ${TEST_USER_ID}::uuid`)
+      await db.execute(sql`DELETE FROM auth.users WHERE id = ${TEST_USER_ID}::uuid`)
     })
 
     it('happy path: inserts divestments row + flips watches.status to "sold" atomically', async () => {

@@ -113,17 +113,24 @@ This will:
 
 ## Step 3: Operator Review
 
-Open `catalog-factual-review.jsonl` in your editor. For each line:
+Open `catalog-factual-review.jsonl` in your editor. `factual-apply.ts` reads exactly two
+keys per line: **`proposed`** (the value to write) and **`approved`** (`true` to apply).
+Every line must therefore carry the value to apply in `proposed`.
+
+For each line:
 
 1. **Set `"approved": true`** to accept the proposed value, or **`"approved": false`** to reject it.
-2. For `image_source_page_url` entries: open the proposed URL in your browser, find the watch's
-   cover photo on the brand or retailer page, copy the direct image URL, and update the line:
+2. For `image_source_page_url` entries: open the `source_url` page in your browser, find the
+   watch's cover photo, copy the direct image URL, and **rewrite the line** — change `field` to
+   `image_url` and put the direct image URL in `proposed`:
    ```json
-   {"catalog_id":"...","field":"image_url","current":null,"proposed":null,"source_url":"https://brand.com/page","approved":true,"image_url":"https://brand.com/image.jpg"}
+   {"catalog_id":"...","field":"image_url","current":null,"proposed":"https://brand.com/image.jpg","source_url":"https://brand.com/page","approved":true}
    ```
-   (See D-04: LLM proposes source-page URLs only; you supply the final image URL.)
-3. If a proposed value looks wrong, set `"approved": false` — that row's factual field stays NULL
-   for now. Browse must tolerate missing factual data.
+   `field: "image_url"` maps to the displayed `watches_catalog.image_url` column. Do NOT add a
+   separate `image_url` key — the value goes in `proposed`, like every other field.
+   (See D-04: the LLM proposes source-page URLs only; you supply the final image URL.)
+3. If a proposed value looks wrong, set `"approved": false` — that row's field stays NULL for
+   now. Browse must tolerate missing factual data, including missing cover photos.
 
 ---
 
@@ -174,15 +181,25 @@ skips non-14-digit filenames (T-44-13).
 
 ---
 
-## Step 6: Apply Migrations Locally and Verify Coverage
+## Step 6: Apply the Factual Migration Locally and Verify Coverage
 
-Apply both phase44 migrations to the LOCAL database:
+⚠️  **Do NOT run `supabase db push` here.** `supabase db push` pushes migrations
+to the **remote (prod)** project — it does **not** apply to the local database.
+(An earlier version of this playbook claimed otherwise; running it triggers a
+premature prod push.) `supabase migration up` is also wrong — it would replay
+the entire migration history against the drizzle-managed local DB and conflict.
+
+Apply the phase44 factual data migration directly with psql (see
+`memory/project_local_db_reset.md` — "selective supabase migrations via psql"):
 
 ```bash
-supabase db push
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" \
+  -f supabase/migrations/<ts>_phase44_factual_data.sql
 ```
 
-(This applies to local. Do NOT use `--linked` here — that pushes to prod.)
+(The taste data is already in the local DB — the live `backfill-taste` run in
+Step 1 writes each row directly. Only the factual migration needs applying
+here. It is idempotent: each `UPDATE` is `WHERE id = '<uuid>'`.)
 
 Then run the coverage verification script:
 
