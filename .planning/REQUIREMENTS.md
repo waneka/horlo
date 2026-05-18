@@ -41,7 +41,7 @@
 - [ ] **CMS-07**: Owner can create, edit, and delete a collection path — a seed watch plus up to three follow-on watches, an editorial rationale, and a path-type label.
 - [ ] **CMS-08**: Owner can pin a curated list as the hero feature, optionally with an expiry date, and can clear the pin.
 - [ ] **CMS-09**: Deleting a catalog watch that is referenced by a published list or path is blocked, and the admin UI warns before such a delete.
-- [ ] **CMS-10**: Ten seed collection paths are authored through the admin UI.
+- [ ] **CMS-10**: Six seed collection paths are authored through the admin UI. (Amended 2026-05-18 from "Ten" — owner decision: 6 is sufficient seed content for Phase 47's 3-at-a-time rotation; more can be added anytime through `/admin/paths`.)
 
 ### Explore Page (EXPL)
 

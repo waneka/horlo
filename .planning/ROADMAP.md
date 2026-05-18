@@ -126,7 +126,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 
 - [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (7 plans: 4 original + 3 gap-closure; all 5 UAT gaps resolved and user-verified on prod) (completed 2026-05-17)
 - [x] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows (completed 2026-05-18)
-- [ ] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 10 seed paths authored
+- [x] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 6 seed paths authored (completed 2026-05-18)
 - [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
 - [ ] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module
 
@@ -195,14 +195,14 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   4. Owner can save a curated list as draft or publish/unpublish it; a list with zero watches cannot be published; unpublished lists never appear on public-facing pages
   5. Owner can create, edit, and delete collection paths (seed watch + up to 3 follow-ons with rationale and path-type label); owner can pin a list as the hero with an optional expiry date and can clear the pin
   6. Deleting a catalog watch referenced by a published list or path is blocked at the database layer; the admin UI warns before attempting such a delete
-  7. Ten seed collection paths are authored through the admin UI and are in published state
+  7. Six seed collection paths are authored through the admin UI and are in published state (amended 2026-05-18 from "Ten")
 **Plans**: 6 plans
 - [x] 45-01-PLAN.md — Schema foundation: 5 CMS tables + profiles.is_admin migration, assertOwner(), [BLOCKING] local schema push
 - [x] 45-02-PLAN.md — cms-covers Storage bucket migration + cmsCovers.ts upload helper
 - [x] 45-03-PLAN.md — Curated-lists DAL + owner-gated Server Actions (CRUD, items, ordering, publish)
 - [x] 45-04-PLAN.md — Collection-paths + cms_settings DAL + Server Actions (path CRUD, hero pin, catalog picker)
 - [x] 45-05-PLAN.md — Admin route guard + /admin/lists + /admin/paths pages and editors
-- [ ] 45-06-PLAN.md — Author 10 seed collection paths through the admin UI (human-action checkpoint)
+- [x] 45-06-PLAN.md — Author 6 seed collection paths through the admin UI (human-action checkpoint)
 **UI hint**: yes
 
 ### Phase 46: Explore Shell + Browse + Archetypes
@@ -238,7 +238,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 |-------|----------------|--------|-----------|
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
-| 45. CMS Data Model + Admin Routes | 5/6 | In Progress|  |
+| 45. CMS Data Model + Admin Routes | 6/6 | Complete   | 2026-05-18 |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
