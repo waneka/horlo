@@ -28,7 +28,12 @@ export async function searchCatalogForPicker(
     return { success: false, error: 'Not authorized' }
   }
 
-  // Enforce 2-char minimum — short queries are noise and expensive
+  // Enforce 2-char minimum — short queries are noise and expensive.
+  // WR-07 contract note: a sub-minimum query returns { success: true, data: [] },
+  // which is indistinguishable from "searched, found nothing." Callers that need
+  // to prompt "type more" must apply their own MIN_QUERY_LENGTH guard before
+  // calling this action (WatchPicker does). An empty `data` array therefore may
+  // mean EITHER "no matches" OR "query too short" — do not infer one from it.
   if (query.trim().length < MIN_QUERY_LENGTH) {
     return { success: true, data: [] }
   }
