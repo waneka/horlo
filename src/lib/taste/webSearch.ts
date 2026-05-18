@@ -1,17 +1,20 @@
 // src/lib/taste/webSearch.ts
 //
-// Phase 44 shared two-turn web_search helper (D-06).
+// Phase 44 web_search enrichment helper (D-06).
 //
 // Exports:
 //   WEB_SEARCH_TOOL       — WebSearchTool20250305 constant (max_uses: 3)
 //   extractSourceUrls     — collect result.url from web_search_result blocks
-//   enrichWithWebSearch   — two-turn: Turn 1 auto (let Claude search), Turn 2 forced tool
+//   enrichWithWebSearch   — primary auto call (web_search for grounding +
+//                           emit the custom tool) with a forced-tool fallback
 //
 // Posture:
-//   - NEVER throws — callers handle null toolUse
-//   - Handles pause_turn from long web_search runs with exactly one continuation call
-//   - Sets webSearchUnavailable: true when web_search is org-disabled, but still
-//     proceeds to Turn 2 for text-only fallback (D-06 graceful degradation)
+//   - NEVER throws — callers handle a null toolUse.
+//   - claude-sonnet-4-6 rejects assistant-message prefill ("the conversation
+//     must end with a user message"). So every request ends with a user
+//     message and NO tool blocks are ever replayed. The primary call's
+//     research is folded into the fallback's user message as plain text.
+//   - Sets webSearchUnavailable: true when web_search is org-disabled.
 
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -51,29 +54,79 @@ export interface EnrichWithWebSearchResult {
   webSearchUnavailable: boolean
 }
 
+/** Detect org-disabled web_search from a `web_search_tool_result` error block. */
+function detectWebSearchUnavailable(content: Anthropic.Messages.ContentBlock[]): boolean {
+  for (const block of content) {
+    if (block.type === 'web_search_tool_result') {
+      const c = block.content
+      if (
+        !Array.isArray(c) &&
+        c.type === 'web_search_tool_result_error' &&
+        c.error_code === 'unavailable'
+      ) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/** Concatenate the text of every `text` block, in document order. */
+function collectTextBlocks(content: Anthropic.Messages.ContentBlock[]): string {
+  return content
+    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
+    .map((b) => b.text)
+    .join('\n\n')
+    .trim()
+}
+
 /**
- * Two-turn web_search + forced-tool pattern (D-06, RESEARCH Pattern 1).
+ * Fold research text into the last message's content as an extra text block.
+ * Returns `messages` unchanged when `groundingText` is empty.
  *
- * Turn 1: `tool_choice: { type: 'auto' }` with ONLY WEB_SEARCH_TOOL in the tools
- *         array — Claude can search for grounding context but cannot emit the
- *         custom tool. Exposing customTools here lets Claude call them mid-Turn-1,
- *         producing a dangling client `tool_use` block that has no `tool_result`
- *         when Turn 1's content is replayed as the assistant message in Turn 2 —
- *         the API rejects that with a 400 (`tool_use` ids without `tool_result`).
- *         If stop_reason === 'pause_turn', issue exactly one continuation call.
+ * This keeps the request a single user message — no assistant prefill, no
+ * replayed tool blocks — which claude-sonnet-4-6 requires.
+ */
+function appendGroundingToLastMessage(
+  messages: Anthropic.Messages.MessageParam[],
+  groundingText: string,
+): Anthropic.Messages.MessageParam[] {
+  if (!groundingText) return messages
+  const note: Anthropic.Messages.TextBlockParam = {
+    type: 'text',
+    text:
+      '\n\n---\nWeb research notes gathered for this watch (use as grounding ' +
+      `context, weighed against your own knowledge):\n\n${groundingText}`,
+  }
+  const head = messages.slice(0, -1)
+  const last = messages[messages.length - 1]
+  const lastBlocks: Anthropic.Messages.ContentBlockParam[] =
+    typeof last.content === 'string'
+      ? [{ type: 'text', text: last.content }]
+      : [...last.content]
+  return [...head, { role: last.role, content: [...lastBlocks, note] }]
+}
+
+/**
+ * web_search + forced-tool enrichment (D-06).
  *
- * Turn 2: `tool_choice: { type: 'tool', name: customToolName }` forced, with
- *         customTools + WEB_SEARCH_TOOL in scope — Claude emits the structured
- *         output with web search results in context.
+ * Primary call: `tool_choice: auto` with customTools + WEB_SEARCH_TOOL — the
+ *   model searches for grounding context and, in practice, emits the custom
+ *   tool in the same response. When a custom tool_use is present it is
+ *   returned directly (one API call, the common path).
  *
- * Does NOT throw — all errors are surfaced via the caller's try/catch.
- * Sets webSearchUnavailable: true when web_search is org-disabled, then continues
- * to Turn 2 in text-only mode.
+ * Fallback call: when the primary response carries no custom tool_use (a
+ *   text-only answer, or a pause_turn that stopped before emitting), force the
+ *   tool with a fresh call. The primary call's research text is folded into
+ *   the user message — claude-sonnet-4-6 rejects assistant-message prefill, so
+ *   no tool blocks are replayed and the request ends with a user message.
  *
- * @param client         Anthropic client instance (constructed with maxRetries by caller)
- * @param customTools    Custom tool definitions (e.g. [TASTE_TOOL])
- * @param initialMessages Initial message array for Turn 1
- * @param customToolName  Name of the custom tool to force in Turn 2
+ * Does NOT throw — all errors surface via the caller's try/catch.
+ *
+ * @param client          Anthropic client instance (constructed with maxRetries by caller)
+ * @param customTools      Custom tool definitions (e.g. [TASTE_TOOL])
+ * @param initialMessages  Initial message array (a single user message)
+ * @param customToolName   Name of the custom tool to extract / force
  */
 export async function enrichWithWebSearch(
   client: Anthropic,
@@ -86,64 +139,44 @@ export async function enrichWithWebSearch(
     WEB_SEARCH_TOOL,
   ]
 
-  // Turn 1: auto — let Claude decide to search for grounding context.
-  // ONLY WEB_SEARCH_TOOL is exposed here: if customTools were in scope, Claude
-  // would call the custom tool mid-Turn-1, leaving a dangling client `tool_use`
-  // block that breaks Turn 2's message array (API 400). Custom tools enter in
-  // Turn 2 only.
-  let searchResponse = await client.messages.create({
+  // Primary call: auto — let the model web_search for grounding and emit the
+  // custom tool in one turn.
+  const primary = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
-    tools: [WEB_SEARCH_TOOL],
+    tools: allTools,
     tool_choice: { type: 'auto' },
     messages: initialMessages,
   })
 
-  // Handle pause_turn from long web_search runs (RESEARCH Pitfall 2)
-  // Issue exactly one continuation call before proceeding to Turn 2.
-  if (searchResponse.stop_reason === 'pause_turn') {
-    searchResponse = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
-      tools: [WEB_SEARCH_TOOL],
-      tool_choice: { type: 'auto' },
-      messages: [
-        ...initialMessages,
-        { role: 'assistant', content: searchResponse.content },
-      ],
-    })
+  const webSearchUnavailable = detectWebSearchUnavailable(primary.content)
+  const sourceUrls = extractSourceUrls(primary.content)
+
+  const primaryToolUse = primary.content.find(
+    (c): c is Anthropic.Messages.ToolUseBlock =>
+      c.type === 'tool_use' && c.name === customToolName,
+  )
+  if (primaryToolUse) {
+    return { toolUse: primaryToolUse, sourceUrls, webSearchUnavailable }
   }
 
-  // Detect web_search unavailable (org-level disabled) — still proceed to Turn 2
-  let webSearchUnavailable = false
-  for (const block of searchResponse.content) {
-    if (block.type === 'web_search_tool_result') {
-      const content = block.content
-      if (!Array.isArray(content) && content.type === 'web_search_tool_result_error') {
-        if (content.error_code === 'unavailable') {
-          webSearchUnavailable = true
-        }
-      }
-    }
-  }
-
-  const sourceUrls = extractSourceUrls(searchResponse.content)
-
-  // Turn 2: force the custom tool — now with web search results in context
-  const turn2Response = await client.messages.create({
+  // Fallback: the model answered in text only (or paused before emitting).
+  // Force the custom tool, folding the primary call's research in as text.
+  const forced = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    tools: allTools,
+    tools: customTools,
     tool_choice: { type: 'tool', name: customToolName },
-    messages: [
-      ...initialMessages,
-      { role: 'assistant', content: searchResponse.content },
-    ],
+    messages: appendGroundingToLastMessage(
+      initialMessages,
+      collectTextBlocks(primary.content),
+    ),
   })
 
-  const toolUse = turn2Response.content.find(
-    (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use',
-  ) ?? null
+  const toolUse =
+    forced.content.find(
+      (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use',
+    ) ?? null
 
   return { toolUse, sourceUrls, webSearchUnavailable }
 }

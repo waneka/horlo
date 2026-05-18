@@ -208,32 +208,64 @@ describe('enrichTasteAttributes', () => {
 
   it('calls Anthropic with model claude-sonnet-4-6', async () => {
     await enrichTasteAttributes(BASE_INPUT)
-    // D-06 two-turn web_search pattern: Turn 1 (auto search) + Turn 2 (forced tool).
-    expect(mockCreate).toHaveBeenCalledTimes(2)
     expect(mockCreate.mock.calls[0][0].model).toBe('claude-sonnet-4-6')
-    expect(mockCreate.mock.calls[1][0].model).toBe('claude-sonnet-4-6')
   })
 
-  it('forces tool_choice to record_taste_attributes on the second turn', async () => {
+  it('primary call is auto with web_search + the custom tool available', async () => {
     await enrichTasteAttributes(BASE_INPUT)
-    // D-06 two-turn shape: Turn 1 is auto (lets Claude web_search for grounding),
-    // Turn 2 forces the custom tool to emit structured taste attributes.
+    // The primary call lets the model web_search for grounding and emit the
+    // custom tool in one turn — when it does, no fallback call is made.
+    expect(mockCreate).toHaveBeenCalledTimes(1)
     expect(mockCreate.mock.calls[0][0].tool_choice).toEqual({ type: 'auto' })
-    expect(mockCreate.mock.calls[1][0].tool_choice).toEqual({ type: 'tool', name: 'record_taste_attributes' })
+    const toolNames = mockCreate.mock.calls[0][0].tools.map((t: { name: string }) => t.name)
+    expect(toolNames).toContain('web_search')
+    expect(toolNames).toContain('record_taste_attributes')
   })
 
-  it('Turn 1 exposes only web_search, never the custom tool (regression: dangling tool_use 400)', async () => {
-    await enrichTasteAttributes(BASE_INPUT)
-    // Turn 1 must NOT include record_taste_attributes. With the custom tool in
-    // scope and tool_choice: auto, Claude emits the custom tool_use during
-    // Turn 1; replaying that content as Turn 2's assistant message leaves a
-    // client tool_use with no tool_result → API 400 on every row.
-    const turn1Names = mockCreate.mock.calls[0][0].tools.map((t: { name: string }) => t.name)
-    expect(turn1Names).toEqual(['web_search'])
+  it('forces the custom tool in a prefill-free fallback when the primary has no tool_use', async () => {
+    // Primary: model web-searches and answers in text WITHOUT emitting the
+    // custom tool. Fallback: a forced-tool call that must end with a user
+    // message and replay no tool blocks — claude-sonnet-4-6 rejects
+    // assistant-message prefill (regression: API 400).
+    mockCreate
+      .mockResolvedValueOnce({
+        content: [
+          { type: 'server_tool_use', id: 'srvtoolu_x', name: 'web_search', input: { query: 'q' } },
+          { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_x', content: [] },
+          { type: 'text', text: 'Research summary of the watch.' },
+        ],
+        role: 'assistant',
+        model: 'claude-sonnet-4-6',
+        stop_reason: 'end_turn',
+      })
+      .mockResolvedValueOnce({
+        content: [{ type: 'tool_use', id: 'toolu_final', name: 'record_taste_attributes', input: VALID_TOOL_USE_INPUT }],
+        role: 'assistant',
+        model: 'claude-sonnet-4-6',
+        stop_reason: 'tool_use',
+      })
 
-    // Turn 2 carries both: web_search (conversation continuity) + the custom tool.
-    const turn2Names = mockCreate.mock.calls[1][0].tools.map((t: { name: string }) => t.name)
-    expect(turn2Names).toContain('web_search')
-    expect(turn2Names).toContain('record_taste_attributes')
+    const result = await enrichTasteAttributes(BASE_INPUT)
+    expect(result).not.toBeNull()
+    expect(mockCreate).toHaveBeenCalledTimes(2)
+    expect(mockCreate.mock.calls[1][0].tool_choice).toEqual({ type: 'tool', name: 'record_taste_attributes' })
+
+    // Prefill-safety: the fallback request ends with a user message and carries
+    // no replayed tool blocks of any kind.
+    const fallbackMessages = mockCreate.mock.calls[1][0].messages
+    expect(fallbackMessages[fallbackMessages.length - 1].role).toBe('user')
+    for (const m of fallbackMessages) {
+      const blocks = typeof m.content === 'string' ? [] : m.content
+      for (const b of blocks as Array<{ type: string }>) {
+        expect(['tool_use', 'server_tool_use', 'web_search_tool_result']).not.toContain(b.type)
+      }
+    }
+
+    // The primary call's research text is folded into the user message.
+    const lastMsg = fallbackMessages[fallbackMessages.length - 1]
+    const lastText = typeof lastMsg.content === 'string'
+      ? lastMsg.content
+      : (lastMsg.content as Array<{ text?: string }>).map(b => b.text ?? '').join(' ')
+    expect(lastText).toContain('Research summary of the watch.')
   })
 })
