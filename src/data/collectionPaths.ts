@@ -49,11 +49,11 @@ export async function getPathById(id: string) {
 }
 
 export async function getPathWithNodes(pathId: string) {
-  const [path, nodes] = await Promise.all([
-    getPathById(pathId),
-    getPathNodes(pathId),
-  ])
+  // WR-05: short-circuit on a missing path before fetching nodes — mirrors
+  // getListWithItems. Avoids a wasted nodes query on every notFound() hit.
+  const path = await getPathById(pathId)
   if (!path) return null
+  const nodes = await getPathNodes(pathId)
   return { ...path, nodes }
 }
 
