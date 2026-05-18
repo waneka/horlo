@@ -10,8 +10,16 @@
 
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import rehypeSanitize from 'rehype-sanitize'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+
+// CR-02: rehype-sanitize guards the rendered markdown. Its default schema
+// (GitHub's) strips raw HTML elements and enforces a URL-protocol allow-list,
+// so a `[click](javascript:alert(1))` link or a `data:` URI cannot produce a
+// dangerous href/src. The SAME plugin must be applied wherever this markdown is
+// rendered publicly (Phase 47) — the introMarkdown string authored here becomes
+// visitor-facing content.
 
 export interface MarkdownEditorProps {
   value: string
@@ -58,7 +66,8 @@ export function MarkdownEditor({
           {previewContent.trim() ? (
             // NO prose class — @tailwindcss/typography not installed.
             // react-markdown inherits text-sm leading-relaxed from container.
-            <ReactMarkdown>{previewContent}</ReactMarkdown>
+            // CR-02: rehypeSanitize enforces an HTML/URL-protocol allow-list.
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{previewContent}</ReactMarkdown>
           ) : (
             <span className="text-muted-foreground italic">Nothing to preview yet.</span>
           )}
