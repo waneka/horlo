@@ -33,8 +33,8 @@ decisions:
   - "Integration DB test is behind describe.skip pending Task 2 population — unskip after production run"
 metrics:
   duration: "~10 minutes"
-  completed: "2026-05-17"
-  tasks_completed: 1
+  completed: "2026-05-18"
+  tasks_completed: 2
   tasks_total: 2
   files_changed: 4
 ---
@@ -42,8 +42,8 @@ metrics:
 # Phase 44 Plan 04: Coverage Verification Script + Operator Run Playbook
 
 Coverage verification npm script (db:verify-catalog-coverage) and operator run playbook committed.
-Plan halted at Task 2 human-action checkpoint: the production enrichment run requires operator
-judgment (review-file approval, cover-photo image sourcing, prod migration push).
+Task 2 (production enrichment run) completed by the operator on 2026-05-18 — all 100 seed
+catalog watches enriched with taste, factual, and cover-photo data on both local and prod.
 
 ## What Was Built
 
@@ -116,16 +116,28 @@ All 13 tests pass (1 skipped). Source-assertion tests prove the script asserts a
 - Step 8: OPERATOR-GATED prod push — `supabase db push --linked` (requires SUPABASE_ACCESS_TOKEN);
   re-verify against prod; explicitly marked as the operator action
 
-## Task 2: Pending Human-Action Checkpoint
+## Task 2: Production Enrichment Run — Complete (2026-05-18)
 
-Task 2 is a `checkpoint:human-action` — NOT executed by this agent. The operator must:
+Operator ran `44-RUN-PLAYBOOK.md` end to end. Outcome:
 
-1. Run the full `44-RUN-PLAYBOOK.md` end to end (Steps 0–8)
-2. Confirm `npm run db:verify-catalog-coverage` exits 0 against both local and prod
-3. Confirm both `phase44_*` SQL data migrations are committed with 14-digit timestamps
-4. Reply "approved" to resume the continuation agent
+- Taste backfill + factual propose/apply executed against the 100-row local catalog;
+  `verify-catalog-coverage` exits 0 against local (100 rows, 0 NULL).
+- **Production:** the seed assigns `watches_catalog.id` via `gen_random_uuid()` per run,
+  so prod's seed rows carry different ids than local — the id-keyed factual migration was
+  a no-op on prod. A re-keyed migration (`20260518191301_phase44_factual_natural_key.sql`,
+  matched on `(brand, model, reference)`) enriched prod's 100 seed watches. Prod verify
+  shows 1 remaining factual-NULL row — a manually-added catalog entry outside the 100-row
+  seed scope (operator-accepted delta). See memory `project-catalog-id-divergence`.
+- Three `phase44_*` migrations committed (`b2356d9`).
 
-See checkpoint return block below for full instructions.
+Issues found and fixed during the run (`b2356d9`): `factual-apply.ts` gained `image_url`
+field support; `phase37-rls.test.ts` gained an `afterAll` teardown (it was leaking
+fixtures into the shared local DB, polluting catalog-coverage tooling); playbook Steps 3
+and 6 corrected. Web-search enrichment 400s fixed earlier (`db1b585`).
+
+Follow-up: `verify-catalog-coverage` is all-rows-strict — it exits 1 on prod due to the 1
+manual-addition row. Scope it by the `source` column before reusing it as the Phase 46
+pre-ship gate.
 
 ## Test Coverage
 

@@ -125,7 +125,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 ### 🚧 v5.1 Explore Page Redesign (In Progress — SEED-008)
 
 - [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (7 plans: 4 original + 3 gap-closure; all 5 UAT gaps resolved and user-verified on prod) (completed 2026-05-17)
-- [ ] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows
+- [x] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows (completed 2026-05-18)
 - [ ] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 10 seed paths authored
 - [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
 - [ ] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module
@@ -181,7 +181,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 44-01-PLAN.md — Two-turn web_search helper + enricher reshape + backfill/reenrich script hardening (ENRH-01, ENRH-02)
 - [x] 44-02-PLAN.md — Downgrade guard in updateCatalogTaste + integration tests (ENRH-03)
 - [x] 44-03-PLAN.md — Factual propose/apply scripts with editable review file + SQL migration emit (ENRH-05)
-- [ ] 44-04-PLAN.md — verify-catalog-coverage script + operator run playbook + production enrichment run (ENRH-04, ENRH-06)
+- [x] 44-04-PLAN.md — verify-catalog-coverage script + operator run playbook + production enrichment run (ENRH-04, ENRH-06)
 **UI hint**: no
 
 ### Phase 45: CMS Data Model + Admin Routes
@@ -231,11 +231,11 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
-| 44. Catalog Enrichment | 3/4 | In Progress|  |
+| 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 0/TBD | Not started | - |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
 ## Next Up
 
-Run `/gsd-execute-phase 44` to execute the Phase 44 catalog-enrichment plans.
+Phase 44 complete. Run `/gsd-progress` to advance to Phase 45 (CMS Data Model + Admin Routes).
