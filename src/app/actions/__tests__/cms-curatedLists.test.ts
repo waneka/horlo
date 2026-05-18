@@ -49,6 +49,7 @@ vi.mock('@/data/curatedLists', () => ({
   updateListItemCommentary: vi.fn(),
   removeListItem: vi.fn(),
   getListItems: vi.fn(),
+  getListItemById: vi.fn(),
   getAllListsForOwner: vi.fn(),
   getListById: vi.fn(),
   getListWithItems: vi.fn(),
@@ -230,6 +231,7 @@ describe('Behavior 5: moveListItemUp/Down correct reordering sequence', () => {
   const item3 = { id: VALID_UUID_3, listId: VALID_UUID_3, catalogId: '33333333-3333-4333-8333-333333333334', sortOrder: 2, createdAt: new Date(), commentary: null }
 
   it('moveListItemUp swaps the item with the item above it (item at index 1 → index 0)', async () => {
+    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item2)
     vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
     vi.mocked(curatedListsDAL.swapListItemSortOrder).mockResolvedValue(undefined)
 
@@ -243,6 +245,7 @@ describe('Behavior 5: moveListItemUp/Down correct reordering sequence', () => {
   })
 
   it('moveListItemUp is a no-op when item is already first (sortOrder 0)', async () => {
+    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item1)
     vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
 
     const result = await moveListItemUp(VALID_UUID)
@@ -253,6 +256,7 @@ describe('Behavior 5: moveListItemUp/Down correct reordering sequence', () => {
   })
 
   it('moveListItemDown swaps the item with the item below it', async () => {
+    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item2)
     vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
     vi.mocked(curatedListsDAL.swapListItemSortOrder).mockResolvedValue(undefined)
 
@@ -266,6 +270,7 @@ describe('Behavior 5: moveListItemUp/Down correct reordering sequence', () => {
   })
 
   it('moveListItemDown is a no-op when item is already last', async () => {
+    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item3)
     vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
 
     const result = await moveListItemDown(VALID_UUID_3)

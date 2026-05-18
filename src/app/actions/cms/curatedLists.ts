@@ -1,0 +1,333 @@
+'use server'
+
+// NOTE: Per AGENTS.md — read node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md
+// before using revalidateTag. Confirmed: two-argument form revalidateTag(tag, 'max') is correct.
+// Single-argument form is deprecated in Next.js 16.
+import { revalidateTag } from 'next/cache'
+import { z } from 'zod'
+import { assertOwner } from '@/lib/auth'
+import * as curatedListsDAL from '@/data/curatedLists'
+import type { ActionResult } from '@/lib/actionTypes'
+
+// ----- Zod schemas (all use .strict() — mass-assignment protection, T-45-10) -----
+
+const createListSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    curatorName: z.string().min(1).max(100),
+    coverUrl: z.string().url().max(500).nullable().optional(),
+    introMarkdown: z.string().max(5000).nullable().optional(),
+  })
+  .strict()
+
+const updateListSchema = z
+  .object({
+    id: z.string().uuid(),
+    title: z.string().min(1).max(200).optional(),
+    curatorName: z.string().min(1).max(100).optional(),
+    coverUrl: z.string().url().max(500).nullable().optional(),
+    introMarkdown: z.string().max(5000).nullable().optional(),
+  })
+  .strict()
+
+const addWatchSchema = z
+  .object({
+    listId: z.string().uuid(),
+    catalogId: z.string().uuid(),
+    commentary: z.string().max(1000).nullable().optional(),
+  })
+  .strict()
+
+const updateCommentarySchema = z
+  .object({
+    itemId: z.string().uuid(),
+    commentary: z.string().max(1000).nullable(),
+  })
+  .strict()
+
+// ----- CRUD actions -----
+
+// CRITICAL: assertOwner() is the real security gate for every CMS Server Action.
+// The admin layout redirect is UX only — SAs are HTTP-callable and bypass layout guards.
+// Three-block pattern: (1) assertOwner, (2) zod parse, (3) DAL call + revalidation.
+
+export async function createCuratedList(data: unknown): Promise<ActionResult<{ id: string }>> {
+  // Block 1: auth gate (D-06)
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  // Block 2: input validation
+  const parsed = createListSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid list data' }
+  }
+
+  // Block 3: DAL call
+  try {
+    const id = await curatedListsDAL.createList(parsed.data)
+    return { success: true, data: { id } }
+  } catch (err) {
+    console.error('[createCuratedList] unexpected error:', err)
+    return { success: false, error: "Couldn't create list. Try again." }
+  }
+}
+
+export async function updateCuratedList(data: unknown): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  const parsed = updateListSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid list data' }
+  }
+
+  try {
+    const { id, ...fields } = parsed.data
+    await curatedListsDAL.updateList(id, fields)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[updateCuratedList] unexpected error:', err)
+    return { success: false, error: "Couldn't update list. Try again." }
+  }
+}
+
+export async function deleteCuratedList(listId: string): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    await curatedListsDAL.deleteList(listId)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[deleteCuratedList] unexpected error:', err)
+    return { success: false, error: "Couldn't delete list. Try again." }
+  }
+}
+
+// ----- List item actions -----
+
+export async function addWatchToList(data: unknown): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  const parsed = addWatchSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid item data' }
+  }
+
+  try {
+    await curatedListsDAL.addListItem(parsed.data)
+    return { success: true, data: undefined }
+  } catch (err) {
+    // Surface clean error for duplicate (unique constraint violation)
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('unique') || message.includes('duplicate')) {
+      return { success: false, error: 'This watch is already in the list.' }
+    }
+    console.error('[addWatchToList] unexpected error:', err)
+    return { success: false, error: "Couldn't add watch to list. Try again." }
+  }
+}
+
+export async function updateListItemCommentary(data: unknown): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  const parsed = updateCommentarySchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid commentary data' }
+  }
+
+  try {
+    await curatedListsDAL.updateListItemCommentary(parsed.data.itemId, parsed.data.commentary)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[updateListItemCommentary] unexpected error:', err)
+    return { success: false, error: "Couldn't update commentary. Try again." }
+  }
+}
+
+export async function removeWatchFromList(itemId: string): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    await curatedListsDAL.removeListItem(itemId)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[removeWatchFromList] unexpected error:', err)
+    return { success: false, error: "Couldn't remove watch from list. Try again." }
+  }
+}
+
+// ----- D-12: List ordering (up/down arrow buttons — integer sort_order) -----
+
+export async function moveListUp(listId: string): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    const lists = await curatedListsDAL.getAllListsForOwner()
+    const idx = lists.findIndex((l) => l.id === listId)
+    if (idx <= 0) {
+      // Already first — no-op (error-free)
+      return { success: true, data: undefined }
+    }
+    const current = lists[idx]
+    const above = lists[idx - 1]
+    await curatedListsDAL.swapListSortOrder(current.id, current.sortOrder, above.id, above.sortOrder)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[moveListUp] unexpected error:', err)
+    return { success: false, error: "Couldn't reorder list. Try again." }
+  }
+}
+
+export async function moveListDown(listId: string): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    const lists = await curatedListsDAL.getAllListsForOwner()
+    const idx = lists.findIndex((l) => l.id === listId)
+    if (idx === -1 || idx >= lists.length - 1) {
+      // Already last — no-op (error-free)
+      return { success: true, data: undefined }
+    }
+    const current = lists[idx]
+    const below = lists[idx + 1]
+    await curatedListsDAL.swapListSortOrder(current.id, current.sortOrder, below.id, below.sortOrder)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[moveListDown] unexpected error:', err)
+    return { success: false, error: "Couldn't reorder list. Try again." }
+  }
+}
+
+// ----- D-12: List item ordering (up/down arrow buttons) -----
+
+export async function moveListItemUp(itemId: string): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    const item = await curatedListsDAL.getListItemById(itemId)
+    if (!item) return { success: false, error: 'Item not found.' }
+
+    const items = await curatedListsDAL.getListItems(item.listId)
+    const idx = items.findIndex((i) => i.id === itemId)
+    if (idx <= 0) {
+      // Already first — no-op (error-free)
+      return { success: true, data: undefined }
+    }
+    const current = items[idx]
+    const above = items[idx - 1]
+    await curatedListsDAL.swapListItemSortOrder(current.id, current.sortOrder, above.id, above.sortOrder)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[moveListItemUp] unexpected error:', err)
+    return { success: false, error: "Couldn't reorder item. Try again." }
+  }
+}
+
+export async function moveListItemDown(itemId: string): Promise<ActionResult<void>> {
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    const item = await curatedListsDAL.getListItemById(itemId)
+    if (!item) return { success: false, error: 'Item not found.' }
+
+    const items = await curatedListsDAL.getListItems(item.listId)
+    const idx = items.findIndex((i) => i.id === itemId)
+    if (idx === -1 || idx >= items.length - 1) {
+      // Already last — no-op (error-free)
+      return { success: true, data: undefined }
+    }
+    const current = items[idx]
+    const below = items[idx + 1]
+    await curatedListsDAL.swapListItemSortOrder(current.id, current.sortOrder, below.id, below.sortOrder)
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[moveListItemDown] unexpected error:', err)
+    return { success: false, error: "Couldn't reorder item. Try again." }
+  }
+}
+
+// ----- Publish/unpublish (with zero-watch guard and hero cache revalidation) -----
+
+export async function publishCuratedList(listId: string): Promise<ActionResult<void>> {
+  // Block 1: auth gate (D-06)
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  // D-03 / CMS-06: zero-watch guard — check item count BEFORE setting status
+  const count = await curatedListsDAL.getListItemCount(listId)
+  if (count === 0) {
+    return { success: false, error: 'Cannot publish a list with no watches.' }
+  }
+
+  try {
+    await curatedListsDAL.setListStatus(listId, 'published')
+    // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (Pitfall 3).
+    // hero is a GLOBAL shared cache — use revalidateTag (NOT updateTag which is read-your-own-writes).
+    revalidateTag('explore:hero', 'max')
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[publishCuratedList] unexpected error:', err)
+    return { success: false, error: "Couldn't publish list. Try again." }
+  }
+}
+
+export async function unpublishCuratedList(listId: string): Promise<ActionResult<void>> {
+  // Block 1: auth gate (D-06)
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not authorized' }
+  }
+
+  try {
+    await curatedListsDAL.setListStatus(listId, 'draft')
+    // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (Pitfall 3).
+    // hero is a GLOBAL shared cache — use revalidateTag (NOT updateTag which is read-your-own-writes).
+    revalidateTag('explore:hero', 'max')
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[unpublishCuratedList] unexpected error:', err)
+    return { success: false, error: "Couldn't unpublish list. Try again." }
+  }
+}

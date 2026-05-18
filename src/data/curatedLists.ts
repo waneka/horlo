@@ -156,6 +156,15 @@ export async function removeListItem(itemId: string) {
   await db.delete(curatedListItems).where(eq(curatedListItems.id, itemId))
 }
 
+export async function getListItemById(itemId: string) {
+  const rows = await db
+    .select()
+    .from(curatedListItems)
+    .where(eq(curatedListItems.id, itemId))
+    .limit(1)
+  return rows[0] ?? null
+}
+
 // ----- D-12: List item sort-order swap in a transaction -----
 
 export async function swapListItemSortOrder(
