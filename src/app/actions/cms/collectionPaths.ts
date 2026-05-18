@@ -104,6 +104,14 @@ export async function deleteCollectionPath(pathId: string): Promise<ActionResult
     await collectionPathsDAL.deletePath(pathId)
     return { success: true, data: undefined }
   } catch (err) {
+    // WR-01: forward a discriminable error on FK violation. Deleting a
+    // collection_paths row cascades to collection_path_nodes, so this branch is
+    // not expected to fire for path deletes — but if a future schema change
+    // adds a RESTRICT reference, the client's FK-detection branch will match.
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('foreign key') || message.includes('violates foreign key constraint')) {
+      return { success: false, error: 'Cannot delete — this path is still referenced. (foreign key)' }
+    }
     console.error('[deleteCollectionPath] unexpected error:', err)
     return { success: false, error: "Couldn't delete path. Try again." }
   }

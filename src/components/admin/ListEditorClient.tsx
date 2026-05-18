@@ -86,17 +86,12 @@ interface ListEditorClientProps {
   isPinned: boolean
 }
 
-const FK_RESTRICT_ERROR =
-  "Can't delete — this watch is used in a list or path. Remove it from all lists and paths first."
-
-function isFkRestrictError(error: string | undefined): boolean {
-  if (!error) return false
-  return (
-    error.includes('restrict') ||
-    error.includes('foreign key') ||
-    error.includes('referenced') ||
-    error.includes('FK')
-  )
+// WR-01: deleting a curated_lists row (or one of its items) cascades — neither
+// hits an FK RESTRICT today. The genuine RESTRICT surface is catalog-watch
+// deletion, which has no admin UI in Phase 45. If a delete action ever forwards
+// a discriminable FK error (future RESTRICT reference), it is surfaced verbatim.
+function isFkError(error: string | undefined): boolean {
+  return typeof error === 'string' && error.includes('foreign key')
 }
 
 export function ListEditorClient({ list: initialList, isPinned: initialIsPinned }: ListEditorClientProps) {
@@ -183,7 +178,11 @@ export function ListEditorClient({ list: initialList, isPinned: initialIsPinned 
     setDeleting(false)
     setShowDeleteDialog(false)
     if (!result.success) {
-      toast.error(isFkRestrictError(result.error) ? FK_RESTRICT_ERROR : "Couldn't delete list. Try again.")
+      toast.error(
+        isFkError(result.error) && result.error
+          ? result.error
+          : "Couldn't delete list. Try again.",
+      )
     } else {
       router.push('/admin/lists')
     }
@@ -211,7 +210,11 @@ export function ListEditorClient({ list: initialList, isPinned: initialIsPinned 
     const result = await removeWatchFromList(itemId)
     setRemovingItemId(null)
     if (!result.success) {
-      toast.error(isFkRestrictError(result.error) ? FK_RESTRICT_ERROR : "Couldn't remove watch. Try again.")
+      toast.error(
+        isFkError(result.error) && result.error
+          ? result.error
+          : "Couldn't remove watch. Try again.",
+      )
     } else {
       refresh()
     }

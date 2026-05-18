@@ -113,6 +113,14 @@ export async function deleteCuratedList(listId: string): Promise<ActionResult<vo
     await curatedListsDAL.deleteList(listId)
     return { success: true, data: undefined }
   } catch (err) {
+    // WR-01: forward a discriminable error on FK violation. Deleting a
+    // curated_lists row cascades to curated_list_items, so this branch is not
+    // expected to fire for list deletes — but if a future schema change adds a
+    // RESTRICT reference, the client's FK-detection branch will now match.
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('foreign key') || message.includes('violates foreign key constraint')) {
+      return { success: false, error: 'Cannot delete — this list is still referenced. (foreign key)' }
+    }
     console.error('[deleteCuratedList] unexpected error:', err)
     return { success: false, error: "Couldn't delete list. Try again." }
   }

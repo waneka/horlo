@@ -99,16 +99,14 @@ export function ListIndexClient({ lists: initialLists }: ListIndexClientProps) {
     setDeleting(false)
     setDeleteTarget(null)
     if (!result.success) {
-      // D-06: FK-RESTRICT errors surface as destructive toast.
+      // WR-01: deleting a curated_lists row cascades to its items — it never
+      // hits an FK RESTRICT today. If the action ever forwards a discriminable
+      // FK error (future RESTRICT reference), surface its message verbatim;
+      // otherwise show the generic failure.
       const isFkError =
-        typeof result.error === 'string' &&
-        (result.error.includes('restrict') ||
-          result.error.includes('foreign key') ||
-          result.error.includes('referenced'))
-      if (isFkError) {
-        toast.error(
-          "Can't delete — this watch is used in a list or path. Remove it from all lists and paths first.",
-        )
+        typeof result.error === 'string' && result.error.includes('foreign key')
+      if (isFkError && result.error) {
+        toast.error(result.error)
       } else {
         toast.error("Couldn't delete list. Try again.")
       }

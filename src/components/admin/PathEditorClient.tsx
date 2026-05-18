@@ -69,17 +69,13 @@ interface PathEditorClientProps {
   path: CollectionPath
 }
 
-const FK_RESTRICT_ERROR =
-  "Can't delete — this watch is used in a list or path. Remove it from all lists and paths first."
-
-function isFkRestrictError(error: string | undefined): boolean {
-  if (!error) return false
-  return (
-    error.includes('restrict') ||
-    error.includes('foreign key') ||
-    error.includes('referenced') ||
-    error.includes('FK')
-  )
+// WR-01: deleting a collection_paths row (or one of its nodes) cascades —
+// neither hits an FK RESTRICT today. The genuine RESTRICT surface is
+// catalog-watch deletion, which has no admin UI in Phase 45. If a delete action
+// ever forwards a discriminable FK error (future RESTRICT reference), it is
+// surfaced verbatim.
+function isFkError(error: string | undefined): boolean {
+  return typeof error === 'string' && error.includes('foreign key')
 }
 
 export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
@@ -173,7 +169,11 @@ export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
     setDeleting(false)
     setShowDeleteDialog(false)
     if (!result.success) {
-      toast.error(isFkRestrictError(result.error) ? FK_RESTRICT_ERROR : "Couldn't delete path. Try again.")
+      toast.error(
+        isFkError(result.error) && result.error
+          ? result.error
+          : "Couldn't delete path. Try again.",
+      )
     } else {
       router.push('/admin/paths')
     }
@@ -196,7 +196,11 @@ export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
     const result = await removePathNode(nodeId)
     setRemovingNodeId(null)
     if (!result.success) {
-      toast.error(isFkRestrictError(result.error) ? FK_RESTRICT_ERROR : "Couldn't remove node. Try again.")
+      toast.error(
+        isFkError(result.error) && result.error
+          ? result.error
+          : "Couldn't remove node. Try again.",
+      )
     } else {
       refresh()
     }
