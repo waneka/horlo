@@ -485,25 +485,30 @@ export function ListEditorClient({ list: initialList, isPinned: initialIsPinned 
         {list.status === 'draft' && (
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger>
-                {/* span wrapper needed: disabled buttons don't fire mouse events */}
-                <span>
-                  <Button
-                    type="button"
-                    variant="default"
-                    onClick={handlePublish}
-                    disabled={!canPublish || publishing}
-                  >
-                    {publishing ? (
-                      <>
-                        <Loader2 className="animate-spin" aria-hidden="true" />
-                        Publishing…
-                      </>
-                    ) : (
-                      'Publish List'
-                    )}
-                  </Button>
-                </span>
+              {/*
+                render={<span />}: the tooltip trigger renders AS a span, not
+                its own <button>. A bare <TooltipTrigger> emits a <button>, and
+                the <Button> inside is also a <button> — nesting <button> is
+                invalid HTML and breaks hydration. The span also keeps the
+                tooltip hoverable when the Button is disabled (disabled buttons
+                don't fire pointer events).
+              */}
+              <TooltipTrigger render={<span />}>
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={handlePublish}
+                  disabled={!canPublish || publishing}
+                >
+                  {publishing ? (
+                    <>
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                      Publishing…
+                    </>
+                  ) : (
+                    'Publish List'
+                  )}
+                </Button>
               </TooltipTrigger>
               {!canPublish && (
                 <TooltipContent>Add at least one watch to publish.</TooltipContent>
