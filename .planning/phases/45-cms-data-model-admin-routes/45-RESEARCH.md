@@ -998,22 +998,25 @@ vi.mock('next/cache', () => ({
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **cms_settings public read policy**
    - What we know: Phase 47 hero render reads `cms_settings`. The table contains only the pinned list ID and expiry — no sensitive data.
    - What's unclear: Should `cms_settings` have a public anon SELECT policy (simplest for Phase 47 server component) or owner-only SELECT?
    - Recommendation: Public authenticated SELECT (no sensitive data; simpler Phase 47 integration). Add to planner's discretion.
+   - RESOLVED: `cms_settings` gets a public `authenticated, anon` SELECT policy — implemented in Plan 45-01 Task 2 step (5).
 
 2. **Cover image path in cms_settings vs curated_lists**
    - What we know: `cover_url` lives on `curated_lists`; `cms_settings.pinned_list_id` FK points to the list.
    - What's unclear: Phase 47 hero needs the cover URL. It can join `curated_lists` via the FK, or we can denormalize the cover URL into `cms_settings`.
    - Recommendation: Join — don't denormalize. One join is trivial.
+   - RESOLVED: Cover image is joined from `curated_lists` via `pinned_list_id` — NOT denormalized into `cms_settings`. Enforced in Plan 45-04 Task 1 (cmsSettings DAL has no cover column).
 
 3. **CMS-10 content selection**
    - What we know: 10 seed collection paths authored through the admin UI. Content (which watches, what themes) is user-selected at execution time.
    - What's unclear: Does the user want suggestions, or will they come prepared?
    - Recommendation: Plan should include a placeholder task: "Author 10 seed collection paths via admin UI — user selects content at execution time." No code change required.
+   - RESOLVED: CMS-10 seed-path content is selected by the user during the Plan 45-06 authoring checkpoint — no code change required.
 
 ---
 
