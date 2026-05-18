@@ -201,7 +201,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 45-02-PLAN.md — cms-covers Storage bucket migration + cmsCovers.ts upload helper
 - [x] 45-03-PLAN.md — Curated-lists DAL + owner-gated Server Actions (CRUD, items, ordering, publish)
 - [x] 45-04-PLAN.md — Collection-paths + cms_settings DAL + Server Actions (path CRUD, hero pin, catalog picker)
-- [ ] 45-05-PLAN.md — Admin route guard + /admin/lists + /admin/paths pages and editors
+- [x] 45-05-PLAN.md — Admin route guard + /admin/lists + /admin/paths pages and editors
 - [ ] 45-06-PLAN.md — Author 10 seed collection paths through the admin UI (human-action checkpoint)
 **UI hint**: yes
 
@@ -238,7 +238,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 |-------|----------------|--------|-----------|
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
-| 45. CMS Data Model + Admin Routes | 4/6 | In Progress|  |
+| 45. CMS Data Model + Admin Routes | 5/6 | In Progress|  |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
