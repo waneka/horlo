@@ -156,3 +156,22 @@ export async function swapPathSortOrder(idA: string, orderA: number, idB: string
       .where(eq(collectionPaths.id, idB))
   })
 }
+
+// WR-02: transactional path reorder — re-select inside the tx so the swap uses
+// fresh sortOrder values, eliminating the lost-update race between fetch and swap.
+export async function movePathInTransaction(pathId: string, direction: 'up' | 'down') {
+  await db.transaction(async (tx) => {
+    const paths = await tx
+      .select({ id: collectionPaths.id, sortOrder: collectionPaths.sortOrder })
+      .from(collectionPaths)
+      .orderBy(asc(collectionPaths.sortOrder))
+    const idx = paths.findIndex((p) => p.id === pathId)
+    if (idx === -1) return
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (neighborIdx < 0 || neighborIdx >= paths.length) return // already at edge — no-op
+    const current = paths[idx]
+    const neighbor = paths[neighborIdx]
+    await tx.update(collectionPaths).set({ sortOrder: neighbor.sortOrder }).where(eq(collectionPaths.id, current.id))
+    await tx.update(collectionPaths).set({ sortOrder: current.sortOrder }).where(eq(collectionPaths.id, neighbor.id))
+  })
+}

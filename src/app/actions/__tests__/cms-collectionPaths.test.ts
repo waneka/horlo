@@ -22,6 +22,8 @@ vi.mock('@/data/collectionPaths', () => ({
   getAllPathsForOwner: vi.fn(),
   getPathById: vi.fn(),
   swapPathSortOrder: vi.fn(),
+  // WR-02: transactional path reorder helper (lookup + swap inside one tx)
+  movePathInTransaction: vi.fn(),
   setPathStatus: vi.fn(),
 }))
 

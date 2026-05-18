@@ -93,6 +93,8 @@ export async function updateCuratedList(data: unknown): Promise<ActionResult<voi
   try {
     const { id, ...fields } = parsed.data
     await curatedListsDAL.updateList(id, fields)
+    // WR-03: title/cover/intro edits change a pinned hero's rendered content.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[updateCuratedList] unexpected error:', err)
@@ -132,6 +134,8 @@ export async function addWatchToList(data: unknown): Promise<ActionResult<void>>
 
   try {
     await curatedListsDAL.addListItem(parsed.data)
+    // WR-03: adding a watch changes a pinned hero's rendered list contents.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     // Surface clean error for duplicate (unique constraint violation)
@@ -158,6 +162,8 @@ export async function updateListItemCommentary(data: unknown): Promise<ActionRes
 
   try {
     await curatedListsDAL.updateListItemCommentary(parsed.data.itemId, parsed.data.commentary)
+    // WR-03: commentary edits change a pinned hero's rendered list contents.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[updateListItemCommentary] unexpected error:', err)
@@ -174,6 +180,8 @@ export async function removeWatchFromList(itemId: string): Promise<ActionResult<
 
   try {
     await curatedListsDAL.removeListItem(itemId)
+    // WR-03: removing a watch changes a pinned hero's rendered list contents.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[removeWatchFromList] unexpected error:', err)
@@ -191,15 +199,10 @@ export async function moveListUp(listId: string): Promise<ActionResult<void>> {
   }
 
   try {
-    const lists = await curatedListsDAL.getAllListsForOwner()
-    const idx = lists.findIndex((l) => l.id === listId)
-    if (idx <= 0) {
-      // Already first — no-op (error-free)
-      return { success: true, data: undefined }
-    }
-    const current = lists[idx]
-    const above = lists[idx - 1]
-    await curatedListsDAL.swapListSortOrder(current.id, current.sortOrder, above.id, above.sortOrder)
+    // WR-02: lookup + swap inside one transaction — no lost-update race.
+    await curatedListsDAL.moveListInTransaction(listId, 'up')
+    // WR-03: reordering changes a pinned hero's rendered list ordering.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListUp] unexpected error:', err)
@@ -215,15 +218,10 @@ export async function moveListDown(listId: string): Promise<ActionResult<void>> 
   }
 
   try {
-    const lists = await curatedListsDAL.getAllListsForOwner()
-    const idx = lists.findIndex((l) => l.id === listId)
-    if (idx === -1 || idx >= lists.length - 1) {
-      // Already last — no-op (error-free)
-      return { success: true, data: undefined }
-    }
-    const current = lists[idx]
-    const below = lists[idx + 1]
-    await curatedListsDAL.swapListSortOrder(current.id, current.sortOrder, below.id, below.sortOrder)
+    // WR-02: lookup + swap inside one transaction — no lost-update race.
+    await curatedListsDAL.moveListInTransaction(listId, 'down')
+    // WR-03: reordering changes a pinned hero's rendered list ordering.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListDown] unexpected error:', err)
@@ -241,18 +239,11 @@ export async function moveListItemUp(itemId: string): Promise<ActionResult<void>
   }
 
   try {
-    const item = await curatedListsDAL.getListItemById(itemId)
-    if (!item) return { success: false, error: 'Item not found.' }
-
-    const items = await curatedListsDAL.getListItems(item.listId)
-    const idx = items.findIndex((i) => i.id === itemId)
-    if (idx <= 0) {
-      // Already first — no-op (error-free)
-      return { success: true, data: undefined }
-    }
-    const current = items[idx]
-    const above = items[idx - 1]
-    await curatedListsDAL.swapListItemSortOrder(current.id, current.sortOrder, above.id, above.sortOrder)
+    // WR-02: lookup + swap inside one transaction — no lost-update race.
+    const res = await curatedListsDAL.moveListItemInTransaction(itemId, 'up')
+    if (!res.found) return { success: false, error: 'Item not found.' }
+    // WR-03: item reorder changes a pinned hero's rendered list contents.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListItemUp] unexpected error:', err)
@@ -268,18 +259,11 @@ export async function moveListItemDown(itemId: string): Promise<ActionResult<voi
   }
 
   try {
-    const item = await curatedListsDAL.getListItemById(itemId)
-    if (!item) return { success: false, error: 'Item not found.' }
-
-    const items = await curatedListsDAL.getListItems(item.listId)
-    const idx = items.findIndex((i) => i.id === itemId)
-    if (idx === -1 || idx >= items.length - 1) {
-      // Already last — no-op (error-free)
-      return { success: true, data: undefined }
-    }
-    const current = items[idx]
-    const below = items[idx + 1]
-    await curatedListsDAL.swapListItemSortOrder(current.id, current.sortOrder, below.id, below.sortOrder)
+    // WR-02: lookup + swap inside one transaction — no lost-update race.
+    const res = await curatedListsDAL.moveListItemInTransaction(itemId, 'down')
+    if (!res.found) return { success: false, error: 'Item not found.' }
+    // WR-03: item reorder changes a pinned hero's rendered list contents.
+    revalidateTag('explore:hero', 'max')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListItemDown] unexpected error:', err)

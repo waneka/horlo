@@ -120,6 +120,27 @@ export async function swapListSortOrder(
   })
 }
 
+// ----- WR-02: transactional reorder — re-select inside the tx so the swap
+// uses fresh sortOrder values, eliminating the lost-update race between a
+// separate fetch and a separate swap. `direction` picks the neighbour. -----
+
+export async function moveListInTransaction(listId: string, direction: 'up' | 'down') {
+  await db.transaction(async (tx) => {
+    const lists = await tx
+      .select({ id: curatedLists.id, sortOrder: curatedLists.sortOrder })
+      .from(curatedLists)
+      .orderBy(asc(curatedLists.sortOrder))
+    const idx = lists.findIndex((l) => l.id === listId)
+    if (idx === -1) return
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (neighborIdx < 0 || neighborIdx >= lists.length) return // already at edge — no-op
+    const current = lists[idx]
+    const neighbor = lists[neighborIdx]
+    await tx.update(curatedLists).set({ sortOrder: neighbor.sortOrder }).where(eq(curatedLists.id, current.id))
+    await tx.update(curatedLists).set({ sortOrder: current.sortOrder }).where(eq(curatedLists.id, neighbor.id))
+  })
+}
+
 // ----- List item helpers -----
 
 export async function getListItems(listId: string) {
@@ -179,5 +200,32 @@ export async function swapListItemSortOrder(
   await db.transaction(async (tx) => {
     await tx.update(curatedListItems).set({ sortOrder: orderB }).where(eq(curatedListItems.id, idA))
     await tx.update(curatedListItems).set({ sortOrder: orderA }).where(eq(curatedListItems.id, idB))
+  })
+}
+
+// ----- WR-02: transactional list-item reorder — re-select inside the tx -----
+
+export async function moveListItemInTransaction(itemId: string, direction: 'up' | 'down') {
+  return db.transaction(async (tx) => {
+    const target = await tx
+      .select({ id: curatedListItems.id, listId: curatedListItems.listId })
+      .from(curatedListItems)
+      .where(eq(curatedListItems.id, itemId))
+      .limit(1)
+    if (!target[0]) return { found: false as const }
+    const items = await tx
+      .select({ id: curatedListItems.id, sortOrder: curatedListItems.sortOrder })
+      .from(curatedListItems)
+      .where(eq(curatedListItems.listId, target[0].listId))
+      .orderBy(asc(curatedListItems.sortOrder))
+    const idx = items.findIndex((i) => i.id === itemId)
+    if (idx === -1) return { found: true as const }
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (neighborIdx < 0 || neighborIdx >= items.length) return { found: true as const }
+    const current = items[idx]
+    const neighbor = items[neighborIdx]
+    await tx.update(curatedListItems).set({ sortOrder: neighbor.sortOrder }).where(eq(curatedListItems.id, current.id))
+    await tx.update(curatedListItems).set({ sortOrder: current.sortOrder }).where(eq(curatedListItems.id, neighbor.id))
+    return { found: true as const }
   })
 }

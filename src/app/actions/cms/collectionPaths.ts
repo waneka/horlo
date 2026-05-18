@@ -157,15 +157,8 @@ export async function movePathUp(pathId: string): Promise<ActionResult<void>> {
     return { success: false, error: 'Not authorized' }
   }
   try {
-    const paths = await collectionPathsDAL.getAllPathsForOwner()
-    const idx = paths.findIndex((p) => p.id === pathId)
-    if (idx <= 0) return { success: true, data: undefined } // already first
-    const above = paths[idx - 1]
-    const current = paths[idx]
-    await collectionPathsDAL.swapPathSortOrder(
-      current.id, current.sortOrder,
-      above.id, above.sortOrder,
-    )
+    // WR-02: lookup + swap inside one transaction — no lost-update race.
+    await collectionPathsDAL.movePathInTransaction(pathId, 'up')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[movePathUp] unexpected error:', err)
@@ -180,15 +173,8 @@ export async function movePathDown(pathId: string): Promise<ActionResult<void>> 
     return { success: false, error: 'Not authorized' }
   }
   try {
-    const paths = await collectionPathsDAL.getAllPathsForOwner()
-    const idx = paths.findIndex((p) => p.id === pathId)
-    if (idx < 0 || idx >= paths.length - 1) return { success: true, data: undefined } // already last
-    const below = paths[idx + 1]
-    const current = paths[idx]
-    await collectionPathsDAL.swapPathSortOrder(
-      current.id, current.sortOrder,
-      below.id, below.sortOrder,
-    )
+    // WR-02: lookup + swap inside one transaction — no lost-update race.
+    await collectionPathsDAL.movePathInTransaction(pathId, 'down')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[movePathDown] unexpected error:', err)

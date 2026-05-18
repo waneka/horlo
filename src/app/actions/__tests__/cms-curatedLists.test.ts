@@ -55,6 +55,9 @@ vi.mock('@/data/curatedLists', () => ({
   getListWithItems: vi.fn(),
   swapListSortOrder: vi.fn(),
   swapListItemSortOrder: vi.fn(),
+  // WR-02: transactional reorder helpers (lookup + swap inside one tx)
+  moveListInTransaction: vi.fn(),
+  moveListItemInTransaction: vi.fn(),
 }))
 
 // Import AFTER mocking
@@ -223,60 +226,45 @@ describe('Behavior 4: revalidateTag("explore:hero","max") on publish and unpubli
   })
 })
 
-// ─── Behavior 5: moveListItemUp/Down correct reordering ───
+// ─── Behavior 5: moveListItemUp/Down — WR-02 transactional reorder ───
 
-describe('Behavior 5: moveListItemUp/Down correct reordering sequence', () => {
-  const item1 = { id: VALID_UUID, listId: VALID_UUID_3, catalogId: VALID_UUID_2, sortOrder: 0, createdAt: new Date(), commentary: null }
-  const item2 = { id: VALID_UUID_2, listId: VALID_UUID_3, catalogId: VALID_UUID, sortOrder: 1, createdAt: new Date(), commentary: null }
-  const item3 = { id: VALID_UUID_3, listId: VALID_UUID_3, catalogId: '33333333-3333-4333-8333-333333333334', sortOrder: 2, createdAt: new Date(), commentary: null }
-
-  it('moveListItemUp swaps the item with the item above it (item at index 1 → index 0)', async () => {
-    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item2)
-    vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
-    vi.mocked(curatedListsDAL.swapListItemSortOrder).mockResolvedValue(undefined)
+describe('Behavior 5: moveListItemUp/Down delegate to transactional reorder helper', () => {
+  it('moveListItemUp delegates to moveListItemInTransaction(itemId, "up")', async () => {
+    vi.mocked(curatedListsDAL.moveListItemInTransaction).mockResolvedValue({ found: true })
 
     const result = await moveListItemUp(VALID_UUID_2)
 
     expect(result.success).toBe(true)
-    // Swap: item2 (sortOrder 1) with item1 (sortOrder 0)
-    expect(vi.mocked(curatedListsDAL.swapListItemSortOrder)).toHaveBeenCalledWith(
-      VALID_UUID_2, 1, VALID_UUID, 0
+    expect(vi.mocked(curatedListsDAL.moveListItemInTransaction)).toHaveBeenCalledWith(
+      VALID_UUID_2, 'up'
     )
   })
 
-  it('moveListItemUp is a no-op when item is already first (sortOrder 0)', async () => {
-    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item1)
-    vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
-
-    const result = await moveListItemUp(VALID_UUID)
-
-    // Already first — no swap needed, no error
-    expect(result.success).toBe(true)
-    expect(vi.mocked(curatedListsDAL.swapListItemSortOrder)).not.toHaveBeenCalled()
-  })
-
-  it('moveListItemDown swaps the item with the item below it', async () => {
-    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item2)
-    vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
-    vi.mocked(curatedListsDAL.swapListItemSortOrder).mockResolvedValue(undefined)
+  it('moveListItemDown delegates to moveListItemInTransaction(itemId, "down")', async () => {
+    vi.mocked(curatedListsDAL.moveListItemInTransaction).mockResolvedValue({ found: true })
 
     const result = await moveListItemDown(VALID_UUID_2)
 
     expect(result.success).toBe(true)
-    // Swap: item2 (sortOrder 1) with item3 (sortOrder 2)
-    expect(vi.mocked(curatedListsDAL.swapListItemSortOrder)).toHaveBeenCalledWith(
-      VALID_UUID_2, 1, VALID_UUID_3, 2
+    expect(vi.mocked(curatedListsDAL.moveListItemInTransaction)).toHaveBeenCalledWith(
+      VALID_UUID_2, 'down'
     )
   })
 
-  it('moveListItemDown is a no-op when item is already last', async () => {
-    vi.mocked(curatedListsDAL.getListItemById).mockResolvedValue(item3)
-    vi.mocked(curatedListsDAL.getListItems).mockResolvedValue([item1, item2, item3])
+  it('moveListItemUp returns { success:false, error:"Item not found." } when the item is absent', async () => {
+    vi.mocked(curatedListsDAL.moveListItemInTransaction).mockResolvedValue({ found: false })
 
-    const result = await moveListItemDown(VALID_UUID_3)
+    const result = await moveListItemUp(VALID_UUID)
 
-    // Already last — no swap needed, no error
-    expect(result.success).toBe(true)
-    expect(vi.mocked(curatedListsDAL.swapListItemSortOrder)).not.toHaveBeenCalled()
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('Item not found.')
+  })
+
+  it('moveListItemUp revalidates the explore:hero cache (WR-03)', async () => {
+    vi.mocked(curatedListsDAL.moveListItemInTransaction).mockResolvedValue({ found: true })
+
+    await moveListItemUp(VALID_UUID_2)
+
+    expect(vi.mocked(revalidateTag)).toHaveBeenCalledWith('explore:hero', 'max')
   })
 })
