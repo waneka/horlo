@@ -197,7 +197,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   6. Deleting a catalog watch referenced by a published list or path is blocked at the database layer; the admin UI warns before attempting such a delete
   7. Ten seed collection paths are authored through the admin UI and are in published state
 **Plans**: 6 plans
-- [ ] 45-01-PLAN.md — Schema foundation: 5 CMS tables + profiles.is_admin migration, assertOwner(), [BLOCKING] local schema push
+- [x] 45-01-PLAN.md — Schema foundation: 5 CMS tables + profiles.is_admin migration, assertOwner(), [BLOCKING] local schema push
 - [ ] 45-02-PLAN.md — cms-covers Storage bucket migration + cmsCovers.ts upload helper
 - [ ] 45-03-PLAN.md — Curated-lists DAL + owner-gated Server Actions (CRUD, items, ordering, publish)
 - [ ] 45-04-PLAN.md — Collection-paths + cms_settings DAL + Server Actions (path CRUD, hero pin, catalog picker)
@@ -238,7 +238,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 |-------|----------------|--------|-----------|
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
-| 45. CMS Data Model + Admin Routes | 0/6 | Not started | - |
+| 45. CMS Data Model + Admin Routes | 1/6 | In Progress|  |
 | 46. Explore Shell + Browse + Archetypes | 0/TBD | Not started | - |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
