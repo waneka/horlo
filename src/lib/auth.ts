@@ -38,3 +38,18 @@ export async function getCurrentUserFull(): Promise<User> {
   if (error || !user) throw new UnauthorizedError()
   return user
 }
+
+// assertOwner — first call in every CMS Server Action (D-06).
+// Layout guard alone is insufficient (Partial Rendering does not re-execute layout on navigation).
+// Three-layer security: RLS write policies (DB) + layout redirect (UX) + this call (SA).
+export async function assertOwner(): Promise<{ id: string; email: string }> {
+  const user = await getCurrentUser()
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+  if (!data?.is_admin) throw new UnauthorizedError('Not an admin')
+  return user
+}
