@@ -57,15 +57,20 @@ Source: standard 8-point scale; exceptions derived from CONTEXT.md D-12 (up/down
 
 ## Typography
 
+Two weights only: 400 (regular) and 600 (semibold). Labels are distinguished
+from Body text by color (`text-muted-foreground`) and/or size (`text-xs`
+uppercase for metadata), never by a third weight.
+
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px (text-sm) | 400 (regular) | 1.5 | Form field values, list item titles, search results, commentary textarea |
-| Label | 14px (text-sm) | 500 (medium) | 1.4 | Form field labels, section headings within editor, chip text |
+| Label | 14px (text-sm) | 600 (semibold) | 1.4 | Form field labels, section headings within editor, chip text — rendered in `text-muted-foreground` to distinguish from body text at the same size |
 | Heading | 20px (text-xl) | 600 (semibold) | 1.2 | Page-level headings (`/admin/lists` h1, `/admin/paths` h1) |
 | Subheading | 16px (text-base) | 600 (semibold) | 1.3 | Editor section headings ("List Items", "Cover Image", "Intro Copy") |
 
 Notes:
-- Markdown preview pane rendered by react-markdown inherits body styles. Do NOT wrap in a `prose` Tailwind Typography class — the project does not have `@tailwindcss/typography` installed. Apply manual styles: `text-sm leading-relaxed text-foreground`. Headings in markdown render as subheading weight.
+- Label uses `font-semibold text-muted-foreground` (not `font-medium`) so that it reads as structural scaffolding, not content. Body text uses `font-normal text-foreground`.
+- Markdown preview pane rendered by react-markdown inherits body styles. Do NOT wrap in a `prose` Tailwind Typography class — the project does not have `@tailwindcss/typography` installed. Apply manual styles: `text-sm leading-relaxed text-foreground`. Headings in markdown render at subheading weight (600 semibold).
 - Page title uses `text-xl font-semibold` matching the existing WatchCard heading pattern (`src/components/watch/WatchCard.tsx` line 76).
 - `text-xs` (12px) is used for status badges, item count indicators, and muted metadata only — not for primary content.
 
@@ -94,23 +99,28 @@ All components reuse existing `src/components/ui/` primitives. No new shadcn or 
 
 ### List Index Page (`/admin/lists`)
 
+Primary visual anchor: the "New List" button (`variant="default"`) in the page header — it is the sole primary CTA on an otherwise ghost/outline action surface.
+
 | Element | Component | Variant/Notes |
 |---------|-----------|---------------|
 | Page heading | `<h1 className="text-xl font-semibold">` | Plain HTML — no component wrapper |
-| "New List" button | `Button` | `variant="default"` (primary) |
+| "New List" button | `Button` | `variant="default"` (primary) — primary visual anchor for this screen |
 | List row card | `Card` + `CardContent` | Existing `src/components/ui/card.tsx` |
 | Draft badge | `Badge` | `variant="secondary"` |
 | Published badge | `Badge` | `variant="default"` |
-| "Move up" / "Move down" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `ChevronUp`/`ChevronDown` icons |
+| "Move up" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `ChevronUp` icon, `aria-label="Move up"` |
+| "Move down" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `ChevronDown` icon, `aria-label="Move down"` |
 | "Edit" link | `Button` | `size="sm"`, `variant="outline"`, rendered as `<Link>` (nativeButton=false) |
 | "Delete" button | `Button` | `size="sm"`, `variant="destructive"` |
 
 ### Path Index Page (`/admin/paths`)
 
+Primary visual anchor: the "New Path" button (`variant="default"`) in the page header.
+
 | Element | Component | Variant/Notes |
 |---------|-----------|---------------|
 | Page heading | `<h1 className="text-xl font-semibold">` | Plain HTML |
-| "New Path" button | `Button` | `variant="default"` |
+| "New Path" button | `Button` | `variant="default"` — primary visual anchor for this screen |
 | Path row card | `Card` + `CardContent` | Same card primitive as list index |
 | Path-type chip | `Badge` | `variant="outline"` (unselected); `variant="secondary"` (selected/display-only) |
 | Draft / Published badge | `Badge` | Same as list index |
@@ -120,17 +130,19 @@ All components reuse existing `src/components/ui/` primitives. No new shadcn or 
 
 | Element | Component | Variant/Notes |
 |---------|-----------|---------------|
-| "Title" field | `Input` + `Label` | Full-width |
-| "Curator name" field | `Input` + `Label` | Full-width |
+| "Title" field | `Input` + `Label` | Full-width; label uses `font-semibold text-muted-foreground` |
+| "Curator name" field | `Input` + `Label` | Full-width; same label treatment |
 | Cover image upload | Custom `CmsCoverUploader` — modeled on `CatalogPhotoUploader` | 16:9 aspect-ratio container (`aspect-video`) with `object-cover`; fallback: `bg-muted` placeholder with `ImageIcon` lucide icon centered; "Upload Image" `Button` variant="outline" below |
 | Markdown intro textarea | `Textarea` | `min-h-16`, auto-height via `field-sizing-content` |
 | Markdown preview pane | `Tabs` (Edit / Preview) | `TabsList` + two `TabsTrigger` + two `TabsContent`; preview renders react-markdown output with `text-sm leading-relaxed` |
 | Watch search picker | `Input` (search) + inline dropdown | `Popover` or custom positioned div; results as clickable rows showing brand + model + reference |
 | Per-item commentary | `Textarea` | `min-h-[60px]` inline below each list item |
-| "Move up" / "Move down" | `Button` | `size="icon-sm"`, `variant="ghost"` |
-| "Remove watch" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `X` icon, `text-destructive` class |
+| "Move up" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `ChevronUp` icon, `aria-label="Move up"` |
+| "Move down" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `ChevronDown` icon, `aria-label="Move down"` |
+| "Remove watch" | `Button` | `size="icon-sm"`, `variant="ghost"`, lucide `X` icon, `text-destructive` class, `aria-label="Remove watch"` |
 | "Save Draft" button | `Button` | `variant="outline"` |
-| "Publish" / "Unpublish" button | `Button` | `variant="default"` for publish; `variant="secondary"` for unpublish |
+| "Publish List" button | `Button` | `variant="default"` — shown only when `status === 'draft'` |
+| "Unpublish List" button | `Button` | `variant="secondary"` — shown only when `status === 'published'` |
 | "Delete List" button | `Button` | `variant="destructive"`, placed at bottom of page, visually separated by a `border-t border-border mt-8 pt-8` divider |
 
 ### Path Editor (`/admin/paths/[id]`)
@@ -142,7 +154,10 @@ All components reuse existing `src/components/ui/` primitives. No new shadcn or 
 | Per-node rationale | `Textarea` | `min-h-[60px]` below each follow-on picker |
 | Path-type label | Four `Button` chips in a flex row | `size="sm"`, `variant="outline"` unselected; `variant="secondary"` selected; exactly one selected at a time; text: "Going Deeper", "Branching Out", "Trading Up", "Filling a Gap" |
 | Path rationale | `Textarea` | Full-width; label: "Editorial Rationale" |
-| "Save Draft" / "Publish" / "Delete Path" | Same pattern as list editor | — |
+| "Save Draft" button | `Button` | `variant="outline"` |
+| "Publish Path" button | `Button` | `variant="default"` — shown only when `status === 'draft'` |
+| "Unpublish Path" button | `Button` | `variant="secondary"` — shown only when `status === 'published'` |
+| "Delete Path" button | `Button` | `variant="destructive"`, same divider treatment as list editor |
 
 ### FK-RESTRICT Error State
 
@@ -223,9 +238,9 @@ No confirmation modal for this error. It is a DB-enforced failure, not a pre-del
 
 ### Draft / Publish controls (CMS-06)
 
-- "Publish" button is disabled (not hidden) when the list has zero items. Add `disabled` attribute and tooltip via `Tooltip` primitive: "Add at least one watch to publish."
-- "Unpublish" shows only when `status === 'published'`.
-- "Publish" shows only when `status === 'draft'`.
+- "Publish List" / "Publish Path" button is disabled (not hidden) when the list has zero items. Add `disabled` attribute and tooltip via `Tooltip` primitive: "Add at least one watch to publish."
+- "Unpublish List" / "Unpublish Path" shows only when `status === 'published'`.
+- "Publish List" / "Publish Path" shows only when `status === 'draft'`.
 - These two states are never shown simultaneously.
 
 ### Hero pin control (CMS-08)
@@ -244,8 +259,10 @@ No confirmation modal for this error. It is a DB-enforced failure, not a pre-del
 | Primary CTA — Lists | "New List" |
 | Primary CTA — Paths | "New Path" |
 | Save draft | "Save Draft" |
-| Publish | "Publish" |
-| Unpublish | "Unpublish" |
+| Publish — list editor | "Publish List" |
+| Unpublish — list editor | "Unpublish List" |
+| Publish — path editor | "Publish Path" |
+| Unpublish — path editor | "Unpublish Path" |
 | Delete list | "Delete List" |
 | Delete path | "Delete Path" |
 | Empty state — lists index heading | "No lists yet" |
@@ -258,7 +275,7 @@ No confirmation modal for this error. It is a DB-enforced failure, not a pre-del
 | Error — zero-item publish block | "Add at least one watch to publish." (tooltip on disabled Publish button) |
 | Error — FK-RESTRICT delete block | "Can't delete — this watch is used in a list or path. Remove it from all lists and paths first." |
 | Error — cover image too large | "Image is too large. Maximum size is 4 MB." |
-| Error — generic SA failure | "Something went wrong. Try again." |
+| Error — generic SA failure | "Couldn't save changes. Try again." |
 | Destructive confirmation — delete list | Dialog: "Delete this list?" body "This action cannot be undone." Confirm button: "Delete List" (variant="destructive"). Cancel button: "Cancel" (variant="outline"). |
 | Destructive confirmation — delete path | Dialog: "Delete this path?" body "This action cannot be undone." Confirm button: "Delete Path" (variant="destructive"). Cancel button: "Cancel" (variant="outline"). |
 | Hero pin dialog heading | "Pin as Hero" |
