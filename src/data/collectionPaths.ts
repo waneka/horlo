@@ -76,7 +76,12 @@ export async function setPathNode(data: {
   slot: number // 0-2 (max 3 follow-ons, CMS-07)
   rationale?: string | null
 }) {
-  // slot maps directly to sortOrder
+  // slot maps directly to sortOrder.
+  // WR-06: re-setting an existing slot (e.g. a rationale edit on a follow-on
+  // node) must UPDATE the node, not insert a duplicate. The
+  // collection_path_nodes_unique_slot constraint on (path_id, sort_order)
+  // gives this upsert a real conflict target — onConflictDoUpdate then
+  // overwrites catalogId + rationale for the slot.
   await db
     .insert(collectionPathNodes)
     .values({
@@ -85,7 +90,13 @@ export async function setPathNode(data: {
       rationale: data.rationale ?? null,
       sortOrder: data.slot,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: [collectionPathNodes.pathId, collectionPathNodes.sortOrder],
+      set: {
+        catalogId: data.catalogId,
+        rationale: data.rationale ?? null,
+      },
+    })
 }
 
 export async function removePathNode(nodeId: string) {

@@ -638,6 +638,8 @@ export const collectionPathNodes = pgTable(
   (table) => [
     index('collection_path_nodes_path_id_idx').on(table.pathId),
     index('collection_path_nodes_catalog_id_idx').on(table.catalogId),
+    // WR-06: one node per slot — gives setPathNode's onConflictDoUpdate a target.
+    unique('collection_path_nodes_unique_slot').on(table.pathId, table.sortOrder),
   ],
 )
 

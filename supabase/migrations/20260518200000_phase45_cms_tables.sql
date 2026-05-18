@@ -76,7 +76,11 @@ CREATE TABLE IF NOT EXISTS public.collection_path_nodes (
   catalog_id  uuid NOT NULL REFERENCES public.watches_catalog(id) ON DELETE RESTRICT,
   rationale   text,
   sort_order  integer NOT NULL DEFAULT 0,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  -- WR-06: one node per slot. Gives setPathNode's ON CONFLICT a real target so
+  -- re-setting a slot UPDATEs the existing node (rationale edits) instead of
+  -- inserting a duplicate row in the same slot.
+  CONSTRAINT collection_path_nodes_unique_slot UNIQUE (path_id, sort_order)
 );
 
 CREATE INDEX IF NOT EXISTS collection_path_nodes_path_id_idx    ON public.collection_path_nodes (path_id);
