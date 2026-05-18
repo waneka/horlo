@@ -1,5 +1,5 @@
 ---
-status: partial
+status: resolved
 phase: 45-cms-data-model-admin-routes
 source: [45-VERIFICATION.md]
 started: 2026-05-18
@@ -8,7 +8,9 @@ updated: 2026-05-18
 
 ## Current Test
 
-[1 pass, 4 gaps found + fixed 2026-05-18 (commit 1fe14c0) — awaiting owner retest]
+[complete — owner-approved 2026-05-18. 4 UAT gaps fixed (commit 1fe14c0); a
+nested-`<button>` hydration error in the publish-control tooltip fixed
+(commit 99597ac). Owner confirmed all fixes.]
 
 ## Tests
 
@@ -43,11 +45,14 @@ result: [pending]
 ## Summary
 
 total: 7
-passed: 1
-issues: 4
-pending: 1
+passed: 6
+issues: 0
+pending: 0
 skipped: 1
 blocked: 0
+
+owner_verdict: approved 2026-05-18 — all gaps fixed and confirmed; item 7
+(FK RESTRICT) skipped as DB-level only (no admin UI in Phase 45, per D-09).
 
 ## Gaps
 
