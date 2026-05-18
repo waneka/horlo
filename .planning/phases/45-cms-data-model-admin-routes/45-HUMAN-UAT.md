@@ -8,7 +8,7 @@ updated: 2026-05-18
 
 ## Current Test
 
-[human testing in progress — 1 pass, 4 gaps found 2026-05-18]
+[1 pass, 4 gaps found + fixed 2026-05-18 (commit 1fe14c0) — awaiting owner retest]
 
 ## Tests
 
@@ -52,7 +52,7 @@ blocked: 0
 ## Gaps
 
 ### GAP-1: Markdown preview does not render block elements
-status: failed
+status: resolved
 severity: warning
 detail: In the list editor markdown preview, `#` headings and `-` bulleted lists
   render as plain body text. Italic (`*text*`) works. Cause: `@tailwindcss/typography`
@@ -63,7 +63,7 @@ fix: Install `@tailwindcss/typography`; apply `prose prose-sm` (dark-mode aware)
   the preview container and to the eventual public list-detail render so they match.
 
 ### GAP-2: Added watches do not appear until page refresh
-status: failed
+status: resolved
 severity: warning
 detail: In the list editor, searching for a watch and clicking it runs
   `addWatchToList` server-side but the UI does not update — the item list and the
@@ -76,7 +76,7 @@ fix: Add `revalidatePath` for the admin editor routes to the relevant Server Act
   handlers after a successful result.
 
 ### GAP-3: Newly saved list missing from /admin/lists until refresh
-status: failed
+status: resolved
 severity: warning
 detail: After creating/saving a list and navigating back to `/admin/lists`, the new
   list is absent until a hard reload. Same root cause as GAP-2 — `createList` /
@@ -86,7 +86,7 @@ fix: Add `revalidatePath('/admin/lists')` and `revalidatePath('/admin/paths')` t
   create/update/delete Server Actions for lists and paths.
 
 ### GAP-4: Watch cards show the catalog UUID instead of brand/model/reference
-status: failed
+status: resolved
 severity: warning
 detail: Watch cards in both the list editor and path editor display
   `Watch ID: {catalogId}` rather than the watch's brand, model, and reference.
