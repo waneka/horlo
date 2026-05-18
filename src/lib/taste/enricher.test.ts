@@ -221,4 +221,19 @@ describe('enrichTasteAttributes', () => {
     expect(mockCreate.mock.calls[0][0].tool_choice).toEqual({ type: 'auto' })
     expect(mockCreate.mock.calls[1][0].tool_choice).toEqual({ type: 'tool', name: 'record_taste_attributes' })
   })
+
+  it('Turn 1 exposes only web_search, never the custom tool (regression: dangling tool_use 400)', async () => {
+    await enrichTasteAttributes(BASE_INPUT)
+    // Turn 1 must NOT include record_taste_attributes. With the custom tool in
+    // scope and tool_choice: auto, Claude emits the custom tool_use during
+    // Turn 1; replaying that content as Turn 2's assistant message leaves a
+    // client tool_use with no tool_result → API 400 on every row.
+    const turn1Names = mockCreate.mock.calls[0][0].tools.map((t: { name: string }) => t.name)
+    expect(turn1Names).toEqual(['web_search'])
+
+    // Turn 2 carries both: web_search (conversation continuity) + the custom tool.
+    const turn2Names = mockCreate.mock.calls[1][0].tools.map((t: { name: string }) => t.name)
+    expect(turn2Names).toContain('web_search')
+    expect(turn2Names).toContain('record_taste_attributes')
+  })
 })

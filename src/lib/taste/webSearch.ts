@@ -54,12 +54,17 @@ export interface EnrichWithWebSearchResult {
 /**
  * Two-turn web_search + forced-tool pattern (D-06, RESEARCH Pattern 1).
  *
- * Turn 1: `tool_choice: { type: 'auto' }` with both customTools and WEB_SEARCH_TOOL
- *         in tools array — Claude decides to search for grounding context.
+ * Turn 1: `tool_choice: { type: 'auto' }` with ONLY WEB_SEARCH_TOOL in the tools
+ *         array — Claude can search for grounding context but cannot emit the
+ *         custom tool. Exposing customTools here lets Claude call them mid-Turn-1,
+ *         producing a dangling client `tool_use` block that has no `tool_result`
+ *         when Turn 1's content is replayed as the assistant message in Turn 2 —
+ *         the API rejects that with a 400 (`tool_use` ids without `tool_result`).
  *         If stop_reason === 'pause_turn', issue exactly one continuation call.
  *
- * Turn 2: `tool_choice: { type: 'tool', name: customToolName }` forced — Claude emits
- *         the structured output with web search results in context.
+ * Turn 2: `tool_choice: { type: 'tool', name: customToolName }` forced, with
+ *         customTools + WEB_SEARCH_TOOL in scope — Claude emits the structured
+ *         output with web search results in context.
  *
  * Does NOT throw — all errors are surfaced via the caller's try/catch.
  * Sets webSearchUnavailable: true when web_search is org-disabled, then continues
@@ -81,11 +86,15 @@ export async function enrichWithWebSearch(
     WEB_SEARCH_TOOL,
   ]
 
-  // Turn 1: auto — let Claude decide to search for grounding context
+  // Turn 1: auto — let Claude decide to search for grounding context.
+  // ONLY WEB_SEARCH_TOOL is exposed here: if customTools were in scope, Claude
+  // would call the custom tool mid-Turn-1, leaving a dangling client `tool_use`
+  // block that breaks Turn 2's message array (API 400). Custom tools enter in
+  // Turn 2 only.
   let searchResponse = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2048,
-    tools: allTools,
+    tools: [WEB_SEARCH_TOOL],
     tool_choice: { type: 'auto' },
     messages: initialMessages,
   })
@@ -96,7 +105,7 @@ export async function enrichWithWebSearch(
     searchResponse = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
-      tools: allTools,
+      tools: [WEB_SEARCH_TOOL],
       tool_choice: { type: 'auto' },
       messages: [
         ...initialMessages,
