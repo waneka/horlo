@@ -7,7 +7,7 @@
 // Empty state per UI-SPEC §Copywriting Contract.
 // D-06: FK-RESTRICT error surfaces a destructive toast.
 
-import { startTransition, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
@@ -62,19 +62,16 @@ export function ListIndexClient({ lists: initialLists }: ListIndexClientProps) {
 
   async function handleNewList() {
     setCreating(true)
-    let result: Awaited<ReturnType<typeof createCuratedList>>
-    await new Promise<void>((resolve) => {
-      startTransition(async () => {
-        // Pass both required fields — curatorName defaults to 'Curator' and
-        // the owner can edit it in the editor. createListSchema requires min(1)
-        // on both fields, so we provide a non-empty default.
-        result = await createCuratedList({ title: 'Untitled List', curatorName: 'Curator' })
-        resolve()
-      })
-    })
+    // WR-04: await the Server Action directly. The previous Promise +
+    // startTransition wrapper and `result!` non-null assertions were unsafe —
+    // the action is already awaitable and this is a navigate-after pattern.
+    // Pass both required fields — curatorName defaults to 'Curator' and the
+    // owner can edit it in the editor. createListSchema requires min(1) on
+    // both fields, so we provide a non-empty default.
+    const result = await createCuratedList({ title: 'Untitled List', curatorName: 'Curator' })
     setCreating(false)
-    if (result!.success) {
-      router.push('/admin/lists/' + result!.data.id)
+    if (result.success) {
+      router.push('/admin/lists/' + result.data.id)
     } else {
       toast.error("Couldn't create list. Try again.")
     }

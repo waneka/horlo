@@ -13,7 +13,7 @@
 // as required fields. We therefore collect them in a "New Path" dialog before creating
 // the draft — matching the action's schema contract without changing it.
 
-import { startTransition, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
@@ -85,20 +85,17 @@ export function PathIndexClient({ paths: initialPaths }: PathIndexClientProps) {
       return
     }
     setCreating(true)
-    let result: Awaited<ReturnType<typeof createCollectionPath>>
-    await new Promise<void>((resolve) => {
-      startTransition(async () => {
-        result = await createCollectionPath({
-          seedCatalogId: newSeedId,
-          pathType: newPathType,
-        })
-        resolve()
-      })
+    // WR-04: await the Server Action directly. The previous Promise +
+    // startTransition wrapper and `result!` non-null assertions were unsafe —
+    // the action is already awaitable and this is a navigate-after pattern.
+    const result = await createCollectionPath({
+      seedCatalogId: newSeedId,
+      pathType: newPathType,
     })
     setCreating(false)
     setShowNewDialog(false)
-    if (result!.success) {
-      router.push('/admin/paths/' + result!.data.id)
+    if (result.success) {
+      router.push('/admin/paths/' + result.data.id)
     } else {
       toast.error("Couldn't create path. Try again.")
     }
