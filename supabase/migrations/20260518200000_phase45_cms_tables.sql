@@ -3,6 +3,16 @@
 -- auth.uid() always wrapped in (SELECT auth.uid()) for InitPlan optimization
 -- D-07: RESTRICT FKs on catalog-referencing columns — plain FK, NO SECURITY DEFINER (intentional)
 -- D-17: path_type is text + CHECK, not a Postgres enum
+--
+-- CR-01 SCOPE NOTE: the RLS policies below ONLY apply to access via the Supabase
+-- JS client (user-JWT authenticated as `authenticated`/`anon`). The Phase 45 CMS
+-- DAL runs through the Drizzle `db` client — a DIRECT Postgres connection
+-- (DATABASE_URL) that bypasses RLS entirely. For all Phase 45 code paths the
+-- enforced gates are: assertOwner() in every Server Action (writes) and the
+-- explicit WHERE status='published' in every public-read DAL function (draft
+-- leaks). These RLS policies are a backstop for any FUTURE Supabase-JS-client
+-- access path (e.g. Phase 47 public reads) — they are NOT an active layer for
+-- the Drizzle DAL.
 
 -- ============================================================================
 -- Step 1 (D-01): Add is_admin column to profiles

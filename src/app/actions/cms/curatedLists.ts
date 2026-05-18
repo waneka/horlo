@@ -47,8 +47,11 @@ const updateCommentarySchema = z
 
 // ----- CRUD actions -----
 
-// CRITICAL: assertOwner() is the real security gate for every CMS Server Action.
+// CRITICAL: assertOwner() is the SOLE enforced security gate for every CMS Server Action.
 // The admin layout redirect is UX only — SAs are HTTP-callable and bypass layout guards.
+// The CMS DAL runs through the Drizzle `db` client (direct Postgres connection),
+// which BYPASSES RLS — the migration's RLS write policies do NOT protect this code
+// path (CR-01). They are a backstop for any future Supabase-JS-client access only.
 // Three-block pattern: (1) assertOwner, (2) zod parse, (3) DAL call + revalidation.
 
 export async function createCuratedList(data: unknown): Promise<ActionResult<{ id: string }>> {

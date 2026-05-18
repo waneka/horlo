@@ -41,7 +41,13 @@ export async function getCurrentUserFull(): Promise<User> {
 
 // assertOwner — first call in every CMS Server Action (D-06).
 // Layout guard alone is insufficient (Partial Rendering does not re-execute layout on navigation).
-// Three-layer security: RLS write policies (DB) + layout redirect (UX) + this call (SA).
+//
+// CR-01 accuracy note: the CMS DAL runs through the Drizzle `db` client, which
+// connects directly to Postgres via DATABASE_URL and therefore BYPASSES RLS.
+// For every Phase 45 code path, `assertOwner()` is the SOLE enforced write gate
+// — the layout redirect is UX only. The RLS write policies in the Phase 45
+// migration are a backstop that only takes effect on a future Supabase-JS-client
+// access path (e.g. Phase 47 public reads); they do NOT protect any DAL call here.
 export async function assertOwner(): Promise<{ id: string; email: string }> {
   const user = await getCurrentUser()
   const supabase = await createSupabaseServerClient()

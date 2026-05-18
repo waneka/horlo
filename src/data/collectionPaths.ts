@@ -5,15 +5,18 @@ import { collectionPaths, collectionPathNodes } from '@/db/schema'
 import { asc, eq } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
-// Public-read DAL (two-layer draft-leak defense, D-03)
-// Layer 1: RLS USING (status = 'published') in the migration
-// Layer 2: explicit WHERE status = 'published' below — never relies on RLS alone
+// Public-read DAL (D-03 draft-leak defense — CR-01 accuracy)
+// The explicit WHERE status = 'published' below is the SOLE enforced draft-leak
+// gate for these DAL functions. The Drizzle `db` client connects directly to
+// Postgres (DATABASE_URL) and BYPASSES RLS, so the migration's
+// collection_paths_select_published RLS policy does NOT apply here — it is a
+// backstop only for a future Supabase-JS-client read path.
 // ---------------------------------------------------------------------------
 
 /**
  * D-03: Returns only published paths for public surfaces.
- * The WHERE status = 'published' predicate is the query-level (layer 2) guard
- * against draft leaks. RLS is layer 1; both must be present.
+ * The WHERE status = 'published' predicate is the SOLE draft-leak guard for this
+ * DAL function — RLS is bypassed by the Drizzle db client (CR-01). Never remove it.
  */
 export async function getPublishedPaths(limit = 50) {
   return db

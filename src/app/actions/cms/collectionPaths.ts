@@ -1,9 +1,11 @@
 'use server'
 
-// CRITICAL: assertOwner() is the real security gate for every CMS Server Action.
+// CRITICAL: assertOwner() is the SOLE enforced security gate for every CMS Server Action.
 // The admin layout redirect is UX only — Server Actions are HTTP-callable and bypass
-// layout guards. Three-layer security: RLS write policies (DB) + layout redirect (UX)
-// + assertOwner() here (SA). D-06.
+// layout guards. The CMS DAL runs through the Drizzle `db` client (direct Postgres
+// connection), which BYPASSES RLS — the migration's RLS write policies do NOT protect
+// this code path (CR-01). They are a backstop for any future Supabase-JS-client
+// access only (e.g. Phase 47 public reads). D-06.
 //
 // revalidateTag uses the two-argument form (single-arg is deprecated in Next.js 16).
 // See node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md

@@ -5,30 +5,33 @@ import { curatedLists, curatedListItems } from '@/db/schema'
 import { eq, asc, sql } from 'drizzle-orm'
 
 // ----- Public-read functions -----
-// D-03: Two-layer draft defense:
-//   Layer 1 — RLS USING(status='published') in supabase/migrations/...
-//   Layer 2 — explicit WHERE status='published' in every public-read DAL function (here).
-// ALWAYS include this explicit filter. RLS alone is insufficient per D-03.
+// D-03 / CR-01: the explicit WHERE status='published' below is the SOLE enforced
+// draft-leak gate for these DAL functions. The Drizzle `db` client connects
+// directly to Postgres (DATABASE_URL) and BYPASSES RLS, so the migration's
+// curated_lists_select_published RLS policy does NOT apply here — it is a
+// backstop only for a future Supabase-JS-client read path. ALWAYS include the
+// explicit filter; there is no RLS net under DAL reads.
 
 export async function getPublishedLists(limit = 12) {
   return db
     .select()
     .from(curatedLists)
-    .where(eq(curatedLists.status, 'published')) // explicit filter — always present (D-03 layer 2)
+    .where(eq(curatedLists.status, 'published')) // explicit filter — SOLE draft-leak gate for DAL reads (CR-01)
     .orderBy(asc(curatedLists.sortOrder))
     .limit(limit)
 }
 
 // ----- Owner-read functions -----
 // No status filter — owner reads all rows including drafts.
-// RLS owner SELECT policy (EXISTS is_admin predicate) permits this.
+// (The owner-scoped RLS SELECT policy exists in the migration but is not in
+//  effect here — the Drizzle `db` client bypasses RLS. CR-01.)
 
 export async function getAllListsForOwner() {
   return db
     .select()
     .from(curatedLists)
     .orderBy(asc(curatedLists.sortOrder))
-  // No status filter — owner reads all rows; RLS owner SELECT policy permits this
+  // No status filter — owner reads all rows (the Drizzle db client bypasses RLS; CR-01)
 }
 
 export async function getListById(id: string) {
