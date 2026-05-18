@@ -12,7 +12,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/auth', () => ({ assertOwner: vi.fn() }))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn() }))
+// GAP-3: collection-path actions also call revalidatePath() — mock both.
+vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }))
 vi.mock('@/data/collectionPaths', () => ({
   createPath: vi.fn(),
   updatePath: vi.fn(),

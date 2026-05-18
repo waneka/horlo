@@ -43,6 +43,13 @@ import { toast } from 'sonner'
 const PATH_TYPES = ['Going Deeper', 'Branching Out', 'Trading Up', 'Filling a Gap'] as const
 type PathType = (typeof PATH_TYPES)[number]
 
+// GAP-4: catalog watch identity for display.
+type WatchBrief = {
+  brand: string
+  model: string
+  reference: string | null
+}
+
 type PathNode = {
   id: string
   pathId: string
@@ -50,6 +57,10 @@ type PathNode = {
   rationale: string | null
   sortOrder: number
   createdAt: Date
+  // GAP-4: joined in getPathNodes for card display.
+  brand: string
+  model: string
+  reference: string | null
 }
 
 type CollectionPath = {
@@ -63,6 +74,8 @@ type CollectionPath = {
   createdAt: Date
   updatedAt: Date
   nodes: PathNode[]
+  // GAP-4: seed watch identity, resolved in getPathWithNodes.
+  seedWatch: WatchBrief | null
 }
 
 interface PathEditorClientProps {
@@ -98,7 +111,11 @@ export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
   const [removingNodeId, setRemovingNodeId] = useState<string | null>(null)
   const [settingNodeSlot, setSettingNodeSlot] = useState<number | null>(null)
 
-  const nodes = path.nodes // follow-on nodes (sortOrder 0..2, max 3)
+  // GAP-2: nodes are server-owned (set/remove all go through Server Actions).
+  // Read them from the `initialPath` prop, NOT the `path` useState mirror —
+  // router.refresh() updates the prop but never re-seeds useState, so a
+  // mirrored copy stays stale until a hard reload.
+  const nodes = initialPath.nodes // follow-on nodes (sortOrder 0..2, max 3)
 
   function refresh() {
     router.refresh()
@@ -111,7 +128,7 @@ export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
   }
 
   // All catalog IDs already in use (seed + follow-ons).
-  const usedCatalogIds = [path.seedCatalogId, ...nodes.map((n) => n.catalogId)]
+  const usedCatalogIds = [initialPath.seedCatalogId, ...nodes.map((n) => n.catalogId)]
 
   // ---- Save Draft ----
   async function handleSaveDraft() {
@@ -220,16 +237,26 @@ export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
         <p className="text-base font-semibold">Seed Watch</p>
         <Card>
           <CardContent className="pt-4">
-            {path.seedCatalogId ? (
+            {initialPath.seedCatalogId ? (
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-sm overflow-hidden bg-muted shrink-0">
                   <div className="size-10 flex items-center justify-center text-xs text-muted-foreground">
                     S
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">
-                  Seed: {path.seedCatalogId.slice(0, 8)}…
-                </p>
+                {/* GAP-4: show the seed watch's brand/model/reference, not the UUID */}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">
+                    {initialPath.seedWatch
+                      ? `${initialPath.seedWatch.brand} ${initialPath.seedWatch.model}`
+                      : 'Seed watch'}
+                  </p>
+                  {initialPath.seedWatch?.reference && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {initialPath.seedWatch.reference}
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No seed watch set.</p>
@@ -261,9 +288,17 @@ export function PathEditorClient({ path: initialPath }: PathEditorClientProps) {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 space-y-2">
-                        <p className="text-xs text-muted-foreground truncate">
-                          Watch: {node.catalogId.slice(0, 8)}…
-                        </p>
+                        {/* GAP-4: show brand/model/reference, not the catalog UUID */}
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">
+                            {node.brand} {node.model}
+                          </p>
+                          {node.reference && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {node.reference}
+                            </p>
+                          )}
+                        </div>
                         <Textarea
                           defaultValue={node.rationale ?? ''}
                           placeholder="Add rationale for this follow-on…"

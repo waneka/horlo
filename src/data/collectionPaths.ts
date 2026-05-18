@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { collectionPaths, collectionPathNodes } from '@/db/schema'
+import { collectionPaths, collectionPathNodes, watchesCatalog } from '@/db/schema'
 import { asc, eq } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
@@ -53,19 +53,48 @@ export async function getPathWithNodes(pathId: string) {
   // getListWithItems. Avoids a wasted nodes query on every notFound() hit.
   const path = await getPathById(pathId)
   if (!path) return null
-  const nodes = await getPathNodes(pathId)
-  return { ...path, nodes }
+  // GAP-4: resolve the seed watch's brand/model/reference for display alongside
+  // the follow-on nodes (which getPathNodes already enriches).
+  const [nodes, seedRows] = await Promise.all([
+    getPathNodes(pathId),
+    db
+      .select({
+        brand: watchesCatalog.brand,
+        model: watchesCatalog.model,
+        reference: watchesCatalog.reference,
+      })
+      .from(watchesCatalog)
+      .where(eq(watchesCatalog.id, path.seedCatalogId))
+      .limit(1),
+  ])
+  return { ...path, nodes, seedWatch: seedRows[0] ?? null }
 }
 
 // ---------------------------------------------------------------------------
 // collection_path_nodes helpers
 // ---------------------------------------------------------------------------
 
-/** Returns nodes for a path ordered by sortOrder (slot 0 = first follow-on). */
+/**
+ * Returns nodes for a path ordered by sortOrder (slot 0 = first follow-on).
+ * GAP-4: joins watches_catalog so node cards show brand/model/reference, not a
+ * bare UUID. innerJoin is safe — catalog_id is NOT NULL with an ON DELETE
+ * RESTRICT FK, so every node always resolves to a catalog row.
+ */
 export async function getPathNodes(pathId: string) {
   return db
-    .select()
+    .select({
+      id: collectionPathNodes.id,
+      pathId: collectionPathNodes.pathId,
+      catalogId: collectionPathNodes.catalogId,
+      rationale: collectionPathNodes.rationale,
+      sortOrder: collectionPathNodes.sortOrder,
+      createdAt: collectionPathNodes.createdAt,
+      brand: watchesCatalog.brand,
+      model: watchesCatalog.model,
+      reference: watchesCatalog.reference,
+    })
     .from(collectionPathNodes)
+    .innerJoin(watchesCatalog, eq(collectionPathNodes.catalogId, watchesCatalog.id))
     .where(eq(collectionPathNodes.pathId, pathId))
     .orderBy(asc(collectionPathNodes.sortOrder))
 }

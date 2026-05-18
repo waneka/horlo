@@ -12,12 +12,21 @@
 // hero pin cache is GLOBAL — revalidateTag('explore:hero', 'max') is the correct
 // primitive (stale-while-revalidate). See notifications.ts:14-55 for the source-level
 // Next.js 16 rationale on why revalidateTag not updateTag is used for global caches.
+//
+// GAP-3: every mutation also revalidatePath()s the admin index + editor routes so a
+// change is visible on back-navigation / after the action without a hard reload.
 
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { assertOwner } from '@/lib/auth'
 import * as collectionPathsDAL from '@/data/collectionPaths'
 import type { ActionResult } from '@/lib/actionTypes'
+
+// GAP-3: invalidate the path index and the dynamic editor route together.
+function revalidateAdminPaths() {
+  revalidatePath('/admin/paths')
+  revalidatePath('/admin/paths/[id]', 'page')
+}
 
 // D-16: path_type is a fixed four-value vocabulary. The DB CHECK constraint is layer 1;
 // this zod enum is layer 2 (application-level rejection before the DB call).
@@ -63,6 +72,7 @@ export async function createCollectionPath(data: unknown): Promise<ActionResult<
   if (!parsed.success) return { success: false, error: 'Invalid data' }
   try {
     const id = await collectionPathsDAL.createPath(parsed.data)
+    revalidateAdminPaths()
     return { success: true, data: { id } }
   } catch (err) {
     console.error('[createCollectionPath] unexpected error:', err)
@@ -84,6 +94,8 @@ export async function updateCollectionPath(data: unknown): Promise<ActionResult<
   try {
     const { pathId, ...fields } = parsed.data
     await collectionPathsDAL.updatePath(pathId, fields)
+    revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[updateCollectionPath] unexpected error:', err)
@@ -102,6 +114,8 @@ export async function deleteCollectionPath(pathId: string): Promise<ActionResult
   }
   try {
     await collectionPathsDAL.deletePath(pathId)
+    revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     // WR-01: forward a discriminable error on FK violation. Deleting a
@@ -130,6 +144,8 @@ export async function setPathNode(data: unknown): Promise<ActionResult<void>> {
   if (!parsed.success) return { success: false, error: 'Invalid data' }
   try {
     await collectionPathsDAL.setPathNode(parsed.data)
+    revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[setPathNode] unexpected error:', err)
@@ -148,6 +164,8 @@ export async function removePathNode(nodeId: string): Promise<ActionResult<void>
   }
   try {
     await collectionPathsDAL.removePathNode(nodeId)
+    revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[removePathNode] unexpected error:', err)
@@ -167,6 +185,8 @@ export async function movePathUp(pathId: string): Promise<ActionResult<void>> {
   try {
     // WR-02: lookup + swap inside one transaction — no lost-update race.
     await collectionPathsDAL.movePathInTransaction(pathId, 'up')
+    revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[movePathUp] unexpected error:', err)
@@ -183,6 +203,8 @@ export async function movePathDown(pathId: string): Promise<ActionResult<void>> 
   try {
     // WR-02: lookup + swap inside one transaction — no lost-update race.
     await collectionPathsDAL.movePathInTransaction(pathId, 'down')
+    revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[movePathDown] unexpected error:', err)
@@ -205,6 +227,7 @@ export async function publishCollectionPath(pathId: string): Promise<ActionResul
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (AGENTS.md).
     // revalidateTag not updateTag — hero cache is GLOBAL, not read-your-own-writes.
     revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[publishCollectionPath] unexpected error:', err)
@@ -222,6 +245,7 @@ export async function unpublishCollectionPath(pathId: string): Promise<ActionRes
     await collectionPathsDAL.setPathStatus(pathId, 'draft')
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (AGENTS.md).
     revalidateTag('explore:hero', 'max')
+    revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[unpublishCollectionPath] unexpected error:', err)

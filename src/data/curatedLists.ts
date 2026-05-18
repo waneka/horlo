@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { curatedLists, curatedListItems } from '@/db/schema'
+import { curatedLists, curatedListItems, watchesCatalog } from '@/db/schema'
 import { eq, asc, sql } from 'drizzle-orm'
 
 // ----- Public-read functions -----
@@ -143,10 +143,24 @@ export async function moveListInTransaction(listId: string, direction: 'up' | 'd
 
 // ----- List item helpers -----
 
+// GAP-4: join watches_catalog so list-item cards can show brand/model/reference
+// instead of a bare catalog UUID. innerJoin is safe — catalog_id is NOT NULL with
+// an ON DELETE RESTRICT FK, so every item always resolves to a catalog row.
 export async function getListItems(listId: string) {
   return db
-    .select()
+    .select({
+      id: curatedListItems.id,
+      listId: curatedListItems.listId,
+      catalogId: curatedListItems.catalogId,
+      commentary: curatedListItems.commentary,
+      sortOrder: curatedListItems.sortOrder,
+      createdAt: curatedListItems.createdAt,
+      brand: watchesCatalog.brand,
+      model: watchesCatalog.model,
+      reference: watchesCatalog.reference,
+    })
     .from(curatedListItems)
+    .innerJoin(watchesCatalog, eq(curatedListItems.catalogId, watchesCatalog.id))
     .where(eq(curatedListItems.listId, listId))
     .orderBy(asc(curatedListItems.sortOrder))
 }

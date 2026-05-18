@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* GAP-1: typography plugin — `prose` styles the CMS markdown preview (and the
+   eventual public list-detail render) so headings and lists render correctly. */
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

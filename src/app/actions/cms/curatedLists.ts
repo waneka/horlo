@@ -3,7 +3,7 @@
 // NOTE: Per AGENTS.md — read node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md
 // before using revalidateTag. Confirmed: two-argument form revalidateTag(tag, 'max') is correct.
 // Single-argument form is deprecated in Next.js 16.
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { assertOwner } from '@/lib/auth'
 import * as curatedListsDAL from '@/data/curatedLists'
@@ -71,6 +71,8 @@ export async function createCuratedList(data: unknown): Promise<ActionResult<{ i
   // Block 3: DAL call
   try {
     const id = await curatedListsDAL.createList(parsed.data)
+    // GAP-3: a newly created list must appear on /admin/lists immediately.
+    revalidatePath('/admin/lists')
     return { success: true, data: { id } }
   } catch (err) {
     console.error('[createCuratedList] unexpected error:', err)
@@ -95,6 +97,10 @@ export async function updateCuratedList(data: unknown): Promise<ActionResult<voi
     await curatedListsDAL.updateList(id, fields)
     // WR-03: title/cover/intro edits change a pinned hero's rendered content.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[updateCuratedList] unexpected error:', err)
@@ -111,6 +117,7 @@ export async function deleteCuratedList(listId: string): Promise<ActionResult<vo
 
   try {
     await curatedListsDAL.deleteList(listId)
+    revalidatePath('/admin/lists')
     return { success: true, data: undefined }
   } catch (err) {
     // WR-01: forward a discriminable error on FK violation. Deleting a
@@ -144,6 +151,10 @@ export async function addWatchToList(data: unknown): Promise<ActionResult<void>>
     await curatedListsDAL.addListItem(parsed.data)
     // WR-03: adding a watch changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     // Surface clean error for duplicate (unique constraint violation)
@@ -172,6 +183,10 @@ export async function updateListItemCommentary(data: unknown): Promise<ActionRes
     await curatedListsDAL.updateListItemCommentary(parsed.data.itemId, parsed.data.commentary)
     // WR-03: commentary edits change a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[updateListItemCommentary] unexpected error:', err)
@@ -190,6 +205,10 @@ export async function removeWatchFromList(itemId: string): Promise<ActionResult<
     await curatedListsDAL.removeListItem(itemId)
     // WR-03: removing a watch changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[removeWatchFromList] unexpected error:', err)
@@ -211,6 +230,10 @@ export async function moveListUp(listId: string): Promise<ActionResult<void>> {
     await curatedListsDAL.moveListInTransaction(listId, 'up')
     // WR-03: reordering changes a pinned hero's rendered list ordering.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListUp] unexpected error:', err)
@@ -230,6 +253,10 @@ export async function moveListDown(listId: string): Promise<ActionResult<void>> 
     await curatedListsDAL.moveListInTransaction(listId, 'down')
     // WR-03: reordering changes a pinned hero's rendered list ordering.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListDown] unexpected error:', err)
@@ -252,6 +279,10 @@ export async function moveListItemUp(itemId: string): Promise<ActionResult<void>
     if (!res.found) return { success: false, error: 'Item not found.' }
     // WR-03: item reorder changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListItemUp] unexpected error:', err)
@@ -272,6 +303,10 @@ export async function moveListItemDown(itemId: string): Promise<ActionResult<voi
     if (!res.found) return { success: false, error: 'Item not found.' }
     // WR-03: item reorder changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[moveListItemDown] unexpected error:', err)
@@ -300,6 +335,10 @@ export async function publishCuratedList(listId: string): Promise<ActionResult<v
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (Pitfall 3).
     // hero is a GLOBAL shared cache — use revalidateTag (NOT updateTag which is read-your-own-writes).
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[publishCuratedList] unexpected error:', err)
@@ -320,6 +359,10 @@ export async function unpublishCuratedList(listId: string): Promise<ActionResult
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (Pitfall 3).
     // hero is a GLOBAL shared cache — use revalidateTag (NOT updateTag which is read-your-own-writes).
     revalidateTag('explore:hero', 'max')
+    // GAP-3: invalidate the admin index + editor route caches so a list change
+    // is visible on back-navigation without a hard reload.
+    revalidatePath('/admin/lists')
+    revalidatePath('/admin/lists/[id]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
     console.error('[unpublishCuratedList] unexpected error:', err)

@@ -5,8 +5,11 @@
 // Tabs primitive (Edit / Preview). Edit tab shows a Textarea with auto-height
 // (field-sizing-content). Preview tab renders react-markdown output.
 // Preview updates only on tab switch — no live keystroke updates.
-// NO prose class (no @tailwindcss/typography installed).
-// UI-SPEC §Markdown editor: preview container classes exactly as specified.
+// GAP-1: the preview uses `prose` (@tailwindcss/typography) so headings, lists,
+// and other block elements render with real typography — Tailwind Preflight
+// otherwise strips heading sizes and list markers, making `#`/`-` look like
+// plain body text. The same `prose` treatment must be applied wherever this
+// markdown is rendered publicly (Phase 47 list-detail page).
 
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -64,10 +67,14 @@ export function MarkdownEditor({
         {/* UI-SPEC §CSS Chain Assertions 3: no overflow-hidden, use overflow-y-auto if capped */}
         <div className="mt-2 min-h-[120px] p-3 rounded-lg border border-input bg-transparent text-sm leading-relaxed overflow-y-auto">
           {previewContent.trim() ? (
-            // NO prose class — @tailwindcss/typography not installed.
-            // react-markdown inherits text-sm leading-relaxed from container.
+            // GAP-1: `prose` (typography plugin) restores heading/list/blockquote
+            // styling that Tailwind Preflight resets. prose-sm matches the
+            // text-sm container; dark:prose-invert handles dark mode;
+            // max-w-none lets it fill the preview pane.
             // CR-02: rehypeSanitize enforces an HTML/URL-protocol allow-list.
-            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{previewContent}</ReactMarkdown>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{previewContent}</ReactMarkdown>
+            </div>
           ) : (
             <span className="text-muted-foreground italic">Nothing to preview yet.</span>
           )}

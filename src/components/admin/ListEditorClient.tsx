@@ -66,6 +66,10 @@ type ListItem = {
   commentary: string | null
   sortOrder: number
   createdAt: Date
+  // GAP-4: catalog watch identity, joined in getListItems for card display.
+  brand: string
+  model: string
+  reference: string | null
 }
 
 type CuratedList = {
@@ -116,7 +120,11 @@ export function ListEditorClient({ list: initialList, isPinned: initialIsPinned 
   const [reorderingItemId, setReorderingItemId] = useState<string | null>(null)
   const [removingItemId, setRemovingItemId] = useState<string | null>(null)
 
-  const items = list.items
+  // GAP-2: items are server-owned (add/remove/reorder all go through Server
+  // Actions). Read them straight from the `initialList` prop, NOT from the
+  // `list` useState mirror — router.refresh() updates the prop but never
+  // re-seeds useState, so a mirrored copy stays stale until a hard reload.
+  const items = initialList.items
   const addedCatalogIds = items.map((i) => i.catalogId)
 
   function refresh() {
@@ -412,9 +420,17 @@ export function ListEditorClient({ list: initialList, isPinned: initialIsPinned 
 
                       {/* Commentary + remove */}
                       <div className="flex-1 min-w-0 space-y-2">
-                        <p className="text-xs text-muted-foreground truncate">
-                          Watch ID: {item.catalogId.slice(0, 8)}…
-                        </p>
+                        {/* GAP-4: show brand/model/reference, not the catalog UUID */}
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">
+                            {item.brand} {item.model}
+                          </p>
+                          {item.reference && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {item.reference}
+                            </p>
+                          )}
+                        </div>
                         <Textarea
                           defaultValue={item.commentary ?? ''}
                           placeholder="Add commentary for this watch…"
