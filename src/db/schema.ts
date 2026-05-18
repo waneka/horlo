@@ -221,6 +221,9 @@ export const profiles = pgTable(
     displayName: text('display_name'),
     bio: text('bio'),
     avatarUrl: text('avatar_url'),
+    // D-01: owner identity — single source of truth for RLS and assertOwner().
+    // Set true by migration via email key (D-04); never app-writable.
+    isAdmin: boolean('is_admin').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -554,6 +557,100 @@ export const divestments = pgTable(
     index('divestments_user_divested_at_idx').on(table.userId, table.divestedAt),
   ],
 )
+
+// ============================================================
+// Phase 45 — CMS tables (CMS-01, CMS-02, CMS-05, CMS-08, CMS-09)
+// Column shapes only. CHECK constraints (path_type_check, cms_settings_single_row)
+// and RLS policies live in supabase/migrations/20260518200000_phase45_cms_tables.sql.
+// Drizzle 0.45.2 cannot express CHECK constraints in the pg-core DSL — raw SQL is
+// authoritative for those. This table definition is the source of truth for column
+// types and type inference only.
+// ============================================================
+
+export const curatedLists = pgTable(
+  'curated_lists',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    title: text('title').notNull(),
+    curatorName: text('curator_name').notNull(),
+    coverUrl: text('cover_url'),
+    introMarkdown: text('intro_markdown'),
+    status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('curated_lists_status_sort_idx').on(table.status, table.sortOrder),
+  ],
+)
+
+export const curatedListItems = pgTable(
+  'curated_list_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    listId: uuid('list_id').notNull().references(() => curatedLists.id, { onDelete: 'cascade' }),
+    // D-07: ON DELETE RESTRICT — blocks catalog watch deletion when referenced
+    catalogId: uuid('catalog_id').notNull().references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    commentary: text('commentary'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('curated_list_items_list_id_idx').on(table.listId),
+    index('curated_list_items_catalog_id_idx').on(table.catalogId),
+    unique('curated_list_items_unique_pair').on(table.listId, table.catalogId),
+  ],
+)
+
+export const collectionPaths = pgTable(
+  'collection_paths',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // D-07: ON DELETE RESTRICT on seed_catalog_id as well
+    seedCatalogId: uuid('seed_catalog_id').notNull().references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
+    // D-17: text + CHECK (not enum) — CHECK constraint lives in raw SQL migration only
+    pathType: text('path_type').notNull(),
+    rationale: text('rationale'),
+    // SEED-008: forward-compat source field for future computed paths
+    source: text('source', { enum: ['manual', 'computed'] }).notNull().default('manual'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('collection_paths_status_idx').on(table.status),
+  ],
+)
+
+export const collectionPathNodes = pgTable(
+  'collection_path_nodes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    pathId: uuid('path_id').notNull().references(() => collectionPaths.id, { onDelete: 'cascade' }),
+    // D-07: ON DELETE RESTRICT — blocks catalog watch deletion when referenced
+    catalogId: uuid('catalog_id').notNull().references(() => watchesCatalog.id, { onDelete: 'restrict' }),
+    rationale: text('rationale'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('collection_path_nodes_path_id_idx').on(table.pathId),
+    index('collection_path_nodes_catalog_id_idx').on(table.catalogId),
+  ],
+)
+
+// Single-row settings table. PK=1 enforced by CHECK (id = 1) in raw SQL migration.
+// SEED-008: heroFormat discriminated union with forward-compat 'featured_collector' value.
+export const cmsSettings = pgTable('cms_settings', {
+  id: integer('id').primaryKey().default(1),
+  pinnedListId: uuid('pinned_list_id').references(() => curatedLists.id, { onDelete: 'set null' }),
+  pinExpiresAt: timestamp('pin_expires_at', { withTimezone: true }),
+  heroFormat: text('hero_format', { enum: ['featured_list', 'featured_collector'] })
+    .notNull().default('featured_list'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 // ----- Phase 17: daily catalog snapshots (CAT-12) -----
 // Records (catalog_id, snapshot_date, owners_count, wishlist_count) once per day.

@@ -174,7 +174,7 @@ describe('NSV-12 common-ground walk-back fallback (Phase 39 D-09)', () => {
   })
 
   it('still calls notFound() when profile not found (line 54 unchanged — out of NSV-12 scope)', async () => {
-    vi.mocked(getProfileByUsername).mockResolvedValue(null)
+    vi.mocked(getProfileByUsername).mockResolvedValue(null as any)
 
     await expect(
       ProfileTabPage({
