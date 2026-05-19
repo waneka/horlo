@@ -143,7 +143,7 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 ### v5.2 Polish + Taxonomy (Phases 48-50)
 
 - [x] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast (completed 2026-05-19)
-- [ ] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation
+- [x] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation (completed 2026-05-19)
 - [ ] **Phase 50: Watch-Detail Architecture Spike** - Compare two-view vs merged-view and produce written decision
 
 ### 📋 v6.0 Social Interaction (Planted)
@@ -201,7 +201,7 @@ Plans:
 - [x] 49-02-PLAN.md — Live-catalog evidence: run 5 D-07 SQL queries against prod/mirror and embed results in §4
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
+- [x] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
 
 ### Phase 50: Watch-Detail Architecture Spike
 **Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
@@ -219,7 +219,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
-| 49. Genre vs Style Taxonomy Spike | 2/3 | In Progress|  |
+| 49. Genre vs Style Taxonomy Spike | 3/3 | Complete   | 2026-05-19 |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
