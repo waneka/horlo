@@ -1,10 +1,11 @@
 ---
 phase: 47
 slug: curated-lists-rail-hero-where-collections-go
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova / neutral base color / CSS variables / lucide icons
 created: 2026-05-19
+reviewed_at: 2026-05-19
 ---
 
 # Phase 47 — UI Design Contract
