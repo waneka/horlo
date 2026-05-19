@@ -23,6 +23,7 @@ import type {
   SearchProfileResult,
   SearchTab,
 } from '@/lib/searchTypes'
+import type { PrimaryArchetype } from '@/lib/types'
 
 interface SearchPageClientProps {
   viewerId: string
@@ -370,7 +371,12 @@ function WatchesPanel({
   }
 
   // Archetype editorial header (D-13): shown when archetype param is present and known.
-  const archetypeConfig = archetype ? ARCHETYPE_CONFIG[archetype as keyof typeof ARCHETYPE_CONFIG] : null
+  // Phase 46 WR-03: `archetype` originates from a raw URL param; guard membership
+  // against ARCHETYPE_CONFIG before lookup instead of an unsafe `as keyof` cast.
+  const archetypeConfig =
+    archetype && archetype in ARCHETYPE_CONFIG
+      ? ARCHETYPE_CONFIG[archetype as PrimaryArchetype]
+      : null
 
   // Inline removable facet chips for brand/era/genre/archetype (D-10).
   const hasInlineFacets = !!(brand || era || genre || archetype)
