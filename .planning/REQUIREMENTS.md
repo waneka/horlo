@@ -50,10 +50,10 @@
 - [x] **EXPL-03**: Browse the Catalog presents brand, era, genre, and price-band indices with accurate counts (fixed price-band buckets: Under $500 / $500–2K / $2K–10K / $10K–50K / $50K+); counts are cached with tag-based invalidation; tapping a grouping opens `/search` prefiltered by that facet. *(Phase 46 scope clarification per D-08: the price-band index is deferred from Phase 46 to v6.0 Market Value — `watches_catalog` has no price column and single-user watch data yields near-zero coverage. Phase 46 ships brand, era, and genre indices only. The price-band index remains a v6.0 requirement when `market_prices` is added per SEED-005.)*
 - [ ] **EXPL-04**: The Brands index provides A–Z jump navigation.
 - [x] **EXPL-05**: Collector Archetypes renders a chip rail of archetypes with ≥1 catalog watch, each with a watch-count badge; tapping a chip opens prefiltered search results with an archetype header; every visible chip resolves to ≥1 result — archetypes with zero catalog coverage are hidden per EXPL-02 (a thin-catalog data gap addressed by v5.2 catalog expansion, not a code defect). *(Amended 2026-05-19 from "eight" — the live `PRIMARY_ARCHETYPES` vocab is 10 values, per Phase 44 D-16 / Phase 46 D-15. Further amended 2026-05-19 per G4 UAT finding — coverage reframed from "all 10 chips" to "every visible chip resolves to ≥1 result"; tool/hybrid archetypes hidden when count is 0.)*
-- [ ] **EXPL-06**: The Curated Lists Rail shows up to 12 published lists (cover, title, curator, watch count, freshness), with "View all" linking to `/explore/lists`.
-- [ ] **EXPL-07**: A curated list detail page renders the list's intro copy and per-item editorial commentary.
-- [ ] **EXPL-08**: The Hero shows one quality-gated featured list per page load (full-bleed image, title, curator), auto-selected from published lists unless a manual pin overrides it, and hides gracefully when no eligible content exists; its data shape accepts both featured-list and featured-collector formats.
-- [ ] **EXPL-09**: Where Collections Go shows rotating collection paths (seed watch plus follow-on watches, each with rationale and a path-type label); tapping any watch opens its detail page, and "Explore all paths" links to `/explore/paths`.
+- [x] **EXPL-06**: The Curated Lists Rail shows up to 12 published lists (cover, title, curator, watch count, freshness), with "View all" linking to `/explore/lists`.
+- [x] **EXPL-07**: A curated list detail page renders the list's intro copy and per-item editorial commentary.
+- [x] **EXPL-08**: The Hero shows one quality-gated featured list per page load (full-bleed image, title, curator), auto-selected from published lists unless a manual pin overrides it, and hides gracefully when no eligible content exists; its data shape accepts both featured-list and featured-collector formats.
+- [x] **EXPL-09**: Where Collections Go shows rotating collection paths (seed watch plus follow-on watches, each with rationale and a path-type label); tapping any watch opens its detail page, and "Explore all paths" links to `/explore/paths`.
 
 ---
 
@@ -122,10 +122,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | EXPL-03 | Phase 46 | Complete |
 | EXPL-04 | Phase 46 | Pending |
 | EXPL-05 | Phase 46 | Complete |
-| EXPL-06 | Phase 47 | Pending |
-| EXPL-07 | Phase 47 | Pending |
-| EXPL-08 | Phase 47 | Pending |
-| EXPL-09 | Phase 47 | Pending |
+| EXPL-06 | Phase 47 | Complete |
+| EXPL-07 | Phase 47 | Complete |
+| EXPL-08 | Phase 47 | Complete |
+| EXPL-09 | Phase 47 | Complete |
 
 **Coverage:**
 - v5.1 requirements: 32 total
