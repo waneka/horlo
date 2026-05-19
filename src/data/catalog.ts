@@ -270,11 +270,20 @@ const SEARCH_WATCHES_DEFAULT_LIMIT = 20
 /**
  * Optional facet filters for searchCatalogWatches (Phase 40 D-03/D-05/D-07).
  * URL values for size are ASCII-safe: lt36 / 36-39 / 40-42 / 43-45 / 46plus.
+ * Phase 46 D-12: brand/era/genre/archetype facets for Explore deep-links (D-09..D-14).
  */
 export interface CatalogSearchFilters {
   movement?: 'auto' | 'manual' | 'quartz' | 'spring_drive'
   size?: 'lt36' | '36-39' | '40-42' | '43-45' | '46plus'
   style?: string[]
+  /** Brand slug (from brands.slug); resolved via SQL subquery → brands.id. */
+  brand?: string
+  /** Era signal string (e.g. 'vintage-leaning', 'modern', 'contemporary'). */
+  era?: string
+  /** Genre value — maps to primaryArchetype column; ignored when archetype is also set. */
+  genre?: string
+  /** Primary archetype value (e.g. 'dive', 'pilot'); wins over genre when both present. */
+  archetype?: string
 }
 
 /**
@@ -334,7 +343,16 @@ export async function searchCatalogWatches({
   const trimmed = q.trim()
   // Phase 40 D-01 browse-mode lift: when at least one facet is active, proceed
   // even when q is shorter than the 2-char minimum.
-  const hasActiveFacet = !!(filters?.movement || filters?.size || filters?.style?.length)
+  // Phase 46 D-11: extend hasActiveFacet to include brand/era/genre/archetype facets.
+  const hasActiveFacet = !!(
+    filters?.movement ||
+    filters?.size ||
+    filters?.style?.length ||
+    filters?.brand ||
+    filters?.era ||
+    filters?.genre ||
+    filters?.archetype
+  )
   if (trimmed.length < SEARCH_WATCHES_TRIM_MIN_LEN && !hasActiveFacet) return []
 
   const lowerQ = trimmed.toLowerCase()
@@ -396,6 +414,30 @@ export async function searchCatalogWatches({
       // No isNotNull needed: styleTags is notNull with default '{}' (D-08).
       if (filters?.style?.length) {
         predicates.push(arrayOverlaps(watchesCatalog.styleTags, filters.style)!)
+      }
+
+      // Phase 46 D-12: Era facet — eraSignal text column.
+      if (filters?.era) {
+        predicates.push(isNotNull(watchesCatalog.eraSignal)!)
+        predicates.push(eq(watchesCatalog.eraSignal, filters.era)!)
+      }
+
+      // Phase 46 D-12: Genre OR Archetype — both map to primaryArchetype column.
+      // Archetype wins over genre when both are set (Pitfall 4).
+      const primaryArchetypeFilter = filters?.archetype ?? filters?.genre
+      if (primaryArchetypeFilter) {
+        predicates.push(isNotNull(watchesCatalog.primaryArchetype)!)
+        predicates.push(eq(watchesCatalog.primaryArchetype, primaryArchetypeFilter)!)
+      }
+
+      // Phase 46 D-12: Brand facet — URL carries brands.slug, not brands.id.
+      // Raw sql subquery (Option A) keeps the existing single-table query structure.
+      // The ${filters.brand} bind is a parameterized Drizzle sql template param —
+      // NOT string concatenation — so there is no SQL injection surface (T-46-03).
+      if (filters?.brand) {
+        predicates.push(
+          sql`${watchesCatalog.brandId} = (SELECT id FROM brands WHERE slug = ${filters.brand} LIMIT 1)`
+        )
       }
 
       // Pitfall 1: and() with 0 args → undefined → Drizzle omits WHERE clause.

@@ -16,12 +16,17 @@ import type {
 // the input length (Server Action will reject obviously-malicious giant strings
 // before they reach the DAL trim/length guard).
 // Phase 40 SRCH-16 — facets D-03/D-04/D-05/D-06. People + Collections actions accept-but-ignore.
+// Phase 46 D-12: brand/era/genre/archetype facets for Explore deep-links (T-46-03 mitigation).
 const searchSchema = z
   .object({
     q: z.string().max(200),
     movement: z.enum(['auto', 'manual', 'quartz', 'spring_drive']).optional(),
     size: z.enum(['lt36', '36-39', '40-42', '43-45', '46plus']).optional(),
     style: z.string().max(500).optional(), // comma-joined; DAL splits
+    brand:     z.string().max(100).optional(),
+    era:       z.string().max(50).optional(),
+    genre:     z.string().max(50).optional(),
+    archetype: z.string().max(50).optional(),
   })
   .strict()
 
@@ -107,6 +112,11 @@ export async function searchWatchesAction(
         size: parsed.data.size,
         // style is comma-joined string from URL; split + trim + filter empty (A4)
         style: parsed.data.style?.split(',').map((s) => s.trim()).filter(Boolean),
+        // Phase 46 D-12: new facets passed through from URL params.
+        brand:     parsed.data.brand,
+        era:       parsed.data.era,
+        genre:     parsed.data.genre,
+        archetype: parsed.data.archetype,
       },
     })
     return { success: true, data: results }
