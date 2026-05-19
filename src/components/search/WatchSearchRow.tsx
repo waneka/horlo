@@ -31,13 +31,12 @@ export function WatchSearchRow({
         href={`/catalog/${result.catalogId}`}
         className="flex flex-1 items-center gap-4 min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <div className="size-10 md:size-12 rounded-full bg-muted ring-2 ring-card overflow-hidden flex items-center justify-center shrink-0">
+        <div className="relative size-10 md:size-12 rounded-full bg-muted ring-2 ring-card overflow-hidden flex items-center justify-center shrink-0">
           {result.imageUrl ? (
             <Image
               src={result.imageUrl}
               alt=""
-              width={48}
-              height={48}
+              fill
               className="object-cover"
               unoptimized
             />

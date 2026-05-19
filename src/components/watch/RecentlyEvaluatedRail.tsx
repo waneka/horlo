@@ -41,13 +41,12 @@ export function RecentlyEvaluatedRail({ entries, onSelect }: RecentlyEvaluatedRa
                 className="flex items-center gap-2 h-8 px-2 rounded-full border border-border bg-card text-sm text-foreground hover:bg-accent/5 transition-colors"
               >
                 {e.imageUrl ? (
-                  <span className="size-5 rounded-full overflow-hidden flex-shrink-0 bg-muted">
+                  <span className="relative size-5 rounded-full overflow-hidden flex-shrink-0 bg-muted">
                     <Image
                       src={e.imageUrl}
                       alt=""
-                      width={20}
-                      height={20}
-                      className="object-cover w-full h-full"
+                      fill
+                      className="object-cover"
                       unoptimized
                     />
                   </span>
