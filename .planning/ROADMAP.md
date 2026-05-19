@@ -214,11 +214,13 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   2. Browse the Catalog presents brand, era, and genre indices with accurate counts; tapping a grouping opens `/search` prefiltered by that facet (the price-band index is deferred to v6.0 Market Value — `watches_catalog` has no price column; see CONTEXT.md D-08 / Deferred Ideas)
   3. The Brands index includes A–Z jump navigation allowing the user to jump to any letter section
   4. Collector Archetypes renders a chip rail with all 10 archetypes, each showing a watch-count badge; tapping a chip opens prefiltered search results with an archetype header; all 10 chips resolve to at least one result (amended 2026-05-19 from 8 — the live `PRIMARY_ARCHETYPES` vocab is 10, per Phase 44 D-16 / Phase 46 D-15)
-**Plans**: 4 plans
+**Plans**: 6 plans (4 original + 2 gap-closure from UAT)
 - [x] 46-01-PLAN.md — Archetype config + Browse count DAL + Wave 0 test scaffolds + retire old Phase 18 Explore surface
 - [x] 46-02-PLAN.md — `/search` Watches tab facet extension (brand/era/genre/archetype) + query-free run + inline chips + archetype header
 - [x] 46-03-PLAN.md — `/explore` 5-module shell + CollectorArchetypes + BrowseModule + Brands/Eras/Genres index pages
 - [x] 46-04-PLAN.md — Roadmap/requirements 8→10 housekeeping + full-suite integration verification
+- [ ] 46-05-PLAN.md — G5 fix: /search facet not applied on soft navigation + regression test
+- [ ] 46-06-PLAN.md — G1/G2/G3 A–Z nav (wrap/smooth-scroll/sticky offset) + G4 hide zero-count archetype chips + G6 module subtitle + coverage-wording housekeeping
 **UI hint**: yes
 
 ### Phase 47: Curated Lists Rail + Hero + Where Collections Go
