@@ -62,6 +62,7 @@ export async function getPathWithNodes(pathId: string) {
         brand: watchesCatalog.brand,
         model: watchesCatalog.model,
         reference: watchesCatalog.reference,
+        imageUrl: watchesCatalog.imageUrl,
       })
       .from(watchesCatalog)
       .where(eq(watchesCatalog.id, path.seedCatalogId))
@@ -92,6 +93,7 @@ export async function getPathNodes(pathId: string) {
       brand: watchesCatalog.brand,
       model: watchesCatalog.model,
       reference: watchesCatalog.reference,
+      imageUrl: watchesCatalog.imageUrl,
     })
     .from(collectionPathNodes)
     .innerJoin(watchesCatalog, eq(collectionPathNodes.catalogId, watchesCatalog.id))

@@ -100,9 +100,17 @@ export async function deleteList(id: string) {
 }
 
 export async function setListStatus(id: string, status: 'draft' | 'published') {
+  // D-03: stamp published_at only on the first draft→published transition.
+  // COALESCE keeps the existing value on re-publish (re-publishing after an unpublish
+  // must NOT reset published_at). When status is 'draft', publishedAt is not written.
+  const updateFields: Record<string, unknown> = { status, updatedAt: new Date() }
+  if (status === 'published') {
+    updateFields.publishedAt = sql`COALESCE(${curatedLists.publishedAt}, NOW())`
+  }
   await db
     .update(curatedLists)
-    .set({ status, updatedAt: new Date() })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .set(updateFields as any)
     .where(eq(curatedLists.id, id))
 }
 
@@ -158,6 +166,7 @@ export async function getListItems(listId: string) {
       brand: watchesCatalog.brand,
       model: watchesCatalog.model,
       reference: watchesCatalog.reference,
+      imageUrl: watchesCatalog.imageUrl,
     })
     .from(curatedListItems)
     .innerJoin(watchesCatalog, eq(curatedListItems.catalogId, watchesCatalog.id))
