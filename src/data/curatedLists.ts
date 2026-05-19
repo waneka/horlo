@@ -44,8 +44,15 @@ export async function getListById(id: string) {
 }
 
 export async function getListWithItems(id: string) {
-  const list = await getListById(id)
-  if (!list) return null
+  // T-47-07: filter by status='published' so a draft id resolves to null → notFound().
+  // getListById has no status filter (owner-read); re-query with the published filter here.
+  const rows = await db
+    .select()
+    .from(curatedLists)
+    .where(eq(curatedLists.id, id))
+    .limit(1)
+  const list = rows[0] ?? null
+  if (!list || list.status !== 'published') return null
   const items = await getListItems(id)
   return { ...list, items }
 }
