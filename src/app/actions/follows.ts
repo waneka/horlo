@@ -85,15 +85,6 @@ export async function followUser(data: unknown): Promise<ActionResult<void>> {
       revalidateTag(`profile:${targetProfile.username}`, 'max')
     }
 
-    // Phase 18 DISC-04 — invalidate the viewer's own Popular Collectors rail
-    // (read-your-own-writes via updateTag). The just-followed user must drop
-    // off the viewer's /explore Popular Collectors list on next render. Tag
-    // matches the cacheTag in src/components/explore/PopularCollectors.tsx.
-    // RYO semantics: caller is the same viewer whose rail recomputes —
-    // updateTag (single-arg) is the right primitive, NOT revalidateTag.
-    // RESEARCH §Pattern 6.
-    updateTag(`explore:popular-collectors:viewer:${user.id}`)
-
     // Phase 39c D-39c-04 — invalidate the VIEWER-OVERLAY tag so the viewer's
     // own isFollowing state inside <ProfileGate/> reflects the toggle
     // immediately (RYO). Tag matches the D-39c-02 second tag family.
@@ -143,11 +134,6 @@ export async function unfollowUser(data: unknown): Promise<ActionResult<void>> {
     if (targetProfile?.username) {
       revalidateTag(`profile:${targetProfile.username}`, 'max')
     }
-
-    // Phase 18 DISC-04 — symmetric invalidation: unfollowed user becomes
-    // re-eligible to surface on the viewer's Popular Collectors rail.
-    // RYO via updateTag — see followUser above for the rationale.
-    updateTag(`explore:popular-collectors:viewer:${user.id}`)
 
     // Phase 39c D-39c-04 — invalidate the VIEWER-OVERLAY tag so the viewer's
     // own isFollowing state inside <ProfileGate/> reflects the toggle
