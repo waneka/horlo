@@ -3,6 +3,7 @@ import 'server-only'
 import { db } from '@/db'
 import { curatedLists, curatedListItems, watchesCatalog } from '@/db/schema'
 import { eq, asc, sql } from 'drizzle-orm'
+import type { PgUpdateSetSource } from 'drizzle-orm/pg-core'
 
 // ----- Public-read functions -----
 // D-03 / CR-01: the explicit WHERE status='published' below is the SOLE enforced
@@ -108,14 +109,21 @@ export async function setListStatus(id: string, status: 'draft' | 'published') {
   // D-03: stamp published_at only on the first draft→published transition.
   // COALESCE keeps the existing value on re-publish (re-publishing after an unpublish
   // must NOT reset published_at). When status is 'draft', publishedAt is not written.
-  const updateFields: Record<string, unknown> = { status, updatedAt: new Date() }
+  //
+  // IN-01: type the payload as `PgUpdateSetSource<typeof curatedLists>` — the exact
+  // type Drizzle's `.set()` expects. It type-checks every field name against the
+  // table and natively permits a raw `SQL` expression per column, so the COALESCE
+  // expression assigns to `publishedAt` with no `any` cast and no eslint-disable.
+  const updateFields: PgUpdateSetSource<typeof curatedLists> = {
+    status,
+    updatedAt: new Date(),
+  }
   if (status === 'published') {
     updateFields.publishedAt = sql`COALESCE(${curatedLists.publishedAt}, NOW())`
   }
   await db
     .update(curatedLists)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .set(updateFields as any)
+    .set(updateFields)
     .where(eq(curatedLists.id, id))
 }
 
