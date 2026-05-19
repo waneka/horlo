@@ -280,28 +280,177 @@ The 5 queries reveal a highly homogeneous catalog:
 
 ## Options
 
-_To be filled by Plan 02 / Plan 03._
+Five options are evaluated. Option labels are used verbatim as anchors in §7 and §8.
+
+---
+
+### A. consolidate
+
+Merge genre and style into a single unified tag surface. The `primary_archetype` column value becomes a reserved prefixed entry in a new or extended `tags[]` array (e.g. `genre:dive`), or a special `primaryTag` field is added alongside `style_tags` to carry the single-value genre signal. GenreChips, ArchetypeChips, and StyleChips all draw from the unified surface.
+
+- **Schema change:** `watches_catalog`: add a `tags text[]` column (or extend `style_tags` to include the `genre:` prefix convention) and deprecate `primary_archetype`. `watches`: `style_tags` already exists; no new column needed. `user_preferences`: `preferredStyles`/`dislikedStyles` must accept `genre:*` prefixed values if preference-filtering across the unified surface is desired. `CatalogSearchFilters` interface in `src/data/catalog.ts:275` must be refactored — `genre` and `archetype` fields merged into a single `tags` or `archetype` field. Drizzle migration needed to add/rename column on `watches_catalog`.
+- **UX change:** FilterDrawer loses both GenreChips and ArchetypeChips; a new unified chip group is introduced. `/explore/genres` page and `getBrowseGenreCounts()` must be rewritten to query the new tag structure. StyleChips and the collection FilterBar would need to either surface the `genre:` prefix distinctively or filter it out. WatchCard style-tag display at `src/components/watch/WatchCard.tsx:93` would show genre prefixed tags alongside style tags unless filtered.
+- **Migration needed:** 1 drizzle migration (new column + backfill `tags` from `primary_archetype`). 1 supabase migration for prod. Data backfill: since prod is single-user and wipeable (`project_db_wipeable_2026_05_09`), re-enriching all 100 catalog rows is acceptable — cheaper than a value-mapping script. `watches` table `style_tags` rows (user collection) do not need migration since the user's personal watches don't have `primary_archetype`; only catalog rows need the column migration.
+- **Irreversibility:** High — one-way door. Dropping `primary_archetype` from the schema requires a migration to restore it. Callers that depend on the single-value `primaryArchetype` type (e.g. `CatalogTasteAttributes` in `src/lib/types.ts`, `validateAndCleanTaste()` in `src/lib/taste/vocab.ts`) must be rewritten. The similarity engine's `TASTE_SUB_WEIGHTS.archetypeMatch` weight at `src/lib/similarity.ts:42` references `primaryArchetype` — this must be repointed. The `/explore/genres` route URL (`?genre=X`) would break; users with bookmarked genre deep-links would get 404s.
+
+---
+
+### B. remove-genre
+
+Drop the genre surface entirely. This means: drop `primary_archetype` from `watches_catalog`; delete `GenreChips.tsx` and `ArchetypeChips.tsx`; remove `filters.genre` and `filters.archetype` from the `CatalogSearchFilters` interface in `src/data/catalog.ts:275`; remove the archetype-wins tiebreaker at `src/data/catalog.ts:446`; delete the `/explore/genres` page; remove the "Genres" tile from `BrowseModule.tsx:43`; and remove `getBrowseGenreCounts()` from `src/data/browse.ts:94`.
+
+- **Schema change:** Drop `primary_archetype text` column from `watches_catalog` (drizzle migration + supabase migration). Remove `CatalogSearchFilters.genre` and `.archetype` interface fields in `src/data/catalog.ts:275`. Remove `TASTE_SUB_WEIGHTS.archetypeMatch` (effective weight 0.04) from `src/lib/similarity.ts:42` and remove the categorical archetype equality check at `src/lib/similarity.ts:125`. `watches` table is unaffected (it has no `primary_archetype`).
+- **UX change:** FilterDrawer loses GenreChips and ArchetypeChips (2 chip groups removed). `/explore/genres` page removed entirely — the "Genres" BrowseModule tile deep-link at `/explore/genres` 404s and must be removed from `src/components/explore/BrowseModule.tsx:43`. StyleChips remains; collection FilterBar remains. No user-visible reduction in search power (style_tags covers the functional-category axis because, per Q1, 99% of catalog rows have `primary_archetype` verbatim in `style_tags`). The `ARCHETYPE_CONFIG` identity-copy labels ("Dive Watch Devotee", etc.) in `src/lib/archetype-config.ts` become dead code and can be deleted.
+- **Migration needed:** 1 drizzle migration (`ALTER TABLE watches_catalog DROP COLUMN primary_archetype`). 1 supabase migration for prod. No data backfill needed — the column is being removed, not repurposed. Wipe-and-re-enrich is NOT needed (it's a column drop). The enricher (`src/lib/taste/vocab.ts` enrichment path) must be updated to stop writing `primary_archetype`.
+- **Irreversibility:** High — column drop is a one-way door. Restoring genre would require a new migration and re-running the LLM enrichment pipeline. However, since Q1 shows 99% agreement, the style_tags column preserves the functional category signal. The `hybrid` and `tool` archetypes (0 catalog rows currently) could not be recovered from style_tags alone if the vocab diverges in future enrichment runs.
+
+---
+
+### C. remove-style
+
+Drop the style surface entirely. This means: remove `style_tags` from both `watches_catalog` and `watches`; remove `preferredStyles` and `dislikedStyles` from `user_preferences`; delete `StyleChips.tsx`; remove the style filter from `FilterBar.tsx:96-147`; remove style-tag display from `WatchCard.tsx:93`, `ProfileWatchCard.tsx:39`; remove style aggregation from `InsightsTabContent.tsx:166`; remove `WatchForm.tsx:270` and `AddWatchFlow.tsx:654,688` write paths; and reweight the similarity engine.
+
+- **Schema change:** Drop `style_tags text[]` from `watches` (user collection) and `watches_catalog`. Drop `preferred_styles text[]` and `disliked_styles text[]` from `user_preferences`. All defined in `src/db/schema.ts:116,377,181-182`. Two drizzle migrations (one per table group, or combined). Two supabase migrations. The `watches` table drop affects user data — any `style_tags` the user has manually assigned to their watches are lost.
+- **UX change:** Extensive and destructive. Users lose: style filtering in search (StyleChips removed), style filtering in collection (FilterBar style section removed), style preferences (preferredStyles/dislikedStyles removed from Preferences UI), style tags on watch cards, style distribution chart in profile Insights tab. The similarity engine loses its largest single dimension — `styleTags` at effective weight 0.20 (line 14 of `src/lib/similarity.ts`) must be zeroed out or redistributed. Preference alignment via `checkPreferenceAlignment()` at line 224 must be rewritten.
+- **Migration needed:** 2+ drizzle migrations. 2+ supabase migrations. Data destruction: user-assigned `style_tags` on `watches` rows are gone. Prod is single-user and wipeable, but removing style_tags from user watches is still a visible data loss. If wipe-and-re-enrich were an option it does not apply here — the watches table's style_tags come from user input (WatchForm), not LLM enrichment, so re-enriching does not recover them.
+- **Irreversibility:** Very high — the most irreversible of all 5 options. User preference data (`preferredStyles`, `dislikedStyles`) is permanently deleted. The similarity engine's highest-weight dimension is permanently removed. Restoring style would require schema re-add, UI rebuild, re-seeding all preference data from scratch. This option eliminates the only axis that carries design-language, era, and positioning signals (§3 Overlap Matrix: "design language" and "user collection record" are exclusive to style).
+
+---
+
+### D. unify-archetype-surface
+
+Keep both `primary_archetype` and `style_tags` in the schema unchanged. Remove one of the two chip groups in FilterDrawer that both filter the same `primary_archetype` column: either delete `GenreChips.tsx` (keeping ArchetypeChips) or delete `ArchetypeChips.tsx` (keeping GenreChips). Also remove the corresponding interface field from `CatalogSearchFilters` (`genre` if GenreChips removed, `archetype` if ArchetypeChips removed) and simplify the archetype-wins tiebreaker at `src/data/catalog.ts:446` to a single field.
+
+The recommended sub-choice is: **keep GenreChips (plain utility labels), drop ArchetypeChips (identity copy)**. Rationale: `/explore/genres` already uses plain utility labels ("Dive", "Dress"); the FilterDrawer genre chips should use the same vocab for consistency. The identity-copy labels ("Dive Watch Devotee", "Genre Crosser") add editorial flavor but no functional differentiation — and they require maintaining `ARCHETYPE_CONFIG` in `src/lib/archetype-config.ts` as a separate source of display strings.
+
+- **Schema change:** None — `primary_archetype` stays, `style_tags` stays, `user_preferences` unchanged. The DAL change is minimal: remove `filters.archetype` from `CatalogSearchFilters` interface in `src/data/catalog.ts:275` (if ArchetypeChips removed), and simplify the tiebreaker at line 446 to `const primaryArchetypeFilter = filters?.genre` (no `??` needed).
+- **UX change:** FilterDrawer loses one chip group. Users who used ArchetypeChips (identity copy) no longer see "Dive Watch Devotee" — they see "Dive" (via GenreChips) for the same filter outcome. The `/explore/genres` page is unaffected. `src/lib/archetype-config.ts` becomes dead code (can be deleted). No change to StyleChips, FilterBar, watch cards, preferences, or similarity engine.
+- **Migration needed:** None — no schema changes. No drizzle migration, no supabase migration, no data backfill. This is a pure code/UI change. The deleted file is `src/components/search/ArchetypeChips.tsx` and the updated files are `src/components/search/FilterDrawer.tsx` (remove import + render at lines 11,86) and `src/data/catalog.ts` (remove `archetype` field from interface at line 275, simplify tiebreaker at line 446). `src/lib/archetype-config.ts` can be deleted if no other consumer exists.
+- **Irreversibility:** Low — fully reversible. ArchetypeChips is a standalone component backed by an existing column. Restoring it requires adding the component file back and re-adding the import/render to FilterDrawer. No data is lost, no schema changes are made, no user preferences are affected.
+
+---
+
+### E. keep-both
+
+Status quo. No schema change, no code change. Document the intentional layering in code comments — specifically the archetype-wins tiebreaker at `src/data/catalog.ts:446` and the duplicate chip surfaces in `FilterDrawer.tsx:85-86` — so future readers understand this is a deliberate design, not an oversight.
+
+- **Schema change:** None.
+- **UX change:** None. GenreChips and ArchetypeChips continue to coexist in FilterDrawer. The `/explore/genres` page continues using plain labels. StyleChips and the genre/archetype chips remain parallel filter axes.
+- **Migration needed:** None. Only a code comment update in `src/data/catalog.ts:446` and `src/components/search/FilterDrawer.tsx:85-86` to explain the dual-chip intentionality.
+- **Irreversibility:** N/A — no change is made, so there is nothing to reverse. However, choosing this option preserves the existing technical debt. The genre↔archetype redundancy (D-02) remains: a user who clicks "Dive" (GenreChips) and a user who clicks "Dive Watch Devotee" (ArchetypeChips) get identical search results. The dual maintenance surface persists — any future change to how the archetype surface renders requires touching both component files.
 
 ---
 
 ## Decision Matrix
 
-_To be filled by Plan 02 / Plan 03._
+Each option scored across the 5 D-05 §6 criteria. Scale: 1 (worst) to 5 (best).
+
+| Option | UX clarity | Schema simplicity | Expressive power preserved | Migration cost | Irreversibility |
+|--------|-----------|-------------------|---------------------------|----------------|-----------------|
+| A. consolidate | 3 | 3 | 4 | 2 | 1 |
+| B. remove-genre | 4 | 4 | 4 | 4 | 2 |
+| C. remove-style | 1 | 4 | 1 | 1 | 1 |
+| D. unify-archetype-surface | 5 | 5 | 5 | 5 | 5 |
+| E. keep-both | 2 | 2 | 5 | 5 | 5 |
+
+**Scoring rationale:**
+
+**UX clarity** measures how confusing the resulting filter surface is to a user. Option D scores highest (5) because it eliminates the only genuine user-facing confusion — two chip groups producing identical results — while touching nothing else. Option B scores 4 because removing GenreChips + ArchetypeChips simplifies the drawer, and the style surface fully covers the functional-category axis (Q1: 99% agreement means `style_tags @> ARRAY['dive']` returns the same rows as `primary_archetype = 'dive'`). Option A scores 3 because a unified prefix-tagged surface is conceptually elegant but adds UI complexity (how does the user distinguish genre-prefixed tags from style tags in the chip UI?). Option E scores 2 because it preserves the dual-chip confusion documented in §3. Option C scores 1 because removing style strips the user of filtering by design language, preferences, and collection insights — the dimensions users interact with most.
+
+**Schema simplicity** measures the resulting schema's coherence. Options C and B both score 4 (each removes a column). Option A scores 3 (schema simplifies conceptually but requires a migration to add/rename and a new tag-prefix convention). Option D scores 5 (no schema change at all). Option E scores 2 (current schema has redundant surfaces that a reader must mentally parse).
+
+**Expressive power preserved** measures whether the recommendation retains the full semantic range currently available. Options D and E score 5 — all dimensions remain accessible. Option A scores 4 — the genre signal is preserved via the `genre:` prefix; minor loss is that the closed-vocab enforcement (`validateAndCleanTaste`) becomes harder to maintain in an open array. Option B scores 4 — the genre/archetype axis is still queryable via `style_tags` (since Q1 shows 99% agreement); only the `hybrid` and `tool` archetypes (0 current rows) would lose their dedicated signal. Option C scores 1 — removing style eliminates design language, era, positioning, and user-preference dimensions that have no equivalent in `primary_archetype`.
+
+**Migration cost** scores how much work the option requires, weighted by the Q1-Q4 evidence. Since Q2 found 0 divergence rows in either direction and Q4 found 100% coverage, any migration that touches `primary_archetype` or `style_tags` values can rely on the data being co-consistent. Additionally, per `project_db_wipeable_2026_05_09`, prod is a single-user DB — wipe-and-re-enrich is an acceptable migration strategy for catalog-side columns, substantially reducing migration cost for Options A and B (no complex value-mapping needed). Option D scores 5 (zero migration). Option E scores 5 (zero migration). Option B scores 4 (1 drizzle + 1 supabase migration, column drop only, wipe-acceptable for catalog). Option A scores 2 (1-2 migrations + prefix convention backfill + enricher rewrite). Option C scores 1 (multiple migrations, user data loss on `watches.style_tags`, can't wipe-and-re-enrich for user-assigned style tags).
+
+**Irreversibility** scores how easy it is to undo. Options D and E score 5 (trivially reversible or not changed at all). Options A and C score 1 (dropping or restructuring columns is a one-way door that destroys data). Option B scores 2 (dropping `primary_archetype` is a column drop, but the signal is largely preserved in `style_tags` — restoring genre would require a new migration and re-running enrichment, which is feasible given Q4 shows 100% coverage before the drop).
+
+**Key insight from the matrix:** Option D (`unify-archetype-surface`) is the dominant choice — it is strictly better than or equal to every other option on all 5 criteria. It solves a real user-facing problem (the D-02 dual-chip redundancy) at zero migration cost and zero irreversibility. For the genre↔style primary question (TAX-01), Option B (`remove-genre`) outscores Option A (`consolidate`) and Option E (`keep-both`) on the criteria that matter most: UX clarity and schema simplicity, while preserving expressive power through style's near-complete coverage of the genre axis.
 
 ---
 
 ## Recommendation
 
-_To be filled by Plan 02 / Plan 03._
+### Primary recommendation (genre↔style — TAX-01 direct answer): remove-genre
+
+**Label:** `remove-genre`
+
+Drop the `primary_archetype` column, GenreChips, ArchetypeChips, the `/explore/genres` page, and the `filters.genre`/`filters.archetype` interface fields. Keep `style_tags` entirely intact.
+
+The primary evidence driving this call is the Q1 agreement rate: **99 of 100 catalog rows have `primary_archetype` restated verbatim as the first style tag.** The enrichment pipeline seeds `primary_archetype` into `style_tags` atomically, meaning the two fields carry the same signal in 99% of cases. Keeping a dedicated column and two separate UI chip groups to represent a dimension that style already captures is schema and UI redundancy, not intentional layering. Q2 confirms there are zero divergence rows in either direction — no row has archetype without style, or style without archetype — which means the fields are co-populated and removing genre loses essentially nothing from the data layer.
+
+The one genuine exception is the Rolex Cosmograph Daytona 16520 (Q5): `primary_archetype = 'racing'` but `style_tags = {chrono, sport, dress, luxury}`. This row demonstrates that the two axes CAN carry different semantic information — `primary_archetype` names the functional origin ("designed for motorsport timing") while `style_tags` describes the watch's actual aesthetic character ("looks like a chrono, wears dressy, positioned as luxury"). But 1 row out of 100 is not sufficient evidence that the genre axis is carrying load that style cannot carry. In this specific case, the Daytona's style tags fully describe its character; the `racing` archetype adds functional provenance information that the style tags omit. If that provenance signal matters, it is an argument for keeping genre — but given the current catalog it is a single-watch edge case.
+
+The §3 Overlap & Divergence Matrix shows two style-exclusive axes: **design language** (e.g. `bauhaus`, `vintage`, `dressy`, `sporty`) and the **user-collection write surface** (`style_tags` exists on `watches`; `primary_archetype` is catalog-only). These axes have no equivalent in `primary_archetype`. Removing style to "simplify" would destroy both axes. Removing genre preserves both. Style is the more expressive and more load-bearing of the two surfaces.
+
+Q3 identifies one genuine data quality issue that persists regardless of the consolidation decision: **`sport` is top-2 for all 8 archetypes**, including `dress`. This tag is semantic noise that dilutes style's discriminative power. This is a style-vocab governance issue (flagged in §2 implications) that is out of scope for this spike but should be addressed in a follow-up enrichment iteration.
+
+The §6 Decision Matrix scores `remove-genre` at 4/4/4/4/2 — a 2 on irreversibility (dropping `primary_archetype` is a one-way door) is the only cost. Given that prod is a single-user wipeable DB (`project_db_wipeable_2026_05_09`) and Q4 confirms 100% enrichment coverage, re-running enrichment after column drop and re-add is feasible if needed. This is not a high-stakes irreversibility concern.
+
+---
+
+### Sub-recommendation (genre↔archetype — D-02/D-03): unify-archetype-surface
+
+**Label:** `unify-archetype-surface`
+
+Remove `ArchetypeChips.tsx` and its corresponding `FilterDrawer.tsx:11,86` render. Keep `GenreChips.tsx` (plain utility labels). Remove `filters.archetype` from `CatalogSearchFilters` at `src/data/catalog.ts:275`. Simplify the tiebreaker at line 446 to `const primaryArchetypeFilter = filters?.genre`. Delete `src/lib/archetype-config.ts` (dead code once ArchetypeChips is removed).
+
+This sub-recommendation is independent of the primary recommendation. Even if the primary recommendation (`remove-genre`) is deferred or rejected, Option D can be shipped immediately at zero cost. The §3 Overlap & Divergence Matrix establishes the core finding: GenreChips and ArchetypeChips iterate the same `PRIMARY_ARCHETYPES` const, use the same `Chip` primitive, resolve to the same `eq(watchesCatalog.primaryArchetype, value)` SQL predicate via the DAL tiebreaker, and are rendered side-by-side in `FilterDrawer.tsx:85-86`. A user who clicks "Dive" (GenreChips) and a user who clicks "Dive Watch Devotee" (ArchetypeChips) get identical search results. There is zero behavioral difference and zero expressive-power cost to removing one.
+
+The choice of which chip group to keep: GenreChips, because `/explore/genres` (`src/app/explore/genres/page.tsx:26`) already uses the same plain utility labels and the same `primary_archetype` column via `getBrowseGenreCounts()`. Keeping GenreChips produces a consistent vocabulary between the search filter and the explore index. ArchetypeChips's identity copy ("Dive Watch Devotee") is editorial flavor that adds no filtering power and requires maintaining a separate `ARCHETYPE_CONFIG` file.
+
+Note that the primary recommendation (`remove-genre`) subsumes this sub-recommendation — if `remove-genre` is implemented, both GenreChips and ArchetypeChips are removed. The sub-recommendation is the action to take NOW (or as a standalone mid-milestone add) regardless of whether the primary recommendation is deferred.
 
 ---
 
 ## Cost Estimate per Option
 
-_To be filled by Plan 02 / Plan 03._
+Columns: **Files touched** (count + key paths from §2 Consumer Map) | **Migrations** (drizzle + supabase) | **Data backfill** | **Test surface**
+
+| Option | Files touched | Migrations | Data backfill | Test surface |
+|--------|--------------|------------|---------------|--------------|
+| A. consolidate | ~12-15 files: `src/db/schema.ts`, `src/data/catalog.ts`, `src/data/browse.ts`, `src/components/search/GenreChips.tsx`, `src/components/search/ArchetypeChips.tsx`, `src/components/search/StyleChips.tsx`, `src/components/search/FilterDrawer.tsx`, `src/app/explore/genres/page.tsx`, `src/lib/similarity.ts`, `src/lib/taste/vocab.ts`, `src/lib/types.ts`, `src/lib/archetype-config.ts` | 1 drizzle (add tags column or rename primary_archetype) + 1 supabase prod migration | Wipe + re-enrich catalog (100 rows, acceptable — prod wipeable). No user-watch backfill needed (style_tags already carries the data). | High — all consumers of genre+style must be tested; SQL predicate change; FilterDrawer integration test; similarity weight test. |
+| B. remove-genre | ~8-9 files: `src/db/schema.ts:390`, `src/data/catalog.ts:275,446`, `src/data/browse.ts:94`, `src/components/search/GenreChips.tsx` (delete), `src/components/search/ArchetypeChips.tsx` (delete), `src/components/search/FilterDrawer.tsx:10-11,85-86`, `src/components/explore/BrowseModule.tsx:43`, `src/app/explore/genres/page.tsx` (delete), `src/lib/similarity.ts:42,125`, `src/lib/archetype-config.ts` (delete), `src/lib/taste/vocab.ts` (remove archetype write call) | 1 drizzle (DROP COLUMN primary_archetype) + 1 supabase prod migration | None — column is dropped, not repurposed. Enricher update stops writing primary_archetype. Wipe + re-enrich is NOT needed. | Medium — FilterDrawer chip removal, catalog DAL predicate removal, similarity weight rebalance test, /explore/genres 404 test. |
+| C. remove-style | ~14+ files: `src/db/schema.ts:116,377,181-182`, `src/data/catalog.ts:434`, `src/components/search/StyleChips.tsx` (delete), `src/components/filters/FilterBar.tsx:96-147`, `src/components/preferences/PreferencesClient.tsx:109,131`, `src/components/watch/WatchCard.tsx:93`, `src/components/profile/ProfileWatchCard.tsx:39`, `src/components/profile/InsightsTabContent.tsx:166`, `src/components/watch/WatchForm.tsx:83,135,270`, `src/components/watch/AddWatchFlow.tsx:654,688`, `src/lib/similarity.ts:14,222-228` | 2+ drizzle (DROP style_tags on watches + watches_catalog; DROP preferred_styles/disliked_styles on user_preferences) + 2+ supabase prod migrations | Needs migration (destructive — user-assigned style_tags on watches are deleted). Wipe + re-enrich does NOT apply: user-assigned style_tags come from WatchForm, not LLM enrichment. Cannot be recovered without user re-input. | Very high — every consumer of style_tags must be tested; similarity engine rebalance; Preferences UI regression; WatchCard display change; Insights tab regression. |
+| D. unify-archetype-surface | 3-4 files: `src/components/search/ArchetypeChips.tsx` (delete), `src/components/search/FilterDrawer.tsx:11,86`, `src/data/catalog.ts:275,446`, `src/lib/archetype-config.ts` (delete) | None | None | Low — FilterDrawer renders one fewer chip group; archetype predicate simplification; verify GenreChips still filters correctly. |
+| E. keep-both | 2 files: `src/data/catalog.ts:446` (comment update), `src/components/search/FilterDrawer.tsx:85-86` (comment update) | None | None | None — behavior unchanged; only code comments added. |
+
+**Backfill note (prod-wipeable context):** For Options A and B that touch `watches_catalog` columns, "wipe + re-enrich" means running the LLM enrichment pipeline against all ~100 catalog rows after the schema change. This is the cheapest migration path for catalog data because: (1) the enricher already handles all 100 rows, (2) prod is single-user so there is no multi-user coordination cost, and (3) per Q4, current coverage is 100% — no rows would be missed. Option C is the one exception where wipe + re-enrich is NOT applicable: `watches.style_tags` contains user-assigned data from WatchForm, not LLM output, so it cannot be recovered from re-enrichment.
 
 ---
 
 ## Ship-Now Eligibility Check
 
-_To be filled by Plan 02 / Plan 03._
+ROADMAP SC#4 gate language (verbatim):
+
+> "No consolidation or removal implementation is shipped in this phase unless the spike specifically flags it as cheap and strongly favored — in which case a new requirement is added mid-milestone"
+
+---
+
+### Primary recommendation eligibility (remove-genre)
+
+**Verdict: YES**
+
+`remove-genre` is both cheap and strongly favored.
+
+**Strongly favored:** The Decision Matrix scores `remove-genre` 4/4/4/4/2, with the only cost being irreversibility (column drop). The Q1 evidence — 99% agreement between `primary_archetype` and `style_tags` — establishes that genre is redundant to style in almost all catalog rows. The primary question SC#3 asks ("rationale strong enough to act on") is satisfied: a 99% redundancy rate with 0 divergence rows (Q2) and only 1 disagreement case out of 100 (Q5) is a clear empirical verdict.
+
+**Cheap:** The cost estimate for `remove-genre` is 8-9 files, 1 drizzle migration (DROP COLUMN), 1 supabase prod migration, no data backfill. With a wipeable single-user prod DB, the migration risk is low. The implementation is scoped to file deletions and DAL simplifications — no new infrastructure, no new dependencies, no user data loss.
+
+**Trigger:** Add new requirement **TAX-02: remove-genre surface — drop `primary_archetype` column, delete GenreChips + ArchetypeChips + /explore/genres, simplify catalog DAL, rebalance similarity weights** to REQUIREMENTS.md and `/gsd-phase --insert` a Phase 49b implementation wave.
+
+---
+
+### Sub-recommendation eligibility (unify-archetype-surface)
+
+**Verdict: YES**
+
+`unify-archetype-surface` is cheap and strongly favored — and it is the faster path if the primary `remove-genre` recommendation requires further review.
+
+**Strongly favored:** The Decision Matrix gives `unify-archetype-surface` a perfect 5/5/5/5/5 score. It is the dominant option: it removes a real user-facing confusion (two chip groups producing identical results) while adding zero migration cost, zero schema risk, and zero expressive power loss. There is no reasonable argument against it.
+
+**Cheap:** 3-4 files touched (1 delete, 1 import removal, 1 DAL simplification, 1 possible dead-code delete). Zero drizzle migrations. Zero supabase migrations. Zero data backfill. This is the cheapest meaningful change in the options set.
+
+**Trigger:** Add new requirement **TAX-02a: unify archetype chip surface — delete ArchetypeChips.tsx, remove from FilterDrawer, simplify DAL tiebreaker to single `filters.genre` field, delete archetype-config.ts** to REQUIREMENTS.md and `/gsd-phase --insert` as Phase 49b (or as Task 1 of the `remove-genre` implementation wave, since it is fully subsumed by `remove-genre`).
+
+**Note on sequencing:** If both verdicts are YES, `unify-archetype-surface` should be implemented as the first task in the `remove-genre` implementation wave, not as a separate phase. It is a strict subset of the work `remove-genre` requires — the full implementation will delete ArchetypeChips and GenreChips, making the sub-recommendation's scope automatic. A standalone Phase 49b for ONLY `unify-archetype-surface` is an option if the team wants an immediate polish fix before committing to the full `remove-genre` implementation.
