@@ -38,10 +38,16 @@ export async function WhereCollectionsGo() {
   // Slice from startIdx, then prepend from the beginning if the slice is short
   let threePaths = allPaths.slice(startIdx, startIdx + 3)
   if (threePaths.length < 3) {
-    // Wrap around: take the remaining from the start of the array (no duplicates
-    // unless there are < 3 paths total)
+    // Wrap around: take the remaining from the start of the array
     const needed = 3 - threePaths.length
-    threePaths = [...threePaths, ...allPaths.slice(0, needed)]
+    const wrappedExtras = allPaths.slice(0, needed)
+    // Deduplicate by id — if the pool has < 3 paths, the wrap-around may produce
+    // duplicate path ids which would cause React duplicate key warnings (Wave 2 fix)
+    const seenIds = new Set(threePaths.map((p) => p.id))
+    threePaths = [
+      ...threePaths,
+      ...wrappedExtras.filter((p) => !seenIds.has(p.id)),
+    ]
   }
 
   // Fetch nodes for each selected path
