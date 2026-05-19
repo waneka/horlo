@@ -5,6 +5,10 @@ import { z } from 'zod'
 import { getCurrentUser } from '@/lib/auth'
 import { searchCatalogWatches } from '@/data/catalog'
 import { searchProfiles, searchCollections } from '@/data/search'
+// Phase 46 WR-01: era/genre/archetype facets are validated against the closed
+// taste vocabularies (source of truth: src/lib/taste/vocab.ts) so the Zod enum
+// cannot drift from PrimaryArchetype / EraSignal.
+import { PRIMARY_ARCHETYPES, ERA_SIGNALS } from '@/lib/taste/vocab'
 import type { ActionResult } from '@/lib/actionTypes'
 import type {
   SearchProfileResult,
@@ -24,9 +28,12 @@ const searchSchema = z
     size: z.enum(['lt36', '36-39', '40-42', '43-45', '46plus']).optional(),
     style: z.string().max(500).optional(), // comma-joined; DAL splits
     brand:     z.string().max(100).optional(),
-    era:       z.string().max(50).optional(),
-    genre:     z.string().max(50).optional(),
-    archetype: z.string().max(50).optional(),
+    // Phase 46 WR-01: constrain to the closed vocabularies (matches the
+    // movement/size z.enum pattern above). Genre and archetype both map to the
+    // primary_archetype column, so both use PRIMARY_ARCHETYPES.
+    era:       z.enum(ERA_SIGNALS).optional(),
+    genre:     z.enum(PRIMARY_ARCHETYPES).optional(),
+    archetype: z.enum(PRIMARY_ARCHETYPES).optional(),
   })
   .strict()
 

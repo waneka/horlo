@@ -278,12 +278,12 @@ export interface CatalogSearchFilters {
   style?: string[]
   /** Brand slug (from brands.slug); resolved via SQL subquery → brands.id. */
   brand?: string
-  /** Era signal string (e.g. 'vintage-leaning', 'modern', 'contemporary'). */
-  era?: string
+  /** Era signal (vintage-leaning / modern / contemporary). */
+  era?: EraSignal
   /** Genre value — maps to primaryArchetype column; ignored when archetype is also set. */
-  genre?: string
+  genre?: PrimaryArchetype
   /** Primary archetype value (e.g. 'dive', 'pilot'); wins over genre when both present. */
-  archetype?: string
+  archetype?: PrimaryArchetype
 }
 
 /**
