@@ -13,6 +13,7 @@ const {
   mockGetCollectorsForCatalog,
   mockGetSameFamilyForCatalog,
   mockGetLineageForReference,
+  mockGetProfileById,
 } = vi.hoisted(() => ({
   mockGetCurrentUser: vi.fn(),
   mockGetCatalogById: vi.fn(),
@@ -25,6 +26,7 @@ const {
   mockGetCollectorsForCatalog: vi.fn(),
   mockGetSameFamilyForCatalog: vi.fn(),
   mockGetLineageForReference: vi.fn(),
+  mockGetProfileById: vi.fn(),
 }))
 
 // Mock the inline Drizzle SELECT via mocking @/db.
@@ -60,6 +62,11 @@ vi.mock('@/data/hierarchy', () => ({
   getSameFamilyForCatalog: mockGetSameFamilyForCatalog,
   getLineageForReference: mockGetLineageForReference,
 }))
+// Phase 48 Plan 01 — close the @/data/profiles mock gap (A1/Pitfall 1 per RESEARCH.md).
+// getProfileById is called inside Promise.all (page.tsx line 67) to resolve the viewer
+// username for CatalogPageActions. Without this mock the test environment attempts to
+// import the real module, which may fail or return undefined in the jsdom environment.
+vi.mock('@/data/profiles', () => ({ getProfileById: mockGetProfileById }))
 vi.mock('@/lib/verdict/composer', () => ({ computeVerdictBundle: mockComputeVerdictBundle }))
 vi.mock('@/lib/verdict/viewerTasteProfile', () => ({
   computeViewerTasteProfile: mockComputeViewerTasteProfile,
@@ -128,6 +135,7 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     mockGetCollectorsForCatalog.mockResolvedValue({ collectors: [], totalCount: 0 })
     mockGetSameFamilyForCatalog.mockResolvedValue([])
     mockGetLineageForReference.mockResolvedValue([])
+    mockGetProfileById.mockResolvedValue(null)  // Phase 48 Plan 01 — @/data/profiles mock default
   })
 
   it('returns 404 when catalogId does not exist in watches_catalog', async () => {
