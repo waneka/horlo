@@ -10,6 +10,7 @@ const {
   mockComputeViewerTasteProfile,
   mockNotFound,
   mockDbLimit,
+  mockDbWhere,
   mockGetCollectorsForCatalog,
   mockGetSameFamilyForCatalog,
   mockGetLineageForReference,
@@ -23,6 +24,10 @@ const {
   mockComputeViewerTasteProfile: vi.fn(),
   mockNotFound: vi.fn(() => { throw new Error('NOT_FOUND') }),
   mockDbLimit: vi.fn(),
+  // WR-01 positive-control: hoist `where()` so we can inspect the predicate
+  // arg in the BUG-01 regression guard below. Default impl returns the
+  // `{ limit: mockDbLimit }` chain shape the page code expects.
+  mockDbWhere: vi.fn(() => ({ limit: mockDbLimit })),
   mockGetCollectorsForCatalog: vi.fn(),
   mockGetSameFamilyForCatalog: vi.fn(),
   mockGetLineageForReference: vi.fn(),
@@ -30,13 +35,17 @@ const {
 }))
 
 // Mock the inline Drizzle SELECT via mocking @/db.
+// WR-01: `where()` is now the hoisted `mockDbWhere` so the predicate AST
+// passed to it (the `and(eq(userId), eq(catalogId), eq(status, 'owned'))`
+// expression) can be inspected by the positive-control test that guards
+// BUG-01 from regression. Previously the inline `vi.fn(() => ({ limit }))`
+// stub discarded the predicate arg, which is why the three BUG-01 tests
+// would still pass even if the `status='owned'` filter were removed.
 vi.mock('@/db', () => ({
   db: {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          limit: mockDbLimit,
-        })),
+        where: mockDbWhere,
       })),
     })),
   },
@@ -280,5 +289,50 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
     expect(mockComputeVerdictBundle).toHaveBeenCalledTimes(1)
     expect(mockComputeVerdictBundle.mock.calls[0][0].framing).toBe('cross-user')
+  })
+
+  // -------------------------------------------------------------------------
+  // WR-01 (Phase 48 REVIEW.md): the three BUG-01 tests above mock
+  // mockDbLimit→[] regardless of what predicate is passed to where(), so they
+  // would still pass if a future commit removed the eq(status, 'owned') clause
+  // — re-introducing the bug for any wishlist/grail/sold row that shares a
+  // catalogId. This positive-control test asserts the predicate AST itself
+  // contains the literal string 'owned', so reverting the filter breaks the
+  // test. Drizzle's eq()/and() produce structured SQL objects whose serialized
+  // form includes the parameter value — sufficient for a regression guard.
+  // -------------------------------------------------------------------------
+  it("BUG-01 — query is scoped to status='owned' (predicate guard)", async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
+    mockDbLimit.mockResolvedValue([])
+    await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    // findViewerWatchByCatalogId calls where() exactly once with the
+    // and(eq(userId), eq(catalogId), eq(status, 'owned')) AST.
+    expect(mockDbWhere).toHaveBeenCalledTimes(1)
+    const predicate = mockDbWhere.mock.calls[0][0]
+
+    // Drizzle's predicate AST is a deeply-nested object graph with circular
+    // back-references (PgTable -> PgUUID column -> table), so JSON.stringify
+    // throws. Walk the graph manually with a visited-set and a depth cap,
+    // searching for the literal string 'owned' in any leaf value. If the
+    // eq(watchesTable.status, 'owned') conjunct is removed in a future
+    // regression, the parameter value disappears from the AST and this
+    // assertion fails — which is the regression guard the WR-01 review
+    // finding asked for.
+    function containsValue(node: unknown, needle: string, seen = new WeakSet<object>(), depth = 0): boolean {
+      if (depth > 20) return false
+      if (node === null || node === undefined) return false
+      if (typeof node === 'string') return node === needle
+      if (typeof node !== 'object') return false
+      if (seen.has(node as object)) return false
+      seen.add(node as object)
+      if (Array.isArray(node)) {
+        return node.some((item) => containsValue(item, needle, seen, depth + 1))
+      }
+      return Object.values(node as Record<string, unknown>).some(
+        (v) => containsValue(v, needle, seen, depth + 1),
+      )
+    }
+    expect(containsValue(predicate, 'owned')).toBe(true)
   })
 })
