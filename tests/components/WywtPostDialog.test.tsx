@@ -68,6 +68,25 @@ vi.mock('sonner', () => ({
   toast: { success: (...args: unknown[]) => mockToastSuccess(...args) },
 }))
 
+// Mock next/navigation — capture router.push calls. Phase 26 D-04 (commit
+// de680e4) replaced the post-submit `toast.success('Wear logged')` with
+// `router.push(`/wear/${wearEventId}`)`, so the success path is verified via
+// this spy rather than the toast spy.
+const mockRouterPush = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
+}))
+
 // Mock stripAndResize / uploadWearPhoto — verified via call order in Test 17
 const mockStripAndResize = vi.fn()
 const mockUploadWearPhoto = vi.fn()
@@ -488,6 +507,7 @@ describe('ComposeStep — Task 3 core flow + photo submit order + toast', () => 
   beforeEach(() => {
     mockLogWearWithPhoto.mockReset()
     mockToastSuccess.mockReset()
+    mockRouterPush.mockReset()
     mockStripAndResize.mockReset()
     mockUploadWearPhoto.mockReset()
     mockOpenPicker.mockReset()
@@ -561,11 +581,20 @@ describe('ComposeStep — Task 3 core flow + photo submit order + toast', () => 
     expect(mockLogWearWithPhoto.mock.calls[0][0].visibility).toBe('followers')
   })
 
-  it('Test 15 (WYWT-16) — success path fires toast.success("Wear logged") and onSubmitted', async () => {
+  it('Test 15 (WYWT-16) — success path navigates to /wear/{id} and fires onSubmitted', async () => {
+    // Phase 26 D-04 (commit de680e4): the post-submit success behavior is
+    // router.push(`/wear/${wearEventId}`), NOT toast.success — the orphaned
+    // sonner import was removed. Assert the navigation spy instead.
     mockLogWearWithPhoto.mockResolvedValue({ success: true, data: { wearEventId: 'w' } })
     const { onSubmitted } = renderCompose()
     fireEvent.click(screen.getByRole('button', { name: /Log wear/i }))
-    await waitFor(() => expect(mockToastSuccess).toHaveBeenCalledWith('Wear logged'))
+    // router.push uses the `wearEventId` PROP (the id reserved when the watch
+    // was picked), not the action result — see renderCompose default below.
+    await waitFor(() =>
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/wear/11111111-1111-4111-8111-111111111111',
+      ),
+    )
     expect(onSubmitted).toHaveBeenCalledTimes(1)
   })
 

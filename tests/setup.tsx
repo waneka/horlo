@@ -190,6 +190,60 @@ if (
 // preserves all other exports (screen, waitFor, fireEvent, renderHook,
 // userEvent integration, act, cleanup) and only intercepts `render` to
 // inject the StrictMode wrapper.
+// ─── RC1 — global next/navigation mock ──────────────────────────────────────
+//
+// Components that use `useFormFeedback` (src/lib/hooks/useFormFeedback.ts) call
+// `useRouter()` at render time. Outside the Next.js App Router runtime, jsdom
+// has no router mounted, so `useRouter()` throws
+// `invariant expected app router to be mounted`. Any component test rendering
+// such a component fails before its assertions run.
+//
+// This DEFAULT mock provides stub navigation hooks so component tests render.
+// It is a default only: any test file that declares its own
+// `vi.mock('next/navigation', ...)` overrides this entirely (vitest hoists the
+// per-file mock and it wins). `redirect`/`notFound` are stubbed to throw the
+// standard NEXT_REDIRECT / NEXT_NOT_FOUND errors so the small number of tests
+// that rely on the global (rather than their own mock) still see throw-based
+// control flow — matching real Next.js semantics.
+//
+// IMPORTANT — the read hooks mirror REAL next/navigation behavior outside a
+// router provider: `useRouter()` is the ONLY hook that throws the
+// `invariant expected app router to be mounted` error; `usePathname()` /
+// `useSearchParams()` / `useParams()` all return `null` (their context is
+// null). So this mock only substitutes `useRouter` with a working stub and
+// keeps the others null-returning — components that branch on
+// `usePathname() ?? ''` keep the exact behavior they had pre-mock, so existing
+// passing tests that don't supply their own navigation mock don't regress.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => null,
+  useSearchParams: () => null,
+  useParams: () => null,
+  redirect: (url: string) => {
+    const err = new Error(`NEXT_REDIRECT;push;${url};307`)
+    ;(err as Error & { digest: string }).digest = `NEXT_REDIRECT;push;${url};307`
+    throw err
+  },
+  permanentRedirect: (url: string) => {
+    const err = new Error(`NEXT_REDIRECT;replace;${url};308`)
+    ;(err as Error & { digest: string }).digest = `NEXT_REDIRECT;replace;${url};308`
+    throw err
+  },
+  notFound: () => {
+    const err = new Error('NEXT_NOT_FOUND')
+    ;(err as Error & { digest: string }).digest = 'NEXT_HTTP_ERROR_FALLBACK;404'
+    throw err
+  },
+  RedirectType: { push: 'push', replace: 'replace' },
+}))
+
 import { StrictMode, type ReactElement } from 'react'
 import * as RTL from '@testing-library/react'
 
