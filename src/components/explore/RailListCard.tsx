@@ -11,31 +11,19 @@
 
 import Link from 'next/link'
 
+// WR-06: getRelativeTimestamp and isNew are now a single shared definition in
+// src/lib/relativeTime.ts (were copy-pasted verbatim here and in the list
+// detail page). See that module for the cache-granularity caveat — this card
+// renders inside CuratedListsRail's 'use cache' scope, so the default `now`
+// reference is frozen to hours-level accuracy (accepted for v1).
+import { getRelativeTimestamp, isNew } from '@/lib/relativeTime'
+
 interface RailListCardList {
   id: string
   title: string
   curatorName: string
   coverUrl: string | null
   publishedAt: Date | null
-}
-
-// Relative timestamp via Intl.RelativeTimeFormat — "today", "3 days ago", etc.
-// Returns empty string when publishedAt is null.
-function getRelativeTimestamp(publishedAt: Date | null): string {
-  if (!publishedAt) return ''
-  const diffMs = Date.now() - publishedAt.getTime()
-  const diffDays = Math.floor(diffMs / 86400000)
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
-  if (diffDays < 1) return 'Today'
-  if (diffDays < 7) return rtf.format(-diffDays, 'day')
-  if (diffDays < 30) return rtf.format(-Math.floor(diffDays / 7), 'week')
-  return rtf.format(-Math.floor(diffDays / 30), 'month')
-}
-
-// D-01: "New" badge window = 7 days (Claude's Discretion, resolved in UI-SPEC).
-function isNew(publishedAt: Date | null): boolean {
-  if (!publishedAt) return false
-  return Date.now() - publishedAt.getTime() < 7 * 24 * 60 * 60 * 1000
 }
 
 export function RailListCard({
