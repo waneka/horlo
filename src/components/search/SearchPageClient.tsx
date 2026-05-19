@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, SlidersHorizontalIcon, X } from 'lucide-react'
+import { Search, SlidersHorizontalIcon } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Chip } from '@/components/ui/chip'
 
 import { useSearchState } from '@/components/search/useSearchState'
 import { FilterDrawer } from '@/components/search/FilterDrawer'
@@ -408,48 +409,40 @@ function WatchesPanel({
         {hasInlineFacets && (
           <div className="flex flex-wrap gap-2 mb-4">
             {archetype && (
-              <button
-                type="button"
+              <Chip
+                variant="removable"
                 onClick={onClearArchetype}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+                removeLabel={`Remove ${archetypeConfig?.displayName ?? archetype} filter`}
               >
-                <span>{archetypeConfig?.displayName ?? archetype}</span>
-                <X className="size-3" aria-hidden />
-                <span className="sr-only">Remove {archetypeConfig?.displayName ?? archetype} filter</span>
-              </button>
+                {archetypeConfig?.displayName ?? archetype}
+              </Chip>
             )}
             {brand && (
-              <button
-                type="button"
+              <Chip
+                variant="removable"
                 onClick={onClearBrand}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+                removeLabel={`Remove ${brand} filter`}
               >
-                <span>{brand.charAt(0).toUpperCase() + brand.slice(1)}</span>
-                <X className="size-3" aria-hidden />
-                <span className="sr-only">Remove {brand} filter</span>
-              </button>
+                {brand.charAt(0).toUpperCase() + brand.slice(1)}
+              </Chip>
             )}
             {era && (
-              <button
-                type="button"
+              <Chip
+                variant="removable"
                 onClick={onClearEra}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+                removeLabel={`Remove ${ERA_DISPLAY_LABELS[era] ?? era} filter`}
               >
-                <span>{ERA_DISPLAY_LABELS[era] ?? era}</span>
-                <X className="size-3" aria-hidden />
-                <span className="sr-only">Remove {ERA_DISPLAY_LABELS[era] ?? era} filter</span>
-              </button>
+                {ERA_DISPLAY_LABELS[era] ?? era}
+              </Chip>
             )}
             {genre && (
-              <button
-                type="button"
+              <Chip
+                variant="removable"
                 onClick={onClearGenre}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+                removeLabel={`Remove ${genre} filter`}
               >
-                <span>{genre.charAt(0).toUpperCase() + genre.slice(1)}</span>
-                <X className="size-3" aria-hidden />
-                <span className="sr-only">Remove {genre} filter</span>
-              </button>
+                {genre.charAt(0).toUpperCase() + genre.slice(1)}
+              </Chip>
             )}
           </div>
         )}
@@ -491,48 +484,40 @@ function WatchesPanel({
       {hasInlineFacets && (
         <div className="flex flex-wrap gap-2 mb-4">
           {archetype && (
-            <button
-              type="button"
+            <Chip
+              variant="removable"
               onClick={onClearArchetype}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+              removeLabel={`Remove ${archetypeConfig?.displayName ?? archetype} filter`}
             >
-              <span>{archetypeConfig?.displayName ?? archetype}</span>
-              <X className="size-3" aria-hidden />
-              <span className="sr-only">Remove {archetypeConfig?.displayName ?? archetype} filter</span>
-            </button>
+              {archetypeConfig?.displayName ?? archetype}
+            </Chip>
           )}
           {brand && (
-            <button
-              type="button"
+            <Chip
+              variant="removable"
               onClick={onClearBrand}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+              removeLabel={`Remove ${brand} filter`}
             >
-              <span>{brand.charAt(0).toUpperCase() + brand.slice(1)}</span>
-              <X className="size-3" aria-hidden />
-              <span className="sr-only">Remove {brand} filter</span>
-            </button>
+              {brand.charAt(0).toUpperCase() + brand.slice(1)}
+            </Chip>
           )}
           {era && (
-            <button
-              type="button"
+            <Chip
+              variant="removable"
               onClick={onClearEra}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+              removeLabel={`Remove ${ERA_DISPLAY_LABELS[era] ?? era} filter`}
             >
-              <span>{ERA_DISPLAY_LABELS[era] ?? era}</span>
-              <X className="size-3" aria-hidden />
-              <span className="sr-only">Remove {ERA_DISPLAY_LABELS[era] ?? era} filter</span>
-            </button>
+              {ERA_DISPLAY_LABELS[era] ?? era}
+            </Chip>
           )}
           {genre && (
-            <button
-              type="button"
+            <Chip
+              variant="removable"
               onClick={onClearGenre}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
+              removeLabel={`Remove ${genre} filter`}
             >
-              <span>{genre.charAt(0).toUpperCase() + genre.slice(1)}</span>
-              <X className="size-3" aria-hidden />
-              <span className="sr-only">Remove {genre} filter</span>
-            </button>
+              {genre.charAt(0).toUpperCase() + genre.slice(1)}
+            </Chip>
           )}
         </div>
       )}
