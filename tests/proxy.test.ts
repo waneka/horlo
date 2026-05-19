@@ -81,3 +81,33 @@ describe('proxy.ts — PUBLIC_PATHS parity (NAV-05 D-21)', () => {
     expect(res.status).not.toBe(307)
   })
 })
+
+describe('proxy.ts — profile route ungating (profile-page-404-top-nav)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it.each([
+    ['/u/twwaneka/collection'],
+    ['/u/twwaneka/wishlist'],
+    ['/u/twwaneka/worn'],
+    ['/u/twwaneka/stats'],
+    ['/u/twwaneka'],
+    ['/u/someuser/collection', '?_rsc=abc123'],
+  ])(
+    'does not redirect unauth request on profile path %s%s',
+    async (pathname, search = '') => {
+      vi.mocked(updateSession).mockResolvedValue(mkUpdateSession(null) as any)
+      const res = await proxy(mkRequest(pathname, search))
+      // Profile routes are ungated — page-level ProfileGate handles viewer
+      // identity. A 307 here would poison the Next 16 Router Cache and
+      // cause 404s on soft-nav (debug session profile-page-404-top-nav).
+      expect(res.status).not.toBe(307)
+    },
+  )
+
+  it('still redirects unauth requests on non-profile protected routes', async () => {
+    vi.mocked(updateSession).mockResolvedValue(mkUpdateSession(null) as any)
+    const res = await proxy(mkRequest('/settings'))
+    expect(res.status).toBe(307)
+    expect(res.headers.get('location')).toContain('/login')
+  })
+})
