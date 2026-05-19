@@ -122,7 +122,159 @@ The `??` nullish coalescing means that if a URL carries both `?genre=dive&archet
 
 ## Live-Catalog Evidence
 
-_To be filled by Plan 02 / Plan 03._
+**Provenance:** Queries run against the local Supabase Docker mirror (`supabase_db_horlo` container, `postgresql://postgres:postgres@127.0.0.1:54322/postgres`). Total catalog row count: **100 rows**. All 100 have both `primary_archetype` and non-empty `style_tags` — the local mirror is known-current (matches the ~100-row prod bootstrap referenced in PROJECT.md). Date: 2026-05-19.
+
+---
+
+### Q1 — Agreement Count
+
+For each archetype, how many rows have `primary_archetype = X AND X = ANY(style_tags)` (i.e. does style restate genre)?
+
+```sql
+SELECT primary_archetype,
+       COUNT(*) AS total_with_archetype,
+       COUNT(*) FILTER (WHERE primary_archetype = ANY(style_tags)) AS agreement_count,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE primary_archetype = ANY(style_tags)) / COUNT(*), 1) AS agreement_pct
+FROM watches_catalog
+WHERE primary_archetype IS NOT NULL
+GROUP BY primary_archetype
+ORDER BY agreement_pct DESC, total_with_archetype DESC;
+```
+
+| `primary_archetype` | total rows | style_tags contains archetype | agreement % |
+|---------------------|-----------|-------------------------------|-------------|
+| dive | 43 | 43 | 100.0% |
+| chrono | 19 | 19 | 100.0% |
+| dress | 12 | 12 | 100.0% |
+| gmt | 9 | 9 | 100.0% |
+| sport | 7 | 7 | 100.0% |
+| field | 7 | 7 | 100.0% |
+| pilot | 2 | 2 | 100.0% |
+| racing | 1 | 0 | 0.0% |
+
+**Note:** `tool` and `hybrid` do not appear in the catalog — 0 rows for each. The DB has 8 distinct archetype values vs the 10-value `PRIMARY_ARCHETYPES` vocab.
+
+**Finding:** For 7 of 8 represented archetypes, `primary_archetype` is always restated verbatim in `style_tags` (100% agreement). The one exception is `racing` (1 row, Rolex Cosmograph Daytona 16520), where `style_tags = {chrono, sport, dress, luxury}` — the functional category tag `racing` is absent even though the archetype is `racing`. This is the sole disagreement case in the catalog.
+
+---
+
+### Q2 — Divergence Count
+
+Two directional counts:
+- **Q2a:** `primary_archetype IS NOT NULL` but `style_tags` is empty
+- **Q2b:** `style_tags` non-empty but `primary_archetype` IS NULL
+
+```sql
+-- Q2a: primary_archetype set, style_tags empty
+SELECT COUNT(*) AS archetype_set_style_empty
+FROM watches_catalog
+WHERE primary_archetype IS NOT NULL
+  AND style_tags = '{}';
+
+-- Q2b: style_tags non-empty, primary_archetype null
+SELECT COUNT(*) AS style_set_archetype_null
+FROM watches_catalog
+WHERE primary_archetype IS NULL
+  AND style_tags != '{}';
+```
+
+| Direction | Count |
+|-----------|-------|
+| Archetype set, style empty | 0 |
+| Style set, archetype null | 0 |
+
+**Finding:** Zero divergence in either direction — the enrichment pipeline has consistently populated both fields together on every catalog row. No row has one field set without the other. This means the two fields are co-populated and effectively co-dependent in practice (despite being structurally independent).
+
+---
+
+### Q3 — Per-Archetype Top-3 Style Tags
+
+For each archetype, which style tags appear most frequently? Tells us whether each archetype has a distinctive style fingerprint or whether the same tags appear across all genres.
+
+```sql
+SELECT primary_archetype, tag, COUNT(*) AS tag_count
+FROM watches_catalog, unnest(style_tags) AS tag
+WHERE primary_archetype IS NOT NULL
+GROUP BY primary_archetype, tag
+ORDER BY primary_archetype, tag_count DESC;
+```
+
+Top 3 per archetype (extracted from full result set):
+
+| `primary_archetype` | Top tag #1 | Top tag #2 | Top tag #3 |
+|---------------------|-----------|-----------|-----------|
+| chrono | sport (19) | chrono (19) | dress (7) |
+| dive | dive (43) | sport (43) | tool (5) |
+| dress | dress (12) | sport (9) | heritage (2) / luxury (2) |
+| field | sport (7) / field (7) / dress (7) — three-way tie | military (2) | dive (1) / outdoor (1) / tool (1) |
+| gmt | gmt (9) / sport (9) — tied | travel (6) | pilot (5) |
+| pilot | field (2) / pilot (2) / sport (2) — three-way tie | dress (1) / gmt (1) | — |
+| racing | luxury (1) / chrono (1) / sport (1) / dress (1) — four-way tie | — | — |
+| sport | sport (7) | dress (6) | luxury-sport (4) |
+
+**Observations:**
+- `sport` is the single most-repeated tag across all archetypes — it appears in the top 3 for every archetype except pilot (where it ties for #1). It is a generic style descriptor that carries almost no discriminative signal at the archetype level.
+- Each archetype does reliably self-include its own name in `style_tags` (except `racing` — the one disagreement case).
+- `dress` appears as a secondary or tertiary tag across `chrono`, `dive`, `dress`, `field`, `gmt`, `pilot`, `racing`, and `sport` — it is overloaded as both an archetype name and a general "versatile / dressy" style signal.
+- Distinctive style fingerprints do emerge for some archetypes: `gmt` has `travel` (6/9); `dive` has `tool` (5/43); `chrono` has `pilot` (4/19) and `racing` (3/19). These cross-archetype tags carry contextual style information that `primary_archetype` alone does not.
+
+---
+
+### Q4 — Null Coverage
+
+Total catalog rows, and how many lack each field.
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE primary_archetype IS NULL) AS archetype_null_count,
+  COUNT(*) FILTER (WHERE style_tags = '{}') AS style_empty_count,
+  COUNT(*) FILTER (WHERE primary_archetype IS NULL AND style_tags = '{}') AS both_missing_count,
+  COUNT(*) AS total_rows
+FROM watches_catalog;
+```
+
+| Metric | Count |
+|--------|-------|
+| Total rows | 100 |
+| `primary_archetype IS NULL` | 0 |
+| `style_tags = '{}'` | 0 |
+| Both missing | 0 |
+
+**Finding:** 0% of catalog rows lack archetype; 0% lack style tags. Full enrichment coverage on the local mirror. The enrichment pipeline has reached every catalog row — neither field has unfilled rows in this 100-row corpus.
+
+---
+
+### Q5 — Watch-Level Disagreement Examples
+
+Rows where `primary_archetype IS NOT NULL AND style_tags != '{}'` but the archetype value does not appear in `style_tags` (the two fields express different functional category signals).
+
+```sql
+SELECT id, brand, model, reference, primary_archetype, style_tags
+FROM watches_catalog
+WHERE primary_archetype IS NOT NULL
+  AND style_tags != '{}'
+  AND NOT (primary_archetype = ANY(style_tags))
+ORDER BY brand, model
+LIMIT 5;
+```
+
+| brand | model | reference | `primary_archetype` | `style_tags` |
+|-------|-------|-----------|---------------------|--------------|
+| Rolex | Cosmograph Daytona | 16520 | racing | {chrono, sport, dress, luxury} |
+
+Only **1 row** disagrees. The LLM assigned `primary_archetype = 'racing'` (the closed-vocab functional category) but populated `style_tags` with `{chrono, sport, dress, luxury}` — omitting the `racing` tag that would produce agreement. The Daytona is a chronograph used in motorsport contexts; the style tags describe the watch's multi-faceted character (it functions as a dress watch despite being a racing chronograph). This is a genuine divergence: the two fields capture different semantic layers — archetype says "what it was designed for," style tags say "what it looks and feels like."
+
+---
+
+### Summary of Live-Catalog Findings
+
+The 5 queries reveal a highly homogeneous catalog:
+
+1. **Near-perfect style/genre agreement (99%):** 99 of 100 rows have `primary_archetype` verbatim inside `style_tags`. The enrichment pipeline writes both fields atomically and uses the archetype value as a seed tag in `style_tags`. The two fields co-populate.
+2. **Zero coverage gaps:** All 100 rows have both fields populated. Neither field is "more complete" than the other.
+3. **`sport` is ubiquitous and uninformative as a style signal:** It appears in the top-2 for every archetype, including archetypes with no sporting character (dress). Its presence in `style_tags` adds noise rather than signal relative to `primary_archetype`.
+4. **Secondary style tags carry the real additive value:** Tags like `travel` (on gmt rows), `tool` (on dive rows), `military` (on field rows), and `luxury` (on chrono/sport rows) express dimensions that `primary_archetype` does not — design language, use context, and positioning signals. This is where style carries non-redundant information.
+5. **Two archetypes absent from the catalog (`tool`, `hybrid`):** The corpus cannot speak to how these archetypes behave. Any recommendation must account for this blind spot — hybrid in particular is the archetype designed to carry style-tag load (D-05 §3 notes hybrid says "I don't know" while style carries the actual descriptors).
 
 ---
 
