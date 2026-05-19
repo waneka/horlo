@@ -21,6 +21,10 @@ export const metadata = {
 }
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+// Phase 46 WR-05: brands whose name starts with a digit/symbol bucket under '#'.
+// The jump nav and letter sections iterate this list so the '#' bucket is never
+// silently dropped from the page.
+const LETTER_BUCKETS = [...ALPHABET, '#']
 
 export default async function BrandsPage() {
   // Auth assertion — must stay OUTSIDE any 'use cache' boundary.
@@ -69,7 +73,7 @@ export default async function BrandsPage() {
             className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border py-2 mb-4"
           >
             <div className="flex gap-1 overflow-x-auto scrollbar-none">
-              {ALPHABET.map((letter) => {
+              {LETTER_BUCKETS.map((letter) => {
                 const hasContent = byLetter.has(letter)
                 return (
                   <a
@@ -91,7 +95,7 @@ export default async function BrandsPage() {
 
           {/* Letter sections */}
           <div className="space-y-6">
-            {ALPHABET.filter((l) => byLetter.has(l)).map((letter) => {
+            {LETTER_BUCKETS.filter((l) => byLetter.has(l)).map((letter) => {
               const letterBrands = byLetter.get(letter)!
               return (
                 <section
