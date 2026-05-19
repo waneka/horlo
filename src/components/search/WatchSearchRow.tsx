@@ -55,12 +55,12 @@ export function WatchSearchRow({
           )}
         </div>
         {result.viewerState === 'owned' && (
-          <span className="bg-primary text-primary-foreground text-xs font-medium px-2 py-0.5 rounded-full shrink-0">
+          <span className="bg-primary text-primary-foreground text-xs font-semibold px-2 py-0.5 rounded-full shrink-0">
             Owned
           </span>
         )}
         {result.viewerState === 'wishlist' && (
-          <span className="bg-muted text-muted-foreground text-xs font-medium px-2 py-0.5 rounded-full shrink-0">
+          <span className="bg-muted text-muted-foreground text-xs font-semibold px-2 py-0.5 rounded-full shrink-0">
             Wishlist
           </span>
         )}

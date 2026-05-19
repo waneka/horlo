@@ -43,9 +43,9 @@ export function CollectionFitCard({ verdict }: CollectionFitCardProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Headline phrasing — text-sm font-medium per UI-SPEC § Typography */}
+        {/* Headline phrasing — text-sm font-semibold per UI-SPEC § Typography */}
         {headline && (
-          <p className="text-sm font-medium text-foreground">{headline}</p>
+          <p className="text-sm font-semibold text-foreground">{headline}</p>
         )}
 
         {/* Contextual phrasings — text-sm muted, single column, space-y-1 */}
@@ -126,7 +126,7 @@ function YouOwnThisCallout({ ownedAtIso, ownerHref }: { ownedAtIso: string; owne
   return (
     <Card>
       <CardContent className="py-4 space-y-2">
-        <p className="text-sm font-medium text-foreground flex items-center gap-2">
+        <p className="text-sm font-semibold text-foreground flex items-center gap-2">
           <WatchIcon className="size-4 text-muted-foreground" aria-hidden />
           You own this watch
         </p>
