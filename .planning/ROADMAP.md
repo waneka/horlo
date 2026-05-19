@@ -127,7 +127,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 - [x] **Phase 43: Polish Pass** — Fix filter-sheet dismiss, wishlist card wear-UI gate, card height consistency, avatar upload, and deprecated Claude model ID (7 plans: 4 original + 3 gap-closure; all 5 UAT gaps resolved and user-verified on prod) (completed 2026-05-17)
 - [x] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows (completed 2026-05-18)
 - [x] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 6 seed paths authored (completed 2026-05-18)
-- [ ] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail
+- [x] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail (completed 2026-05-19)
 - [ ] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module
 
 ### 📋 v5.2 Catalog Expansion (Planted)
@@ -218,7 +218,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 46-01-PLAN.md — Archetype config + Browse count DAL + Wave 0 test scaffolds + retire old Phase 18 Explore surface
 - [x] 46-02-PLAN.md — `/search` Watches tab facet extension (brand/era/genre/archetype) + query-free run + inline chips + archetype header
 - [x] 46-03-PLAN.md — `/explore` 5-module shell + CollectorArchetypes + BrowseModule + Brands/Eras/Genres index pages
-- [ ] 46-04-PLAN.md — Roadmap/requirements 8→10 housekeeping + full-suite integration verification
+- [x] 46-04-PLAN.md — Roadmap/requirements 8→10 housekeeping + full-suite integration verification
 **UI hint**: yes
 
 ### Phase 47: Curated Lists Rail + Hero + Where Collections Go
@@ -243,7 +243,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 6/6 | Complete    | 2026-05-18 |
-| 46. Explore Shell + Browse + Archetypes | 3/4 | In Progress|  |
+| 46. Explore Shell + Browse + Archetypes | 4/4 | Complete   | 2026-05-19 |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
 ## Next Up
