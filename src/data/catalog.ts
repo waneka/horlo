@@ -4,7 +4,7 @@ import 'server-only'
 import { cacheLife } from 'next/cache'
 
 import { db } from '@/db'
-import { watches, watchesCatalog } from '@/db/schema'
+import { brands, watches, watchesCatalog } from '@/db/schema'
 import { and, arrayOverlaps, asc, between, desc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm'
 import type { CatalogEntry, CatalogSource, ImageSourceQuality, PrimaryArchetype, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
@@ -360,6 +360,25 @@ export async function searchCatalogWatches({
   const refNormalized = lowerQ.replace(/[^a-z0-9]+/g, '')
   const refPattern = refNormalized.length > 0 ? `%${refNormalized}%` : null
 
+  // Phase 46 WR-04: resolve the brand slug → brands.id explicitly BEFORE
+  // building the candidate query. Previously the brand predicate ran an inline
+  // `brand_id = (SELECT id FROM brands WHERE slug = ... LIMIT 1)` subquery; on
+  // an unknown/stale slug that subquery yields NULL and `brand_id = NULL` is
+  // NULL (not false) in SQL three-valued logic, so the row is excluded — the
+  // query silently returns zero rows, indistinguishable from "brand has no
+  // catalog watches." Resolving up-front lets us short-circuit to [] on an
+  // unresolved slug instead of running a guaranteed-empty query.
+  let resolvedBrandId: string | null = null
+  if (filters?.brand) {
+    const [brandRow] = await db
+      .select({ id: brands.id })
+      .from(brands)
+      .where(eq(brands.slug, filters.brand))
+      .limit(1)
+    if (!brandRow) return []
+    resolvedBrandId = brandRow.id
+  }
+
   const candidates = await db
     .select({
       id: watchesCatalog.id,
@@ -431,13 +450,11 @@ export async function searchCatalogWatches({
       }
 
       // Phase 46 D-12: Brand facet — URL carries brands.slug, not brands.id.
-      // Raw sql subquery (Option A) keeps the existing single-table query structure.
-      // The ${filters.brand} bind is a parameterized Drizzle sql template param —
-      // NOT string concatenation — so there is no SQL injection surface (T-46-03).
-      if (filters?.brand) {
-        predicates.push(
-          sql`${watchesCatalog.brandId} = (SELECT id FROM brands WHERE slug = ${filters.brand} LIMIT 1)`
-        )
+      // Phase 46 WR-04: brand id is resolved up-front (resolvedBrandId); an
+      // unresolved slug already short-circuited the whole function to [] above,
+      // so reaching here with filters.brand set guarantees resolvedBrandId.
+      if (resolvedBrandId) {
+        predicates.push(eq(watchesCatalog.brandId, resolvedBrandId)!)
       }
 
       // Pitfall 1: and() with 0 args → undefined → Drizzle omits WHERE clause.
