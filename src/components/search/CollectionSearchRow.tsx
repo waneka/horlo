@@ -66,7 +66,7 @@ export function CollectionSearchRow({
           {result.matchedWatches.slice(0, 3).map((w, i) => (
             <div
               key={w.watchId}
-              className="size-10 md:size-12 rounded-full bg-muted ring-2 ring-card overflow-hidden flex items-center justify-center"
+              className="relative size-10 md:size-12 rounded-full bg-muted ring-2 ring-card overflow-hidden flex items-center justify-center"
               style={{ marginLeft: i === 0 ? 0 : '-0.5rem' }}
               aria-label={`${w.brand} ${w.model}`}
             >
@@ -74,8 +74,7 @@ export function CollectionSearchRow({
                 <Image
                   src={w.imageUrl}
                   alt=""
-                  width={48}
-                  height={48}
+                  fill
                   className="object-cover"
                   unoptimized
                 />
