@@ -1,5 +1,5 @@
 ---
-status: partial
+status: passed
 phase: 48-user-facing-bug-fixes
 source: [48-VERIFICATION.md]
 started: 2026-05-19T00:00:00Z
@@ -8,7 +8,7 @@ updated: 2026-05-19T00:00:00Z
 
 ## Current Test
 
-[Tests 1–3 (BUG-02) PASSED on local dev server with fresh .next cache; Tests 4–5 (BUG-01) deferred to post-deploy verification on prod]
+[all 5 tests confirmed passed by operator — BUG-02 on local dev (fresh .next), BUG-01 on prod after deploy]
 
 ## Tests
 
@@ -26,18 +26,18 @@ result: passed (2026-05-19, local dev)
 
 ### 4. Catalog page ownership label — wishlist watch
 expected: Add a watch to wishlist, then navigate to it via `/catalog/[catalogId]` (from /search, click the catalog tile). The catalog page should NOT show "You own this watch" framing. It should show the standard cross-user verdict.
-result: [pending — verify on prod after deploy]
+result: passed (2026-05-19, prod, post-deploy)
 
 ### 5. Catalog page ownership label — owned watch (regression guard for D-03)
 expected: For a watch in the user's owned collection, navigate to `/catalog/[catalogId]`. The "You own this watch" callout STILL appears (the BUG-01 fix did not regress the owned path).
-result: [pending — verify on prod after deploy]
+result: passed (2026-05-19, prod, post-deploy)
 
 ## Summary
 
 total: 5
-passed: 3
+passed: 5
 issues: 0
-pending: 2
+pending: 0
 skipped: 0
 blocked: 0
 

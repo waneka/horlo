@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: planning
+status: ready_to_plan
 stopped_at: Phase 48 context gathered
 last_updated: "2026-05-19T20:51:18.493Z"
 last_activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50, 4 requirements)
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 1
   completed_plans: 1
   percent: 100
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 ## Current Position
 
-Phase: 48 (not started)
-Plan: —
-Status: Roadmapped — ready to plan Phase 48
-Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50, 4 requirements)
+Phase: 999.1
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-05-19
 
 ```
 v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/3 phases)
