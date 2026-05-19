@@ -45,13 +45,11 @@ export async function getListById(id: string) {
 
 export async function getListWithItems(id: string) {
   // T-47-07: filter by status='published' so a draft id resolves to null → notFound().
-  // getListById has no status filter (owner-read); re-query with the published filter here.
-  const rows = await db
-    .select()
-    .from(curatedLists)
-    .where(eq(curatedLists.id, id))
-    .limit(1)
-  const list = rows[0] ?? null
+  // WR-03: reuse getListById (owner-read, no status filter) and apply the
+  // published gate here in JS — the previous gratuitous copy of getListById's
+  // select().from().where().limit() body is removed. The publish gate is still
+  // the SOLE enforced draft-leak guard for this public-read path.
+  const list = await getListById(id)
   if (!list || list.status !== 'published') return null
   const items = await getListItems(id)
   return { ...list, items }
