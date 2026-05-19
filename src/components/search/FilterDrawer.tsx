@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { MovementChips } from '@/components/search/MovementChips'
 import { CaseSizeChips } from '@/components/search/CaseSizeChips'
 import { StyleChips } from '@/components/search/StyleChips'
+import { BrandChips } from '@/components/search/BrandChips'
+import { EraChips } from '@/components/search/EraChips'
+import { GenreChips } from '@/components/search/GenreChips'
+import { ArchetypeChips } from '@/components/search/ArchetypeChips'
 
 interface FilterDrawerProps {
   open: boolean
@@ -16,6 +20,16 @@ interface FilterDrawerProps {
   onSizeChange: (v: string | null) => void
   onStyleChange: (v: string[]) => void
   styleVocab: string[]
+  /** FU-01 (260519-ga9) — Brand/Era/Genre/Archetype facets, single-select. */
+  brand: string | null
+  era: string | null
+  genre: string | null
+  archetype: string | null
+  onBrandChange: (v: string | null) => void
+  onEraChange: (v: string | null) => void
+  onGenreChange: (v: string | null) => void
+  onArchetypeChange: (v: string | null) => void
+  brandVocab: { slug: string; name: string }[]
 }
 
 export function FilterDrawer({
@@ -28,11 +42,24 @@ export function FilterDrawer({
   onSizeChange,
   onStyleChange,
   styleVocab,
+  brand,
+  era,
+  genre,
+  archetype,
+  onBrandChange,
+  onEraChange,
+  onGenreChange,
+  onArchetypeChange,
+  brandVocab,
 }: FilterDrawerProps) {
   function handleClearAll() {
     onMovementChange(null)
     onSizeChange(null)
     onStyleChange([])
+    onBrandChange(null)
+    onEraChange(null)
+    onGenreChange(null)
+    onArchetypeChange(null)
   }
 
   return (
@@ -53,6 +80,10 @@ export function FilterDrawer({
               <MovementChips selected={movement} onSelect={onMovementChange} />
               <CaseSizeChips selected={size} onSelect={onSizeChange} />
               <StyleChips selected={styleArr} onSelect={onStyleChange} vocab={styleVocab} />
+              <BrandChips selected={brand} onSelect={onBrandChange} vocab={brandVocab} />
+              <EraChips selected={era} onSelect={onEraChange} />
+              <GenreChips selected={genre} onSelect={onGenreChange} />
+              <ArchetypeChips selected={archetype} onSelect={onArchetypeChange} />
             </Drawer.Content>
             <div className="mt-auto flex flex-col gap-2 p-4 border-t border-border pt-3">
               <Drawer.Close

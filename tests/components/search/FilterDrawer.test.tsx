@@ -121,6 +121,23 @@ vi.mock('@/components/search/StyleChips', () => ({
   StyleChips: () => <div data-testid="style-chips" />,
 }))
 
+// FU-01 (260519-ga9) — new facet chip groups; mocked, only Drawer structure matters here.
+vi.mock('@/components/search/BrandChips', () => ({
+  BrandChips: () => <div data-testid="brand-chips" />,
+}))
+
+vi.mock('@/components/search/EraChips', () => ({
+  EraChips: () => <div data-testid="era-chips" />,
+}))
+
+vi.mock('@/components/search/GenreChips', () => ({
+  GenreChips: () => <div data-testid="genre-chips" />,
+}))
+
+vi.mock('@/components/search/ArchetypeChips', () => ({
+  ArchetypeChips: () => <div data-testid="archetype-chips" />,
+}))
+
 // Mock Button to avoid shadcn dependency
 vi.mock('@/components/ui/button', () => ({
   Button: ({
@@ -151,6 +168,16 @@ const DEFAULT_PROPS = {
   onSizeChange: vi.fn(),
   onStyleChange: vi.fn(),
   styleVocab: ['diver', 'dress', 'field'],
+  // FU-01 (260519-ga9) — Brand/Era/Genre/Archetype facets.
+  brand: null,
+  era: null,
+  genre: null,
+  archetype: null,
+  onBrandChange: vi.fn(),
+  onEraChange: vi.fn(),
+  onGenreChange: vi.fn(),
+  onArchetypeChange: vi.fn(),
+  brandVocab: [{ slug: 'rolex', name: 'Rolex' }],
 }
 
 describe('FilterDrawer (PLSH-01, PLSH-02)', () => {
