@@ -2,29 +2,16 @@
 phase: 46-explore-shell-browse-archetypes
 reviewed: 2026-05-18T00:00:00Z
 depth: standard
-files_reviewed: 16
+files_reviewed: 3
 files_reviewed_list:
-  - src/lib/archetype-config.ts
-  - src/data/browse.ts
-  - src/data/discovery.ts
-  - src/data/catalog.ts
-  - src/app/actions/search.ts
   - src/components/search/useSearchState.ts
-  - src/components/search/SearchPageClient.tsx
-  - src/app/explore/page.tsx
-  - src/components/explore/CollectorArchetypes.tsx
-  - src/components/explore/BrowseModule.tsx
-  - src/components/explore/HeroModule.tsx
-  - src/components/explore/CuratedListsRail.tsx
-  - src/components/explore/WhereCollectionsGo.tsx
   - src/app/explore/brands/page.tsx
-  - src/app/explore/eras/page.tsx
-  - src/app/explore/genres/page.tsx
+  - src/components/explore/CollectorArchetypes.tsx
 findings:
   critical: 1
-  warning: 6
-  info: 4
-  total: 11
+  warning: 3
+  info: 2
+  total: 6
 status: issues_found
 ---
 
@@ -32,269 +19,161 @@ status: issues_found
 
 **Reviewed:** 2026-05-18T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 16
+**Files Reviewed:** 3
 **Status:** issues_found
 
 ## Summary
 
-Phase 46 ships the `/explore` 5-module shell, Browse index pages, the Collector
-Archetypes chip rail, and four new `/search` Watches-tab facets (brand/era/genre/
-archetype). The architecture is mostly sound: `'use cache'` scoping is correct
-(auth assertions stay outside cache boundaries, no per-viewer data enters cached
-scopes), and the brand-slug subquery is correctly Drizzle-parameterized — there
-is **no SQL injection surface** in the new facet code.
+Re-review of the three source files changed by phase 46 gap-closure plans 46-05
+(soft-nav facet reconciliation in `useSearchState.ts`) and 46-06 (A–Z brands nav +
+archetype zero-count filter). Scope is the diff since `f12ae00`.
 
-However, the review found one BLOCKER and several WARNINGs centered on two
-themes: (1) the new era/genre/archetype facet values reach the DAL with only a
-loose `z.string().max(50)` Zod check — they are never validated against their
-known enum vocabularies, and (2) the cache-invalidation claim in `browse.ts`'s
-header is **factually wrong** — catalog mutations from the URL-extraction path
-never call `revalidateTag('explore')`, so Browse/Archetype counts go stale.
+The brands page and archetype rail changes are small and largely sound — layout-only
+tweaks plus a clean zero-count filter on the archetype rail. The reconciliation logic
+added to `useSearchState.ts` has one design defect classified BLOCKER: the new Fault 2
+"would-strip" guard protects `q` and `tab` against being dropped from the URL, but the
+companion reconciliation effect only reconciles facet params — never `q`/`tab`. As a
+result, clearing the search box or switching back to the All tab leaves a stale param
+permanently stuck in the URL, breaking the D-04 "URL is the single source of truth"
+invariant for the two most common state changes on the page.
 
 ## Critical Issues
 
-### CR-01: Catalog mutations via URL extraction never invalidate Browse caches
+### CR-01: Fault 2 guard wedges URL sync — `q`/`tab` are guarded but never reconciled
 
-**File:** `src/data/browse.ts:14-21` (claim) — root cause in `src/app/api/extract-watch/route.ts:146,213`
-**Issue:** The `browse.ts` module header asserts:
+**File:** `src/components/search/useSearchState.ts:182-186`
+**Issue:**
+`TRACKED_PARAMS` includes `'q'` and `'tab'`, and the `wouldStripIncoming` guard returns
+early (skips `router.replace`) whenever the URL still carries a tracked key that the
+freshly built `params` omits. The stated rationale is to wait for reconciliation effect
+1a to settle an incoming value into state. But effect 1a (`useSearchState.ts:137-154`)
+reconciles only the **facet** params — `movement`, `size`, `style`, `brand`, `era`,
+`genre`, `archetype`. It never reconciles `q` or `tab`, and no other code path copies
+URL `q`/`tab` back into state (`setQ`/`setDebouncedQ` are only invoked from the debounce
+effect at line 127 and the public `setQ` setter).
 
-> "The existing `revalidateTag('explore', 'max')` calls in watch mutation Server
-> Actions already cover catalog-mutation invalidation ... No new revalidation
-> wiring needed."
+Consequences, triggered by ordinary user actions — no soft nav required:
 
-This is incorrect. The four Browse count DALs (`getBrowseArchetypeCounts`,
-`getBrowseEraCounts`, `getBrowseGenreCounts`, `getBrowseBrandCounts`) and
-`CollectorArchetypes` all cache under `cacheTag('explore', ...)` with
-`cacheLife('hours')`. They count rows in `watches_catalog`.
+1. URL is `/search?q=omega`. User clears the search box. After debounce `debouncedQ`
+   becomes `''`, so the line-164 guard (`>= CLIENT_MIN_CHARS`) omits `q` from `params`.
+   But `searchParams.get('q')` is still `'omega'` → `wouldStripIncoming === true` → the
+   `router.replace` that should drop `q` is skipped. The URL stays `/search?q=omega`
+   indefinitely; state and URL are now permanently divergent. A reload resurrects the
+   stale query.
+2. URL is `/search?tab=watches`. User clicks back to the All tab. `tab` becomes `'all'`,
+   so the line-165 guard omits `tab` from `params`. URL still has `tab=watches` → guard
+   fires → the URL never loses `tab=watches`, and a reload restores the wrong tab.
 
-`watches_catalog` is mutated by `upsertCatalogFromExtractedUrl` and
-`updateCatalogTaste`, which are invoked by the **`/api/extract-watch` route
-handler** (route.ts:146 and route.ts:213). That route handler contains **no
-`revalidateTag` call at all** (verified via grep — zero matches for `revalidate`
-in `route.ts`).
+This defeats the D-04 invariant for the two most common state changes on the page, and
+is a regression introduced by this gap-closure plan (the pre-46-05 effect had no guard
+and replaced unconditionally).
 
-Concretely: a user imports a watch by URL → a new `watches_catalog` row is
-inserted and its `primary_archetype` / `era_signal` are enriched → the Browse
-genre/era/archetype counts and the Collector Archetypes count badges remain
-**stale for up to one hour**. New archetypes with their first catalog row will
-display a count of 0 (or be hidden by the `counts.length === 0` null-guard)
-even though catalog content exists. This is incorrect, user-visible behavior
-that the implementation explicitly (and wrongly) claimed was already handled.
-
-(The `addWatch` Server Action path *is* covered — `watches.ts:294` calls
-`revalidateTag('explore', 'max')` after its inline `upsertCatalogFromUserInput`
-/ `updateCatalogTaste` calls. Only the URL-extraction route is unwired.)
-
-**Fix:** Add a tag-revalidation call to the `/api/extract-watch` route handler
-after a successful catalog upsert/enrich, and correct the misleading header
-comment in `browse.ts`:
+**Fix:**
+Restrict the guard to the facet keys that effect 1a actually reconciles. `q` and `tab`
+are owned by in-memory state and React events, not by inbound navigation, so they must
+never block the replace:
 ```ts
-// src/app/api/extract-watch/route.ts — after catalog upsert/enrich succeeds
-import { revalidateTag } from 'next/cache'
-// ...
-revalidateTag('explore') // busts explore + explore:browse + explore:archetypes
+// Only guard the facet keys reconciliation effect 1a actually settles into state.
+// q and tab are driven by user input/events, not inbound nav — never guard them.
+const RECONCILED_PARAMS = ['movement', 'size', 'style', 'brand', 'era', 'genre', 'archetype']
+const wouldStripIncoming = RECONCILED_PARAMS.some(
+  (key) => searchParams.get(key) !== null && !params.has(key),
+)
+if (wouldStripIncoming) return
 ```
-Then update the `browse.ts` header to state that the URL-extraction route is
-the invalidation point, not "existing watch mutation Server Actions."
 
 ## Warnings
 
-### WR-01: era/genre/archetype facet values are not validated against their enum vocabularies
+### WR-01: Brand slug deep-link is not URL-encoded
 
-**File:** `src/app/actions/search.ts:27-29`
-**Issue:** The Zod schema validates the three new categorical facets as free
-strings:
-```ts
-era:       z.string().max(50).optional(),
-genre:     z.string().max(50).optional(),
-archetype: z.string().max(50).optional(),
-```
-But `EraSignal` is a closed union (`'vintage-leaning' | 'modern' | 'contemporary'`)
-and `PrimaryArchetype` is a closed 10-value union (`src/lib/types.ts:234-237`).
-The existing `movement` and `size` facets in the *same schema* are correctly
-constrained with `z.enum([...])`. The three Phase 46 facets break that pattern
-and accept any string up to 50 chars. The value then flows unvalidated into
-`eq(watchesCatalog.eraSignal, filters.era)` / `eq(watchesCatalog.primaryArchetype, ...)`
-in `catalog.ts:422,430`. This is not an injection vuln (Drizzle parameterizes),
-but it is a missing-input-validation defect: a crafted URL like
-`/search?tab=watches&archetype=garbage` runs a real DB query that always returns
-zero rows, and the phase brief explicitly calls for these to be Zod-validated.
-
-**Fix:** Constrain to the known vocabularies:
-```ts
-era:       z.enum(['vintage-leaning', 'modern', 'contemporary']).optional(),
-archetype: z.enum(['dress','dive','field','pilot','chrono','gmt','racing','sport','tool','hybrid']).optional(),
-genre:     z.enum(['dress','dive','field','pilot','chrono','gmt','racing','sport','tool','hybrid']).optional(),
-```
-Better: derive the enum arrays from the `PrimaryArchetype` / `EraSignal` source
-of truth so they cannot drift.
-
-### WR-02: `CatalogSearchFilters` types era/genre/archetype as `string` instead of their unions
-
-**File:** `src/data/catalog.ts:281-286`
-**Issue:** `CatalogSearchFilters` declares `era?: string`, `genre?: string`,
-`archetype?: string`. The DAL then calls `eq(watchesCatalog.eraSignal, filters.era)`
-and `eq(watchesCatalog.primaryArchetype, primaryArchetypeFilter)`. Because the
-filter fields are plain `string`, the type system provides no protection against
-an out-of-vocabulary value reaching the query — the only gate is the Zod schema,
-which (per WR-01) is also unconstrained. Two layers that should each catch a bad
-value both pass it through. The adjacent `movement` and `size` fields in the
-same interface are correctly typed as unions.
-
-**Fix:** Type them with the domain unions:
-```ts
-era?: EraSignal
-genre?: PrimaryArchetype
-archetype?: PrimaryArchetype
-```
-`EraSignal` and `PrimaryArchetype` are already imported at `catalog.ts:9`.
-
-### WR-03: Unsafe `as keyof typeof` cast on unvalidated URL value
-
-**File:** `src/components/search/SearchPageClient.tsx:373`
+**File:** `src/app/explore/brands/page.tsx:112`
 **Issue:**
-```ts
-const archetypeConfig = archetype ? ARCHETYPE_CONFIG[archetype as keyof typeof ARCHETYPE_CONFIG] : null
-```
-`archetype` originates from a URL search param (`useSearchState` line 111,
-`searchParams.get('archetype')`). The `as keyof typeof ARCHETYPE_CONFIG` cast
-asserts to the type system that the value is one of the 10 known keys, which is
-false for an arbitrary URL. The downstream code happens to handle the resulting
-`undefined` (`archetypeConfig &&` guards, `archetypeConfig?.displayName ??`
-fallbacks), so this does not crash today — but the cast actively suppresses the
-type error that would otherwise force the value to be narrowed/validated first.
-If a future edit assumes `archetypeConfig` is non-null, it will break silently.
-
-**Fix:** Drop the cast and let the lookup be typed as `ArchetypeConfig | undefined`,
-or validate `archetype` against `ARCHETYPE_CONFIG` keys before use:
-```ts
-const archetypeConfig =
-  archetype && archetype in ARCHETYPE_CONFIG
-    ? ARCHETYPE_CONFIG[archetype as PrimaryArchetype]
-    : null
+`href={`/search?tab=watches&brand=${brand.slug}`}` interpolates `brand.slug` raw into a
+query string. `getBrowseBrandCounts` returns `brands.slug` with no sanitization. If a
+slug ever contains a query-significant character (`&`, `#`, `+`, space, `%`), the deep
+link breaks or silently truncates the brand value — a slug containing `&` would inject
+an extra query param into the `/search` URL. Slugs are normally hyphen-safe, but the
+page makes no guarantee, and the `/search` action accepts an unconstrained
+`z.string().max(100)` for `brand`, so a malformed value is not rejected downstream
+either.
+**Fix:**
+```tsx
+href={`/search?tab=watches&brand=${encodeURIComponent(brand.slug)}`}
 ```
 
-### WR-04: Brand slug subquery silently no-ops on an unknown slug
+### WR-02: Non-alphabetic brand names are dropped from the page
 
-**File:** `src/data/catalog.ts:437-441`
-**Issue:** The brand facet predicate is:
-```ts
-sql`${watchesCatalog.brandId} = (SELECT id FROM brands WHERE slug = ${filters.brand} LIMIT 1)`
-```
-When `filters.brand` does not match any `brands.slug`, the subquery yields
-`NULL`, and `brandId = NULL` evaluates to `NULL` (not `false`) in SQL three-valued
-logic — the row is excluded, so the query correctly returns zero results. That
-is acceptable behavior, but it is silent: an unknown/stale brand slug from a
-deep-link produces an empty Watches tab indistinguishable from "this brand has
-no catalog watches." There is no validation that the slug resolves, and no
-distinct UX path. Brand slugs are dynamic (not enumerable), so a Zod enum is not
-possible — but the DAL could surface the unresolved-slug case so the UI can
-render a clear "Unknown brand" state instead of a generic empty state.
-
-**Fix:** Resolve the brand id explicitly before building the query and short-
-circuit / signal when it does not resolve:
-```ts
-if (filters?.brand) {
-  const [b] = await db.select({ id: brands.id }).from(brands)
-    .where(eq(brands.slug, filters.brand)).limit(1)
-  if (!b) return [] // or return a typed "unknown brand" marker
-  predicates.push(eq(watchesCatalog.brandId, b.id))
-}
-```
-At minimum, document the silent-no-op behavior in the function doc comment.
-
-### WR-05: A–Z brand grouping discards non-alpha brand names into a `#` bucket with no `#` jump target
-
-**File:** `src/app/explore/brands/page.tsx:33-38, 94`
-**Issue:** Brands are bucketed by first letter:
+**File:** `src/app/explore/brands/page.tsx:38-42`
+**Issue:**
+The WR-05 comment at lines 24-26 claims brands starting with a digit/symbol "bucket
+under `#`", and `LETTER_BUCKETS` (line 27) correctly adds `'#'`. But the bucketing
+logic only falls back to `'#'` when the first character is *missing*:
 ```ts
 const letter = brand.name[0]?.toUpperCase() ?? '#'
 ```
-A brand whose name starts with a digit or symbol (e.g. "8 Faces", or any future
-"+", "& Co" brand) is placed in a `'#'` bucket. But the rendered letter sections
-only iterate `ALPHABET` (A–Z) at line 94: `ALPHABET.filter((l) => byLetter.has(l))`.
-The `'#'` bucket is never in `ALPHABET`, so any such brand is **silently dropped
-from the page entirely** — it has a count, a slug, and a row in the DAL result,
-but never renders. The A–Z jump nav also has no `#` entry. With the current
-catalog this may not trigger, but it is a latent data-loss-from-view bug the
-moment a non-alpha brand is added.
+A brand whose name starts with a digit — e.g. `"8 Faces"` — yields `letter === '8'`,
+which is not in `LETTER_BUCKETS`. The jump nav at line 76 iterates `LETTER_BUCKETS`, so
+no `'8'` tab appears; the section loop at line 98 (`LETTER_BUCKETS.filter((l) =>
+byLetter.has(l))`) never matches the `'8'` Map key, so that brand is **silently dropped
+from the page entirely** — counted nowhere, rendered nowhere. The intended `#` bucket
+only ever receives empty-name brands. This is a latent data-loss-from-view bug the
+moment a digit- or symbol-prefixed brand enters the catalog.
+**Fix:**
+Normalize any non-A–Z first character to the `#` bucket:
+```ts
+const first = brand.name[0]?.toUpperCase() ?? '#'
+const letter = first >= 'A' && first <= 'Z' ? first : '#'
+```
 
-**Fix:** Render the `#` bucket explicitly, e.g. iterate
-`[...ALPHABET, '#'].filter((l) => byLetter.has(l))` and add a `#` jump target,
-or normalize non-alpha brands into a defined section.
+### WR-03: Reconciliation effect 1a closes over stale state with `exhaustive-deps` disabled
 
-### WR-06: Era/genre deep-link values are not validated before becoming a query predicate
-
-**File:** `src/app/explore/eras/page.tsx:63`, `src/app/explore/genres/page.tsx:75`
-**Issue:** The index pages build deep-links from raw DAL values
-(`/search?tab=watches&era=${row.era}`, `&genre=${row.genre}`). That is fine for
-DB-sourced values, but combined with WR-01 (the `/search` action does not
-constrain era/genre) it means the *only* validation of these categorical facets
-anywhere in the chain is "the DAL happened to emit them." A hand-crafted URL
-bypasses the index pages entirely. This is the consumer-side half of WR-01 and
-is fixed by fixing WR-01; flagged separately so the fix is verified end-to-end
-(index link → URL → useSearchState → action → DAL).
-
-**Fix:** Covered by WR-01 — once the Zod schema enforces the enum, malformed
-era/genre values are rejected at the Server Action boundary regardless of entry
-point. No change needed on the index pages themselves beyond confirming the
-emitted values are members of the enum.
+**File:** `src/components/search/useSearchState.ts:137-154`
+**Issue:**
+Effect 1a disables `react-hooks/exhaustive-deps` and depends only on `[searchParams]`,
+while its body reads `movement`, `size`, `styleArr`, `brand`, `era`, `genre`,
+`archetype` to compute each `!==` diff. Because those state values are excluded from the
+dep array, the effect captures whatever they were on the render that produced the
+current `searchParams` reference. In the normal soft-nav flow this works because a new
+`searchParams` object arrives with the navigation. But if a facet state value changes
+without `searchParams` changing in the same commit (e.g. a chip setter runs locally),
+the effect does not re-run, and its closed-over snapshot goes stale; the next time
+`searchParams` does change, the effect diffs against an out-of-date value and may issue
+a redundant or incorrect `setX`. The comment explains the intent but does not remove
+the hazard, and it creates an undocumented hard ordering dependency between effects 1a
+and 2.
+**Fix:**
+Either read the current facet values through refs (so the closure is never stale), or
+include all read state in the dep array and rely on the `!==` guards to make redundant
+runs cheap no-ops. If keeping `searchParams`-only, document explicitly why no other
+dep can change without `searchParams` also changing.
 
 ## Info
 
-### IN-01: `getBrowseGenreCounts` and `getBrowseArchetypeCounts` are byte-identical queries
+### IN-01: Disabled A–Z letters are still announced to assistive tech as plain text
 
-**File:** `src/data/browse.ts:36-48` and `src/data/browse.ts:86-98`
-**Issue:** The two functions run the exact same SQL (`GROUP BY primary_archetype
-ORDER BY count DESC`) and differ only in the result alias (`archetype` vs
-`genre`). The doc comments explain the intentional UI distinction, but the
-duplicated query body means a future change to the counting logic (e.g. a
-`WHERE` filter) must be made in two places or they will silently diverge.
+**File:** `src/app/explore/brands/page.tsx:79-91`
+**Issue:**
+Letters with no brands render as an `<a>` with `href={undefined}` plus
+`pointer-events-none opacity-30`. An anchor with no `href` is correctly non-focusable
+and not exposed as a link, but it is still read by screen readers as plain text with no
+indication it is inactive. Minor a11y polish.
+**Fix:**
+Render empty-bucket letters as `<span aria-hidden="true">` (purely decorative) or add
+`aria-disabled="true"`.
 
-**Fix:** Extract a single private query helper and have both public functions
-re-key the result, or have `getBrowseGenreCounts` call `getBrowseArchetypeCounts`
-and remap `{archetype} → {genre}`. Keep the two public names for the API
-distinction.
+### IN-02: `getBrowseArchetypeCounts` consumed here is byte-identical to `getBrowseGenreCounts`
 
-### IN-02: Inline facet-chip JSX block is duplicated verbatim between two render branches
-
-**File:** `src/components/search/SearchPageClient.tsx:391-438` and `474-521`
-**Issue:** The "removable facet chips" block (archetype/brand/era/genre buttons,
-~48 lines each) is copy-pasted between the browse-mode empty-state branch and
-the has-results branch of `WatchesPanel`. Any change to chip styling, the clear
-handler wiring, or accessibility copy must be made twice. This is a maintenance
-hazard and the kind of duplication that drifts.
-
-**Fix:** Extract a `<FacetChipRail>` subcomponent taking
-`{archetype, brand, era, genre, archetypeConfig, onClear*}` and render it once
-in each branch.
-
-### IN-03: Brand/genre chip labels use naive `charAt(0).toUpperCase()` capitalization
-
-**File:** `src/components/search/SearchPageClient.tsx:410, 432` (and 493, 515)
-**Issue:** `brand.charAt(0).toUpperCase() + brand.slice(1)` capitalizes only the
-first character of a slug. A brand slug like `grand-seiko` renders as
-`Grand-seiko`, and `a-lange-sohne` as `A-lange-sohne`. The genre chips have the
-same issue (though the 10 genre values are all single lowercase words, so they
-render acceptably today). Eras already have a proper `ERA_DISPLAY_LABELS` map;
-brands have none.
-
-**Fix:** Thread the real `brand.name` through from the deep-link or a lookup
-rather than title-casing the slug, or apply a per-hyphen-segment capitalization
-as a stopgap. Genres could reuse a display-name map for consistency with the
-`/explore/genres` page's `GENRE_DISPLAY_NAMES`.
-
-### IN-04: `WatchesPanel` default-param values are dead — caller always passes them
-
-**File:** `src/components/search/SearchPageClient.tsx:320-323`
-**Issue:** `WatchesPanel` declares `archetype = null, brand = null, era = null,
-genre = null` defaults and the props are typed optional (`archetype?`). The sole
-call site (line 185-201) always passes all four explicitly, so the defaults and
-the optional markers are never exercised. Minor — it implies an optionality that
-does not exist and slightly obscures the real contract.
-
-**Fix:** Make the props required (drop `?` and the `= null` defaults) to match
-actual usage, or leave as-is if a future second call site is planned.
+**File:** `src/components/explore/CollectorArchetypes.tsx:40` (cross-reference to `src/data/browse.ts`)
+**Issue:**
+`CollectorArchetypes` consumes `getBrowseArchetypeCounts`, whose SQL is identical to
+`getBrowseGenreCounts` (same column, same `GROUP BY`/`ORDER BY`, only the alias
+differs). The duplication is intentional per the D-17 comment in `browse.ts`, but the
+two queries will silently diverge if one is later changed (e.g. adding a `WHERE`
+clause). Not a phase-46 regression — noted because this component depends on one half
+of the pair.
+**Fix:**
+Extract a shared private query helper that both public functions re-key, or add a
+cross-reference comment in each so a future edit updates both.
 
 ---
 
