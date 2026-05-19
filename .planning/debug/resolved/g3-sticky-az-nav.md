@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G3-sticky-az-nav — A–Z jump-nav bar on /explore/brands does not stay pinned to top of viewport while scrolling"
 created: 2026-05-18T00:00:00Z
-updated: 2026-05-18T00:00:00Z
+updated: 2026-05-19T05:50:00Z
 ---
 
 ## Current Focus

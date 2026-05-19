@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G4-zero-count-archetype-chips — Two Collector Archetypes chips on /explore show a watch count of 0, violating roadmap success criterion #4 / EXPL-05 (all 10 archetype chips must resolve to at least one catalog watch)."
 created: 2026-05-19T04:53:50Z
-updated: 2026-05-19T04:58:00Z
+updated: 2026-05-19T05:50:00Z
 ---
 
 ## Current Focus

@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "G5-soft-nav-facet-not-applied — Selecting a new archetype chip from /explore does not apply the new facet on /search when navigation happens client-side (soft nav) — only a full page refresh applies it."
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-19T05:50:00Z
 ---
 
 ## Current Focus
