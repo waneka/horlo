@@ -683,7 +683,7 @@ Step 2.6: SKIPPED — Phase 47 is purely code/schema changes. No new external se
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Hero quality gate — item count source**
    - What we know: `getListItemCount(listId)` exists and returns a count. `getPublishedLists()` does not include counts.
