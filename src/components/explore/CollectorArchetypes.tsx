@@ -2,15 +2,16 @@
 //
 // Collector Archetypes chip rail — Phase 46 EXPL-05.
 //
-// 10 chips, one per primary_archetype, each with an editorial display name and
-// a count badge. Links to /search prefiltered by archetype. Viewer-independent:
-// no viewerId prop, no getCurrentUser() inside this component — count data is
-// globally cached per the 'use cache' + cacheTag('explore', 'explore:archetypes')
-// scope (RESEARCH Pitfall 2: getCurrentUser inside 'use cache' would break the
-// shared cache contract).
+// Renders one chip per primary_archetype that has ≥1 catalog watch. Zero-count
+// archetypes are hidden per EXPL-02 (absent-not-empty): tool/hybrid currently
+// have thin/no catalog coverage — a v5.2 catalog-expansion data gap, not a
+// code bug. They reappear automatically when v5.2 adds more catalog watches.
+// Viewer-independent: no viewerId prop, no getCurrentUser() inside this component
+// — count data is globally cached per the 'use cache' +
+// cacheTag('explore', 'explore:archetypes') scope (RESEARCH Pitfall 2).
 //
-// Returns null when counts array is empty (EXPL-02 null-hide guard). In practice,
-// Phase 44 verified all 10 archetypes resolve to ≥1 result.
+// Returns null when counts array is empty OR when no archetype has ≥1 watch
+// (EXPL-02 null-hide guard).
 //
 // Pattern: TrendingWatches 'use cache' + null-hide + section/h2 skeleton.
 
@@ -42,13 +43,26 @@ export async function CollectorArchetypes({ counts: propCounts }: Props = {}) {
   // Build a count lookup map; absent archetypes get 0 (D-15).
   const countMap = new Map(counts.map((row) => [row.archetype, row.count]))
 
+  // Filter to archetypes with ≥1 watch (EXPL-02: hide zero-count archetypes).
+  const visibleArchetypes = ARCHETYPE_ORDER.filter(
+    (value) => (countMap.get(value) ?? 0) >= 1,
+  )
+
+  // If no archetype has coverage, hide the whole rail (EXPL-02 absent-not-empty).
+  if (visibleArchetypes.length === 0) return null
+
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold leading-tight text-foreground">
-        Collector Archetypes
-      </h2>
+      <div>
+        <h2 className="text-xl font-semibold leading-tight text-foreground">
+          Collector Archetypes
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Browse the catalog by the kind of collector each watch speaks to.
+        </p>
+      </div>
       <div className="flex flex-wrap gap-2">
-        {ARCHETYPE_ORDER.map((value) => {
+        {visibleArchetypes.map((value) => {
           const config = ARCHETYPE_CONFIG[value]
           const count = countMap.get(value) ?? 0
           return (

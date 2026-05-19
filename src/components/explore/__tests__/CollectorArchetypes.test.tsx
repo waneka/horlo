@@ -4,7 +4,8 @@
 //
 // Coverage:
 //   1. Component renders null when archetype-count data is empty (EXPL-02 null-hide)
-//   2. Component renders 10 chips when given 10 archetype counts
+//   2. Component renders 10 chips when given 10 archetype counts (all ≥1)
+//   3. Component hides zero-count chips — only ≥1 archetypes render (G4 filter)
 
 import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
@@ -64,5 +65,16 @@ describe('CollectorArchetypes', () => {
     const { getAllByRole } = await renderAsync(CollectorArchetypes({ counts }))
     // Each chip is a <button type="button"> — expect exactly 10.
     expect(getAllByRole('button')).toHaveLength(10)
+  })
+
+  it('hides zero-count chips — renders only archetypes with count ≥ 1 (G4 filter)', async () => {
+    // tool and hybrid at count: 0; the other 8 at count: 5 (≥1).
+    const counts = PRIMARY_ARCHETYPES.map((a) => ({
+      archetype: a,
+      count: a === 'tool' || a === 'hybrid' ? 0 : 5,
+    }))
+    const { getAllByRole } = await renderAsync(CollectorArchetypes({ counts }))
+    // Zero-count chips are hidden — expect exactly 8.
+    expect(getAllByRole('button')).toHaveLength(8)
   })
 })
