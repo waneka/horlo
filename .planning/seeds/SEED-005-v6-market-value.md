@@ -3,7 +3,7 @@ id: SEED-005
 status: dormant
 planted: 2026-05-03
 planted_during: post-v4.0 close — milestone roadmapping conversation
-trigger_when: starting milestone v6.0, OR planning any market pricing integration, total collection value surface, paid-vs-market toggle, or insights chart involving prices
+trigger_when: starting the Market Value milestone — sits after v8.0 (NOT v6.0; that slot is Social Interaction per the 2026-05-19 roadmap reshape) and needs the SEED-007 pricing-API spike first — OR planning any market pricing integration, total collection value surface, paid-vs-market toggle, or insights chart involving prices
 scope: large
 related_phases: [v4.0 Phase 17 (watches_catalog as catalog identity), v4.0 Phase 19.1 (taste enrichment as parallel "fire-and-forget on catalog write" pattern)]
 ---

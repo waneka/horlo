@@ -9,9 +9,12 @@
 - ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
 - ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
 - ✅ **v5.1 Explore Page Redesign** — Phases 43-47 (shipped 2026-05-19) — [archive](milestones/v5.1-ROADMAP.md)
-- 📋 **v5.2 Catalog Expansion** — planted (SEED-009)
-- 📋 **v5.3 Add-Watch Redesign** — planted (SEED-010)
-- 📋 **v6.0 Market Value** — planted (SEED-005)
+- 📋 **v5.2 Polish + Taxonomy** — planted, next (SEED-011)
+- 📋 **v6.0 Social Interaction** — planted (SEED-012)
+- 📋 **v7.0 Watch Photos** — planted (SEED-013)
+- 📋 **v8.0 Add-Watch Redesign** — planted (SEED-010)
+- 💤 **Catalog Expansion** — unscheduled; catalog strategy under review (SEED-009)
+- 💤 **Market Value** — future, after v8.0 (SEED-005; needs the SEED-007 pricing spike)
 
 ## Phases
 
@@ -137,18 +140,30 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 
 </details>
 
-### 📋 v5.2 Catalog Expansion (Planted)
+### 📋 v5.2 Polish + Taxonomy (Planted — next)
 
-Not yet roadmapped — seeded as SEED-009. Catalog breadth expansion beyond the ~100 existing rows. Runs after v5.1.
+Not yet roadmapped — seeded as SEED-011. A small, fast milestone: fix the wishlist-watch "you own this" mislabel and the dark-mode `/search` filter-chip legibility bug; run two spikes — genre vs. style overlap, and whether to merge the two watch-detail views (`/catalog/[id]` vs `/watch/[id]`).
 
-### 📋 v5.3 Add-Watch Redesign (Planted)
+### 📋 v6.0 Social Interaction (Planted)
 
-Not yet roadmapped — seeded as SEED-010. Add-Watch flow redesign. Runs after v5.1.
+Not yet roadmapped — seeded as SEED-012. A scoped social layer on the existing Rdio-style discovery: open likes on collections/wishlists/wears; comments on wears + collections for any authed user, wishlist comments gated to mutual followers. Explicitly not "Instagram for watches."
 
-### 📋 v6.0 Market Value (Planted)
+### 📋 v7.0 Watch Photos (Planted)
 
-Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-value insights. Requires the SEED-007 market-pricing API spike first.
+Not yet roadmapped — seeded as SEED-013. Multi-photo carousel per watch (replacing the single `imageUrl`); public wear pics surface on watch detail; wear pics persist in the Wears tab (Home rail stays ephemeral); add-watch flow encourages photos with a per-person cap.
+
+### 📋 v8.0 Add-Watch Redesign (Planted)
+
+Not yet roadmapped — seeded as SEED-010. Search-first add-watch flow. The catalog-depth dependency is under review now that Catalog Expansion is unscheduled.
+
+### 💤 Catalog Expansion (Unscheduled)
+
+Seeded as SEED-009 — catalog breadth expansion past the ~100-row bootstrap. Unscheduled: the catalog-growth strategy is being rethought (decision 2026-05-19).
+
+### 💤 Market Value (Future)
+
+Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits after v8.0; needs the SEED-007 market-pricing API spike first. (No longer numbered v6.0 — that slot is now Social Interaction.)
 
 ## Next Up
 
-v5.1 Explore Page Redesign shipped 2026-05-19 (all 32 requirements). The next milestone is **v5.2 Catalog Expansion** (SEED-009) — run `/gsd-new-milestone` to scope it.
+v5.1 Explore Page Redesign shipped 2026-05-19 (all 32 requirements). The roadmap was reshaped on 2026-05-19 from a post-v5.1 bug/feature triage. The next milestone is **v5.2 Polish + Taxonomy** (SEED-011) — run `/gsd-new-milestone` to scope it.

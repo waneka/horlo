@@ -1,9 +1,10 @@
 ---
 id: SEED-009
-status: dormant
+status: unscheduled
 planted: 2026-05-16
 planted_during: 2026-05-16 bug/feature triage review — "enrich then expand" catalog-data decision
-trigger_when: starting milestone v5.2, after v5.1 closes. Also surface if any phase proposes a large catalog data import or external catalog sourcing.
+unscheduled_note: "2026-05-19 — removed from the v5.2 slot during a post-v5.1 roadmap reshape. The catalog-growth strategy is being rethought; this is no longer the next milestone."
+trigger_when: deferred — do NOT auto-surface for the next /gsd-new-milestone. Re-evaluate once the catalog-growth strategy is decided, or if a phase proposes a large catalog data import / external sourcing.
 scope: large
 related_phases: [v5.0 catalog bootstrap (scripts/seed-bootstrap-2026-05-13.sql, 100 rows), v5.1 catalog enrichment phase (SEED-008 "Additional v5.1 Scope"), SEED-001 catalog hierarchy]
 ---

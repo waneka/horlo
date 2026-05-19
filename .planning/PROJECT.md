@@ -20,18 +20,19 @@ A collector can evaluate any watch against their collection and get a meaningful
 
 See `.planning/MILESTONES.md` and `.planning/milestones/v5.1-ROADMAP.md` for full detail. The milestone closed without a formal `/gsd-audit-milestone` (as v5.0 was); the pre-close artifact audit's 23 open items were all cosmetic flags or expected backlog, acknowledged as non-blocking.
 
-## Next Milestone: v5.2 Catalog Expansion (planted)
+## Next Milestone: v5.2 Polish + Taxonomy (planted)
 
-Not yet roadmapped — seeded as SEED-009. The "expand" half of enrich-then-expand: grow `watches_catalog` breadth past the v5.0 100-watch bootstrap. Run `/gsd-new-milestone` to scope it.
+Not yet roadmapped — seeded as SEED-011. A small, fast milestone: fix the wishlist-watch "you own this" mislabel and the dark-mode `/search` filter-chip legibility bug; run two spikes — genre vs. style taxonomy overlap, and whether to merge the two watch-detail views. Run `/gsd-new-milestone` to scope it.
 
-**Trajectory:** v5.2 Catalog Expansion (SEED-009) → v5.3 Add-Watch Redesign (SEED-010 — search-first add flow; needs catalog depth) → SEED-007 market-pricing API spike → v6.0 Market Value (SEED-005 — `market_prices` keyed on `catalog_id`, total collection value, paid-vs-market chart, all free per SEED-006). Phase numbering continues from 48 (no reset).
+**Trajectory** (reshaped 2026-05-19 from a post-v5.1 bug/feature triage): v5.2 Polish + Taxonomy (SEED-011) → v6.0 Social Interaction (SEED-012 — scoped likes/comments) → v7.0 Watch Photos (SEED-013 — multi-photo carousel + wear-pic surfacing) → v8.0 Add-Watch Redesign (SEED-010 — search-first add flow). **Catalog Expansion (SEED-009) is unscheduled** — the catalog-growth strategy is being rethought. **Market Value (SEED-005)** sits after v8.0 and still needs the SEED-007 pricing spike. Phase numbering continues from 48 (no reset).
 
 **Standing context:**
 
 - **No paywall** — SEED-006 resolved 2026-05-06 → Horlo ships fully free; no Subscription tab, no Stripe, no entitlements scaffolding. See `.planning/research/PREMIUM-MAP.md`.
-- **Recommender (SEED-002) is future paid-candidate but built free** — Layer C Reference granularity + Layer D `divestments` schema landed in v5.0 as prep; the recommender itself is v6.0+ at earliest.
-- **Catalog seeding — enrich then expand** — v5.0 shipped the hierarchy + a 100-watch prod bootstrap; v5.1 **enriched** those 100 rows (LLM/vision backfill); v5.2 (SEED-009) deliberately **expands** catalog breadth.
+- **Recommender (SEED-002) is future paid-candidate but built free** — Layer C Reference granularity + Layer D `divestments` schema landed in v5.0 as prep; the recommender itself is a later milestone.
+- **Catalog growth is being rethought** — v5.0 shipped the hierarchy + a 100-watch bootstrap; v5.1 enriched those 100 rows. The breadth-expansion plan (old SEED-009) is unscheduled pending a strategy rethink; downstream features assuming catalog depth (e.g. the v8.0 search-first add flow) carry that as an open dependency.
 - **Home and Explore stay distinct** — Phase 33b Q1 verdict. Home = daily recency-driven check-in; Explore = evergreen taste-driven rabbit hole. No personalization on Explore.
+- **Social stays scoped, not a feed** — v6.0 adds likes/comments but explicitly avoids an Instagram-style attention machine; wishlist comments are mutual-follow gated.
 
 
 ## Requirements

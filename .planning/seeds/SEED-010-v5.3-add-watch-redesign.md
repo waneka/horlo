@@ -3,12 +3,13 @@ id: SEED-010
 status: dormant
 planted: 2026-05-16
 planted_during: 2026-05-16 bug/feature triage review — add-watch flow rethink (notes #6 + #7)
-trigger_when: starting milestone v5.3, after v5.2 closes. Search-first add depends on catalog depth — do NOT start before v5.2 ships.
+trigger_when: starting milestone v8.0 (renumbered from v5.3 in the 2026-05-19 roadmap reshape). Search-first add depends on catalog depth — see the prerequisite note below.
 scope: medium-large
-related_phases: [v5.2 Catalog Expansion (SEED-009 — hard prerequisite), v5.0 add-watch flow (AddWatchFlow / PasteSection / VerdictStep / WatchForm)]
+renumber_note: "2026-05-19 — moved from v5.3 to v8.0. Catalog Expansion (SEED-009) is now unscheduled, so the once-hard 'v5.2 Catalog Expansion must ship first' prerequisite is under review: scope v8.0 against whatever catalog depth exists, or pair it with a catalog-growth decision."
+related_phases: [SEED-009 Catalog Expansion (catalog-depth dependency — now unscheduled, under review), v5.0 add-watch flow (AddWatchFlow / PasteSection / VerdictStep / WatchForm)]
 ---
 
-# SEED-010: v5.3 Add-Watch Redesign — search-first add flow
+# SEED-010: v8.0 Add-Watch Redesign — search-first add flow
 
 ## The Idea
 
