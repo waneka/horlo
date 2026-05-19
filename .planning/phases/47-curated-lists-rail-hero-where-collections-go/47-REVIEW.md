@@ -33,8 +33,9 @@ findings:
   total: 12
 status: fixes_applied
 fixes_applied_at: 2026-05-19
-fixes_resolved: [CR-01, CR-02, WR-01, WR-02, WR-03, WR-04, WR-05, WR-06]
-fixes_skipped: [IN-01, IN-02, IN-03, IN-04]
+fixes_resolved: [CR-01, CR-02, WR-01, WR-02, WR-03, WR-04, WR-05, WR-06, IN-01, IN-04]
+fixes_accepted: [IN-02, IN-03]
+fixes_skipped: []
 ---
 
 # Phase 47: Code Review Report
@@ -219,11 +220,27 @@ explicitly documented in the module header and accepted for v1.
 
 ### IN-01: `setListStatus` casts the update payload to `any` to smuggle a raw SQL expression
 
+**Status:** RESOLVED (commit b64f274) — `updateFields` is now typed as
+`PgUpdateSetSource<typeof curatedLists>`, the exact type Drizzle's `.set()`
+expects. That type checks every field name against the table AND natively
+permits a raw `SQL` value per column, so the `sql\`COALESCE(...)\`` expression
+assigns to `publishedAt` with no `any` cast — the `eslint-disable` comment was
+removed. (Note: `Partial<typeof curatedLists.$inferInsert>` was tried first but
+types `publishedAt` as a plain `Date` and rejects the `SQL` expression;
+`PgUpdateSetSource` is the correct typed shape.) The D-03 COALESCE-on-first-publish
+behavior is unchanged — re-publishing after an unpublish still does NOT reset
+`published_at`. `npx tsc --noEmit` reports no new errors and the existing D-03
+`setListStatus` tests in `curatedLists.test.ts` still pass.
+
 **File:** `src/data/curatedLists.ts:113-121`
 **Issue:** `updateFields` is typed `Record<string, unknown>` and then cast `as any` (with an eslint-disable) so the `sql\`COALESCE(...)\`` expression can be assigned to `publishedAt`. This works but discards all Drizzle type checking for the entire `.set()` call — a typo in any other field name would not be caught.
 **Fix:** Build a typed object instead: declare it as `Partial<typeof curatedLists.$inferInsert>` or use two distinct `.set()` shapes (one for `published`, one for `draft`) so each is fully typed and no `any` is needed.
 
 ### IN-02: `getPathWithNodes` is called per-path in a `Promise.all` loop — N+1 on `/explore/paths` and in `WhereCollectionsGo`
+
+**Status:** ACCEPTED (wontfix) — the reviewer's own Fix note states "None required
+for v1". N+1 is acceptable at the current scale (≤12 lists/paths); no code change
+made. Re-evaluate if published-path count grows past ~100.
 
 **File:** `src/app/explore/paths/page.tsx:36-38`, `src/components/explore/WhereCollectionsGo.tsx:54-56`, `src/components/explore/CuratedListsRail.tsx:32-37`
 **Issue:** `getPathWithNodes` itself issues 2 queries (`getPathById` + `getPathNodes` + seed-watch select = 3), called once per path. `CuratedListsRail` similarly fires `getListItemCount` per list. The code comments label this "acceptable at current scale" / "N+1 is acceptable for ≤12 lists". Per the review scope, performance is out of scope for v1 — flagged as Info only so it is on record. At >100 published paths the see-all route would issue 300+ queries.
@@ -231,11 +248,29 @@ explicitly documented in the module header and accepted for v1.
 
 ### IN-03: Migration backfills `published_at = created_at` — rotation/freshness ordering may be wrong for pre-existing lists
 
+**Status:** ACCEPTED (wontfix) — the reviewer's own Fix note states "None
+required"; `published_at = created_at` is a defensible default for a single-user
+personal-first app. The migration is also already applied to the production
+database, so it must not be altered. No code change made.
+
 **File:** `supabase/migrations/20260519000000_phase47_published_at.sql:10-12`
 **Issue:** Existing published lists get `published_at = created_at`. If a list was created long before it was published, its rotation order (`HeroModule` sorts by `publishedAt` asc) and its "New" badge will reflect creation time, not actual publish time. For a single-user personal-first app this is cosmetic and likely fine, but it is a silent data-quality assumption worth recording.
 **Fix:** None required. If a list-level `updatedAt` is closer to the true publish time it could be used instead, but `created_at` is a defensible default.
 
 ### IN-04: Tests assert structure but never assert the draft-leak filter at the integration level
+
+**Status:** RESOLVED (commit a0b3e21) — `curatedLists.test.ts` gains a new test,
+"passes a predicate that references the status column and the literal
+'published'", that captures the actual `.where()` argument and inspects the
+Drizzle condition's `queryChunks` (via a new `inspectCondition` helper that
+extracts referenced column names and bound `Param` values). It asserts the
+predicate references the `status` column, includes the literal `'published'`,
+and does NOT include `'draft'`. A regression to `eq(status,'draft')` or removal
+of the filter now fails the test — verified by temporarily inverting the filter
+and confirming the test fails (`expected [ 'draft' ] to include 'published'`).
+(`getPublishedPaths`/`getListWithItems` are not exercised in this test file —
+`curatedLists.test.ts` only covers the `curatedLists` DAL — so the strengthening
+was scoped to `getPublishedLists`.) All 11 tests in the file pass.
 
 **File:** `src/data/__tests__/curatedLists.test.ts:132-153`, `src/components/explore/__tests__/HeroModule.test.tsx`
 **Issue:** `curatedLists.test.ts` verifies `getPublishedLists` "calls `.where()`" but never asserts *what* predicate was passed — `lastWhereArg` is captured by the mock infrastructure (lines 30-31) but never `expect`-ed. A regression that swapped the filter to `eq(status, 'draft')` would still pass the test ("`.where()` was called"). The HeroModule tests mock the DAL entirely, so the `status='published'` gate is never exercised end-to-end anywhere. The draft-leak defense — the phase's stated #1 focus area — has no test that would actually catch its removal.
