@@ -287,7 +287,11 @@ async function findViewerWatchByCatalogId(
       createdAt: watchesTable.createdAt,
     })
     .from(watchesTable)
-    .where(and(eq(watchesTable.userId, userId), eq(watchesTable.catalogId, catalogId)))
+    .where(and(
+      eq(watchesTable.userId, userId),
+      eq(watchesTable.catalogId, catalogId),
+      eq(watchesTable.status, 'owned'),  // BUG-01 fix (D-02): only 'owned' rows are "truly owned"
+    ))
     .limit(1)
   if (rows.length === 0) return null
   const row = rows[0]
