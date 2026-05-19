@@ -118,6 +118,7 @@ import {
   getListItemCount,
   swapListSortOrder,
   swapListItemSortOrder,
+  setListStatus,
 } from '@/data/curatedLists'
 
 beforeEach(() => {
@@ -255,5 +256,42 @@ describe('Phase 45 Plan 03 — curatedLists DAL', () => {
       await swapListItemSortOrder('item-a', 0, 'item-b', 1)
       expect(transactionCallCount).toBe(1)
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 47 Plan 01 Task 4 — setListStatus D-03 published_at stamp tests
+// ---------------------------------------------------------------------------
+describe('Phase 47 Plan 01 — setListStatus D-03 published_at stamp', () => {
+  it('includes publishedAt in the update set when status is "published"', async () => {
+    let capturedSetArg: unknown = undefined
+    const mockWhere = vi.fn().mockResolvedValue(undefined)
+    const mockSet = vi.fn((arg: unknown) => {
+      capturedSetArg = arg
+      return { where: mockWhere }
+    })
+    vi.mocked(db.update).mockReturnValue({ set: mockSet } as unknown as ReturnType<typeof db.update>)
+
+    await setListStatus('list-id-1', 'published')
+
+    expect(mockSet).toHaveBeenCalled()
+    // The set object must contain a publishedAt key (the COALESCE SQL expression)
+    expect(capturedSetArg).toHaveProperty('publishedAt')
+  })
+
+  it('does NOT include publishedAt in the update set when status is "draft"', async () => {
+    let capturedSetArg: unknown = undefined
+    const mockWhere = vi.fn().mockResolvedValue(undefined)
+    const mockSet = vi.fn((arg: unknown) => {
+      capturedSetArg = arg
+      return { where: mockWhere }
+    })
+    vi.mocked(db.update).mockReturnValue({ set: mockSet } as unknown as ReturnType<typeof db.update>)
+
+    await setListStatus('list-id-2', 'draft')
+
+    expect(mockSet).toHaveBeenCalled()
+    // The set object must NOT contain a publishedAt key for draft transitions
+    expect(capturedSetArg).not.toHaveProperty('publishedAt')
   })
 })
