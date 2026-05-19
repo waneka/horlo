@@ -176,7 +176,10 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   1. A watch on the user's wishlist, reached via `/catalog/[catalogId]` from search, displays a wishlisted state label — never "you own this watch"
   2. All `/search` filter chip groups (movement, size, style, brand, era, genre, archetype) render with legible text contrast in dark mode — no black text on dark backgrounds
   3. The ownership-state fix does not regress the "you own this watch" label for watches the user actually owns
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 48-01-PLAN.md — BUG-01 catalog ownership query fix + regression tests (status=owned filter, 3 new test cases, profiles mock)
+- [ ] 48-02-PLAN.md — Shared CVA Chip primitive (src/components/ui/chip.tsx) with BUG-02 token fix baked in + unit tests
+- [ ] 48-03-PLAN.md — Migrate all 8 chip surfaces to primitive (7 drawer chips + SearchPageClient) + manual dark-mode UAT
 **UI hint**: yes
 
 ### Phase 49: Genre vs Style Taxonomy Spike
@@ -205,10 +208,10 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 48. User-Facing Bug Fixes | 0/TBD | Not started | - |
+| 48. User-Facing Bug Fixes | 0/3 | Not started | - |
 | 49. Genre vs Style Taxonomy Spike | 0/TBD | Not started | - |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
 
-v5.2 Polish + Taxonomy is active (Phases 48-50, 4 requirements). Start with `/gsd-plan-phase 48`.
+v5.2 Polish + Taxonomy is active (Phases 48-50, 4 requirements). Phase 48 is planned (3 plans, 2 waves). Execute with `/gsd-execute-phase 48`.
