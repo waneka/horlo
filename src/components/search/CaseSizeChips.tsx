@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
 
 const CASE_SIZE_OPTIONS = [
   { label: '<36mm', value: 'lt36' },
@@ -23,21 +23,15 @@ export function CaseSizeChips({ selected, onSelect }: CaseSizeChipsProps) {
         {CASE_SIZE_OPTIONS.map((opt) => {
           const isSelected = selected === opt.value
           return (
-            <button
+            <Chip
               key={opt.value}
-              type="button"
+              variant="toggle"
+              selected={isSelected}
               aria-pressed={isSelected}
-              className={cn(
-                'rounded-full border px-3 py-1 text-sm transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                isSelected
-                  ? 'bg-accent text-accent-foreground border-accent font-semibold'
-                  : 'bg-secondary text-secondary-foreground border-border hover:bg-muted',
-              )}
               onClick={() => onSelect(isSelected ? null : opt.value)}
             >
               {opt.label}
-            </button>
+            </Chip>
           )
         })}
       </div>

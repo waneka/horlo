@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
 import { ERA_SIGNALS } from '@/lib/taste/vocab'
 
 /** Display map for era facet chip labels — identical to SearchPageClient's ERA_DISPLAY_LABELS. */
@@ -23,21 +23,15 @@ export function EraChips({ selected, onSelect }: EraChipsProps) {
         {ERA_SIGNALS.map((value) => {
           const isSelected = selected === value
           return (
-            <button
+            <Chip
               key={value}
-              type="button"
+              variant="toggle"
+              selected={isSelected}
               aria-pressed={isSelected}
-              className={cn(
-                'rounded-full border px-3 py-1 text-sm transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                isSelected
-                  ? 'bg-accent text-accent-foreground border-accent font-semibold'
-                  : 'bg-secondary text-secondary-foreground border-border hover:bg-muted',
-              )}
               onClick={() => onSelect(isSelected ? null : value)}
             >
               {ERA_DISPLAY_LABELS[value] ?? value}
-            </button>
+            </Chip>
           )
         })}
       </div>

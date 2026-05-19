@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
 
 interface BrandChipsProps {
   selected: string | null
@@ -16,21 +16,15 @@ export function BrandChips({ selected, onSelect, vocab }: BrandChipsProps) {
         {vocab.map((entry) => {
           const isSelected = selected === entry.slug
           return (
-            <button
+            <Chip
               key={entry.slug}
-              type="button"
+              variant="toggle"
+              selected={isSelected}
               aria-pressed={isSelected}
-              className={cn(
-                'rounded-full border px-3 py-1 text-sm transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                isSelected
-                  ? 'bg-accent text-accent-foreground border-accent font-semibold'
-                  : 'bg-secondary text-secondary-foreground border-border hover:bg-muted',
-              )}
               onClick={() => onSelect(isSelected ? null : entry.slug)}
             >
               {entry.name}
-            </button>
+            </Chip>
           )
         })}
       </div>

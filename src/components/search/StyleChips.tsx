@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
 
 interface StyleChipsProps {
   selected: string[]
@@ -17,17 +17,11 @@ export function StyleChips({ selected, onSelect, vocab }: StyleChipsProps) {
           const isSelected = selected.includes(tag)
           const displayLabel = tag.charAt(0).toUpperCase() + tag.slice(1)
           return (
-            <button
+            <Chip
               key={tag}
-              type="button"
+              variant="toggle"
+              selected={isSelected}
               aria-pressed={isSelected}
-              className={cn(
-                'rounded-full border px-3 py-1 text-sm transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                isSelected
-                  ? 'bg-accent text-accent-foreground border-accent font-semibold'
-                  : 'bg-secondary text-secondary-foreground border-border hover:bg-muted',
-              )}
               onClick={() =>
                 onSelect(
                   isSelected
@@ -37,7 +31,7 @@ export function StyleChips({ selected, onSelect, vocab }: StyleChipsProps) {
               }
             >
               {displayLabel}
-            </button>
+            </Chip>
           )
         })}
       </div>
