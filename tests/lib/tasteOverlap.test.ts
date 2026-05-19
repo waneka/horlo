@@ -122,9 +122,11 @@ describe('computeTasteOverlap', () => {
 
   it(`overlapLabel === 'Some overlap' when average similarity is in [${GOAL_THRESHOLDS.balanced.familiarTerritory}, ${GOAL_THRESHOLDS.balanced.coreFit})`, () => {
     // Partial overlap: fully share styleTags + roleTags + caseSize band +
-    // water-resistance band. Diverge on design traits, dial, strap,
-    // complications. This fixture targets ~0.55 avg similarity so the label
-    // lands cleanly in 'Some overlap' range ([0.45, 0.65)).
+    // water-resistance band + dialColor. Diverge on design traits, strap,
+    // complications. This fixture produces 0.52 avg similarity so the label
+    // lands cleanly in 'Some overlap' range ([0.45, 0.65)). The previous
+    // fixture (divergent dialColor) scored 0.44 — just below the 0.45
+    // familiarTerritory threshold — so it fell into 'Different taste'.
     const viewer = {
       watches: [
         w({
@@ -152,7 +154,7 @@ describe('computeTasteOverlap', () => {
           roleTags: ['dive'], // fully shared
           designTraits: ['resin-case'], // disjoint
           complications: ['chronograph'], // disjoint
-          dialColor: 'blue', // differs
+          dialColor: 'black', // fully shared
           strapType: 'rubber', // differs
           caseSizeMm: 40, // exact match → full caseSize weight
           waterResistanceM: 300, // same band → full WR weight
