@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { fetchAndExtract } from '@/lib/extractors'
 import { SsrfError } from '@/lib/ssrf'
 import { UnauthorizedError, getCurrentUser } from '@/lib/auth'
@@ -215,6 +216,18 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error('[extract-watch] taste enrichment failed (non-fatal):', err)
       }
+    }
+
+    // Phase 46 CR-01: the URL-extraction route mutates watches_catalog via
+    // upsertCatalogFromExtractedUrl (and enriches primary_archetype / era_signal
+    // via updateCatalogTaste above). The Phase 46 Browse count DALs and
+    // CollectorArchetypes all cache under cacheTag('explore', ...). Bust those
+    // caches here so Browse/Archetype counts reflect the new catalog row.
+    // Mirrors the revalidateTag('explore', 'max') call in the addWatch Server
+    // Action (src/app/actions/watches.ts:294). 'max' cross-user semantics —
+    // Browse counts are global. Fires whenever a catalog row was upserted.
+    if (catalogId) {
+      revalidateTag('explore', 'max')
     }
 
     // Phase 20.1 D-08: include catalogId so the Add-Watch Flow can call

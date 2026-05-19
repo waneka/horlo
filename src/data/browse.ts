@@ -13,11 +13,19 @@ import { sql } from 'drizzle-orm'
  *
  * Cache strategy (D-19): each function uses 'use cache' + cacheTag('explore',
  * 'explore:browse') + cacheLife('hours'). Browse counts are global (no per-viewer
- * data, public-read RLS) — all users share the same cache entry. The existing
- * revalidateTag('explore', 'max') calls in watch mutation Server Actions already
- * cover catalog-mutation invalidation: cacheTag registers both 'explore' and
- * 'explore:browse', so any call to revalidateTag('explore') busts Browse caches
- * as a side effect. No new revalidation wiring needed (RESEARCH § Anti-Patterns).
+ * data, public-read RLS) — all users share the same cache entry.
+ *
+ * Invalidation (Phase 46 CR-01): catalog mutations must call
+ * revalidateTag('explore', 'max') so these caches recompute. There are TWO
+ * catalog-mutation entry points and BOTH are now wired:
+ *   1. The addWatch Server Action (src/app/actions/watches.ts:294) — covers the
+ *      user-input promotion path.
+ *   2. The /api/extract-watch route handler (src/app/api/extract-watch/route.ts)
+ *      — covers the URL-extraction path (upsertCatalogFromExtractedUrl +
+ *      updateCatalogTaste). This route was previously unwired; CR-01 added the
+ *      revalidateTag call there.
+ * cacheTag registers both 'explore' and 'explore:browse', so revalidateTag('explore')
+ * busts Browse caches as a side effect.
  *
  * Pattern: 'use cache' → cacheTag → cacheLife → db.execute(sql`...`) → cast to
  * typed array (same as getTopStyleTags in catalog.ts, Pattern 1 in RESEARCH.md).
