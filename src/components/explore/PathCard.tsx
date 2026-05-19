@@ -98,6 +98,11 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
                   {node.brand} {node.model}
                 </p>
               </Link>
+              {/* WR-01: node.rationale is curator-authored editorial copy,
+                  INTENTIONALLY rendered as an escaped plain-text JSX child
+                  (React escapes it — no XSS). Any future move to markdown MUST
+                  route through ReactMarkdown + rehypePlugins={[rehypeSanitize]}.
+                  Never use dangerouslySetInnerHTML for curator copy. */}
               {node.rationale && (
                 <p className="text-sm text-muted-foreground">{node.rationale}</p>
               )}
@@ -127,6 +132,11 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
                   {node.brand} {node.model}
                 </p>
               </Link>
+              {/* WR-01: node.rationale is curator-authored editorial copy,
+                  INTENTIONALLY rendered as an escaped plain-text JSX child
+                  (React escapes it — no XSS). Any future move to markdown MUST
+                  route through ReactMarkdown + rehypePlugins={[rehypeSanitize]}.
+                  Never use dangerouslySetInnerHTML for curator copy. */}
               {node.rationale && (
                 <p className="text-sm text-muted-foreground">{node.rationale}</p>
               )}

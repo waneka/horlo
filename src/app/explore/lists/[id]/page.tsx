@@ -115,6 +115,13 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
                     {item.model}{item.reference ? ` · ${item.reference}` : ''}
                   </p>
                 </Link>
+                {/* WR-01: item.commentary is curator-authored editorial copy.
+                    It is INTENTIONALLY rendered as an escaped plain-text JSX
+                    child — React escapes it, so there is no XSS here. If this
+                    field is ever "upgraded" to markdown for parity with the
+                    intro copy, it MUST route through ReactMarkdown with
+                    rehypePlugins={[rehypeSanitize]} (see the introMarkdown
+                    block above). Do NOT use dangerouslySetInnerHTML. */}
                 {item.commentary && (
                   <p className="text-sm text-foreground leading-relaxed">{item.commentary}</p>
                 )}
