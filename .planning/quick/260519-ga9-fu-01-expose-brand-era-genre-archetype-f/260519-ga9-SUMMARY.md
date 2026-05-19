@@ -99,9 +99,11 @@ These predate FU-01 and are out of scope.
 
 The Task 1 commit initially landed on `main` because a `cd` in a Bash call drifted the cwd from the worktree into the main repo (`/Users/tylerwaneka/Documents/horlo`). Recovered immediately: cherry-picked the commit onto the worktree branch (`worktree-agent-a5cc71c9668e8ebae`, now `ae3466d`) and hard-reset `main` back to base `08b31f0`. Verified `main` carries only the pre-existing untracked files and the worktree branch carries both FU-01 commits. All subsequent operations used absolute worktree paths with no `cd`.
 
-## Pending Human Verification (Task 3 — checkpoint:human-verify)
+## Human Verification (Task 3 — checkpoint:human-verify)
 
-Task 3 is a blocking `checkpoint:human-verify`. It was NOT auto-verified. The human should:
+**Task 3 — APPROVED by operator (twwaneka@gmail.com) 2026-05-19.** Brand/Era/Genre/Archetype chip groups in the `/search` filter drawer confirmed in-browser — selection, URL round-trip, shared state with inline chips, and "Clear all" all working; deployed to prod (`horlo-4yc86lgns`).
+
+Steps verified:
 
 1. `npm run dev`, open `/search`, click the Watches tab, click "Filter".
 2. Confirm the drawer shows Brand, Era, Genre, Archetype chip groups below Movement / Case Size / Style, in the same chip style.
@@ -110,8 +112,6 @@ Task 3 is a blocking `checkpoint:human-verify`. It was NOT auto-verified. The hu
 5. Click a Genre chip and an Archetype chip — `&genre=` / `&archetype=` params appear. (Both map to the same catalog column; if both set, archetype wins server-side — existing behavior.)
 6. Remove a facet via its inline removable chip; reopen the drawer — that facet's chip is no longer selected (shared state).
 7. Click "Clear all" — brand/era/genre/archetype clear along with movement/size/style; URL params drop.
-
-Resume signal: type "approved" or describe issues.
 
 ## Self-Check: PASSED
 

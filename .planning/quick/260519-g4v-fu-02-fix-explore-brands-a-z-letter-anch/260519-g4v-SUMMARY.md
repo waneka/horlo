@@ -50,11 +50,11 @@ Moved `scroll-behavior: smooth` from the inert page-level `<main>` to `<html>` (
 
 None - plan executed exactly as written.
 
-## Pending Human Verification
+## Human Verification
 
-**Task 2 (`checkpoint:human-verify`) — not performed by the executor; awaiting operator.**
+**Task 2 (`checkpoint:human-verify`) — APPROVED by operator (twwaneka@gmail.com) 2026-05-19.** Smooth A–Z anchor scroll on `/explore/brands` confirmed in-browser; deployed to prod (`horlo-4yc86lgns`).
 
-Steps for the human to verify:
+Steps verified:
 1. Clear the Turbopack build cache first (project memory: `.next` serves stale CSS): `rm -rf .next` then `npm run dev`.
 2. Open `http://localhost:3000/explore/brands`.
 3. Scroll down a little, then click a letter near the end of the A–Z jump nav (e.g. "S" or "T").

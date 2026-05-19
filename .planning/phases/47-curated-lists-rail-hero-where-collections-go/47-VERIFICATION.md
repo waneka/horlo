@@ -20,7 +20,7 @@ human_verification:
 
 **Phase Goal:** The editorial half of `/explore` is live — users can discover curated lists, see the hero feature, and explore collection paths authored by the curator.
 **Verified:** 2026-05-19T09:00:00Z
-**Status:** human_needed
+**Status:** passed (human-verified 2026-05-19)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
