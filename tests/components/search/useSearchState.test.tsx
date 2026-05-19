@@ -11,11 +11,32 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 // ---------------------------------------------------------------------------
 
 const mockReplace = vi.fn()
-const mockSearchParams = { get: vi.fn().mockReturnValue(null) }
+
+// Mutable backing store for search params — allows tests to simulate soft nav
+// by mutating currentParams and swapping the returned object reference (which
+// is what App Router's useSearchParams does: a new ReadonlyURLSearchParams
+// instance per navigation).
+let currentParams: Record<string, string> = {}
+let mockSearchParamsObject = { get: (k: string) => currentParams[k] ?? null }
+
+const mockUseSearchParams = vi.fn(() => mockSearchParamsObject)
+
+// Helper: simulate a soft nav by updating params and returning a NEW object
+// identity (matches App Router's per-navigation ReadonlyURLSearchParams).
+function setSearchParams(params: Record<string, string>) {
+  currentParams = { ...params }
+  mockSearchParamsObject = { get: (k: string) => currentParams[k] ?? null }
+  mockUseSearchParams.mockReturnValue(mockSearchParamsObject)
+}
+
+// Keep backward-compat alias for tests that use mockSearchParams.get directly.
+const mockSearchParams = {
+  get: vi.fn().mockImplementation((k: string) => currentParams[k] ?? null),
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
-  useSearchParams: () => mockSearchParams,
+  useSearchParams: () => mockUseSearchParams(),
 }))
 
 const mockSearchPeopleAction = vi.fn()
@@ -38,8 +59,13 @@ describe('useSearchState (D-03 / D-04 / D-12 / D-20 / D-28)', () => {
     mockSearchPeopleAction.mockReset()
     mockSearchWatchesAction.mockReset()
     mockSearchCollectionsAction.mockReset()
+    // Reset the mutable params backing store and mock objects.
+    currentParams = {}
+    mockSearchParamsObject = { get: (k: string) => currentParams[k] ?? null }
+    mockUseSearchParams.mockReturnValue(mockSearchParamsObject)
+    // Keep backward-compat alias in sync.
     mockSearchParams.get.mockReset()
-    mockSearchParams.get.mockReturnValue(null)
+    mockSearchParams.get.mockImplementation((k: string) => currentParams[k] ?? null)
   })
 
   afterEach(() => {
@@ -230,9 +256,7 @@ describe('useSearchState (D-03 / D-04 / D-12 / D-20 / D-28)', () => {
   })
 
   it('Test 9: initial mount with ?q=foo pre-populates q AND fires fetch immediately (D-02)', async () => {
-    mockSearchParams.get.mockImplementation((k: string) =>
-      k === 'q' ? 'foo' : null,
-    )
+    setSearchParams({ q: 'foo' })
     mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
 
     const { result } = renderHook(() => useSearchState())
@@ -513,6 +537,76 @@ describe('useSearchState (D-03 / D-04 / D-12 / D-20 / D-28)', () => {
     })
     expect(result.current.peopleHasError).toBe(false)
     expect(result.current.collectionsHasError).toBe(false)
+  })
+
+  // -------------------------------------------------------------------------
+  // Phase 46 Plan 05 — G5 soft-nav regression tests.
+  // App Router soft nav does NOT remount /search, so useSearchParams returns a
+  // new object reference per navigation. The hook must detect the new reference
+  // and re-seed facet state from the incoming URL params.
+  // -------------------------------------------------------------------------
+
+  it('Test 20 — soft nav re-seeds archetype facet from URL (G5)', async () => {
+    // Initial render: archetype=A
+    setSearchParams({ archetype: 'A', tab: 'watches' })
+    mockSearchWatchesAction.mockResolvedValue({ success: true, data: [] })
+
+    const { result, rerender } = renderHook(() => useSearchState())
+
+    // Confirm initial seed
+    expect(result.current.archetype).toBe('A')
+
+    // Simulate soft nav: App Router pushes a new ReadonlyURLSearchParams with archetype=B.
+    // setSearchParams creates a NEW object identity — the reconciliation effect
+    // must detect this and copy 'B' into state.
+    act(() => {
+      setSearchParams({ archetype: 'B', tab: 'watches' })
+    })
+    // Force re-render (soft nav causes the component to re-render with new searchParams).
+    rerender()
+
+    // The hook MUST re-seed archetype to 'B' after the soft nav.
+    await waitFor(() => {
+      expect(result.current.archetype).toBe('B')
+    })
+  })
+
+  it('Test 21 — soft-nav-arrived param is not stripped by the URL-sync effect (G5)', async () => {
+    // Start with no archetype — simulates the user is on /explore before clicking.
+    setSearchParams({ tab: 'watches' })
+    mockSearchWatchesAction.mockResolvedValue({ success: true, data: [] })
+
+    const { rerender } = renderHook(() => useSearchState())
+
+    // Advance timers so initial URL-sync fires with stale state (no archetype).
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+
+    mockReplace.mockClear()
+
+    // Simulate soft nav: App Router pushes /search?tab=watches&archetype=B —
+    // a new searchParams object with archetype=B now returned by useSearchParams.
+    act(() => {
+      setSearchParams({ archetype: 'B', tab: 'watches' })
+    })
+    rerender()
+
+    // Advance timers so any URL-sync effects fire.
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalled()
+    })
+
+    // Every router.replace call after the soft nav MUST contain archetype=B —
+    // the URL-sync effect must not strip the freshly-arrived param by writing
+    // stale in-memory state (which didn't have archetype) back to the URL.
+    const calls = mockReplace.mock.calls
+    const strippedCall = calls.find((c) => !String(c[0]).includes('archetype=B'))
+    expect(strippedCall).toBeUndefined()
   })
 
   it('Test 19 — per-section paint independence (RESEARCH path A win): people paints before watches resolves', async () => {
