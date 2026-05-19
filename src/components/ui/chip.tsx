@@ -39,18 +39,47 @@ const SELECTED_CLASSES = 'bg-accent text-accent-foreground border-accent font-se
 
 export type ChipVariants = VariantProps<typeof chipVariants>
 
-export function Chip({
-  variant = 'toggle',
-  selected,
-  removeLabel,
-  className,
-  children,
-  ...props
-}: {
-  variant?: 'toggle' | 'removable'
-  selected?: boolean
-  removeLabel?: string
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+// WR-02 / IN-01: Discriminated union prevents two foot-guns at compile time:
+//   1. A `removable` chip without an `onClick` would render an X dismiss
+//      affordance (and screen-reader "Remove ... button" label) that does
+//      nothing on activation. Making `onClick` required on the removable
+//      branch catches this at the call site.
+//   2. The `selected` prop only ever paints when variant === 'toggle'. The
+//      old single-shape type let `<Chip variant="removable" selected>` compile
+//      silently while having no visual effect. Moving `selected` to the
+//      toggle branch (and forbidding it on the removable branch via
+//      `selected?: never`) turns the bad combination into a TS error.
+//
+// `removable` deliberately omits `onClick` from the inherited button attrs
+// so we can re-type it as required (non-optional) rather than `onClick?`.
+export type ChipProps =
+  | ({
+      variant?: 'toggle'
+      selected?: boolean
+      removeLabel?: never
+    } & React.ButtonHTMLAttributes<HTMLButtonElement>)
+  | ({
+      variant: 'removable'
+      selected?: never
+      removeLabel?: string
+      onClick: React.MouseEventHandler<HTMLButtonElement>
+    } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>)
+
+export function Chip(props: ChipProps) {
+  const {
+    variant = 'toggle',
+    selected,
+    removeLabel,
+    className,
+    children,
+    ...rest
+  } = props as {
+    variant?: 'toggle' | 'removable'
+    selected?: boolean
+    removeLabel?: string
+    className?: string
+    children?: React.ReactNode
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>
   return (
     <button
       className={cn(
@@ -58,12 +87,12 @@ export function Chip({
         variant === 'toggle' && selected && SELECTED_CLASSES,
         className,
       )}
-      {...props}
-      // WR-04: `type` is placed AFTER the `{...props}` spread so a stray
-      // `type="submit"` from a consumer cannot accidentally turn this primitive
-      // into a form submitter. Chip is now a shared primitive in 9+ surfaces;
-      // making the safe default un-overridable matches the convention used by
-      // shadcn primitives (Button, Switch, etc.).
+      {...rest}
+      // WR-04: `type` is placed AFTER the spread so a stray `type="submit"`
+      // from a consumer cannot accidentally turn this primitive into a form
+      // submitter. Chip is now a shared primitive in 9+ surfaces; making the
+      // safe default un-overridable matches the convention used by shadcn
+      // primitives (Button, Switch, etc.).
       type="button"
     >
       {children}

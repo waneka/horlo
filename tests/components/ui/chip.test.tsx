@@ -86,9 +86,11 @@ describe('Chip component', () => {
   })
 
   // Test 7: removable variant with no removeLabel does NOT render empty sr-only span
+  // WR-02 follow-up: `onClick` is now required on removable variants (discriminated
+  // union enforces this at compile time). Test supplies a no-op spy to satisfy TS.
   it('removable variant with no removeLabel does not render empty sr-only span', () => {
     const { container } = render(
-      <Chip variant="removable">Label</Chip>
+      <Chip variant="removable" onClick={vi.fn()}>Label</Chip>
     )
     const srSpan = container.querySelector('span.sr-only')
     expect(srSpan).toBeNull()
