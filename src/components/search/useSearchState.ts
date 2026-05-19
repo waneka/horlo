@@ -128,9 +128,37 @@ export function useSearchState(): UseSearchState {
     return () => clearTimeout(t)
   }, [q])
 
+  // 1a. URL→state reconciliation (Phase 46 G5 fix — Fault 1).
+  //     App Router soft nav does NOT remount /search, so useState initializers
+  //     only seed from URL at first mount. This effect watches `searchParams`
+  //     (which is a new object reference per navigation in App Router) and
+  //     copies facet values into state whenever the URL value differs — making
+  //     URL the true source of truth for facets on every navigation.
+  useEffect(() => {
+    const urlMovement = searchParams.get('movement') ?? null
+    const urlSize = searchParams.get('size') ?? null
+    const urlStyleArr = searchParams.get('style')?.split(',').filter(Boolean) ?? []
+    const urlBrand = searchParams.get('brand') ?? null
+    const urlEra = searchParams.get('era') ?? null
+    const urlGenre = searchParams.get('genre') ?? null
+    const urlArchetype = searchParams.get('archetype') ?? null
+
+    if (urlMovement !== movement) setMovement(urlMovement)
+    if (urlSize !== size) setSize(urlSize)
+    if (urlStyleArr.join(',') !== styleArr.join(',')) setStyleArr(urlStyleArr)
+    if (urlBrand !== brand) setBrand(urlBrand)
+    if (urlEra !== era) setEra(urlEra)
+    if (urlGenre !== genre) setGenre(urlGenre)
+    if (urlArchetype !== archetype) setArchetype(urlArchetype)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]) // keyed on searchParams: fires when App Router hands a new object per navigation
+
   // 2. URL sync (D-04 router.replace, scroll: false; D-12 omit tab=all — Phase 16
   //    carry-forward). Phase 40: facet params written unconditionally (D-04 — survive
   //    tab switches so user can navigate Watches → People → Watches and keep filters).
+  //    Phase 46 G5 fix — Fault 2: searchParams added to dep array so this effect
+  //    re-runs after a soft nav, and a no-op guard prevents clobbering a freshly-arrived
+  //    param before the reconciliation effect (1a) has settled state into the new value.
   useEffect(() => {
     const params = new URLSearchParams()
     if (debouncedQ.trim().length >= CLIENT_MIN_CHARS) params.set('q', debouncedQ)
@@ -144,9 +172,22 @@ export function useSearchState(): UseSearchState {
     if (era) params.set('era', era)
     if (genre) params.set('genre', genre)
     if (archetype) params.set('archetype', archetype)
+
+    // Fault 2 guard: don't strip a param that arrived via soft nav but hasn't
+    // settled into in-memory state yet (reconciliation runs in the same commit
+    // but setState is async — state updates on the next render). If searchParams
+    // has a facet key that the built URL omits, skip the replace; the
+    // reconciliation effect will setX(urlValue) → trigger another render →
+    // this effect re-runs with the correct state and emits the right URL.
+    const TRACKED_PARAMS = ['q', 'tab', 'movement', 'size', 'style', 'brand', 'era', 'genre', 'archetype']
+    const wouldStripIncoming = TRACKED_PARAMS.some(
+      (key) => searchParams.get(key) !== null && !params.has(key),
+    )
+    if (wouldStripIncoming) return
+
     const qs = params.toString()
     router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
-  }, [debouncedQ, tab, movement, size, styleArr, brand, era, genre, archetype, router])
+  }, [debouncedQ, tab, movement, size, styleArr, brand, era, genre, archetype, router, searchParams])
 
   // 3a. People sub-effect — fires when tab === 'all' || tab === 'people'.
   useEffect(() => {
