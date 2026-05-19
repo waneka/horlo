@@ -134,3 +134,33 @@ export async function getBrowseBrandCounts(): Promise<Array<{ brandId: string; n
   )
   return rows as unknown as Array<{ brandId: string; name: string; slug: string; count: number }>
 }
+
+// ---------------------------------------------------------------------------
+// getBrowseBrandFacets — { slug, name } projection for the /search Filter drawer
+// ---------------------------------------------------------------------------
+
+/**
+ * Quick-task 260519-ga9 (FU-01).
+ *
+ * Brand-facet vocabulary for the /search Watches-tab Filter drawer BrandChips
+ * control. Thin { slug, name } projection of the same brands↔watches_catalog
+ * INNER JOIN used by getBrowseBrandCounts — no new query shape, just dropped the
+ * count column. Shares the exact 'use cache' + cacheTag('explore','explore:browse')
+ * + cacheLife('hours') scope so catalog mutations bust it the same way.
+ *
+ * Only brands with at least one catalog watch appear (INNER JOIN). Ordered by
+ * name_normalized ASC so the chip row reads A–Z.
+ */
+export async function getBrowseBrandFacets(): Promise<Array<{ slug: string; name: string }>> {
+  'use cache'
+  cacheTag('explore', 'explore:browse')
+  cacheLife('hours')
+  const rows = await db.execute(
+    sql`SELECT b.slug, b.name
+        FROM brands b
+        JOIN watches_catalog wc ON wc.brand_id = b.id
+        GROUP BY b.id, b.slug, b.name
+        ORDER BY b.name_normalized ASC`,
+  )
+  return rows as unknown as Array<{ slug: string; name: string }>
+}

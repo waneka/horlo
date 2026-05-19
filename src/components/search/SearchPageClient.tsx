@@ -38,6 +38,8 @@ interface SearchPageClientProps {
   children: React.ReactNode
   /** Phase 40 D-06 — top-8 style tags by frequency; threaded from /search Server Component. */
   styleVocab: string[]
+  /** FU-01 (260519-ga9) — brand-facet { slug, name } list for the Filter drawer BrandChips control. */
+  brandVocab: { slug: string; name: string }[]
 }
 
 const CLIENT_MIN_CHARS = 2 // matches D-20 server gate
@@ -74,7 +76,7 @@ const ARIA_BY_TAB: Record<SearchTab, string> = {
  * The Phase 16 `results`/`isLoading`/`hasError` backward-compat aliases on the
  * hook contract are dropped here — this consumer reads per-tab slices directly.
  */
-export function SearchPageClient({ viewerId, collectionRevision, viewerUsername, children, styleVocab }: SearchPageClientProps) {
+export function SearchPageClient({ viewerId, collectionRevision, viewerUsername, children, styleVocab, brandVocab }: SearchPageClientProps) {
   const {
     q,
     setQ,
@@ -210,6 +212,15 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             onSizeChange={setSize}
             onStyleChange={setStyleArr}
             styleVocab={styleVocab}
+            brand={brand}
+            era={era}
+            genre={genre}
+            archetype={archetype}
+            onBrandChange={setBrand}
+            onEraChange={setEra}
+            onGenreChange={setGenre}
+            onArchetypeChange={setArchetype}
+            brandVocab={brandVocab}
           />
         </TabsContent>
 

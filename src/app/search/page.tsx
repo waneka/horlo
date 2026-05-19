@@ -5,6 +5,7 @@ import { getSuggestedCollectors } from '@/data/suggestions'
 import { getWatchesByUser } from '@/data/watches'
 import { getProfileById } from '@/data/profiles'
 import { getTopStyleTags } from '@/data/catalog'
+import { getBrowseBrandFacets } from '@/data/browse'
 import { SuggestedCollectorRow } from '@/components/home/SuggestedCollectorRow'
 import { SearchPageClient } from '@/components/search/SearchPageClient'
 
@@ -40,11 +41,13 @@ export default async function SearchPage() {
   // prop. Null is a soft alarm — at v4.0+ every authenticated user has a
   // username via signup trigger, so the action slot fallback rarely fires.
   // Folded into Promise.all to keep the fetch parallel with getWatchesByUser.
-  const [viewerCollection, viewerProfile, styleVocab] = await Promise.all([
+  const [viewerCollection, viewerProfile, styleVocab, brandVocab] = await Promise.all([
     getWatchesByUser(user.id),
     getProfileById(user.id),
     // Phase 40 D-06 — top-8 distinct style tags by frequency (server-side fetch, 'use cache' + cacheLife('hours') in DAL).
     getTopStyleTags(8),
+    // FU-01 (260519-ga9) — brand-facet { slug, name } list for the Filter drawer BrandChips control.
+    getBrowseBrandFacets(),
   ])
   const viewerUsername = viewerProfile?.username ?? null
   return (
@@ -54,6 +57,7 @@ export default async function SearchPage() {
         collectionRevision={viewerCollection.length}
         viewerUsername={viewerUsername}
         styleVocab={styleVocab}
+        brandVocab={brandVocab}
       >
         {/* D-29 Server Component child — renders inside Client Component's
             pre-query (D-11) and no-results (D-10) states. */}
