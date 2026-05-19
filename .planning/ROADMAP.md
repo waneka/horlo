@@ -177,8 +177,8 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   2. All `/search` filter chip groups (movement, size, style, brand, era, genre, archetype) render with legible text contrast in dark mode — no black text on dark backgrounds
   3. The ownership-state fix does not regress the "you own this watch" label for watches the user actually owns
 **Plans**: 3 plans
-- [ ] 48-01-PLAN.md — BUG-01 catalog ownership query fix + regression tests (status=owned filter, 3 new test cases, profiles mock)
-- [ ] 48-02-PLAN.md — Shared CVA Chip primitive (src/components/ui/chip.tsx) with BUG-02 token fix baked in + unit tests
+- [x] 48-01-PLAN.md — BUG-01 catalog ownership query fix + regression tests (status=owned filter, 3 new test cases, profiles mock)
+- [x] 48-02-PLAN.md — Shared CVA Chip primitive (src/components/ui/chip.tsx) with BUG-02 token fix baked in + unit tests
 - [ ] 48-03-PLAN.md — Migrate all 8 chip surfaces to primitive (7 drawer chips + SearchPageClient) + manual dark-mode UAT
 **UI hint**: yes
 
@@ -208,7 +208,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 48. User-Facing Bug Fixes | 0/3 | Not started | - |
+| 48. User-Facing Bug Fixes | 2/3 | In Progress|  |
 | 49. Genre vs Style Taxonomy Spike | 0/TBD | Not started | - |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
