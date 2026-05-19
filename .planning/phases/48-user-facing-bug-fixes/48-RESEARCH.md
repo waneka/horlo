@@ -502,7 +502,9 @@ Dark-mode CSS token assertions in a jsdom environment cannot test rendered paint
 | A1 | The reason `catalog-page.test.ts` passes without mocking `@/data/profiles` is that the module returns null safely or the setup file handles it | BUG-01 Deep Dive — Pitfall 1 | New test cases might fail at test collection if `getProfileById` throws; add the mock as a precaution |
 | A2 | The `/gsd-ui-phase 48` design contract will preserve the tinted-pill (`bg-accent/10`) look for removable chips (per D-05 "do NOT restyle to solid") | Chip primitive — removable variant | If the design contract chooses a different background, the `removable` variant background must change; but `text-foreground` remains correct |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Both questions answered inline with recommendations; resolutions implemented in plans 48-01 (Q2: profiles mock) and 48-03 (Q1: stateless `selected: boolean`).
 
 1. **`StyleChips` multi-select interaction in the primitive**
    - What we know: StyleChips accepts `selected: string[]` (array) not `string | null`
