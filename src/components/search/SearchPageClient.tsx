@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, SlidersHorizontalIcon } from 'lucide-react'
+import { Search, SlidersHorizontalIcon, X } from 'lucide-react'
 
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 import { useSearchState } from '@/components/search/useSearchState'
 import { FilterDrawer } from '@/components/search/FilterDrawer'
+import { ARCHETYPE_CONFIG } from '@/lib/archetype-config'
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
 import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
@@ -85,6 +86,14 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
     setSize,
     styleArr,
     setStyleArr,
+    brand,
+    setBrand,
+    era,
+    setEra,
+    genre,
+    setGenre,
+    archetype,
+    setArchetype,
     peopleResults,
     watchesResults,
     collectionsResults,
@@ -99,7 +108,9 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
   const trimmed = debouncedQ.trim()
   const [sheetOpen, setSheetOpen] = useState(false)
   // D-09: style chips count individually (style=tool,diver adds 2 to badge)
+  // Phase 46: include brand/era/genre/archetype facets in the count.
   const activeCount = (movement ? 1 : 0) + (size ? 1 : 0) + styleArr.length
+    + (brand ? 1 : 0) + (era ? 1 : 0) + (genre ? 1 : 0) + (archetype ? 1 : 0)
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 space-y-6">
@@ -179,6 +190,14 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             collectionRevision={collectionRevision}
             viewerUsername={viewerUsername}
             hasActiveFacet={activeCount > 0}
+            archetype={archetype}
+            brand={brand}
+            era={era}
+            genre={genre}
+            onClearBrand={() => setBrand(null)}
+            onClearEra={() => setEra(null)}
+            onClearGenre={() => setGenre(null)}
+            onClearArchetype={() => setArchetype(null)}
           />
           <FilterDrawer
             open={sheetOpen}
@@ -283,6 +302,13 @@ function PeoplePanel({
   )
 }
 
+/** Display map for era facet chip labels (D-12). */
+const ERA_DISPLAY_LABELS: Record<string, string> = {
+  'vintage-leaning': 'Vintage Leaning',
+  'modern': 'Modern',
+  'contemporary': 'Contemporary',
+}
+
 function WatchesPanel({
   q,
   results,
@@ -291,6 +317,14 @@ function WatchesPanel({
   collectionRevision,
   viewerUsername,
   hasActiveFacet,
+  archetype = null,
+  brand = null,
+  era = null,
+  genre = null,
+  onClearBrand,
+  onClearEra,
+  onClearGenre,
+  onClearArchetype,
 }: {
   q: string
   results: SearchCatalogWatchResult[]
@@ -299,6 +333,14 @@ function WatchesPanel({
   collectionRevision: number
   viewerUsername: string | null
   hasActiveFacet: boolean
+  archetype?: string | null
+  brand?: string | null
+  era?: string | null
+  genre?: string | null
+  onClearBrand?: () => void
+  onClearEra?: () => void
+  onClearGenre?: () => void
+  onClearArchetype?: () => void
 }) {
   if (isLoading) return <WatchSearchResultsSkeleton />
   if (hasError) {
@@ -326,15 +368,81 @@ function WatchesPanel({
       </section>
     )
   }
+
+  // Archetype editorial header (D-13): shown when archetype param is present and known.
+  const archetypeConfig = archetype ? ARCHETYPE_CONFIG[archetype as keyof typeof ARCHETYPE_CONFIG] : null
+
+  // Inline removable facet chips for brand/era/genre/archetype (D-10).
+  const hasInlineFacets = !!(brand || era || genre || archetype)
+
   // D-01: browse-mode empty state (q empty AND facets active AND 0 results)
   if (q.length < CLIENT_MIN_CHARS && hasActiveFacet && results.length === 0) {
     return (
-      <section className="space-y-1">
-        <h2 className="text-xl font-semibold leading-tight text-foreground">
-          No watches match these filters.
-        </h2>
-        <p className="text-sm text-muted-foreground">Try removing one.</p>
-      </section>
+      <>
+        {archetypeConfig && (
+          <section className="space-y-1 mb-4">
+            <h2 className="text-xl font-semibold leading-tight text-foreground">
+              {archetypeConfig.displayName}
+            </h2>
+            <p className="text-sm text-muted-foreground">{archetypeConfig.description}</p>
+            <p className="text-xs text-muted-foreground">0 watches</p>
+          </section>
+        )}
+        {hasInlineFacets && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {archetype && (
+              <button
+                type="button"
+                onClick={onClearArchetype}
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              >
+                <span>{archetypeConfig?.displayName ?? archetype}</span>
+                <X className="size-3" aria-hidden />
+                <span className="sr-only">Remove {archetypeConfig?.displayName ?? archetype} filter</span>
+              </button>
+            )}
+            {brand && (
+              <button
+                type="button"
+                onClick={onClearBrand}
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              >
+                <span>{brand.charAt(0).toUpperCase() + brand.slice(1)}</span>
+                <X className="size-3" aria-hidden />
+                <span className="sr-only">Remove {brand} filter</span>
+              </button>
+            )}
+            {era && (
+              <button
+                type="button"
+                onClick={onClearEra}
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              >
+                <span>{ERA_DISPLAY_LABELS[era] ?? era}</span>
+                <X className="size-3" aria-hidden />
+                <span className="sr-only">Remove {ERA_DISPLAY_LABELS[era] ?? era} filter</span>
+              </button>
+            )}
+            {genre && (
+              <button
+                type="button"
+                onClick={onClearGenre}
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              >
+                <span>{genre.charAt(0).toUpperCase() + genre.slice(1)}</span>
+                <X className="size-3" aria-hidden />
+                <span className="sr-only">Remove {genre} filter</span>
+              </button>
+            )}
+          </div>
+        )}
+        <section className="space-y-1">
+          <h2 className="text-xl font-semibold leading-tight text-foreground">
+            No watches match these filters.
+          </h2>
+          <p className="text-sm text-muted-foreground">Try removing one.</p>
+        </section>
+      </>
     )
   }
   if (results.length === 0) {
@@ -352,6 +460,65 @@ function WatchesPanel({
   }
   return (
     <section className="space-y-2">
+      {/* Phase 46 D-13: Archetype editorial header — name + description + count */}
+      {archetypeConfig && (
+        <section className="space-y-1 mb-4">
+          <h2 className="text-xl font-semibold leading-tight text-foreground">
+            {archetypeConfig.displayName}
+          </h2>
+          <p className="text-sm text-muted-foreground">{archetypeConfig.description}</p>
+          <p className="text-xs text-muted-foreground">{results.length} watches</p>
+        </section>
+      )}
+      {/* Phase 46 D-10: Inline removable facet chips above results */}
+      {hasInlineFacets && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {archetype && (
+            <button
+              type="button"
+              onClick={onClearArchetype}
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+            >
+              <span>{archetypeConfig?.displayName ?? archetype}</span>
+              <X className="size-3" aria-hidden />
+              <span className="sr-only">Remove {archetypeConfig?.displayName ?? archetype} filter</span>
+            </button>
+          )}
+          {brand && (
+            <button
+              type="button"
+              onClick={onClearBrand}
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+            >
+              <span>{brand.charAt(0).toUpperCase() + brand.slice(1)}</span>
+              <X className="size-3" aria-hidden />
+              <span className="sr-only">Remove {brand} filter</span>
+            </button>
+          )}
+          {era && (
+            <button
+              type="button"
+              onClick={onClearEra}
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+            >
+              <span>{ERA_DISPLAY_LABELS[era] ?? era}</span>
+              <X className="size-3" aria-hidden />
+              <span className="sr-only">Remove {ERA_DISPLAY_LABELS[era] ?? era} filter</span>
+            </button>
+          )}
+          {genre && (
+            <button
+              type="button"
+              onClick={onClearGenre}
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+            >
+              <span>{genre.charAt(0).toUpperCase() + genre.slice(1)}</span>
+              <X className="size-3" aria-hidden />
+              <span className="sr-only">Remove {genre} filter</span>
+            </button>
+          )}
+        </div>
+      )}
       {/* FIT-04 D-05/D-06: Accordion shell with lazy Server Action + verdict cache */}
       <WatchSearchRowsAccordion
         results={results}

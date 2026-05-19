@@ -32,6 +32,15 @@ export interface UseSearchState {
   setSize: (v: string | null) => void
   styleArr: string[]
   setStyleArr: (v: string[]) => void
+  // Phase 46 D-12: brand/era/genre/archetype facets for Explore deep-links.
+  brand: string | null
+  setBrand: (v: string | null) => void
+  era: string | null
+  setEra: (v: string | null) => void
+  genre: string | null
+  setGenre: (v: string | null) => void
+  archetype: string | null
+  setArchetype: (v: string | null) => void
   peopleResults: SearchProfileResult[]
   watchesResults: SearchCatalogWatchResult[]
   collectionsResults: SearchCollectionResult[]
@@ -95,6 +104,12 @@ export function useSearchState(): UseSearchState {
     searchParams.get('style')?.split(',').filter(Boolean) ?? []
   )
 
+  // Phase 46 D-12: brand/era/genre/archetype facet state — initialized from URL params.
+  const [brand, setBrand] = useState<string | null>(searchParams.get('brand') ?? null)
+  const [era, setEra] = useState<string | null>(searchParams.get('era') ?? null)
+  const [genre, setGenre] = useState<string | null>(searchParams.get('genre') ?? null)
+  const [archetype, setArchetype] = useState<string | null>(searchParams.get('archetype') ?? null)
+
   const [peopleResults, setPeopleResults] = useState<SearchProfileResult[]>([])
   const [watchesResults, setWatchesResults] = useState<SearchCatalogWatchResult[]>([])
   const [collectionsResults, setCollectionsResults] = useState<SearchCollectionResult[]>([])
@@ -124,9 +139,14 @@ export function useSearchState(): UseSearchState {
     if (movement) params.set('movement', movement)
     if (size) params.set('size', size)
     if (styleArr.length > 0) params.set('style', styleArr.join(','))
+    // Phase 46 D-12: new facet params unconditional
+    if (brand) params.set('brand', brand)
+    if (era) params.set('era', era)
+    if (genre) params.set('genre', genre)
+    if (archetype) params.set('archetype', archetype)
     const qs = params.toString()
     router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
-  }, [debouncedQ, tab, movement, size, styleArr, router])
+  }, [debouncedQ, tab, movement, size, styleArr, brand, era, genre, archetype, router])
 
   // 3a. People sub-effect — fires when tab === 'all' || tab === 'people'.
   useEffect(() => {
@@ -186,7 +206,8 @@ export function useSearchState(): UseSearchState {
     }
     // Phase 40 D-01 — browse mode: facets fire fetches even with empty/short q.
     // Guard lifted when at least one facet is active (hasActiveFacet === true).
-    const hasActiveFacet = !!(movement || size || styleArr.length)
+    // Phase 46 D-11: extend to include brand/era/genre/archetype facets.
+    const hasActiveFacet = !!(movement || size || styleArr.length || brand || era || genre || archetype)
     if (debouncedQ.trim().length < CLIENT_MIN_CHARS && !hasActiveFacet) {
       setWatchesResults([])
       setWatchesIsLoading(false)
@@ -206,6 +227,11 @@ export function useSearchState(): UseSearchState {
           size: size ?? undefined,
           // Phase 40 D-03: styleArr is joined to comma string; DAL splits back to string[]
           style: styleArr.length > 0 ? styleArr.join(',') : undefined,
+          // Phase 46 D-12: new facets passed to the search action.
+          brand:     brand     ?? undefined,
+          era:       era       ?? undefined,
+          genre:     genre     ?? undefined,
+          archetype: archetype ?? undefined,
         })
         if (controller.signal.aborted) return // Pitfall 3 stale-result guard
         if (res.success) {
@@ -226,7 +252,7 @@ export function useSearchState(): UseSearchState {
     })()
 
     return () => controller.abort()
-  }, [debouncedQ, tab, movement, size, styleArr])
+  }, [debouncedQ, tab, movement, size, styleArr, brand, era, genre, archetype])
 
   // 3c. Collections sub-effect — fires when tab === 'all' || tab === 'collections'.
   useEffect(() => {
@@ -288,6 +314,15 @@ export function useSearchState(): UseSearchState {
     setSize,
     styleArr,
     setStyleArr,
+    // Phase 46 D-12: brand/era/genre/archetype facet state + setters.
+    brand,
+    setBrand,
+    era,
+    setEra,
+    genre,
+    setGenre,
+    archetype,
+    setArchetype,
     peopleResults,
     watchesResults,
     collectionsResults,
