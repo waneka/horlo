@@ -79,6 +79,7 @@ Research flags to address during planning:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260519-08p | Fix Next.js Image aspect-ratio console warnings on watch images | 2026-05-19 | 5524004 | [260519-08p-fix-next-js-image-aspect-ratio-console-w](./quick/260519-08p-fix-next-js-image-aspect-ratio-console-w/) |
+| 260519-d69 | Fix 4 collection-path UI issues in PathCard desktop layout | 2026-05-19 | 432d5a7 | [260519-d69-fix-4-collection-path-ui-issues-in-pathc](./quick/260519-d69-fix-4-collection-path-ui-issues-in-pathc/) |
 
 ### Pending Todos
 
@@ -87,7 +88,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-19T14:28:49.611Z
-Last activity: 2026-05-19 — Completed quick task 260519-08p: Fix Next.js Image aspect-ratio console warnings on watch images
+Last activity: 2026-05-19 — Completed quick task 260519-d69: Fix 4 collection-path UI issues in PathCard desktop layout
 Stopped at: Phase 47 UI-SPEC approved
 Resume file: .planning/phases/47-curated-lists-rail-hero-where-collections-go/47-UI-SPEC.md
 Next action: `/gsd-plan-phase 43`
