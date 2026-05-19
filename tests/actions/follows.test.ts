@@ -26,8 +26,8 @@ vi.mock('next/cache', () => ({
   // followUser now also invalidates the recipient's bell cache, so the
   // Server Action imports revalidateTag from next/cache.
   revalidateTag: vi.fn(),
-  // Phase 18 DISC-04 (Plan 18-05): followUser + unfollowUser invalidate the
-  // viewer's own Popular Collectors rail via updateTag (RYO semantics).
+  // Phase 39c D-39c-04: followUser + unfollowUser invalidate the viewer-overlay
+  // tag (viewer:{id}:profile:{target}) via updateTag for RYO isFollowing state.
   updateTag: vi.fn(),
 }))
 
@@ -159,20 +159,23 @@ describe('followUser Server Action', () => {
     expect(revalidateTag).toHaveBeenCalledWith(`viewer:${targetUserId}`, 'max')
   })
 
-  it('on success invalidates the viewer\'s own Popular Collectors rail tag (Phase 18 DISC-04)', async () => {
-    // Phase 18 Plan 05 — RYO semantics. The viewer (the actor of the follow)
-    // is the same person whose Popular Collectors rail must drop the just-
-    // followed user on next render. updateTag (single-arg, Server-Actions-only)
-    // is the right primitive — see notifications.ts header comment + RESEARCH
-    // §Pattern 6. Tag string MUST match the cacheTag in
-    // src/components/explore/PopularCollectors.tsx.
+  it('on success invalidates the viewer-overlay tag for RYO isFollowing (Phase 39c D-39c-04)', async () => {
+    // RYO semantics. The viewer (the actor of the follow) is the same person
+    // whose isFollowing state inside <ProfileGate/> must flip immediately.
+    // updateTag (single-arg, Server-Actions-only) is the right primitive.
+    //
+    // NOTE — Phase 18 DISC-04 originally also fired
+    // updateTag('explore:popular-collectors:viewer:...') for the Popular
+    // Collectors rail. Phase 46 (commit fa7e108) retired the PopularCollectors
+    // component (D-04), and that dead updateTag call was removed with it. The
+    // surviving RYO invalidation is the viewer-overlay tag asserted here.
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@example.com' })
     ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'alice', displayName: 'Alice' })
     ;(followsDAL.followUser as Mock).mockResolvedValueOnce(undefined)
 
     await followUser({ userId: targetUserId })
 
-    expect(updateTag).toHaveBeenCalledWith(`explore:popular-collectors:viewer:${viewerUserId}`)
+    expect(updateTag).toHaveBeenCalledWith(`viewer:${viewerUserId}:profile:${targetUserId}`)
   })
 
   it('does NOT invalidate the bare \'explore\' fan-out tag (per-user action only)', async () => {
@@ -306,9 +309,13 @@ describe('unfollowUser Server Action', () => {
     expect(followsDAL.unfollowUser).not.toHaveBeenCalled()
   })
 
-  it('on success invalidates the viewer\'s own Popular Collectors rail tag (Phase 18 DISC-04)', async () => {
-    // Symmetry with followUser: an unfollowed user becomes re-eligible to
-    // surface on the viewer's Popular Collectors rail. RYO via updateTag.
+  it('on success invalidates the viewer-overlay tag for RYO isFollowing (Phase 39c D-39c-04)', async () => {
+    // Symmetry with followUser: unfollowing must flip the viewer's own
+    // isFollowing state inside <ProfileGate/> immediately. RYO via updateTag.
+    //
+    // NOTE — the Phase 18 DISC-04 Popular Collectors rail invalidation was
+    // removed in Phase 46 (commit fa7e108) when the PopularCollectors
+    // component was retired. The surviving RYO tag is the viewer-overlay one.
     ;(getCurrentUser as Mock).mockResolvedValueOnce({
       id: viewerUserId,
       email: 'v@example.com',
@@ -317,7 +324,7 @@ describe('unfollowUser Server Action', () => {
 
     await unfollowUser({ userId: targetUserId })
 
-    expect(updateTag).toHaveBeenCalledWith(`explore:popular-collectors:viewer:${viewerUserId}`)
+    expect(updateTag).toHaveBeenCalledWith(`viewer:${viewerUserId}:profile:${targetUserId}`)
   })
 
   it('does NOT invalidate the bare \'explore\' fan-out tag (per-user action only)', async () => {
