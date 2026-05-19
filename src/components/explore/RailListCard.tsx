@@ -55,12 +55,15 @@ export function RailListCard({
     >
       {/* Cover image — UI-SPEC CSS Chain: aspect-square + overflow-hidden + w-full h-full object-cover */}
       <div className="aspect-square rounded-md bg-muted overflow-hidden relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={list.coverUrl ?? ''}
-          alt=""
-          className="w-full h-full object-cover"
-        />
+        {/* Only render img when coverUrl is non-null — empty src triggers a full page re-download (Wave 2 fix) */}
+        {list.coverUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={list.coverUrl}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        )}
         {/* "New" badge — accent color; absolutely positioned top-left (D-01) */}
         {newBadge && (
           <span className="absolute top-2 left-2 rounded-full bg-accent text-accent-foreground text-xs font-semibold px-2 py-0.5">
