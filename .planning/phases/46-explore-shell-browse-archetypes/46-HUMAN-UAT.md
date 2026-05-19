@@ -1,14 +1,14 @@
 ---
-status: partial
+status: resolved
 phase: 46-explore-shell-browse-archetypes
 source: [46-VERIFICATION.md]
 started: 2026-05-19T03:30:00Z
-updated: 2026-05-19T05:50:00Z
+updated: 2026-05-19T23:30:00Z
 ---
 
 ## Current Test
 
-### 5. A–Z nav G1/G2/G3 visual confirmation after gap-closure CSS changes
+[testing complete — operator-approved 2026-05-19]
 
 ## Tests
 
@@ -33,15 +33,16 @@ expected: Clicking a chip on /explore lands on /search?tab=watches&archetype={va
 result: pass
 
 ### 5. A–Z nav G1/G2/G3 visual confirmation after gap-closure CSS changes
-expected: On /explore/brands the A–Z nav wraps onto multiple lines with no horizontal scrolling (G1); clicking a letter anchor smooth-scrolls to the target section (G2); the nav pins below the global header — not behind it — and the landed section heading clears the sticky nav (G3, `scroll-mt-28 md:scroll-mt-32`). If the nav wraps to 3 lines at the test viewport and a heading still tucks under it, the offset may need bumping to `scroll-mt-32 md:scroll-mt-40`.
-result: pending
+expected: On /explore/brands the A–Z nav wraps onto multiple lines with no horizontal scrolling (G1); clicking a letter anchor smooth-scrolls to the target section (G2); the nav pins below the global header — not behind it — and the landed section heading clears the sticky nav (G3, `scroll-mt-28 md:scroll-mt-32`).
+result: pass
+note: "Operator-approved 2026-05-19. G1 (wrap, no horizontal scroll) and G3 (sticky pin below header, heading clears nav) confirmed. G2 — the vertical scroll to the clicked letter is still NOT smooth; `scroll-smooth` on <main> is not taking effect. Deferred as an end-of-v5.1 follow-up per operator decision (FU-02 in DEFERRED.md), not treated as a blocking gap. Separately: an infinite router.replace loop on /search — a regression from the 46-05 Fault 2 fix — was found post-verification and fixed in commit 2c75d32."
 
 ## Summary
 
 total: 5
-passed: 3
+passed: 4
 issues: 1
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 

@@ -1,9 +1,10 @@
 ---
 phase: 46-explore-shell-browse-archetypes
 verified: 2026-05-19T22:50:00Z
-status: human_needed
+status: passed
 score: 9/9
 overrides_applied: 0
+human_verification_outcome: "operator-approved 2026-05-19 — G1 (wrap, no horizontal scroll) and G3 (sticky pin below header) confirmed in browser. G2 (smooth scroll) reported still not smooth — deferred as an end-of-v5.1 follow-up, not a blocker. Also: an infinite router.replace loop on /search (regression from the 46-05 Fault 2 fix) was found and fixed in commit 2c75d32 after verification."
 re_verification:
   previous_status: human_needed
   previous_score: 4/4
@@ -26,7 +27,7 @@ human_verification:
 
 **Phase Goal:** `/explore` renders as a 5-module shell and users can browse the catalog by brand, era, and genre, and deep-link into archetype-filtered search results
 **Verified:** 2026-05-19T22:50:00Z
-**Status:** human_needed
+**Status:** passed (operator-approved 2026-05-19)
 **Re-verification:** Yes — gap-closure pass after UAT (plans 46-05 and 46-06, commit 4e592ab CR-01 follow-up)
 
 ## Goal Achievement

@@ -130,6 +130,11 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 - [x] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail (completed 2026-05-19)
 - [ ] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module
 
+**v5.1 end-of-milestone follow-ups** (operator-raised at Phase 46 UAT, 2026-05-19 — not blocking; address before milestone close):
+- FU-01 — expose brand/era/genre/archetype facets in the `/search` filters menu (currently only arrive via `/explore` deep-link, not editable in place)
+- FU-02 — `/explore/brands` A–Z letter-anchor scroll still not smooth (`scroll-smooth` not taking effect)
+- Detail: `.planning/phases/46-explore-shell-browse-archetypes/deferred-items.md`
+
 ### 📋 v5.2 Catalog Expansion (Planted)
 
 Not yet roadmapped — seeded as SEED-009. Catalog breadth expansion beyond the ~100 existing rows. Runs after v5.1.
@@ -245,7 +250,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 6/6 | Complete    | 2026-05-18 |
-| 46. Explore Shell + Browse + Archetypes | 6/6 | Complete   | 2026-05-19 |
+| 46. Explore Shell + Browse + Archetypes | 6/6 | Complete    | 2026-05-19 |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
 ## Next Up
