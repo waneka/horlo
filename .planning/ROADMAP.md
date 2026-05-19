@@ -128,7 +128,7 @@ See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
 - [x] **Phase 44: Catalog Enrichment** — Extend backfill script with rate-limit retry/logging, run prod enrichment, verify archetype coverage across all ~100 catalog rows (completed 2026-05-18)
 - [x] **Phase 45: CMS Data Model + Admin Routes** — 5-table migration with RLS, owner-gated `/admin/*` routes, list/path CRUD, 6 seed paths authored (completed 2026-05-18)
 - [x] **Phase 46: Explore Shell + Browse + Archetypes** — New `/explore` 5-module shell, Browse the Catalog with 4 indices, Collector Archetypes chip rail (completed 2026-05-19)
-- [ ] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module
+- [x] **Phase 47: Curated Lists Rail + Hero + Where Collections Go** — Curated Lists Rail + detail pages, Hero with quality gate + manual pin, Collection Paths module (completed 2026-05-19)
 
 **v5.1 end-of-milestone follow-ups** (operator-raised at Phase 46 UAT, 2026-05-19 — not blocking; address before milestone close):
 - FU-01 — expose brand/era/genre/archetype facets in the `/search` filters menu (currently only arrive via `/explore` deep-link, not editable in place)
@@ -242,7 +242,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 - [x] 47-01-PLAN.md — Schema (published_at column) + migration + DAL extensions + shared utilities + Wave 0 test scaffolds
 - [x] 47-02-PLAN.md — Curated Lists Rail + RailListCard + /explore/lists see-all + /explore/lists/[id] detail
 - [x] 47-03-PLAN.md — Hero (quality gate + pin + weekly rotation) + Where Collections Go + PathCard + /explore/paths
-- [ ] 47-04-PLAN.md — Full-suite + build verification + visual/mobile/Hero-propagation human-verify + traceability
+- [x] 47-04-PLAN.md — Full-suite + build verification + visual/mobile/Hero-propagation human-verify + traceability
 **UI hint**: yes
 
 ---
@@ -255,7 +255,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 6/6 | Complete    | 2026-05-18 |
 | 46. Explore Shell + Browse + Archetypes | 6/6 | Complete    | 2026-05-19 |
-| 47. Curated Lists Rail + Hero + Where Collections Go | 3/4 | In Progress|  |
+| 47. Curated Lists Rail + Hero + Where Collections Go | 4/4 | Complete   | 2026-05-19 |
 
 ## Next Up
 
