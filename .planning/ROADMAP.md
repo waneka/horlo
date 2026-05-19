@@ -255,7 +255,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 6/6 | Complete    | 2026-05-18 |
 | 46. Explore Shell + Browse + Archetypes | 6/6 | Complete    | 2026-05-19 |
-| 47. Curated Lists Rail + Hero + Where Collections Go | 4/4 | Complete   | 2026-05-19 |
+| 47. Curated Lists Rail + Hero + Where Collections Go | 4/4 | Complete    | 2026-05-19 |
 
 ## Next Up
 
