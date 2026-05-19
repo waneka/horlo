@@ -394,7 +394,7 @@ function WatchesPanel({
               <button
                 type="button"
                 onClick={onClearArchetype}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
               >
                 <span>{archetypeConfig?.displayName ?? archetype}</span>
                 <X className="size-3" aria-hidden />
@@ -405,7 +405,7 @@ function WatchesPanel({
               <button
                 type="button"
                 onClick={onClearBrand}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
               >
                 <span>{brand.charAt(0).toUpperCase() + brand.slice(1)}</span>
                 <X className="size-3" aria-hidden />
@@ -416,7 +416,7 @@ function WatchesPanel({
               <button
                 type="button"
                 onClick={onClearEra}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
               >
                 <span>{ERA_DISPLAY_LABELS[era] ?? era}</span>
                 <X className="size-3" aria-hidden />
@@ -427,7 +427,7 @@ function WatchesPanel({
               <button
                 type="button"
                 onClick={onClearGenre}
-                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
               >
                 <span>{genre.charAt(0).toUpperCase() + genre.slice(1)}</span>
                 <X className="size-3" aria-hidden />
@@ -477,7 +477,7 @@ function WatchesPanel({
             <button
               type="button"
               onClick={onClearArchetype}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
             >
               <span>{archetypeConfig?.displayName ?? archetype}</span>
               <X className="size-3" aria-hidden />
@@ -488,7 +488,7 @@ function WatchesPanel({
             <button
               type="button"
               onClick={onClearBrand}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
             >
               <span>{brand.charAt(0).toUpperCase() + brand.slice(1)}</span>
               <X className="size-3" aria-hidden />
@@ -499,7 +499,7 @@ function WatchesPanel({
             <button
               type="button"
               onClick={onClearEra}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
             >
               <span>{ERA_DISPLAY_LABELS[era] ?? era}</span>
               <X className="size-3" aria-hidden />
@@ -510,7 +510,7 @@ function WatchesPanel({
             <button
               type="button"
               onClick={onClearGenre}
-              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-foreground hover:bg-accent/20 transition-colors"
             >
               <span>{genre.charAt(0).toUpperCase() + genre.slice(1)}</span>
               <X className="size-3" aria-hidden />
