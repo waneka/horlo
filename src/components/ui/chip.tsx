@@ -53,13 +53,18 @@ export function Chip({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      type="button"
       className={cn(
         chipVariants({ variant }),
         variant === 'toggle' && selected && SELECTED_CLASSES,
         className,
       )}
       {...props}
+      // WR-04: `type` is placed AFTER the `{...props}` spread so a stray
+      // `type="submit"` from a consumer cannot accidentally turn this primitive
+      // into a form submitter. Chip is now a shared primitive in 9+ surfaces;
+      // making the safe default un-overridable matches the convention used by
+      // shadcn primitives (Button, Switch, etc.).
+      type="button"
     >
       {children}
       {variant === 'removable' && (
