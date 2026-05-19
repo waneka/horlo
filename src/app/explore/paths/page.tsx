@@ -42,12 +42,31 @@ export default async function CollectionPathsPage() {
     (p): p is NonNullable<typeof p> => p !== null
   )
 
-  // Group paths by pathType
+  // Group paths by pathType.
+  // WR-04: collection_paths.pathType is a free `text` column (text + CHECK,
+  // not an enum). A blind `as PathType` cast would let a path whose type is
+  // outside PATH_TYPES (CHECK drift, a new value not yet in pathTypes.ts, a
+  // manual DB edit) group under a key the render loop never visits — so the
+  // published path would silently disappear with no error and no log.
+  // Partition explicitly: only group KNOWN types, and log any unknowns so a
+  // vocabulary drift is surfaced rather than hidden.
+  const knownTypes = new Set<string>(PATH_TYPES)
   const pathsByType = new Map<PathType, typeof validPaths>()
+  const unknownTypePaths: typeof validPaths = []
   for (const path of validPaths) {
-    const type = path.pathType as PathType
-    if (!pathsByType.has(type)) pathsByType.set(type, [])
-    pathsByType.get(type)!.push(path)
+    if (knownTypes.has(path.pathType)) {
+      const type = path.pathType as PathType
+      if (!pathsByType.has(type)) pathsByType.set(type, [])
+      pathsByType.get(type)!.push(path)
+    } else {
+      unknownTypePaths.push(path)
+    }
+  }
+  if (unknownTypePaths.length > 0) {
+    console.error(
+      '[CollectionPathsPage] published path(s) with an unknown pathType — not in PATH_TYPES:',
+      unknownTypePaths.map((p) => ({ id: p.id, pathType: p.pathType })),
+    )
   }
 
   return (
@@ -79,6 +98,21 @@ export default async function CollectionPathsPage() {
           </section>
         )
       })}
+
+      {/* WR-04: trailing "Other" section — published paths whose pathType is
+          outside PATH_TYPES are still rendered here rather than silently
+          dropped. This should normally be empty (the DB CHECK constraint is
+          layer 1); it is a safety net against vocabulary drift. */}
+      {unknownTypePaths.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold text-foreground mb-4">Other</h2>
+          <div className="flex flex-col gap-8">
+            {unknownTypePaths.map((pathWithNodes) => (
+              <PathCard key={pathWithNodes.id} pathWithNodes={pathWithNodes} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   )
 }
