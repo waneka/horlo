@@ -54,16 +54,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase TBD | Pending |
-| BUG-02 | Phase TBD | Pending |
-| TAX-01 | Phase TBD | Pending |
-| ARCH-01 | Phase TBD | Pending |
+| BUG-01 | Phase 48 | Pending |
+| BUG-02 | Phase 48 | Pending |
+| TAX-01 | Phase 49 | Pending |
+| ARCH-01 | Phase 50 | Pending |
 
 **Coverage:**
 - v5.2 requirements: 4 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 4 ⚠️
+- Mapped to phases: 4
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-19*
-*Last updated: 2026-05-19 after initial definition*
+*Last updated: 2026-05-19 — traceability filled after roadmap creation*

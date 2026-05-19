@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: planning
-last_updated: "2026-05-19T20:34:37.636Z"
+status: roadmapped
+last_updated: "2026-05-19"
 last_activity: 2026-05-19
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Between milestones — v5.1 Explore Page Redesign shipped; v5.2 Catalog Expansion (SEED-009) not yet scoped.
+**Current focus:** v5.2 Polish + Taxonomy — two production bug fixes and two investigation spikes.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 48 (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-19 — Milestone v5.2 started
+Status: Roadmapped — ready to plan Phase 48
+Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50, 4 requirements)
+
+```
+v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/3 phases)
+```
 
 ## Performance Metrics
 
@@ -45,6 +49,14 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **`assertOwner()` in every CMS Server Action**, not just the layout guard — Server Actions are HTTP-callable.
 - **Two-layer RLS** for published CMS content — `USING (status = 'published')` + explicit DAL `WHERE`.
 - **`revalidateTag('explore:hero', 'max')`** in all four Hero write paths — `revalidatePath` does not invalidate tag scopes.
+
+### v5.2 Phase Structure
+
+| Phase | Goal | Requirements |
+|-------|------|--------------|
+| 48 | Fix wishlist mislabel + dark-mode chip contrast | BUG-01, BUG-02 |
+| 49 | Genre vs style taxonomy spike — written recommendation | TAX-01 |
+| 50 | Two watch-detail views architecture spike — written decision | ARCH-01 |
 
 ### Deferred Items
 
@@ -80,10 +92,10 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-05-19 — Milestone v5.1 completed and archived (ROADMAP/REQUIREMENTS archived to `milestones/`, PROJECT.md evolved, `v5.1` git tag created).
-Stopped at: v5.1 milestone complete.
-Next action: `/gsd-new-milestone` to scope v5.2 Catalog Expansion (SEED-009).
+Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50).
+Stopped at: Roadmap written. Phase 48 not yet planned.
+Next action: `/gsd-plan-phase 48` to plan and execute the two bug fixes.
 
 ## Operator Next Steps
 
-- Start the next milestone with `/gsd-new-milestone`
+- Run `/gsd-plan-phase 48` to begin Phase 48 (Bug Fixes)

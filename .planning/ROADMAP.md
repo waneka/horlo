@@ -9,7 +9,7 @@
 - ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
 - ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
 - ✅ **v5.1 Explore Page Redesign** — Phases 43-47 (shipped 2026-05-19) — [archive](milestones/v5.1-ROADMAP.md)
-- 📋 **v5.2 Polish + Taxonomy** — planted, next (SEED-011)
+- 🚧 **v5.2 Polish + Taxonomy** — Phases 48-50 (in progress)
 - 📋 **v6.0 Social Interaction** — planted (SEED-012)
 - 📋 **v7.0 Watch Photos** — planted (SEED-013)
 - 📋 **v8.0 Add-Watch Redesign** — planted (SEED-010)
@@ -140,9 +140,11 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 
 </details>
 
-### 📋 v5.2 Polish + Taxonomy (Planted — next)
+### v5.2 Polish + Taxonomy (Phases 48-50)
 
-Not yet roadmapped — seeded as SEED-011. A small, fast milestone: fix the wishlist-watch "you own this" mislabel and the dark-mode `/search` filter-chip legibility bug; run two spikes — genre vs. style overlap, and whether to merge the two watch-detail views (`/catalog/[id]` vs `/watch/[id]`).
+- [ ] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast
+- [ ] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation
+- [ ] **Phase 50: Watch-Detail Architecture Spike** - Compare two-view vs merged-view and produce written decision
 
 ### 📋 v6.0 Social Interaction (Planted)
 
@@ -164,6 +166,49 @@ Seeded as SEED-009 — catalog breadth expansion past the ~100-row bootstrap. Un
 
 Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits after v8.0; needs the SEED-007 market-pricing API spike first. (No longer numbered v6.0 — that slot is now Social Interaction.)
 
+## Phase Details
+
+### Phase 48: User-Facing Bug Fixes
+**Goal**: Both live production bugs are resolved — wishlist watches are correctly labeled, and `/search` filter chips are legible in dark mode
+**Depends on**: Nothing (first phase of v5.2)
+**Requirements**: BUG-01, BUG-02
+**Success Criteria** (what must be TRUE):
+  1. A watch on the user's wishlist, reached via `/catalog/[catalogId]` from search, displays a wishlisted state label — never "you own this watch"
+  2. All `/search` filter chip groups (movement, size, style, brand, era, genre, archetype) render with legible text contrast in dark mode — no black text on dark backgrounds
+  3. The ownership-state fix does not regress the "you own this watch" label for watches the user actually owns
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 49: Genre vs Style Taxonomy Spike
+**Goal**: A written recommendation exists — backed by code evidence — on whether `genre` and `style` should be consolidated, one removed, or kept as-is
+**Depends on**: Phase 48
+**Requirements**: TAX-01
+**Success Criteria** (what must be TRUE):
+  1. A spike document maps every consumer of `genre` and `style` (filters, similarity engine, `/explore` Browse indices, watch cards) — showing what each field actually does at each callsite
+  2. The document identifies where the fields overlap, diverge, or produce redundant UI/data
+  3. The document delivers a clear recommendation (consolidate / remove one / keep both) with rationale strong enough to act on
+  4. No consolidation or removal implementation is shipped in this phase unless the spike specifically flags it as cheap and strongly favored — in which case a new requirement is added mid-milestone
+**Plans**: TBD
+
+### Phase 50: Watch-Detail Architecture Spike
+**Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
+**Depends on**: Phase 48
+**Requirements**: ARCH-01
+**Success Criteria** (what must be TRUE):
+  1. The decision document describes what each route currently does and who reaches it (owner, wishlist-holder, anonymous visitor, cross-user browse)
+  2. The document lays out the concrete pros and cons of keeping separate views vs merging, with the v7.0 Watch Photos milestone explicitly considered (multi-photo carousel + wear-pic surfacing)
+  3. The document delivers a clear decision (keep separate / merge) with enough specificity that `/gsd-plan-phase` for Phase 50 can execute against it
+  4. No merge implementation is shipped in this phase unless the spike strongly favors it and it is cheap — in which case a new requirement is added mid-milestone
+**Plans**: TBD
+
+## Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 48. User-Facing Bug Fixes | 0/TBD | Not started | - |
+| 49. Genre vs Style Taxonomy Spike | 0/TBD | Not started | - |
+| 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
+
 ## Next Up
 
-v5.1 Explore Page Redesign shipped 2026-05-19 (all 32 requirements). The roadmap was reshaped on 2026-05-19 from a post-v5.1 bug/feature triage. The next milestone is **v5.2 Polish + Taxonomy** (SEED-011) — run `/gsd-new-milestone` to scope it.
+v5.2 Polish + Taxonomy is active (Phases 48-50, 4 requirements). Start with `/gsd-plan-phase 48`.
