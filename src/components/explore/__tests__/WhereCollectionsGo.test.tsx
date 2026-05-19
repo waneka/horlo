@@ -176,7 +176,7 @@ describe('WhereCollectionsGo', () => {
     const result = await WhereCollectionsGo()
     render(result as React.ReactElement)
 
-    // The Badge should render the pathType label
-    expect(screen.getByText('Trading Up')).toBeTruthy()
+    // The Badge should render the pathType label (at least once — mobile + desktop both render it via PathCard)
+    expect(screen.getAllByText('Trading Up').length).toBeGreaterThanOrEqual(1)
   })
 })
