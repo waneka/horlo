@@ -215,9 +215,9 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   3. The Brands index includes A–Z jump navigation allowing the user to jump to any letter section
   4. Collector Archetypes renders a chip rail with all 10 archetypes, each showing a watch-count badge; tapping a chip opens prefiltered search results with an archetype header; all 10 chips resolve to at least one result (amended 2026-05-19 from 8 — the live `PRIMARY_ARCHETYPES` vocab is 10, per Phase 44 D-16 / Phase 46 D-15)
 **Plans**: 4 plans
-- [ ] 46-01-PLAN.md — Archetype config + Browse count DAL + Wave 0 test scaffolds + retire old Phase 18 Explore surface
-- [ ] 46-02-PLAN.md — `/search` Watches tab facet extension (brand/era/genre/archetype) + query-free run + inline chips + archetype header
-- [ ] 46-03-PLAN.md — `/explore` 5-module shell + CollectorArchetypes + BrowseModule + Brands/Eras/Genres index pages
+- [x] 46-01-PLAN.md — Archetype config + Browse count DAL + Wave 0 test scaffolds + retire old Phase 18 Explore surface
+- [x] 46-02-PLAN.md — `/search` Watches tab facet extension (brand/era/genre/archetype) + query-free run + inline chips + archetype header
+- [x] 46-03-PLAN.md — `/explore` 5-module shell + CollectorArchetypes + BrowseModule + Brands/Eras/Genres index pages
 - [ ] 46-04-PLAN.md — Roadmap/requirements 8→10 housekeeping + full-suite integration verification
 **UI hint**: yes
 
@@ -243,7 +243,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | 43. Polish Pass | 7/7 | Complete    | 2026-05-17 |
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 6/6 | Complete    | 2026-05-18 |
-| 46. Explore Shell + Browse + Archetypes | 0/4 | Planned | - |
+| 46. Explore Shell + Browse + Archetypes | 3/4 | In Progress|  |
 | 47. Curated Lists Rail + Hero + Where Collections Go | 0/TBD | Not started | - |
 
 ## Next Up
