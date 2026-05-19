@@ -142,7 +142,7 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 
 ### v5.2 Polish + Taxonomy (Phases 48-50)
 
-- [ ] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast
+- [x] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast (completed 2026-05-19)
 - [ ] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation
 - [ ] **Phase 50: Watch-Detail Architecture Spike** - Compare two-view vs merged-view and produce written decision
 
@@ -179,7 +179,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 **Plans**: 3 plans
 - [x] 48-01-PLAN.md — BUG-01 catalog ownership query fix + regression tests (status=owned filter, 3 new test cases, profiles mock)
 - [x] 48-02-PLAN.md — Shared CVA Chip primitive (src/components/ui/chip.tsx) with BUG-02 token fix baked in + unit tests
-- [ ] 48-03-PLAN.md — Migrate all 8 chip surfaces to primitive (7 drawer chips + SearchPageClient) + manual dark-mode UAT
+- [x] 48-03-PLAN.md — Migrate all 8 chip surfaces to primitive (7 drawer chips + SearchPageClient) + manual dark-mode UAT
 **UI hint**: yes
 
 ### Phase 49: Genre vs Style Taxonomy Spike
@@ -208,7 +208,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 48. User-Facing Bug Fixes | 2/3 | In Progress|  |
+| 48. User-Facing Bug Fixes | 3/3 | Complete   | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 0/TBD | Not started | - |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
