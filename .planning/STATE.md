@@ -81,6 +81,7 @@ Research flags to address during planning:
 | 260519-08p | Fix Next.js Image aspect-ratio console warnings on watch images | 2026-05-19 | 5524004 | [260519-08p-fix-next-js-image-aspect-ratio-console-w](./quick/260519-08p-fix-next-js-image-aspect-ratio-console-w/) |
 | 260519-d69 | Fix 4 collection-path UI issues in PathCard desktop layout | 2026-05-19 | 432d5a7 | [260519-d69-fix-4-collection-path-ui-issues-in-pathc](./quick/260519-d69-fix-4-collection-path-ui-issues-in-pathc/) |
 | 260519-g4v | FU-02 fix /explore/brands A–Z letter-anchor smooth scroll | 2026-05-19 | 8c7543e | [260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch](./quick/260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch/) |
+| 260519-ga9 | FU-01 expose brand/era/genre/archetype facets in /search filters menu | 2026-05-19 | 9a6276d | [260519-ga9-fu-01-expose-brand-era-genre-archetype-f](./quick/260519-ga9-fu-01-expose-brand-era-genre-archetype-f/) |
 
 ### Pending Todos
 
@@ -89,7 +90,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-19T14:28:49.611Z
-Last activity: 2026-05-19 — Completed quick task 260519-g4v: FU-02 fix /explore/brands A–Z letter-anchor smooth scroll
+Last activity: 2026-05-19 — Completed quick task 260519-ga9: FU-01 expose brand/era/genre/archetype facets in /search filters menu
 Stopped at: Phase 47 UI-SPEC approved
 Resume file: .planning/phases/47-curated-lists-rail-hero-where-collections-go/47-UI-SPEC.md
 Next action: `/gsd-plan-phase 43`
