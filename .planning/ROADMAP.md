@@ -240,8 +240,8 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
   5. The Where Collections Go module renders correctly at 360px mobile width — progression through the path is legible with a numbered indicator and vertical stacking
 **Plans**: 4 plans
 - [x] 47-01-PLAN.md — Schema (published_at column) + migration + DAL extensions + shared utilities + Wave 0 test scaffolds
-- [ ] 47-02-PLAN.md — Curated Lists Rail + RailListCard + /explore/lists see-all + /explore/lists/[id] detail
-- [ ] 47-03-PLAN.md — Hero (quality gate + pin + weekly rotation) + Where Collections Go + PathCard + /explore/paths
+- [x] 47-02-PLAN.md — Curated Lists Rail + RailListCard + /explore/lists see-all + /explore/lists/[id] detail
+- [x] 47-03-PLAN.md — Hero (quality gate + pin + weekly rotation) + Where Collections Go + PathCard + /explore/paths
 - [ ] 47-04-PLAN.md — Full-suite + build verification + visual/mobile/Hero-propagation human-verify + traceability
 **UI hint**: yes
 
@@ -255,7 +255,7 @@ Not yet roadmapped — seeded as SEED-005. Watch Charts integration + total-valu
 | 44. Catalog Enrichment | 4/4 | Complete | 2026-05-18 |
 | 45. CMS Data Model + Admin Routes | 6/6 | Complete    | 2026-05-18 |
 | 46. Explore Shell + Browse + Archetypes | 6/6 | Complete    | 2026-05-19 |
-| 47. Curated Lists Rail + Hero + Where Collections Go | 1/4 | In Progress|  |
+| 47. Curated Lists Rail + Hero + Where Collections Go | 3/4 | In Progress|  |
 
 ## Next Up
 
