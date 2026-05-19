@@ -73,19 +73,32 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
 
   it('ADD-01 happy path — paste URL → extracting → verdict-ready with 3 buttons', async () => {
     const { getVerdictForCatalogWatch } = await import('@/app/actions/verdict')
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        success: true,
-        catalogId: 'cat-uuid',
-        data: fixtureExtracted,
-        source: 'merged',
-        confidence: 'high',
-        fieldsExtracted: ['brand', 'model'],
-        llmUsed: false,
-      }),
-    } as Response)
+    // Defer the fetch resolution by a macrotask so the transient "extracting"
+    // state is deterministically committed before the verdict-ready state —
+    // mockResolvedValue resolves on the next microtask, which races the
+    // intermediate "Working..." assertion under full-suite timing pressure.
+    vi.mocked(global.fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                  success: true,
+                  catalogId: 'cat-uuid',
+                  data: fixtureExtracted,
+                  source: 'merged',
+                  confidence: 'high',
+                  fieldsExtracted: ['brand', 'model'],
+                  llmUsed: false,
+                }),
+              } as Response),
+            0,
+          ),
+        ),
+    )
     vi.mocked(getVerdictForCatalogWatch).mockResolvedValue({
       success: true,
       data: fixtureFullVerdict,
