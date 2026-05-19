@@ -350,10 +350,17 @@ function WatchesPanel({
   brand?: string | null
   era?: string | null
   genre?: string | null
-  onClearBrand?: () => void
-  onClearEra?: () => void
-  onClearGenre?: () => void
-  onClearArchetype?: () => void
+  // WR-03: required (not optional). WatchesPanel is an internal component used
+  // in exactly one place (SearchPageClient.tsx:189) and there is no semantic case
+  // for omitting a clear handler when the corresponding facet may be active —
+  // doing so would render a removable chip whose dismiss affordance does nothing.
+  // Pairs with chip.tsx WR-02 (discriminated union making `onClick` required on
+  // `variant="removable"`) to catch the foot-gun at compile time at any future
+  // call site or refactor.
+  onClearBrand: () => void
+  onClearEra: () => void
+  onClearGenre: () => void
+  onClearArchetype: () => void
 }) {
   if (isLoading) return <WatchSearchResultsSkeleton />
   if (hasError) {
