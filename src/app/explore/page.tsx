@@ -31,14 +31,17 @@ export default async function ExplorePage() {
   return (
     <main className="container mx-auto px-4 md:px-8 py-8 max-w-6xl">
       <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-8">
-        {/* Phase-47 slots return null in Phase 46 */}
-        <HeroModule />
+        {/* Phase-47: Hero spans full width on desktop (EXPL-08 / UI-SPEC Discretion) */}
+        <div className="md:col-span-2">
+          <HeroModule />
+        </div>
         {/* md:col-span-1 left — live in Phase 46 */}
         <CollectorArchetypes />
         {/* md:col-span-1 right — live in Phase 46 */}
         <BrowseModule />
-        {/* Phase-47 slots return null in Phase 46 */}
+        {/* Phase-47 slots: CuratedListsRail returns null until Plan 02 wires it */}
         <CuratedListsRail />
+        {/* Phase-47: WhereCollectionsGo wired in Plan 03 (this plan) */}
         <WhereCollectionsGo />
       </div>
     </main>
