@@ -663,6 +663,48 @@ describe('useSearchState (D-03 / D-04 / D-12 / D-20 / D-28)', () => {
     expect(strippedCall).toBeUndefined()
   })
 
+  it('Test 22 (46-05 regression): landing on /search?q=omega does NOT loop router.replace forever', async () => {
+    mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
+    mockSearchWatchesAction.mockResolvedValue({ success: true, data: [] })
+    mockSearchCollectionsAction.mockResolvedValue({ success: true, data: [] })
+
+    // Real App Router behaviour: a router.replace(url) swaps useSearchParams()
+    // for a NEW object identity carrying url's params. A plain vi.fn() never
+    // does this — which is exactly why the original infinite loop slipped past
+    // the suite. Wiring the feedback here reproduces production.
+    mockReplace.mockImplementation((url: string) => {
+      const qs = String(url).split('?')[1] ?? ''
+      const next: Record<string, string> = {}
+      new URLSearchParams(qs).forEach((v, k) => {
+        next[k] = v
+      })
+      setSearchParams(next)
+    })
+
+    // Land on /search?q=omega — q seeds from the URL on mount.
+    setSearchParams({ q: 'omega' })
+
+    const { rerender } = renderHook(() => useSearchState())
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+
+    // Drive App-Router-style re-renders: every router.replace above swapped in a
+    // fresh searchParams identity, so the component re-renders. The URL-sync
+    // effect must converge — it must NOT emit a fresh replace on every render
+    // just because searchParams got a new object reference.
+    for (let i = 0; i < 8; i++) {
+      rerender()
+      await act(async () => {
+        vi.advanceTimersByTime(50)
+      })
+    }
+
+    // With the idempotence guard the URL is already correct on arrival, so the
+    // effect is a pure no-op. Without it, every render emitted another replace.
+    expect(mockReplace.mock.calls.length).toBeLessThanOrEqual(1)
+  })
+
   it('Test 19 — per-section paint independence (RESEARCH path A win): people paints before watches resolves', async () => {
     let watchesResolver: ((v: { success: true; data: [] }) => void) | undefined
     mockSearchPeopleAction.mockResolvedValue({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import {
@@ -110,6 +110,10 @@ export function useSearchState(): UseSearchState {
   const [genre, setGenre] = useState<string | null>(searchParams.get('genre') ?? null)
   const [archetype, setArchetype] = useState<string | null>(searchParams.get('archetype') ?? null)
 
+  // Last URL emitted to router.replace() — used by the URL-sync effect to skip
+  // re-emitting a URL it has already pushed (infinite-loop guard, see effect 2).
+  const lastReplacedUrl = useRef<string | null>(null)
+
   const [peopleResults, setPeopleResults] = useState<SearchProfileResult[]>([])
   const [watchesResults, setWatchesResults] = useState<SearchCatalogWatchResult[]>([])
   const [collectionsResults, setCollectionsResults] = useState<SearchCollectionResult[]>([])
@@ -190,7 +194,19 @@ export function useSearchState(): UseSearchState {
     if (wouldStripIncoming) return
 
     const qs = params.toString()
-    router.replace(qs ? `/search?${qs}` : '/search', { scroll: false })
+    const nextUrl = qs ? `/search?${qs}` : '/search'
+
+    // Infinite-loop guard. `searchParams` is in this effect's dep array
+    // (Fault 2), but App Router hands back a NEW searchParams object identity
+    // after every router.replace() — even a replace to an identical URL. That
+    // re-fires this effect; without this guard it would replace → re-fire →
+    // replace forever. Skip when the URL we would emit equals the one we last
+    // emitted ourselves. (A ref, not a searchParams comparison: it must not
+    // depend on how soon App Router reflects the replace back into the hook.)
+    if (nextUrl === lastReplacedUrl.current) return
+    lastReplacedUrl.current = nextUrl
+
+    router.replace(nextUrl, { scroll: false })
   }, [debouncedQ, tab, movement, size, styleArr, brand, era, genre, archetype, router, searchParams])
 
   // 3a. People sub-effect — fires when tab === 'all' || tab === 'people'.
