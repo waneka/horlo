@@ -20,6 +20,11 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/data/profiles', () => ({
   getProfileByUsername: vi.fn(),
   getProfileSettings: vi.fn(),
+  getFollowerCounts: vi.fn().mockResolvedValue({ followers: 0, following: 0 }),
+}))
+
+vi.mock('@/data/follows', () => ({
+  isFollowing: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock('@/data/watches', () => ({

@@ -244,6 +244,34 @@ vi.mock('next/navigation', () => ({
   RedirectType: { push: 'push', replace: 'replace' },
 }))
 
+// ─── RC4 — global next/cache mock ────────────────────────────────────────────
+//
+// `cacheTag()` / `cacheLife()` are only available when Next.js runs with the
+// `cacheComponents` config. The Vitest jsdom environment does not boot that
+// runtime, so importing/calling them from `next/cache` throws
+// ``cacheTag() is only available with the `cacheComponents` config.``. Server
+// Components and Server Actions that call these (profile shells, explore
+// rails, follow/watch actions) fail before reaching `notFound()` / their real
+// assertions.
+//
+// This DEFAULT mock stubs every `next/cache` export as a no-op `vi.fn()`. Like
+// the navigation mock above, any test file with its own
+// `vi.mock('next/cache', ...)` overrides it. Tests that need to assert on
+// `revalidateTag` / `updateTag` calls should import them from 'next/cache' and
+// use `vi.mocked(...)` — the stubs are real spies.
+vi.mock('next/cache', () => ({
+  cacheTag: vi.fn(),
+  cacheLife: vi.fn(),
+  revalidateTag: vi.fn(),
+  revalidatePath: vi.fn(),
+  updateTag: vi.fn(),
+  unstable_cache: vi.fn(
+    (fn: (...args: unknown[]) => unknown) =>
+      (...args: unknown[]) =>
+        fn(...args),
+  ),
+}))
+
 import { StrictMode, type ReactElement } from 'react'
 import * as RTL from '@testing-library/react'
 
