@@ -19,6 +19,7 @@ import { ChevronRight } from 'lucide-react'
 import { Fragment } from 'react'
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 // ---- Node type ----
 // Covers both seed watch + follow-on nodes from getPathWithNodes
@@ -61,7 +62,7 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
         brand: seedWatch.brand,
         model: seedWatch.model,
         reference: seedWatch.reference,
-        rationale: null, // seed has no rationale — rationale is on the path itself
+        rationale: pathWithNodes.rationale ?? null, // seed carries the PATH-level curator rationale
         imageUrl: seedWatch.imageUrl,
         sortOrder: -1, // renders before follow-ons
       }
@@ -115,9 +116,10 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
       <div className="hidden md:flex gap-4 items-start">
         {allNodes.map((node, i) => (
           <Fragment key={node.id}>
-            <div className="w-44 space-y-2">
+            <div className="flex-1 min-w-0 max-w-[208px] space-y-2">
               {/* Watch image — DiscoveryWatchCard CSS chain: aspect-square + overflow-hidden + object-cover */}
-              <div className="aspect-square rounded-md bg-muted overflow-hidden">
+              {/* group + relative: positioning context for the hover CTA overlay (Task 3) */}
+              <div className="aspect-square rounded-md bg-muted overflow-hidden group relative">
                 {node.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -126,6 +128,17 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
                     className="w-full h-full object-cover"
                   />
                 ) : null}
+                {/* Hover CTA overlay — bottom-anchored, desktop-only, pure CSS (no JS state) */}
+                <div className="absolute inset-x-0 bottom-0 flex items-end p-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                  <Button
+                    render={<Link href={`/catalog/${node.catalogId}`} />}
+                    variant="secondary"
+                    size="sm"
+                    className="w-full min-h-[44px]"
+                  >
+                    Watch Details
+                  </Button>
+                </div>
               </div>
               <Link href={`/catalog/${node.catalogId}`}>
                 <p className="text-sm font-semibold text-foreground truncate">
