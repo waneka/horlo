@@ -656,7 +656,13 @@ export async function BrowseModule() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All four questions below were resolved during planning (Phase 46 plans + UI-SPEC):
+> Q1 — archetype display names: resolved via 46-UI-SPEC.md (proposed defaults, owner corrects at UAT);
+> Q2 — brand slug vs UUID: resolved as slug subquery (Plan 46-02);
+> Q3 — Phase-47 module slots: resolved as `return null` stubs (Plan 46-03);
+> Q4 — Browse 3 vs 4 tiles: resolved as 3 tiles (Plan 46-03).
 
 1. **Archetype chip display names (D-16)**
    - What we know: 10 raw values: `dress`, `dive`, `field`, `pilot`, `chrono`, `gmt`, `racing`, `sport`, `tool`, `hybrid`
