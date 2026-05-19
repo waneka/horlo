@@ -88,7 +88,7 @@ blocked: 0
     - path: "scripts/verify-catalog-coverage.ts"
       issue: "Pre-ship coverage gate soft-warns (exit 0) on zero-coverage archetypes — let the gap ship undetected"
   missing:
-    - "DECISION REQUIRED (owner): either (a) natural-keyed taste backfill giving tool + hybrid prod coverage, or (b) amend EXPL-05 / SC #4 'all 10 chips' criterion to accept that a ~100-watch catalog may legitimately lack tool watches until v5.2 catalog expansion"
+    - "OWNER DECISION (2026-05-19): hide zero-count chips. CollectorArchetypes filters out any archetype whose count is 0 — the rail renders only covered archetypes (8 today), and tool/hybrid reappear automatically when v5.2 catalog expansion (SEED-009) adds coverage. Consistent with EXPL-02 'absent, not empty'. SC #4 reframes from 'all 10 resolve' to 'every visible chip resolves to ≥1 result'. No data backfill, no migration."
   debug_session: .planning/debug/g4-zero-count-archetype-chips.md
 - truth: "Selecting a new archetype chip from /explore applies the new facet on /search via client-side (soft) navigation — without requiring a full page refresh."
   status: failed
