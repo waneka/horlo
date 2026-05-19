@@ -1,5 +1,30 @@
 # Milestones
 
+## v5.1 Explore Page Redesign (Shipped: 2026-05-19)
+
+**Phases completed:** 5 phases (43-47), 27 plans
+**Timeline:** 3 days (2026-05-16 → 2026-05-19)
+**Codebase:** 508 files changed since v5.0 (incl. `.planning/`), +44,199 / −3,368 lines; `src/` at ~46,900 LOC
+**Requirements:** 32/32 v5.1 requirements shipped (PLSH 7, ENRH 6, CMS 10, EXPL 9)
+
+**Delivered:** Built `/explore` as a top-level evergreen, taste-driven discovery surface — a five-module "rabbit hole" distinct from Home's daily check-in — preceded by a UI polish pass and an LLM/vision catalog-enrichment pass, with all editorial content authored through a new in-app admin CMS.
+
+**Key accomplishments:**
+
+- **Polish pass (Phase 43)** — migrated the `/search` filter sheet to a swipe/backdrop-dismissable `FilterDrawer`, suppressed wear UI on wishlist cards, equal-height watch cards with the add-CTA lifted above the grid, device avatar upload with circular crop into a new `avatars` Supabase Storage bucket, and the deprecated Claude model ID updated to `claude-sonnet-4-6`. 7 plans (4 original + 3 UAT gap-closure).
+- **Catalog enrichment (Phase 44)** — hardened the enrichment script with two-turn `web_search`, rate-limit retry/backoff, and per-`catalog_id` success/failure logging; a confidence-threshold + photo-existence downgrade guard in `updateCatalogTaste`; human-reviewed factual propose/apply scripts; and a full ~100-row production enrichment run verified for archetype coverage.
+- **In-app admin CMS (Phase 45)** — a 5-table migration (`curated_lists`, `curated_list_items`, `collection_paths`, `collection_path_nodes`, `cms_settings`) with two-layer-defended RLS; owner-gated `/admin/lists` + `/admin/paths` routes with `assertOwner()` in every Server Action; full list/path CRUD with markdown editor, cover uploader, and search-as-you-type watch picker; 6 seed collection paths authored.
+- **Explore shell + Browse + Archetypes (Phase 46)** — the new `/explore` 5-module responsive shell (self-hiding empty modules); Browse the Catalog with brand/era/genre indices + A–Z brand nav; a Collector Archetypes chip rail deep-linking into archetype-prefiltered `/search`; `/search` Watches tab extended with brand/era/genre/archetype facets. 6 plans (4 original + 2 UAT gap-closure). The old Phase 18 Explore surface was retired.
+- **Editorial half of /explore (Phase 47)** — the Curated Lists Rail + `/explore/lists` see-all + per-list detail pages; a quality-gated Hero with manual pin override + weekly rotation + immediate `revalidateTag('explore:hero')` propagation; the Where Collections Go module + `PathCard` (numbered vertical stack at 360px) + `/explore/paths`.
+
+**End-of-milestone follow-ups** (closed as quick tasks before close, 2026-05-19): FU-01 — brand/era/genre/archetype facets made editable in the `/search` filter drawer (`260519-ga9`); FU-02 — `/explore/brands` A–Z smooth scroll fixed by moving `scroll-behavior` to the real scroll container (`260519-g4v`). Both deployed to prod and operator-verified.
+
+**Milestone close (2026-05-19):** Closed without a formal `/gsd-audit-milestone` (as v5.0 was). The pre-close artifact audit surfaced 23 open items — 10 completed quick tasks flagged only for missing SUMMARY frontmatter status, 3 resolved UAT files, 9 future-milestone seeds, and 1 misidentified reference doc — all acknowledged as non-blocking. Phase 45 (7 items) and Phase 47 verification + FU-01/FU-02 human-verify checkpoints were all operator-approved.
+
+**Known deferred items:** see STATE.md `## Deferred Items` and the v5.0-carryover list (DEBT-12 prod drizzle-journal repair; Phase 39c UAT Issue 2; 31 v3.0 + Phase 35/41 human-verification UAT items; smaller carryover).
+
+---
+
 ## v5.0 Discovery North Star (Shipped: 2026-05-16)
 
 **Phases completed:** 14 phases (32, 33, 33b, 34, 35, 36, 37, 38, 39, 39b, 39c, 40, 41, 42), 64 plans, 97 tasks
@@ -24,6 +49,7 @@
 **Milestone close (2026-05-16):** Pre-close audit surfaced 4 verification gaps (Phases 35/38/40/41) and 2 human-UAT gaps (Phases 35/41) — all operator-approved at close (not deferred). Phase 40's `SearchPageClient.test.tsx` regression was already fixed at commit `083c251` (6/6 green); Phase 38's D-07 test-fixture gap was closed by Plan 38-04 (re-verified PASSED 2026-05-12).
 
 **Known deferred items:**
+
 - **DEBT-12** — repair prod's `drizzle.__drizzle_migrations` journal (1 row vs N expected). Never mapped to a v5.0 phase; opportunistic — fold into the next prod-deploy phase that needs `drizzle-kit migrate` to run cleanly.
 - Phase 39c VERIFICATION.md is technically stale (verified against a false-positive sign-off state), but the post-recovery codebase genuinely delivers the phase goal — see `.planning/debug/resolved/profile-page-404-top-nav.md`.
 - v5.1 Explore Page Redesign (SEED-008) — DISC-09 was dropped from v5.0 on 2026-05-12 and promoted to a dedicated v5.1 milestone.

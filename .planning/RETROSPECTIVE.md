@@ -335,6 +335,49 @@
 
 ---
 
+## Milestone: v5.1 — Explore Page Redesign
+
+**Shipped:** 2026-05-19
+**Phases:** 5 (43, 44, 45, 46, 47) | **Plans:** 27
+**Timeline:** 3 days (2026-05-16 → 2026-05-19)
+**Codebase:** 508 files changed (incl. `.planning/`), +44,199 / −3,368 lines, 269 commits since v5.0 tag; `src/` at ~46,900 LOC
+
+### What Was Built
+- Polish pass: `/search` filter sheet → swipe/backdrop-dismissable `FilterDrawer`, wishlist cards drop wear UI, equal-height watch cards + add-CTA above the grid, device avatar upload into a new `avatars` Storage bucket, Claude model ID → `claude-sonnet-4-6`
+- Catalog enrichment: enrichment script hardened (two-turn `web_search`, rate-limit retry/backoff, per-`catalog_id` logging), a confidence + photo-existence downgrade guard, human-reviewed factual propose/apply scripts, and a full ~100-row production enrichment run
+- In-app admin CMS: 5-table migration with two-layer-defended RLS, owner-gated `/admin/lists` + `/admin/paths` with `assertOwner()` in every Server Action, full list/path CRUD, 6 seed paths
+- `/explore` five-module shell: Browse the Catalog (brand/era/genre indices + A–Z nav), Collector Archetypes chip rail, and the editorial half — Curated Lists Rail + quality-gated Hero + Where Collections Go — with the old Phase 18 Explore surface retired
+- Two end-of-milestone follow-ups closed as quick tasks before close: FU-01 (`/search` facet drawer) and FU-02 (`/explore/brands` smooth scroll)
+
+### What Worked
+- **Hard data-dependency phase ordering held.** Enrichment (44) before Browse/Archetypes (46), CMS model (45) before Rail/Hero (47) — every dependent phase had real data to render against; no empty-state guesswork.
+- **Inline UAT gap-closure, again.** Phase 43 absorbed 3 gap-closure plans and Phase 46 absorbed 2, all within the phase — zero gap carry-over to the next phase. The pattern is now milestone-routine.
+- **Two-layer RLS + `assertOwner()` for the CMS.** A net-new write surface (`/admin/*`) shipped without a draft leak or an ungated Server Action — the v2.0 follower-privacy posture transferred cleanly to editorial content.
+- **End-of-milestone follow-ups closed as quick tasks, not deferred.** FU-01/FU-02 were scoped, executed, deployed, and operator-verified the same day — v5.1 closed self-contained.
+
+### What Was Inefficient
+- **REQUIREMENTS.md + ROADMAP checkbox lag — now 6 milestones running.** All of ENRH-01..06, CMS-01..10, and EXPL-02/04 stayed `[ ]` and the traceability table stayed `Pending` despite the phases being disk-complete and verified. Milestone close had to reconcile all 18.
+- **`milestone.complete` extracted garbage "accomplishments".** The CLI pulled the first noisy line of each SUMMARY.md (`"One-liner:"`, `"FilterDrawer"`, `"Test suite results:"`) into the MILESTONES.md entry; the entire entry had to be hand-rewritten. SUMMARY.md files do not carry a clean `one_liner` field the extractor can trust.
+- **`origin/main` drifted ~70 commits behind during the session**, and a first-deploy status check was misread as "in sync" when it was actually listing unpushed commits. CLI deploys (`vercel --prod`) ship the local tree, which masked the drift until an explicit push.
+
+### Patterns Established
+- **In-app admin CMS pattern** — owner-gated `/admin/*` routes + `assertOwner()` at the head of every Server Action + two-layer RLS (`USING (status='published')` + explicit DAL `WHERE`) for any future operator-authored content surface.
+- **Enrich-before-expand for catalog data** — enrich existing rows so dependent surfaces render real data immediately; defer breadth expansion to its own milestone.
+- **Tag-scoped cache invalidation for editorial surfaces** — `revalidateTag('explore:hero', 'max')` in every write path; `revalidatePath` does not invalidate `'use cache'` tag scopes.
+
+### Key Lessons
+1. **Checkbox lag is a 6-milestone-running workflow gap.** Every milestone since v2.0 has reconciled REQUIREMENTS.md + ROADMAP checkboxes at close. The phase-complete tooling should flip both when a phase verifies — overdue as a fix.
+2. **The `milestone.complete` accomplishment extractor needs a real source.** Until SUMMARY.md files carry a trustworthy `one_liner`, the auto-generated MILESTONES.md entry is unusable and must be hand-written. Treat the CLI entry as a stub.
+3. **Verify git remote state explicitly before declaring "in sync."** `git log @{u}..HEAD` listing commits means you are *ahead*, not even. CLI deploys hide remote drift because they ship the local tree.
+4. **Closing without `/gsd-audit-milestone` is now the established single-user-scale pattern** — acceptable, but the pre-close artifact audit is doing the load-bearing work, and its false-positive rate (23 items flagged, 0 real) argues for tuning the audit, not the close.
+
+### Cost Observations
+- Model mix: ~70% Sonnet (executors), ~30% Opus (orchestration, planning, milestone close)
+- Sessions: a single continuous session for the close (deploy → FU quick tasks → verification sign-off → milestone close)
+- Notable: shortest milestone since v4.1 (3 days, 5 phases); the largest avoidable cost was the hand-rewrite of the CLI-mangled MILESTONES.md entry.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -347,6 +390,7 @@
 | v4.0 | 6 days | 12/12 | Added inline gap-closure pattern (3 phases used it), filesystem-absence static guards, D-07-style ordering gates for external-dependency rollouts, hybrid form-feedback (`useFormFeedback` + `FormStatusBanner`), worktree-based plan parallelization at scale (65 plans / 6 days), catalog-as-silent-infrastructure separation, LLM-derived structured taste enrichment with first-write-wins semantics, Postgres enum rename+recreate for cleanup, `@base-ui/react` vertical-tabs with `pushState` hash-routing |
 | v4.1 | 2 days | 5/5 | Added three-layer defense for cross-route remount contracts, module-scope Maps for cross-remount cache survival, speech-act split via type-required field, append-only audit edits with byte-equality invariant, auth-callback regex source-equality test, test-infra `<StrictMode>` wrapper as regression-class CI gate, post-ship hotfix workflow (no follow-up phase scoped), retroactive phase audit as DEBT-surfacing tool (DEBT-09 caught) |
 | v5.0 | 11 days | 14/14 | Added audit-first ordering with row-ID citation, engineering-vs-product audit split (33 → 33b), self-idempotent migrations + journal-in-same-commit, static-guards-before-implementation for engine rewires, two-layer-privacy + count(DISTINCT)-totalCount DAL shape, B1 server-tree sibling composition, bootstrap-vs-curation path distinction, Cache Components conformance for viewer-dependent routes (thin Suspense shell + `'use cache'` resolver + viewer gate). Largest milestone by phase count + commit volume; cost the one avoidable Phase 39c false-positive-sign-off recovery cycle |
+| v5.1 | 3 days | 5/5 | Added the in-app admin CMS pattern (owner-gated routes + `assertOwner()` + two-layer RLS), enrich-before-expand catalog sequencing, and tag-scoped cache invalidation for editorial surfaces. Shortest milestone since v4.1; closed without `/gsd-audit-milestone`; REQUIREMENTS/ROADMAP checkbox lag now 6 milestones running |
 
 ### Cumulative Quality
 
@@ -358,6 +402,7 @@
 | v4.0 | ~3000+ (unit + RTL + integration-gated; TEST-04/05/06 finally landed; live-DB tests across phase 17/19/19.1/20/22/24) | Not configured | 2 phases without phase-level VERIFICATION.md (23, 24 — both backfilled in v4.1 Phase 31); ~33 deferred human UAT items across Phases 18 / 20 / 20.1 / 22 / 23; Nyquist coverage partial (3/12 fully compliant; Phases 25 + 26 have no VALIDATION.md); REQUIREMENTS.md DISC-08/NAV-14 wording drift; pre-existing `LayoutProps` + tests/no-raw-palette + tests/app/explore failures |
 | v4.1 | ~3000+ (zero new failures introduced; 50/4187 pre-existing on `main`) | Not configured | DEBT-09 (NEW HIGH-severity Phase 23-era regression: `notesPublic` Zod field + `revalidatePath('/u/...')` absent on `main`); Nyquist 4/5 partial (only Phase 29 COMPLIANT); `useWatchSearchVerdictCache` not invalidated on signOut; cancel mid-flow doesn't honor `?returnTo=` (by spec); REQUIREMENTS.md checkbox lag (4 milestones running); ROADMAP Phase 30 stale `[ ]` checkbox |
 | v5.0 | ~3000+ (zero net new failures vs the ~48-51 pre-existing `main` baseline; v5.0 plans tracked net regression delta per plan) | Not configured | DEBT-12 (prod `drizzle.__drizzle_migrations` journal repair — opportunistic, unscheduled); Phase 39c UAT Issue 2 (stale `removeWatch` rail/projection); Phase 39c VERIFICATION.md stale vs post-recovery codebase; 4 verification + 2 human-UAT gaps operator-approved at close (not formally audited); milestone closed without `/gsd-audit-milestone`; REQUIREMENTS.md + ROADMAP checkbox lag (5 milestones running); 31 v3.0 + Phase-35/41 human-verification UAT items still open |
+| v5.1 | ~3000+ (zero net new failures vs the ~48-51 pre-existing `main` baseline) | Not configured | DEBT-12 + v5.0 carryover still open (Phase 39c UAT Issue 2; 31 v3.0 + Phase 35/41 human-verification UAT items); 23 pre-close artifact-audit items acknowledged non-blocking; REQUIREMENTS.md + ROADMAP checkbox lag (6 milestones running); milestone closed without `/gsd-audit-milestone` |
 
 ### Top Lessons (Verified Across Milestones)
 
