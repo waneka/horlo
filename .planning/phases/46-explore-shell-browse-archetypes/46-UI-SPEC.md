@@ -1,10 +1,11 @@
 ---
 phase: 46
 slug: explore-shell-browse-archetypes
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-18
+reviewed_at: 2026-05-18
 ---
 
 # Phase 46 — UI Design Contract
@@ -191,7 +192,7 @@ Per D-10: arriving facets render as **inline removable chips above watch results
 | Element | Component | Notes |
 |---------|-----------|-------|
 | Facet chip container | `<div className="flex flex-wrap gap-2 mb-4">` | Rendered above watch result rows, below filter/search bar |
-| Active facet chip | `<button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors">` | Matches spirit of existing MovementChips selected state (`bg-accent text-accent-foreground border-accent`) but lighter `bg-accent/10` since it's a removable tag not an active filter toggle |
+| Active facet chip | `<button type="button" className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/10 px-3 py-1 text-sm font-medium text-accent-foreground hover:bg-accent/20 transition-colors">` | Matches spirit of existing MovementChips selected state (`bg-accent text-accent-foreground border-accent`) but lighter `bg-accent/10` since it's a removable tag not an active filter toggle |
 | Chip label | `<span>` — display name for the facet value | e.g. "Dive Watch Devotee" (archetype), "Rolex" (brand), "Vintage Leaning" (era), "Dive" (genre) |
 | Dismiss icon | lucide `X`, `className="size-3"` | `aria-hidden` |
 | Dismiss `sr-only` | `<span className="sr-only">Remove {label} filter</span>` | Accessibility |
