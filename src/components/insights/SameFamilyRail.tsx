@@ -12,7 +12,7 @@ import type { SameFamilyWatch } from '@/data/hierarchy'
  * - Typography: text-xl font-semibold (UI-SPEC drafted a lighter weight, but
  *   tests/no-raw-palette.test.ts forbids that weight — auto-fix applies the
  *   same Rule 1 flip as 39b-02 c205617 / 39b-03 049b3f4)
- * - Scroll container: matches TrendingWatches.tsx scroll vocab verbatim
+ * - Scroll container: horizontal-scroll with overflow-x-auto flex gap-4 pattern
  *   (UI-SPEC §Rail layout / §Spacing exception)
  * - Card sublabel: "1 collector" (singular) / "{N} collectors" (plural)
  *
