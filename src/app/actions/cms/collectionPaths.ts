@@ -95,6 +95,9 @@ export async function updateCollectionPath(data: unknown): Promise<ActionResult<
     const { pathId, ...fields } = parsed.data
     await collectionPathsDAL.updatePath(pathId, fields)
     revalidateTag('explore:hero', 'max')
+    // CR-01: path-type / rationale edits are rendered on WhereCollectionsGo
+    // and /explore/paths — 'explore:paths' invalidates both cached surfaces.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -115,6 +118,9 @@ export async function deleteCollectionPath(pathId: string): Promise<ActionResult
   try {
     await collectionPathsDAL.deletePath(pathId)
     revalidateTag('explore:hero', 'max')
+    // CR-01: a deleted path must drop off WhereCollectionsGo + /explore/paths
+    // immediately, not after the cacheLife('hours') window.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -145,6 +151,9 @@ export async function setPathNode(data: unknown): Promise<ActionResult<void>> {
   try {
     await collectionPathsDAL.setPathNode(parsed.data)
     revalidateTag('explore:hero', 'max')
+    // CR-01: path nodes are the watch sequence rendered by PathCard on
+    // WhereCollectionsGo and /explore/paths — invalidate the paths surface.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -165,6 +174,9 @@ export async function removePathNode(nodeId: string): Promise<ActionResult<void>
   try {
     await collectionPathsDAL.removePathNode(nodeId)
     revalidateTag('explore:hero', 'max')
+    // CR-01: removing a node changes the watch sequence rendered by PathCard
+    // on WhereCollectionsGo and /explore/paths — invalidate the paths surface.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -186,6 +198,9 @@ export async function movePathUp(pathId: string): Promise<ActionResult<void>> {
     // WR-02: lookup + swap inside one transaction — no lost-update race.
     await collectionPathsDAL.movePathInTransaction(pathId, 'up')
     revalidateTag('explore:hero', 'max')
+    // CR-01: reordering changes path order on WhereCollectionsGo rotation +
+    // /explore/paths grouping — invalidate the paths surface.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -204,6 +219,9 @@ export async function movePathDown(pathId: string): Promise<ActionResult<void>> 
     // WR-02: lookup + swap inside one transaction — no lost-update race.
     await collectionPathsDAL.movePathInTransaction(pathId, 'down')
     revalidateTag('explore:hero', 'max')
+    // CR-01: reordering changes path order on WhereCollectionsGo rotation +
+    // /explore/paths grouping — invalidate the paths surface.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -227,6 +245,10 @@ export async function publishCollectionPath(pathId: string): Promise<ActionResul
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (AGENTS.md).
     // revalidateTag not updateTag — hero cache is GLOBAL, not read-your-own-writes.
     revalidateTag('explore:hero', 'max')
+    // CR-01: publishing a path must make it appear on WhereCollectionsGo +
+    // /explore/paths immediately — the cached HTML is served without
+    // re-running getPublishedPaths until this tag fires.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {
@@ -245,6 +267,11 @@ export async function unpublishCollectionPath(pathId: string): Promise<ActionRes
     await collectionPathsDAL.setPathStatus(pathId, 'draft')
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (AGENTS.md).
     revalidateTag('explore:hero', 'max')
+    // CR-01: DRAFT-LEAK FIX — unpublishing must drop the path off
+    // WhereCollectionsGo + /explore/paths immediately. The status='published'
+    // DAL filter does NOT help, because the cached HTML is served without
+    // re-running the DAL until this tag fires.
+    revalidateTag('explore:paths', 'max')
     revalidateAdminPaths()
     return { success: true, data: undefined }
   } catch (err) {

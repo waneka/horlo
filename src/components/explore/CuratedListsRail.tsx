@@ -22,7 +22,11 @@ import { RailListCard } from '@/components/explore/RailListCard'
 
 export async function CuratedListsRail() {
   'use cache'
-  cacheTag('explore', 'explore:lists')
+  // CR-01: tag is 'explore:lists' ONLY. The former 'explore' umbrella tag was
+  // never fired by any CMS Server Action — it implied invalidation coverage
+  // that did not exist. Every list mutation (publish/unpublish/update/delete/
+  // reorder/item-change) now fires revalidateTag('explore:lists', 'max').
+  cacheTag('explore:lists')
   cacheLife('hours')
 
   const lists = await getPublishedLists(12)

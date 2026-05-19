@@ -97,6 +97,11 @@ export async function updateCuratedList(data: unknown): Promise<ActionResult<voi
     await curatedListsDAL.updateList(id, fields)
     // WR-03: title/cover/intro edits change a pinned hero's rendered content.
     revalidateTag('explore:hero', 'max')
+    // CR-01: title/cover edits also change the rail card + see-all page —
+    // 'explore:lists' tags CuratedListsRail and /explore/lists (and the
+    // umbrella 'explore' tag both share). Without this the rail serves a
+    // stale title/cover for the full cacheLife('hours') window.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -117,6 +122,12 @@ export async function deleteCuratedList(listId: string): Promise<ActionResult<vo
 
   try {
     await curatedListsDAL.deleteList(listId)
+    // CR-01: a deleted list must drop off the public rail + see-all + hero
+    // immediately, not after the cacheLife('hours') window. A deleted
+    // (formerly published) list left in the cached HTML is a draft-leak by
+    // another route.
+    revalidateTag('explore:hero', 'max')
+    revalidateTag('explore:lists', 'max')
     revalidatePath('/admin/lists')
     return { success: true, data: undefined }
   } catch (err) {
@@ -151,6 +162,9 @@ export async function addWatchToList(data: unknown): Promise<ActionResult<void>>
     await curatedListsDAL.addListItem(parsed.data)
     // WR-03: adding a watch changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // CR-01: adding a watch changes the rail card's watch count and the
+    // see-all / detail page contents — invalidate the lists surface.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -183,6 +197,9 @@ export async function updateListItemCommentary(data: unknown): Promise<ActionRes
     await curatedListsDAL.updateListItemCommentary(parsed.data.itemId, parsed.data.commentary)
     // WR-03: commentary edits change a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // CR-01: commentary is rendered on the public /explore/lists/[id] detail
+    // page — invalidate the lists surface so edits show immediately.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -205,6 +222,9 @@ export async function removeWatchFromList(itemId: string): Promise<ActionResult<
     await curatedListsDAL.removeListItem(itemId)
     // WR-03: removing a watch changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // CR-01: removing a watch changes the rail card's watch count and the
+    // see-all / detail page contents — invalidate the lists surface.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -230,6 +250,9 @@ export async function moveListUp(listId: string): Promise<ActionResult<void>> {
     await curatedListsDAL.moveListInTransaction(listId, 'up')
     // WR-03: reordering changes a pinned hero's rendered list ordering.
     revalidateTag('explore:hero', 'max')
+    // CR-01: getPublishedLists orders by sortOrder — reordering changes the
+    // rail card order and the see-all grid order. Invalidate the lists surface.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -253,6 +276,9 @@ export async function moveListDown(listId: string): Promise<ActionResult<void>> 
     await curatedListsDAL.moveListInTransaction(listId, 'down')
     // WR-03: reordering changes a pinned hero's rendered list ordering.
     revalidateTag('explore:hero', 'max')
+    // CR-01: getPublishedLists orders by sortOrder — reordering changes the
+    // rail card order and the see-all grid order. Invalidate the lists surface.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -279,6 +305,9 @@ export async function moveListItemUp(itemId: string): Promise<ActionResult<void>
     if (!res.found) return { success: false, error: 'Item not found.' }
     // WR-03: item reorder changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // CR-01: item order is rendered on the public /explore/lists/[id] detail
+    // page — invalidate the lists surface so reorders show immediately.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -303,6 +332,9 @@ export async function moveListItemDown(itemId: string): Promise<ActionResult<voi
     if (!res.found) return { success: false, error: 'Item not found.' }
     // WR-03: item reorder changes a pinned hero's rendered list contents.
     revalidateTag('explore:hero', 'max')
+    // CR-01: item order is rendered on the public /explore/lists/[id] detail
+    // page — invalidate the lists surface so reorders show immediately.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -335,6 +367,10 @@ export async function publishCuratedList(listId: string): Promise<ActionResult<v
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (Pitfall 3).
     // hero is a GLOBAL shared cache — use revalidateTag (NOT updateTag which is read-your-own-writes).
     revalidateTag('explore:hero', 'max')
+    // CR-01: publishing a list must make it appear on the rail + /explore/lists
+    // immediately — getPublishedLists filters status='published', but the
+    // CACHED HTML is served without re-running the DAL until this tag fires.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
@@ -359,6 +395,12 @@ export async function unpublishCuratedList(listId: string): Promise<ActionResult
     // CRITICAL: two-argument form — single-arg is deprecated in Next.js 16 (Pitfall 3).
     // hero is a GLOBAL shared cache — use revalidateTag (NOT updateTag which is read-your-own-writes).
     revalidateTag('explore:hero', 'max')
+    // CR-01: DRAFT-LEAK FIX — unpublishing must drop the list off the public
+    // rail + /explore/lists immediately. The status='published' DAL filter
+    // does NOT help, because the cached rail HTML is served without re-running
+    // the DAL until this tag fires. Without it, an unpublished list stays
+    // publicly visible for the full cacheLife('hours') window.
+    revalidateTag('explore:lists', 'max')
     // GAP-3: invalidate the admin index + editor route caches so a list change
     // is visible on back-navigation without a hard reload.
     revalidatePath('/admin/lists')
