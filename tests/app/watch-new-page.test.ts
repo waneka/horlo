@@ -17,15 +17,21 @@ const {
   mockGetCurrentUser,
   mockGetWatchesByUser,
   mockGetCatalogById,
+  mockGetProfileById,
 } = vi.hoisted(() => ({
   mockGetCurrentUser: vi.fn(),
   mockGetWatchesByUser: vi.fn(),
   mockGetCatalogById: vi.fn(),
+  mockGetProfileById: vi.fn(),
 }))
 
 vi.mock('@/lib/auth', () => ({ getCurrentUser: mockGetCurrentUser }))
 vi.mock('@/data/watches', () => ({ getWatchesByUser: mockGetWatchesByUser }))
 vi.mock('@/data/catalog', () => ({ getCatalogById: mockGetCatalogById }))
+// The page resolves the viewer's profile (getProfileById) to derive
+// viewerUsername for the AddWatchFlow toast destination. Stub it to a viewer
+// fixture so the page tree resolves instead of hitting a real DB query.
+vi.mock('@/data/profiles', () => ({ getProfileById: mockGetProfileById }))
 vi.mock('@/components/watch/AddWatchFlow', () => ({
   AddWatchFlow: (props: unknown) => ({
     type: 'AddWatchFlow-mock',
@@ -81,6 +87,7 @@ describe('Phase 20.1 Plan 04 — /watch/new searchParams + intent whitelist', ()
     mockGetCurrentUser.mockResolvedValue({ id: 'viewer-1', email: 'v@h' })
     mockGetWatchesByUser.mockResolvedValue([])
     mockGetCatalogById.mockResolvedValue(fixtureCatalog)
+    mockGetProfileById.mockResolvedValue({ id: 'viewer-1', username: 'viewer' })
   })
 
   it('Pitfall 1 — page awaits searchParams and renders without throwing on empty params', async () => {
