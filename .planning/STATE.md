@@ -4,8 +4,8 @@ milestone: v5.1
 milestone_name: Explore Page Redesign
 status: executing
 stopped_at: Phase 47 UI-SPEC approved
-last_updated: "2026-05-19T14:48:28.432Z"
-last_activity: 2026-05-19 -- Phase 47 planning complete
+last_updated: "2026-05-19T14:49:33.247Z"
+last_activity: 2026-05-19 -- Phase 47 execution started
 progress:
   total_phases: 6
   completed_phases: 5
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-16 — v5.0 milestone close)
 
 ## Current Position
 
-Phase: 47
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-19 -- Phase 47 planning complete
+Phase: 47 (Curated Lists Rail + Hero + Where Collections Go) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 47
+Last activity: 2026-05-19 -- Phase 47 execution started
 
 [================    ] 80% — 4/5 phases complete
 
