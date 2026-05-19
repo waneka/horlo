@@ -1,10 +1,11 @@
 ---
 phase: 48
 slug: user-facing-bug-fixes
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-19
+reviewed_at: 2026-05-19T00:00:00Z
 ---
 
 # Phase 48 — UI Design Contract
