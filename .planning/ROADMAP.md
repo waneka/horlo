@@ -191,7 +191,12 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   2. The document identifies where the fields overlap, diverge, or produce redundant UI/data
   3. The document delivers a clear recommendation (consolidate / remove one / keep both) with rationale strong enough to act on
   4. No consolidation or removal implementation is shipped in this phase unless the spike specifically flags it as cheap and strongly favored — in which case a new requirement is added mid-milestone
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 49-01-PLAN.md — Consumer audit: write Domain + Consumer Map + Overlap & Divergence Matrix (§1-3) covering all 9 D-01 surfaces
+- [ ] 49-02-PLAN.md — Live-catalog evidence: run 5 D-07 SQL queries against prod/mirror and embed results in §4
+- [ ] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
 
 ### Phase 50: Watch-Detail Architecture Spike
 **Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
