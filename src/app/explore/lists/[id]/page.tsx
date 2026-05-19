@@ -17,19 +17,10 @@ import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
 
 import { getCurrentUser } from '@/lib/auth'
-import { getListWithItems, getListItemCount } from '@/data/curatedLists'
-
-// Relative timestamp — shared logic with RailListCard
-function getRelativeTimestamp(publishedAt: Date | null): string {
-  if (!publishedAt) return ''
-  const diffMs = Date.now() - publishedAt.getTime()
-  const diffDays = Math.floor(diffMs / 86400000)
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
-  if (diffDays < 1) return 'Today'
-  if (diffDays < 7) return rtf.format(-diffDays, 'day')
-  if (diffDays < 30) return rtf.format(-Math.floor(diffDays / 7), 'week')
-  return rtf.format(-Math.floor(diffDays / 30), 'month')
-}
+import { getListWithItems } from '@/data/curatedLists'
+// WR-06: getRelativeTimestamp is now a single shared definition in
+// src/lib/relativeTime.ts (was copy-pasted verbatim here and in RailListCard).
+import { getRelativeTimestamp } from '@/lib/relativeTime'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -48,7 +39,14 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
   // T-47-07: getListWithItems filters status='published'; draft resolves to null.
   if (!list) notFound()
 
-  const watchCount = await getListItemCount(id)
+  // CR-02: derive the displayed count from the already-fetched items so the
+  // header count and the rendered editorial rows are guaranteed consistent.
+  // The previous separate getListItemCount(id) counted curated_list_items
+  // directly, while list.items is the result of an innerJoin against
+  // watches_catalog — the two could disagree and the header would claim a
+  // different watch count than the rows actually rendered. Dropping the
+  // separate call also removes one DB round-trip per page load.
+  const watchCount = list.items.length
   const timestamp = getRelativeTimestamp(list.publishedAt ?? null)
 
   return (
