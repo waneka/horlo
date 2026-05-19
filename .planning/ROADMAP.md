@@ -194,8 +194,13 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
 - [ ] 49-01-PLAN.md — Consumer audit: write Domain + Consumer Map + Overlap & Divergence Matrix (§1-3) covering all 9 D-01 surfaces
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 49-02-PLAN.md — Live-catalog evidence: run 5 D-07 SQL queries against prod/mirror and embed results in §4
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
 
 ### Phase 50: Watch-Detail Architecture Spike
