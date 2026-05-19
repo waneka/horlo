@@ -128,10 +128,57 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+// IN-04: A Drizzle condition built by `eq()` is an `SQL` object whose
+// `queryChunks` array interleaves chunks of three relevant shapes:
+//   - StringChunk    — raw SQL text (`{ value: string[] }`), e.g. ' = '
+//   - a Column object — the referenced column (`PgText` etc.); exposes `.name`
+//   - Param          — the bound parameter (`{ brand, value, encoder }`)
+// To assert WHAT predicate a DAL read passed to `.where()` (not merely that
+// `.where()` was called), we walk `queryChunks` and collect (a) the names of
+// every column referenced and (b) every bound parameter value. This lets a
+// test fail if the draft-leak filter is removed, inverted (`eq(status,
+// 'draft')`), or retargeted to another column.
+function inspectCondition(cond: unknown): { columns: string[]; values: unknown[] } {
+  const columns: string[] = []
+  const values: unknown[] = []
+  const visit = (node: unknown) => {
+    if (node == null) return
+    if (Array.isArray(node)) {
+      node.forEach(visit)
+      return
+    }
+    if (typeof node === 'object') {
+      const obj = node as Record<string, unknown>
+      const ctor = (obj.constructor && obj.constructor.name) || ''
+      // A Drizzle Param wraps the bound value in `.value`.
+      if (ctor === 'Param' && 'value' in obj) {
+        values.push(obj.value)
+        return
+      }
+      // A StringChunk carries only raw SQL operator text — ignore it.
+      if (ctor === 'StringChunk') return
+      // Nested SQL fragments expose their own `queryChunks`.
+      if (Array.isArray(obj.queryChunks)) {
+        obj.queryChunks.forEach(visit)
+        return
+      }
+      // Otherwise this is a column object — record its name.
+      if (typeof obj.name === 'string') {
+        columns.push(obj.name)
+      }
+      return
+    }
+    // A bare primitive can also appear as an inlined parameter value.
+    values.push(node)
+  }
+  visit((cond as { queryChunks?: unknown }).queryChunks)
+  return { columns, values }
+}
+
 describe('Phase 45 Plan 03 — curatedLists DAL', () => {
   describe('D-03: getPublishedLists uses explicit WHERE status="published"', () => {
     it('calls db.select and chains .where() with a status predicate', async () => {
-      // Set up a chain that captures .where() calls
+      // Set up a chain that captures .where() calls.
       let whereCalled = false
       const resolvedList = [{ id: 'list-1', status: 'published', sortOrder: 0 }]
       const innerChain = {
@@ -150,6 +197,37 @@ describe('Phase 45 Plan 03 — curatedLists DAL', () => {
 
       expect(vi.mocked(db.select)).toHaveBeenCalled()
       expect(whereCalled).toBe(true)
+    })
+
+    // IN-04: the draft-leak filter is the phase's #1 security focus. This test
+    // asserts the ACTUAL predicate passed to .where() — it must fail if the
+    // filter is removed, inverted to eq(status,'draft'), or retargeted.
+    it('passes a predicate that references the status column and the literal "published"', async () => {
+      let capturedWhereArg: unknown = undefined
+      const resolvedList = [{ id: 'list-1', status: 'published', sortOrder: 0 }]
+      const innerChain = {
+        orderBy: vi.fn(() => Object.assign(Promise.resolve(resolvedList), {
+          limit: vi.fn(() => Promise.resolve(resolvedList)),
+        })),
+        limit: vi.fn(() => Promise.resolve(resolvedList)),
+      }
+      const fromChain = {
+        where: vi.fn((arg: unknown) => { capturedWhereArg = arg; return innerChain }),
+        orderBy: vi.fn(() => Promise.resolve(resolvedList)),
+      }
+      vi.mocked(db.select).mockReturnValue({ from: vi.fn(() => fromChain) } as unknown as ReturnType<typeof db.select>)
+
+      await getPublishedLists()
+
+      // .where() must have received an actual Drizzle condition object.
+      expect(capturedWhereArg).toBeDefined()
+      const { columns, values } = inspectCondition(capturedWhereArg)
+      // The predicate must filter on the `status` column...
+      expect(columns).toContain('status')
+      // ...against the literal 'published' — NOT 'draft'. A regression that
+      // swaps the filter to eq(status,'draft') makes the next two lines fail.
+      expect(values).toContain('published')
+      expect(values).not.toContain('draft')
     })
 
     it('resolves to an array (returns list rows)', async () => {
