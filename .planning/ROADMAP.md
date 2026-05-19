@@ -195,7 +195,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 Plans:
 **Wave 1**
-- [ ] 49-01-PLAN.md — Consumer audit: write Domain + Consumer Map + Overlap & Divergence Matrix (§1-3) covering all 9 D-01 surfaces
+- [x] 49-01-PLAN.md — Consumer audit: write Domain + Consumer Map + Overlap & Divergence Matrix (§1-3) covering all 9 D-01 surfaces
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 49-02-PLAN.md — Live-catalog evidence: run 5 D-07 SQL queries against prod/mirror and embed results in §4
@@ -219,7 +219,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
-| 49. Genre vs Style Taxonomy Spike | 0/TBD | Not started | - |
+| 49. Genre vs Style Taxonomy Spike | 1/3 | In Progress|  |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
