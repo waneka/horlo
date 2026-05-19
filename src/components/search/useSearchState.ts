@@ -173,14 +173,18 @@ export function useSearchState(): UseSearchState {
     if (genre) params.set('genre', genre)
     if (archetype) params.set('archetype', archetype)
 
-    // Fault 2 guard: don't strip a param that arrived via soft nav but hasn't
-    // settled into in-memory state yet (reconciliation runs in the same commit
-    // but setState is async — state updates on the next render). If searchParams
-    // has a facet key that the built URL omits, skip the replace; the
-    // reconciliation effect will setX(urlValue) → trigger another render →
-    // this effect re-runs with the correct state and emits the right URL.
-    const TRACKED_PARAMS = ['q', 'tab', 'movement', 'size', 'style', 'brand', 'era', 'genre', 'archetype']
-    const wouldStripIncoming = TRACKED_PARAMS.some(
+    // Fault 2 guard: don't strip a facet param that arrived via soft nav but
+    // hasn't settled into in-memory state yet (reconciliation runs in the same
+    // commit but setState is async — state updates on the next render). If
+    // searchParams has a facet key that the built URL omits, skip the replace;
+    // the reconciliation effect (1a) will setX(urlValue) → trigger another
+    // render → this effect re-runs with the correct state and emits the right
+    // URL. Scoped to the facet keys effect 1a actually reconciles — `q` and
+    // `tab` are deliberately excluded: 1a never reconciles them, so guarding
+    // them would skip the replace permanently when the user clears the search
+    // box (q omitted) or returns to the All tab (tab omitted).
+    const RECONCILED_FACET_PARAMS = ['movement', 'size', 'style', 'brand', 'era', 'genre', 'archetype']
+    const wouldStripIncoming = RECONCILED_FACET_PARAMS.some(
       (key) => searchParams.get(key) !== null && !params.has(key),
     )
     if (wouldStripIncoming) return

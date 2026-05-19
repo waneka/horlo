@@ -334,6 +334,60 @@ describe('useSearchState (D-03 / D-04 / D-12 / D-20 / D-28)', () => {
     })
   })
 
+  it('Test 11b (46-05 CR-01 regression): clearing the search box on /search?q=ab replaces URL with bare /search — the Fault 2 guard must not strip-block q', async () => {
+    mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
+    // Arrive at /search?q=ab — q seeds into state from the URL on mount.
+    setSearchParams({ q: 'ab' })
+
+    const { result } = renderHook(() => useSearchState())
+
+    await act(async () => {
+      vi.advanceTimersByTime(250)
+    })
+
+    mockReplace.mockClear()
+
+    // Clear the box. searchParams still carries q=ab (no soft nav happened),
+    // so the built URL omits q. The Fault 2 guard is scoped to facet params
+    // only — it must NOT treat q as "incoming" and skip the replace, or the
+    // stale ?q=ab sticks in the URL forever (CR-01).
+    act(() => result.current.setQ(''))
+    await act(async () => {
+      vi.advanceTimersByTime(250)
+    })
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/search', { scroll: false })
+    })
+  })
+
+  it('Test 11c (46-05 CR-01 regression): returning to the All tab from /search?tab=watches replaces URL with bare /search — the Fault 2 guard must not strip-block tab', async () => {
+    mockSearchPeopleAction.mockResolvedValue({ success: true, data: [] })
+    mockSearchWatchesAction.mockResolvedValue({ success: true, data: [] })
+    // Arrive at /search?tab=watches — tab seeds into state from the URL on mount.
+    setSearchParams({ tab: 'watches' })
+
+    const { result } = renderHook(() => useSearchState())
+
+    await act(async () => {
+      vi.advanceTimersByTime(250)
+    })
+
+    mockReplace.mockClear()
+
+    // Switch back to the All tab. searchParams still carries tab=watches, so
+    // the built URL omits tab (tab='all' is the omitted default). The guard
+    // must not treat tab as "incoming" — otherwise ?tab=watches stale-sticks.
+    act(() => result.current.setTab('all'))
+    await act(async () => {
+      vi.advanceTimersByTime(250)
+    })
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/search', { scroll: false })
+    })
+  })
+
   // -------------------------------------------------------------------------
   // Phase 19 Plan 05 — Pitfall 9 fix + per-tab dispatch + per-section abort.
   // Three independent sub-effects each own their own AbortController per
