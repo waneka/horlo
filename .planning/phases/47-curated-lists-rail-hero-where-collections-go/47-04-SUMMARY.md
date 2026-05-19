@@ -5,7 +5,7 @@ subsystem: verification-and-requirements-traceability
 tags: [verification, bugfix, requirements, wave-3]
 dependency_graph:
   requires: [47-01, 47-02, 47-03]
-  provides: [Wave-2-bug-fixes, EXPL-06..09-traceability-pending-human-verify]
+  provides: [Wave-2-bug-fixes, EXPL-06..09-traceability-complete]
   affects:
     - src/components/explore/WhereCollectionsGo.tsx
     - src/components/explore/RailListCard.tsx
@@ -18,20 +18,21 @@ key_files:
   modified:
     - src/components/explore/WhereCollectionsGo.tsx
     - src/components/explore/RailListCard.tsx
+    - .planning/REQUIREMENTS.md
 decisions:
   - "WhereCollectionsGo deduplicates threePaths by id after wrap-around to prevent duplicate React keys when pool < 3"
   - "RailListCard conditionally renders <img> only when coverUrl is non-null to prevent empty-src full page re-download"
-  - "EXPL-06..09 requirements traceability update deferred to continuation agent after human-verify approval"
+  - "EXPL-06..09 requirements traceability marked Complete after human-verify checkpoint approved"
 metrics:
-  duration: "~10m (partial — awaiting human-verify checkpoint)"
+  duration: "~15m (3 tasks including human-verify checkpoint)"
   completed_date: "2026-05-19"
-  tasks_completed: 1
-  files_changed: 2
+  tasks_completed: 3
+  files_changed: 3
 ---
 
 # Phase 47 Plan 04: Verification + Requirements Traceability Summary
 
-Full-suite verification, production build confirmation, and two Wave 2 bug fixes applied. Awaiting human-verify checkpoint (Task 2) before updating requirements traceability (Task 3).
+Full-suite verification, production build confirmation, two Wave 2 bug fixes, human-verify checkpoint approval, and EXPL-06..09 requirements traceability marked Complete.
 
 ## What Was Built
 
@@ -54,11 +55,29 @@ Full-suite verification, production build confirmation, and two Wave 2 bug fixes
 1. WhereCollectionsGo duplicate React keys — fixed by deduplicating `threePaths` by id after wrap-around
 2. RailListCard empty-string img src — fixed by conditional render only when `coverUrl` is truthy
 
+### Task 2: Visual + mobile + Hero-propagation verification (human-verify checkpoint)
+
+Operator-approved visual confirmation of all five acceptance criteria:
+- Hero renders full-bleed with no black bar / letterbox / collapsed height
+- Where Collections Go at 360px is a legible numbered vertical stack with connectors
+- /explore/lists sort works; list detail renders styled markdown + editorial rows; watch taps reach /catalog
+- /explore/paths groups paths by path-type section
+- Pinning/unpublishing a list updates the Hero immediately on reload
+
+**Checkpoint status:** APPROVED by operator.
+
+### Task 3: Update requirements traceability
+
+Marked EXPL-06, EXPL-07, EXPL-08, and EXPL-09 as complete in `.planning/REQUIREMENTS.md`:
+- Checkboxes changed from `- [ ]` to `- [x]` in the Explore Page (EXPL) section
+- Traceability table rows updated from `Pending` to `Complete`
+
 ## Commits
 
 | Task | Commit | Description |
 |------|--------|-------------|
 | Task 1 (bug fixes) | `67ec7ad` | fix(47-04): patch Wave 2 duplicate-key + empty-src bugs |
+| Task 3 | `0e10add` | docs(47-04): mark EXPL-06..09 complete in requirements traceability |
 
 ## Deviations from Plan
 
@@ -88,8 +107,8 @@ None. All three Phase 47 components have real implementations.
 - `npx tsc --noEmit` for Phase 47 source files: zero errors
 - `npm run build`: succeeds, all three new routes in manifest
 - Integration seam: 5 modules in explore/page.tsx, no bare return-null stubs, no getCurrentUser in cache scopes
-- Human-verify checkpoint (Task 2): PENDING — awaiting operator visual confirmation
-- EXPL-06..09 requirements update (Task 3): PENDING — deferred until Task 2 approved
+- Human-verify checkpoint (Task 2): APPROVED by operator
+- EXPL-06..09 requirements update (Task 3): COMPLETE — all four marked Complete in traceability table
 
 ## Threat Flags
 
@@ -97,13 +116,16 @@ No new security-relevant surface introduced (this plan is verification + plannin
 
 | Threat | Status |
 |--------|--------|
-| T-47-16: False-positive verification | Mitigated — visual dev-server check (Task 2) required before phase closure |
-| T-47-17: Stale unpublished Hero post-verification | Mitigated — Task 2 explicitly verifies pin/unpublish propagation |
+| T-47-16: False-positive verification | Mitigated — visual dev-server check (Task 2) approved by operator before traceability update |
+| T-47-17: Stale unpublished Hero post-verification | Mitigated — Task 2 explicitly verified pin/unpublish propagation |
 
 ## Self-Check: PASSED
 
 - `src/components/explore/WhereCollectionsGo.tsx` — contains seenIds dedup logic: VERIFIED
 - `src/components/explore/RailListCard.tsx` — `{list.coverUrl && (<img ...>)}` conditional: VERIFIED
 - Commit `67ec7ad` — fix(47-04) bug patches: FOUND
+- Commit `0e10add` — docs(47-04) EXPL-06..09 traceability: FOUND
+- `grep "EXPL-0[6789]" .planning/REQUIREMENTS.md | grep -c "Complete"` returns 4: VERIFIED
 - All Phase 47 test files passing: VERIFIED
 - Production build with 3 new routes: VERIFIED
+- Human-verify checkpoint: APPROVED
