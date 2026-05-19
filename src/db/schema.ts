@@ -577,6 +577,7 @@ export const curatedLists = pgTable(
     introMarkdown: text('intro_markdown'),
     status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
     sortOrder: integer('sort_order').notNull().default(0),
+    publishedAt: timestamp('published_at', { withTimezone: true }),  // nullable — set on first publish (D-02)
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
