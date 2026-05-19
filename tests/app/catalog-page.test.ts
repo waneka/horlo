@@ -13,6 +13,7 @@ const {
   mockGetCollectorsForCatalog,
   mockGetSameFamilyForCatalog,
   mockGetLineageForReference,
+  mockGetProfileById,
 } = vi.hoisted(() => ({
   mockGetCurrentUser: vi.fn(),
   mockGetCatalogById: vi.fn(),
@@ -25,6 +26,7 @@ const {
   mockGetCollectorsForCatalog: vi.fn(),
   mockGetSameFamilyForCatalog: vi.fn(),
   mockGetLineageForReference: vi.fn(),
+  mockGetProfileById: vi.fn(),
 }))
 
 // Mock the inline Drizzle SELECT via mocking @/db.
@@ -60,6 +62,11 @@ vi.mock('@/data/hierarchy', () => ({
   getSameFamilyForCatalog: mockGetSameFamilyForCatalog,
   getLineageForReference: mockGetLineageForReference,
 }))
+// Phase 48 Plan 01 — close the @/data/profiles mock gap (A1/Pitfall 1 per RESEARCH.md).
+// getProfileById is called inside Promise.all (page.tsx line 67) to resolve the viewer
+// username for CatalogPageActions. Without this mock the test environment attempts to
+// import the real module, which may fail or return undefined in the jsdom environment.
+vi.mock('@/data/profiles', () => ({ getProfileById: mockGetProfileById }))
 vi.mock('@/lib/verdict/composer', () => ({ computeVerdictBundle: mockComputeVerdictBundle }))
 vi.mock('@/lib/verdict/viewerTasteProfile', () => ({
   computeViewerTasteProfile: mockComputeViewerTasteProfile,
@@ -128,6 +135,7 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     mockGetCollectorsForCatalog.mockResolvedValue({ collectors: [], totalCount: 0 })
     mockGetSameFamilyForCatalog.mockResolvedValue([])
     mockGetLineageForReference.mockResolvedValue([])
+    mockGetProfileById.mockResolvedValue(null)  // Phase 48 Plan 01 — @/data/profiles mock default
   })
 
   it('returns 404 when catalogId does not exist in watches_catalog', async () => {
@@ -233,5 +241,44 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     // (actionsSpec is built in the new else branch at G-4).
     expect(rendered).toMatch(/"spec":\{/)
     expect(rendered).toMatch(/"framing":"cross-user"/)
+  })
+
+  // -------------------------------------------------------------------------
+  // Phase 48 Plan 01 — BUG-01 regression coverage (D-10).
+  // A wishlist/grail/sold watch viewed via /catalog/[catalogId] must NOT
+  // trigger the 'You own this watch' (self-via-cross-user) framing.
+  // These tests simulate the FIXED query behavior: findViewerWatchByCatalogId
+  // returns [] for any non-owned status row (status='owned' filter applied).
+  // The mock bypasses the Drizzle .where() chain entirely — mockDbLimit=[]
+  // is what the fixed query returns for wishlist/grail/sold rows (RESEARCH.md
+  // Pitfall 3). The owned-path regression guard at line 157 ("D-08") must
+  // remain unmodified — it guards the positive path.
+  // -------------------------------------------------------------------------
+
+  it('BUG-01 — wishlist watch does NOT trigger "You own this watch" callout', async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
+    mockDbLimit.mockResolvedValue([])  // fixed query returns [] for status='wishlist'
+    await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    expect(mockComputeVerdictBundle).toHaveBeenCalledTimes(1)
+    expect(mockComputeVerdictBundle.mock.calls[0][0].framing).toBe('cross-user')
+  })
+
+  it('BUG-01 — grail watch does NOT trigger "You own this watch" callout', async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
+    mockDbLimit.mockResolvedValue([])  // fixed query returns [] for status='grail'
+    await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    expect(mockComputeVerdictBundle).toHaveBeenCalledTimes(1)
+    expect(mockComputeVerdictBundle.mock.calls[0][0].framing).toBe('cross-user')
+  })
+
+  it('BUG-01 — sold watch does NOT trigger "You own this watch" callout', async () => {
+    mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
+    mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
+    mockDbLimit.mockResolvedValue([])  // fixed query returns [] for status='sold'
+    await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
+    expect(mockComputeVerdictBundle).toHaveBeenCalledTimes(1)
+    expect(mockComputeVerdictBundle.mock.calls[0][0].framing).toBe('cross-user')
   })
 })
