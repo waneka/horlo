@@ -74,6 +74,12 @@ Research flags to address during planning:
 - **Phase 45 plan:** Verify Supabase SECDEF REVOKE pattern for any DB functions added in the 5-table migration; verify enum ordering before writing enum-bound dependent columns (4 prod-push gotchas from `project_drizzle_supabase_db_mismatch.md`).
 - **Phase 47 plan:** Where Collections Go 360px mobile layout is underspecified — prototype vertical stacking with numbered progression indicator before finalizing `CollectionPathsModule`.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260519-08p | Fix Next.js Image aspect-ratio console warnings on watch images | 2026-05-19 | 5524004 | [260519-08p-fix-next-js-image-aspect-ratio-console-w](./quick/260519-08p-fix-next-js-image-aspect-ratio-console-w/) |
+
 ### Pending Todos
 
 None.
@@ -81,7 +87,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-05-19T03:12:43.871Z
-Last activity: 2026-05-16 — ROADMAP.md written, STATE.md updated, REQUIREMENTS.md traceability populated
+Last activity: 2026-05-19 — Completed quick task 260519-08p: Fix Next.js Image aspect-ratio console warnings on watch images
 Stopped at: Phase 46 UI-SPEC approved
 Resume file: None
 Next action: `/gsd-plan-phase 43`
