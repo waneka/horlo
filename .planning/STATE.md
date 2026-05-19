@@ -21,16 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-16 — v5.0 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 46 — explore-shell-browse-archetypes
+**Current focus:** Phase 47 — Curated Lists Rail + Hero + Where Collections Go
 
 ## Current Position
 
-Phase: 999.1
+Phase: 47
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-19
 
-[==========          ] 0% — 0/5 phases complete
+[================    ] 80% — 4/5 phases complete
+
+> Note: `phase.complete` advanced to the stale `999.1` directory (a completed
+> v3.0 phase whose directory was never archived — see carryover items). The
+> real next v5.1 phase is 47. Corrected manually 2026-05-19.
 
 ## Performance Metrics
 
