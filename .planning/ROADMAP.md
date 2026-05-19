@@ -219,7 +219,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
-| 49. Genre vs Style Taxonomy Spike | 3/3 | Complete   | 2026-05-19 |
+| 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
