@@ -44,7 +44,7 @@ export default async function BrandsPage() {
   const hasBrands = brands.length > 0
 
   return (
-    <main className="container mx-auto px-4 md:px-8 py-8 max-w-2xl">
+    <main className="container mx-auto px-4 md:px-8 py-8 max-w-2xl scroll-smooth">
       {/* Back link */}
       <Link
         href="/explore"
@@ -70,9 +70,9 @@ export default async function BrandsPage() {
           {/* A–Z sticky jump navigation (D-07, EXPL-04) */}
           <nav
             aria-label="Jump to letter"
-            className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border py-2 mb-4"
+            className="sticky top-12 md:top-16 z-10 bg-background/95 backdrop-blur-sm border-b border-border py-2 mb-4"
           >
-            <div className="flex gap-1 overflow-x-auto scrollbar-none">
+            <div className="flex flex-wrap gap-1">
               {LETTER_BUCKETS.map((letter) => {
                 const hasContent = byLetter.has(letter)
                 return (
@@ -101,7 +101,7 @@ export default async function BrandsPage() {
                 <section
                   key={letter}
                   id={`letter-${letter}`}
-                  className="scroll-mt-12 space-y-1"
+                  className="scroll-mt-28 md:scroll-mt-32 space-y-1"
                 >
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide py-2 border-b border-border">
                     {letter}
