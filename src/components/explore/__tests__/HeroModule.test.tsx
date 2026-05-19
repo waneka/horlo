@@ -101,7 +101,7 @@ describe('HeroModule', () => {
     mockGetCmsSettings.mockResolvedValue(makeSettings())
 
     const { HeroModule } = await import('@/components/explore/HeroModule')
-    const result = await HeroModule()
+    const result = await HeroModule({ weekIndex: 0 })
     expect(result).toBeNull()
   })
 
@@ -116,7 +116,7 @@ describe('HeroModule', () => {
     }))
 
     const { HeroModule } = await import('@/components/explore/HeroModule')
-    const result = await HeroModule()
+    const result = await HeroModule({ weekIndex: 0 })
     render(result as React.ReactElement)
     expect(screen.getByText('Pinned Feature')).toBeTruthy()
     expect(screen.queryByText('Other List')).toBeNull()
@@ -130,7 +130,7 @@ describe('HeroModule', () => {
     mockGetCmsSettings.mockResolvedValue(makeSettings())
 
     const { HeroModule } = await import('@/components/explore/HeroModule')
-    const result = await HeroModule()
+    const result = await HeroModule({ weekIndex: 0 })
     render(result as React.ReactElement)
     // One of the two lists must render — rotation is deterministic
     const rendered = screen.queryByText('List A') || screen.queryByText('List B')
@@ -149,7 +149,7 @@ describe('HeroModule', () => {
     }))
 
     const { HeroModule } = await import('@/components/explore/HeroModule')
-    const result = await HeroModule()
+    const result = await HeroModule({ weekIndex: 0 })
     render(result as React.ReactElement)
     expect(screen.getByText('Fallback List')).toBeTruthy()
     expect(screen.queryByText('Pinned Ineligible')).toBeNull()

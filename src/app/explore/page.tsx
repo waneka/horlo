@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/auth'
+import { getWeekIndex } from '@/lib/weekIndex'
 import { HeroModule } from '@/components/explore/HeroModule'
 import { CollectorArchetypes } from '@/components/explore/CollectorArchetypes'
 import { BrowseModule } from '@/components/explore/BrowseModule'
@@ -28,12 +29,18 @@ export default async function ExplorePage() {
   // Auth assertion — must stay OUTSIDE any 'use cache' boundary.
   await getCurrentUser()
 
+  // WR-02: compute the week index OUTSIDE the cached modules and pass it in,
+  // so it becomes a cache-KEY input — the Hero and Where Collections Go
+  // rotations advance deterministically on the 7-day boundary instead of
+  // freezing whenever the cache entry was last populated.
+  const weekIndex = getWeekIndex(new Date())
+
   return (
     <main className="container mx-auto px-4 md:px-8 py-8 max-w-6xl">
       <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-8">
         {/* Phase-47: Hero spans full width on desktop (EXPL-08 / UI-SPEC Discretion) */}
         <div className="md:col-span-2">
-          <HeroModule />
+          <HeroModule weekIndex={weekIndex} />
         </div>
         {/* md:col-span-1 left — live in Phase 46 */}
         <CollectorArchetypes />
@@ -42,7 +49,7 @@ export default async function ExplorePage() {
         {/* Phase-47 slots: CuratedListsRail returns null until Plan 02 wires it */}
         <CuratedListsRail />
         {/* Phase-47: WhereCollectionsGo wired in Plan 03 (this plan) */}
-        <WhereCollectionsGo />
+        <WhereCollectionsGo weekIndex={weekIndex} />
       </div>
     </main>
   )

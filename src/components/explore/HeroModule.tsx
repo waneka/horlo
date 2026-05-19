@@ -19,7 +19,14 @@
 // not in the eligible pool, fall through to weekly rotation.
 //
 // D-07 weekly rotation: sort eligible pool by publishedAt asc then id (stable),
-// compute getWeekIndex(new Date()), select sorted[week % sorted.length].
+// select sorted[weekIndex % sorted.length].
+//
+// WR-02: weekIndex is computed by the caller via getWeekIndex(new Date())
+// OUTSIDE this 'use cache' scope and passed in as a parameter, so it is a
+// cache-KEY input (a fresh cache entry every 7 days) rather than a value
+// frozen into cached output. Reading new Date() inside the cache scope froze
+// the rotation at cache-population time — it advanced on eviction, not on the
+// clean 7-day boundary.
 //
 // T-47-12: No getCurrentUser() in this file — auth is asserted once in page.tsx
 // outside any cache scope. Viewer-identity must NOT enter globally-shared cache entries.
@@ -29,10 +36,9 @@ import Link from 'next/link'
 
 import { getCmsSettings } from '@/data/cmsSettings'
 import { getPublishedLists, getListItemCount } from '@/data/curatedLists'
-import { getWeekIndex } from '@/lib/weekIndex'
 import type { HeroFeature } from '@/lib/heroTypes'
 
-export async function HeroModule() {
+export async function HeroModule({ weekIndex }: { weekIndex: number }) {
   'use cache'
   cacheTag('explore:hero')
   cacheLife('hours')
@@ -68,19 +74,21 @@ export async function HeroModule() {
 
   // D-07: weekly rotation fallback when no valid pin OR pinned list not eligible
   if (!featured) {
-    const week = getWeekIndex(new Date())
     const sorted = [...eligible].sort(
       (a, b) =>
         (a.publishedAt?.getTime() ?? 0) - (b.publishedAt?.getTime() ?? 0) ||
         a.id.localeCompare(b.id)
     )
-    featured = sorted[week % sorted.length]
+    featured = sorted[weekIndex % sorted.length]
   }
 
-  // Build HeroFeature discriminated union value (D-10 — forward-compat for SEED-008)
+  // Build HeroFeature discriminated union value (D-10 — forward-compat for SEED-008).
+  // Phase 47 wires only the 'featured_list' variant; the union shape is kept for
+  // SEED-008's future 'featured_collector' variant. WR-05: the former
+  // `if (feature.format !== 'featured_list') return null` check was dead code —
+  // `format` is a hardcoded literal here, so TypeScript narrows it and the
+  // branch is statically unreachable. The union is consumed directly below.
   const feature: HeroFeature = { format: 'featured_list', list: { ...featured, itemCount: featured.itemCount } }
-
-  if (feature.format !== 'featured_list') return null
   const list = feature.list
 
   return (

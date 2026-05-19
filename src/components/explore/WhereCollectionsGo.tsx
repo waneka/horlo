@@ -5,12 +5,20 @@
 // Shows 3 weekly-rotating curated collection paths. Returns null when no
 // published paths exist (EXPL-02 absent-not-empty).
 //
-// D-13: weekly rotation — compute getWeekIndex(new Date()), select 3 paths
-// starting at week % allPaths.length with wrap-around for clean end-of-array
-// slicing. Fewer than 3 published paths all render (no crash, no duplicates).
+// D-13: weekly rotation — the caller computes getWeekIndex(new Date()) OUTSIDE
+// this cache scope and passes it in as `weekIndex`, so it is a cache-KEY input
+// (a fresh cache entry every 7 days) rather than a value frozen into cached
+// output. Select 3 paths starting at weekIndex % allPaths.length with
+// wrap-around for clean end-of-array slicing. Fewer than 3 published paths all
+// render (no crash, no duplicates).
 //
-// Cache scope: 'explore' + 'explore:paths' tags — consistent with other
-// explore modules; revalidated when path publish state changes (Phase 45 wiring).
+// WR-02: reading new Date() INSIDE this 'use cache' scope froze the rotation
+// at cache-population time — it advanced only on eviction, not on the 7-day
+// boundary. weekIndex is now a parameter so rotation is deterministic.
+//
+// Cache scope: 'explore:paths' tag only — every path mutation fires
+// revalidateTag('explore:paths', 'max') (CR-01). The former 'explore' umbrella
+// tag was removed: it was never fired and implied coverage that did not exist.
 //
 // T-47-12: No getCurrentUser() in this file — viewer-identity must NOT enter
 // globally-shared cache entries.
@@ -19,12 +27,11 @@ import { cacheLife, cacheTag } from 'next/cache'
 import Link from 'next/link'
 
 import { getPublishedPaths, getPathWithNodes } from '@/data/collectionPaths'
-import { getWeekIndex } from '@/lib/weekIndex'
 import { PathCard } from '@/components/explore/PathCard'
 
-export async function WhereCollectionsGo() {
+export async function WhereCollectionsGo({ weekIndex }: { weekIndex: number }) {
   'use cache'
-  cacheTag('explore', 'explore:paths')
+  cacheTag('explore:paths')
   cacheLife('hours')
 
   const allPaths = await getPublishedPaths()
@@ -33,8 +40,7 @@ export async function WhereCollectionsGo() {
   if (allPaths.length === 0) return null
 
   // D-13: select 3 paths via weekly rotation with wrap-around
-  const week = getWeekIndex(new Date())
-  const startIdx = week % allPaths.length
+  const startIdx = weekIndex % allPaths.length
   // Slice from startIdx, then prepend from the beginning if the slice is short
   let threePaths = allPaths.slice(startIdx, startIdx + 3)
   if (threePaths.length < 3) {

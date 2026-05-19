@@ -103,7 +103,7 @@ describe('WhereCollectionsGo', () => {
     mockGetPublishedPaths.mockResolvedValue([])
 
     const { WhereCollectionsGo } = await import('@/components/explore/WhereCollectionsGo')
-    const result = await WhereCollectionsGo()
+    const result = await WhereCollectionsGo({ weekIndex: 0 })
     expect(result).toBeNull()
   })
 
@@ -123,7 +123,7 @@ describe('WhereCollectionsGo', () => {
     })
 
     const { WhereCollectionsGo } = await import('@/components/explore/WhereCollectionsGo')
-    const result = await WhereCollectionsGo()
+    const result = await WhereCollectionsGo({ weekIndex: 0 })
     render(result as React.ReactElement)
 
     // Should render exactly 3 paths from the 4 available
@@ -146,7 +146,7 @@ describe('WhereCollectionsGo', () => {
     })
 
     const { WhereCollectionsGo } = await import('@/components/explore/WhereCollectionsGo')
-    const result = await WhereCollectionsGo()
+    const result = await WhereCollectionsGo({ weekIndex: 0 })
     expect(result).not.toBeNull()
     render(result as React.ReactElement)
 
@@ -160,7 +160,7 @@ describe('WhereCollectionsGo', () => {
     mockGetPathWithNodes.mockResolvedValue(makePathWithNodes(path, []))
 
     const { WhereCollectionsGo } = await import('@/components/explore/WhereCollectionsGo')
-    const result = await WhereCollectionsGo()
+    const result = await WhereCollectionsGo({ weekIndex: 0 })
     render(result as React.ReactElement)
 
     const link = screen.getByText('Explore all paths').closest('a')
@@ -173,7 +173,7 @@ describe('WhereCollectionsGo', () => {
     mockGetPathWithNodes.mockResolvedValue(makePathWithNodes(path, []))
 
     const { WhereCollectionsGo } = await import('@/components/explore/WhereCollectionsGo')
-    const result = await WhereCollectionsGo()
+    const result = await WhereCollectionsGo({ weekIndex: 0 })
     render(result as React.ReactElement)
 
     // The Badge should render the pathType label (at least once — mobile + desktop both render it via PathCard)
