@@ -4,6 +4,7 @@ import 'server-only'
 import { cacheLife, cacheTag } from 'next/cache'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
+import { PRIMARY_ARCHETYPES } from '@/lib/taste/vocab'
 
 /**
  * Phase 46 Browse count DAL.
@@ -32,24 +33,34 @@ import { sql } from 'drizzle-orm'
  */
 
 // ---------------------------------------------------------------------------
-// getBrowseArchetypeCounts — GROUP BY primary_archetype
+// getBrowseArchetypeCounts — derived from unnest(style_tags) (D-EXPLORE-01)
 // ---------------------------------------------------------------------------
 
 /**
- * Count of catalog watches per primary_archetype. Only rows with a non-null
- * primary_archetype appear (WHERE NOT NULL in query). Ordered by count DESC.
+ * Count of catalog watches per archetype, derived from `style_tags`. Phase 49.1
+ * D-EXPLORE-01 rewire: the prior archetype column is gone; counts come from the
+ * intersection of `style_tags` and the 10-value PRIMARY_ARCHETYPES closed vocab.
  *
- * Powers the Collector Archetypes module count badges (EXPL-05).
+ * Per spike Q1 (49-SPIKE.md §4), 99% of catalog rows have the archetype value
+ * verbatim in `style_tags`, so post-rewire counts are near-identical to pre-rewire.
+ *
+ * Function signature, return shape, and cache scope are PRESERVED — callers
+ * (CollectorArchetypes module count badges, EXPL-05) are type-compatible
+ * without modification.
+ *
+ * SQL: lateral unnest pattern (analog: src/data/catalog.ts:533-544 getTopStyleTags).
+ * Parameter binding for the 10-value list uses sql.join (analog: catalog.ts:611
+ * motifsSql idiom) — values are never interpolated as a string.
  */
 export async function getBrowseArchetypeCounts(): Promise<Array<{ archetype: string; count: number }>> {
   'use cache'
   cacheTag('explore', 'explore:browse')
   cacheLife('hours')
   const rows = await db.execute(
-    sql`SELECT primary_archetype AS archetype, COUNT(*)::int AS count
-        FROM watches_catalog
-        WHERE primary_archetype IS NOT NULL
-        GROUP BY primary_archetype
+    sql`SELECT tag AS archetype, COUNT(*)::int AS count
+        FROM watches_catalog, unnest(style_tags) AS tag
+        WHERE tag = ANY(ARRAY[${sql.join(PRIMARY_ARCHETYPES.map((v) => sql`${v}`), sql`, `)}])
+        GROUP BY tag
         ORDER BY count DESC`,
   )
   return rows as unknown as Array<{ archetype: string; count: number }>
@@ -76,33 +87,6 @@ export async function getBrowseEraCounts(): Promise<Array<{ era: string; count: 
         GROUP BY era_signal`,
   )
   return rows as unknown as Array<{ era: string; count: number }>
-}
-
-// ---------------------------------------------------------------------------
-// getBrowseGenreCounts — GROUP BY primary_archetype (same column, different intent)
-// ---------------------------------------------------------------------------
-
-/**
- * Count of catalog watches per primary_archetype, aliased as 'genre'.
- *
- * Shares the same underlying column as getBrowseArchetypeCounts (D-17) — the
- * two functions serve different UI intents: Archetypes = identity rail with
- * editorial copy; Genres = utility list with counts as primary data.
- *
- * Powers the /explore/genres index page (EXPL-03).
- */
-export async function getBrowseGenreCounts(): Promise<Array<{ genre: string; count: number }>> {
-  'use cache'
-  cacheTag('explore', 'explore:browse')
-  cacheLife('hours')
-  const rows = await db.execute(
-    sql`SELECT primary_archetype AS genre, COUNT(*)::int AS count
-        FROM watches_catalog
-        WHERE primary_archetype IS NOT NULL
-        GROUP BY primary_archetype
-        ORDER BY count DESC`,
-  )
-  return rows as unknown as Array<{ genre: string; count: number }>
 }
 
 // ---------------------------------------------------------------------------

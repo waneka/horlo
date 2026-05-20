@@ -68,7 +68,7 @@ export async function CollectorArchetypes({ counts: propCounts }: Props = {}) {
           return (
             <Link
               key={value}
-              href={`/search?tab=watches&archetype=${value}`}
+              href={`/search?tab=watches&style=${value}`}
             >
               <button
                 type="button"

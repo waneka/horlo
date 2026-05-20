@@ -1,11 +1,14 @@
 // src/components/explore/__tests__/CollectorArchetypes.test.tsx
 //
-// Tests for the CollectorArchetypes component (Phase 46 EXPL-02, EXPL-05).
+// Tests for the CollectorArchetypes component (Phase 46 EXPL-02, EXPL-05;
+// Phase 49.1 D-EXPLORE-03 href repoint).
 //
 // Coverage:
 //   1. Component renders null when archetype-count data is empty (EXPL-02 null-hide)
 //   2. Component renders 10 chips when given 10 archetype counts (all ≥1)
 //   3. Component hides zero-count chips — only ≥1 archetypes render (G4 filter)
+//   4. Phase 49.1 D-EXPLORE-03: Link href targets ?style= (multi-select StyleChips),
+//      NOT ?archetype= (the deleted ArchetypeChips param).
 
 import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
@@ -76,5 +79,14 @@ describe('CollectorArchetypes', () => {
     const { getAllByRole } = await renderAsync(CollectorArchetypes({ counts }))
     // Zero-count chips are hidden — expect exactly 8.
     expect(getAllByRole('button')).toHaveLength(8)
+  })
+
+  it('deep-links target ?tab=watches&style= (D-EXPLORE-03; not ?archetype=)', async () => {
+    const counts = [{ archetype: 'dive', count: 5 }]
+    const { getAllByRole } = await renderAsync(CollectorArchetypes({ counts }))
+    const link = getAllByRole('link')[0]
+    const href = link.getAttribute('href') ?? ''
+    expect(href).toMatch(/\?tab=watches&style=dive/)
+    expect(href).not.toMatch(/archetype=/)
   })
 })
