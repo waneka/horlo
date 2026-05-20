@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: verifying
+status: completed
 stopped_at: Phase 50 context gathered
-last_updated: "2026-05-20T17:44:29.675Z"
-last_activity: 2026-05-20
+last_updated: "2026-05-20T17:48:24.748Z"
+last_activity: 2026-05-20 -- Phase 50 marked complete
 progress:
   total_phases: 5
   completed_phases: 5
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 ## Current Position
 
-Phase: 50 (watch-detail-architecture-spike) — EXECUTING
+Phase: 50 — COMPLETE
 Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-05-20
+Status: Phase 50 complete
+Last activity: 2026-05-20 -- Phase 50 marked complete
 
 ```
 v5.2 Progress: [███████████████░░░░░] 75% (2/3 phases — Phase 48 + Phase 49 spike complete; Phase 49.1 7/8 plans)
