@@ -225,13 +225,13 @@ Plans:
 - [x] 49.1-01-PLAN.md — Wave 0 test scaffolds (migration-drop integration test, /explore/genres 404 smoke test, CollectionFitCompareTable component test)
 
 **Wave 1** *(4 parallel sub-plans — Plans 03 and 04 depend on 49.1-01 Wave 0 tests; Plans 02 and 05 have no Wave 0 dependency)*
-- [ ] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
-- [ ] 49.1-03-PLAN.md — /explore rail rewire + chip+route deletions (browse.ts unnest(style_tags) + GenreChips/ArchetypeChips/explore-genres deletions + BrowseModule tile + FilterDrawer + CollectorArchetypes deep-link repoint + tests)
-- [ ] 49.1-04-PLAN.md — Direct-UI archetype drops (ReferenceIdentityCard era-only headline + CompareTable 5-row + SearchPageClient slim header + searchSchema Zod + tests)
+- [x] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
+- [x] 49.1-03-PLAN.md — /explore rail rewire + chip+route deletions (browse.ts unnest(style_tags) + GenreChips/ArchetypeChips/explore-genres deletions + BrowseModule tile + FilterDrawer + CollectorArchetypes deep-link repoint + tests)
+- [x] 49.1-04-PLAN.md — Direct-UI archetype drops (ReferenceIdentityCard era-only headline + CompareTable 5-row + SearchPageClient slim header + searchSchema Zod + tests)
 - [x] 49.1-05-PLAN.md — Similarity engine rebalance (algorithmic 1.25× RESCALE on TASTE_SUB_WEIGHTS + archetype categorical block delete + invariant tests)
 
 **Wave 2** *(blocked on Wave 1 — type-system unification + enricher chain)*
-- [ ] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
+- [x] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
 
 **Wave 3** *(blocked on Wave 2 — schema drop on local DB)*
 - [ ] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration + local `drizzle-kit push` against the dev DB
