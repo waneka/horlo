@@ -263,15 +263,32 @@ Plans:
 **Wave 4** *(blocked on Wave 3 — synthesis)*
 - [x] 50-04-PLAN.md — §8 Recommendation (definitive primary variant verdict) + §9 Ship-Now Eligibility (verbatim format from 49-SPIKE.md §9)
 
+### Phase 50.1: URL Canonicalization (INSERTED)
+**Goal**: When the viewer owns a catalog ref reached via `/catalog/[catalogId]`, the server page issues a page-layer `redirect()` from `next/navigation` to `/watch/[id]`. The in-route D-08 "You own this" framing flip at `src/app/catalog/[catalogId]/page.tsx:107-115` is removed entirely; the Phase 48 BUG-01 maintenance tax retires with it.
+**Depends on**: Phase 50
+**Requirements**: ARCH-02
+**Inserted**: 2026-05-20 mid-milestone per Phase 50 spike §9 Ship-Now: YES verdict (ROADMAP SC#4 escape hatch)
+**Source**: `.planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md` §8 (Primary recommendation: Variant B URL canonicalization) + §9 (Ship-Now: YES, Trigger: ARCH-02 → Phase 50.1)
+**Success Criteria** (what must be TRUE):
+  1. `src/app/catalog/[catalogId]/page.tsx` imports `redirect` from `next/navigation` and calls `redirect(\`/watch/${viewerOwnedRow.id}\`)` immediately after `findViewerWatchByCatalogId` returns a non-null `viewerOwnedRow`; the inline `VerdictBundleSelfOwned` construction at lines 107–115 is deleted
+  2. `findViewerWatchByCatalogId` (`src/app/catalog/[catalogId]/page.tsx:282-308`) no longer needs the `status='owned'` scope (line 296) because the framing flip it served is gone; the function either drops the status filter or is simplified accordingly (planner's call — both are correct once the flip is gone)
+  3. An automated test (Playwright or route handler test) asserts: GET `/catalog/[catalogId]` for an owned catalog ref returns a 307 with `Location: /watch/[id]`; wishlist-, sold-, and unrelated-status rows do NOT trigger the redirect (the Phase 48 BUG-01 edge cases stay green)
+  4. The redirect happens at the page layer, NOT in `proxy.ts` (per `feedback_proxy_router_cache_poisoning` memory — a `NextResponse.redirect` on RSC prefetch poisons Next 16's Router Cache → 404 on soft-nav). Verified by grep: `proxy.ts` does not contain `/catalog/` redirect logic
+  5. A `TODO: revisit for Variant C in v7.0` comment is added at the catalog page's `OtherOwnersRoster` / carousel render anchor so the v7.0 milestone inherits an explicit decision point rather than a surprise
+  6. Existing tests for the `/catalog/[catalogId]` cross-user view (non-owner viewers, empty-collection viewers, wishlist-holder per BUG-01) still pass — Variant B preserves the cross-user catalog surface unchanged
+  7. ARCH-01 is marked Complete in REQUIREMENTS.md traceability; ARCH-02 is added with status `In Progress` then `Complete` after this phase verifies
+**Plans**: TBD
+
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
-| 49.1. Remove Genre Surface (INSERTED) | 7/8 | In Progress|  |
-| 50. Watch-Detail Architecture Spike | 0/4 | Planned     | - |
+| 49.1. Remove Genre Surface (INSERTED) | 8/8 | Complete    | 2026-05-20 |
+| 50. Watch-Detail Architecture Spike | 4/4 | Complete    | 2026-05-20 |
+| 50.1. URL Canonicalization (INSERTED) | 0/TBD | Not started | - |
 
 ## Next Up
 
-v5.2 Polish + Taxonomy is active (Phases 48-50, 4 requirements). Phase 48 is planned (3 plans, 2 waves). Execute with `/gsd-execute-phase 48`.
+v5.2 Polish + Taxonomy is active (Phases 48-50.1, 5 requirements after the ARCH-02 mid-milestone add). Phase 50 just closed (Variant B — URL canonicalization, ship YES per spike §9). Plan Phase 50.1 with `/gsd-plan-phase 50.1`.

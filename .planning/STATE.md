@@ -4,10 +4,10 @@ milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: completed
 stopped_at: Phase 50 context gathered
-last_updated: "2026-05-20T17:48:24.748Z"
+last_updated: "2026-05-20T17:57:57.169Z"
 last_activity: 2026-05-20 -- Phase 50 marked complete
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
   total_plans: 19
   completed_plans: 19
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 50 — watch-detail-architecture-spike
+**Current focus:** Phase 50.1 — URL canonicalization (mid-milestone insert per Phase 50 spike Ship-Now: YES)
 
 ## Current Position
 
@@ -48,6 +48,7 @@ v5.2 Progress: [███████████████░░░░░] 75
 ### Roadmap Evolution
 
 - Phase 49.1 inserted after Phase 49: Remove genre surface — implements Phase 49 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (TAX-02) (URGENT)
+- Phase 50.1 inserted after Phase 50: URL canonicalization — implements Phase 50 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (Variant B; ARCH-02) (URGENT)
 
 ### Key Decisions
 

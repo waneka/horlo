@@ -19,7 +19,8 @@ Requirements for milestone v5.2. Each maps to a roadmap phase.
 
 ### Architecture
 
-- [ ] **ARCH-01**: A spike compares keeping `/catalog/[catalogId]` (cross-user, spec-only) and `/watch/[id]` (owner per-user detail) as separate views vs merging them, and produces a written decision — no merge implementation in v5.2 unless the spike strongly favors it and it is cheap
+- [x] **ARCH-01**: A spike compares keeping `/catalog/[catalogId]` (cross-user, spec-only) and `/watch/[id]` (owner per-user detail) as separate views vs merging them, and produces a written decision — no merge implementation in v5.2 unless the spike strongly favors it and it is cheap
+- [ ] **ARCH-02**: URL canonicalization — when the viewer owns a catalog ref reached via `/catalog/[catalogId]`, the server page issues a page-layer `redirect()` from `next/navigation` to `/watch/[id]`. The in-route D-08 "You own this" framing flip at `src/app/catalog/[catalogId]/page.tsx:107-115` is removed; the Phase 48 BUG-01 maintenance tax retires with it. Page-layer only — NOT `proxy.ts` (per `feedback_proxy_router_cache_poisoning` memory). Source: `.planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md` §8 (Primary recommendation: Variant B) + §9 (Ship-Now: YES).
 
 ## Future Requirements
 
@@ -44,7 +45,7 @@ Explicitly excluded from v5.2. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | ~~Implementing a genre/style consolidation~~ | ~~TAX-01 is decision-only~~ — **Superseded 2026-05-19** by TAX-02. The Phase 49 spike (§9 Ship-Now: YES) flagged `remove-genre` as cheap and strongly favored; TAX-02 was added per the SC#4 escape hatch. |
-| Merging the two watch-detail views | ARCH-01 is decision-only; a merge ships only if the spike strongly favors it and it is cheap — then added as a new requirement mid-milestone |
+| ~~Merging the two watch-detail views~~ | ~~ARCH-01 is decision-only~~ — **Superseded 2026-05-20** by ARCH-02. The Phase 50 spike (§9 Ship-Now: YES) flagged Variant B (URL canonicalization) as cheap and strongly favored; ARCH-02 was added per the SC#4 escape hatch. Full `/w/[ref]` unified-route merger (Variant C) deferred to v7.0 carousel implementation. |
 | Fixing the "truncated" render on `/catalog/[catalogId]` | The slimmer cross-user spec-only view is by design; the user's observation feeds the ARCH-01 spike, not a bug fix |
 | Catalog breadth expansion (SEED-009) | Unscheduled — catalog-growth strategy being rethought (decision 2026-05-19) |
 | Social likes/comments (SEED-012) | v6.0 milestone |
@@ -58,14 +59,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-01 | Phase 48 | Complete (2026-05-19) |
 | BUG-02 | Phase 48 | Complete (2026-05-19) |
 | TAX-01 | Phase 49 | Complete (2026-05-19) |
-| TAX-02 | Phase 49b | Pending |
-| ARCH-01 | Phase 50 | Pending |
+| TAX-02 | Phase 49.1 | Complete (2026-05-20) |
+| ARCH-01 | Phase 50 | Complete (2026-05-20) |
+| ARCH-02 | Phase 50.1 | Pending |
 
 **Coverage:**
-- v5.2 requirements: 5 total (TAX-02 added mid-milestone 2026-05-19 per Phase 49 spike)
-- Mapped to phases: 5
+- v5.2 requirements: 6 total (TAX-02 added 2026-05-19 per Phase 49 spike; ARCH-02 added 2026-05-20 per Phase 50 spike)
+- Mapped to phases: 6
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-19*
-*Last updated: 2026-05-19 — TAX-02 added mid-milestone per Phase 49 spike Ship-Now verdict; BUG-01/02 and TAX-01 marked complete*
+*Last updated: 2026-05-20 — ARCH-02 added mid-milestone per Phase 50 spike Ship-Now verdict (Variant B URL canonicalization, cheap + strongly favored); ARCH-01 marked complete*
