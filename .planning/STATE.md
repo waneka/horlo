@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: completed
+status: executing
 stopped_at: Phase 50 context gathered
-last_updated: "2026-05-20T17:57:57.169Z"
-last_activity: 2026-05-20 -- Phase 50 marked complete
+last_updated: "2026-05-20T18:59:45.215Z"
+last_activity: 2026-05-20 -- Phase 50.1 execution started
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_plans: 22
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 50.1 — URL canonicalization (mid-milestone insert per Phase 50 spike Ship-Now: YES)
+**Current focus:** Phase 50.1 — url-canonicalization
 
 ## Current Position
 
-Phase: 50 — COMPLETE
-Plan: 4 of 4
-Status: Phase 50 complete
-Last activity: 2026-05-20 -- Phase 50 marked complete
+Phase: 50.1 (url-canonicalization) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 50.1
+Last activity: 2026-05-20 -- Phase 50.1 execution started
 
 ```
 v5.2 Progress: [███████████████░░░░░] 75% (2/3 phases — Phase 48 + Phase 49 spike complete; Phase 49.1 7/8 plans)

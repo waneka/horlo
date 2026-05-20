@@ -287,7 +287,7 @@ Plans:
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
 | 49.1. Remove Genre Surface (INSERTED) | 8/8 | Complete    | 2026-05-20 |
 | 50. Watch-Detail Architecture Spike | 4/4 | Complete    | 2026-05-20 |
-| 50.1. URL Canonicalization (INSERTED) | 0/TBD | Not started | - |
+| 50.1. URL Canonicalization (INSERTED) | 2/3 | In Progress|  |
 
 ## Next Up
 
