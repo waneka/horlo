@@ -48,7 +48,7 @@ describe('FIT-03 /watch/[id] verdict integration (Plan 04)', () => {
     mockGetMostRecentWearDate.mockResolvedValue(null)
     mockComputeViewerTasteProfile.mockResolvedValue({
       meanFormality: null, meanSportiness: null, meanHeritageScore: null,
-      dominantArchetype: null, dominantEraSignal: null, topDesignMotifs: [],
+      dominantEraSignal: null, topDesignMotifs: [],
     })
     mockComputeVerdictBundle.mockReturnValue({
       framing: 'same-user',

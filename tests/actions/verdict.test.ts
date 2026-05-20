@@ -50,7 +50,7 @@ describe('D-06 getVerdictForCatalogWatch Server Action (Plan 05)', () => {
     vi.clearAllMocks()
     mockComputeViewerTasteProfile.mockResolvedValue({
       meanFormality: null, meanSportiness: null, meanHeritageScore: null,
-      dominantArchetype: null, dominantEraSignal: null, topDesignMotifs: [],
+      dominantEraSignal: null, topDesignMotifs: [],
     })
     mockComputeVerdictBundle.mockReturnValue({
       framing: 'cross-user',

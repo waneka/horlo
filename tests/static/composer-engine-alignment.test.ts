@@ -34,7 +34,6 @@ const emptyProfile: ViewerTasteProfile = {
   meanFormality: null,
   meanSportiness: null,
   meanHeritageScore: null,
-  dominantArchetype: null,
   dominantEraSignal: null,
   topDesignMotifs: [],
 }
