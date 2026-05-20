@@ -8,16 +8,17 @@ import { render, screen } from '@testing-library/react'
 // removable facet chips via <Chip variant="removable">, not inline buttons
 // with text-accent-foreground class strings.
 //
+// Phase 49.1 Plan 04 (D-SCOPE-01d): archetype/genre chips removed from this
+// surface. Tests 1 (zero-results archetype), 4 (zero-results genre),
+// 5 (results archetype), 8 (results genre) deleted in lockstep with the
+// chip-block removal in SearchPageClient.tsx. Surviving tests (2, 3, 6, 7)
+// cover the brand/era removable chips that remain.
+//
 // Tests:
-//   1. Zero-results branch: archetype chip renders as <Chip variant="removable">
 //   2. Zero-results branch: brand chip renders as <Chip variant="removable">
 //   3. Zero-results branch: era chip renders as <Chip variant="removable">
-//   4. Zero-results branch: genre chip renders as <Chip variant="removable">
-//   5. Results branch: archetype chip renders as <Chip variant="removable">
 //   6. Results branch: brand chip renders as <Chip variant="removable">
 //   7. Results branch: era chip renders as <Chip variant="removable">
-//   8. Results branch: genre chip renders as <Chip variant="removable">
-//   9. Neither branch contains text-accent-foreground inline class
 // ---------------------------------------------------------------------------
 
 // Mock Chip to expose the variant prop for assertions
@@ -176,13 +177,7 @@ describe('SearchPageClient removable chips — zero-results branch (Plan 48-03 T
     mockSearchState.genre = null
   })
 
-  it('Test 1: zero-results archetype chip renders as <Chip variant="removable">', () => {
-    renderWatchesWithFacets({ archetype: 'dive' }, [])
-    const chips = screen.getAllByTestId('chip')
-    const archetypeChip = chips.find((c) => c.textContent?.includes('Dive'))
-    expect(archetypeChip).toBeDefined()
-    expect(archetypeChip).toHaveAttribute('data-variant', 'removable')
-  })
+  // Test 1 (zero-results archetype) deleted — Phase 49.1 Plan 04 D-SCOPE-01d.
 
   it('Test 2: zero-results brand chip renders as <Chip variant="removable">', () => {
     renderWatchesWithFacets({ brand: 'rolex' }, [])
@@ -200,13 +195,7 @@ describe('SearchPageClient removable chips — zero-results branch (Plan 48-03 T
     expect(eraChip).toHaveAttribute('data-variant', 'removable')
   })
 
-  it('Test 4: zero-results genre chip renders as <Chip variant="removable">', () => {
-    renderWatchesWithFacets({ genre: 'dive' }, [])
-    const chips = screen.getAllByTestId('chip')
-    // genre 'dive' has no display name in local map → falls back to raw value
-    expect(chips.length).toBeGreaterThan(0)
-    chips.forEach((chip) => expect(chip).toHaveAttribute('data-variant', 'removable'))
-  })
+  // Test 4 (zero-results genre) deleted — Phase 49.1 Plan 04 D-SCOPE-01d.
 })
 
 describe('SearchPageClient removable chips — results branch (Plan 48-03 Task 2 BUG-02)', () => {
@@ -228,13 +217,7 @@ describe('SearchPageClient removable chips — results branch (Plan 48-03 Task 2
     mockSearchState.genre = null
   })
 
-  it('Test 5: results-branch archetype chip renders as <Chip variant="removable">', () => {
-    renderWatchesWithFacets({ archetype: 'dive' }, [mockResult])
-    const chips = screen.getAllByTestId('chip')
-    const archetypeChip = chips.find((c) => c.textContent?.includes('Dive'))
-    expect(archetypeChip).toBeDefined()
-    expect(archetypeChip).toHaveAttribute('data-variant', 'removable')
-  })
+  // Test 5 (results-branch archetype) deleted — Phase 49.1 Plan 04 D-SCOPE-01d.
 
   it('Test 6: results-branch brand chip renders as <Chip variant="removable">', () => {
     renderWatchesWithFacets({ brand: 'rolex' }, [mockResult])
@@ -252,10 +235,5 @@ describe('SearchPageClient removable chips — results branch (Plan 48-03 Task 2
     expect(eraChip).toHaveAttribute('data-variant', 'removable')
   })
 
-  it('Test 8: results-branch genre chip renders as <Chip variant="removable">', () => {
-    renderWatchesWithFacets({ genre: 'dress' }, [mockResult])
-    const chips = screen.getAllByTestId('chip')
-    expect(chips.length).toBeGreaterThan(0)
-    chips.forEach((chip) => expect(chip).toHaveAttribute('data-variant', 'removable'))
-  })
+  // Test 8 (results-branch genre) deleted — Phase 49.1 Plan 04 D-SCOPE-01d.
 })

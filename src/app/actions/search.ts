@@ -5,10 +5,11 @@ import { z } from 'zod'
 import { getCurrentUser } from '@/lib/auth'
 import { searchCatalogWatches } from '@/data/catalog'
 import { searchProfiles, searchCollections } from '@/data/search'
-// Phase 46 WR-01: era/genre/archetype facets are validated against the closed
-// taste vocabularies (source of truth: src/lib/taste/vocab.ts) so the Zod enum
-// cannot drift from PrimaryArchetype / EraSignal.
-import { PRIMARY_ARCHETYPES, ERA_SIGNALS } from '@/lib/taste/vocab'
+// Phase 46 WR-01 / Phase 49.1 D-SCOPE-01f: era facet is validated against the
+// closed taste vocabulary (source of truth: src/lib/taste/vocab.ts) so the Zod
+// enum cannot drift from EraSignal. PRIMARY_ARCHETYPES is no longer imported
+// here — genre/archetype dropped from the schema per D-SCOPE-01f.
+import { ERA_SIGNALS } from '@/lib/taste/vocab'
 import type { ActionResult } from '@/lib/actionTypes'
 import type {
   SearchProfileResult,
@@ -20,7 +21,9 @@ import type {
 // the input length (Server Action will reject obviously-malicious giant strings
 // before they reach the DAL trim/length guard).
 // Phase 40 SRCH-16 — facets D-03/D-04/D-05/D-06. People + Collections actions accept-but-ignore.
-// Phase 46 D-12: brand/era/genre/archetype facets for Explore deep-links (T-46-03 mitigation).
+// Phase 46 D-12: brand/era facets for Explore deep-links (T-46-03 mitigation).
+// Phase 49.1 D-SCOPE-01f: genre/archetype keys removed; .strict() preserved so
+// old ?genre=/?archetype= URLs are rejected at the action boundary (D-EXPLORE-03).
 const searchSchema = z
   .object({
     q: z.string().max(200),
@@ -28,12 +31,9 @@ const searchSchema = z
     size: z.enum(['lt36', '36-39', '40-42', '43-45', '46plus']).optional(),
     style: z.string().max(500).optional(), // comma-joined; DAL splits
     brand:     z.string().max(100).optional(),
-    // Phase 46 WR-01: constrain to the closed vocabularies (matches the
-    // movement/size z.enum pattern above). Genre and archetype both map to the
-    // primary_archetype column, so both use PRIMARY_ARCHETYPES.
+    // Phase 46 WR-01: constrain to the closed vocabulary (matches the
+    // movement/size z.enum pattern above).
     era:       z.enum(ERA_SIGNALS).optional(),
-    genre:     z.enum(PRIMARY_ARCHETYPES).optional(),
-    archetype: z.enum(PRIMARY_ARCHETYPES).optional(),
   })
   .strict()
 
@@ -119,11 +119,10 @@ export async function searchWatchesAction(
         size: parsed.data.size,
         // style is comma-joined string from URL; split + trim + filter empty (A4)
         style: parsed.data.style?.split(',').map((s) => s.trim()).filter(Boolean),
-        // Phase 46 D-12: new facets passed through from URL params.
+        // Phase 46 D-12 / Phase 49.1 D-SCOPE-01f: brand + era passthrough.
+        // genre + archetype passthrough removed per D-SCOPE-01f.
         brand:     parsed.data.brand,
         era:       parsed.data.era,
-        genre:     parsed.data.genre,
-        archetype: parsed.data.archetype,
       },
     })
     return { success: true, data: results }

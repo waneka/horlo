@@ -10,7 +10,6 @@ import { Chip } from '@/components/ui/chip'
 
 import { useSearchState } from '@/components/search/useSearchState'
 import { FilterDrawer } from '@/components/search/FilterDrawer'
-import { ARCHETYPE_CONFIG } from '@/lib/archetype-config'
 import { PeopleSearchRow } from '@/components/search/PeopleSearchRow'
 import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
 import { WatchSearchResultsSkeleton } from '@/components/search/WatchSearchResultsSkeleton'
@@ -24,7 +23,9 @@ import type {
   SearchProfileResult,
   SearchTab,
 } from '@/lib/searchTypes'
-import type { PrimaryArchetype } from '@/lib/types'
+// Phase 49.1 D-SCOPE-01d — the editorial header lookup and PrimaryArchetype
+// type import are no longer needed at this surface; archetype editorial header
+// + archetype/genre removable chips removed.
 
 interface SearchPageClientProps {
   viewerId: string
@@ -94,6 +95,10 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
     setBrand,
     era,
     setEra,
+    // Phase 49.1 D-SCOPE-01d — archetype/genre are NO LONGER consumed by this
+    // surface (no editorial header, no removable chips, no activeCount inclusion).
+    // They remain on the useSearchState hook to keep parity with the FilterDrawer
+    // sibling whose genre/archetype chip groups are removed in Plan 05.
     genre,
     setGenre,
     archetype,
@@ -111,10 +116,10 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
 
   const trimmed = debouncedQ.trim()
   const [sheetOpen, setSheetOpen] = useState(false)
-  // D-09: style chips count individually (style=tool,diver adds 2 to badge)
-  // Phase 46: include brand/era/genre/archetype facets in the count.
+  // D-09: style chips count individually (style=tool,diver adds 2 to badge).
+  // Phase 49.1 D-SCOPE-01d — genre/archetype dropped from the count.
   const activeCount = (movement ? 1 : 0) + (size ? 1 : 0) + styleArr.length
-    + (brand ? 1 : 0) + (era ? 1 : 0) + (genre ? 1 : 0) + (archetype ? 1 : 0)
+    + (brand ? 1 : 0) + (era ? 1 : 0)
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 space-y-6">
@@ -194,14 +199,10 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             collectionRevision={collectionRevision}
             viewerUsername={viewerUsername}
             hasActiveFacet={activeCount > 0}
-            archetype={archetype}
             brand={brand}
             era={era}
-            genre={genre}
             onClearBrand={() => setBrand(null)}
             onClearEra={() => setEra(null)}
-            onClearGenre={() => setGenre(null)}
-            onClearArchetype={() => setArchetype(null)}
           />
           <FilterDrawer
             open={sheetOpen}
@@ -330,14 +331,10 @@ function WatchesPanel({
   collectionRevision,
   viewerUsername,
   hasActiveFacet,
-  archetype = null,
   brand = null,
   era = null,
-  genre = null,
   onClearBrand,
   onClearEra,
-  onClearGenre,
-  onClearArchetype,
 }: {
   q: string
   results: SearchCatalogWatchResult[]
@@ -346,12 +343,11 @@ function WatchesPanel({
   collectionRevision: number
   viewerUsername: string | null
   hasActiveFacet: boolean
-  archetype?: string | null
+  // Phase 49.1 D-SCOPE-01d — archetype and genre props removed at this surface.
   brand?: string | null
   era?: string | null
-  genre?: string | null
   // WR-03: required (not optional). WatchesPanel is an internal component used
-  // in exactly one place (SearchPageClient.tsx:189) and there is no semantic case
+  // in exactly one place (SearchPageClient.tsx) and there is no semantic case
   // for omitting a clear handler when the corresponding facet may be active —
   // doing so would render a removable chip whose dismiss affordance does nothing.
   // Pairs with chip.tsx WR-02 (discriminated union making `onClick` required on
@@ -359,8 +355,6 @@ function WatchesPanel({
   // call site or refactor.
   onClearBrand: () => void
   onClearEra: () => void
-  onClearGenre: () => void
-  onClearArchetype: () => void
 }) {
   if (isLoading) return <WatchSearchResultsSkeleton />
   if (hasError) {
@@ -389,41 +383,16 @@ function WatchesPanel({
     )
   }
 
-  // Archetype editorial header (D-13): shown when archetype param is present and known.
-  // Phase 46 WR-03: `archetype` originates from a raw URL param; guard membership
-  // against ARCHETYPE_CONFIG before lookup instead of an unsafe `as keyof` cast.
-  const archetypeConfig =
-    archetype && archetype in ARCHETYPE_CONFIG
-      ? ARCHETYPE_CONFIG[archetype as PrimaryArchetype]
-      : null
-
-  // Inline removable facet chips for brand/era/genre/archetype (D-10).
-  const hasInlineFacets = !!(brand || era || genre || archetype)
+  // Phase 49.1 D-SCOPE-01d — archetype editorial header + archetype/genre
+  // removable chips deleted. Inline removable facet chips now cover brand/era only.
+  const hasInlineFacets = !!(brand || era)
 
   // D-01: browse-mode empty state (q empty AND facets active AND 0 results)
   if (q.length < CLIENT_MIN_CHARS && hasActiveFacet && results.length === 0) {
     return (
       <>
-        {archetypeConfig && (
-          <section className="space-y-1 mb-4">
-            <h2 className="text-xl font-semibold leading-tight text-foreground">
-              {archetypeConfig.displayName}
-            </h2>
-            <p className="text-sm text-muted-foreground">{archetypeConfig.description}</p>
-            <p className="text-xs text-muted-foreground">0 watches</p>
-          </section>
-        )}
         {hasInlineFacets && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {archetype && (
-              <Chip
-                variant="removable"
-                onClick={onClearArchetype}
-                removeLabel={`Remove ${archetypeConfig?.displayName ?? archetype} filter`}
-              >
-                {archetypeConfig?.displayName ?? archetype}
-              </Chip>
-            )}
             {brand && (
               <Chip
                 variant="removable"
@@ -440,15 +409,6 @@ function WatchesPanel({
                 removeLabel={`Remove ${ERA_DISPLAY_LABELS[era] ?? era} filter`}
               >
                 {ERA_DISPLAY_LABELS[era] ?? era}
-              </Chip>
-            )}
-            {genre && (
-              <Chip
-                variant="removable"
-                onClick={onClearGenre}
-                removeLabel={`Remove ${genre} filter`}
-              >
-                {genre.charAt(0).toUpperCase() + genre.slice(1)}
               </Chip>
             )}
           </div>
@@ -477,28 +437,10 @@ function WatchesPanel({
   }
   return (
     <section className="space-y-2">
-      {/* Phase 46 D-13: Archetype editorial header — name + description + count */}
-      {archetypeConfig && (
-        <section className="space-y-1 mb-4">
-          <h2 className="text-xl font-semibold leading-tight text-foreground">
-            {archetypeConfig.displayName}
-          </h2>
-          <p className="text-sm text-muted-foreground">{archetypeConfig.description}</p>
-          <p className="text-xs text-muted-foreground">{results.length} watches</p>
-        </section>
-      )}
-      {/* Phase 46 D-10: Inline removable facet chips above results */}
+      {/* Phase 49.1 D-SCOPE-01d — archetype editorial header deleted.
+          Phase 46 D-10: Inline removable facet chips above results (brand/era only post-49.1). */}
       {hasInlineFacets && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {archetype && (
-            <Chip
-              variant="removable"
-              onClick={onClearArchetype}
-              removeLabel={`Remove ${archetypeConfig?.displayName ?? archetype} filter`}
-            >
-              {archetypeConfig?.displayName ?? archetype}
-            </Chip>
-          )}
           {brand && (
             <Chip
               variant="removable"
@@ -515,15 +457,6 @@ function WatchesPanel({
               removeLabel={`Remove ${ERA_DISPLAY_LABELS[era] ?? era} filter`}
             >
               {ERA_DISPLAY_LABELS[era] ?? era}
-            </Chip>
-          )}
-          {genre && (
-            <Chip
-              variant="removable"
-              onClick={onClearGenre}
-              removeLabel={`Remove ${genre} filter`}
-            >
-              {genre.charAt(0).toUpperCase() + genre.slice(1)}
             </Chip>
           )}
         </div>

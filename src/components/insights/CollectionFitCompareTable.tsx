@@ -155,17 +155,9 @@ export function CollectionFitCompareTable({
             <td className={tdClass}><ScalarCell value={candidate.heritageScore} label="Heritage" /></td>
             <td className={tdClass}><ScalarCell value={owned.heritageScore} label="Heritage" /></td>
           </tr>
-          {/* Row 4: Archetype (closed-vocab enum) */}
-          <tr>
-            <th scope="row" className={thRowClass}>Archetype</th>
-            <td className={tdClass}>
-              <span className="text-xs text-foreground">{displayEnum(candidate.primaryArchetype)}</span>
-            </td>
-            <td className={tdClass}>
-              <span className="text-xs text-foreground">{displayEnum(owned.primaryArchetype)}</span>
-            </td>
-          </tr>
-          {/* Row 5: Era (closed-vocab enum) */}
+          {/* Row 4: Era (closed-vocab enum)
+              Phase 49.1 D-SCOPE-01b — Archetype row deleted; Era now sits between
+              Heritage and Design Motifs. Uses thRowClass/tdClass (not last). */}
           <tr>
             <th scope="row" className={thRowClass}>Era</th>
             <td className={tdClass}>
@@ -175,7 +167,9 @@ export function CollectionFitCompareTable({
               <span className="text-xs text-foreground">{displayEnum(owned.eraSignal)}</span>
             </td>
           </tr>
-          {/* Row 6: Design Motifs (chip cluster) — last row, no bottom border */}
+          {/* Row 5: Design Motifs (chip cluster) — last row, no bottom border.
+              UI-SPEC §B: thRowLastClass + tdLastClass; outer table border + rounded-md
+              corner clip supply the visual bottom edge. */}
           <tr>
             <th scope="row" className={thRowLastClass}>Design Motifs</th>
             <td className={tdLastClass}><MotifsCell motifs={candidate.designMotifs} /></td>

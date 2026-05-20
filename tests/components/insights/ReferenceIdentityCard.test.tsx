@@ -6,33 +6,40 @@ import type { CatalogTasteAttributes } from '@/lib/types'
 /**
  * Phase 39b D-39b-03 / D-39b-04 — ReferenceIdentityCard render contract.
  *
- * Six scenarios per UI-SPEC §Test Coverage Contract:
- *  1. Renders all sections when confidence >= 0.5
+ * Phase 49.1 Plan 04 (D-SCOPE-01a): archetype side of the headline is removed.
+ * The fixture below omits `primaryArchetype` (post-Plan-06 CatalogTasteAttributes
+ * shape — the field is still declared on the type in this plan, so we cast
+ * through `unknown` for now).
+ * TODO Phase 49.1 Plan 06 — drop cast when CatalogTasteAttributes loses primaryArchetype.
+ *
+ * Six scenarios per UI-SPEC §Test Coverage Contract (post-49.1):
+ *  1. Renders all sections when confidence >= 0.5 (era-only headline)
  *  2. Returns null when taste === null
  *  3. Returns null when confidence < 0.5 (D-39b-03 gate)
  *  4. Returns null when confidence === null
- *  5. Omits headline when both era and archetype are null
+ *  5. Omits headline when eraSignal is null
  *  6. Omits a scale bar when its value is null
  */
 
-const FULL_TASTE: CatalogTasteAttributes = {
+const FULL_TASTE = {
   formality: 0.7,
   sportiness: 0.3,
   heritageScore: 0.85,
-  primaryArchetype: 'dress',
-  eraSignal: 'modern',
+  eraSignal: 'modern' as const,
   designMotifs: ['bauhaus', 'gilt-dial'],
   confidence: 0.75,
   extractedFromPhoto: false,
-}
+} as unknown as CatalogTasteAttributes
 
 describe('ReferenceIdentityCard', () => {
-  it('renders all sections when confidence >= 0.5', () => {
-    const { getByText } = render(<ReferenceIdentityCard taste={FULL_TASTE} />)
+  it('renders all sections when confidence >= 0.5 (era-only headline)', () => {
+    const { getByText, queryByText } = render(<ReferenceIdentityCard taste={FULL_TASTE} />)
     expect(getByText('Inferred taste signature')).toBeTruthy()
     expect(getByText('Modern era')).toBeTruthy()
-    expect(getByText('Dress')).toBeTruthy()
     expect(getByText('bauhaus')).toBeTruthy()
+    // D-SCOPE-01a: archetype side of headline is gone — no archetype label renders.
+    expect(queryByText('Dress')).toBeNull()
+    expect(queryByText('Dive')).toBeNull()
   })
 
   it('returns null when taste === null', () => {
@@ -54,14 +61,13 @@ describe('ReferenceIdentityCard', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('omits headline when both era and archetype are null', () => {
+  it('omits headline when eraSignal is null (post-49.1: archetype side is already removed)', () => {
     const { queryByText } = render(
       <ReferenceIdentityCard
-        taste={{ ...FULL_TASTE, eraSignal: null, primaryArchetype: null }}
+        taste={{ ...FULL_TASTE, eraSignal: null }}
       />,
     )
     expect(queryByText('Modern era')).toBeNull()
-    expect(queryByText('Dress')).toBeNull()
   })
 
   it('omits a scale bar when its value is null', () => {
