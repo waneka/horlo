@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: ready_to_plan
-stopped_at: Phase 48 context gathered
-last_updated: "2026-05-19T20:51:18.493Z"
-last_activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50, 4 requirements)
+status: planning
+stopped_at: Completed 49.1-02-PLAN.md
+last_updated: "2026-05-20T06:36:43.054Z"
+last_activity: 2026-05-19
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 1
-  completed_plans: 1
+  total_plans: 4
+  completed_plans: 5
   percent: 100
 ---
 
@@ -58,6 +58,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | 48 | Fix wishlist mislabel + dark-mode chip contrast | BUG-01, BUG-02 |
 | 49 | Genre vs style taxonomy spike — written recommendation | TAX-01 |
 | 50 | Two watch-detail views architecture spike — written decision | ARCH-01 |
+| Phase 49.1 P02 | 15min | 3 tasks | 10 files |
 
 ### Deferred Items
 
@@ -94,7 +95,7 @@ None.
 ## Session Continuity
 
 Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50).
-Stopped at: Phase 48 context gathered
+Stopped at: Completed 49.1-02-PLAN.md
 Next action: `/gsd-plan-phase 48` to plan and execute the two bug fixes.
 
 ## Operator Next Steps
