@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: executing
-stopped_at: Completed 49.1-01-PLAN.md (Wave 0 test scaffolds)
-last_updated: "2026-05-20T06:15:51.829Z"
-last_activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
+stopped_at: Completed 49.1-04-PLAN.md (direct-UI archetype drops + searchSchema Zod)
+last_updated: "2026-05-20T06:31:00.000Z"
+last_activity: 2026-05-20 -- Phase 49.1 Plan 04 complete (era-only headline, 5-row compare table, slim search header + Zod tightened)
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 15
-  completed_plans: 8
-  percent: 53
+  completed_plans: 10
+  percent: 67
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 ## Current Position
 
 Phase: 49.1
-Plan: 1/8 (49.1-01 Wave 0 test scaffolds complete)
+Plan: 4/8 (49.1-04 direct-UI archetype drops + searchSchema Zod complete)
 Status: In Progress
-Last activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
+Last activity: 2026-05-20 -- Phase 49.1 Plan 04 complete (era-only headline, 5-row compare table, slim search header + Zod tightened)
 
 ```
 v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/3 phases)
@@ -40,6 +40,7 @@ v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
 - 32/32 v5.1 requirements shipped
 - Blockers encountered: 0
 - Phase 49.1 P01: 3 min, 3 tasks, 3 files
+- Phase 49.1 P04: 17 min, 2 tasks, 7 files
 
 ## Accumulated Context
 
@@ -56,6 +57,8 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **Two-layer RLS** for published CMS content — `USING (status = 'published')` + explicit DAL `WHERE`.
 - **`revalidateTag('explore:hero', 'max')`** in all four Hero write paths — `revalidatePath` does not invalidate tag scopes.
 - **Wave 0 test scaffolds for Phase 49.1 use `as unknown as CatalogTasteAttributes`** to express the post-removal shape — `CatalogTasteAttributes.primaryArchetype` is still required in `src/lib/types.ts:224` today, so the cast lets Wave 0 tests assert the post-49.1 contract without forcing a parallel type edit. Plan 05 removes the cast.
+- **Phase 49.1 Plan 04 — FilterDrawer parity carve-out:** kept `genre`/`archetype` destructure on `useSearchState()` in `SearchPageClient.tsx` even though THIS surface no longer consumes the values, because `FilterDrawer.tsx`'s props interface still declares `genre`/`archetype` as required (non-optional). Plan 05 deletes both halves atomically (drawer chip groups + SearchPageClient destructure).
+- **Phase 49.1 Plan 04 — searchSchema `.strict()` invariant preserved:** dropping `genre`/`archetype` keys from the Zod schema without removing `.strict()` means old `?genre=…`/`?archetype=…` URLs are REJECTED at the action boundary, not silently stripped. Acceptable per D-EXPLORE-03 (no external bookmarks expected for v5.1-launched chips <1 week before removal).
 
 ### v5.2 Phase Structure
 
