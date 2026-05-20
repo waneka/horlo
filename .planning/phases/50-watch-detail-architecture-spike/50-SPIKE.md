@@ -185,3 +185,19 @@ Five variants are evaluated. Variant labels are used verbatim as anchors in §6 
 **Summary:** Smaller entry-point blast radius than Variant D (7 vs 12 rewrites) but introduces UUID-space dispatch fragility on a route that currently carries clean per-user semantics, and requires a UI-SPEC decision on `OtherOwnersRoster` / `CatalogPageActions` conditional rendering.
 
 ---
+
+## 7. Cost Estimate per Variant
+
+Columns: **Files touched** (count + key paths) | **Entry-point rewrites** | **Migrations** (drizzle + supabase) | **DAL changes** | **Test surface**
+
+| Variant | Files touched | Entry-point rewrites | Migrations | DAL changes | Test surface |
+|---------|---------------|----------------------|------------|-------------|--------------|
+| **A. Keep separate** | 0 | 0 | 0 | 0 | None — no behavior change |
+| **B. URL canonicalization** | 1-2 (`catalog/[catalogId]/page.tsx` + 1 test file) | 0 | 0 | 0 | Low — redirect test; assert 307 for owner viewers on `/catalog/[id]` |
+| **C. Unified `/w/[ref]`** | 19+ (new route + 2 old routes + 17 entry-point files) | 19 | 0 | 0 (route-level dispatch) | High — full integration test for both old URLs → new URL + all 19 entry points |
+| **D. Catalog absorbs watch** | 13-14 (`catalog/[catalogId]/page.tsx` rewrite + `watch/[id]/page.tsx` removal + 12 entry points) | 12 | 0 | 0 (reuses `findViewerWatchByCatalogId` + `getWatchByIdForViewer`) | Medium-high — owner-detection layering on catalog route; per-user data threading; `WatchDetail` island conditional |
+| **E. Watch absorbs catalog** | 8-9 (`watch/[id]/page.tsx` rewrite + `catalog/[catalogId]/page.tsx` removal + 7 entry points + `OtherOwnersRoster` policy) | 7 | 0 | 0 (route-level dispatch on UUID space) | Medium — catalog-only mode test; UUID dispatch test; `OtherOwnersRoster` always-on vs always-off decision |
+
+**None of A-E require schema changes to `watches` or `watches_catalog` in v5.2.** All merge variants are route + UI only. The catalog-wipeable carve-out (MEMORY `project_db_wipeable_2026_05_09`, updated 2026-05-19 — `watches_catalog` is NOT wipeable) only matters IF v7.0 photo schema lands as part of an implementation phase — out of scope for Phase 50 per D-GUARD-01. The v7.0 lens (§5) flags this consideration but does not pre-decide it.
+
+---
