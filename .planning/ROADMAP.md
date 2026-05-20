@@ -222,7 +222,7 @@ Plans:
 
 Plans:
 **Wave 0** *(test scaffolds — must complete before Wave 1)*
-- [ ] 49.1-01-PLAN.md — Wave 0 test scaffolds (migration-drop integration test, /explore/genres 404 smoke test, CollectionFitCompareTable component test)
+- [x] 49.1-01-PLAN.md — Wave 0 test scaffolds (migration-drop integration test, /explore/genres 404 smoke test, CollectionFitCompareTable component test)
 
 **Wave 1** *(4 parallel sub-plans — Plans 03 and 04 depend on 49.1-01 Wave 0 tests; Plans 02 and 05 have no Wave 0 dependency)*
 - [ ] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
@@ -256,7 +256,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
-| 49.1. Remove Genre Surface (INSERTED) | 0/8 | Not started | - |
+| 49.1. Remove Genre Surface (INSERTED) | 1/8 | In Progress|  |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
