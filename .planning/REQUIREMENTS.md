@@ -9,13 +9,13 @@ Requirements for milestone v5.2. Each maps to a roadmap phase.
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: A watch on the user's wishlist, viewed via `/catalog/[catalogId]` (the cross-user route reached from search), shows correct ownership state — labeled as wishlisted, never "you own this watch"
-- [ ] **BUG-02**: `/search` filter chips render with legible text contrast in dark mode (no black-on-dark text) across all chip groups — movement/size/style and the v5.1 FU-01 brand/era/genre/archetype chips
+- [x] **BUG-01**: A watch on the user's wishlist, viewed via `/catalog/[catalogId]` (the cross-user route reached from search), shows correct ownership state — labeled as wishlisted, never "you own this watch"
+- [x] **BUG-02**: `/search` filter chips render with legible text contrast in dark mode (no black-on-dark text) across all chip groups — movement/size/style and the v5.1 FU-01 brand/era/genre/archetype chips
 
 ### Taxonomy
 
-- [ ] **TAX-01**: A spike audits how `genre` and `style` are each consumed (`/search` filters, taste/similarity engine, `/explore` Browse indices, watch cards) and produces a written recommendation — consolidate, remove one, or keep both — with rationale
-- [ ] **TAX-02**: Remove the genre/archetype taxonomy surface per the Phase 49 spike recommendation (mid-milestone add per ROADMAP SC#4) — drop `primary_archetype` from `watches_catalog`, delete `GenreChips` + `ArchetypeChips` + `/explore/genres` + `archetype-config.ts`, remove `filters.genre` / `filters.archetype` from `CatalogSearchFilters`, rebalance similarity weights (the 0.04 `TASTE_SUB_WEIGHTS.archetypeMatch` budget redistributes across the remaining taste sub-budget), update enricher to stop writing `primary_archetype`. Single source of truth for the functional-category axis becomes `style_tags`. Source: `.planning/phases/49-genre-vs-style-taxonomy-spike/49-SPIKE.md` §7 + §9.
+- [x] **TAX-01**: A spike audits how `genre` and `style` are each consumed (`/search` filters, taste/similarity engine, `/explore` Browse indices, watch cards) and produces a written recommendation — consolidate, remove one, or keep both — with rationale
+- [x] **TAX-02**: Remove the genre/archetype taxonomy surface per the Phase 49 spike recommendation (mid-milestone add per ROADMAP SC#4) — drop `primary_archetype` from `watches_catalog`, delete `GenreChips` + `ArchetypeChips` + `/explore/genres` + `archetype-config.ts`, remove `filters.genre` / `filters.archetype` from `CatalogSearchFilters`, rebalance similarity weights (the 0.04 `TASTE_SUB_WEIGHTS.archetypeMatch` budget redistributes across the remaining taste sub-budget), update enricher to stop writing `primary_archetype`. Single source of truth for the functional-category axis becomes `style_tags`. Source: `.planning/phases/49-genre-vs-style-taxonomy-spike/49-SPIKE.md` §7 + §9.
 
 ### Architecture
 
