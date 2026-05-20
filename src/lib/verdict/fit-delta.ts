@@ -32,7 +32,8 @@ export function computeDeltaPhrase(
       : null
 
   // Categoricals: null===null counts as match (delta=0); null vs non-null is mismatch (delta=1).
-  const archetypeDelta = candidate.primaryArchetype === owned.primaryArchetype ? 0 : 1
+  // Phase 49.1 D-SCOPE-01c — archetypeDelta dimension dropped; eraSignal is the
+  // sole surviving categorical taste dimension.
   const eraDelta = candidate.eraSignal === owned.eraSignal ? 0 : 1
 
   // Motifs: Jaccard similarity; delta = 1 - similarity.
@@ -48,7 +49,6 @@ export function computeDeltaPhrase(
   )
   if (
     allScalarsSmall &&
-    archetypeDelta === 0 &&
     eraDelta === 0 &&
     motifJaccard >= MOTIF_THRESHOLD
   ) {
@@ -57,7 +57,8 @@ export function computeDeltaPhrase(
 
   // Step 5: find the winning dimension (highest delta).
   // Tie-break: dimension declaration order in CatalogTasteAttributes
-  // (formality > sportiness > heritageScore > primaryArchetype > eraSignal > designMotifs).
+  // (formality > sportiness > heritageScore > eraSignal > designMotifs).
+  // Phase 49.1 D-SCOPE-01c — primaryArchetype removed; ranked list is now 5-deep.
   // Replace best only when current > best (strict-greater preserves earlier entries on tie).
   type DimEntry = { name: string; delta: number }
   let best: DimEntry | null = null
@@ -73,7 +74,7 @@ export function computeDeltaPhrase(
   tryUpdate('sportiness', sportinessDelta)
   tryUpdate('heritageScore', heritageDelta)
   // Categoricals only enter the winner list when they are different (delta === 1).
-  if (archetypeDelta === 1) tryUpdate('primaryArchetype', archetypeDelta)
+  // Phase 49.1 D-SCOPE-01c — primaryArchetype dimension dropped from the ranked list.
   if (eraDelta === 1) tryUpdate('eraSignal', eraDelta)
   tryUpdate('designMotifs', motifDelta)
 
@@ -102,9 +103,8 @@ export function computeDeltaPhrase(
         ? 'More heritage-leaning'
         : 'More modern in character'
 
-    case 'primaryArchetype':
-      return `Different archetype: ${displayEnum(candidate.primaryArchetype)} vs ${displayEnum(owned.primaryArchetype)}`
-
+    // Phase 49.1 D-SCOPE-01c — primaryArchetype case deleted; eraSignal is now the
+    // sole categorical case in the phrase switch.
     case 'eraSignal':
       return `Different era: ${displayEnum(candidate.eraSignal)} vs ${displayEnum(owned.eraSignal)}`
 

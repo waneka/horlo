@@ -15,14 +15,16 @@ export const TEMPLATES: Template[] = [
   // ── 4 ROADMAP TEMPLATES (D-01 lock) ────────────────────────────────────────
   {
     id: 'fills-a-hole',
+    // Phase 49.1 D-VERDICT-01 — pivoted from primaryArchetype to eraSignal.
+    // Narrative angle: "first-of-era" (distinct from era-echo's "echoes era").
     predicate: (result, profile, _candidate, taste) => {
       if (result.label !== 'taste-expansion' && result.label !== 'outlier') return null
-      if (!taste.primaryArchetype) return null
-      if (profile.dominantArchetype === taste.primaryArchetype) return null
-      return { archetype: taste.primaryArchetype }
+      if (!taste.eraSignal) return null
+      if (profile.dominantEraSignal === taste.eraSignal) return null
+      return { era: taste.eraSignal }
     },
-    template: 'Fills a hole in your collection — your first ${archetype}.',
-    rationaleTemplate: 'My first ${archetype} — fills a real hole in what I own.',
+    template: 'Fills a hole in your collection — your first ${era} piece.',
+    rationaleTemplate: 'My first ${era} piece — fills a real hole in what I own.',
   },
   {
     id: 'aligns-with-heritage',
@@ -37,14 +39,17 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'collection-skews-contrast',
+    // Phase 49.1 D-VERDICT-01 — pivoted from primaryArchetype to eraSignal.
+    // Narrative angle: "collection-vs-piece era contrast" (distinct from
+    // era-echo's "echo" angle and fills-a-hole's "first-of-era" angle).
     predicate: (result, profile, _c, taste) => {
       if (result.label === 'core-fit') return null
-      if (!profile.dominantArchetype || !taste.primaryArchetype) return null
-      if (profile.dominantArchetype === taste.primaryArchetype) return null
-      return { dominant: profile.dominantArchetype, contrast: taste.primaryArchetype }
+      if (!profile.dominantEraSignal || !taste.eraSignal) return null
+      if (profile.dominantEraSignal === taste.eraSignal) return null
+      return { dominant_era: profile.dominantEraSignal, contrast_era: taste.eraSignal }
     },
-    template: 'Your collection skews ${dominant} — this is a ${contrast}.',
-    rationaleTemplate: 'My collection leans ${dominant}; this gives me a ${contrast} to balance it.',
+    template: 'Your collection skews ${dominant_era} — this is a ${contrast_era} piece.',
+    rationaleTemplate: 'My collection skews ${dominant_era}, and this is a ${contrast_era} piece.',
   },
   {
     id: 'overlaps-with-specific',
@@ -60,9 +65,12 @@ export const TEMPLATES: Template[] = [
   // ── 8 SUPPORTING TEMPLATES (Claude's Discretion starting set) ──────────────
   {
     id: 'first-watch',
+    // Phase 49.1 D-VERDICT-03 — `profile.dominantArchetype` was removed from
+    // ViewerTasteProfile; substitute the sibling categorical-mode field
+    // (`dominantEraSignal`) as the same "is the viewer aggregate empty?" signal.
     predicate: (_result, profile) => {
       // Only fires when the viewer aggregate has nothing — i.e. EMPTY_PROFILE upstream
-      if (profile.dominantArchetype !== null) return null
+      if (profile.dominantEraSignal !== null) return null
       if (profile.meanFormality !== null) return null
       return {}
     },
@@ -83,13 +91,17 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'archetype-echo',
+    // Phase 49.1 D-VERDICT-01 + D-VERDICT-02 — pivoted from primaryArchetype to
+    // eraSignal. ID preserved (per planner intent, avoids breaking any persisted
+    // references). Narrative angle: "leaning further into the dominant era" —
+    // distinct from era-echo's "echoes the era" framing.
     predicate: (_result, profile, _c, taste) => {
-      if (!taste.primaryArchetype) return null
-      if (profile.dominantArchetype !== taste.primaryArchetype) return null
-      return { archetype: taste.primaryArchetype }
+      if (!taste.eraSignal) return null
+      if (profile.dominantEraSignal !== taste.eraSignal) return null
+      return { era: taste.eraSignal }
     },
-    template: 'Another ${archetype} — your dominant style.',
-    rationaleTemplate: 'Another ${archetype} — leaning further into my dominant style.',
+    template: 'Another ${era} piece — leaning further into the era you favor.',
+    rationaleTemplate: 'Another ${era} piece — leans further into the era I keep picking.',
   },
   {
     id: 'era-echo',
