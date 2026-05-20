@@ -178,3 +178,13 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 ## Next Up
 
 v5.2 Polish + Taxonomy shipped 2026-05-20 — 5 phases, 21 plans, 6/6 requirements. Audit status `passed` (after D-DEBT-01 + D-DRIFT-01 closed inline). Up next: run `/gsd-new-milestone` to begin the next milestone (likely v6.0 Social Interaction per SEED-012, or another seed per current product priorities).
+
+### Phase 51: Profile Route PPR Opt-Out — recurrence-3 fix for /u/[username]/[tab] 404
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 51 to break down)
