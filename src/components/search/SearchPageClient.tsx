@@ -95,14 +95,9 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
     setBrand,
     era,
     setEra,
-    // Phase 49.1 D-SCOPE-01d — archetype/genre are NO LONGER consumed by this
-    // surface (no editorial header, no removable chips, no activeCount inclusion).
-    // They remain on the useSearchState hook to keep parity with the FilterDrawer
-    // sibling whose genre/archetype chip groups are removed in Plan 05.
-    genre,
-    setGenre,
-    archetype,
-    setArchetype,
+    // Phase 49.1 D-SCOPE-01d — archetype/genre dropped from this surface AND
+    // from FilterDrawer (Plan 03). useSearchState may still expose the keys for
+    // URL-state compat; they are not destructured or threaded anywhere here.
     peopleResults,
     watchesResults,
     collectionsResults,
@@ -216,12 +211,8 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             styleVocab={styleVocab}
             brand={brand}
             era={era}
-            genre={genre}
-            archetype={archetype}
             onBrandChange={setBrand}
             onEraChange={setEra}
-            onGenreChange={setGenre}
-            onArchetypeChange={setArchetype}
             brandVocab={brandVocab}
           />
         </TabsContent>
