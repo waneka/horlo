@@ -140,10 +140,11 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 
 </details>
 
-### v5.2 Polish + Taxonomy (Phases 48-50)
+### v5.2 Polish + Taxonomy (Phases 48-50 + 49.1)
 
 - [x] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast (completed 2026-05-19)
-- [ ] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation
+- [x] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation (completed 2026-05-19)
+- [ ] **Phase 49.1: Remove Genre Surface** (INSERTED) - Implement spike recommendation: drop `primary_archetype` + chips + `/explore/genres`, rebalance similarity
 - [ ] **Phase 50: Watch-Detail Architecture Spike** - Compare two-view vs merged-view and produce written decision
 
 ### 📋 v6.0 Social Interaction (Planted)
@@ -191,7 +192,52 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   2. The document identifies where the fields overlap, diverge, or produce redundant UI/data
   3. The document delivers a clear recommendation (consolidate / remove one / keep both) with rationale strong enough to act on
   4. No consolidation or removal implementation is shipped in this phase unless the spike specifically flags it as cheap and strongly favored — in which case a new requirement is added mid-milestone
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [x] 49-01-PLAN.md — Consumer audit: write Domain + Consumer Map + Overlap & Divergence Matrix (§1-3) covering all 9 D-01 surfaces
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 49-02-PLAN.md — Live-catalog evidence: run 5 D-07 SQL queries against prod/mirror and embed results in §4
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
+
+### Phase 49.1: Remove Genre Surface (INSERTED)
+**Goal**: The genre/archetype taxonomy surface is removed: `primary_archetype` column dropped from `watches_catalog`, `GenreChips` + `ArchetypeChips` + `/explore/genres` + `archetype-config.ts` deleted, catalog DAL and similarity engine updated. Single source of truth for the functional-category axis becomes `style_tags`.
+**Depends on**: Phase 49
+**Requirements**: TAX-02
+**Inserted**: 2026-05-19 mid-milestone per Phase 49 spike §9 Ship-Now: YES verdict (ROADMAP SC#4 escape hatch)
+**Source**: `.planning/phases/49-genre-vs-style-taxonomy-spike/49-SPIKE.md` §7 (Primary recommendation: `remove-genre`) + §8 (Cost row B) + §9 (Ship-Now eligibility)
+**Success Criteria** (what must be TRUE):
+  1. `watches_catalog.primary_archetype` column no longer exists in `src/db/schema.ts` and the drop has been pushed to prod via `supabase db push --linked` (one drizzle migration + one supabase migration)
+  2. `src/components/search/GenreChips.tsx`, `src/components/search/ArchetypeChips.tsx`, `src/app/explore/genres/page.tsx`, and `src/lib/archetype-config.ts` are deleted; `FilterDrawer.tsx` no longer imports/renders either chip group; `BrowseModule.tsx` no longer links to `/explore/genres`
+  3. `CatalogSearchFilters` in `src/data/catalog.ts` no longer has `genre` or `archetype` fields; the archetype-wins tiebreaker at line 446 is removed; `getBrowseGenreCounts()` is deleted from `src/data/browse.ts`
+  4. The 0.04 `TASTE_SUB_WEIGHTS.archetypeMatch` weight in `src/lib/similarity.ts` is redistributed across the remaining taste sub-budget (sub-weights sum to 1.0 invariant preserved); the archetype categorical-match block at line 125 is removed
+  5. The enricher in `src/lib/taste/vocab.ts` no longer writes `primary_archetype` (the column is gone)
+  6. `/explore/genres` returns 404 (route removed); no internal links to it remain (grep `grep -r "/explore/genres" src/` returns zero matches)
+  7. Existing tests still pass; new tests cover the simplified search filter surface and the rebalanced similarity weights
+**Plans**: 8 plans
+
+Plans:
+**Wave 0** *(test scaffolds — must complete before Wave 1)*
+- [x] 49.1-01-PLAN.md — Wave 0 test scaffolds (migration-drop integration test, /explore/genres 404 smoke test, CollectionFitCompareTable component test)
+
+**Wave 1** *(4 parallel sub-plans — Plans 03 and 04 depend on 49.1-01 Wave 0 tests; Plans 02 and 05 have no Wave 0 dependency)*
+- [ ] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
+- [ ] 49.1-03-PLAN.md — /explore rail rewire + chip+route deletions (browse.ts unnest(style_tags) + GenreChips/ArchetypeChips/explore-genres deletions + BrowseModule tile + FilterDrawer + CollectorArchetypes deep-link repoint + tests)
+- [ ] 49.1-04-PLAN.md — Direct-UI archetype drops (ReferenceIdentityCard era-only headline + CompareTable 5-row + SearchPageClient slim header + searchSchema Zod + tests)
+- [ ] 49.1-05-PLAN.md — Similarity engine rebalance (algorithmic 1.25× RESCALE on TASTE_SUB_WEIGHTS + archetype categorical block delete + invariant tests)
+
+**Wave 2** *(blocked on Wave 1 — type-system unification + enricher chain)*
+- [ ] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
+
+**Wave 3** *(blocked on Wave 2 — schema drop on local DB)*
+- [ ] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration + local `drizzle-kit push` against the dev DB
+
+**Wave 4** *(blocked on Wave 3 — autonomous:false; runs ONLY after prod deploy of Plans 02-07)*
+- [ ] 49.1-08-PLAN.md — supabase/migrations/20260519010000_phase49_1_drop_primary_archetype.sql + `supabase db push --linked` + post-deploy prod verification
 
 ### Phase 50: Watch-Detail Architecture Spike
 **Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
@@ -209,7 +255,8 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
-| 49. Genre vs Style Taxonomy Spike | 0/TBD | Not started | - |
+| 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
+| 49.1. Remove Genre Surface (INSERTED) | 1/8 | In Progress|  |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up

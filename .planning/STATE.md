@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: ready_to_plan
-stopped_at: Phase 48 context gathered
-last_updated: "2026-05-19T20:51:18.493Z"
-last_activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50, 4 requirements)
+status: executing
+stopped_at: Completed 49.1-01-PLAN.md (Wave 0 test scaffolds)
+last_updated: "2026-05-20T06:15:51.829Z"
+last_activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 1
-  completed_plans: 1
-  percent: 100
+  total_phases: 4
+  completed_phases: 3
+  total_plans: 15
+  completed_plans: 8
+  percent: 53
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v5.2 Polish + Taxonomy — two production bug fixes and two investigation spikes.
+**Current focus:** Phase 49 — Genre vs Style Taxonomy Spike
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-05-19
+Phase: 49.1
+Plan: 1/8 (49.1-01 Wave 0 test scaffolds complete)
+Status: In Progress
+Last activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
 
 ```
 v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/3 phases)
@@ -39,8 +39,13 @@ v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
 - v5.1: 5 phases (43-47), 27 plans, 269 commits over 3 days
 - 32/32 v5.1 requirements shipped
 - Blockers encountered: 0
+- Phase 49.1 P01: 3 min, 3 tasks, 3 files
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 49.1 inserted after Phase 49: Remove genre surface — implements Phase 49 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (TAX-02) (URGENT)
 
 ### Key Decisions
 
@@ -50,6 +55,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **`assertOwner()` in every CMS Server Action**, not just the layout guard — Server Actions are HTTP-callable.
 - **Two-layer RLS** for published CMS content — `USING (status = 'published')` + explicit DAL `WHERE`.
 - **`revalidateTag('explore:hero', 'max')`** in all four Hero write paths — `revalidatePath` does not invalidate tag scopes.
+- **Wave 0 test scaffolds for Phase 49.1 use `as unknown as CatalogTasteAttributes`** to express the post-removal shape — `CatalogTasteAttributes.primaryArchetype` is still required in `src/lib/types.ts:224` today, so the cast lets Wave 0 tests assert the post-49.1 contract without forcing a parallel type edit. Plan 05 removes the cast.
 
 ### v5.2 Phase Structure
 
@@ -57,6 +63,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 |-------|------|--------------|
 | 48 | Fix wishlist mislabel + dark-mode chip contrast | BUG-01, BUG-02 |
 | 49 | Genre vs style taxonomy spike — written recommendation | TAX-01 |
+| 49.1 | Remove genre surface (drop primary_archetype, delete /explore/genres, rebalance taste weights) | TAX-02 |
 | 50 | Two watch-detail views architecture spike — written decision | ARCH-01 |
 
 ### Deferred Items
@@ -94,7 +101,7 @@ None.
 ## Session Continuity
 
 Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50).
-Stopped at: Phase 48 context gathered
+Stopped at: Completed 49.1-01-PLAN.md (Wave 0 test scaffolds)
 Next action: `/gsd-plan-phase 48` to plan and execute the two bug fixes.
 
 ## Operator Next Steps
