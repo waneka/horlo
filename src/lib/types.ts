@@ -205,7 +205,11 @@ export interface CatalogEntry {
   formality: number | null
   sportiness: number | null
   heritageScore: number | null
-  primaryArchetype: PrimaryArchetype | null
+  // Phase 49.1 D-SCOPE-01e — primaryArchetype dropped from CatalogEntry (D-39b-04
+  // identical-rendering lock requires this and CatalogTasteAttributes to track
+  // together). The DB column drop ships in Plans 07 (schema.ts) and 08 (prod
+  // supabase migration); reader/writer code has already been stripped throughout
+  // the catalog DAL, watches LEFT JOIN, and verdict composer projections.
   eraSignal: EraSignal | null
   designMotifs: string[]
   confidence: number | null
@@ -221,7 +225,11 @@ export interface CatalogTasteAttributes {
   formality: number | null         // 0..1
   sportiness: number | null        // 0..1
   heritageScore: number | null     // 0..1
-  primaryArchetype: PrimaryArchetype | null
+  // Phase 49.1 D-SCOPE-01e — primaryArchetype dropped. The closed-vocab
+  // PrimaryArchetype union below is retained for ARCHETYPE_CONFIG /
+  // CollectorArchetypes (D-EXPLORE-02), but the field is no longer projected
+  // through the type system or the LLM enricher chain. Plan 07 drops the
+  // matching DB column; Plan 08 ships the prod migration.
   eraSignal: EraSignal | null
   designMotifs: string[]           // closed vocab from src/lib/taste/vocab.ts (validated at write)
   confidence: number | null        // 0..1

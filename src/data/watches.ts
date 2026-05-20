@@ -4,7 +4,7 @@ import 'server-only'
 import { db } from '@/db'
 import { watches, profileSettings, watchesCatalog } from '@/db/schema'
 import { eq, and, or, asc, desc, inArray, sql, type SQL } from 'drizzle-orm'
-import type { Watch, PrimaryArchetype, EraSignal } from '@/lib/types'
+import type { Watch, EraSignal } from '@/lib/types'
 
 // Row type inferred from the Drizzle schema — used for mapping only.
 type WatchRow = typeof watches.$inferSelect
@@ -128,10 +128,13 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
     .select({
       watch: watches,
       taste: {
+        // Phase 49.1 D-SCOPE-01e + Pitfall 3 — primaryArchetype dropped from the
+        // LEFT JOIN projection. The DB column still exists until Plans 07/08
+        // ship the schema drop; this read-side update lands first so reader
+        // code is clean before the migration runs.
         formality: watchesCatalog.formality,
         sportiness: watchesCatalog.sportiness,
         heritageScore: watchesCatalog.heritageScore,
-        primaryArchetype: watchesCatalog.primaryArchetype,
         eraSignal: watchesCatalog.eraSignal,
         designMotifs: watchesCatalog.designMotifs,
         confidence: watchesCatalog.confidence,
@@ -154,7 +157,6 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
           formality: taste.formality !== null ? Number(taste.formality) : null,
           sportiness: taste.sportiness !== null ? Number(taste.sportiness) : null,
           heritageScore: taste.heritageScore !== null ? Number(taste.heritageScore) : null,
-          primaryArchetype: taste.primaryArchetype as PrimaryArchetype | null,
           eraSignal: taste.eraSignal as EraSignal | null,
           designMotifs: taste.designMotifs ?? [],
           confidence: taste.confidence !== null ? Number(taste.confidence) : null,

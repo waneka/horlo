@@ -87,11 +87,14 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   // canonical Watch.catalogTaste shape) renders identically on both surfaces.
   // Pitfall 9: catalog taste fields live at the top level on CatalogEntry, not
   // nested under a `catalogTaste` key — explicit field-by-field projection.
+  // Phase 49.1 D-SCOPE-01e + Pitfall 3 — projection drops primaryArchetype
+  // alongside the type-system change at src/lib/types.ts and the watches.ts
+  // LEFT JOIN mapper. All three sites change atomically to preserve the
+  // D-39b-04 identical-rendering lock.
   const catalogTaste: CatalogTasteAttributes | null = {
     formality: catalogEntry.formality,
     sportiness: catalogEntry.sportiness,
     heritageScore: catalogEntry.heritageScore,
-    primaryArchetype: catalogEntry.primaryArchetype,
     eraSignal: catalogEntry.eraSignal,
     designMotifs: catalogEntry.designMotifs,
     confidence: catalogEntry.confidence,

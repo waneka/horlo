@@ -72,7 +72,7 @@ const fixtureCatalog = {
   formality: null,
   sportiness: null,
   heritageScore: null,
-  primaryArchetype: null,
+  // Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogEntry shape.
   eraSignal: null,
   designMotifs: [],
   confidence: null,

@@ -97,7 +97,7 @@ function buildCatalogEntry(overrides: Partial<CatalogEntry> = {}): CatalogEntry 
     formality: null,
     sportiness: null,
     heritageScore: null,
-    primaryArchetype: null,
+    // Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogEntry shape.
     eraSignal: null,
     designMotifs: [],
     confidence: null,
@@ -129,9 +129,9 @@ describe('FIT-02 composer (Plan 02)', () => {
     mockResult = buildResult({ label: 'core-fit' })
     const args = {
       candidate: buildWatch('c1'),
-      // Phase 49.1 D-VERDICT-01 — fixtures pivoted to era axis; CatalogEntry still
-      // carries primaryArchetype (Plan 06 drops it) so the value is kept for shape
-      // parity, but verdict templates now discriminate on eraSignal.
+      // Phase 49.1 D-VERDICT-01 — fixtures pivoted to era axis; primaryArchetype
+      // dropped from CatalogEntry in Plan 06. Verdict templates discriminate on
+      // eraSignal.
       catalogEntry: buildCatalogEntry({ confidence: 0.8, eraSignal: 'modern' as const }),
       collection: [],
       preferences: defaultPrefs(),

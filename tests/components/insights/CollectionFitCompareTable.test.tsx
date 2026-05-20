@@ -19,12 +19,10 @@ import type { CatalogTasteAttributes } from '@/lib/types'
  * Wave 0 contract.
  */
 
-// Both candidate and owned literals deliberately omit `primaryArchetype`
-// (the post-49.1 shape). The current `CatalogTasteAttributes` interface still
-// declares `primaryArchetype: PrimaryArchetype | null` as required, so we cast
-// through `unknown`. After Plan 05 drops the field from the type, the cast
-// becomes unnecessary.
-const CANDIDATE_TASTE = {
+// Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogTasteAttributes.
+// Literals match the post-49.1 shape directly; the prior `unknown` cast is no
+// longer needed now that the field is gone from the interface.
+const CANDIDATE_TASTE: CatalogTasteAttributes = {
   formality: 0.7,
   sportiness: 0.2,
   heritageScore: 0.8,
@@ -32,9 +30,9 @@ const CANDIDATE_TASTE = {
   designMotifs: ['bauhaus'],
   confidence: 0.75,
   extractedFromPhoto: false,
-} as unknown as CatalogTasteAttributes
+}
 
-const OWNED_TASTE = {
+const OWNED_TASTE: CatalogTasteAttributes = {
   formality: 0.6,
   sportiness: 0.3,
   heritageScore: 0.75,
@@ -42,7 +40,7 @@ const OWNED_TASTE = {
   designMotifs: ['bauhaus', 'gilt-dial'],
   confidence: 0.8,
   extractedFromPhoto: false,
-} as unknown as CatalogTasteAttributes
+}
 
 describe('Phase 49.1 — CollectionFitCompareTable renders 5 rows', () => {
   it('renders 5 rows (Formality, Sportiness, Heritage, Era, Design Motifs)', () => {

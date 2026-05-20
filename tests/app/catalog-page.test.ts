@@ -124,7 +124,8 @@ const baseCatalogEntry = {
   styleTags: [], designTraits: [], roleTags: [], complications: [],
   ownersCount: 0, wishlistCount: 0,
   formality: null, sportiness: null, heritageScore: null,
-  primaryArchetype: null, eraSignal: null, designMotifs: [],
+  // Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogEntry shape.
+  eraSignal: null, designMotifs: [],
   confidence: null, extractedFromPhoto: false,
   createdAt: '2026-04-29T00:00:00.000Z', updatedAt: '2026-04-29T00:00:00.000Z',
 }
