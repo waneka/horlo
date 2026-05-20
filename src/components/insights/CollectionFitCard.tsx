@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertTriangle, Watch as WatchIcon, ArrowRight } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { VerdictBundle } from '@/lib/verdict/types'
@@ -15,9 +15,12 @@ import { CollectionFitCompareTable } from '@/components/insights/CollectionFitCo
  * Pitfall 1 mitigation: this file MUST NOT import @/lib/similarity or
  * @/lib/verdict/composer. Enforced by tests/static/CollectionFitCard.no-engine.test.ts.
  *
- * Three framings via VerdictBundle discriminated union:
+ * Two framings via VerdictBundle:
  *   - 'same-user' / 'cross-user' → full verdict (D-03/D-04 paths)
- *   - 'self-via-cross-user' (D-08) → "You own this watch" callout
+ *
+ * Phase 50.1 ARCH-02 — the legacy 'self-via-cross-user' branch and its
+ * "You own this watch" callout were removed; owner viewers redirect away from
+ * /catalog/[id] before CollectionFitCard renders.
  *
  * D-07 (viewer collection size 0 → hide card entirely) is enforced by the
  * CALLER, not this component. Caller renders nothing when verdict is null.
@@ -27,11 +30,6 @@ interface CollectionFitCardProps {
 }
 
 export function CollectionFitCard({ verdict }: CollectionFitCardProps) {
-  if (verdict.framing === 'self-via-cross-user') {
-    return <YouOwnThisCallout ownedAtIso={verdict.ownedAtIso} ownerHref={verdict.ownerHref} />
-  }
-
-  // verdict is VerdictBundleFull from here on
   const [headline, ...rest] = verdict.contextualPhrasings
 
   return (
@@ -112,48 +110,4 @@ export function CollectionFitCard({ verdict }: CollectionFitCardProps) {
       </CardContent>
     </Card>
   )
-}
-
-/**
- * D-08 self-via-cross-user callout. Replaces the entire card body — no header,
- * no verdict computed.
- *
- * Date format: Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
- * Source: viewer.watch.acquisitionDate ?? viewer.watch.createdAt — caller threads as ownedAtIso.
- */
-function YouOwnThisCallout({ ownedAtIso, ownerHref }: { ownedAtIso: string; ownerHref: string }) {
-  const formatted = formatOwnedDate(ownedAtIso)
-  return (
-    <Card>
-      <CardContent className="py-4 space-y-2">
-        <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <WatchIcon className="size-4 text-muted-foreground" aria-hidden />
-          You own this watch
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Added {formatted}.
-        </p>
-        <Link
-          href={ownerHref}
-          className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline inline-flex items-center gap-1"
-        >
-          Visit your watch detail
-          <ArrowRight className="inline size-3" aria-hidden />
-        </Link>
-      </CardContent>
-    </Card>
-  )
-}
-
-function formatOwnedDate(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return 'recently'
-  // UTC fixed timezone — ensures the rendered date matches the calendar day
-  // of the ISO string regardless of viewer locale (server vs client tz drift).
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date)
 }

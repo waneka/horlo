@@ -35,15 +35,17 @@ interface WishlistRationalePanelProps {
 
 /**
  * Compute the default textarea value (Phase 28 D-20).
- * - If verdict is a Full bundle, use the first rationale phrasing — the user-self
+ * - If verdict is non-null, use the first rationale phrasing — the user-self
  *   voice version of the verdict, intentionally chosen as the auto-fill source
  *   instead of contextualPhrasings[0] (which is verdict-to-user voice).
- * - Otherwise (self-via-cross-user OR null), default to empty.
+ * - Otherwise (null), default to empty.
  * Caller may override via initialNotes (e.g., for re-open semantics).
+ *
+ * Phase 50.1 ARCH-02 — the 'self-via-cross-user' early-return was removed; the
+ * framing it gated is unreachable post-redirect.
  */
 function defaultRationale(verdict: VerdictBundle | null): string {
   if (!verdict) return ''
-  if (verdict.framing === 'self-via-cross-user') return ''
   return verdict.rationalePhrasings[0] ?? ''
 }
 

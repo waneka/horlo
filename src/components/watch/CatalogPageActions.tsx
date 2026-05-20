@@ -12,8 +12,11 @@ import type { MovementType, StrapType, CrystalType } from '@/lib/types'
 /**
  * Phase 20.1 D-05 — 3-button row on /catalog/[catalogId] in cross-user framing.
  *
+ * Phase 50.1 ARCH-02 — the legacy `verdict.framing !== 'self-via-cross-user'`
+ * guard is gone: owner viewers redirect away from this page before it renders,
+ * so the only remaining precondition is viewer collection size > 0.
+ *
  * Rendered ONLY when:
- *   - verdict.framing !== 'self-via-cross-user' (existing 'You own this' UI stays)
  *   - viewer collection has > 0 watches (no verdict means no actionable context)
  *
  * The page Server Component decides whether to render this component. Once

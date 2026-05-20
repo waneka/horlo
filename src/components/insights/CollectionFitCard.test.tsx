@@ -57,19 +57,9 @@ describe('FIT-01 CollectionFitCard (Plan 03)', () => {
     expect(screen.queryByText(/viewing|someone else/i)).not.toBeInTheDocument()
   })
 
-  it('renders "You own this watch" callout for framing="self-via-cross-user" (no verdict)', () => {
-    const verdict: VerdictBundle = {
-      framing: 'self-via-cross-user',
-      ownedAtIso: '2026-04-12T00:00:00.000Z',
-      ownerHref: '/watch/per-user-uuid-abc',
-    }
-    render(<CollectionFitCard verdict={verdict} />)
-    expect(screen.getByText('You own this watch')).toBeInTheDocument()
-    expect(screen.getByText(/Apr 12, 2026/)).toBeInTheDocument()
-    expect(screen.getByText(/Visit your watch detail/)).toBeInTheDocument()
-    expect(screen.queryByText('Collection Fit')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Most Similar/)).not.toBeInTheDocument()
-  })
+  // Phase 50.1 ARCH-02 — the legacy 'self-via-cross-user' callout test was
+  // removed alongside the framing it asserted; owner viewers now redirect from
+  // /catalog/[id] to /watch/[id] before CollectionFitCard renders.
 
   it('hides most-similar section when verdict.mostSimilar is empty array', () => {
     render(<CollectionFitCard verdict={baseFullVerdict} />)

@@ -5,14 +5,18 @@ import type { Watch, SimilarityLabel, EraSignal, CatalogTasteAttributes } from '
 /**
  * Phase 20 D-04: VerdictBundle is the pure-render contract for <CollectionFitCard>.
  *
- * Discriminated union by `framing`:
+ * Discriminated by `framing`:
  *   - 'same-user' / 'cross-user' → full verdict (label, headline, contextual, mostSimilar, roleOverlap)
- *   - 'self-via-cross-user' (D-08) → "You own this" callout — no verdict computed
+ *
+ * Phase 50.1 ARCH-02 — the 'self-via-cross-user' (D-08) framing was retired when
+ * `/catalog/[catalogId]` started issuing a server-side redirect to `/watch/[id]`
+ * for the owner viewer; the old "You own this" callout is unreachable and was
+ * removed in the v5.2 close-out cleanup.
  *
  * Pitfall 3 (RSC serialization): every field is plain JSON. No date objects,
- * Map, Set, undefined-as-property. Calendar values are ISO date strings (ownedAtIso).
+ * Map, Set, undefined-as-property.
  */
-export type Framing = 'same-user' | 'cross-user' | 'self-via-cross-user'
+export type Framing = 'same-user' | 'cross-user'
 
 export interface VerdictMostSimilar {
   watch: Watch
@@ -20,7 +24,7 @@ export interface VerdictMostSimilar {
 }
 
 export interface VerdictBundleFull {
-  framing: 'same-user' | 'cross-user'
+  framing: Framing
   label: SimilarityLabel
   /** Verbatim getSimilarityLabelDisplay(label).text — chip copy. */
   headlinePhrasing: string
@@ -36,15 +40,8 @@ export interface VerdictBundleFull {
   candidateCatalogTaste: CatalogTasteAttributes | null
 }
 
-export interface VerdictBundleSelfOwned {
-  framing: 'self-via-cross-user'
-  /** ISO date string of viewer.acquisitionDate ?? viewer.createdAt — UI formats with Intl.DateTimeFormat short month. */
-  ownedAtIso: string
-  /** /watch/{viewer.watchId} — viewer's per-user watches.id, not catalog id. */
-  ownerHref: string
-}
-
-export type VerdictBundle = VerdictBundleFull | VerdictBundleSelfOwned
+/** Post-ARCH-02 alias: only the full-verdict shape remains. */
+export type VerdictBundle = VerdictBundleFull
 
 /**
  * Phase 20 D-02: viewer aggregate taste profile.

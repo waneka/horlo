@@ -32,8 +32,12 @@ interface ComposeArgs {
   collection: Watch[]
   preferences: UserPreferences
   profile: ViewerTasteProfile
-  /** self-owned framing is built upstream (D-08); composer only handles full-verdict cases. */
-  framing: Exclude<Framing, 'self-via-cross-user'>
+  /**
+   * Phase 50.1 ARCH-02 — the legacy `'self-via-cross-user'` framing was retired
+   * (owner viewers now redirect away from /catalog/[id]). Only the two
+   * full-verdict framings remain.
+   */
+  framing: Framing
 }
 
 const HEDGE_PREFIX = 'Possibly '
