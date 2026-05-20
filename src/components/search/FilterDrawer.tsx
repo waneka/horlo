@@ -7,8 +7,6 @@ import { CaseSizeChips } from '@/components/search/CaseSizeChips'
 import { StyleChips } from '@/components/search/StyleChips'
 import { BrandChips } from '@/components/search/BrandChips'
 import { EraChips } from '@/components/search/EraChips'
-import { GenreChips } from '@/components/search/GenreChips'
-import { ArchetypeChips } from '@/components/search/ArchetypeChips'
 
 interface FilterDrawerProps {
   open: boolean
@@ -20,15 +18,16 @@ interface FilterDrawerProps {
   onSizeChange: (v: string | null) => void
   onStyleChange: (v: string[]) => void
   styleVocab: string[]
-  /** FU-01 (260519-ga9) — Brand/Era/Genre/Archetype facets, single-select. */
+  /**
+   * FU-01 (260519-ga9) — Brand/Era facets, single-select.
+   * Phase 49.1 (D-EXPLORE-01): Genre + Archetype facets removed; archetype
+   * surface lives only in the /explore CollectorArchetypes rail, deep-linking
+   * to ?style= multi-select via StyleChips.
+   */
   brand: string | null
   era: string | null
-  genre: string | null
-  archetype: string | null
   onBrandChange: (v: string | null) => void
   onEraChange: (v: string | null) => void
-  onGenreChange: (v: string | null) => void
-  onArchetypeChange: (v: string | null) => void
   brandVocab: { slug: string; name: string }[]
 }
 
@@ -44,12 +43,8 @@ export function FilterDrawer({
   styleVocab,
   brand,
   era,
-  genre,
-  archetype,
   onBrandChange,
   onEraChange,
-  onGenreChange,
-  onArchetypeChange,
   brandVocab,
 }: FilterDrawerProps) {
   function handleClearAll() {
@@ -58,8 +53,6 @@ export function FilterDrawer({
     onStyleChange([])
     onBrandChange(null)
     onEraChange(null)
-    onGenreChange(null)
-    onArchetypeChange(null)
   }
 
   return (
@@ -82,8 +75,6 @@ export function FilterDrawer({
               <StyleChips selected={styleArr} onSelect={onStyleChange} vocab={styleVocab} />
               <BrandChips selected={brand} onSelect={onBrandChange} vocab={brandVocab} />
               <EraChips selected={era} onSelect={onEraChange} />
-              <GenreChips selected={genre} onSelect={onGenreChange} />
-              <ArchetypeChips selected={archetype} onSelect={onArchetypeChange} />
             </Drawer.Content>
             <div className="mt-auto flex flex-col gap-2 p-4 border-t border-border pt-3">
               <Drawer.Close

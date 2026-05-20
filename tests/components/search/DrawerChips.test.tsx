@@ -4,12 +4,16 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // ---------------------------------------------------------------------------
 // Phase 48 Plan 03 Task 1 — Drawer chip component tests (BUG-02 / D-07)
 //
-// Asserts that after migration each of the 7 drawer chip components:
+// Asserts that after migration each surviving drawer chip component:
 //   1. Renders chips via the shared <Chip variant="toggle"> primitive
 //      (each chip is a <button> with the toggle primitive's classes)
 //   2. Passes selected={true} when the chip matches the current selection
 //   3. Calls onSelect with the correct value on click
 //   4. Multi-select variant (StyleChips) toggles array membership correctly
+//
+// Phase 49.1 (D-EXPLORE-01): GenreChips + ArchetypeChips describes are deleted;
+// the components themselves are deleted. The drawer now stacks 5 chip groups
+// (Movement → CaseSize → Style → Brand → Era) per UI-SPEC §D.
 // ---------------------------------------------------------------------------
 
 // Mock the Chip primitive so we can verify props without resolving oklch CSS
@@ -39,26 +43,18 @@ vi.mock('@/components/ui/chip', () => ({
   ),
 }))
 
-// Mock vocab constants used by some chip components
+// Mock vocab constants used by some chip components.
+// Phase 49.1: PRIMARY_ARCHETYPES + ARCHETYPE_CONFIG mocks are no longer needed
+// here — GenreChips/ArchetypeChips were deleted. Other chip groups don't
+// consume these symbols (Movement/CaseSize use local constants; Era uses
+// ERA_SIGNALS only).
 vi.mock('@/lib/taste/vocab', () => ({
   ERA_SIGNALS: ['vintage-leaning', 'modern', 'contemporary'],
-  PRIMARY_ARCHETYPES: ['dress', 'dive', 'field', 'pilot'],
-}))
-
-vi.mock('@/lib/archetype-config', () => ({
-  ARCHETYPE_CONFIG: {
-    dress: { displayName: 'Dress' },
-    dive: { displayName: 'Dive' },
-    field: { displayName: 'Field' },
-    pilot: { displayName: 'Pilot' },
-  },
 }))
 
 // Import components under test after mocking
 const { BrandChips } = await import('@/components/search/BrandChips')
 const { EraChips } = await import('@/components/search/EraChips')
-const { GenreChips } = await import('@/components/search/GenreChips')
-const { ArchetypeChips } = await import('@/components/search/ArchetypeChips')
 const { MovementChips } = await import('@/components/search/MovementChips')
 const { CaseSizeChips } = await import('@/components/search/CaseSizeChips')
 const { StyleChips } = await import('@/components/search/StyleChips')
@@ -204,36 +200,7 @@ describe('StyleChips — multi-select (Plan 48-03 D-07)', () => {
   })
 })
 
-describe('GenreChips (Plan 48-03 D-07)', () => {
-  it('renders chips via <Chip variant="toggle"> for each PRIMARY_ARCHETYPE', () => {
-    render(<GenreChips selected={null} onSelect={vi.fn()} />)
-    const chips = screen.getAllByTestId('chip')
-    expect(chips.length).toBe(4)
-    chips.forEach((chip) => expect(chip).toHaveAttribute('data-variant', 'toggle'))
-  })
-
-  it('calls onSelect(null) when clicking the selected chip', () => {
-    const onSelect = vi.fn()
-    render(<GenreChips selected="dress" onSelect={onSelect} />)
-    const chips = screen.getAllByTestId('chip')
-    const dressChip = chips.find((c) => c.textContent === 'Dress')
-    fireEvent.click(dressChip!)
-    expect(onSelect).toHaveBeenCalledWith(null)
-  })
-})
-
-describe('ArchetypeChips (Plan 48-03 D-07)', () => {
-  it('renders chips via <Chip variant="toggle"> for each PRIMARY_ARCHETYPE', () => {
-    render(<ArchetypeChips selected={null} onSelect={vi.fn()} />)
-    const chips = screen.getAllByTestId('chip')
-    expect(chips.length).toBe(4)
-    chips.forEach((chip) => expect(chip).toHaveAttribute('data-variant', 'toggle'))
-  })
-
-  it('marks the selected archetype chip as selected=true', () => {
-    render(<ArchetypeChips selected="dive" onSelect={vi.fn()} />)
-    const chips = screen.getAllByTestId('chip')
-    const diveChip = chips.find((c) => c.textContent === 'Dive')
-    expect(diveChip).toHaveAttribute('data-selected', 'true')
-  })
-})
+// Phase 49.1 (D-EXPLORE-01): the GenreChips and ArchetypeChips describe blocks
+// were removed when the components themselves were deleted. The drawer's
+// surviving 5 groups (Movement / CaseSize / Style / Brand / Era) are exercised
+// above.
