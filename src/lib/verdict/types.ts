@@ -1,6 +1,6 @@
 // Phase 20 D-04: pure-render type contract for <CollectionFitCard>. Types-only — no runtime exports.
 
-import type { Watch, SimilarityLabel, PrimaryArchetype, EraSignal, CatalogTasteAttributes } from '@/lib/types'
+import type { Watch, SimilarityLabel, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 
 /**
  * Phase 20 D-04: VerdictBundle is the pure-render contract for <CollectionFitCard>.
@@ -56,7 +56,10 @@ export interface ViewerTasteProfile {
   meanFormality: number | null
   meanSportiness: number | null
   meanHeritageScore: number | null
-  dominantArchetype: PrimaryArchetype | null
+  /**
+   * Phase 49.1 D-VERDICT-03 — `dominantArchetype` removed; era axis now carries
+   * the "dominant categorical signal" load for verdict templates.
+   */
   dominantEraSignal: EraSignal | null
   topDesignMotifs: string[]  // always array; up to 3 entries by frequency
 }
@@ -66,11 +69,14 @@ export interface ViewerTasteProfile {
  * template is a string with ${slot} placeholders the composer fills.
  *
  * Predicate inputs include candidateTaste (the Phase 19.1 taste row of the candidate
- * watch) so templates can gate on confidence (Pitfall 4) and primaryArchetype
- * without re-querying.
+ * watch) so templates can gate on confidence (Pitfall 4) and eraSignal without
+ * re-querying.
+ *
+ * Phase 49.1 D-VERDICT-01 — `primaryArchetype` removed; templates pivot to the
+ * `eraSignal` axis. Composer threads `catalogEntry.eraSignal` into the snapshot.
  */
 export interface CandidateTasteSnapshot {
-  primaryArchetype: PrimaryArchetype | null
+  eraSignal: EraSignal | null
   heritageScore: number | null
   formality: number | null
   sportiness: number | null
