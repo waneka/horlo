@@ -218,7 +218,24 @@ Plans:
   5. The enricher in `src/lib/taste/vocab.ts` no longer writes `primary_archetype` (the column is gone)
   6. `/explore/genres` returns 404 (route removed); no internal links to it remain (grep `grep -r "/explore/genres" src/` returns zero matches)
   7. Existing tests still pass; new tests cover the simplified search filter surface and the rebalanced similarity weights
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+**Wave 1** *(5 parallel sub-plans — no shared file ownership)*
+- [ ] 49.1-01-PLAN.md — Wave 0 test scaffolds (migration-drop integration test, /explore/genres 404 smoke test, CollectionFitCompareTable component test)
+- [ ] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
+- [ ] 49.1-03-PLAN.md — /explore rail rewire + chip+route deletions (browse.ts unnest(style_tags) + GenreChips/ArchetypeChips/explore-genres deletions + BrowseModule tile + FilterDrawer + CollectorArchetypes deep-link repoint + tests)
+- [ ] 49.1-04-PLAN.md — Direct-UI archetype drops (ReferenceIdentityCard era-only headline + CompareTable 5-row + SearchPageClient slim header + searchSchema Zod + tests)
+- [ ] 49.1-05-PLAN.md — Similarity engine rebalance (algorithmic 1.25× RESCALE on TASTE_SUB_WEIGHTS + archetype categorical block delete + invariant tests)
+
+**Wave 2** *(blocked on Wave 1 — type-system unification + enricher chain)*
+- [ ] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
+
+**Wave 3** *(blocked on Wave 2 — schema drop on local DB)*
+- [ ] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration + local `drizzle-kit push` against the dev DB
+
+**Wave 4** *(blocked on Wave 3 — autonomous:false; runs ONLY after prod deploy of Plans 02-07)*
+- [ ] 49.1-08-PLAN.md — supabase/migrations/20260519010000_phase49_1_drop_primary_archetype.sql + `supabase db push --linked` + post-deploy prod verification
 
 ### Phase 50: Watch-Detail Architecture Spike
 **Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
@@ -237,7 +254,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
-| 49.1. Remove Genre Surface (INSERTED) | 0/TBD | Not started | - |
+| 49.1. Remove Genre Surface (INSERTED) | 0/8 | Not started | - |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
