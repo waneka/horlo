@@ -237,7 +237,7 @@ Plans:
 - [x] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration authored; `drizzle-kit push` deferred to user (worktree lacks DATABASE_URL)
 
 **Wave 4** *(blocked on Wave 3 — autonomous:false; runs ONLY after prod deploy of Plans 02-07)*
-- [ ] 49.1-08-PLAN.md — supabase/migrations/20260519010000_phase49_1_drop_primary_archetype.sql + `supabase db push --linked` + post-deploy prod verification
+- [x] 49.1-08-PLAN.md — supabase/migrations/20260520070000_phase49_1_drop_primary_archetype.sql authored + `supabase db push --linked` applied 2026-05-20; migration `20260520070000` recorded on prod (Remote = Local in migration list)
 
 ### Phase 50: Watch-Detail Architecture Spike
 **Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
