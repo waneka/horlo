@@ -72,7 +72,7 @@ function catalogEntryFrom(taste: CatalogTasteAttributes | null): CatalogEntry | 
     formality: taste.formality,
     sportiness: taste.sportiness,
     heritageScore: taste.heritageScore,
-    primaryArchetype: taste.primaryArchetype,
+    // Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogEntry shape.
     eraSignal: taste.eraSignal,
     designMotifs: taste.designMotifs,
     confidence: taste.confidence,

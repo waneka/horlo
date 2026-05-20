@@ -6,11 +6,9 @@ import type { CatalogTasteAttributes } from '@/lib/types'
 /**
  * Phase 39b D-39b-03 / D-39b-04 — ReferenceIdentityCard render contract.
  *
- * Phase 49.1 Plan 04 (D-SCOPE-01a): archetype side of the headline is removed.
- * The fixture below omits `primaryArchetype` (post-Plan-06 CatalogTasteAttributes
- * shape — the field is still declared on the type in this plan, so we cast
- * through `unknown` for now).
- * TODO Phase 49.1 Plan 06 — drop cast when CatalogTasteAttributes loses primaryArchetype.
+ * Phase 49.1 Plan 06 (D-SCOPE-01a + D-SCOPE-01e): primaryArchetype is dropped
+ * from CatalogTasteAttributes; fixture matches the post-49.1 shape directly
+ * (no `unknown` cast needed).
  *
  * Six scenarios per UI-SPEC §Test Coverage Contract (post-49.1):
  *  1. Renders all sections when confidence >= 0.5 (era-only headline)
@@ -21,7 +19,7 @@ import type { CatalogTasteAttributes } from '@/lib/types'
  *  6. Omits a scale bar when its value is null
  */
 
-const FULL_TASTE = {
+const FULL_TASTE: CatalogTasteAttributes = {
   formality: 0.7,
   sportiness: 0.3,
   heritageScore: 0.85,
@@ -29,7 +27,7 @@ const FULL_TASTE = {
   designMotifs: ['bauhaus', 'gilt-dial'],
   confidence: 0.75,
   extractedFromPhoto: false,
-} as unknown as CatalogTasteAttributes
+}
 
 describe('ReferenceIdentityCard', () => {
   it('renders all sections when confidence >= 0.5 (era-only headline)', () => {

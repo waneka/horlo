@@ -6,7 +6,7 @@ import { cacheLife } from 'next/cache'
 import { db } from '@/db'
 import { brands, watches, watchesCatalog } from '@/db/schema'
 import { and, arrayOverlaps, asc, between, desc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm'
-import type { CatalogEntry, CatalogSource, ImageSourceQuality, PrimaryArchetype, EraSignal, CatalogTasteAttributes } from '@/lib/types'
+import type { CatalogEntry, CatalogSource, ImageSourceQuality, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 // ---------------------------------------------------------------------------
@@ -79,7 +79,9 @@ function mapRowToCatalogEntry(row: CatalogRow): CatalogEntry {
     formality: row.formality !== null ? Number(row.formality) : null,
     sportiness: row.sportiness !== null ? Number(row.sportiness) : null,
     heritageScore: row.heritageScore !== null ? Number(row.heritageScore) : null,
-    primaryArchetype: (row.primaryArchetype as PrimaryArchetype | null) ?? null,
+    // Phase 49.1 D-SCOPE-01e — primaryArchetype dropped from CatalogEntry shape.
+    // The DB column still exists until Plans 07/08 drop it; the mapper simply
+    // ignores it.
     eraSignal: (row.eraSignal as EraSignal | null) ?? null,
     designMotifs: row.designMotifs,
     confidence: row.confidence !== null ? Number(row.confidence) : null,
@@ -270,7 +272,9 @@ const SEARCH_WATCHES_DEFAULT_LIMIT = 20
 /**
  * Optional facet filters for searchCatalogWatches (Phase 40 D-03/D-05/D-07).
  * URL values for size are ASCII-safe: lt36 / 36-39 / 40-42 / 43-45 / 46plus.
- * Phase 46 D-12: brand/era/genre/archetype facets for Explore deep-links (D-09..D-14).
+ * Phase 46 D-12: brand/era facets for Explore deep-links (D-09..D-14).
+ * Phase 49.1 D-SCOPE-01f — `genre` and `archetype` filters removed; the
+ * primary_archetype column is being dropped (Plans 07/08).
  */
 export interface CatalogSearchFilters {
   movement?: 'auto' | 'manual' | 'quartz' | 'spring_drive'
@@ -280,10 +284,6 @@ export interface CatalogSearchFilters {
   brand?: string
   /** Era signal (vintage-leaning / modern / contemporary). */
   era?: EraSignal
-  /** Genre value — maps to primaryArchetype column; ignored when archetype is also set. */
-  genre?: PrimaryArchetype
-  /** Primary archetype value (e.g. 'dive', 'pilot'); wins over genre when both present. */
-  archetype?: PrimaryArchetype
 }
 
 /**
@@ -343,15 +343,15 @@ export async function searchCatalogWatches({
   const trimmed = q.trim()
   // Phase 40 D-01 browse-mode lift: when at least one facet is active, proceed
   // even when q is shorter than the 2-char minimum.
-  // Phase 46 D-11: extend hasActiveFacet to include brand/era/genre/archetype facets.
+  // Phase 46 D-11: hasActiveFacet includes brand/era facets.
+  // Phase 49.1 D-SCOPE-01f — genre/archetype removed; primary_archetype column
+  // is being dropped (Plans 07/08).
   const hasActiveFacet = !!(
     filters?.movement ||
     filters?.size ||
     filters?.style?.length ||
     filters?.brand ||
-    filters?.era ||
-    filters?.genre ||
-    filters?.archetype
+    filters?.era
   )
   if (trimmed.length < SEARCH_WATCHES_TRIM_MIN_LEN && !hasActiveFacet) return []
 
@@ -441,13 +441,9 @@ export async function searchCatalogWatches({
         predicates.push(eq(watchesCatalog.eraSignal, filters.era)!)
       }
 
-      // Phase 46 D-12: Genre OR Archetype — both map to primaryArchetype column.
-      // Archetype wins over genre when both are set (Pitfall 4).
-      const primaryArchetypeFilter = filters?.archetype ?? filters?.genre
-      if (primaryArchetypeFilter) {
-        predicates.push(isNotNull(watchesCatalog.primaryArchetype)!)
-        predicates.push(eq(watchesCatalog.primaryArchetype, primaryArchetypeFilter)!)
-      }
+      // Phase 49.1 D-SCOPE-01f — Genre/Archetype facet block removed (the
+      // primary_archetype column is being dropped in Plans 07/08). The
+      // archetype-wins tiebreaker is gone with the predicate.
 
       // Phase 46 D-12: Brand facet — URL carries brands.slug, not brands.id.
       // Phase 46 WR-04: brand id is resolved up-front (resolvedBrandId); an
@@ -610,12 +606,14 @@ export async function updateCatalogTaste(
       ? sql`'{}'::text[]`
       : sql`ARRAY[${sql.join(taste.designMotifs.map((v) => sql`${v}`), sql`, `)}]::text[]`
 
+  // Phase 49.1 D-SCOPE-01e + Pitfall 4 — primary_archetype removed from the
+  // UPSERT SET clause; the column is being dropped in Plans 07/08, and the
+  // enricher chain no longer produces a value.
   const result = await db.execute<{ id: string }>(sql`
     UPDATE watches_catalog
        SET formality            = ${taste.formality},
            sportiness           = ${taste.sportiness},
            heritage_score       = ${taste.heritageScore},
-           primary_archetype    = ${taste.primaryArchetype},
            era_signal           = ${taste.eraSignal},
            design_motifs        = ${motifsSql},
            confidence           = ${taste.confidence},

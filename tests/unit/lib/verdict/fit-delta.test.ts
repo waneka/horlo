@@ -4,14 +4,12 @@ import type { CatalogTasteAttributes } from '@/lib/types'
 
 // Fixture builder — defaults represent a mid-range profile; each test overrides only differing fields.
 // Phase 49.1 D-SCOPE-01c — primaryArchetype dimension removed from fit-delta's
-// ranked output. CatalogTasteAttributes still carries the field (Plan 06 drops it
-// from the type); fixture keeps it null for shape parity until then.
+// ranked output AND from CatalogTasteAttributes (Plan 06 drops it from the type).
 function taste(overrides: Partial<CatalogTasteAttributes>): CatalogTasteAttributes {
   return {
     formality: 0.5,
     sportiness: 0.5,
     heritageScore: 0.5,
-    primaryArchetype: null,
     eraSignal: 'modern',
     designMotifs: ['brushed'],
     confidence: 0.9,

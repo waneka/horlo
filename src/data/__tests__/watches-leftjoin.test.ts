@@ -49,11 +49,12 @@ describe('Phase 38 CAT-13 #4 — getWatchesByUser LEFT JOIN populates catalogTas
           catalogId: 'cat-1',
         },
         // postgres-js surfaces numeric columns as strings — verify Number() coercion:
+        // Phase 49.1 — primaryArchetype dropped from the LEFT JOIN projection
+        // and from CatalogTasteAttributes; fixture no longer carries it.
         taste: {
           formality: '0.85',
           sportiness: '0.75',
           heritageScore: '0.90',
-          primaryArchetype: 'dive',
           eraSignal: 'modern',
           designMotifs: ['applied-indices'],
           confidence: '0.85',
@@ -66,7 +67,7 @@ describe('Phase 38 CAT-13 #4 — getWatchesByUser LEFT JOIN populates catalogTas
     expect(result[0].catalogTaste?.formality).toBe(0.85)         // number, not string
     expect(typeof result[0].catalogTaste?.formality).toBe('number')
     expect(result[0].catalogTaste?.confidence).toBe(0.85)
-    expect(result[0].catalogTaste?.primaryArchetype).toBe('dive')
+    expect(result[0].catalogTaste?.eraSignal).toBe('modern')
     expect(result[0].catalogTaste?.designMotifs).toEqual(['applied-indices'])
   })
 

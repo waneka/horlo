@@ -98,7 +98,7 @@ function buildCatalogEntry(overrides: Partial<CatalogEntry> = {}): CatalogEntry 
     // High heritage score so the heritage template is a viable trigger when
     // not in fallback mode.
     heritageScore: 0.85,
-    primaryArchetype: null,
+    // Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogEntry shape.
     eraSignal: null,
     designMotifs: [],
     confidence: null,

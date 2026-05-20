@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: executing
-stopped_at: Completed 49.1-05-PLAN.md (D-SIM-01..04 engine rebalance, 5 invariant tests added)
-last_updated: "2026-05-20T06:27:08.555Z"
-last_activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
+stopped_at: Completed 49.1-06-PLAN.md (type unification + DAL + 5-site enricher chain; Wave 2 ready for Plans 07/08 column drop)
+last_updated: "2026-05-20T07:05:00.000Z"
+last_activity: 2026-05-20 -- Phase 49.1 Plan 06 complete (primary_archetype removed from type system, DAL, enricher chain)
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 15
-  completed_plans: 9
-  percent: 60
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 ## Current Position
 
 Phase: 49.1
-Plan: 1/8 (49.1-01 Wave 0 test scaffolds complete)
+Plan: 6/8 (49.1-06 type unification + DAL + enricher chain complete; Wave 2 done)
 Status: In Progress
-Last activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
+Last activity: 2026-05-20 -- Phase 49.1 Plan 06 complete (primary_archetype removed from type system, DAL, enricher chain)
 
 ```
-v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/3 phases)
+v5.2 Progress: [██████████████░░░░░░] 67% (2/3 phases — Phase 48 + Phase 49 spike complete; Phase 49.1 6/8 plans)
 ```
 
 ## Performance Metrics
@@ -40,6 +40,7 @@ v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
 - 32/32 v5.1 requirements shipped
 - Blockers encountered: 0
 - Phase 49.1 P01: 3 min, 3 tasks, 3 files
+- Phase 49.1 P06: 18 min, 2 tasks, 27 files
 
 ## Accumulated Context
 
@@ -56,6 +57,8 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **Two-layer RLS** for published CMS content — `USING (status = 'published')` + explicit DAL `WHERE`.
 - **`revalidateTag('explore:hero', 'max')`** in all four Hero write paths — `revalidatePath` does not invalidate tag scopes.
 - **Wave 0 test scaffolds for Phase 49.1 use `as unknown as CatalogTasteAttributes`** to express the post-removal shape — `CatalogTasteAttributes.primaryArchetype` is still required in `src/lib/types.ts:224` today, so the cast lets Wave 0 tests assert the post-49.1 contract without forcing a parallel type edit. Plan 05 removes the cast.
+- **Phase 49.1 Plan 06 — D-39b-04 lockstep expanded to 4 sites (not 3).** The plan's `<interfaces>` enumerated 3 `CatalogTasteAttributes` projection sites (types.ts + catalog/[catalogId]/page.tsx + watches.ts LEFT JOIN). At execution we discovered `src/lib/verdict/composer.ts:107` builds a 4th projection (`candidateCatalogTaste`). Treated as Rule 3 (blocking) deviation and bundled into the Task 1 atomic commit. Pitfall 3 lockstep preserved by 4-site (not 3-site) atomic change.
+- **Phase 49.1 Plan 06 — PRIMARY_ARCHETYPE_SET deleted, PRIMARY_ARCHETYPES kept.** Once the archetype block in `validateAndCleanTaste` was removed, `PRIMARY_ARCHETYPE_SET` had zero remaining consumers and was deleted. `PRIMARY_ARCHETYPES` const + `PrimaryArchetype` type re-export both retained per D-EXPLORE-02 (consumed by `/explore` CollectorArchetypes rail's SQL ANY() filter).
 
 ### v5.2 Phase Structure
 
@@ -101,10 +104,11 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50).
-Stopped at: Completed 49.1-05-PLAN.md (D-SIM-01..04 engine rebalance, 5 invariant tests added)
-Next action: `/gsd-plan-phase 48` to plan and execute the two bug fixes.
+Last activity: 2026-05-20 — Phase 49.1 Plan 06 complete (primary_archetype removed from type system, DAL, enricher chain).
+Stopped at: Completed 49.1-06-PLAN.md (type unification + DAL + 5-site enricher chain; Wave 2 ready for Plans 07/08 column drop).
+Next action: Execute Plan 07 (drizzle schema drop + local migration) then Plan 08 (supabase prod migration push).
 
 ## Operator Next Steps
 
-- Run `/gsd-plan-phase 48` to begin Phase 48 (Bug Fixes)
+- Plan 07 owns `src/db/schema.ts:390` removal + `drizzle/migrations/0012_phase49_1_drop_primary_archetype.sql` authoring + local `drizzle-kit push`.
+- Plan 08 owns `supabase/migrations/20260520xxxxxx_phase49_1_drop_primary_archetype.sql` authoring + prod `supabase db push --linked`.

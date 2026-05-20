@@ -91,12 +91,13 @@ afterEach(() => {
 
 describe('enrichTasteAttributes', () => {
   it('text mode happy path returns parsed taste', async () => {
+    // Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogTasteAttributes
+    // and from the LLM tool schema; happy path now asserts the surviving fields.
     const result = await enrichTasteAttributes(BASE_INPUT)
     expect(result).not.toBeNull()
     expect(result?.formality).toBe(0.7)
     expect(result?.sportiness).toBe(0.2)
     expect(result?.heritageScore).toBe(0.85)
-    expect(result?.primaryArchetype).toBe('dress')
     expect(result?.eraSignal).toBe('vintage-leaning')
     expect(result?.designMotifs).toEqual(['gilt-dial', 'breguet-hands'])
     expect(result?.confidence).toBe(0.9)
@@ -162,32 +163,10 @@ describe('enrichTasteAttributes', () => {
     expect(failed).toBeDefined()
   })
 
-  it('out-of-vocab archetype yields null archetype in result and emits drift event', async () => {
-    // Feed a bad archetype through the mock — bypasses Anthropic strict:true
-    // validation to exercise the post-parse vocab filter (validateAndCleanTaste).
-    mockCreate.mockResolvedValue({
-      content: [{
-        type: 'tool_use',
-        name: 'record_taste_attributes',
-        input: { ...VALID_TOOL_USE_INPUT, primary_archetype: 'BOGUS_ARCH' },
-        id: 'toolu_drift',
-      }],
-      role: 'assistant',
-      model: 'claude-sonnet-4-6',
-      stop_reason: 'tool_use',
-    })
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const result = await enrichTasteAttributes(BASE_INPUT)
-    // Result IS returned — vocab violation is dropped + warned, not fatal
-    expect(result).not.toBeNull()
-    expect(result?.primaryArchetype).toBeNull()
-    const events = warnSpy.mock.calls
-      .map(call => { try { return JSON.parse(call[0]) } catch { return null } })
-      .filter(Boolean)
-    const drift = events.find(e => e.event === 'taste_vocab_drift' && e.field === 'primary_archetype')
-    expect(drift).toBeDefined()
-    expect(drift?.value).toBe('BOGUS_ARCH')
-  })
+  // Phase 49.1 Plan 06 — out-of-vocab archetype drift test removed; the
+  // primary_archetype field is no longer part of the LLM tool schema, Zod
+  // wire schema, or validateAndCleanTaste. The era-signal drift remains as
+  // the surviving sibling-pattern test.
 
   it('returns null when response has no tool_use block', async () => {
     mockCreate.mockResolvedValue({

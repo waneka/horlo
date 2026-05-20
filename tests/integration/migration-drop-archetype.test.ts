@@ -27,13 +27,10 @@ const maybe = process.env.DATABASE_URL ? describe : describe.skip
 
 const TEST_BRAND = `_test_phase49_1_${Date.now()}`
 
-// NOTE: We deliberately type the literal as the POST-49.1 shape (no
-// `primaryArchetype`). Today the `CatalogTasteAttributes` interface still
-// declares `primaryArchetype: PrimaryArchetype | null` as required, so we cast
-// through `unknown` to express "this object is the shape we expect after the
-// field is dropped from the type". After Plan 05 removes `primaryArchetype`
-// from the interface this cast becomes unnecessary.
-const VALID_TASTE_WITHOUT_ARCHETYPE = {
+// Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogTasteAttributes.
+// Literal now matches the post-49.1 shape directly; the prior `unknown` cast is
+// no longer required.
+const VALID_TASTE_WITHOUT_ARCHETYPE: CatalogTasteAttributes = {
   formality: 0.7,
   sportiness: 0.2,
   heritageScore: 0.8,
@@ -41,7 +38,7 @@ const VALID_TASTE_WITHOUT_ARCHETYPE = {
   designMotifs: ['gilt-dial', 'breguet-hands'],
   confidence: null,
   extractedFromPhoto: false,
-} as unknown as CatalogTasteAttributes
+}
 
 async function insertTestRow(): Promise<string> {
   const [row] = await db
