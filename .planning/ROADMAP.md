@@ -248,7 +248,20 @@ Plans:
   2. The document lays out the concrete pros and cons of keeping separate views vs merging, with the v7.0 Watch Photos milestone explicitly considered (multi-photo carousel + wear-pic surfacing)
   3. The document delivers a clear decision (keep separate / merge) with enough specificity that `/gsd-plan-phase` for Phase 50 can execute against it
   4. No merge implementation is shipped in this phase unless the spike strongly favors it and it is cheap — in which case a new requirement is added mid-milestone
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 50-01-PLAN.md — Scaffold 50-SPIKE.md + write §1 Domain + §2 Audience Matrix (viewer-state × ref-identity per D-AUDIENCE-01) + §3 Route Reality Today (12 /watch + 7 /catalog entry-point map + BUG-01 evidence)
+
+**Wave 2** *(blocked on Wave 1 — same file)*
+- [ ] 50-02-PLAN.md — §4 Variants A-E (5 subsections including proxy.ts router-cache landmine for Variant B) + §7 Cost Estimate per Variant table
+
+**Wave 3** *(blocked on Wave 2 — section splice between §4 and §7)*
+- [ ] 50-03-PLAN.md — §5 v7.0 Watch Photos Lens (4 sub-points × 5 variants per D-V7-LENS-01) + §6 Decision Matrix (5 variants × 7 locked criteria from D-VARIANTS-02)
+
+**Wave 4** *(blocked on Wave 3 — synthesis)*
+- [ ] 50-04-PLAN.md — §8 Recommendation (definitive primary variant verdict) + §9 Ship-Now Eligibility (verbatim format from 49-SPIKE.md §9)
 
 ## Progress Table
 
@@ -257,7 +270,7 @@ Plans:
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
 | 49.1. Remove Genre Surface (INSERTED) | 7/8 | In Progress|  |
-| 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
+| 50. Watch-Detail Architecture Spike | 0/4 | Planned     | - |
 
 ## Next Up
 
