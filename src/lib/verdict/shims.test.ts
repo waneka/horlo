@@ -39,7 +39,9 @@ function buildCatalogEntry(overrides: Partial<CatalogEntry> = {}): CatalogEntry 
     formality: 0.5,
     sportiness: 0.7,
     heritageScore: 0.8,
-    primaryArchetype: 'dive',
+    // Phase 49.1 — primaryArchetype field is deprecated on CatalogEntry shape;
+    // Plan 06 drops it from the type. Removed from fixture here as well.
+    primaryArchetype: null,
     eraSignal: 'modern',
     designMotifs: ['onyx-dial'],
     confidence: 0.9,

@@ -3,12 +3,15 @@ import { computeDeltaPhrase } from '@/lib/verdict/fit-delta'
 import type { CatalogTasteAttributes } from '@/lib/types'
 
 // Fixture builder — defaults represent a mid-range profile; each test overrides only differing fields.
+// Phase 49.1 D-SCOPE-01c — primaryArchetype dimension removed from fit-delta's
+// ranked output. CatalogTasteAttributes still carries the field (Plan 06 drops it
+// from the type); fixture keeps it null for shape parity until then.
 function taste(overrides: Partial<CatalogTasteAttributes>): CatalogTasteAttributes {
   return {
     formality: 0.5,
     sportiness: 0.5,
     heritageScore: 0.5,
-    primaryArchetype: 'dive',
+    primaryArchetype: null,
     eraSignal: 'modern',
     designMotifs: ['brushed'],
     confidence: 0.9,
@@ -47,17 +50,13 @@ describe('computeDeltaPhrase — D-16 delta algorithm', () => {
     expect(computeDeltaPhrase(candidate, owned)).toBe('More heritage-leaning')
   })
 
-  // Scenario 5: Archetype mismatch — all scalars equal, era matches, motifs identical
-  it('returns "Different archetype: Dive vs Dress" when primaryArchetype differs and dominates', () => {
-    const candidate = taste({ primaryArchetype: 'dive' })
-    const owned = taste({ primaryArchetype: 'dress' })
-    expect(computeDeltaPhrase(candidate, owned)).toBe('Different archetype: Dive vs Dress')
-  })
+  // Scenario 5 (Phase 49.1 D-SCOPE-01c) — "Different archetype: X vs Y" test
+  // removed; primaryArchetype dimension dropped from fit-delta's ranked output.
 
-  // Scenario 6: Era mismatch — all scalars within threshold, archetype matches, motifs identical
+  // Scenario 6: Era mismatch — all scalars within threshold, motifs identical
   it('returns "Different era: Vintage Leaning vs Modern" when eraSignal differs and dominates', () => {
-    const candidate = taste({ eraSignal: 'vintage-leaning', primaryArchetype: 'dive' })
-    const owned = taste({ eraSignal: 'modern', primaryArchetype: 'dive' })
+    const candidate = taste({ eraSignal: 'vintage-leaning' })
+    const owned = taste({ eraSignal: 'modern' })
     expect(computeDeltaPhrase(candidate, owned)).toBe('Different era: Vintage Leaning vs Modern')
   })
 

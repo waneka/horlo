@@ -2,7 +2,7 @@ import 'server-only'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { watches, watchesCatalog } from '@/db/schema'
-import type { Watch, PrimaryArchetype, EraSignal } from '@/lib/types'
+import type { Watch, EraSignal } from '@/lib/types'
 import type { ViewerTasteProfile } from '@/lib/verdict/types'
 
 /**
@@ -16,7 +16,7 @@ export const EMPTY_PROFILE: ViewerTasteProfile = {
   meanFormality: null,
   meanSportiness: null,
   meanHeritageScore: null,
-  dominantArchetype: null,
+  // Phase 49.1 D-VERDICT-03 — `dominantArchetype` removed.
   dominantEraSignal: null,
   topDesignMotifs: [],
 }
@@ -44,7 +44,8 @@ export async function computeViewerTasteProfile(
       formality: watchesCatalog.formality,
       sportiness: watchesCatalog.sportiness,
       heritageScore: watchesCatalog.heritageScore,
-      primaryArchetype: watchesCatalog.primaryArchetype,
+      // Phase 49.1 D-VERDICT-03 — `primaryArchetype` removed from SELECT; only
+      // `eraSignal` remains as the categorical signal feeding `dominantEraSignal`.
       eraSignal: watchesCatalog.eraSignal,
       designMotifs: watchesCatalog.designMotifs,
     })
@@ -74,11 +75,8 @@ export async function computeViewerTasteProfile(
     meanFormality: avg(formalities),
     meanSportiness: avg(sportinesses),
     meanHeritageScore: avg(heritages),
-    dominantArchetype: mode<PrimaryArchetype>(
-      rows
-        .map((r) => r.primaryArchetype as PrimaryArchetype | null)
-        .filter((x): x is PrimaryArchetype => x !== null),
-    ),
+    // Phase 49.1 D-VERDICT-03 — `dominantArchetype` removed; `dominantEraSignal`
+    // is now the sole categorical-mode signal feeding verdict templates.
     dominantEraSignal: mode<EraSignal>(
       rows
         .map((r) => r.eraSignal as EraSignal | null)

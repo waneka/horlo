@@ -45,7 +45,10 @@ export function computeVerdictBundle(args: ComposeArgs): VerdictBundleFull {
   const result = analyzeSimilarity(candidate, collection, preferences)
 
   const candidateTaste: CandidateTasteSnapshot = {
-    primaryArchetype: catalogEntry?.primaryArchetype ?? null,
+    // Phase 49.1 D-VERDICT-01 — `primaryArchetype` dropped; templates discriminate
+    // on `eraSignal` instead. `catalogEntry.eraSignal` is already on the
+    // CatalogEntry shape (Phase 19.1 enrichment).
+    eraSignal: catalogEntry?.eraSignal ?? null,
     heritageScore: catalogEntry?.heritageScore ?? null,
     formality: catalogEntry?.formality ?? null,
     sportiness: catalogEntry?.sportiness ?? null,
