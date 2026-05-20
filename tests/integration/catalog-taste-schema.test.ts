@@ -2,7 +2,11 @@ import { describe, it, expect, afterAll } from 'vitest'
 import { db } from '@/db'
 import { sql } from 'drizzle-orm'
 import { watchesCatalog } from '@/db/schema'
-import { PRIMARY_ARCHETYPES, ERA_SIGNALS } from '@/lib/taste/vocab'
+// Phase 49.1 Plan 06 — PRIMARY_ARCHETYPES no longer asserted here; the
+// primary_archetype CHECK constraint tests are removed alongside the column
+// drop (Plans 07/08 ship the migration). PRIMARY_ARCHETYPES const itself is
+// retained in vocab.ts for /explore CollectorArchetypes (D-EXPLORE-02).
+import { ERA_SIGNALS } from '@/lib/taste/vocab'
 
 const maybe = process.env.DATABASE_URL ? describe : describe.skip
 
@@ -21,26 +25,9 @@ afterAll(async () => {
 })
 
 maybe('watches_catalog CHECK constraints', () => {
-  it('rejects bad primary_archetype', async () => {
-    await expect(
-      db.execute(sql`
-        INSERT INTO watches_catalog (brand, model, primary_archetype)
-        VALUES (${TEST_BRAND}, 'reject-test', 'BOGUS_ARCH')
-      `),
-    ).rejects.toSatisfy(isCheckConstraintError)
-  })
-
-  it.each([...PRIMARY_ARCHETYPES])(
-    'accepts valid primary_archetype: %s',
-    async (archetype) => {
-      const result = await db.execute<{ id: string }>(sql`
-        INSERT INTO watches_catalog (brand, model, primary_archetype)
-        VALUES (${TEST_BRAND}, ${`accept-${archetype}`}, ${archetype})
-        RETURNING id
-      `)
-      expect((result as unknown as Array<{ id: string }>).length).toBe(1)
-    },
-  )
+  // Phase 49.1 Plan 06 — primary_archetype CHECK-constraint tests removed
+  // alongside the column drop (Plans 07/08). Era / image_source_quality
+  // CHECK-constraint tests remain as the surviving sibling pattern.
 
   it.each([...ERA_SIGNALS])('accepts valid era_signal: %s', async (era) => {
     const result = await db.execute<{ id: string }>(sql`

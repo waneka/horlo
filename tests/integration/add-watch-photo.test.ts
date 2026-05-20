@@ -75,12 +75,13 @@ vi.mock('@/data/watches', async (importOriginal) => {
 })
 
 // Mock enricher with canned taste — we test wiring not real LLM.
+// Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogTasteAttributes
+// and from the enricher chain.
 vi.mock('@/lib/taste/enricher', () => ({
   enrichTasteAttributes: vi.fn().mockResolvedValue({
     formality: 0.6,
     sportiness: 0.3,
     heritageScore: 0.7,
-    primaryArchetype: 'dress',
     eraSignal: 'modern',
     designMotifs: ['gilt-dial'],
     confidence: 0.8,

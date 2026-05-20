@@ -9,11 +9,13 @@ const maybe = process.env.DATABASE_URL ? describe : describe.skip
 
 const TEST_BRAND = `_test_taste_${Date.now()}`
 
+// Phase 49.1 Plan 06 — primaryArchetype dropped from CatalogTasteAttributes
+// and from the updateCatalogTaste UPSERT SQL. Fixture matches the post-49.1
+// shape.
 const VALID_TASTE: CatalogTasteAttributes = {
   formality: 0.7,
   sportiness: 0.2,
   heritageScore: 0.8,
-  primaryArchetype: 'dress',
   eraSignal: 'modern',
   designMotifs: ['gilt-dial', 'breguet-hands'],
   confidence: 0.85,
@@ -39,7 +41,10 @@ afterAll(async () => {
 })
 
 maybe('updateCatalogTaste', () => {
-  it('writes all 8 taste fields when confidence is NULL', async () => {
+  it('writes all 7 taste fields when confidence is NULL', async () => {
+    // Phase 49.1 Plan 06 — taste field count dropped from 8 to 7
+    // (primary_archetype removed). The DB column still exists until Plans 07/08
+    // drop it; the SQL UPDATE no longer writes it.
     const id = await insertTestRow()
     const result = await updateCatalogTaste(id, VALID_TASTE)
     expect(result.updated).toBe(true)
@@ -50,7 +55,6 @@ maybe('updateCatalogTaste', () => {
     expect(Number(row.formality)).toBeCloseTo(0.7, 5)
     expect(Number(row.sportiness)).toBeCloseTo(0.2, 5)
     expect(Number(row.heritageScore)).toBeCloseTo(0.8, 5)
-    expect(row.primaryArchetype).toBe('dress')
     expect(row.eraSignal).toBe('modern')
     expect(row.designMotifs).toEqual(['gilt-dial', 'breguet-hands'])
     expect(Number(row.confidence)).toBeCloseTo(0.85, 5)

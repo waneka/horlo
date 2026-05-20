@@ -5,11 +5,12 @@
 
 import { vi } from 'vitest'
 
+// Phase 49.1 Plan 06 — primary_archetype dropped from the wire-format fixture
+// alongside the LLM tool schema, Zod wire schema, and validateAndCleanTaste.
 export const VALID_TOOL_USE_INPUT = {
   formality: 0.7,
   sportiness: 0.2,
   heritage_score: 0.85,
-  primary_archetype: 'dress' as const,
   era_signal: 'vintage-leaning' as const,
   design_motifs: ['gilt-dial', 'breguet-hands'],
   confidence: 0.9,

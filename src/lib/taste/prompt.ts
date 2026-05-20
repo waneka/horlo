@@ -9,7 +9,10 @@
 // via JSON.stringify to escape quotes/newlines and prevent prompt-injection by
 // breaking the prompt structure. Length-cap at 200 chars before stringify.
 
-import { PRIMARY_ARCHETYPES, ERA_SIGNALS, DESIGN_MOTIFS } from './vocab'
+// Phase 49.1 D-SCOPE-01e + Pitfall 4 — PRIMARY_ARCHETYPES no longer consumed
+// here (the primary_archetype prompt line is gone). The const remains exported
+// from vocab.ts because /explore CollectorArchetypes uses it (D-EXPLORE-02).
+import { ERA_SIGNALS, DESIGN_MOTIFS } from './vocab'
 import type { EnrichmentSpecInput } from './types'
 
 const FIELD_LENGTH_CAP = 200
@@ -22,8 +25,6 @@ function safeField(v: string | null | undefined): string {
 const SYSTEM_FRAMING = `You are evaluating a watch and recording its structured taste attributes for a personal collection-management app. Use the provided spec data and (if present) the photo to infer the watch's character.
 
 Apply the following closed vocabularies — values outside these lists will be discarded:
-
-primary_archetype (pick exactly one): ${PRIMARY_ARCHETYPES.join(', ')}
 
 era_signal (pick exactly one): ${ERA_SIGNALS.join(', ')}
 

@@ -41,7 +41,10 @@ export const DESIGN_MOTIFS = [
 ] as const
 
 // Set lookup for O(1) vocab membership checks (D-05 filter).
-const PRIMARY_ARCHETYPE_SET = new Set<string>(PRIMARY_ARCHETYPES)
+// Phase 49.1 D-SCOPE-01e + Pitfall 4 — PRIMARY_ARCHETYPE_SET removed (its only
+// consumer was the archetype block in validateAndCleanTaste, which is gone).
+// PRIMARY_ARCHETYPES const is retained because /explore CollectorArchetypes
+// rail consumes it as the SQL ANY() filter array (D-EXPLORE-02).
 const ERA_SIGNAL_SET = new Set<string>(ERA_SIGNALS)
 const DESIGN_MOTIFS_SET = new Set<string>(DESIGN_MOTIFS)
 
@@ -57,7 +60,8 @@ export const TasteSchema = z.object({
   // Use z.string() not z.enum() so Zod passes through any string value and
   // validateAndCleanTaste performs the actual vocab filtering (D-05). The
   // enricher's strict:true tool schema handles upstream rejection at API level.
-  primary_archetype: z.string(),
+  // Phase 49.1 D-SCOPE-01e + Pitfall 4 — primary_archetype removed; the column
+  // is being dropped in Plans 07/08.
   era_signal:        z.string(),
   design_motifs:     z.array(z.string()).max(8),  // strings here; vocab filter applied post-parse
   confidence:        z.number().min(0).max(1),
@@ -72,10 +76,11 @@ export type TasteWire = z.infer<typeof TasteSchema>
 //
 // Behavior:
 //   - design_motifs: filter to in-vocab; emit taste_vocab_drift event for each drop
-//   - primary_archetype: keep if in vocab, else null + warn
 //   - era_signal: keep if in vocab, else null + warn
 //   - numeric fields: Zod already enforces [0,1]; out-of-range rejected before reaching here
 //   - extractedFromPhoto: caller sets, not in wire format
+// Phase 49.1 D-SCOPE-01e + Pitfall 4 — primary_archetype block removed; the
+// column is being dropped in Plans 07/08.
 export function validateAndCleanTaste(
   wire: TasteWire,
   context: { catalogId: string },
@@ -95,19 +100,6 @@ export function validateAndCleanTaste(
     }
   }
 
-  const archetype = PRIMARY_ARCHETYPE_SET.has(wire.primary_archetype)
-    ? (wire.primary_archetype as PrimaryArchetype)
-    : null
-  if (!archetype) {
-    console.warn(JSON.stringify({
-      event: 'taste_vocab_drift',
-      catalog_id: context.catalogId,
-      field: 'primary_archetype',
-      value: wire.primary_archetype,
-      timestamp: new Date().toISOString(),
-    }))
-  }
-
   const era = ERA_SIGNAL_SET.has(wire.era_signal)
     ? (wire.era_signal as EraSignal)
     : null
@@ -125,7 +117,6 @@ export function validateAndCleanTaste(
     formality: wire.formality,
     sportiness: wire.sportiness,
     heritageScore: wire.heritage_score,
-    primaryArchetype: archetype,
     eraSignal: era,
     designMotifs: cleanedMotifs,
     confidence: wire.confidence,

@@ -12,11 +12,12 @@ import {
 } from './vocab'
 import type { TasteWire } from './vocab'
 
+// Phase 49.1 Plan 06 — primary_archetype dropped from TasteSchema/TasteWire and
+// from validateAndCleanTaste; fixture matches the post-49.1 wire format.
 const VALID_WIRE: TasteWire = {
   formality: 0.7,
   sportiness: 0.2,
   heritage_score: 0.85,
-  primary_archetype: 'dress',
   era_signal: 'vintage-leaning',
   design_motifs: ['gilt-dial', 'breguet-hands'],
   confidence: 0.9,
@@ -35,7 +36,6 @@ describe('validateAndCleanTaste', () => {
     expect(result.formality).toBe(0.7)
     expect(result.sportiness).toBe(0.2)
     expect(result.heritageScore).toBe(0.85)
-    expect(result.primaryArchetype).toBe('dress')
     expect(result.eraSignal).toBe('vintage-leaning')
     expect(result.designMotifs).toEqual(['gilt-dial', 'breguet-hands'])
     expect(result.confidence).toBe(0.9)
@@ -60,22 +60,9 @@ describe('validateAndCleanTaste', () => {
     })
   })
 
-  it('primary_archetype out-of-vocab becomes null with warn', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const wire: TasteWire = {
-      ...VALID_WIRE,
-      primary_archetype: 'BOGUS_ARCH', // out-of-vocab; z.string() allows it; vocab filter drops it
-    }
-    const result = validateAndCleanTaste(wire, CONTEXT)
-    expect(result.primaryArchetype).toBeNull()
-    expect(warnSpy).toHaveBeenCalledOnce()
-    const parsed = JSON.parse(warnSpy.mock.calls[0][0])
-    expect(parsed).toMatchObject({
-      event: 'taste_vocab_drift',
-      field: 'primary_archetype',
-      value: 'BOGUS_ARCH',
-    })
-  })
+  // Phase 49.1 Plan 06 — primary_archetype drift-log test removed; the field
+  // is no longer present in the wire schema or in validateAndCleanTaste. The
+  // era_signal drift test below is the surviving sibling-pattern test.
 
   it('era_signal out-of-vocab becomes null with warn', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})

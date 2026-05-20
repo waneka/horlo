@@ -16,7 +16,12 @@ import 'server-only'
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
-import { TasteSchema, validateAndCleanTaste, PRIMARY_ARCHETYPES, ERA_SIGNALS, DESIGN_MOTIFS } from './vocab'
+// Phase 49.1 D-SCOPE-01e + Pitfall 4 — PRIMARY_ARCHETYPES no longer consumed
+// here (TASTE_TOOL.input_schema.properties dropped the primary_archetype field
+// and the prompt no longer instructs on it). The const remains exported from
+// vocab.ts because /explore CollectorArchetypes rail uses it for the SQL ANY
+// array (D-EXPLORE-02).
+import { TasteSchema, validateAndCleanTaste, ERA_SIGNALS, DESIGN_MOTIFS } from './vocab'
 import { buildTextPrompt, buildVisionPrompt } from './prompt'
 import { enrichWithWebSearch } from './webSearch'
 import type { EnrichmentInput, EnrichmentResult, EnrichmentMode } from './types'
@@ -35,7 +40,10 @@ const TASTE_TOOL = {
       formality:      { type: 'number', minimum: 0, maximum: 1, description: 'How formal/dressy 0..1' },
       sportiness:     { type: 'number', minimum: 0, maximum: 1 },
       heritage_score: { type: 'number', minimum: 0, maximum: 1, description: 'How storied/historically-significant 0..1' },
-      primary_archetype: { type: 'string', enum: [...PRIMARY_ARCHETYPES] },
+      // Phase 49.1 D-SCOPE-01e + Pitfall 4 — primary_archetype removed from
+      // both `properties` and `required`. The DB column is dropped in Plans
+      // 07/08; downstream Zod schema and validateAndCleanTaste also drop the
+      // field in lockstep.
       era_signal:        { type: 'string', enum: [...ERA_SIGNALS] },
       design_motifs:     {
         type: 'array',
@@ -48,7 +56,7 @@ const TASTE_TOOL = {
         description: 'Self-rated confidence in this assessment (0..1). Use <0.5 for ambiguous cases.',
       },
     },
-    required: ['formality', 'sportiness', 'heritage_score', 'primary_archetype', 'era_signal', 'design_motifs', 'confidence'],
+    required: ['formality', 'sportiness', 'heritage_score', 'era_signal', 'design_motifs', 'confidence'],
   },
 } satisfies Anthropic.Messages.Tool
 
