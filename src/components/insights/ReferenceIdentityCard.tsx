@@ -7,9 +7,10 @@ import type { CatalogTasteAttributes } from '@/lib/types'
  * Pure-renderer Reference Identity card for fresh-account viewers
  * (collection.length === 0) on /watch/{id} (NSV-06) and /catalog/{id} (NSV-20).
  *
- * Renders the inferred taste signature for a catalog reference: era · archetype
- * headline, three scale bars (formality / sportiness / heritage), and design
- * motif chips. No verdict, no judgment framing, no numeric confidence shown.
+ * Renders the inferred taste signature for a catalog reference: era-only
+ * headline (Phase 49.1 D-SCOPE-01a — archetype side dropped), three scale
+ * bars (formality / sportiness / heritage), and design motif chips. No
+ * verdict, no judgment framing, no numeric confidence shown.
  *
  * D-39b-01: pure-renderer import isolation. This file MUST NOT import from
  * `@/lib/similarity`, `@/lib/verdict/composer`, `@/lib/verdict/viewerTasteProfile`,
@@ -32,19 +33,6 @@ const ERA_LABELS: Record<NonNullable<CatalogTasteAttributes['eraSignal']>, strin
   'contemporary': 'Contemporary',
 }
 
-const ARCHETYPE_LABELS: Record<NonNullable<CatalogTasteAttributes['primaryArchetype']>, string> = {
-  dress: 'Dress',
-  dive: 'Dive',
-  field: 'Field',
-  pilot: 'Pilot',
-  chrono: 'Chronograph',
-  gmt: 'GMT',
-  racing: 'Racing',
-  sport: 'Sport',
-  tool: 'Tool',
-  hybrid: 'Hybrid',
-}
-
 interface ReferenceIdentityCardProps {
   taste: CatalogTasteAttributes | null
 }
@@ -56,9 +44,10 @@ export function ReferenceIdentityCard({ taste }: ReferenceIdentityCardProps) {
   }
 
   const eraLabel = taste.eraSignal ? ERA_LABELS[taste.eraSignal] : null
-  const archetypeLabel = taste.primaryArchetype ? ARCHETYPE_LABELS[taste.primaryArchetype] : null
 
-  const hasHeadline = Boolean(eraLabel || archetypeLabel)
+  // Phase 49.1 D-SCOPE-01a — headline is era-only after archetype removal.
+  // The archetype label lookup + span are deleted; hasHeadline reduces to Boolean(eraLabel).
+  const hasHeadline = Boolean(eraLabel)
   const hasScale =
     taste.formality !== null || taste.sportiness !== null || taste.heritageScore !== null
   const hasMotifs = taste.designMotifs.length > 0
@@ -72,8 +61,6 @@ export function ReferenceIdentityCard({ taste }: ReferenceIdentityCardProps) {
         {hasHeadline && (
           <p className="text-base font-semibold text-foreground">
             {eraLabel && <span className="truncate">{eraLabel}</span>}
-            {eraLabel && archetypeLabel && ' · '}
-            {archetypeLabel && <span className="truncate">{archetypeLabel}</span>}
           </p>
         )}
 
