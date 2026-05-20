@@ -1,8 +1,9 @@
 ---
 id: SEED-011
-status: active
+status: implemented
 planted: 2026-05-19
 planted_during: 2026-05-19 bug/feature triage — post-v5.1 notes review
+implemented_in: v5.2 (shipped 2026-05-20 — Phases 48, 49, 49.1, 50, 50.1; 6/6 requirements satisfied)
 trigger_when: starting milestone v5.2 immediately (the next milestone). Run /gsd-new-milestone for v5.2.
 scope: small
 related_phases: [v5.1 /search facets (FilterDrawer, FU-01 chip components), v4.0 catalog/watch detail views (/catalog/[catalogId], /watch/[id]), taste taxonomy (style tags, genre, PRIMARY_ARCHETYPES)]

@@ -9,7 +9,7 @@
 - ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
 - ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
 - ✅ **v5.1 Explore Page Redesign** — Phases 43-47 (shipped 2026-05-19) — [archive](milestones/v5.1-ROADMAP.md)
-- 🚧 **v5.2 Polish + Taxonomy** — Phases 48-50 (in progress)
+- ✅ **v5.2 Polish + Taxonomy** — Phases 48-50 + 49.1 + 50.1 (shipped 2026-05-20) — [archive](milestones/v5.2-ROADMAP.md)
 - 📋 **v6.0 Social Interaction** — planted (SEED-012)
 - 📋 **v7.0 Watch Photos** — planted (SEED-013)
 - 📋 **v8.0 Add-Watch Redesign** — planted (SEED-010)
@@ -140,12 +140,20 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 
 </details>
 
-### v5.2 Polish + Taxonomy (Phases 48-50 + 49.1)
+<details>
+<summary>✅ v5.2 Polish + Taxonomy (Phases 48-50 + 49.1 + 50.1) — SHIPPED 2026-05-20</summary>
 
-- [x] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast (completed 2026-05-19)
-- [x] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation (completed 2026-05-19)
-- [ ] **Phase 49.1: Remove Genre Surface** (INSERTED) - Implement spike recommendation: drop `primary_archetype` + chips + `/explore/genres`, rebalance similarity
-- [ ] **Phase 50: Watch-Detail Architecture Spike** - Compare two-view vs merged-view and produce written decision
+- [x] Phase 48: User-Facing Bug Fixes (3/3 plans) — completed 2026-05-19
+- [x] Phase 49: Genre vs Style Taxonomy Spike (3/3 plans) — completed 2026-05-19
+- [x] Phase 49.1: Remove Genre Surface (8/8 plans, inserted) — completed 2026-05-20
+- [x] Phase 50: Watch-Detail Architecture Spike (4/4 plans) — completed 2026-05-20
+- [x] Phase 50.1: URL Canonicalization (3/3 plans, inserted) — completed 2026-05-20
+
+6/6 v5.2 requirements shipped (BUG-01, BUG-02, TAX-01, TAX-02, ARCH-01, ARCH-02). Two spike-then-execute chains landed: TAX-01 → TAX-02 (retired genre/archetype taxonomy surface; `style_tags` becomes single SoT for the functional-category axis); ARCH-01 → ARCH-02 (page-layer `redirect()` from `/catalog/[catalogId]` to `/watch/[id]` for owner viewer; Variant C unified `/w/[ref]` deferred to v7.0). Milestone-close audit closed D-DEBT-01 inline (dead `self-via-cross-user` framing surface removed across 6 files); status promoted `tech_debt` → `passed`. Operational gates D-DEBT-02 (5 Phase 49.1 prod/visual gates) + D-DEBT-03 (1 Phase 48 dark-mode UAT) remain as post-deploy verification.
+
+See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5.2-MILESTONE-AUDIT.md](milestones/v5.2-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
 
 ### 📋 v6.0 Social Interaction (Planted)
 
@@ -153,7 +161,7 @@ Not yet roadmapped — seeded as SEED-012. A scoped social layer on the existing
 
 ### 📋 v7.0 Watch Photos (Planted)
 
-Not yet roadmapped — seeded as SEED-013. Multi-photo carousel per watch (replacing the single `imageUrl`); public wear pics surface on watch detail; wear pics persist in the Wears tab (Home rail stays ephemeral); add-watch flow encourages photos with a per-person cap.
+Not yet roadmapped — seeded as SEED-013. Multi-photo carousel per watch (replacing the single `imageUrl`); public wear pics surface on watch detail; wear pics persist in the Wears tab (Home rail stays ephemeral); add-watch flow encourages photos with a per-person cap. **Reconsider Variant C (unified `/w/[ref]` route)** at this milestone — `src/app/catalog/[catalogId]/page.tsx:228-234` carries a `TODO: revisit for Variant C in v7.0` comment planted by Phase 50.1 (ARCH-02) so the carousel implementation phase inherits an explicit decision point.
 
 ### 📋 v8.0 Add-Watch Redesign (Planted)
 
@@ -161,134 +169,12 @@ Not yet roadmapped — seeded as SEED-010. Search-first add-watch flow. The cata
 
 ### 💤 Catalog Expansion (Unscheduled)
 
-Seeded as SEED-009 — catalog breadth expansion past the ~100-row bootstrap. Unscheduled: the catalog-growth strategy is being rethought (decision 2026-05-19).
+Seeded as SEED-009 — catalog breadth expansion past the ~100-row bootstrap. Unscheduled: the catalog-growth strategy is being rethought (decision 2026-05-19). v5.2 enriched the existing axis (retired the genre/archetype layer) without adding breadth.
 
 ### 💤 Market Value (Future)
 
 Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits after v8.0; needs the SEED-007 market-pricing API spike first. (No longer numbered v6.0 — that slot is now Social Interaction.)
 
-## Phase Details
-
-### Phase 48: User-Facing Bug Fixes
-**Goal**: Both live production bugs are resolved — wishlist watches are correctly labeled, and `/search` filter chips are legible in dark mode
-**Depends on**: Nothing (first phase of v5.2)
-**Requirements**: BUG-01, BUG-02
-**Success Criteria** (what must be TRUE):
-  1. A watch on the user's wishlist, reached via `/catalog/[catalogId]` from search, displays a wishlisted state label — never "you own this watch"
-  2. All `/search` filter chip groups (movement, size, style, brand, era, genre, archetype) render with legible text contrast in dark mode — no black text on dark backgrounds
-  3. The ownership-state fix does not regress the "you own this watch" label for watches the user actually owns
-**Plans**: 3 plans
-- [x] 48-01-PLAN.md — BUG-01 catalog ownership query fix + regression tests (status=owned filter, 3 new test cases, profiles mock)
-- [x] 48-02-PLAN.md — Shared CVA Chip primitive (src/components/ui/chip.tsx) with BUG-02 token fix baked in + unit tests
-- [x] 48-03-PLAN.md — Migrate all 8 chip surfaces to primitive (7 drawer chips + SearchPageClient) + manual dark-mode UAT
-**UI hint**: yes
-
-### Phase 49: Genre vs Style Taxonomy Spike
-**Goal**: A written recommendation exists — backed by code evidence — on whether `genre` and `style` should be consolidated, one removed, or kept as-is
-**Depends on**: Phase 48
-**Requirements**: TAX-01
-**Success Criteria** (what must be TRUE):
-  1. A spike document maps every consumer of `genre` and `style` (filters, similarity engine, `/explore` Browse indices, watch cards) — showing what each field actually does at each callsite
-  2. The document identifies where the fields overlap, diverge, or produce redundant UI/data
-  3. The document delivers a clear recommendation (consolidate / remove one / keep both) with rationale strong enough to act on
-  4. No consolidation or removal implementation is shipped in this phase unless the spike specifically flags it as cheap and strongly favored — in which case a new requirement is added mid-milestone
-**Plans**: 3 plans
-
-Plans:
-**Wave 1**
-- [x] 49-01-PLAN.md — Consumer audit: write Domain + Consumer Map + Overlap & Divergence Matrix (§1-3) covering all 9 D-01 surfaces
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 49-02-PLAN.md — Live-catalog evidence: run 5 D-07 SQL queries against prod/mirror and embed results in §4
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
-
-### Phase 49.1: Remove Genre Surface (INSERTED)
-**Goal**: The genre/archetype taxonomy surface is removed: `primary_archetype` column dropped from `watches_catalog`, `GenreChips` + `ArchetypeChips` + `/explore/genres` + `archetype-config.ts` deleted, catalog DAL and similarity engine updated. Single source of truth for the functional-category axis becomes `style_tags`.
-**Depends on**: Phase 49
-**Requirements**: TAX-02
-**Inserted**: 2026-05-19 mid-milestone per Phase 49 spike §9 Ship-Now: YES verdict (ROADMAP SC#4 escape hatch)
-**Source**: `.planning/phases/49-genre-vs-style-taxonomy-spike/49-SPIKE.md` §7 (Primary recommendation: `remove-genre`) + §8 (Cost row B) + §9 (Ship-Now eligibility)
-**Success Criteria** (what must be TRUE):
-  1. `watches_catalog.primary_archetype` column no longer exists in `src/db/schema.ts` and the drop has been pushed to prod via `supabase db push --linked` (one drizzle migration + one supabase migration)
-  2. `src/components/search/GenreChips.tsx`, `src/components/search/ArchetypeChips.tsx`, `src/app/explore/genres/page.tsx`, and `src/lib/archetype-config.ts` are deleted; `FilterDrawer.tsx` no longer imports/renders either chip group; `BrowseModule.tsx` no longer links to `/explore/genres`
-  3. `CatalogSearchFilters` in `src/data/catalog.ts` no longer has `genre` or `archetype` fields; the archetype-wins tiebreaker at line 446 is removed; `getBrowseGenreCounts()` is deleted from `src/data/browse.ts`
-  4. The 0.04 `TASTE_SUB_WEIGHTS.archetypeMatch` weight in `src/lib/similarity.ts` is redistributed across the remaining taste sub-budget (sub-weights sum to 1.0 invariant preserved); the archetype categorical-match block at line 125 is removed
-  5. The enricher in `src/lib/taste/vocab.ts` no longer writes `primary_archetype` (the column is gone)
-  6. `/explore/genres` returns 404 (route removed); no internal links to it remain (grep `grep -r "/explore/genres" src/` returns zero matches)
-  7. Existing tests still pass; new tests cover the simplified search filter surface and the rebalanced similarity weights
-**Plans**: 8 plans
-
-Plans:
-**Wave 0** *(test scaffolds — must complete before Wave 1)*
-- [x] 49.1-01-PLAN.md — Wave 0 test scaffolds (migration-drop integration test, /explore/genres 404 smoke test, CollectionFitCompareTable component test)
-
-**Wave 1** *(4 parallel sub-plans — Plans 03 and 04 depend on 49.1-01 Wave 0 tests; Plans 02 and 05 have no Wave 0 dependency)*
-- [x] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
-- [x] 49.1-03-PLAN.md — /explore rail rewire + chip+route deletions (browse.ts unnest(style_tags) + GenreChips/ArchetypeChips/explore-genres deletions + BrowseModule tile + FilterDrawer + CollectorArchetypes deep-link repoint + tests)
-- [x] 49.1-04-PLAN.md — Direct-UI archetype drops (ReferenceIdentityCard era-only headline + CompareTable 5-row + SearchPageClient slim header + searchSchema Zod + tests)
-- [x] 49.1-05-PLAN.md — Similarity engine rebalance (algorithmic 1.25× RESCALE on TASTE_SUB_WEIGHTS + archetype categorical block delete + invariant tests)
-
-**Wave 2** *(blocked on Wave 1 — type-system unification + enricher chain)*
-- [x] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
-
-**Wave 3** *(blocked on Wave 2 — schema drop on local DB)*
-- [x] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration authored; `drizzle-kit push` deferred to user (worktree lacks DATABASE_URL)
-
-**Wave 4** *(blocked on Wave 3 — autonomous:false; runs ONLY after prod deploy of Plans 02-07)*
-- [x] 49.1-08-PLAN.md — supabase/migrations/20260520070000_phase49_1_drop_primary_archetype.sql authored + `supabase db push --linked` applied 2026-05-20; migration `20260520070000` recorded on prod (Remote = Local in migration list)
-
-### Phase 50: Watch-Detail Architecture Spike
-**Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
-**Depends on**: Phase 48
-**Requirements**: ARCH-01
-**Success Criteria** (what must be TRUE):
-  1. The decision document describes what each route currently does and who reaches it (owner, wishlist-holder, anonymous visitor, cross-user browse)
-  2. The document lays out the concrete pros and cons of keeping separate views vs merging, with the v7.0 Watch Photos milestone explicitly considered (multi-photo carousel + wear-pic surfacing)
-  3. The document delivers a clear decision (keep separate / merge) with enough specificity that `/gsd-plan-phase` for Phase 50 can execute against it
-  4. No merge implementation is shipped in this phase unless the spike strongly favors it and it is cheap — in which case a new requirement is added mid-milestone
-**Plans**: 4 plans
-
-Plans:
-**Wave 1**
-- [x] 50-01-PLAN.md — Scaffold 50-SPIKE.md + write §1 Domain + §2 Audience Matrix (viewer-state × ref-identity per D-AUDIENCE-01) + §3 Route Reality Today (12 /watch + 7 /catalog entry-point map + BUG-01 evidence)
-
-**Wave 2** *(blocked on Wave 1 — same file)*
-- [x] 50-02-PLAN.md — §4 Variants A-E (5 subsections including proxy.ts router-cache landmine for Variant B) + §7 Cost Estimate per Variant table
-
-**Wave 3** *(blocked on Wave 2 — section splice between §4 and §7)*
-- [x] 50-03-PLAN.md — §5 v7.0 Watch Photos Lens (4 sub-points × 5 variants per D-V7-LENS-01) + §6 Decision Matrix (5 variants × 7 locked criteria from D-VARIANTS-02)
-
-**Wave 4** *(blocked on Wave 3 — synthesis)*
-- [x] 50-04-PLAN.md — §8 Recommendation (definitive primary variant verdict) + §9 Ship-Now Eligibility (verbatim format from 49-SPIKE.md §9)
-
-### Phase 50.1: URL Canonicalization (INSERTED)
-**Goal**: When the viewer owns a catalog ref reached via `/catalog/[catalogId]`, the server page issues a page-layer `redirect()` from `next/navigation` to `/watch/[id]`. The in-route D-08 "You own this" framing flip at `src/app/catalog/[catalogId]/page.tsx:107-115` is removed entirely; the Phase 48 BUG-01 maintenance tax retires with it.
-**Depends on**: Phase 50
-**Requirements**: ARCH-02
-**Inserted**: 2026-05-20 mid-milestone per Phase 50 spike §9 Ship-Now: YES verdict (ROADMAP SC#4 escape hatch)
-**Source**: `.planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md` §8 (Primary recommendation: Variant B URL canonicalization) + §9 (Ship-Now: YES, Trigger: ARCH-02 → Phase 50.1)
-**Success Criteria** (what must be TRUE):
-  1. `src/app/catalog/[catalogId]/page.tsx` imports `redirect` from `next/navigation` and calls `redirect(\`/watch/${viewerOwnedRow.id}\`)` immediately after `findViewerWatchByCatalogId` returns a non-null `viewerOwnedRow`; the inline `VerdictBundleSelfOwned` construction at lines 107–115 is deleted
-  2. `findViewerWatchByCatalogId` (`src/app/catalog/[catalogId]/page.tsx:282-308`) no longer needs the `status='owned'` scope (line 296) because the framing flip it served is gone; the function either drops the status filter or is simplified accordingly (planner's call — both are correct once the flip is gone)
-  3. An automated test (Playwright or route handler test) asserts: GET `/catalog/[catalogId]` for an owned catalog ref returns a 307 with `Location: /watch/[id]`; wishlist-, sold-, and unrelated-status rows do NOT trigger the redirect (the Phase 48 BUG-01 edge cases stay green)
-  4. The redirect happens at the page layer, NOT in `proxy.ts` (per `feedback_proxy_router_cache_poisoning` memory — a `NextResponse.redirect` on RSC prefetch poisons Next 16's Router Cache → 404 on soft-nav). Verified by grep: `proxy.ts` does not contain `/catalog/` redirect logic
-  5. A `TODO: revisit for Variant C in v7.0` comment is added at the catalog page's `OtherOwnersRoster` / carousel render anchor so the v7.0 milestone inherits an explicit decision point rather than a surprise
-  6. Existing tests for the `/catalog/[catalogId]` cross-user view (non-owner viewers, empty-collection viewers, wishlist-holder per BUG-01) still pass — Variant B preserves the cross-user catalog surface unchanged
-  7. ARCH-01 is marked Complete in REQUIREMENTS.md traceability; ARCH-02 is added with status `In Progress` then `Complete` after this phase verifies
-**Plans**: TBD
-
-## Progress Table
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
-| 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
-| 49.1. Remove Genre Surface (INSERTED) | 8/8 | Complete    | 2026-05-20 |
-| 50. Watch-Detail Architecture Spike | 4/4 | Complete    | 2026-05-20 |
-| 50.1. URL Canonicalization (INSERTED) | 3/3 | Complete   | 2026-05-20 |
-
 ## Next Up
 
-v5.2 Polish + Taxonomy is active (Phases 48-50.1, 5 requirements after the ARCH-02 mid-milestone add). Phase 50 just closed (Variant B — URL canonicalization, ship YES per spike §9). Plan Phase 50.1 with `/gsd-plan-phase 50.1`.
+v5.2 Polish + Taxonomy shipped 2026-05-20 — 5 phases, 21 plans, 6/6 requirements. Audit status `passed` (after D-DEBT-01 + D-DRIFT-01 closed inline). Up next: run `/gsd-new-milestone` to begin the next milestone (likely v6.0 Social Interaction per SEED-012, or another seed per current product priorities).

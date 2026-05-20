@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 50 context gathered
-last_updated: "2026-05-20T19:06:48.776Z"
-last_activity: 2026-05-20 -- Phase 50.1 marked complete
+last_updated: "2026-05-20T21:00:01.171Z"
+last_activity: 2026-05-20 — Milestone v5.2 completed and archived
 progress:
   total_phases: 6
   completed_phases: 6
@@ -25,14 +25,10 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 ## Current Position
 
-Phase: 50.1 — COMPLETE
-Plan: 1 of 3
-Status: Phase 50.1 complete
-Last activity: 2026-05-20 -- Phase 50.1 marked complete
-
-```
-v5.2 Progress: [███████████████░░░░░] 75% (2/3 phases — Phase 48 + Phase 49 spike complete; Phase 49.1 7/8 plans)
-```
+Phase: Milestone v5.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-20 — Milestone v5.2 completed and archived
 
 ## Performance Metrics
 
@@ -106,6 +102,38 @@ None blocking.
 
 None.
 
+## Deferred Items
+
+Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
+
+| Category | Item | Status | Notes |
+|----------|------|--------|-------|
+| debug | knowledge-base | resolved-index | False positive — `.planning/debug/knowledge-base.md` is the resolved-sessions index, not an open session |
+| verification | Phase 49.1 | human_needed | D-DEBT-02: 5 prod/visual user-action gates (prod db push, prod migration test, 3 browser smokes) — documented in v5.2-MILESTONE-AUDIT.md; non-blocking post-deploy items |
+| uat | Phase 48 | passed | False positive — 0 pending scenarios; the related D-DEBT-03 dark-mode UAT is documented in v5.2-MILESTONE-AUDIT.md |
+| quick_task | 260413-qp3-price-prominence-and-filter-collapse | stale-slug | Stale quick-task reference; no `.planning/quick-tasks/` directory present |
+| quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | stale-slug | Stale quick-task reference |
+| quick_task | 260421-srx-wrap-follower-following-counts-in-link-o | stale-slug | Stale quick-task reference |
+| quick_task | 260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl | stale-slug | Stale quick-task reference |
+| quick_task | 260513-hvu-hotfix-search-watches-tab-returns-empty- | stale-slug | Stale quick-task reference |
+| quick_task | 260513-m31-fix-otherownersroster-count-label-always | stale-slug | Stale quick-task reference |
+| quick_task | 260519-08p-fix-next-js-image-aspect-ratio-console-w | stale-slug | Stale quick-task reference |
+| quick_task | 260519-d69-fix-4-collection-path-ui-issues-in-pathc | stale-slug | Stale quick-task reference |
+| quick_task | 260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch | stale-slug | Stale quick-task reference |
+| quick_task | 260519-ga9-fu-01-expose-brand-era-genre-archetype-f | stale-slug | Stale quick-task reference |
+| seed | SEED-001-catalog-hierarchy-and-attributes | dormant | Future milestone (planned v6+) |
+| seed | SEED-002-hybrid-recommender | dormant | Future milestone (planned v6+) |
+| seed | SEED-003-onboarding-cold-start-flow | dormant | Future milestone |
+| seed | SEED-004-v5-discovery-north-star | dormant | Future milestone |
+| seed | SEED-005-v6-market-value | dormant | Future v6.0 milestone |
+| seed | SEED-007-market-pricing-api-spike | dormant | Future spike |
+| seed | SEED-008-v5.1-explore-redesign | active | Active seed for next milestone (v5.1 → v5.2 reorder; revisit at /gsd-new-milestone) |
+| seed | SEED-010-v5.3-add-watch-redesign | dormant | Future v8 milestone |
+| seed | SEED-012-v6.0-social-interaction | dormant | Future v6.0 milestone |
+| seed | SEED-013-v7.0-watch-photos | dormant | Future v7.0 milestone |
+
+23 items acknowledged. SEED-011 (this milestone) flipped to `implemented` separately.
+
 ## Session Continuity
 
 Last activity: 2026-05-20 — Phase 49.1 Plan 07 complete (schema.ts dropped, drizzle/0012 migration authored, drizzle-kit push deferred to main repo).
@@ -114,6 +142,4 @@ Next action: User runs `npx drizzle-kit push` in main repo to apply local DB dro
 
 ## Operator Next Steps
 
-- ✅ Plan 07 complete: `src/db/schema.ts:390` removed; `drizzle/0012_phase49_1_drop_primary_archetype.sql` authored.
-- ⏳ Local DB sync: user runs `cd /Users/tylerwaneka/Documents/horlo && npx drizzle-kit push` post-merge to drop the column on local dev DB and update `drizzle/meta/_journal.json`.
-- Plan 08 owns `supabase/migrations/20260520xxxxxx_phase49_1_drop_primary_archetype.sql` authoring + prod `supabase db push --linked`.
+- Start the next milestone with /gsd-new-milestone

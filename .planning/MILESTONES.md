@@ -1,5 +1,36 @@
 # Milestones
 
+## v5.2 Polish + Taxonomy (Shipped: 2026-05-20)
+
+**Phases completed:** 5 phases (48, 49, 49.1, 50, 50.1), 21 plans, 34 tasks
+**Timeline:** 2 days (2026-05-19 → 2026-05-20)
+**Source:** SEED-011 — small, fast milestone clearing 2 user-facing bugs and 2 architectural spikes before larger v6/v7 work
+
+**Requirements shipped (6/6 satisfied):**
+
+- **BUG-01** — Wishlist watch on `/catalog/[catalogId]` no longer mislabeled as "you own this"; the `status='owned'` filter on `findViewerWatchByCatalogId` correctly distinguishes wishlist/sold/grail from owned (Phase 48).
+- **BUG-02** — `/search` filter chips render with legible text contrast in dark mode across all 7 chip groups (movement/size/style + FU-01 brand/era/genre/archetype) (Phase 48).
+- **TAX-01** — Genre-vs-style taxonomy spike produced a written recommendation: drop the genre/archetype surface, single source of truth on `style_tags` (Phase 49).
+- **TAX-02** — Genre/archetype taxonomy surface removed: `primary_archetype` column dropped from `watches_catalog`, `GenreChips`/`ArchetypeChips`/`/explore/genres`/`archetype-config` deleted, `filters.genre`/`filters.archetype` removed from `CatalogSearchFilters`, similarity weights rebalanced (0.04 archetypeMatch redistributed), enricher chain stripped of archetype refs (Phase 49.1).
+- **ARCH-01** — Watch-detail architecture spike produced a written verdict: keep the `/catalog/[catalogId]` cross-user spec view and `/watch/[id]` owner per-user view as separate routes; do not merge in v5.2 (Phase 50).
+- **ARCH-02** — URL canonicalization shipped: when the viewer owns a catalog ref, `/catalog/[catalogId]` issues a page-layer `redirect()` from `next/navigation` to `/watch/[id]`. Page-layer only — NOT `proxy.ts` (per `feedback_proxy_router_cache_poisoning` memory). The Phase 48 BUG-01 maintenance tax retires with it (Phase 50.1).
+
+**Closeout cleanup (audit-driven, inline):**
+
+- **D-DEBT-01** — Dead `self-via-cross-user` framing surface removed across 6 files: `src/lib/verdict/types.ts` (Framing union shrunk, `VerdictBundleSelfOwned` deleted), `src/lib/verdict/composer.ts` (Exclude simplified), `src/components/insights/CollectionFitCard.tsx` (YouOwnThisCallout + formatOwnedDate removed), `src/components/insights/CollectionFitCard.test.tsx`, `src/components/watch/WishlistRationalePanel.tsx`, `src/components/watch/CatalogPageActions.tsx` (stale JSDoc). 5244 vitest pass / build green / tsc clean.
+- **D-DRIFT-01** — `.planning/REQUIREMENTS.md` checkboxes synced for BUG-01/BUG-02/TAX-01/TAX-02 (traceability table was Complete; bullet checkboxes drifted).
+
+**Verification:** v5.2-MILESTONE-AUDIT.md status = `passed` after closeout; integration check PASSED, 5/5 E2E flows wired, full vitest 5244/5245 pass (one fewer = removed self-owned callout test), build exit 0.
+
+**Known deferred items at close:** 23 (see STATE.md `## Deferred Items`).
+
+**Non-blocking operational gates remaining (post-deploy verification):**
+
+- **D-DEBT-02** (Phase 49.1) — 5 prod/visual user-action gates: prod `supabase db push --linked` (Plan 08 Task 2 — autonomous:false per D-MIG-02), prod migration test, `/explore` deep-link smoke, `/watch+/catalog` ReferenceIdentityCard parity smoke, `/explore/genres` 404 live check.
+- **D-DEBT-03** (Phase 48) — 1 dark-mode chip legibility UAT (9-step protocol; oklch paint resolution requires real browser; static gates strongly predict success).
+
+---
+
 ## v5.1 Explore Page Redesign (Shipped: 2026-05-19)
 
 **Phases completed:** 5 phases (43-47), 27 plans
