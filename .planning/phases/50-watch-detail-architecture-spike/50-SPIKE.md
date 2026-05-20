@@ -310,3 +310,23 @@ All five variants in A-E preserve the two-layer privacy gate in `getWatchByIdFor
 The matrix does not surface a clear secondary winner that is worth shipping as a standalone mid-milestone add. Variant C is architecturally dominant on the three quality criteria (UX clarity 5, per-user data shape 5, v7.0 carousel fit 5) but is the v7.0 target, not a v5.2 sub-recommendation. Variants D and E both require entry-point rewrites and open UI-SPEC decisions that require a full implementation phase. The sub-recommendation section is omitted — there is no Phase 50's equivalent of Phase 49's `unify-archetype-surface` cheap standalone sub-action to take.
 
 ---
+
+## 9. Ship-now Eligibility
+
+ROADMAP SC#4 gate language (verbatim):
+
+> "No consolidation or removal implementation is shipped in this phase unless the spike specifically flags it as cheap and strongly favored — in which case a new requirement is added mid-milestone"
+
+---
+
+### Primary recommendation eligibility (Variant B — URL canonicalization)
+
+**Verdict: YES**
+
+Variant B is both cheap and strongly favored. The §6 Decision Matrix produces the highest total score (28) for Variant B — the only variant that simultaneously scores 5 on both cost criteria (zero entry-point rewrites, 1-2 files touched per §7) while meaningfully improving UX clarity and per-user data shape vs the status quo. The BUG-01 retirement evidence (§3.3, §4.B) establishes that the in-route framing flip at `src/app/catalog/[catalogId]/page.tsx:107-115` is actively generating maintenance burden in production — the `status='owned'` fix at line 296 is the second edit that flip has required, not the last. The "strongly favored" bar is cleared: the evidence base is a live production bug class with an identified code site, not an abstract quality preference.
+
+**Strongly favored:** Section 6 scores Variant B at 3/4/4/3/5/5/4, totaling 28 — winning on entry-point disruption (5), migration cost (5), and per-user data shape (4), and meaningfully above Variant A on UX clarity (3 vs 2) and per-user data shape (4 vs 3). The matrix has no tie: Variant A is the nearest competitor at 27 and the delta is fully explained by the per-user data shape criterion, which captures the BUG-01 maintenance tax directly. No variant in the set has a stronger balanced score. The "strongly favored" bar is cleared by the combination of matrix leadership and the concrete production-bug retirement evidence.
+
+**Cheap:** Section 7 cost table shows Variant B at 1-2 files touched (`src/app/catalog/[catalogId]/page.tsx` + 1 test file), zero entry-point rewrites, zero migrations (drizzle and supabase), zero DAL changes. The implementation is a server-level `redirect()` call from `next/navigation` — a built-in Next.js 16 App Router API with no new dependencies. The `watches_catalog` NOT-wipeable carve-out (MEMORY `project_db_wipeable_2026_05_09`, 2026-05-19 update) does NOT gate this verdict: no variant in A-E requires catalog schema work, and Variant B touches only route-layer files. The cheap bar is cleared: 1-2 files is the lowest file count in the non-zero variant set, and zero migrations is the cleanest migration profile possible.
+
+**Trigger:** Add new requirement **ARCH-02: URL canonicalization — redirect `/catalog/[catalogId]` to `/watch/[id]` at the page layer when the viewer owns the catalog ref, retiring the in-route D-08 framing flip and the Phase 48 BUG-01 maintenance tax** to REQUIREMENTS.md and `/gsd-phase --insert` a Phase 50.1 implementation wave.
