@@ -111,3 +111,15 @@ describe('proxy.ts — profile route ungating (profile-page-404-top-nav)', () =>
     expect(res.headers.get('location')).toContain('/login')
   })
 })
+
+describe('proxy.ts — SC#4 ARCH-02 regression guard (no /catalog/ redirect logic)', () => {
+  it('no catalog redirect — src/proxy.ts must not contain /catalog/ handling (feedback_proxy_router_cache_poisoning memory)', async () => {
+    const fs = await import('node:fs')
+    const content = fs.readFileSync('src/proxy.ts', 'utf8')
+    // A NextResponse.redirect from proxy.ts on an RSC prefetch poisons Next 16's Router Cache
+    // → 404 on soft-nav. The canonical path for the ARCH-02 redirect is the page layer
+    // (src/app/catalog/[catalogId]/page.tsx per Plan 01). See
+    // .planning/debug/profile-page-404-top-nav.md for the live /u/* precedent.
+    expect(content).not.toContain('/catalog/')
+  })
+})
