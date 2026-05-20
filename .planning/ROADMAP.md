@@ -140,10 +140,11 @@ See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
 
 </details>
 
-### v5.2 Polish + Taxonomy (Phases 48-50)
+### v5.2 Polish + Taxonomy (Phases 48-50 + 49.1)
 
 - [x] **Phase 48: User-Facing Bug Fixes** - Fix wishlist ownership mislabel and dark-mode chip contrast (completed 2026-05-19)
 - [x] **Phase 49: Genre vs Style Taxonomy Spike** - Audit overlap and produce written recommendation (completed 2026-05-19)
+- [ ] **Phase 49.1: Remove Genre Surface** (INSERTED) - Implement spike recommendation: drop `primary_archetype` + chips + `/explore/genres`, rebalance similarity
 - [ ] **Phase 50: Watch-Detail Architecture Spike** - Compare two-view vs merged-view and produce written decision
 
 ### 📋 v6.0 Social Interaction (Planted)
@@ -203,6 +204,22 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 49-03-PLAN.md — Synthesis: write Options + Decision Matrix + Recommendation + Cost Estimate + Ship-Now Eligibility (§5-9)
 
+### Phase 49.1: Remove Genre Surface (INSERTED)
+**Goal**: The genre/archetype taxonomy surface is removed: `primary_archetype` column dropped from `watches_catalog`, `GenreChips` + `ArchetypeChips` + `/explore/genres` + `archetype-config.ts` deleted, catalog DAL and similarity engine updated. Single source of truth for the functional-category axis becomes `style_tags`.
+**Depends on**: Phase 49
+**Requirements**: TAX-02
+**Inserted**: 2026-05-19 mid-milestone per Phase 49 spike §9 Ship-Now: YES verdict (ROADMAP SC#4 escape hatch)
+**Source**: `.planning/phases/49-genre-vs-style-taxonomy-spike/49-SPIKE.md` §7 (Primary recommendation: `remove-genre`) + §8 (Cost row B) + §9 (Ship-Now eligibility)
+**Success Criteria** (what must be TRUE):
+  1. `watches_catalog.primary_archetype` column no longer exists in `src/db/schema.ts` and the drop has been pushed to prod via `supabase db push --linked` (one drizzle migration + one supabase migration)
+  2. `src/components/search/GenreChips.tsx`, `src/components/search/ArchetypeChips.tsx`, `src/app/explore/genres/page.tsx`, and `src/lib/archetype-config.ts` are deleted; `FilterDrawer.tsx` no longer imports/renders either chip group; `BrowseModule.tsx` no longer links to `/explore/genres`
+  3. `CatalogSearchFilters` in `src/data/catalog.ts` no longer has `genre` or `archetype` fields; the archetype-wins tiebreaker at line 446 is removed; `getBrowseGenreCounts()` is deleted from `src/data/browse.ts`
+  4. The 0.04 `TASTE_SUB_WEIGHTS.archetypeMatch` weight in `src/lib/similarity.ts` is redistributed across the remaining taste sub-budget (sub-weights sum to 1.0 invariant preserved); the archetype categorical-match block at line 125 is removed
+  5. The enricher in `src/lib/taste/vocab.ts` no longer writes `primary_archetype` (the column is gone)
+  6. `/explore/genres` returns 404 (route removed); no internal links to it remain (grep `grep -r "/explore/genres" src/` returns zero matches)
+  7. Existing tests still pass; new tests cover the simplified search filter surface and the rebalanced similarity weights
+**Plans**: TBD
+
 ### Phase 50: Watch-Detail Architecture Spike
 **Goal**: A written decision exists on whether to keep `/catalog/[catalogId]` and `/watch/[id]` as separate views or merge them into a single adaptive detail surface
 **Depends on**: Phase 48
@@ -220,6 +237,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
+| 49.1. Remove Genre Surface (INSERTED) | 0/TBD | Not started | - |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up

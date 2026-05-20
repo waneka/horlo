@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: ready_to_plan
+status: planning
 stopped_at: Phase 49 context gathered
-last_updated: "2026-05-19T23:21:27.156Z"
-last_activity: 2026-05-19 -- Phase 49 execution started
+last_updated: "2026-05-20T02:56:50.192Z"
+last_activity: 2026-05-19
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 7
   percent: 100
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 ## Current Position
 
-Phase: 999.1
+Phase: 49.1
 Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-19
@@ -41,6 +41,10 @@ v5.2 Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
 - Blockers encountered: 0
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 49.1 inserted after Phase 49: Remove genre surface — implements Phase 49 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (TAX-02) (URGENT)
 
 ### Key Decisions
 
