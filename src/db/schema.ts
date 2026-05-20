@@ -387,7 +387,6 @@ export const watchesCatalog = pgTable(
     formality:        numeric('formality',        { precision: 3, scale: 2 }),
     sportiness:       numeric('sportiness',       { precision: 3, scale: 2 }),
     heritageScore:    numeric('heritage_score',   { precision: 3, scale: 2 }),
-    primaryArchetype: text('primary_archetype'),
     eraSignal:        text('era_signal'),
     designMotifs:     text('design_motifs').array().notNull().default(sql`'{}'::text[]`),
     confidence:       numeric('confidence',       { precision: 3, scale: 2 }),
