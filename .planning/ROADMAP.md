@@ -234,7 +234,7 @@ Plans:
 - [x] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
 
 **Wave 3** *(blocked on Wave 2 — schema drop on local DB)*
-- [ ] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration + local `drizzle-kit push` against the dev DB
+- [x] 49.1-07-PLAN.md — schema.ts column removal + drizzle/0012 migration authored; `drizzle-kit push` deferred to user (worktree lacks DATABASE_URL)
 
 **Wave 4** *(blocked on Wave 3 — autonomous:false; runs ONLY after prod deploy of Plans 02-07)*
 - [ ] 49.1-08-PLAN.md — supabase/migrations/20260519010000_phase49_1_drop_primary_archetype.sql + `supabase db push --linked` + post-deploy prod verification
@@ -256,7 +256,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
-| 49.1. Remove Genre Surface (INSERTED) | 2/8 | In Progress|  |
+| 49.1. Remove Genre Surface (INSERTED) | 7/8 | In Progress|  |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up
