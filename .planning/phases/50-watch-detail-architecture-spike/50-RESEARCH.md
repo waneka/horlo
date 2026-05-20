@@ -488,7 +488,7 @@ All 5 variants preserve compatibility with this union. The composer at `src/lib/
 
 **Note:** All claims above are `[VERIFIED: codebase grep + file read]` or `[VERIFIED: project memory]`. No `[ASSUMED]` claims — every load-bearing fact has a citable source.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the planner pick Phase 49's 3-plan split or a different decomposition?**
    - What we know: D-SKEL-02 locks 9 sections; section ordering is planner's discretion.

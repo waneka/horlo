@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: completed
+status: executing
 stopped_at: Phase 50 context gathered
-last_updated: "2026-05-20T16:44:01.215Z"
-last_activity: 2026-05-20 -- Phase 49.1 Plan 07 complete (schema.ts dropped, drizzle/0012 migration authored, drizzle-kit push deferred to main repo)
+last_updated: "2026-05-20T17:16:06.408Z"
+last_activity: 2026-05-20 -- Phase 50 planning complete
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 15
+  total_plans: 19
   completed_plans: 15
-  percent: 100
+  percent: 79
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 Phase: 49.1
 Plan: 7/8 (49.1-07 schema.ts column drop + drizzle/0012 migration complete; Wave 3 done; only Plan 08 prod supabase migration remaining)
-Status: complete
-Last activity: 2026-05-20 -- Phase 49.1 Plan 07 complete (schema.ts dropped, drizzle/0012 migration authored, drizzle-kit push deferred to main repo)
+Status: Ready to execute
+Last activity: 2026-05-20 -- Phase 50 planning complete
 
 ```
 v5.2 Progress: [███████████████░░░░░] 75% (2/3 phases — Phase 48 + Phase 49 spike complete; Phase 49.1 7/8 plans)
