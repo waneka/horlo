@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: executing
+status: verifying
 stopped_at: Phase 50 context gathered
-last_updated: "2026-05-20T17:16:06.408Z"
-last_activity: 2026-05-20 -- Phase 50 planning complete
+last_updated: "2026-05-20T17:44:29.675Z"
+last_activity: 2026-05-20
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 19
-  completed_plans: 15
-  percent: 79
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 49 — Genre vs Style Taxonomy Spike
+**Current focus:** Phase 50 — watch-detail-architecture-spike
 
 ## Current Position
 
-Phase: 49.1
-Plan: 7/8 (49.1-07 schema.ts column drop + drizzle/0012 migration complete; Wave 3 done; only Plan 08 prod supabase migration remaining)
-Status: Ready to execute
-Last activity: 2026-05-20 -- Phase 50 planning complete
+Phase: 50 (watch-detail-architecture-spike) — EXECUTING
+Plan: 4 of 4
+Status: Phase complete — ready for verification
+Last activity: 2026-05-20
 
 ```
 v5.2 Progress: [███████████████░░░░░] 75% (2/3 phases — Phase 48 + Phase 49 spike complete; Phase 49.1 7/8 plans)

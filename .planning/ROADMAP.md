@@ -252,16 +252,16 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 50-01-PLAN.md — Scaffold 50-SPIKE.md + write §1 Domain + §2 Audience Matrix (viewer-state × ref-identity per D-AUDIENCE-01) + §3 Route Reality Today (12 /watch + 7 /catalog entry-point map + BUG-01 evidence)
+- [x] 50-01-PLAN.md — Scaffold 50-SPIKE.md + write §1 Domain + §2 Audience Matrix (viewer-state × ref-identity per D-AUDIENCE-01) + §3 Route Reality Today (12 /watch + 7 /catalog entry-point map + BUG-01 evidence)
 
 **Wave 2** *(blocked on Wave 1 — same file)*
-- [ ] 50-02-PLAN.md — §4 Variants A-E (5 subsections including proxy.ts router-cache landmine for Variant B) + §7 Cost Estimate per Variant table
+- [x] 50-02-PLAN.md — §4 Variants A-E (5 subsections including proxy.ts router-cache landmine for Variant B) + §7 Cost Estimate per Variant table
 
 **Wave 3** *(blocked on Wave 2 — section splice between §4 and §7)*
-- [ ] 50-03-PLAN.md — §5 v7.0 Watch Photos Lens (4 sub-points × 5 variants per D-V7-LENS-01) + §6 Decision Matrix (5 variants × 7 locked criteria from D-VARIANTS-02)
+- [x] 50-03-PLAN.md — §5 v7.0 Watch Photos Lens (4 sub-points × 5 variants per D-V7-LENS-01) + §6 Decision Matrix (5 variants × 7 locked criteria from D-VARIANTS-02)
 
 **Wave 4** *(blocked on Wave 3 — synthesis)*
-- [ ] 50-04-PLAN.md — §8 Recommendation (definitive primary variant verdict) + §9 Ship-Now Eligibility (verbatim format from 49-SPIKE.md §9)
+- [x] 50-04-PLAN.md — §8 Recommendation (definitive primary variant verdict) + §9 Ship-Now Eligibility (verbatim format from 49-SPIKE.md §9)
 
 ## Progress Table
 
