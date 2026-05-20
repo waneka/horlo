@@ -12,11 +12,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  * already-filtered row set (rows with confidence < 0.5 are simply absent).
  */
 
+// Phase 49.1 D-VERDICT-03 — `primaryArchetype` removed from the SELECT clause;
+// row shape now matches the post-pivot view (eraSignal is the sole categorical).
 type Row = {
   formality: string | number | null
   sportiness: string | number | null
   heritageScore: string | number | null
-  primaryArchetype: string | null
   eraSignal: string | null
   designMotifs: string[]
 }
@@ -73,12 +74,13 @@ describe('D-02 viewerTasteProfile (Plan 02)', () => {
     // The SQL WHERE filter excludes confidence < 0.5 at the DB layer; we
     // confirm the caller threads non-empty inputs into a real query path
     // and that the surfaced rows (post-filter) shape the result.
+    // Phase 49.1 D-VERDICT-03 — primaryArchetype field removed; era axis
+    // now carries the categorical "dominant" check.
     mockRows = [
       {
         formality: 0.7,
         sportiness: 0.3,
         heritageScore: 0.8,
-        primaryArchetype: 'dress',
         eraSignal: 'modern',
         designMotifs: ['onyx-dial'],
       },
@@ -86,34 +88,36 @@ describe('D-02 viewerTasteProfile (Plan 02)', () => {
     const result = await computeViewerTasteProfile([w('a')])
     expect(selectSpy).toHaveBeenCalledTimes(1)
     expect(result.meanFormality).toBe(0.7)
-    expect(result.dominantArchetype).toBe('dress')
+    expect(result.dominantEraSignal).toBe('modern')
   })
 
   it('mean of all-NULL formality column returns null (not NaN, not 0)', async () => {
     mockRows = [
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
     ]
     const result = await computeViewerTasteProfile([w('a'), w('b'), w('c')])
     expect(result.meanFormality).toBeNull()
     expect(Number.isNaN(result.meanFormality as unknown as number)).toBe(false)
   })
 
-  it('mode of all-NULL primaryArchetype column returns null', async () => {
+  it('mode of all-NULL eraSignal column returns null', async () => {
+    // Phase 49.1 D-VERDICT-03 — primaryArchetype removed; era axis now carries
+    // the categorical-mode behaviour (same null-tolerance contract).
     mockRows = [
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
     ]
     const result = await computeViewerTasteProfile([w('a'), w('b'), w('c')])
-    expect(result.dominantArchetype).toBeNull()
+    expect(result.dominantEraSignal).toBeNull()
   })
 
   it('topDesignMotifs returns [] when all designMotifs arrays are empty', async () => {
     mockRows = [
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
     ]
     const result = await computeViewerTasteProfile([w('a'), w('b')])
     expect(result.topDesignMotifs).toEqual([])
@@ -123,11 +127,11 @@ describe('D-02 viewerTasteProfile (Plan 02)', () => {
     // motif counts: onyx-dial 3, fluted-bezel 2, jubilee-bracelet 2
     // tie between fluted-bezel and jubilee-bracelet — fluted-bezel inserted first
     mockRows = [
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: ['onyx-dial'] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: ['onyx-dial', 'fluted-bezel'] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: ['onyx-dial', 'jubilee-bracelet'] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: ['fluted-bezel'] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: ['jubilee-bracelet'] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: ['onyx-dial'] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: ['onyx-dial', 'fluted-bezel'] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: ['onyx-dial', 'jubilee-bracelet'] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: ['fluted-bezel'] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: ['jubilee-bracelet'] },
     ]
     const result = await computeViewerTasteProfile([w('a'), w('b'), w('c'), w('d'), w('e')])
     expect(result.topDesignMotifs).toEqual(['onyx-dial', 'fluted-bezel', 'jubilee-bracelet'])
@@ -136,9 +140,9 @@ describe('D-02 viewerTasteProfile (Plan 02)', () => {
   it('mean of mixed null + numeric column averages only the non-null entries', async () => {
     // formality values [0.6, null, 0.8] → expect 0.7
     mockRows = [
-      { formality: 0.6, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: null, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
-      { formality: 0.8, sportiness: null, heritageScore: null, primaryArchetype: null, eraSignal: null, designMotifs: [] },
+      { formality: 0.6, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: null, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
+      { formality: 0.8, sportiness: null, heritageScore: null, eraSignal: null, designMotifs: [] },
     ]
     const result = await computeViewerTasteProfile([w('a'), w('b'), w('c')])
     // Floating point: 0.7 within 1e-9

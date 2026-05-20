@@ -60,7 +60,7 @@ function buildProfile(overrides: Partial<ViewerTasteProfile> = {}): ViewerTasteP
     meanFormality: null,
     meanSportiness: null,
     meanHeritageScore: 0.75,
-    dominantArchetype: null,
+    // Phase 49.1 D-VERDICT-03 — dominantArchetype removed; only era axis remains.
     dominantEraSignal: null,
     topDesignMotifs: [],
     ...overrides,

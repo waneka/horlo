@@ -61,7 +61,7 @@ function buildProfile(overrides: Partial<ViewerTasteProfile> = {}): ViewerTasteP
     meanFormality: null,
     meanSportiness: null,
     meanHeritageScore: null,
-    dominantArchetype: null,
+    // Phase 49.1 D-VERDICT-03 — dominantArchetype removed; only dominantEraSignal remains.
     dominantEraSignal: null,
     topDesignMotifs: [],
     ...overrides,
@@ -129,10 +129,13 @@ describe('FIT-02 composer (Plan 02)', () => {
     mockResult = buildResult({ label: 'core-fit' })
     const args = {
       candidate: buildWatch('c1'),
-      catalogEntry: buildCatalogEntry({ confidence: 0.8, primaryArchetype: 'dive' as const }),
+      // Phase 49.1 D-VERDICT-01 — fixtures pivoted to era axis; CatalogEntry still
+      // carries primaryArchetype (Plan 06 drops it) so the value is kept for shape
+      // parity, but verdict templates now discriminate on eraSignal.
+      catalogEntry: buildCatalogEntry({ confidence: 0.8, eraSignal: 'modern' as const }),
       collection: [],
       preferences: defaultPrefs(),
-      profile: buildProfile({ dominantArchetype: 'dive' as const }),
+      profile: buildProfile({ dominantEraSignal: 'modern' as const }),
       framing: 'same-user' as const,
     }
     const a = computeVerdictBundle(args)
@@ -140,21 +143,23 @@ describe('FIT-02 composer (Plan 02)', () => {
     expect(a).toEqual(b)
   })
 
-  it('fires "fills-a-hole" template when archetype is novel and confidence ≥ 0.7', () => {
+  it('fires "fills-a-hole" template when era is novel and confidence ≥ 0.7', () => {
+    // Phase 49.1 D-VERDICT-01 — pivoted from archetype-axis to era-axis fixture.
+    // Predicate: taste.eraSignal set AND profile.dominantEraSignal !== taste.eraSignal.
     mockResult = buildResult({ label: 'taste-expansion' })
     const out = computeVerdictBundle({
       candidate: buildWatch('c1'),
       catalogEntry: buildCatalogEntry({
         confidence: 0.8,
-        primaryArchetype: 'dress',
+        eraSignal: 'vintage-leaning',
       }),
       collection: [],
       preferences: defaultPrefs(),
-      profile: buildProfile({ dominantArchetype: 'dive' }),
+      profile: buildProfile({ dominantEraSignal: 'modern' }),
       framing: 'same-user',
     })
     expect(out.contextualPhrasings).toContain(
-      'Fills a hole in your collection — your first dress.',
+      'Fills a hole in your collection — your first vintage-leaning piece.',
     )
   })
 
@@ -176,21 +181,23 @@ describe('FIT-02 composer (Plan 02)', () => {
     )
   })
 
-  it('fires "collection-skews-contrast" template when archetypes diverge', () => {
+  it('fires "collection-skews-contrast" template when eras diverge', () => {
+    // Phase 49.1 D-VERDICT-01 — pivoted from archetype-axis to era-axis fixture.
+    // Predicate: both era fields set AND distinct AND label !== 'core-fit'.
     mockResult = buildResult({ label: 'taste-expansion' })
     const out = computeVerdictBundle({
       candidate: buildWatch('c1'),
       catalogEntry: buildCatalogEntry({
         confidence: 0.8,
-        primaryArchetype: 'dive',
+        eraSignal: 'modern',
       }),
       collection: [],
       preferences: defaultPrefs(),
-      profile: buildProfile({ dominantArchetype: 'dress' }),
+      profile: buildProfile({ dominantEraSignal: 'vintage-leaning' }),
       framing: 'same-user',
     })
     expect(out.contextualPhrasings).toContain(
-      'Your collection skews dress — this is a dive.',
+      'Your collection skews vintage-leaning — this is a modern piece.',
     )
   })
 
@@ -252,9 +259,10 @@ describe('FIT-02 composer (Plan 02)', () => {
     // Setup that guarantees no template predicate matches:
     // - label='familiar-territory' (no core-fit / hard-mismatch / role-overlap)
     // - heritageScore=0 → not heritage
-    // - no archetypes → no fills-a-hole / archetype-echo / collection-skews-contrast
+    // - eraSignal null → no fills-a-hole / archetype-echo / collection-skews-contrast
+    //   (Phase 49.1 D-VERDICT-01 — pivoted from archetype-axis to era-axis)
     // - empty mostSimilarWatches → no overlaps-with-specific
-    // - profile has dominantArchetype='dive' so first-watch does NOT fire
+    // - profile has dominantEraSignal='modern' so first-watch does NOT fire
     // - confidence=0.8 (full, not fallback)
     mockResult = buildResult({ label: 'familiar-territory' })
     const out = computeVerdictBundle({
@@ -262,13 +270,13 @@ describe('FIT-02 composer (Plan 02)', () => {
       catalogEntry: buildCatalogEntry({
         confidence: 0.8,
         heritageScore: 0,
-        primaryArchetype: null,
+        eraSignal: null,
         formality: null,
         sportiness: null,
       }),
       collection: [],
       preferences: defaultPrefs(),
-      profile: buildProfile({ dominantArchetype: 'dive', meanFormality: 0.5 }),
+      profile: buildProfile({ dominantEraSignal: 'modern', meanFormality: 0.5 }),
       framing: 'same-user',
     })
     expect(out.contextualPhrasings.length).toBeGreaterThanOrEqual(1)
@@ -301,16 +309,17 @@ describe('FIT-02 composer (Plan 02)', () => {
 
   it('rationalePhrasings.length === contextualPhrasings.length on every code path', () => {
     // Cover three branches: fallback (low confidence), template-fired, no-template-fired.
+    // Phase 49.1 D-VERDICT-01 — fixtures pivoted from archetype-axis to era-axis.
     const cases: Array<{ label: SimilarityLabel; confidence: number; profile: ViewerTasteProfile; mostSimilar: Array<{ watch: Watch; score: number }> }> = [
       { label: 'core-fit', confidence: 0.3, profile: buildProfile(), mostSimilar: [] }, // isFallback path
-      { label: 'taste-expansion', confidence: 0.8, profile: buildProfile({ dominantArchetype: 'dive' }), mostSimilar: [] }, // template fires (fills-a-hole)
-      { label: 'familiar-territory', confidence: 0.8, profile: buildProfile({ dominantArchetype: 'dive' }), mostSimilar: [] }, // no template fires
+      { label: 'taste-expansion', confidence: 0.8, profile: buildProfile({ dominantEraSignal: 'modern' }), mostSimilar: [] }, // template fires (fills-a-hole — taste.eraSignal differs from profile)
+      { label: 'familiar-territory', confidence: 0.8, profile: buildProfile({ dominantEraSignal: 'modern' }), mostSimilar: [] }, // no template fires
     ]
     for (const c of cases) {
       mockResult = buildResult({ label: c.label, mostSimilarWatches: c.mostSimilar })
       const out = computeVerdictBundle({
         candidate: buildWatch('c1'),
-        catalogEntry: buildCatalogEntry({ confidence: c.confidence, primaryArchetype: c.label === 'taste-expansion' ? 'dress' : null, heritageScore: 0, formality: null, sportiness: null }),
+        catalogEntry: buildCatalogEntry({ confidence: c.confidence, eraSignal: c.label === 'taste-expansion' ? 'vintage-leaning' : null, heritageScore: 0, formality: null, sportiness: null }),
         collection: [],
         preferences: defaultPrefs(),
         profile: c.profile,
@@ -354,21 +363,22 @@ describe('FIT-02 composer (Plan 02)', () => {
   })
 
   it('rationalePhrasings[i] is filled in lockstep with contextualPhrasings[i] (same template fires both)', () => {
-    // Force the fills-a-hole template to fire (taste-expansion + novel archetype + confidence ≥ 0.7).
+    // Force the fills-a-hole template to fire (taste-expansion + novel era + confidence ≥ 0.7).
+    // Phase 49.1 D-VERDICT-01 — pivoted from archetype-axis to era-axis fixture.
     mockResult = buildResult({ label: 'taste-expansion' })
     const out = computeVerdictBundle({
       candidate: buildWatch('c1'),
       catalogEntry: buildCatalogEntry({
         confidence: 0.8,
-        primaryArchetype: 'dress',
+        eraSignal: 'vintage-leaning',
       }),
       collection: [],
       preferences: defaultPrefs(),
-      profile: buildProfile({ dominantArchetype: 'dive' }),
+      profile: buildProfile({ dominantEraSignal: 'modern' }),
       framing: 'same-user',
     })
     // contextualPhrasings contains the verdict-voice copy; rationalePhrasings the rationale-voice copy.
-    expect(out.contextualPhrasings).toContain('Fills a hole in your collection — your first dress.')
-    expect(out.rationalePhrasings).toContain('My first dress — fills a real hole in what I own.')
+    expect(out.contextualPhrasings).toContain('Fills a hole in your collection — your first vintage-leaning piece.')
+    expect(out.rationalePhrasings).toContain('My first vintage-leaning piece — fills a real hole in what I own.')
   })
 })
