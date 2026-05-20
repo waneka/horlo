@@ -5,11 +5,12 @@
 //
 // Coverage:
 //   1. getBrowseArchetypeCounts — Array<{ archetype: string; count: number }>
+//      Phase 49.1 D-EXPLORE-01: SQL now derives from unnest(style_tags), not
+//      from the deleted archetype column. Return shape preserved.
 //   2. getBrowseEraCounts — Array<{ era: string; count: number }> with ERA_SIGNALS values
-//   3. getBrowseGenreCounts — Array<{ genre: string; count: number }>
-//   4. getBrowseBrandCounts — Array<{ brandId: string; name: string; slug: string; count: number }>
+//   3. getBrowseBrandCounts — Array<{ brandId: string; name: string; slug: string; count: number }>
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { ERA_SIGNALS } from '@/lib/taste/vocab'
 
 vi.mock('@/db', () => ({
@@ -28,7 +29,6 @@ import { db } from '@/db'
 import {
   getBrowseArchetypeCounts,
   getBrowseEraCounts,
-  getBrowseGenreCounts,
   getBrowseBrandCounts,
 } from '@/data/browse'
 
@@ -66,9 +66,27 @@ describe('getBrowseArchetypeCounts', () => {
 
     for (const row of result) {
       expect(row.count).toBeGreaterThan(0)
-      // archetype is non-null (WHERE NOT NULL in query ensures this)
+      // archetype is non-null (WHERE tag = ANY(ARRAY[...]) filters out NULLs)
       expect(row.archetype).toBeTruthy()
     }
+  })
+
+  it('derives counts from style_tags (rewired SQL per D-EXPLORE-01)', async () => {
+    // Phase 49.1: the SQL body now reads `unnest(style_tags)` instead of
+    // the deleted archetype column. Inspect the actual SQL passed to db.execute
+    // and verify the post-rewire shape.
+    const fixture = [{ archetype: 'dive', count: 1 }]
+    vi.mocked(db.execute).mockResolvedValue(fixture as unknown as Awaited<ReturnType<typeof db.execute>>)
+
+    await getBrowseArchetypeCounts()
+
+    const callArg = (db.execute as unknown as Mock).mock.calls[0][0]
+    // Drizzle's sql template object stringifies via JSON traversal of its
+    // internal queryChunks. The substring fingerprint is the load-bearing
+    // assertion — the implementation is free to format/space the SQL however.
+    const sqlText = JSON.stringify(callArg)
+    expect(sqlText).toMatch(/unnest\(style_tags\)/)
+    expect(sqlText).not.toMatch(/primary_archetype/)
   })
 })
 
@@ -104,24 +122,6 @@ describe('getBrowseEraCounts', () => {
     for (const row of result) {
       expect(eraSet.has(row.era)).toBe(true)
     }
-  })
-})
-
-describe('getBrowseGenreCounts', () => {
-  it('returns an array of { genre, count } rows with the same shape as archetype counts', async () => {
-    const fixture = [
-      { genre: 'dive', count: 18 },
-      { genre: 'dress', count: 12 },
-    ]
-    vi.mocked(db.execute).mockResolvedValue(fixture as unknown as Awaited<ReturnType<typeof db.execute>>)
-
-    const result = await getBrowseGenreCounts()
-
-    expect(Array.isArray(result)).toBe(true)
-    expect(result[0]).toHaveProperty('genre')
-    expect(result[0]).toHaveProperty('count')
-    expect(typeof result[0].genre).toBe('string')
-    expect(typeof result[0].count).toBe('number')
   })
 })
 
