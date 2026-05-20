@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import { and, eq } from 'drizzle-orm'
 
@@ -34,8 +34,10 @@ interface CatalogPageProps {
  * - Looks up by watches_catalog.id (catalog UUID), NOT watches.id.
  * - Computes verdict against viewer's own collection (D-03 server compute).
  * - D-07: when viewer collection is empty → no verdict card.
- * - D-08: when viewer already owns a watch with this catalogId → "You own this"
- *   framing — no verdict computed; link points to viewer's per-user /watch/[id].
+ * - ARCH-02: when viewer already owns a watch with this catalogId, the page
+ *   issues a 307 redirect to /watch/[id] (the per-user route) instead of
+ *   rendering. The D-08 "You own this" framing flip is retired. See
+ *   .planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md §8 (Variant B).
  *
  * Existing /watch/[id]/page.tsx (per-user UUID lookup) stays byte-untouched.
  *
@@ -105,14 +107,9 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   let actionsSpec: CatalogActionsSpec | null = null
 
   if (viewerOwnedRow) {
-    // D-08 — viewer already owns this catalog ref; swap to "You own this" framing.
-    verdict = {
-      framing: 'self-via-cross-user',
-      ownedAtIso: viewerOwnedRow.acquisitionDate ?? new Date().toISOString(),
-      ownerHref: `/watch/${viewerOwnedRow.id}`,
-    }
-    // Phase 20.1 D-05 — self-via-cross-user keeps existing 'You own this' UI;
-    // do NOT render CatalogPageActions.
+    // ARCH-02 — viewer owns this catalog ref; canonicalize to /watch/[id].
+    // redirect() throws NEXT_REDIRECT and must NOT be wrapped in try/catch.
+    redirect(`/watch/${viewerOwnedRow.id}`)
   } else if (collection.length > 0) {
     // D-03/D-07 — cross-user framing, full verdict.
     const profile = await computeViewerTasteProfile(collection)
@@ -228,6 +225,13 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
           component self-hides when collectors.length === 0 (D-39b-07), so
           no caller-side conditional wrapper is needed. /watch/{id} does
           NOT get this roster — catalog-only per UI-SPEC §Render Order. */}
+      {/* TODO: revisit for Variant C in v7.0 — when the multi-photo carousel
+          (SEED-013) lands, the carousel will render here and the cross-user
+          catalog surface becomes the primary candidate for unification with
+          /watch/[id] under Variant C (unified /w/[ref]). The two-route split
+          is preserved by Variant B (Phase 50.1, 2026-05-20); Variant C's
+          19-entry-point rewrite is intentionally deferred to the v7.0 carousel
+          implementation phase. See .planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md §5 + §8.1. */}
       <OtherOwnersRoster collectors={roster.collectors} totalCount={roster.totalCount} />
 
       {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails. UI-SPEC
@@ -239,8 +243,8 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
 
       {/* Phase 20.1 D-05 + Phase 39b NSV-20 — 3-CTA block. Now also rendered in
           the fresh-account branch (collection.length === 0) so NSV-20 closes
-          the empty-collection dead-end. actionsSpec is null only in the
-          self-via-cross-user case (D-05 keeps "You own this"). */}
+          the empty-collection dead-end. actionsSpec is null only when the viewer
+          owns the ref (ARCH-02 redirect fires before actionsSpec is set). */}
       {actionsSpec && (
         <CatalogPageActions
           catalogId={catalogId}
@@ -272,9 +276,9 @@ function SpecsSublabel({
 }
 
 /**
- * D-08 detection — does the viewer already own a row in `watches` with this
- * catalogId? If yes, return the row (we need its id + acquisitionDate for the
- * "You own this" callout). If no, return null.
+ * ARCH-02 detection — does the viewer already own a row in `watches` with this
+ * catalogId? If yes, return the row (we need its id to build `/watch/[id]`
+ * for the redirect). If no, return null.
  *
  * T-20-06-01: query is scoped by BOTH userId AND catalogId — the viewer can
  * never read another user's watches.id even if catalogIds collide across users.
@@ -282,12 +286,10 @@ function SpecsSublabel({
 async function findViewerWatchByCatalogId(
   userId: string,
   catalogId: string,
-): Promise<{ id: string; acquisitionDate: string | null } | null> {
+): Promise<{ id: string } | null> {
   const rows = await db
     .select({
       id: watchesTable.id,
-      acquisitionDate: watchesTable.acquisitionDate,
-      createdAt: watchesTable.createdAt,
     })
     .from(watchesTable)
     .where(and(
@@ -298,11 +300,5 @@ async function findViewerWatchByCatalogId(
     .limit(1)
   if (rows.length === 0) return null
   const row = rows[0]
-  // acquisitionDate is text (ISO yyyy-mm-dd) or null.
-  // createdAt is a Date object from Drizzle's timestamp mapping.
-  // VerdictBundleSelfOwned.ownedAtIso is string (ISO date).
-  const iso = row.acquisitionDate !== null
-    ? row.acquisitionDate
-    : new Date(row.createdAt).toISOString()
-  return { id: row.id, acquisitionDate: iso }
+  return { id: row.id }
 }

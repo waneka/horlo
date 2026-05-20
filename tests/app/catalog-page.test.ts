@@ -9,6 +9,7 @@ const {
   mockComputeVerdictBundle,
   mockComputeViewerTasteProfile,
   mockNotFound,
+  mockRedirect,
   mockDbLimit,
   mockDbWhere,
   mockGetCollectorsForCatalog,
@@ -23,6 +24,15 @@ const {
   mockComputeVerdictBundle: vi.fn(),
   mockComputeViewerTasteProfile: vi.fn(),
   mockNotFound: vi.fn(() => { throw new Error('NOT_FOUND') }),
+  // ARCH-02 — canonical redirect mock from tests/app/insights-retirement.test.tsx:3-9.
+  // Throws an Error with a NEXT_REDIRECT digest so the page promise rejects and
+  // expect(...).rejects.toThrow('NEXT_REDIRECT') assertions fire correctly.
+  mockRedirect: vi.fn((url: string) => {
+    const err = Object.assign(new Error('NEXT_REDIRECT'), {
+      digest: `NEXT_REDIRECT;push;${url};307`,
+    })
+    throw err
+  }),
   mockDbLimit: vi.fn(),
   // WR-01 positive-control: hoist `where()` so we can inspect the predicate
   // arg in the BUG-01 regression guard below. Default impl returns the
@@ -83,7 +93,7 @@ vi.mock('@/lib/verdict/viewerTasteProfile', () => ({
 vi.mock('@/lib/verdict/shims', () => ({
   catalogEntryToSimilarityInput: vi.fn((entry: unknown) => entry),
 }))
-vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
+vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 vi.mock('@/components/insights/CollectionFitCard', () => ({
   CollectionFitCard: ({ verdict }: { verdict: unknown }) =>
     `<CollectionFitCard verdict=${JSON.stringify(verdict)} />`,
@@ -93,7 +103,7 @@ vi.mock('next/image', () => ({
 }))
 // Phase 20.1 Plan 05 D-05 — CatalogPageActions Client Component renders the 3
 // CTAs (Add to Wishlist / Add to Collection / Skip) below CollectionFitCard
-// in non-self-via-cross-user framing.
+// in cross-user framing (ARCH-02: owned refs now redirect instead of rendering).
 //
 // Plan 05 deviation (Rule 1 — bug): Plan 01's RED scaffold mocked
 // CatalogPageActions to a template-literal string and asserted via
@@ -172,7 +182,7 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     expect(mockComputeVerdictBundle).not.toHaveBeenCalled()
   })
 
-  it('renders "You own this watch" callout when viewer already owns this catalog ref (D-08)', async () => {
+  it('ARCH-02 — redirects to /watch/{viewer.watches.id} when viewer already owns this catalog ref', async () => {
     mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
     mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
     mockDbLimit.mockResolvedValue([{
@@ -180,15 +190,15 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
       acquisitionDate: '2026-04-12',
       createdAt: new Date('2026-04-12T00:00:00.000Z'),
     }])
-    const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
-    // D-08 path does NOT call composer; verdict is built inline as VerdictBundleSelfOwned.
+    // ARCH-02: the page throws NEXT_REDIRECT before reaching the verdict path.
+    await expect(CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) }))
+      .rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/watch/mine-1')
+    // redirect() throws before computeVerdictBundle is ever called.
     expect(mockComputeVerdictBundle).not.toHaveBeenCalled()
-    // Result should contain the self-owned framing — assert via stringified mock CollectionFitCard.
-    const rendered = JSON.stringify(result)
-    expect(rendered).toMatch(/self-via-cross-user/)
   })
 
-  it('callout link points to /watch/{viewer.watches.id} — per-user UUID, not catalog UUID', async () => {
+  it('ARCH-02 — redirect target is /watch/{viewer.watches.id} (per-user UUID), not /watch/{catalogId}', async () => {
     mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
     mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
     mockDbLimit.mockResolvedValue([{
@@ -196,16 +206,17 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
       acquisitionDate: '2026-04-12',
       createdAt: new Date('2026-04-12T00:00:00.000Z'),
     }])
-    const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
-    const rendered = JSON.stringify(result)
-    expect(rendered).toMatch(/\/watch\/per-user-uuid-abc/)
-    expect(rendered).not.toMatch(new RegExp(`/watch/${validCatalogId}`))  // not catalog UUID
+    await expect(CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) }))
+      .rejects.toThrow('NEXT_REDIRECT')
+    // Must redirect to the per-user UUID, NOT the catalog UUID.
+    expect(mockRedirect).toHaveBeenCalledWith('/watch/per-user-uuid-abc')
+    expect(mockRedirect).not.toHaveBeenCalledWith(`/watch/${validCatalogId}`)
   })
 
   // -------------------------------------------------------------------------
   // Phase 20.1 Plan 05 D-05 — render 3 CTAs below CollectionFitCard in
-  // cross-user framing; hide them in self-via-cross-user; hide when no verdict.
-  // RED until Plan 05 wires `<CatalogPageActions>` into the page.
+  // cross-user framing; hide them when viewer owns the ref (ARCH-02 redirect
+  // fires before actionsSpec is set); hide when no verdict.
   // -------------------------------------------------------------------------
   it('D-05 — renders 3 CTAs (CatalogPageActions) when framing is cross-user', async () => {
     mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
@@ -221,7 +232,10 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
     expect(rendered).toMatch(/"framing":"cross-user"/)
   })
 
-  it('D-05 — does NOT render CTAs when framing is self-via-cross-user', async () => {
+  it('D-05 / ARCH-02 — does NOT render CTAs when viewer owns this catalog ref (redirect fires first)', async () => {
+    // ARCH-02: when the viewer owns the catalog ref, redirect() throws before
+    // actionsSpec is ever set — so CTAs are never rendered. Assert via redirect
+    // throw rather than inspecting rendered output.
     mockGetCatalogById.mockResolvedValue(baseCatalogEntry)
     mockGetWatchesByUser.mockResolvedValue([{ id: 'mine-1' }])
     mockDbLimit.mockResolvedValue([{
@@ -229,11 +243,10 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
       acquisitionDate: '2026-04-12',
       createdAt: new Date('2026-04-12T00:00:00.000Z'),
     }])
-    const result = await CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) })
-    const rendered = JSON.stringify(result)
-    // CatalogPageActions discriminator (the `spec` prop only ever appears on
-    // CatalogPageActions in this page) must NOT be in the tree.
-    expect(rendered).not.toMatch(/"spec":\{/)
+    await expect(CatalogPage({ params: Promise.resolve({ catalogId: validCatalogId }) }))
+      .rejects.toThrow('NEXT_REDIRECT')
+    // redirect fires before actionsSpec is constructed — CTAs are never in the tree.
+    expect(mockRedirect).toHaveBeenCalledWith('/watch/per-user-uuid-abc')
   })
 
   it('D-39b-04 — DOES render CTAs when collection is empty (NSV-20 fresh-account dead-end closure, supersedes Phase 20 D-05 "no CTAs when empty")', async () => {
@@ -256,13 +269,13 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
   // -------------------------------------------------------------------------
   // Phase 48 Plan 01 — BUG-01 regression coverage (D-10).
   // A wishlist/grail/sold watch viewed via /catalog/[catalogId] must NOT
-  // trigger the 'You own this watch' (self-via-cross-user) framing.
+  // trigger the 'You own this watch' callout or a redirect.
   // These tests simulate the FIXED query behavior: findViewerWatchByCatalogId
   // returns [] for any non-owned status row (status='owned' filter applied).
   // The mock bypasses the Drizzle .where() chain entirely — mockDbLimit=[]
   // is what the fixed query returns for wishlist/grail/sold rows (RESEARCH.md
-  // Pitfall 3). The owned-path regression guard at line 157 ("D-08") must
-  // remain unmodified — it guards the positive path.
+  // Pitfall 3). The owned-path regression guard ("ARCH-02 — redirects to...")
+  // guards the positive path (owned row → redirect fires).
   // -------------------------------------------------------------------------
 
   it('BUG-01 — wishlist watch does NOT trigger "You own this watch" callout', async () => {
@@ -335,5 +348,16 @@ describe('D-10 /catalog/[catalogId] page (Plan 06)', () => {
       )
     }
     expect(containsValue(predicate, 'owned')).toBe(true)
+  })
+
+  // -------------------------------------------------------------------------
+  // SC#5 (Phase 50.1 Plan 01) — static assertion that the v7.0 Variant C
+  // TODO comment exists at the OtherOwnersRoster render anchor. Mirrors the
+  // fs.readFileSync pattern from tests/app/insights-retirement.test.tsx:47-52.
+  // -------------------------------------------------------------------------
+  it('SC#5 — TODO comment for v7.0 Variant C is present at the OtherOwnersRoster anchor', async () => {
+    const fs = await import('node:fs')
+    const content = fs.readFileSync('src/app/catalog/[catalogId]/page.tsx', 'utf8')
+    expect(content).toContain('revisit for Variant C in v7.0')
   })
 })
