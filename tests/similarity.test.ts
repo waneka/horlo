@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { analyzeSimilarity } from '@/lib/similarity'
+import { analyzeSimilarity, TASTE_SUB_WEIGHTS, GOAL_THRESHOLDS } from '@/lib/similarity'
 import { makeWatch, emptyPreferences, preferencesWithGoal, fixtures } from './fixtures/watches'
 
 describe('analyzeSimilarity', () => {
@@ -173,6 +173,52 @@ describe('analyzeSimilarity', () => {
       // With an exception, the complications dimension contributes less to the
       // pairwise similarity, so the aggregate avg score must be <= the baseline.
       expect(withException.score).toBeLessThanOrEqual(withoutException.score + 1e-9)
+    })
+  })
+})
+
+describe('Phase 49.1 — TASTE_SUB_WEIGHTS rebalance (D-SIM-01..04)', () => {
+  it('TASTE_SUB_WEIGHTS has exactly 3 keys: numericTrioCosine, eraMatch, motifsJaccard', () => {
+    // D-SIM-03: the archetypeMatch sub-weight is removed; three keys remain.
+    expect(Object.keys(TASTE_SUB_WEIGHTS).sort()).toEqual([
+      'eraMatch',
+      'motifsJaccard',
+      'numericTrioCosine',
+    ])
+  })
+
+  it('TASTE_SUB_WEIGHTS values are 0.50 / 0.25 / 0.25 (within 1e-9 tolerance)', () => {
+    // D-SIM-01: proportional rescale by 1 / (1 - 0.20) = 1.25 lifts
+    //   numericTrioCosine 0.40 → 0.50, eraMatch 0.20 → 0.25, motifsJaccard 0.20 → 0.25.
+    // Values are computed algorithmically (D-SIM-02), so allow a tight float tolerance.
+    expect(TASTE_SUB_WEIGHTS.numericTrioCosine).toBeCloseTo(0.5, 9)
+    expect(TASTE_SUB_WEIGHTS.eraMatch).toBeCloseTo(0.25, 9)
+    expect(TASTE_SUB_WEIGHTS.motifsJaccard).toBeCloseTo(0.25, 9)
+  })
+
+  it('TASTE_SUB_WEIGHTS values sum to 1.0 (sub-budget closure invariant)', () => {
+    // Tripwire for any future weight-rebalance regression: surviving sub-weights
+    // must still sum to 1.0 so the outer TASTE_WEIGHT (0.20) caps taste contribution.
+    const sum = Object.values(TASTE_SUB_WEIGHTS).reduce((a, b) => a + b, 0)
+    expect(sum).toBeCloseTo(1.0, 9)
+  })
+
+  it('TASTE_SUB_WEIGHTS no longer has archetypeMatch key (D-SIM-03)', () => {
+    expect('archetypeMatch' in TASTE_SUB_WEIGHTS).toBe(false)
+  })
+
+  // D-SIM-04: outer envelope thresholds are byte-identical to pre-49.1.
+  // GOAL_THRESHOLDS is currently exported; THRESHOLDS is not. Asserting GOAL_THRESHOLDS
+  // here is the load-bearing invariant — the goal-aware thresholds are what actually
+  // produce verdict labels in analyzeSimilarity().
+  // TODO(49.1 follow-up): if THRESHOLDS is later exported, add a sibling assertion
+  // covering THRESHOLDS.{low,medium,high}.{coreFit, familiarTerritory, roleConflict}.
+  it('GOAL_THRESHOLDS is byte-identical to pre-49.1 values (D-SIM-04)', () => {
+    expect(GOAL_THRESHOLDS).toEqual({
+      'balanced':              { coreFit: 0.65, familiarTerritory: 0.45, roleConflict: 0.70 },
+      'specialist':            { coreFit: 0.65, familiarTerritory: 0.45, roleConflict: 0.78 },
+      'variety-within-theme':  { coreFit: 0.65, familiarTerritory: 0.40, roleConflict: 0.65 },
+      'brand-loyalist':        { coreFit: 0.65, familiarTerritory: 0.45, roleConflict: 0.70 },
     })
   })
 })

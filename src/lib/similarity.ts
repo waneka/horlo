@@ -31,18 +31,29 @@ const WEIGHTS = {
   taste: TASTE_WEIGHT,
 } as { [K in keyof typeof EXISTING_WEIGHTS_BASE]: number } & { taste: number }
 
-// Phase 38 D-03 — internal split of the 0.20 taste budget (sub-weights sum to 1.0).
-// Per-component effective weight = sub-weight × TASTE_WEIGHT:
-//   numericTrioCosine: 0.40 × 0.20 = 0.08
-//   archetypeMatch:    0.20 × 0.20 = 0.04
-//   eraMatch:          0.20 × 0.20 = 0.04
-//   motifsJaccard:     0.20 × 0.20 = 0.04
-const TASTE_SUB_WEIGHTS = {
+// Phase 38 D-03 (modified by Phase 49.1 D-SIM-01/D-SIM-02/D-SIM-03) — internal split
+// of the 0.20 taste budget. The categorical archetype sub-weight (formerly 0.20) was
+// removed; the surviving 3 sub-weights are rescaled proportionally so they still sum
+// to 1.0.
+//
+// Anti-magic-number per lines 10-12: do NOT hardcode the rescaled values. Define the
+// pre-removal base, the removed share, and compute RESCALE = 1 / (1 - removed).
+// Object.fromEntries(× RESCALE) mirrors the existing EXISTING_WEIGHTS_BASE pattern above.
+//
+// Per-component effective weight = sub-weight × TASTE_WEIGHT (0.20).
+// The Phase 38 D-03 trio-vs-categorical 2:1:1 ratio is preserved post-rescale.
+const TASTE_SUB_WEIGHTS_BASE = {
   numericTrioCosine: 0.40,
-  archetypeMatch:    0.20,
   eraMatch:          0.20,
   motifsJaccard:     0.20,
-} as const
+} as const  // sums to 0.80 (the surviving budget after removing the 0.20 categorical share)
+
+const REMOVED_SUB_WEIGHT = 0.20  // pre-49.1 categorical archetype share
+const RESCALE = 1 / (1 - REMOVED_SUB_WEIGHT)  // 1.25
+
+const TASTE_SUB_WEIGHTS = Object.fromEntries(
+  Object.entries(TASTE_SUB_WEIGHTS_BASE).map(([k, v]) => [k, v * RESCALE]),
+) as { [K in keyof typeof TASTE_SUB_WEIGHTS_BASE]: number }
 
 // Thresholds for similarity labels (adjusted by overlap tolerance)
 const THRESHOLDS = {
@@ -76,7 +87,7 @@ function detectLoyalBrands(owned: Watch[]): string[] {
   return loyal
 }
 
-export { GOAL_THRESHOLDS, detectLoyalBrands }
+export { GOAL_THRESHOLDS, detectLoyalBrands, TASTE_SUB_WEIGHTS }
 
 function arrayOverlap(arr1: string[], arr2: string[]): number {
   if (arr1.length === 0 || arr2.length === 0) return 0
@@ -109,7 +120,7 @@ function tasteSimilarityRaw01(
 
   let contrib = 0
 
-  // Numeric trio cosine (sub-weight 0.40 of the 0.20 taste budget = effective 0.08)
+  // Numeric trio cosine (computed sub-weight via RESCALE × TASTE_SUB_WEIGHTS_BASE.numericTrioCosine; effective contrib = sub-weight × TASTE_WEIGHT)
   // Drop the contribution when ANY of the 6 numerics is null (D-03 edge: cosine of all-zero pair would be misleading)
   const allNonNull1 = t1.formality !== null && t1.sportiness !== null && t1.heritageScore !== null
   const allNonNull2 = t2.formality !== null && t2.sportiness !== null && t2.heritageScore !== null
@@ -121,17 +132,12 @@ function tasteSimilarityRaw01(
     contrib += TASTE_SUB_WEIGHTS.numericTrioCosine * cos
   }
 
-  // Archetype categorical match (sub-weight 0.20 = effective 0.04)
-  if (t1.primaryArchetype !== null && t2.primaryArchetype !== null && t1.primaryArchetype === t2.primaryArchetype) {
-    contrib += TASTE_SUB_WEIGHTS.archetypeMatch * 1.0
-  }
-
-  // Era categorical match (sub-weight 0.20 = effective 0.04)
+  // Era categorical match (computed sub-weight via RESCALE × TASTE_SUB_WEIGHTS_BASE.eraMatch)
   if (t1.eraSignal !== null && t2.eraSignal !== null && t1.eraSignal === t2.eraSignal) {
     contrib += TASTE_SUB_WEIGHTS.eraMatch * 1.0
   }
 
-  // Motifs Jaccard (sub-weight 0.20 = effective 0.04) — REUSE existing arrayOverlap (verified Jaccard per D-03)
+  // Motifs Jaccard (computed sub-weight via RESCALE × TASTE_SUB_WEIGHTS_BASE.motifsJaccard) — REUSE existing arrayOverlap (verified Jaccard per D-03)
   contrib += TASTE_SUB_WEIGHTS.motifsJaccard * arrayOverlap(t1.designMotifs, t2.designMotifs)
 
   return contrib  // in [0, 1]; outer multiply by WEIGHTS.taste happens at caller

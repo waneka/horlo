@@ -228,7 +228,7 @@ Plans:
 - [ ] 49.1-02-PLAN.md — Verdict engine pivot to era axis (templates + composer + viewerTasteProfile + types + fit-delta + verdict tests)
 - [ ] 49.1-03-PLAN.md — /explore rail rewire + chip+route deletions (browse.ts unnest(style_tags) + GenreChips/ArchetypeChips/explore-genres deletions + BrowseModule tile + FilterDrawer + CollectorArchetypes deep-link repoint + tests)
 - [ ] 49.1-04-PLAN.md — Direct-UI archetype drops (ReferenceIdentityCard era-only headline + CompareTable 5-row + SearchPageClient slim header + searchSchema Zod + tests)
-- [ ] 49.1-05-PLAN.md — Similarity engine rebalance (algorithmic 1.25× RESCALE on TASTE_SUB_WEIGHTS + archetype categorical block delete + invariant tests)
+- [x] 49.1-05-PLAN.md — Similarity engine rebalance (algorithmic 1.25× RESCALE on TASTE_SUB_WEIGHTS + archetype categorical block delete + invariant tests)
 
 **Wave 2** *(blocked on Wave 1 — type-system unification + enricher chain)*
 - [ ] 49.1-06-PLAN.md — Type unification + DAL cleanup + enricher chain (types.ts CatalogTasteAttributes + catalog page projection + watches.ts LEFT JOIN + catalog.ts filters/tiebreaker/mapper/UPSERT + enricher.ts + prompt.ts + vocab.ts + 5 affected test files)
@@ -256,7 +256,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 48. User-Facing Bug Fixes | 3/3 | Complete    | 2026-05-19 |
 | 49. Genre vs Style Taxonomy Spike | 3/3 | Complete    | 2026-05-19 |
-| 49.1. Remove Genre Surface (INSERTED) | 1/8 | In Progress|  |
+| 49.1. Remove Genre Surface (INSERTED) | 2/8 | In Progress|  |
 | 50. Watch-Detail Architecture Spike | 0/TBD | Not started | - |
 
 ## Next Up

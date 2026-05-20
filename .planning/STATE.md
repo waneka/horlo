@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: executing
-stopped_at: Completed 49.1-01-PLAN.md (Wave 0 test scaffolds)
-last_updated: "2026-05-20T06:15:51.829Z"
+stopped_at: Completed 49.1-05-PLAN.md (D-SIM-01..04 engine rebalance, 5 invariant tests added)
+last_updated: "2026-05-20T06:27:08.555Z"
 last_activity: 2026-05-20 -- Phase 49.1 Plan 01 complete (3 Wave 0 test scaffolds)
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 15
-  completed_plans: 8
-  percent: 53
+  completed_plans: 9
+  percent: 60
 ---
 
 # Project State
@@ -65,6 +65,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | 49 | Genre vs style taxonomy spike — written recommendation | TAX-01 |
 | 49.1 | Remove genre surface (drop primary_archetype, delete /explore/genres, rebalance taste weights) | TAX-02 |
 | 50 | Two watch-detail views architecture spike — written decision | ARCH-01 |
+| Phase 49.1 P05 | 6 min | 1 tasks | 2 files |
 
 ### Deferred Items
 
@@ -101,7 +102,7 @@ None.
 ## Session Continuity
 
 Last activity: 2026-05-19 — v5.2 roadmap created (Phases 48-50).
-Stopped at: Completed 49.1-01-PLAN.md (Wave 0 test scaffolds)
+Stopped at: Completed 49.1-05-PLAN.md (D-SIM-01..04 engine rebalance, 5 invariant tests added)
 Next action: `/gsd-plan-phase 48` to plan and execute the two bug fixes.
 
 ## Operator Next Steps
