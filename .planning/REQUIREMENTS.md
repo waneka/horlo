@@ -20,7 +20,7 @@ Requirements for milestone v5.2. Each maps to a roadmap phase.
 ### Architecture
 
 - [x] **ARCH-01**: A spike compares keeping `/catalog/[catalogId]` (cross-user, spec-only) and `/watch/[id]` (owner per-user detail) as separate views vs merging them, and produces a written decision — no merge implementation in v5.2 unless the spike strongly favors it and it is cheap
-- [ ] **ARCH-02**: URL canonicalization — when the viewer owns a catalog ref reached via `/catalog/[catalogId]`, the server page issues a page-layer `redirect()` from `next/navigation` to `/watch/[id]`. The in-route D-08 "You own this" framing flip at `src/app/catalog/[catalogId]/page.tsx:107-115` is removed; the Phase 48 BUG-01 maintenance tax retires with it. Page-layer only — NOT `proxy.ts` (per `feedback_proxy_router_cache_poisoning` memory). Source: `.planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md` §8 (Primary recommendation: Variant B) + §9 (Ship-Now: YES).
+- [x] **ARCH-02**: URL canonicalization — when the viewer owns a catalog ref reached via `/catalog/[catalogId]`, the server page issues a page-layer `redirect()` from `next/navigation` to `/watch/[id]`. The in-route D-08 "You own this" framing flip at `src/app/catalog/[catalogId]/page.tsx:107-115` is removed; the Phase 48 BUG-01 maintenance tax retires with it. Page-layer only — NOT `proxy.ts` (per `feedback_proxy_router_cache_poisoning` memory). Source: `.planning/phases/50-watch-detail-architecture-spike/50-SPIKE.md` §8 (Primary recommendation: Variant B) + §9 (Ship-Now: YES).
 
 ## Future Requirements
 
@@ -61,7 +61,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TAX-01 | Phase 49 | Complete (2026-05-19) |
 | TAX-02 | Phase 49.1 | Complete (2026-05-20) |
 | ARCH-01 | Phase 50 | Complete (2026-05-20) |
-| ARCH-02 | Phase 50.1 | Pending |
+| ARCH-02 | Phase 50.1 | Complete (2026-05-20) |
 
 **Coverage:**
 - v5.2 requirements: 6 total (TAX-02 added 2026-05-19 per Phase 49 spike; ARCH-02 added 2026-05-20 per Phase 50 spike)
@@ -70,4 +70,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-19*
-*Last updated: 2026-05-20 — ARCH-02 added mid-milestone per Phase 50 spike Ship-Now verdict (Variant B URL canonicalization, cheap + strongly favored); ARCH-01 marked complete*
+*Last updated: 2026-05-20 — Phase 50.1 closed; ARCH-02 marked Complete (page-layer redirect Variant B shipped; Phase 48 BUG-01 maintenance tax retired). ARCH-01 unchanged.*
