@@ -102,13 +102,6 @@ export default async function ProfileTabPage({
   // On sibling tab navigation (`/u/x/collection` → `/u/x/wishlist`) the
   // layout + gate stay mounted; only this page swaps in. No more chrome
   // skeleton flash.
-  //
-  // `wrapInGate` is now an identity passthrough kept temporarily so the
-  // 12 existing call sites don't have to be flattened in the same commit
-  // as the layout move (atomic scope hygiene). Follow-up cleanup: inline
-  // the call sites and delete this helper. Tracked as a post-Phase 51
-  // tidy-up task.
-  const wrapInGate = <T,>(tabContent: T): T => tabContent
 
   // Phase 25 D-09: server-side env-presence check. Only the resolved Boolean
   // crosses the server/client boundary — the API key value itself never does.
@@ -137,7 +130,7 @@ export default async function ProfileTabPage({
     // becomes a soft walk-back fallback (NSV-12 / DISC-AUDIT-127).
     if (!overlap) notFound()
     if (!overlap.hasAny) {
-      return wrapInGate(
+      return (
         <Card>
           <CardHeader>
             <CardTitle>No shared watches yet.</CardTitle>
@@ -163,14 +156,14 @@ export default async function ProfileTabPage({
               </Link>
             </div>
           </CardContent>
-        </Card>,
+        </Card>
       )
     }
-    return wrapInGate(
+    return (
       <CommonGroundTabContent
         overlap={overlap}
         ownerDisplayLabel={ownerDisplayLabel}
-      />,
+      />
     )
   }
 
@@ -180,13 +173,13 @@ export default async function ProfileTabPage({
   // privacy per Phase 12 pattern).
   if (tab === 'insights') {
     if (!isOwner) notFound()
-    return wrapInGate(<InsightsTabContent profileUserId={profile.id} />)
+    return <InsightsTabContent profileUserId={profile.id} />
   }
 
   // The shared layout already short-circuits when profile_public=false && !isOwner.
   // Per-tab visibility (PRIV-02 / PRIV-03 / PRIV-04):
   if (tab === 'collection' && !isOwner && !settings.collectionPublic) {
-    return wrapInGate(
+    return (
       <LockedTabCard
         tab="collection"
         displayName={displayName}
@@ -195,11 +188,11 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />,
+      />
     )
   }
   if (tab === 'wishlist' && !isOwner && !settings.wishlistPublic) {
-    return wrapInGate(
+    return (
       <LockedTabCard
         tab="wishlist"
         displayName={displayName}
@@ -208,7 +201,7 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />,
+      />
     )
   }
   // Phase 12 (WYWT-10): worn-tab LockedTabCard branch removed. Per-row
@@ -222,7 +215,7 @@ export default async function ProfileTabPage({
   // side channel whenever the owner has hidden their collection. Mirror the
   // Stats gate (line ~136) and require collection_public for non-owners.
   if (tab === 'notes' && !isOwner && !settings.collectionPublic) {
-    return wrapInGate(
+    return (
       <LockedTabCard
         tab="notes"
         displayName={displayName}
@@ -231,7 +224,7 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />,
+      />
     )
   }
 
@@ -252,17 +245,17 @@ export default async function ProfileTabPage({
     const collectionCount = ownedWatches.length
 
     if (tab === 'collection') {
-      return wrapInGate(
+      return (
         <CollectionTabContent
           watches={ownedWatches}
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           hasUrlExtract={hasUrlExtract}
-        />,
+        />
       )
     }
     if (tab === 'wishlist') {
-      return wrapInGate(
+      return (
         <WishlistTabContent
           watches={watches.filter(
             (w) => w.status === 'wishlist' || w.status === 'grail',
@@ -270,7 +263,7 @@ export default async function ProfileTabPage({
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           username={profile.username}
-        />,
+        />
       )
     }
     // tab === 'notes' — per-note visibility (D-13): non-owners only see notes_public !== false
@@ -279,14 +272,14 @@ export default async function ProfileTabPage({
         Boolean(w.notes && w.notes.trim()) &&
         (isOwner || w.notesPublic !== false),
     )
-    return wrapInGate(
+    return (
       <NotesTabContent
         watches={notedWatches}
         isOwner={isOwner}
         username={profile.username}
         collectionCount={collectionCount}
         ownedWatches={ownedWatches}
-      />,
+      />
     )
   }
 
@@ -308,7 +301,7 @@ export default async function ProfileTabPage({
         },
       ]),
     )
-    return wrapInGate(
+    return (
       <WornTabContent
         events={events.map((e) => ({
           id: e.id,
@@ -321,7 +314,7 @@ export default async function ProfileTabPage({
         username={profile.username}
         viewerId={viewerId}
         ownedWatches={watches.filter((w) => w.status === 'owned')}
-      />,
+      />
     )
   }
 
@@ -329,7 +322,7 @@ export default async function ProfileTabPage({
   // Wear data is gated separately via getWearEventsForViewer (Phase 12 WYWT-10: returns
   // only per-row visible events for non-owners) — stats render with visible events only.
   if (!isOwner && !settings.collectionPublic) {
-    return wrapInGate(
+    return (
       <LockedTabCard
         tab="stats"
         displayName={displayName}
@@ -338,7 +331,7 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />,
+      />
     )
   }
   // `watches` and the owner-view `events` come from the cached resolver
@@ -362,7 +355,7 @@ export default async function ProfileTabPage({
     goal: prefs?.collectionGoal ?? null,
     weekdayCounts: bucketWearsByWeekday(events),
   })
-  return wrapInGate(
+  return (
     <StatsTabContent
       ownedWatches={ownedAll}
       styleRows={styleDistribution(ownedAll)}
@@ -370,6 +363,6 @@ export default async function ProfileTabPage({
       mostWorn={topMostWorn(ownedAll, wearCount, 3)}
       leastWorn={topLeastWorn(ownedAll, wearCount, 3)}
       observations={observations}
-    />,
+    />
   )
 }
