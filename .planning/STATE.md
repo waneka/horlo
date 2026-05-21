@@ -4,14 +4,14 @@ milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: Phase 51 complete — verified, code-reviewed, prod-deployed
 stopped_at: Phase 52 context gathered
-last_updated: "2026-05-21T18:09:21.919Z"
-last_activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-gate live on prod
+last_updated: "2026-05-21T19:42:51.353Z"
+last_activity: 2026-05-21 -- Phase 52 planning complete
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 10
+  total_plans: 19
   completed_plans: 9
-  percent: 90
+  percent: 47
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plans: 8 of 8 executable plans complete (9th is the phase overview)
 Verification: 7/7 must-haves passed (2026-05-21)
 Code review: 2 critical, 6 warning, 3 info (advisory — phase shipped; follow-up via `/gsd-code-review 51 --fix`)
 Prod status: Deployed to https://www.horlo.app at commit 84779ae; operator UAT PASS (zero 404s, two click cycles)
-Last activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-gate live on prod
+Last activity: 2026-05-21 -- Phase 52 planning complete
 
 ## Performance Metrics
 

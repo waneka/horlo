@@ -206,14 +206,21 @@ Plans:
 **Plans:** 9 plans
 
 Plans:
+**Wave 1**
 - [ ] 52-01-PLAN.md — Wave 0: invert Test 1 + add Tests 4/5 to tests/profile-route-51.test.ts (TDD source-grep scaffolds, expected to fail on current main)
 - [ ] 52-02-PLAN.md — Wave 0: install @playwright/test + @next/playwright, scaffold playwright.config.ts + tests/e2e/{auth-setup,profile-tab-instant}.test.ts (e2e regression contract)
 - [ ] 52-03-PLAN.md — Wave 1: Step 1 probe — add only `unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx, capture validator output verbatim into 52-03-VALIDATOR-OUTPUT.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 52-04-PLAN.md — Wave 2: create profile-chrome.tsx (async runtime-API consumer) + refactor layout.tsx to sync + Suspense around ProfileChrome (REQ-52-03a/03b)
 - [ ] 52-05-PLAN.md — Wave 2: restructure [tab]/page.tsx — outer sync + inner async ProfileTabContent wrapped in Suspense (REQ-52-04)
 - [ ] 52-06-PLAN.md — Wave 2: apply unstable_instant=false opt-outs to cross-route surfaces from VALIDATOR-OUTPUT (REQ-52-05); record FINDINGS for SEED-014 hand-off
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 52-07-PLAN.md — Wave 3: CR-01 proxy.ts comment correction + delete scripts/assert-phase-51-build.mjs + create SEED-014-cache-components-canonical-sweep.md (REQ-52-09)
 - [ ] 52-08-PLAN.md — Wave 3: doc reversals — rewrite [tab]/page.tsx + loading.tsx + profile-gate.tsx comments + annotate 51-CONTEXT.md (D-52-11/12/14)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 52-09-PLAN.md — Wave 4: pre-deploy gates + Vercel deploy + Branch B curl verification + operator UAT (2x cycles + 15-min cache-revalidation wait) — recurrence-4 prevention contract
 
 **Scope (provisional — validator output drives final shape):**
