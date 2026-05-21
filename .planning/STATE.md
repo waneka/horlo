@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: Phase 51 complete — verified, code-reviewed, prod-deployed
-stopped_at: Phase 51 complete (recurrence-3 resolved in prod 2026-05-21)
-last_updated: "2026-05-21T02:10:00.000Z"
-last_activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-gate live on prod; operator UAT PASS
+stopped_at: Phase 52 context gathered
+last_updated: "2026-05-21T18:09:21.919Z"
+last_activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-gate live on prod
 progress:
-  total_phases: 2
-  completed_phases: 2
+  total_phases: 3
+  completed_phases: 1
   total_plans: 10
   completed_plans: 9
   percent: 90
@@ -47,6 +47,7 @@ Last activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-ga
 
 - Phase 49.1 inserted after Phase 49: Remove genre surface — implements Phase 49 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (TAX-02) (URGENT)
 - Phase 50.1 inserted after Phase 50: URL canonicalization — implements Phase 50 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (Variant B; ARCH-02) (URGENT)
+- Phase 52 added: Option D — Cache Components canonical pattern fix for /u/[username]/[tab] (recurrence-4 React #419) — supersedes Phase 51 layout-fix; sourced from `.planning/audits/cache-components-2026-05-21-followup.md`
 
 ### Key Decisions
 
@@ -139,7 +140,7 @@ Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
 ## Session Continuity
 
 Last activity: 2026-05-20 — Phase 49.1 Plan 07 complete (schema.ts dropped, drizzle/0012 migration authored, drizzle-kit push deferred to main repo).
-Stopped at: Phase 50 context gathered
+Stopped at: Phase 52 context gathered
 Next action: User runs `npx drizzle-kit push` in main repo to apply local DB drop, then execute Plan 08 (supabase prod migration push).
 
 ## Operator Next Steps
