@@ -15,9 +15,16 @@
  *                     manifest shape (plan-checker WARNING 4).
  *
  * Exit codes:
- *   0   /u/[username]/[tab] is NOT classified PPR (structural fix in place)
- *   1   /u/[username]/[tab] is still PPR-eligible (regression contract on current main)
- *   2   .next/ manifest not found — run `npm run build` first (skip, not fail)
+ *   0   /u/[username]/[tab] is NOT classified PPR AND appears in at least one
+ *       manifest in a fully-dynamic (non-PPR) shape (structural fix verified).
+ *   1   /u/[username]/[tab] is still PPR-eligible (regression contract on current main).
+ *   2   .next/ manifest not found — run `npm run build` first (skip, not fail).
+ *   3   (WR-03) Route NOT FOUND in any inspected manifest AND no BUILD_LOG
+ *       fallback ran. This indicates the manifest shape may have changed — the
+ *       assertion is INCONCLUSIVE and we fail CLOSED so a silent regression
+ *       cannot pass. Set BUILD_LOG=<path> to provide a defense-in-depth
+ *       fallback check; if the build log confirms the route is non-PPR, the
+ *       script will pass even when the manifest shape is unrecognized.
  *
  * Assertion (REQ-51-03): the local build output must NOT classify
  * /u/[username]/[tab] as PARTIALLY_STATIC. The route must be either fully
@@ -110,10 +117,28 @@ function inspectManifest(rel, json) {
 }
 
 const violations = []
+let routeFoundInAnyManifest = false
 for (const { rel, abs } of foundManifests) {
   try {
     const raw = readFileSync(abs, 'utf8')
     const json = JSON.parse(raw)
+    // WR-03: track whether the route appears in ANY known manifest slot
+    // (irrespective of PPR classification). A "not found anywhere" outcome
+    // is treated as an inconclusive result (exit 3) further down rather
+    // than a silent pass — the previous behavior of exiting 0 when the
+    // route was missing from every manifest could mask a manifest-shape
+    // change that simply moved the entry to a new key.
+    if (json && typeof json === 'object') {
+      if (
+        (json.routes && typeof json.routes === 'object' && ROUTE_KEY in json.routes) ||
+        (json.dynamicRoutes &&
+          typeof json.dynamicRoutes === 'object' &&
+          ROUTE_KEY in json.dynamicRoutes) ||
+        (json.pages && typeof json.pages === 'object' && ROUTE_KEY in json.pages)
+      ) {
+        routeFoundInAnyManifest = true
+      }
+    }
     const result = inspectManifest(rel, json)
     if (result.violated) violations.push(result.evidence)
   } catch (err) {
@@ -123,6 +148,8 @@ for (const { rel, abs } of foundManifests) {
 }
 
 // Defense-in-depth: build-log substring check
+let buildLogCheckPerformed = false
+let buildLogConfirmsNonPpr = false
 if (process.env.BUILD_LOG) {
   const logPath = resolve(cwd, process.env.BUILD_LOG)
   if (!existsSync(logPath)) {
@@ -130,12 +157,18 @@ if (process.env.BUILD_LOG) {
     process.exit(1)
   }
   const log = readFileSync(logPath, 'utf8')
+  buildLogCheckPerformed = true
   if (log.includes(BUILD_LOG_LITERAL)) {
     violations.push({
       source: 'build-log',
       literal: BUILD_LOG_LITERAL,
       path: process.env.BUILD_LOG,
     })
+  } else {
+    // WR-03 (Phase 51 review): when the build log was inspected and the
+    // PPR literal is absent, treat that as positive confirmation that the
+    // route is non-PPR — covers the manifest-shape-change scenario below.
+    buildLogConfirmsNonPpr = true
   }
 }
 
@@ -147,5 +180,30 @@ if (violations.length > 0) {
   process.exit(1)
 }
 
-console.log('OK: /u/[username]/[tab] is not PPR-classified in build output')
+// WR-03 (Phase 51 review): when the route is NOT found in any inspected
+// manifest and no BUILD_LOG fallback confirmed non-PPR behavior, the result
+// is INCONCLUSIVE rather than a clean pass. Previously the script exited 0
+// in this case ("if it's not present, it isn't PPR-classified") — but that
+// silently masks the manifest-shape-change scenario explicitly called out
+// in the inspectManifest comment block above. Fail closed instead.
+if (!routeFoundInAnyManifest && !buildLogConfirmsNonPpr) {
+  console.error(
+    `FAIL: ${ROUTE_KEY} not found in any of the inspected Next 16 manifests, ` +
+      'and no BUILD_LOG fallback was supplied. The Next manifest shape may have ' +
+      'changed since this script was written, so the assertion is inconclusive. ' +
+      'Either (a) update inspectManifest() to recognize the new shape, or ' +
+      '(b) capture build output to a file and re-run with BUILD_LOG=<path> ' +
+      'so the build-log substring check can confirm non-PPR classification.',
+  )
+  console.error(
+    `  inspected manifests: ${foundManifests.map((m) => m.rel).join(', ')}`,
+  )
+  process.exit(3)
+}
+
+console.log(
+  buildLogCheckPerformed
+    ? `OK: ${ROUTE_KEY} is not PPR-classified (manifest + build-log checks both pass)`
+    : `OK: ${ROUTE_KEY} is not PPR-classified in build output`,
+)
 process.exit(0)
