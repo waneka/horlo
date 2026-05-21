@@ -203,7 +203,7 @@ Plans:
 **Depends on:** Phase 51 (Branch B 307 + `no-store` contract must remain live through this fix)
 **Source:** `.planning/audits/cache-components-2026-05-21-followup.md` (Option D plan, supersedes the original audit's "three forward options")
 **Related:** `.planning/audits/cache-components-2026-05-21.md`, `.planning/debug/resolved/profile-page-404-top-nav.md`
-**Plans:** 5/9 plans executed
+**Plans:** 6/9 plans executed
 
 Plans:
 **Wave 1**
@@ -217,7 +217,7 @@ Plans:
 - [x] 52-06-PLAN.md — Wave 2: apply unstable_instant=false opt-outs to cross-route surfaces from VALIDATOR-OUTPUT (REQ-52-05); record FINDINGS for SEED-014 hand-off
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 52-07-PLAN.md — Wave 3: CR-01 proxy.ts comment correction + delete scripts/assert-phase-51-build.mjs + create SEED-014-cache-components-canonical-sweep.md (REQ-52-09)
+- [x] 52-07-PLAN.md — Wave 3: CR-01 proxy.ts comment correction + delete scripts/assert-phase-51-build.mjs + create SEED-014-cache-components-canonical-sweep.md (REQ-52-09)
 - [ ] 52-08-PLAN.md — Wave 3: doc reversals — rewrite [tab]/page.tsx + loading.tsx + profile-gate.tsx comments + annotate 51-CONTEXT.md (D-52-11/12/14)
 
 **Wave 4** *(blocked on Wave 3 completion)*
