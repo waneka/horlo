@@ -8,17 +8,30 @@ export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isPublic = isPublicPath(pathname)
 
-  // Phase 51 (Branch B): Profile routes (/u/*) ARE gated by the proxy.
-  // Auth is read via updateSession's getSession() (plan 51-04). NOTE: this
-  // is cookie-first, not strictly network-free — getSession() can refresh
-  // the access token when it is near expiry (see comment in
-  // src/lib/supabase/proxy.ts for the auth-js details). The PRIMARY
-  // recurrence-2 (Router Cache poisoning) mitigation is the
+  // Phase 51 Branch B safety contract (CR-01 corrected by Phase 52 D-52-09):
+  //
+  // THE Router Cache poisoning mitigation for anon `/u/*` requests is the
   // `Cache-Control: no-store` header set on the 307 → /login below (line
-  // 23). That header — NOT the getUser → getSession swap — is what
-  // prevents Next 16's Router Cache from storing and replaying this
-  // redirect on subsequent soft-navs. See
-  // .planning/debug/profile-page-404-top-nav.md for the full history.
+  // 28). That header is NECESSARY AND SUFFICIENT — it tells Next 16's
+  // Router Cache to neither store nor replay this redirect on subsequent
+  // soft-navs. Four recurrences of the profile-tab 404 + React #419 bug
+  // (.planning/debug/resolved/profile-page-404-top-nav.md) converged on
+  // this single property.
+  //
+  // The cookie-only `getSession()` swap (plan 51-04) is NOT a safety
+  // property. It is an optimistic auth optimisation: getSession() reads
+  // session cookies first and CAN refresh the access token over the
+  // network when it nears expiry (see the lengthy auth-js rationale in
+  // src/lib/supabase/proxy.ts:26-67). That network refresh is acceptable
+  // precisely because it doesn't affect the Router Cache decision — the
+  // header below does. Treating getSession() as "part of" the safety
+  // contract was the framing error CR-01 flagged in the Phase 51 code
+  // review; this comment block is the corrected framing.
+  //
+  // See .planning/audits/cache-components-2026-05-21.md ("actual
+  // recurrence-3 mitigation was Cache-Control: no-store"), Phase 52
+  // D-52-09 (this CR-01 closure), and D-52-CF-01 (Branch B contract
+  // preserved through Phase 52).
 
   if (!userId && !isPublic) {
     const loginUrl = new URL('/login', request.url)
