@@ -1,6 +1,5 @@
 import 'server-only'
 import { notFound } from 'next/navigation'
-import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { isFollowing } from '@/data/follows'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { CommonGroundHeroBand } from '@/components/profile/CommonGroundHeroBand'
@@ -11,15 +10,18 @@ import { ProfileShellResolver } from './profile-shell-resolver'
 
 /**
  * Server-side profile shell gate — viewer-dependent branching outside the
- * cached scope (D-39c-05, T-39c-01 / T-39c-04 mitigations).
+ * cached scope (D-39c-05, T-39c-01 / T-39c-04 mitigations). Receives `viewerId`
+ * from the page (the runtime-API consumer) so this gate is a pure async
+ * function of `(username, viewerId, children)`.
  *
  * Load-bearing invariants:
  *   (a) `notFound()` MUST be called BEFORE any post-suspending `await`
  *       (Pitfall 5 — loading.md:118-124). It is called immediately after the
  *       resolver returns null, before `isFollowing` or `resolveCommonGround`.
- *   (b) `getCurrentUser()` lives OUTSIDE the `<ProfileShellResolver/>` cached
- *       scope (Pitfall 1). This gate is the uncached layer; the resolver MUST
- *       NOT receive viewerId.
+ *   (b) `viewerId` is received as a prop and lives OUTSIDE the
+ *       `<ProfileShellResolver/>` cached scope (Pitfall 1). The resolver MUST
+ *       NOT receive viewerId. This gate physically cannot read cookies — the
+ *       invariant is now structural rather than conventional.
  *   (c) `<ProfileShellResolver/>` is called HERE (inside the gate, not in the
  *       layout body) so the locked branch can render `<LockedProfileState/>`
  *       without falling through to the public composition.
@@ -27,23 +29,19 @@ import { ProfileShellResolver } from './profile-shell-resolver'
  * PROHIBITED inside this file:
  *   - use-cache directive — the gate is the uncached layer; this MUST stay uncached
  *   - next/cache tag/life primitives (gate is uncached by design)
- *   - Reading cookies via any means other than the `getCurrentUser()` try/catch
+ *   - Reading cookies via any means — viewer identity arrives via the
+ *     `viewerId` prop and is the page's responsibility (Pitfall 1 structural lock)
+ *   - Importing from `@/lib/auth` — the gate is no longer the cookie boundary
  */
 export async function ProfileGate({
   username,
+  viewerId,
   children,
 }: {
   username: string
+  viewerId: string | null
   children: React.ReactNode
 }) {
-  // Viewer resolution OUTSIDE the cached scope — Pitfall 1.
-  let viewerId: string | null = null
-  try {
-    viewerId = (await getCurrentUser()).id
-  } catch (err) {
-    if (!(err instanceof UnauthorizedError)) throw err
-  }
-
   // Cached, owner-scoped read.
   const resolved = await ProfileShellResolver({ username })
 
