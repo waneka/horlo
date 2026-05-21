@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/proxy'
-import { isPublicPath, isProfilePath } from '@/lib/constants/public-paths'
+import { isPublicPath } from '@/lib/constants/public-paths'
 
 export default async function proxy(request: NextRequest) {
   const { user, response } = await updateSession(request)
@@ -8,23 +8,25 @@ export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isPublic = isPublicPath(pathname)
 
-  // Profile routes (/u/*) are NOT gated by the proxy even for unauthenticated
-  // visitors. Page-level code (ProfileGate) handles viewer identity:
-  // UnauthorizedError → viewerId=null → LockedProfileState or notFound().
-  // Gating here causes 307 → /login on RSC prefetch races, which Next 16's
-  // Router Cache stores and serves on subsequent soft-nav clicks → 404.
-  // See .planning/debug/profile-page-404-top-nav.md (recurrence 2026-05-19).
-  const isProfile = isProfilePath(pathname)
+  // Phase 51 (Branch B): Profile routes (/u/*) ARE gated by the proxy.
+  // Cookie-only auth via updateSession's getSession() (plan 51-04) — no
+  // network round-trip on RSC prefetches. The 307 → /login carries
+  // Cache-Control: no-store so it cannot be stored by Next 16's Router
+  // Cache, preventing the recurrence-2 poisoning vector documented in
+  // .planning/debug/profile-page-404-top-nav.md.
 
-  if (!user && !isPublic && !isProfile) {
+  if (!user && !isPublic) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', pathname + request.nextUrl.search)
-    return NextResponse.redirect(loginUrl)
+    const redirect = NextResponse.redirect(loginUrl)
+    // Branch B safety: prevent Router Cache from storing this 307.
+    redirect.headers.set('Cache-Control', 'no-store')
+    return redirect
   }
 
   // Dev-only log line to satisfy ROADMAP success criterion #2 ("a log line confirms the proxy executes")
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[proxy] ${pathname} user=${user?.id ?? 'anon'} public=${isPublic} profile=${isProfile}`)
+    console.log(`[proxy] ${pathname} user=${user?.id ?? 'anon'} public=${isPublic}`)
   }
 
   return response
