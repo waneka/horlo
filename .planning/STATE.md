@@ -4,8 +4,8 @@ milestone: v5.2
 milestone_name: Polish + Taxonomy
 status: Phase 51 complete — verified, code-reviewed, prod-deployed
 stopped_at: Phase 52 context gathered
-last_updated: "2026-05-21T19:42:51.353Z"
-last_activity: 2026-05-21 -- Phase 52 planning complete
+last_updated: "2026-05-21T19:51:08.447Z"
+last_activity: 2026-05-21 -- Phase 52 execution started
 progress:
   total_phases: 3
   completed_phases: 1
@@ -21,16 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 51 complete — awaiting next phase
+**Current focus:** Phase 52 — option-d-cache-components-canonical-pattern-fix-for-u-userna
 
 ## Current Position
 
-Phase: 51 (profile-route-ppr-opt-out-recurrence-3-fix-for-u-username-ta) — COMPLETE
+Phase: 52 (option-d-cache-components-canonical-pattern-fix-for-u-userna) — EXECUTING
+Plan: 1 of 9
 Plans: 8 of 8 executable plans complete (9th is the phase overview)
 Verification: 7/7 must-haves passed (2026-05-21)
 Code review: 2 critical, 6 warning, 3 info (advisory — phase shipped; follow-up via `/gsd-code-review 51 --fix`)
 Prod status: Deployed to https://www.horlo.app at commit 84779ae; operator UAT PASS (zero 404s, two click cycles)
-Last activity: 2026-05-21 -- Phase 52 planning complete
+Last activity: 2026-05-21 -- Phase 52 execution started
 
 ## Performance Metrics
 
