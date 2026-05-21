@@ -100,11 +100,19 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
     const result = (await ProfileTabPage({
       params: Promise.resolve({ username: 'alice', tab: 'insights' }),
     })) as any
-    // The Server Component returns a React element. Assert its type is the
-    // mocked InsightsTabContent and the profileUserId prop equals the owner id.
+    // Phase 51 F3-Composite (51-03): the page now wraps every per-tab JSX
+    // return in <Suspense fallback={<ProfileShellSkeleton/>}><ProfileGate
+    // username viewerId>{tabContent}</ProfileGate></Suspense>. Navigate
+    // through the wrapper to assert the inner tabContent shape is preserved:
+    //   result               → <Suspense ...>
+    //   result.props.children → <ProfileGate ...>{tabContent}</ProfileGate>
+    //   ...children.props.children → the tabContent React element
     expect(result).toBeTruthy()
-    expect(result.type).toBe(InsightsTabContent)
-    expect(result.props).toEqual({ profileUserId: 'user-1' })
+    const gateEl = result.props.children
+    expect(gateEl).toBeTruthy()
+    const inner = gateEl.props.children
+    expect(inner.type).toBe(InsightsTabContent)
+    expect(inner.props).toEqual({ profileUserId: 'user-1' })
   })
 
   it('returns notFound when viewer is NOT owner (uniform 404 — P-08)', async () => {
