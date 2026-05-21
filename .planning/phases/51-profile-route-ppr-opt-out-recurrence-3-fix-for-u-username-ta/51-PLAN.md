@@ -15,22 +15,18 @@ This file is the phase overview. Individual atomic plans are `51-01-PLAN.md` thr
 
 ---
 
-## OPERATOR DECISION REQUIRED — Branch A vs Branch B
+## OPERATOR DECISION — Branch B CONFIRMED 2026-05-20
 
-This plan is authored under the assumption of **Branch B** (re-gate `/u/*` to authenticated viewers) per operator's stated preference, with the research-confirmed safety prerequisite that `src/lib/supabase/proxy.ts:updateSession` is converted to a cookie-only check (`getSession()`) BEFORE the re-gate ships.
+**Confirmed by operator on 2026-05-20.** Execute all 9 plans (51-01 through 51-08, including the bonus 51-07). Do NOT prompt the operator again on branch choice during execution.
 
-**Branch A (alternative):** Leave the recurrence-2 fix `5def872` in place (proxy `/u/*` ungating). Plans 51-04 and 51-05 (cookie-only refactor + re-gate) are SKIPPED. F3-Composite structural fix (plans 51-02 + 51-03) is still required. Branch A is the lower-scope path.
+Branch B = re-gate `/u/*` to authenticated viewers. The recurrence-2 fix `5def872` (proxy `/u/*` ungating via `isProfilePath()`) will be reverted. Plans 51-04 (proxy `getSession()` cookie-only refactor) and 51-05 (re-gate + `Cache-Control: no-store` on the 307) ship together to make the re-gate safe.
 
-**Branch B (recommended, planned-for):** All plans 51-01 through 51-08 execute. Plans 51-04 (cookie-only refactor) and 51-05 (re-gate) re-introduce proxy auth gating for `/u/*` without re-introducing the recurrence-2 Router Cache poisoning vector.
-
-**Branch B is SAFE if and only if:**
-1. Plan 51-04 ships BEFORE plan 51-05 (the cookie-only refactor is a hard prerequisite).
+**Branch B is SAFE if and only if (locked invariants for the executor):**
+1. Plan 51-04 ships BEFORE plan 51-05 (cookie-only refactor is a hard prerequisite — without it, the proxy network round-trip re-introduces the recurrence-2 Router Cache poisoning vector).
 2. The cookie-only check uses `supabase.auth.getSession()` (no network round-trip) per `node_modules/next/dist/docs/01-app/02-guides/authentication.md:1031`.
-3. The 307 → /login response carries `Cache-Control: no-store` (set on `NextResponse.redirect()` in proxy.ts) to prevent Router Cache storage of the redirect.
+3. The 307 → /login response carries `Cache-Control: no-store` (set on `NextResponse.redirect()` in `src/proxy.ts`) to prevent Router Cache storage of the redirect.
 
-**Operator sign-off (required before executing plan 51-04 or 51-05):**
-- [ ] Confirm Branch B
-- [ ] If Branch A instead, mark plans 51-04 and 51-05 as `cancelled` and update REQ-51-07 to `N/A`
+**Branch A was the alternative** (leave 5def872 in place, skip 51-04 and 51-05). Rejected by operator in favor of restoring authenticated-only profiles. Branch A is no longer a live option for this phase.
 
 ---
 
