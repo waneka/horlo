@@ -1,8 +1,11 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import { ProfileGate } from '../profile-gate'
+import { ProfileShellSkeleton } from '../profile-shell-skeleton'
 import { ProfileShellResolver } from '../profile-shell-resolver'
 import {
   getMostRecentWearDates,
@@ -68,13 +71,26 @@ export default async function ProfileTabPage({
     if (!(err instanceof UnauthorizedError)) throw err
   }
 
-  // Cached owner-scoped reads — shared with /u/[username]/layout.tsx's
-  // ProfileGate via the same `'use cache'` resolver. The second hit from
-  // this page is a cache lookup, not a DB roundtrip, so subsequent tab
-  // navigations within the 300s cacheLife window are sub-millisecond on
-  // the server side. The resolver's `cacheTag('profile:${username}')` is
-  // invalidated by the Server Actions wired in Plan 39c-05 (watches add/
-  // edit/remove, profile updates, follows, wear events).
+  // Phase 51 F3-Composite: wrap every per-tab JSX return in this composition
+  // so the page is the runtime-API consumer (getCurrentUser above) and the
+  // gate's cached resolver renders inside the dynamic page render context.
+  // The page is now the route's dynamic stream target; the layout collapsed
+  // to a pure static shell.
+  const wrapInGate = (tabContent: React.ReactNode) => (
+    <Suspense fallback={<ProfileShellSkeleton />}>
+      <ProfileGate username={username} viewerId={viewerId}>
+        {tabContent}
+      </ProfileGate>
+    </Suspense>
+  )
+
+  // Cached owner-scoped reads — shared with the page-owned ProfileGate via
+  // the same `'use cache'` resolver. The second hit from this page is a
+  // cache lookup, not a DB roundtrip, so subsequent tab navigations within
+  // the 300s cacheLife window are sub-millisecond on the server side. The
+  // resolver's `cacheTag('profile:${username}')` is invalidated by the
+  // Server Actions wired in Plan 39c-05 (watches add/edit/remove, profile
+  // updates, follows, wear events).
   const resolved = await ProfileShellResolver({ username })
   if (!resolved.profile) notFound()
   const { profile, settings, watches: ownerWatches, wearEvents: ownerWearEvents } = resolved
@@ -118,7 +134,7 @@ export default async function ProfileTabPage({
     // becomes a soft walk-back fallback (NSV-12 / DISC-AUDIT-127).
     if (!overlap) notFound()
     if (!overlap.hasAny) {
-      return (
+      return wrapInGate(
         <Card>
           <CardHeader>
             <CardTitle>No shared watches yet.</CardTitle>
@@ -144,14 +160,14 @@ export default async function ProfileTabPage({
               </Link>
             </div>
           </CardContent>
-        </Card>
+        </Card>,
       )
     }
-    return (
+    return wrapInGate(
       <CommonGroundTabContent
         overlap={overlap}
         ownerDisplayLabel={ownerDisplayLabel}
-      />
+      />,
     )
   }
 
@@ -161,13 +177,13 @@ export default async function ProfileTabPage({
   // privacy per Phase 12 pattern).
   if (tab === 'insights') {
     if (!isOwner) notFound()
-    return <InsightsTabContent profileUserId={profile.id} />
+    return wrapInGate(<InsightsTabContent profileUserId={profile.id} />)
   }
 
   // The shared layout already short-circuits when profile_public=false && !isOwner.
   // Per-tab visibility (PRIV-02 / PRIV-03 / PRIV-04):
   if (tab === 'collection' && !isOwner && !settings.collectionPublic) {
-    return (
+    return wrapInGate(
       <LockedTabCard
         tab="collection"
         displayName={displayName}
@@ -176,11 +192,11 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />
+      />,
     )
   }
   if (tab === 'wishlist' && !isOwner && !settings.wishlistPublic) {
-    return (
+    return wrapInGate(
       <LockedTabCard
         tab="wishlist"
         displayName={displayName}
@@ -189,7 +205,7 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />
+      />,
     )
   }
   // Phase 12 (WYWT-10): worn-tab LockedTabCard branch removed. Per-row
@@ -203,7 +219,7 @@ export default async function ProfileTabPage({
   // side channel whenever the owner has hidden their collection. Mirror the
   // Stats gate (line ~136) and require collection_public for non-owners.
   if (tab === 'notes' && !isOwner && !settings.collectionPublic) {
-    return (
+    return wrapInGate(
       <LockedTabCard
         tab="notes"
         displayName={displayName}
@@ -212,7 +228,7 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />
+      />,
     )
   }
 
@@ -233,17 +249,17 @@ export default async function ProfileTabPage({
     const collectionCount = ownedWatches.length
 
     if (tab === 'collection') {
-      return (
+      return wrapInGate(
         <CollectionTabContent
           watches={ownedWatches}
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           hasUrlExtract={hasUrlExtract}
-        />
+        />,
       )
     }
     if (tab === 'wishlist') {
-      return (
+      return wrapInGate(
         <WishlistTabContent
           watches={watches.filter(
             (w) => w.status === 'wishlist' || w.status === 'grail',
@@ -251,7 +267,7 @@ export default async function ProfileTabPage({
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           username={profile.username}
-        />
+        />,
       )
     }
     // tab === 'notes' — per-note visibility (D-13): non-owners only see notes_public !== false
@@ -260,14 +276,14 @@ export default async function ProfileTabPage({
         Boolean(w.notes && w.notes.trim()) &&
         (isOwner || w.notesPublic !== false),
     )
-    return (
+    return wrapInGate(
       <NotesTabContent
         watches={notedWatches}
         isOwner={isOwner}
         username={profile.username}
         collectionCount={collectionCount}
         ownedWatches={ownedWatches}
-      />
+      />,
     )
   }
 
@@ -289,7 +305,7 @@ export default async function ProfileTabPage({
         },
       ]),
     )
-    return (
+    return wrapInGate(
       <WornTabContent
         events={events.map((e) => ({
           id: e.id,
@@ -302,7 +318,7 @@ export default async function ProfileTabPage({
         username={profile.username}
         viewerId={viewerId}
         ownedWatches={watches.filter((w) => w.status === 'owned')}
-      />
+      />,
     )
   }
 
@@ -310,7 +326,7 @@ export default async function ProfileTabPage({
   // Wear data is gated separately via getWearEventsForViewer (Phase 12 WYWT-10: returns
   // only per-row visible events for non-owners) — stats render with visible events only.
   if (!isOwner && !settings.collectionPublic) {
-    return (
+    return wrapInGate(
       <LockedTabCard
         tab="stats"
         displayName={displayName}
@@ -319,7 +335,7 @@ export default async function ProfileTabPage({
         targetUserId={profile.id}
         initialIsFollowing={initialIsFollowing}
         currentPath={currentPath}
-      />
+      />,
     )
   }
   // `watches` and the owner-view `events` come from the cached resolver
@@ -343,7 +359,7 @@ export default async function ProfileTabPage({
     goal: prefs?.collectionGoal ?? null,
     weekdayCounts: bucketWearsByWeekday(events),
   })
-  return (
+  return wrapInGate(
     <StatsTabContent
       ownedWatches={ownedAll}
       styleRows={styleDistribution(ownedAll)}
@@ -351,6 +367,6 @@ export default async function ProfileTabPage({
       mostWorn={topMostWorn(ownedAll, wearCount, 3)}
       leastWorn={topLeastWorn(ownedAll, wearCount, 3)}
       observations={observations}
-    />
+    />,
   )
 }
