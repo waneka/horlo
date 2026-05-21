@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.2
 milestone_name: Polish + Taxonomy
-status: executing
-stopped_at: Phase 50 context gathered
-last_updated: "2026-05-21T00:32:25.287Z"
-last_activity: 2026-05-21 -- Phase 51 execution started
+status: Phase 51 complete — verified, code-reviewed, prod-deployed
+stopped_at: Phase 51 complete (recurrence-3 resolved in prod 2026-05-21)
+last_updated: "2026-05-21T02:10:00.000Z"
+last_activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-gate live on prod; operator UAT PASS
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 1
-  percent: 10
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 51 — profile-route-ppr-opt-out-recurrence-3-fix-for-u-username-ta
+**Current focus:** Phase 51 complete — awaiting next phase
 
 ## Current Position
 
-Phase: 51 (profile-route-ppr-opt-out-recurrence-3-fix-for-u-username-ta) — EXECUTING
-Plan: 1 of 9
-Status: Executing Phase 51
-Last activity: 2026-05-21 -- Phase 51 execution started
+Phase: 51 (profile-route-ppr-opt-out-recurrence-3-fix-for-u-username-ta) — COMPLETE
+Plans: 8 of 8 executable plans complete (9th is the phase overview)
+Verification: 7/7 must-haves passed (2026-05-21)
+Code review: 2 critical, 6 warning, 3 info (advisory — phase shipped; follow-up via `/gsd-code-review 51 --fix`)
+Prod status: Deployed to https://www.horlo.app at commit 84779ae; operator UAT PASS (zero 404s, two click cycles)
+Last activity: 2026-05-21 -- Phase 51 complete — F3-Composite + Branch B re-gate live on prod
 
 ## Performance Metrics
 
