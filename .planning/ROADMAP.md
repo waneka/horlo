@@ -203,7 +203,7 @@ Plans:
 **Depends on:** Phase 51 (Branch B 307 + `no-store` contract must remain live through this fix)
 **Source:** `.planning/audits/cache-components-2026-05-21-followup.md` (Option D plan, supersedes the original audit's "three forward options")
 **Related:** `.planning/audits/cache-components-2026-05-21.md`, `.planning/debug/resolved/profile-page-404-top-nav.md`
-**Plans:** 2/9 plans executed
+**Plans:** 3/9 plans executed
 
 Plans:
 **Wave 1**
@@ -212,7 +212,7 @@ Plans:
 - [x] 52-03-PLAN.md — Wave 1: Step 1 probe — add only `unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx, capture validator output verbatim into 52-03-VALIDATOR-OUTPUT.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 52-04-PLAN.md — Wave 2: create profile-chrome.tsx (async runtime-API consumer) + refactor layout.tsx to sync + Suspense around ProfileChrome (REQ-52-03a/03b)
+- [x] 52-04-PLAN.md — Wave 2: create profile-chrome.tsx (async runtime-API consumer) + refactor layout.tsx to sync + Suspense around ProfileChrome (REQ-52-03a/03b)
 - [ ] 52-05-PLAN.md — Wave 2: restructure [tab]/page.tsx — outer sync + inner async ProfileTabContent wrapped in Suspense (REQ-52-04)
 - [ ] 52-06-PLAN.md — Wave 2: apply unstable_instant=false opt-outs to cross-route surfaces from VALIDATOR-OUTPUT (REQ-52-05); record FINDINGS for SEED-014 hand-off
 
