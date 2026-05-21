@@ -1,11 +1,8 @@
-import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
-import { ProfileGate } from '../profile-gate'
-import { ProfileShellSkeleton } from '../profile-shell-skeleton'
 import { ProfileShellResolver } from '../profile-shell-resolver'
 import {
   getMostRecentWearDates,
@@ -89,36 +86,29 @@ export default async function ProfileTabPage({
   // currentPath is a same-origin pathname built from server-side route params
   // (T-39b-03 mitigation — never an absolute URL). initialIsFollowing is
   // computed deterministically using the verified isFollowing helper at
-  // src/data/follows.ts:54.
-  //
-  // WR-02 (Phase 51 review): also passed forward to <ProfileGate> via
-  // `initialIsFollowing` so the gate skips its own redundant fetch on this
-  // path. Gate retains its own fallback fetch for callers that don't
-  // pre-compute. The gate-internal logic matches what we'd compute here for
-  // owner viewers (gate returns false) and anonymous viewers (gate returns
-  // false), so passing this value through is safe across all branches.
+  // src/data/follows.ts:54 and feeds the `<LockedTabCard>` branches below.
+  // Gate-level `initialIsFollowing` is now resolved inside the gate itself
+  // (in `../layout.tsx → <ProfileGate>`), not piped through the page.
   const currentPath = `/u/${username}/${tab}`
   const initialIsFollowing =
     viewerId !== null && !isOwner
       ? await isFollowing(viewerId, profile.id)
       : false
 
-  // Phase 51 F3-Composite: wrap every per-tab JSX return in this composition
-  // so the page is the runtime-API consumer (getCurrentUser above) and the
-  // gate's cached resolver renders inside the dynamic page render context.
-  // The page is now the route's dynamic stream target; the layout collapsed
-  // to a pure static shell.
-  const wrapInGate = (tabContent: React.ReactNode) => (
-    <Suspense fallback={<ProfileShellSkeleton />}>
-      <ProfileGate
-        username={username}
-        viewerId={viewerId}
-        initialIsFollowing={initialIsFollowing}
-      >
-        {tabContent}
-      </ProfileGate>
-    </Suspense>
-  )
+  // Phase 51 post-merge tab-UX refinement (2026-05-21): chrome composition
+  // (header, hero band, tab strip) lives at the layout level via
+  // `<ProfileGate>` in `../layout.tsx`. The page now returns ONLY per-tab
+  // content; layout's gate wraps `{children}` with the persistent chrome.
+  // On sibling tab navigation (`/u/x/collection` → `/u/x/wishlist`) the
+  // layout + gate stay mounted; only this page swaps in. No more chrome
+  // skeleton flash.
+  //
+  // `wrapInGate` is now an identity passthrough kept temporarily so the
+  // 12 existing call sites don't have to be flattened in the same commit
+  // as the layout move (atomic scope hygiene). Follow-up cleanup: inline
+  // the call sites and delete this helper. Tracked as a post-Phase 51
+  // tidy-up task.
+  const wrapInGate = <T,>(tabContent: T): T => tabContent
 
   // Phase 25 D-09: server-side env-presence check. Only the resolved Boolean
   // crosses the server/client boundary — the API key value itself never does.

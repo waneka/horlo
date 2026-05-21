@@ -5,9 +5,13 @@ import { resolve } from 'node:path'
 /**
  * Phase 51 — Profile route PPR opt-out (recurrence-3 fix).
  *
- * Source-grep-style structural assertions. These tests MUST initially fail
- * against current main (regression contract — recurrence-4 gate):
- *   - Test 1 (REQ-51-04): layout no longer Suspense-wraps ProfileGate — fixed by 51-03
+ * Source-grep-style structural assertions. These tests pin the
+ * recurrence-4 prevention contract:
+ *   - Test 1 (REQ-51-04): layout MUST NOT contain `<Suspense>` — that
+ *     pattern (Suspense over an awaited cookie-reading shell) is the PPR
+ *     qualification source per cache-components.md. ProfileGate
+ *     composition may live in layout (restored 2026-05-21 post-merge for
+ *     tab-UX) as long as no Suspense wraps it.
  *   - Test 2 (REQ-51-05): ProfileGate accepts viewerId as a prop — fixed by 51-02
  *   - Test 3 (REQ-51-06): ProfileShellResolver remains cached with the profile tag — already met
  *
@@ -16,20 +20,27 @@ import { resolve } from 'node:path'
  */
 
 describe('Phase 51 — profile route PPR opt-out', () => {
-  it('layout does not Suspense-wrap ProfileGate (REQ-51-04)', () => {
+  it('layout has no Suspense over an awaited shell (REQ-51-04)', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'src/app/u/[username]/layout.tsx'),
       'utf8',
     )
 
-    // The layout-level Suspense wrapping the gate must be gone after plan 51-03.
+    // The PPR qualification source per
+    // node_modules/next/dist/docs/01-app/02-guides/cache-components.md is
+    // `<Suspense fallback={...}>` wrapping an awaited cookie-reading
+    // shell. The original recurrence-3 bug had ProfileShellSkeleton as
+    // the fallback identity; this stricter check generalizes the rule
+    // to any Suspense in layout, period — if a future change adds one,
+    // recurrence-4 is one step away and the contract forces re-justification.
     expect(/<Suspense[^>]*fallback={<ProfileShellSkeleton/s.test(source)).toBe(false)
+    expect(/<Suspense\b/.test(source)).toBe(false)
 
-    // After plan 51-03 the layout no longer composes the gate — composition
-    // moves down into the page so the page becomes the runtime-API consumer.
-    expect(source.includes('ProfileGate')).toBe(false)
-
-    // Layout still owns the chrome wrapper (`<main>` element stays here).
+    // Layout owns the persistent chrome wrapper (`<main>`) — this is the
+    // anchor that survives across sibling tab navs. Without this, every
+    // tab click would re-render the whole page including chrome, which
+    // is the "full reload feel" symptom that motivated the 2026-05-21
+    // post-merge restoration of ProfileGate at the layout level.
     expect(source.includes('<main')).toBe(true)
   })
 
