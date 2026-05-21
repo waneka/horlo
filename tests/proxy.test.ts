@@ -14,10 +14,15 @@ function mkRequest(pathname: string, search = '') {
   return new NextRequest(url)
 }
 
+// Phase 51 CR-02: updateSession now returns `userId` (not the full proxied
+// User object) to keep the insecureUserWarningProxy confined to
+// src/lib/supabase/proxy.ts and avoid leaking the proxied User across the
+// module boundary. Tests pass user-shaped fixtures for clarity and
+// extract `.id ?? null` to match.
 function mkUpdateSession(user: { id: string; email: string } | null) {
   return {
     supabase: {} as any,
-    user,
+    userId: user?.id ?? null,
     response: { status: 200, headers: new Headers(), cookies: new Map() } as any,
   }
 }

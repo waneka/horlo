@@ -41,6 +41,23 @@ export async function updateSession(request: NextRequest) {
   // redirect on subsequent soft-navs. The getSession() swap narrows the
   // failure window; the no-store header closes the cache-poisoning vector.
   //
+  // We return `userId` here (not the full User object) for two reasons
+  // (CR-02 — insecureUserWarningProxy noise mitigation):
+  //   1. The proxy gate only ever needs the id — no other User fields are
+  //      consumed by src/proxy.ts.
+  //   2. session.user is wrapped in `insecureUserWarningProxy` on the server
+  //      (GoTrueClient.js:2349). The first string-prop access on that proxy
+  //      triggers `console.warn` ("Using the user object as returned from
+  //      supabase.auth.getSession()..."). By extracting `.id` exactly once
+  //      here, we keep that single warning per request confined to this
+  //      function — the proxied User object never crosses the boundary back
+  //      into callers. (We cannot suppress the warning entirely: the
+  //      Supabase typed `auth:` options do not expose
+  //      `suppressGetSessionWarning`; that flag is a protected class field,
+  //      not a constructor input. A true zero-warn fix would require
+  //      decoding the JWT directly from the cookie via `jose` — deferred as
+  //      out of scope for this surgical fix; tracked in REVIEW-FIX.md.)
+  //
   // Trade-off explicitly accepted: a forged or stolen session JWT will be
   // accepted by the proxy gate (no server verification). Sensitive
   // operations on pages and Server Actions MUST continue to use the
@@ -51,7 +68,7 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  const user = session?.user ?? null
+  const userId = session?.user?.id ?? null
 
-  return { supabase, user, response }
+  return { supabase, userId, response }
 }

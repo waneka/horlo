@@ -3,7 +3,7 @@ import { updateSession } from '@/lib/supabase/proxy'
 import { isPublicPath } from '@/lib/constants/public-paths'
 
 export default async function proxy(request: NextRequest) {
-  const { user, response } = await updateSession(request)
+  const { userId, response } = await updateSession(request)
 
   const pathname = request.nextUrl.pathname
   const isPublic = isPublicPath(pathname)
@@ -20,7 +20,7 @@ export default async function proxy(request: NextRequest) {
   // redirect on subsequent soft-navs. See
   // .planning/debug/profile-page-404-top-nav.md for the full history.
 
-  if (!user && !isPublic) {
+  if (!userId && !isPublic) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', pathname + request.nextUrl.search)
     const redirect = NextResponse.redirect(loginUrl)
@@ -31,7 +31,7 @@ export default async function proxy(request: NextRequest) {
 
   // Dev-only log line to satisfy ROADMAP success criterion #2 ("a log line confirms the proxy executes")
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[proxy] ${pathname} user=${user?.id ?? 'anon'} public=${isPublic}`)
+    console.log(`[proxy] ${pathname} user=${userId ?? 'anon'} public=${isPublic}`)
   }
 
   return response
