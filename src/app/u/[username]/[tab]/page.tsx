@@ -30,6 +30,8 @@ import {
 } from '@/lib/stats'
 import type { WatchWithWear } from '@/lib/types'
 
+export const unstable_instant = { prefetch: 'static' }
+
 // Phase 39c D-39c-07 unstable_instant export was REMOVED 2026-05-14 after
 // the post-deploy UAT showed that `{ prefetch: 'static' }` on a route whose
 // page body is dynamic caused click-time RSC fetches to return tree-only
