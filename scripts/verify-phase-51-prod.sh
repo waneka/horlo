@@ -12,7 +12,15 @@
 # Env vars (optional):
 #   PHASE51_TEST_USER   — username used in /u/<user>/<tab> probes (default: twwaneka)
 #   PHASE51_TEST_TAB    — tab segment to probe (default: wishlist)
-#   PHASE51_BRANCH_B    — set to 1 to additionally run Branch B re-gate check (REQ-51-07)
+#   PHASE51_BRANCH_B    — opt-OUT for the Branch B re-gate check (REQ-51-07).
+#                        Branch B is the deployed configuration (operator-
+#                        confirmed in commit 2459a3d), so Check 3 runs by
+#                        default. Set PHASE51_BRANCH_B=0 to suppress it (only
+#                        appropriate for an emergency rollback to the
+#                        legacy /u/* public-path configuration). WR-04
+#                        (Phase 51 review) inverted the default in this
+#                        script — older callers that set PHASE51_BRANCH_B=1
+#                        explicitly still pass.
 #
 # Exit codes:
 #   0  all checks passed
@@ -84,10 +92,12 @@ fi
 printf 'PASS Check 2 (REQ-51-02): prefetch body=%s bytes; postponed=%s\n' "${PREFETCH_BYTES}" "${PREFETCH_POSTPONED}"
 
 # ---------------------------------------------------------------------------
-# Check 3 (REQ-51-07; Branch B only) — anon to /u/<user>/collection returns
-#   307 + Cache-Control: no-store
+# Check 3 (REQ-51-07; Branch B — on by default) — anon to /u/<user>/collection
+#   returns 307 + Cache-Control: no-store. WR-04 (Phase 51 review): Branch B
+#   is the committed deployed path, so this check runs unless explicitly
+#   opted out with PHASE51_BRANCH_B=0.
 # ---------------------------------------------------------------------------
-if [ "${PHASE51_BRANCH_B:-0}" = "1" ]; then
+if [ "${PHASE51_BRANCH_B:-1}" != "0" ]; then
   ANON_HEADERS_FILE=$(mktemp -t phase51-anon-headers.XXXXXX)
   trap 'rm -f "${PREFETCH_HEADERS_FILE}" "${PREFETCH_BODY_FILE}" "${ANON_HEADERS_FILE}"' EXIT
 
