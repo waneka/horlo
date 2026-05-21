@@ -9,11 +9,16 @@ export default async function proxy(request: NextRequest) {
   const isPublic = isPublicPath(pathname)
 
   // Phase 51 (Branch B): Profile routes (/u/*) ARE gated by the proxy.
-  // Cookie-only auth via updateSession's getSession() (plan 51-04) — no
-  // network round-trip on RSC prefetches. The 307 → /login carries
-  // Cache-Control: no-store so it cannot be stored by Next 16's Router
-  // Cache, preventing the recurrence-2 poisoning vector documented in
-  // .planning/debug/profile-page-404-top-nav.md.
+  // Auth is read via updateSession's getSession() (plan 51-04). NOTE: this
+  // is cookie-first, not strictly network-free — getSession() can refresh
+  // the access token when it is near expiry (see comment in
+  // src/lib/supabase/proxy.ts for the auth-js details). The PRIMARY
+  // recurrence-2 (Router Cache poisoning) mitigation is the
+  // `Cache-Control: no-store` header set on the 307 → /login below (line
+  // 23). That header — NOT the getUser → getSession swap — is what
+  // prevents Next 16's Router Cache from storing and replaying this
+  // redirect on subsequent soft-navs. See
+  // .planning/debug/profile-page-404-top-nav.md for the full history.
 
   if (!user && !isPublic) {
     const loginUrl = new URL('/login', request.url)

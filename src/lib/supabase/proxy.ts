@@ -23,14 +23,23 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  // Phase 51 (Branch B safety): proxy auth gating MUST be cookie-only — no
-  // network round-trip — per authentication.md:1031. getUser() (a Supabase
-  // API call) caused recurrence-2 Router Cache poisoning when a transient
-  // null response triggered 307 → /login on RSC prefetch requests, which
-  // Next 16's Router Cache stored and served on subsequent soft-nav clicks.
-  // getSession() reads the JWT from cookies and decrypts locally — no
-  // network — so it cannot fail transiently. The result `user` has the same
-  // shape as before (User | null) so callers do not need to change.
+  // Phase 51 (Branch B safety): proxy auth gating reads the session from the
+  // cookie store via getSession() rather than via getUser(). Note (CR-01):
+  // getSession() is NOT strictly network-free — in the common case it reads
+  // the JWT from cookies, but in @supabase/auth-js@2.x (GoTrueClient.js:2358)
+  // it calls _callRefreshToken() when the access token is within
+  // EXPIRY_MARGIN_MS of expiry, which performs a network round-trip to the
+  // Supabase auth server. The "transient failure" window is therefore
+  // narrower than getUser() (which ALWAYS makes a network call) but it is
+  // not zero. The result `user` has the same shape as before (User | null)
+  // so callers do not need to change.
+  //
+  // The PRIMARY recurrence-2 (Router Cache poisoning) mitigation is the
+  // `Cache-Control: no-store` header set on the 307 → /login in
+  // src/proxy.ts:23. That header — NOT the getUser/getSession choice — is
+  // what prevents Next 16's Router Cache from storing and replaying the
+  // redirect on subsequent soft-navs. The getSession() swap narrows the
+  // failure window; the no-store header closes the cache-poisoning vector.
   //
   // Trade-off explicitly accepted: a forged or stolen session JWT will be
   // accepted by the proxy gate (no server verification). Sensitive
