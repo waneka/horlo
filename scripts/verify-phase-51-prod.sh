@@ -65,8 +65,13 @@ printf 'PASS Check 1 (REQ-51-01): state-tree RSC body = %s bytes\n' "${BYTES_STA
 # Check 2 (REQ-51-02) — prefetch-headed RSC: non-empty body OR x-nextjs-postponed: 1
 # ---------------------------------------------------------------------------
 CACHE_BUST_2="verify-$(date +%s)"
-PREFETCH_HEADERS_FILE=$(mktemp -t phase51-prefetch-headers.XXXXXX)
-PREFETCH_BODY_FILE=$(mktemp -t phase51-prefetch-body.XXXXXX)
+# WR-05 (Phase 51 review): `mktemp -t TEMPLATE` is portable on macOS but
+# behaves differently on Linux (GNU coreutils) — `-t` there means "treat
+# TEMPLATE as a leaf name in TMPDIR" and the literal `.XXXXXX` substring is
+# only honored when adjacent to end-of-string. Use the explicit form so the
+# script behaves identically on macOS, Linux, and BusyBox.
+PREFETCH_HEADERS_FILE=$(mktemp "${TMPDIR:-/tmp}/phase51-prefetch-headers.XXXXXX")
+PREFETCH_BODY_FILE=$(mktemp "${TMPDIR:-/tmp}/phase51-prefetch-body.XXXXXX")
 trap 'rm -f "${PREFETCH_HEADERS_FILE}" "${PREFETCH_BODY_FILE}"' EXIT
 
 curl -sD "${PREFETCH_HEADERS_FILE}" \
@@ -98,7 +103,8 @@ printf 'PASS Check 2 (REQ-51-02): prefetch body=%s bytes; postponed=%s\n' "${PRE
 #   opted out with PHASE51_BRANCH_B=0.
 # ---------------------------------------------------------------------------
 if [ "${PHASE51_BRANCH_B:-1}" != "0" ]; then
-  ANON_HEADERS_FILE=$(mktemp -t phase51-anon-headers.XXXXXX)
+  # WR-05 (Phase 51 review): portable mktemp form — see Check 2 above.
+  ANON_HEADERS_FILE=$(mktemp "${TMPDIR:-/tmp}/phase51-anon-headers.XXXXXX")
   trap 'rm -f "${PREFETCH_HEADERS_FILE}" "${PREFETCH_BODY_FILE}" "${ANON_HEADERS_FILE}"' EXIT
 
   # --cookie-jar /dev/null + --cookie /dev/null forces an anonymous request:
