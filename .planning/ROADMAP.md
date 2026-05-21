@@ -199,7 +199,7 @@ Plans:
 ### Phase 52: Option D — Cache Components canonical pattern fix for /u/[username]/[tab] (recurrence-4 React #419)
 
 **Goal:** Eliminate the React #419 + 404 recurrence (4th) on authenticated `/u/[username]/[tab]` navigation by adopting the canonical Next 16 Cache Components pattern — push dynamic access down, wrap runtime-API consumers in Suspense, and re-introduce `unstable_instant = { prefetch: 'static' }` as a build/dev validator so this bug class is caught at build time, not in prod after cache revalidation. Keeps Phase 51 Branch B contract (anon `/u/*` → 307 + `no-store`) intact.
-**Requirements**: REQ-52-01, REQ-52-02, REQ-52-03a, REQ-52-03b, REQ-52-04, REQ-52-05, REQ-52-06, REQ-52-07, REQ-52-08, REQ-52-09
+**Requirements**: REQ-52-01, REQ-52-02, REQ-52-03a, REQ-52-03b, REQ-52-04, REQ-52-05, REQ-52-06, REQ-52-07, REQ-52-08, REQ-52-09, REQ-52-10
 **Depends on:** Phase 51 (Branch B 307 + `no-store` contract must remain live through this fix)
 **Source:** `.planning/audits/cache-components-2026-05-21-followup.md` (Option D plan, supersedes the original audit's "three forward options")
 **Related:** `.planning/audits/cache-components-2026-05-21.md`, `.planning/debug/resolved/profile-page-404-top-nav.md`

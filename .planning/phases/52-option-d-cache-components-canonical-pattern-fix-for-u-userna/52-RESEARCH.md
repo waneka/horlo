@@ -653,22 +653,25 @@ The `revalidatePath` calls in the Server Actions are belt-and-suspenders for the
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does the validator produce errors for cross-route layouts above `/u/[username]/layout.tsx`?**
    - What we know: validator checks "every shared layout boundary." The root layout (`app/layout.tsx`) is shared by all routes. If the root layout is sync (likely), it won't trigger violations. But `src/app/u/[username]/followers/` and `/following/` segments share the profile layout.
    - What's unclear: whether followers/following pages will produce validator errors when `[tab]/page.tsx` exports `unstable_instant`.
    - Recommendation: Step 1 probe answers this definitively. If followers/following produce errors, apply `unstable_instant = false` there per D-52-02.
+   - **RESOLVED:** Plan 03 (Step 1 probe) captures the validator output as ground truth; Plan 06 Task 0 is the explicit checkpoint that routes operator choice based on actual surfaced errors (no-op, apply opt-outs, or escalate to re-planning if unexpected). Working hypothesis is 5 in-route violations + 0 cross-route findings, but the plan absorbs either outcome.
 
 2. **Does the `tests/profile-route-51.test.ts` file stay named `51` or get a sibling `52` file?**
    - What we know: CONTEXT.md says "File renamed? Plan TBD — could remain Phase 51 named since it pins the joint Phase 51+52 contract, or could be supplemented by a `tests/profile-route-52.test.ts`."
    - What's unclear: Whether having two test files covering overlapping structural invariants causes confusion.
    - Recommendation: Keep the Phase 51 file, update it in-place (invert Test 1, add Test 4). The file pins the joint contract. A separate Phase 52 file adds no clarity and splits the structural invariant contract.
+   - **RESOLVED:** Plan 01 keeps the `tests/profile-route-51.test.ts` file in place and updates it in-place (Test 1 inverted, Test 4 + Test 5 added). No sibling `tests/profile-route-52.test.ts` is created. The Phase 51 filename pins the joint Phase 51+52 structural invariant contract. (Separately, the audit followup's seeded-user availability question for Playwright auth setup is addressed in Plan 02: Plan 02 explicitly checks for an existing seeded user and creates one via the Supabase admin API + `SERVICE_ROLE_KEY` from `.env.local` if absent; credentials are read from env-only and gitignored.)
 
 3. **What's the exact `data-testid` attribute on wishlist content for the Playwright test?**
    - What we know: The audit followup uses `page.getByTestId('wishlist-content')` as a placeholder.
    - What's unclear: Whether `WishlistTabContent` renders a `data-testid="wishlist-content"` attribute.
    - Recommendation: Planner inspects `WishlistTabContent` component during Wave 0. If `data-testid` doesn't exist, the test can use a stable text assertion (e.g., tab heading) instead.
+   - **RESOLVED:** Plan 02 (Playwright e2e scaffolding) inspects `WishlistTabContent` during Wave 0 implementation and falls back to a text-content selector (e.g., role-based query for "Wishlist" tab content heading) if the `data-testid="wishlist-content"` attribute is absent. No code change to `WishlistTabContent` itself; the test adapts to the source rather than the source adapting to the test.
 
 ---
 
