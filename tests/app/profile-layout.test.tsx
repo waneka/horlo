@@ -23,59 +23,66 @@ vi.mock('@/app/u/[username]/profile-gate', () => ({
   ProfileGate: vi.fn(() => null),
 }))
 
-import ProfileLayout from '@/app/u/[username]/layout'
+// Phase 52 D-52-16 restructure: ProfileLayout is now SYNC (returns
+// <Suspense><ProfileChrome/></Suspense>); the viewerId plumbing logic
+// moved into ProfileChrome (the async runtime-API consumer). Tests call
+// ProfileChrome directly to exercise the cookie → <ProfileGate> chain
+// that the layout-level test previously pinned. The structural pieces
+// (sync layout + Suspense + <main> wrapper) are covered by
+// tests/profile-route-51.test.ts Test 1 (REQ-52-03a / REQ-52-03b).
+import { ProfileChrome } from '@/app/u/[username]/profile-chrome'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { ProfileGate } from '@/app/u/[username]/profile-gate'
 
-describe('/u/[username]/layout — viewer plumbing (post-51 tab-UX restoration)', () => {
+describe('/u/[username]/profile-chrome — viewer plumbing (Phase 52 D-52-CF-02 / D-52-16)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  // WR-06-equivalent contract (relocated from page-level test 2026-05-21):
-  // assert that the layout invokes <ProfileGate> with the resolved viewerId
-  // as a prop. Source-grep in tests/profile-route-51.test.ts Test 2 pins
-  // the gate's prop signature; this assertion pins that the value flows
-  // through the layout's getCurrentUser → <ProfileGate viewerId={...}>
-  // chain. If a future refactor switches to context plumbing or drops the
-  // prop, this test catches it.
+  // WR-06-equivalent contract: assert that ProfileChrome (the async
+  // runtime-API consumer the sync layout wraps in <Suspense>) invokes
+  // <ProfileGate> with the resolved viewerId as a prop. Source-grep in
+  // tests/profile-route-51.test.ts Test 2 pins the gate's prop signature;
+  // this assertion pins that the value flows through
+  // getCurrentUser() → <ProfileGate viewerId={...}>. If a future
+  // refactor switches to context plumbing or drops the prop, this
+  // catches it.
   it('plumbs viewerId to <ProfileGate> for authenticated viewers', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-1', email: 'a@b.co' })
 
-    const result = (await ProfileLayout({
+    const result = (await ProfileChrome({
       children: 'TAB_CONTENT_SENTINEL' as unknown as React.ReactNode,
-      params: Promise.resolve({ username: 'alice' }),
+      paramsPromise: Promise.resolve({ username: 'alice' }),
     })) as any
 
-    // Layout returns <main>...<ProfileGate ...>{children}</ProfileGate></main>
-    expect(result.type).toBe('main')
-    const gateEl = result.props.children
-    expect(gateEl.type).toBe(ProfileGate)
-    expect(gateEl.props.username).toBe('alice')
-    expect(gateEl.props.viewerId).toBe('user-1')
-    expect(gateEl.props.children).toBe('TAB_CONTENT_SENTINEL')
+    // ProfileChrome returns <ProfileGate ...>{children}</ProfileGate>.
+    // The <main> wrapper lives in the sync layout (covered by
+    // profile-route-51.test.ts Test 1).
+    expect(result.type).toBe(ProfileGate)
+    expect(result.props.username).toBe('alice')
+    expect(result.props.viewerId).toBe('user-1')
+    expect(result.props.children).toBe('TAB_CONTENT_SENTINEL')
   })
 
   it('passes viewerId=null when caller is anonymous (UnauthorizedError swallowed)', async () => {
     vi.mocked(getCurrentUser).mockRejectedValue(new UnauthorizedError())
 
-    const result = (await ProfileLayout({
+    const result = (await ProfileChrome({
       children: null as unknown as React.ReactNode,
-      params: Promise.resolve({ username: 'alice' }),
+      paramsPromise: Promise.resolve({ username: 'alice' }),
     })) as any
 
-    const gateEl = result.props.children
-    expect(gateEl.type).toBe(ProfileGate)
-    expect(gateEl.props.viewerId).toBe(null)
+    expect(result.type).toBe(ProfileGate)
+    expect(result.props.viewerId).toBe(null)
   })
 
   it('rethrows non-UnauthorizedError from getCurrentUser', async () => {
     vi.mocked(getCurrentUser).mockRejectedValue(new Error('boom'))
 
     await expect(
-      ProfileLayout({
+      ProfileChrome({
         children: null as unknown as React.ReactNode,
-        params: Promise.resolve({ username: 'alice' }),
+        paramsPromise: Promise.resolve({ username: 'alice' }),
       }),
     ).rejects.toThrow('boom')
   })

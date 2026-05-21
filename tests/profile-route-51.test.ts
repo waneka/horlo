@@ -119,7 +119,15 @@ describe('Phase 51 — profile route PPR opt-out', () => {
     // tree. Adding it is the primary structural invariant asserted by D-52-01.
     // See node_modules/next/dist/docs/01-app/02-guides/instant-navigation.md
     // and .planning/audits/cache-components-2026-05-21-followup.md Step 6.
-    expect(/export\s+const\s+unstable_instant\s*=/.test(source)).toBe(true)
+    //
+    // Regex matches both `export const unstable_instant = ...` and
+    // `export const unstable_instant: <type> = ...` — Phase 52 D-52-DEV-01
+    // ships with an inline type annotation because the Next 16.2.3 segment
+    // validator empirically requires the explicit `RuntimeSample[]` shape
+    // (the `as const` form trips an "Invalid segment configuration" check
+    // at build time; the annotated form is accepted). Both forms satisfy
+    // the contract.
+    expect(/export\s+const\s+unstable_instant\b/.test(source)).toBe(true)
   })
 
   it('page has inner async ProfileTabContent component inside Suspense (REQ-52-04)', () => {

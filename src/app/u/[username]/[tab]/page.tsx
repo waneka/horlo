@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { ProfileShellResolver } from '../profile-shell-resolver'
+import { ProfileTabContentSkeleton } from '../profile-shell-skeleton'
 import {
   getMostRecentWearDates,
   getWearEventsForViewer,
@@ -30,7 +32,54 @@ import {
 } from '@/lib/stats'
 import type { WatchWithWear } from '@/lib/types'
 
-export const unstable_instant = { prefetch: 'static' }
+// Phase 52 D-52-16 structural lock — OUTER SYNC, INNER ASYNC inside
+// <Suspense>. The outer ProfileTabPage is a pure JSX scaffold: it
+// receives `params` (Promise) and passes it UNCHANGED to the inner
+// async ProfileTabContent via `paramsPromise`. All runtime API access
+// (params await, getCurrentUser, ProfileShellResolver) lives inside
+// ProfileTabContent, which the Suspense boundary wraps. This is the
+// canonical Next 16 Cache Components / instant-navigation pattern per
+// node_modules/next/dist/docs/01-app/01-getting-started/15-instant.md
+// (ProductPage example) + audit followup Step 2 + RESEARCH.md Pattern 2.
+//
+// The `unstable_instant = { prefetch: 'static' }` export below is the
+// build/dev validator (Plan 52-03 added it; Plan 52-08 rewrites the
+// adjacent stale comment block). The validator + this outer-sync /
+// inner-async / Suspense structure together form the recurrence-5
+// prevention contract.
+//
+// D-52-CF-03 / Phase 39c Pitfall 5 PRESERVED — notFound() calls inside
+// ProfileTabContent stay in their original relative ordering: invalid
+// tab check FIRST (before any await), then viewer resolution, then
+// resolver call, then missing-profile notFound BEFORE any subsequent
+// awaits (isFollowing, resolveCommonGround, per-tab data fetches).
+//
+// D-52-CF-02 / Phase 39c Pitfall 1 PRESERVED — viewerId is resolved
+// inside ProfileTabContent (uncached async, inside Suspense) and is
+// NEVER passed into ProfileShellResolver's cached scope; the resolver
+// receives only `{ username }`.
+//
+// See .planning/phases/52-.../52-CONTEXT.md, 52-RESEARCH.md Pattern 2,
+// .planning/audits/cache-components-2026-05-21-followup.md § Step 2.
+
+// Phase 52 D-52-DEV-01 — empirically refined from audit followup Step 1.
+// The canonical instant.md example uses `{ prefetch: 'static' }` on a
+// single-dynamic-segment route. The Next 16.2.3 validator empirically
+// requires samples for routes with dynamic params (the error message
+// itself reads "Add it to the sample's `params` object"). Per the
+// documented TypeScript interface in
+// node_modules/next/.../instant.md, samples is the `RuntimeSample[]`
+// shape used with `prefetch: 'runtime'`. Using runtime keeps validation
+// active at every shared layout boundary (the recurrence-5 contract
+// per D-52-03) while supplying representative param values the
+// prerender phase needs to materialize a static shell.
+export const unstable_instant: {
+  prefetch: 'runtime'
+  samples: Array<{ params: Record<string, string> }>
+} = {
+  prefetch: 'runtime',
+  samples: [{ params: { username: 'twwaneka', tab: 'collection' } }],
+}
 
 // Phase 39c D-39c-07 unstable_instant export was REMOVED 2026-05-14 after
 // the post-deploy UAT showed that `{ prefetch: 'static' }` on a route whose
@@ -51,12 +100,28 @@ const VALID_TABS = [
 ] as const
 type Tab = (typeof VALID_TABS)[number]
 
-export default async function ProfileTabPage({
+export default function ProfileTabPage({
   params,
 }: {
   params: Promise<{ username: string; tab: string }>
 }) {
-  const { username, tab } = await params
+  return (
+    <Suspense fallback={<ProfileTabContentSkeleton />}>
+      <ProfileTabContent paramsPromise={params} />
+    </Suspense>
+  )
+}
+
+// Exported for unit testing (tests/app/profile-tab-*.test.tsx call this
+// directly to exercise dynamic branching without spinning up Suspense).
+// The default export is the sync outer wrapper; ProfileTabContent owns
+// every dynamic branch.
+export async function ProfileTabContent({
+  paramsPromise,
+}: {
+  paramsPromise: Promise<{ username: string; tab: string }>
+}) {
+  const { username, tab } = await paramsPromise
   if (!VALID_TABS.includes(tab as Tab)) notFound()
 
   // Resolve viewer FIRST and OUTSIDE the cached ProfileShellResolver scope
@@ -96,14 +161,6 @@ export default async function ProfileTabPage({
     viewerId !== null && !isOwner
       ? await isFollowing(viewerId, profile.id)
       : false
-
-  // Phase 51 post-merge tab-UX refinement (2026-05-21): chrome composition
-  // (header, hero band, tab strip) lives at the layout level via
-  // `<ProfileGate>` in `../layout.tsx`. The page now returns ONLY per-tab
-  // content; layout's gate wraps `{children}` with the persistent chrome.
-  // On sibling tab navigation (`/u/x/collection` → `/u/x/wishlist`) the
-  // layout + gate stay mounted; only this page swaps in. No more chrome
-  // skeleton flash.
 
   // Phase 25 D-09: server-side env-presence check. Only the resolved Boolean
   // crosses the server/client boundary — the API key value itself never does.

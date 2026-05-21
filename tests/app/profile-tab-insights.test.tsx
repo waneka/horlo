@@ -72,7 +72,10 @@ vi.mock('@/app/u/[username]/common-ground-gate', () => ({
   resolveCommonGround: vi.fn().mockResolvedValue(null),
 }))
 
-import ProfileTabPage from '@/app/u/[username]/[tab]/page'
+// Phase 52 D-52-16 restructure: the default export is a sync Suspense
+// wrapper; all dynamic branching lives in ProfileTabContent. Tests call
+// the inner function directly.
+import { ProfileTabContent } from '@/app/u/[username]/[tab]/page'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getProfileByUsername, getProfileSettings } from '@/data/profiles'
 import { InsightsTabContent } from '@/components/profile/InsightsTabContent'
@@ -97,8 +100,8 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
     } as any)
-    const result = (await ProfileTabPage({
-      params: Promise.resolve({ username: 'alice', tab: 'insights' }),
+    const result = (await ProfileTabContent({
+      paramsPromise: Promise.resolve({ username: 'alice', tab: 'insights' }),
     })) as any
     // Post-Phase 51 tab-UX restoration (2026-05-21): the page no longer
     // wraps its return in <Suspense><ProfileGate>...</ProfileGate></Suspense>
@@ -134,8 +137,8 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
       notifyOnWatchOverlap: true,
     } as any)
     await expect(
-      ProfileTabPage({
-        params: Promise.resolve({ username: 'alice', tab: 'insights' }),
+      ProfileTabContent({
+        paramsPromise: Promise.resolve({ username: 'alice', tab: 'insights' }),
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
     // And InsightsTabContent must NOT have been invoked
@@ -158,8 +161,8 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
       notifyOnWatchOverlap: true,
     } as any)
     await expect(
-      ProfileTabPage({
-        params: Promise.resolve({ username: 'alice', tab: 'insights' }),
+      ProfileTabContent({
+        paramsPromise: Promise.resolve({ username: 'alice', tab: 'insights' }),
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
     expect(InsightsTabContent).not.toHaveBeenCalled()
@@ -182,8 +185,8 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
     } as any)
-    const result = (await ProfileTabPage({
-      params: Promise.resolve({ username: 'alice', tab: 'collection' }),
+    const result = (await ProfileTabContent({
+      paramsPromise: Promise.resolve({ username: 'alice', tab: 'collection' }),
     })) as any
     // Post-Phase 51 tab-UX restoration (2026-05-21): page returns the tab
     // content directly (see insights branch test above for context).

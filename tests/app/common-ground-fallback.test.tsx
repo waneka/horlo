@@ -75,7 +75,9 @@ vi.mock('@/app/u/[username]/common-ground-gate', () => ({
   resolveCommonGround: vi.fn(),
 }))
 
-import ProfileTabPage from '@/app/u/[username]/[tab]/page'
+// Phase 52 D-52-16 restructure: default export is sync Suspense wrapper;
+// dynamic branches live in ProfileTabContent. Tests call inner directly.
+import { ProfileTabContent } from '@/app/u/[username]/[tab]/page'
 import { getCurrentUser } from '@/lib/auth'
 import { getProfileByUsername, getProfileSettings } from '@/data/profiles'
 import { resolveCommonGround } from '@/app/u/[username]/common-ground-gate'
@@ -129,8 +131,8 @@ describe('NSV-12 common-ground walk-back fallback (Phase 39 D-09)', () => {
       sharedRoleRows: [],
     } as any)
 
-    const result = (await ProfileTabPage({
-      params: Promise.resolve({ username: 'alice', tab: 'common-ground' }),
+    const result = (await ProfileTabContent({
+      paramsPromise: Promise.resolve({ username: 'alice', tab: 'common-ground' }),
     })) as any
 
     expect(result).toBeTruthy()
@@ -172,8 +174,8 @@ describe('NSV-12 common-ground walk-back fallback (Phase 39 D-09)', () => {
     vi.mocked(resolveCommonGround).mockResolvedValue(null)
 
     await expect(
-      ProfileTabPage({
-        params: Promise.resolve({ username: 'alice', tab: 'common-ground' }),
+      ProfileTabContent({
+        paramsPromise: Promise.resolve({ username: 'alice', tab: 'common-ground' }),
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
   })
@@ -182,8 +184,8 @@ describe('NSV-12 common-ground walk-back fallback (Phase 39 D-09)', () => {
     vi.mocked(getProfileByUsername).mockResolvedValue(null as any)
 
     await expect(
-      ProfileTabPage({
-        params: Promise.resolve({ username: 'nobody', tab: 'common-ground' }),
+      ProfileTabContent({
+        paramsPromise: Promise.resolve({ username: 'nobody', tab: 'common-ground' }),
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
   })
