@@ -11,8 +11,27 @@ import { ProfileShellResolver } from './profile-shell-resolver'
 /**
  * Server-side profile shell gate — viewer-dependent branching outside the
  * cached scope (D-39c-05, T-39c-01 / T-39c-04 mitigations). Receives `viewerId`
- * from the page (the runtime-API consumer) so this gate is a pure async
- * function of `(username, viewerId, children)`.
+ * from its caller (Phase 52 D-52-CF-02). Two caller paths after Phase 52's
+ * restructure:
+ *
+ *   * `ProfileChrome` (`./profile-chrome.tsx`) — the async runtime-API
+ *     consumer the sync layout wraps in `<Suspense>`. ProfileChrome owns
+ *     the cookie read (resolves viewer identity from the session via
+ *     `@/lib/auth`) and passes the resolved `viewerId` here. This is the
+ *     primary layout-level composition path.
+ *
+ *   * `ProfileTabContent` (`./[tab]/page.tsx` inner async function) — the
+ *     per-tab branching inside the page's own `<Suspense>` boundary. The
+ *     page resolves its own `viewerId` for tab-specific gates
+ *     (`isFollowing`, `resolveCommonGround`, per-tab privacy checks);
+ *     ProfileGate itself is not invoked from the page, but the same
+ *     viewerId-as-prop contract is the route-wide invariant.
+ *
+ * Phase 52 D-52-CF-02 / Phase 39c Pitfall 1 (structural enforcement): the
+ * cookie read PHYSICALLY lives in `ProfileChrome` (uncached, async, inside
+ * `<Suspense>` per the canonical Cache Components pattern). This file
+ * cannot read cookies — the absence of any `@/lib/auth` import below
+ * makes the invariant structural rather than conventional.
  *
  * Load-bearing invariants:
  *   (a) `notFound()` MUST be called BEFORE any post-suspending `await`
@@ -23,14 +42,16 @@ import { ProfileShellResolver } from './profile-shell-resolver'
  *       NOT receive viewerId. This gate physically cannot read cookies — the
  *       invariant is now structural rather than conventional.
  *   (c) `<ProfileShellResolver/>` is called HERE (inside the gate, not in the
- *       layout body) so the locked branch can render `<LockedProfileState/>`
- *       without falling through to the public composition.
+ *       layout body or ProfileChrome) so the locked branch can render
+ *       `<LockedProfileState/>` without falling through to the public
+ *       composition.
  *
  * PROHIBITED inside this file:
  *   - use-cache directive — the gate is the uncached layer; this MUST stay uncached
  *   - next/cache tag/life primitives (gate is uncached by design)
  *   - Reading cookies via any means — viewer identity arrives via the
- *     `viewerId` prop and is the page's responsibility (Pitfall 1 structural lock)
+ *     `viewerId` prop, resolved by ProfileChrome (Pitfall 1 structural lock,
+ *     D-52-CF-02)
  *   - Importing from `@/lib/auth` — the gate is no longer the cookie boundary
  */
 export async function ProfileGate({

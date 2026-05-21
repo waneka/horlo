@@ -81,13 +81,30 @@ export const unstable_instant: {
   samples: [{ params: { username: 'twwaneka', tab: 'collection' } }],
 }
 
-// Phase 39c D-39c-07 unstable_instant export was REMOVED 2026-05-14 after
-// the post-deploy UAT showed that `{ prefetch: 'static' }` on a route whose
-// page body is dynamic caused click-time RSC fetches to return tree-only
-// payloads → infinite skeletons and Router Cache poisoning. Falling back to
-// Next 16's default partial-prefetch behavior (signalled by
-// src/app/u/[username]/loading.tsx) was the fix. See
-// .planning/debug/profile-page-404-top-nav.md.
+// Phase 52 D-52-11 — DIAGNOSIS REVERSAL of the Phase 39c "REMOVED
+// 2026-05-14" entry.
+//
+// `unstable_instant` is a VALIDATOR, not a runtime feature. The
+// Phase 39c-era removal of this export was based on a misreading of
+// the recurrence-2 symptom: tree-only RSC payloads + Router Cache
+// poisoning were the STRUCTURAL DEFECT (top-level runtime API access
+// outside Suspense) manifesting at runtime — the validator was
+// correctly flagging it. Removing the export removed the validation,
+// not the bug, and recurrences 3 + 4 followed.
+//
+// Phase 52 reinstates the export AS A VALIDATOR per
+// node_modules/next/dist/docs/01-app/02-guides/instant-navigation.md
+// ("How validation works") + the audit followup at
+// .planning/audits/cache-components-2026-05-21-followup.md
+// § "What changed since the original audit" (lines 47-60). The
+// validator runs at every shared layout boundary in this route during
+// `npm run dev` and `npm run build`; combined with the canonical
+// sync-outer + async-inner `ProfileTabContent` inside `<Suspense>`
+// shape above (D-52-16 structural lock), it forms the recurrence-5
+// prevention contract (D-52-03 — failing build IS the CI gate).
+//
+// Full decision record: .planning/phases/52-option-d-cache-components-
+// canonical-pattern-fix-for-u-userna/52-CONTEXT.md (D-52-11).
 
 const VALID_TABS = [
   'collection',
