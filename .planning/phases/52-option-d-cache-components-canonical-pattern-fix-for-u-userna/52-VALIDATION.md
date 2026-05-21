@@ -48,7 +48,7 @@ created: 2026-05-21
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 52-01-01 | 01 | 0 | REQ-52-01, REQ-52-03a, REQ-52-03b, REQ-52-04 | T-52-01-01 | Source-grep regression contract: post-refactor invariants asserted, expected to FAIL on current main | unit (source-grep) | `npx vitest run tests/profile-route-51.test.ts` | ✅ | ⬜ pending |
+| 52-01-01 | 01 | 0 | REQ-52-01, REQ-52-03a, REQ-52-03b, REQ-52-04 | T-52-01-01 | Source-grep regression contract: post-refactor invariants asserted, expected to FAIL on current main | unit (source-grep) | `npx vitest run tests/profile-route-51.test.ts` | ✅ | ✅ green (3 fail/2 pass on main; ae57fa4) |
 | 52-02-00 | 02 | 0 | REQ-52-07 (Task 0) | T-52-02-02 | Operator confirms seeded test user availability before auth-setup is written | manual (operator) | n/a (checkpoint) | n/a | ⬜ pending |
 | 52-02-01 | 02 | 0 | REQ-52-07 | T-52-02-01, T-52-02-02 | Playwright auth setup writes storageState.json; credentials from env only; gitignored | e2e (setup) | `npx playwright test --project=setup` | ❌ → ✅ after install | ⬜ pending |
 | 52-02-02 | 02 | 0 | REQ-52-06 | T-52-02-03 | Profile chrome stays mounted during instant() tab navigation | e2e (instant) | `npx playwright test tests/e2e/profile-tab-instant.test.ts` | ❌ on current main (contract) | ⬜ pending |
