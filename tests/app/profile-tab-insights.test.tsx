@@ -110,6 +110,14 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
     expect(result).toBeTruthy()
     const gateEl = result.props.children
     expect(gateEl).toBeTruthy()
+    // WR-06 (Phase 51 review): pin REQ-51-05 ("viewerId is passed to
+    // ProfileGate as a prop"). Source-grep coverage in
+    // tests/profile-route-51.test.ts proves the literal token exists in the
+    // file; this assertion proves the value actually reaches the gate
+    // through the page → Suspense → ProfileGate chain. If a future
+    // refactor switches to context plumbing, this assertion catches it.
+    expect(gateEl.props.username).toBe('alice')
+    expect(gateEl.props.viewerId).toBe('user-1')
     const inner = gateEl.props.children
     expect(inner.type).toBe(InsightsTabContent)
     expect(inner.props).toEqual({ profileUserId: 'user-1' })
@@ -179,9 +187,15 @@ describe('/u/[username]/[tab]/page — insights branch (Phase 14 D-13 P-08)', ()
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
     } as any)
-    const result = await ProfileTabPage({
+    const result = (await ProfileTabPage({
       params: Promise.resolve({ username: 'alice', tab: 'collection' }),
-    })
+    })) as any
     expect(result).toBeTruthy()
+    // WR-06 (Phase 51 review): assert viewerId is plumbed through on the
+    // collection branch too — same REQ-51-05 contract as the insights case
+    // above, exercised through a different (non-owner-gated) tab branch.
+    const gateEl = result.props.children
+    expect(gateEl.props.username).toBe('alice')
+    expect(gateEl.props.viewerId).toBe('user-1')
   })
 })
