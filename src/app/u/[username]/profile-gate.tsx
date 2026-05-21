@@ -36,10 +36,21 @@ import { ProfileShellResolver } from './profile-shell-resolver'
 export async function ProfileGate({
   username,
   viewerId,
+  initialIsFollowing: initialIsFollowingProp,
   children,
 }: {
   username: string
   viewerId: string | null
+  /**
+   * WR-02 (Phase 51 review): optional caller-supplied follow state. When the
+   * page already computed `isFollowing(viewerId, profile.id)` (the /u/[tab]
+   * page does this to drive its LockedTabCard branches), it can pass the
+   * value forward to avoid a second identical DB round-trip on every render.
+   * If omitted, the gate falls back to fetching its own copy — this keeps
+   * the gate reusable from non-tab callers without forcing every caller to
+   * pre-compute follow state.
+   */
+  initialIsFollowing?: boolean
   children: React.ReactNode
 }) {
   // Cached, owner-scoped read.
@@ -57,8 +68,13 @@ export async function ProfileGate({
   // FollowButton renders in its correct initial state on the server. Skipped
   // for owner (button is hidden entirely) and unauth viewers (click bounces
   // to /login regardless of follow state).
+  //
+  // WR-02 (Phase 51 review): prefer the caller-supplied value when provided
+  // (the /u/[tab] page hoists this fetch). Falls back to a local read so the
+  // gate remains correct when reused from a caller that does not pre-compute.
   const initialIsFollowing =
-    viewerId && !isOwner ? await isFollowing(viewerId, profile.id) : false
+    initialIsFollowingProp ??
+    (viewerId && !isOwner ? await isFollowing(viewerId, profile.id) : false)
 
   // Locked branch (T-39c-04 mitigation): private-profile gating reads cached
   // settings.profilePublic AFTER the cached resolver returns, BEFORE the public

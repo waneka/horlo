@@ -71,19 +71,6 @@ export default async function ProfileTabPage({
     if (!(err instanceof UnauthorizedError)) throw err
   }
 
-  // Phase 51 F3-Composite: wrap every per-tab JSX return in this composition
-  // so the page is the runtime-API consumer (getCurrentUser above) and the
-  // gate's cached resolver renders inside the dynamic page render context.
-  // The page is now the route's dynamic stream target; the layout collapsed
-  // to a pure static shell.
-  const wrapInGate = (tabContent: React.ReactNode) => (
-    <Suspense fallback={<ProfileShellSkeleton />}>
-      <ProfileGate username={username} viewerId={viewerId}>
-        {tabContent}
-      </ProfileGate>
-    </Suspense>
-  )
-
   // Cached owner-scoped reads — shared with the page-owned ProfileGate via
   // the same `'use cache'` resolver. The second hit from this page is a
   // cache lookup, not a DB roundtrip, so subsequent tab navigations within
@@ -103,9 +90,35 @@ export default async function ProfileTabPage({
   // (T-39b-03 mitigation — never an absolute URL). initialIsFollowing is
   // computed deterministically using the verified isFollowing helper at
   // src/data/follows.ts:54.
+  //
+  // WR-02 (Phase 51 review): also passed forward to <ProfileGate> via
+  // `initialIsFollowing` so the gate skips its own redundant fetch on this
+  // path. Gate retains its own fallback fetch for callers that don't
+  // pre-compute. The gate-internal logic matches what we'd compute here for
+  // owner viewers (gate returns false) and anonymous viewers (gate returns
+  // false), so passing this value through is safe across all branches.
   const currentPath = `/u/${username}/${tab}`
   const initialIsFollowing =
-    viewerId !== null ? await isFollowing(viewerId, profile.id) : false
+    viewerId !== null && !isOwner
+      ? await isFollowing(viewerId, profile.id)
+      : false
+
+  // Phase 51 F3-Composite: wrap every per-tab JSX return in this composition
+  // so the page is the runtime-API consumer (getCurrentUser above) and the
+  // gate's cached resolver renders inside the dynamic page render context.
+  // The page is now the route's dynamic stream target; the layout collapsed
+  // to a pure static shell.
+  const wrapInGate = (tabContent: React.ReactNode) => (
+    <Suspense fallback={<ProfileShellSkeleton />}>
+      <ProfileGate
+        username={username}
+        viewerId={viewerId}
+        initialIsFollowing={initialIsFollowing}
+      >
+        {tabContent}
+      </ProfileGate>
+    </Suspense>
+  )
 
   // Phase 25 D-09: server-side env-presence check. Only the resolved Boolean
   // crosses the server/client boundary — the API key value itself never does.
