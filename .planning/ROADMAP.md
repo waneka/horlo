@@ -181,10 +181,17 @@ v5.2 Polish + Taxonomy shipped 2026-05-20 — 5 phases, 21 plans, 6/6 requiremen
 
 ### Phase 51: Profile Route PPR Opt-Out — recurrence-3 fix for /u/[username]/[tab] 404
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase TBD
-**Plans:** 0 plans
+**Goal:** Eliminate the `/u/[username]/[tab]` 404 on state-tree-aware RSC requests (third recurrence) by removing Cache Components PPR qualification at the source (F3-Composite). Operator-decided Branch B re-gates `/u/*` to authenticated viewers with a cookie-only proxy check and `Cache-Control: no-store` on the 307 — closes recurrence-2 cause structurally.
+**Requirements**: REQ-51-01, REQ-51-02, REQ-51-03, REQ-51-04, REQ-51-05, REQ-51-06, REQ-51-07
+**Depends on:** none (hotfix branch off main)
+**Plans:** 8 plans (Branch B). Under Branch A, plans 51-04 and 51-05 are cancelled (6 plans total).
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 51 to break down)
+- [ ] 51-01-PLAN.md — Author tests/profile-route-51.test.ts + scripts/verify-phase-51-prod.sh + scripts/assert-phase-51-build.mjs (Wave 0, TDD scaffolds expected to initially FAIL)
+- [ ] 51-02-PLAN.md — Refactor ProfileGate to accept viewerId as a prop (Wave 1)
+- [ ] 51-03-PLAN.md — Collapse layout to static shell; move gate composition + Suspense into [tab]/page.tsx (Wave 2 — F3-Composite structural change)
+- [ ] 51-04-PLAN.md — (Branch B) Convert src/lib/supabase/proxy.ts:updateSession to cookie-only getSession() (Wave 3 — Branch B safety prerequisite)
+- [ ] 51-05-PLAN.md — (Branch B) Re-gate /u/* in src/proxy.ts; delete isProfilePath; add Cache-Control: no-store on 307 (Wave 4)
+- [ ] 51-06-PLAN.md — Vercel preview deploy + prod-contract curl verification + operator UAT + merge gate (Wave 5; non-autonomous)
+- [ ] 51-07-PLAN.md — (optional) Migrate /u/[username] bare-redirect to next.config.ts redirects() rule (Wave 5)
+- [ ] 51-08-PLAN.md — Close .planning/debug/profile-page-404-top-nav.md frontmatter (Wave 6)
