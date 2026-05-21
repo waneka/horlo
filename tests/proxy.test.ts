@@ -25,12 +25,15 @@ function mkUpdateSession(user: { id: string; email: string } | null) {
 describe('proxy.ts — AUTH-02', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('redirects unauth request on / to /login?next=%2F', async () => {
+  it('redirects unauth request on / to /login?next=%2F with Cache-Control: no-store', async () => {
     vi.mocked(updateSession).mockResolvedValue(mkUpdateSession(null) as any)
     const res = await proxy(mkRequest('/'))
     expect(res.status).toBe(307) // NextResponse.redirect default
     expect(res.headers.get('location')).toContain('/login')
     expect(res.headers.get('location')).toContain('next=%2F')
+    // Phase 51 Branch B: 307 → /login MUST carry no-store to prevent
+    // Next 16 Router Cache poisoning (recurrence-2 mitigation).
+    expect(res.headers.get('cache-control')).toBe('no-store')
   })
 
   it('preserves search params in next query', async () => {
@@ -82,7 +85,7 @@ describe('proxy.ts — PUBLIC_PATHS parity (NAV-05 D-21)', () => {
   })
 })
 
-describe('proxy.ts — profile route ungating (profile-page-404-top-nav)', () => {
+describe('proxy.ts — profile route re-gating (Phase 51 Branch B, REQ-51-07)', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it.each([
@@ -93,22 +96,36 @@ describe('proxy.ts — profile route ungating (profile-page-404-top-nav)', () =>
     ['/u/twwaneka'],
     ['/u/someuser/collection', '?_rsc=abc123'],
   ])(
-    'does not redirect unauth request on profile path %s%s',
+    'redirects unauth request on profile path %s%s to /login with Cache-Control: no-store',
     async (pathname, search = '') => {
       vi.mocked(updateSession).mockResolvedValue(mkUpdateSession(null) as any)
       const res = await proxy(mkRequest(pathname, search))
-      // Profile routes are ungated — page-level ProfileGate handles viewer
-      // identity. A 307 here would poison the Next 16 Router Cache and
-      // cause 404s on soft-nav (debug session profile-page-404-top-nav).
-      expect(res.status).not.toBe(307)
+      // Phase 51 Branch B: anon viewers of /u/* are re-gated to authenticated
+      // users only. The 307 → /login MUST carry Cache-Control: no-store so it
+      // cannot be stored by Next 16's Router Cache (recurrence-2 mitigation).
+      // Cookie-only auth (plan 51-04) prevents transient-null prefetch races
+      // that previously caused Router Cache poisoning.
+      expect(res.status).toBe(307)
+      expect(res.headers.get('location')).toContain('/login')
+      expect(res.headers.get('cache-control')).toBe('no-store')
     },
   )
+
+  it('allows authenticated request on profile path /u/twwaneka/collection', async () => {
+    vi.mocked(updateSession).mockResolvedValue(
+      mkUpdateSession({ id: 'u-1', email: 'a@b.co' }) as any,
+    )
+    const res = await proxy(mkRequest('/u/twwaneka/collection'))
+    // Authenticated viewer proceeds normally — no redirect.
+    expect(res.status).not.toBe(307)
+  })
 
   it('still redirects unauth requests on non-profile protected routes', async () => {
     vi.mocked(updateSession).mockResolvedValue(mkUpdateSession(null) as any)
     const res = await proxy(mkRequest('/settings'))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toContain('/login')
+    expect(res.headers.get('cache-control')).toBe('no-store')
   })
 })
 
