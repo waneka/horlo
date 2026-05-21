@@ -93,12 +93,17 @@ describe('proxy.ts — PUBLIC_PATHS parity (NAV-05 D-21)', () => {
 describe('proxy.ts — profile route re-gating (Phase 51 Branch B, REQ-51-07)', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  // WR-01 (Phase 51 review): the bare-username path `/u/twwaneka` was
+  // previously listed here, but next.config.ts defines a build-time 308
+  // redirect `/u/:username` → `/u/:username/collection` that runs BEFORE the
+  // proxy. A real anonymous request never reaches the proxy on the bare
+  // path; the proxy fires only on the post-redirect /u/<user>/<tab> URL.
+  // Removed the row to keep this table modeling real-traffic shapes.
   it.each([
     ['/u/twwaneka/collection'],
     ['/u/twwaneka/wishlist'],
     ['/u/twwaneka/worn'],
     ['/u/twwaneka/stats'],
-    ['/u/twwaneka'],
     ['/u/someuser/collection', '?_rsc=abc123'],
   ])(
     'redirects unauth request on profile path %s%s to /login with Cache-Control: no-store',
