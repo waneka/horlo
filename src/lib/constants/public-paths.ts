@@ -34,22 +34,3 @@ export function isPublicPath(pathname: string): boolean {
       pathname.startsWith(`${p}?`),
   )
 }
-
-/**
- * True when `pathname` is a profile route (/u/*) that the proxy should NOT
- * gate with an auth redirect.
- *
- * Profile routes are intentionally browsable by unauthenticated visitors (v5.1
- * cross-collector discovery direction). Page-level code handles viewer-identity
- * in ProfileGate: `UnauthorizedError` → `viewerId = null` → `LockedProfileState`
- * for private profiles, `notFound()` for missing users. The proxy issuing a
- * 307 → /login on any RSC prefetch race would poison the Next 16 Router Cache
- * and cause 404s on soft-nav (debug session profile-page-404-top-nav).
- *
- * NOTE: This predicate is for the PROXY AUTH GATE only. It does NOT affect
- * `isPublicPath` (which drives nav-chrome visibility in BottomNav / SlimTopNav).
- * Profile pages still render authenticated chrome for logged-in users.
- */
-export function isProfilePath(pathname: string): boolean {
-  return pathname === '/u' || pathname.startsWith('/u/')
-}
