@@ -91,8 +91,8 @@ Wave 1 plans 51-02 and 51-03 modify overlapping files (`profile-gate.tsx` and `[
 | 2 | 51-03 |
 | 3 | 51-04 (Branch B only) |
 | 4 | 51-05 (Branch B only) |
-| 5 | 51-06 (preview deploy gate) |
-| 5 | 51-07 (parallel-safe with 51-06; touches `next.config.ts` + `src/app/u/[username]/page.tsx` only) |
+| 4 | 51-07 (optional; must land BEFORE 51-06 so the preview build includes the redirects() rule — touches `next.config.ts` + `src/app/u/[username]/page.tsx` only) |
+| 5 | 51-06 (preview deploy gate; runs against a build that already contains 51-02..51-05 AND 51-07 if 51-07 was executed) |
 | 6 | 51-08 |
 
 ## Verification Gate (full phase pass)
@@ -111,4 +111,4 @@ The phase is NOT done until all of these pass:
 - Broader PPR audit of other routes (`/explore`, `/search`, `/watch/[id]`) — separate phase if Phase 51 reveals systemic pattern
 - Variant C `/w/[ref]` unified watch detail route (deferred to v7.0)
 - v6.0 social interaction features
-- `LockedProfileState` removal (still reachable by authenticated-non-owner-of-private-profile under Branch B; only the documentation comment in `public-paths.ts` is irrelevant after that file is deleted by plan 51-05)
+- `LockedProfileState` removal (still reachable by authenticated-non-owner-of-private-profile under Branch B; only the `isProfilePath` function inside `public-paths.ts` is removed by plan 51-05 — the file itself, `isPublicPath`, and the `PUBLIC_PATHS` constant remain)
