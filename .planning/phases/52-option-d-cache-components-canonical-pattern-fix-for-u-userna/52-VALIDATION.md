@@ -44,11 +44,33 @@ created: 2026-05-21
 
 ## Per-Task Verification Map
 
-> **Placeholder — planner fills this in after PLAN.md tasks are enumerated.** Schema:
+> Populated by the planner; status flips as execution proceeds. Schema columns: Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 52-XX-XX | XX | N | REQ-52-XX | T-52-XX / — | {expected secure behavior or N/A} | unit / e2e / build | `{command}` | ✅ / ❌ W0 | ⬜ pending |
+| 52-01-01 | 01 | 0 | REQ-52-01, REQ-52-03a, REQ-52-03b, REQ-52-04 | T-52-01-01 | Source-grep regression contract: post-refactor invariants asserted, expected to FAIL on current main | unit (source-grep) | `npx vitest run tests/profile-route-51.test.ts` | ✅ | ⬜ pending |
+| 52-02-00 | 02 | 0 | REQ-52-07 (Task 0) | T-52-02-02 | Operator confirms seeded test user availability before auth-setup is written | manual (operator) | n/a (checkpoint) | n/a | ⬜ pending |
+| 52-02-01 | 02 | 0 | REQ-52-07 | T-52-02-01, T-52-02-02 | Playwright auth setup writes storageState.json; credentials from env only; gitignored | e2e (setup) | `npx playwright test --project=setup` | ❌ → ✅ after install | ⬜ pending |
+| 52-02-02 | 02 | 0 | REQ-52-06 | T-52-02-03 | Profile chrome stays mounted during instant() tab navigation | e2e (instant) | `npx playwright test tests/e2e/profile-tab-instant.test.ts` | ❌ on current main (contract) | ⬜ pending |
+| 52-03-01 | 03 | 1 | REQ-52-01 | — | unstable_instant export present at the top of [tab]/page.tsx | unit (source-grep) | `npx vitest run tests/profile-route-51.test.ts -t unstable_instant` | ✅ | ⬜ pending |
+| 52-03-02 | 03 | 1 | REQ-52-02 (probe) | T-52-03-02 | Validator output captured verbatim into 52-03-VALIDATOR-OUTPUT.md — ground truth for Wave 2 | manual (operator) | inspect 52-03-VALIDATOR-OUTPUT.md | ❌ (probe; gate green only after Wave 2) | ⬜ pending |
+| 52-04-01 | 04 | 2 | REQ-52-04 (part 1 — ProfileChrome) | T-52-04-01 | ProfileChrome is uncached async runtime-API consumer; no ProfileShellResolver call | unit (source-grep) + tsc | `grep -c ProfileShellResolver src/app/u/[username]/profile-chrome.tsx` returns 0; `npx tsc --noEmit` exits 0 | ✅ | ⬜ pending |
+| 52-04-02 | 04 | 2 | REQ-52-03a + REQ-52-03b | T-52-04-02, T-52-04-04 | Layout sync + Suspense around ProfileChrome | unit (source-grep) | `npx vitest run tests/profile-route-51.test.ts -t "layout must be sync"` | ✅ | ⬜ pending |
+| 52-05-01 | 05 | 2 | REQ-52-04 (part 2 — ProfileTabContent inner) | T-52-05-01, T-52-05-02, T-52-05-03 | Outer sync + inner async with verbatim body; notFound ordering preserved | unit (source-grep) + build | `npx vitest run tests/profile-route-51.test.ts` (5/5 pass) + `npm run build` (exit 0) | ✅ | ⬜ pending |
+| 52-06-00 | 06 | 2 | REQ-52-05 (Task 0) | — | Operator confirms cross-route opt-out scope (or no-op) | manual (operator) | n/a (checkpoint) | n/a | ⬜ pending |
+| 52-06-01 | 06 | 2 | REQ-52-05 | T-52-06-01 | Each surfaced route has unstable_instant=false + cite comment | unit (grep) | `grep -l unstable_instant <files>` returns the resolved file list | ✅ | ⬜ pending |
+| 52-06-02 | 06 | 2 | REQ-52-02 (final — build-time validator green globally) | — | npm run build exit code | build | `npm run build && echo OK` | ✅ | ⬜ pending |
+| 52-07-01 | 07 | 3 | REQ-52-09 (CR-01 comment) | T-52-07-01 | proxy.ts comment accurately attributes the no-store header as THE safety mechanism | unit (source-grep) + behavioral | `npx vitest run tests/proxy.test.ts` exits 0 + `grep -c Cache-Control src/proxy.ts` >= 2 | ✅ | ⬜ pending |
+| 52-07-02 | 07 | 3 | REQ-52-09 (script delete) | T-52-07-02 | scripts/assert-phase-51-build.mjs deleted; no active references | filesystem | `test ! -f scripts/assert-phase-51-build.mjs` | ✅ | ⬜ pending |
+| 52-07-03 | 07 | 3 | REQ-52-09 (SEED-014 + D-52-04) | T-52-07-03 | SEED-014 created with full body + hand-off populated from FINDINGS.md | filesystem + grep | `test -f .planning/seeds/SEED-014-cache-components-canonical-sweep.md` + section grep | ✅ | ⬜ pending |
+| 52-08-01 | 08 | 3 | REQ-52-09 (D-52-11 reversal in [tab]/page.tsx) | T-52-08-02 | Comment block reflects validator-not-runtime-feature framing | unit (source-grep) | `grep -c "REMOVED 2026-05-14" src/app/u/[username]/[tab]/page.tsx` returns 0 | ✅ | ⬜ pending |
+| 52-08-02 | 08 | 3 | REQ-52-09 (D-52-14 loading.tsx rewrite) | T-52-08-02 | Three-boundary description present | unit (source-grep) | `grep -c "three-boundary\|three boundaries" src/app/u/[username]/loading.tsx` >= 1 | ✅ | ⬜ pending |
+| 52-08-03 | 08 | 3 | REQ-52-09 (profile-gate.tsx attribution) | T-52-08-02 | ProfileChrome named as caller in JSDoc | unit (source-grep) | `grep -c ProfileChrome src/app/u/[username]/profile-gate.tsx` >= 1 | ✅ | ⬜ pending |
+| 52-08-04 | 08 | 3 | REQ-52-09 (D-52-11 annotation in 51-CONTEXT.md + D-52-12 grep) | T-52-08-01 | Phase 51 CONTEXT preserved + annotated; no .continue-here.md anti-pattern | grep | `grep -c "REVERSED by Phase 52" .planning/phases/51-.../51-CONTEXT.md` >= 1 | ✅ | ⬜ pending |
+| 52-09-01 | 09 | 4 | REQ-52-02 (pre-deploy build) | — | npm run build exits 0 pre-deploy | build | `npm run build && echo OK` | ✅ | ⬜ pending |
+| 52-09-02 | 09 | 4 | REQ-52-06 (pre-deploy e2e) | — | Playwright chrome-mounted invariant green | e2e | `npm run test:e2e` | ✅ | ⬜ pending |
+| 52-09-03 | 09 | 4 | REQ-52-08 (Branch B contract preserved) | T-52-09-01 | Anon → 307 + no-store | manual (curl) | curl on prod | ✅ | ⬜ pending |
+| 52-09-04 | 09 | 4 | REQ-52-08 (recurrence-4 prevention — 15-min UAT) | T-52-09-02 | Second UAT cycle post-15-min: zero React #419 | manual (operator) | inspect 52-09-UAT-LOG.md | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -71,7 +93,7 @@ created: 2026-05-21
 
 ---
 
-## Wave 0 Requirements
+## Wave 0 Requirements (planned in Plans 01 + 02)
 
 - [ ] `tests/profile-route-51.test.ts` — Test 1 inversion (REQ-52-03a), Test 1 positive Suspense assertion (REQ-52-03b), Test 4 addition (REQ-52-01), Test 5 addition for `ProfileTabContent` source-grep (REQ-52-04)
 - [ ] `tests/e2e/auth-setup.ts` — covers REQ-52-07 (seeded-user storageState pattern)
