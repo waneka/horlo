@@ -1,335 +1,362 @@
-# Domain Pitfalls — v5.1 Explore Page Redesign
+# Pitfalls Research
 
-**Domain:** Editorial CMS + catalog-enrichment pipeline + Explore page modules on Horlo (Next.js 16, Supabase, Drizzle ORM)
-**Researched:** 2026-05-16
-**Confidence:** HIGH — grounded in the existing codebase (FilterSheet.tsx, enricher.ts, backfill-taste.ts, catalogSourcePhotos.ts, PROJECT.md, SEED-008), v5.0 post-mortem pitfalls, and known system-level patterns from prior milestones.
+**Domain:** Adding likes + flat comments to a Next.js 16 / Supabase app with RLS, notifications, follow graph, and Cache Components
+**Researched:** 2026-05-22
+**Confidence:** HIGH — derived from the live codebase, existing migration history, and documented incident records in PROJECT.md and AGENTS.md memory files.
 
 ---
 
 ## Critical Pitfalls
 
-These cause data corruption, security holes, or features that are silently wrong in production.
-
----
-
-### CP-01: Published-draft RLS gap leaks unpublished curated lists to public readers
+### Pitfall 1: RLS on new tables allows anon reads (missing `TO authenticated` / no `USING` predicate)
 
 **What goes wrong:**
-The curated-lists CMS will have a `status` column (`draft` | `published`). If the `watches_catalog` public-read RLS pattern is copied naively to `curated_lists` — `FOR SELECT TO anon, authenticated USING (true)` — every draft the admin is writing is immediately readable by any authenticated user via the DAL or direct Supabase client call. The UI does not surface drafts, but the API does.
+New `likes` and `comments` tables are created with `ENABLE ROW LEVEL SECURITY` but the SELECT policy either omits the `TO authenticated` role clause or uses `USING (true)` without scoping to the viewing user. Anon users — and unauthenticated PostgREST calls — can read all likes and comments, including on private wears and wishlist watches.
 
 **Why it happens:**
-The catalog tables use `USING (true)` (catalog data is intentionally public). The CMS table is different: only published rows are public. Copying the catalog RLS pattern without adding a `status = 'published'` predicate is a copy-paste error with a security consequence.
+Drizzle schema files carry only column shapes; RLS policies live in raw SQL migrations. It is easy to create the table through Drizzle, write a minimal migration that enables RLS, and forget that RLS without any policy defaults to deny-all for data rows — but that protection evaporates the moment even a permissive policy is added. Public-read is also easy to cargo-cult from `watches_catalog` (which intentionally has public-read) without realizing `watches_catalog` is the deliberate exception.
 
 **How to avoid:**
-The curated_lists RLS SELECT policy for non-owner readers must be:
-`USING (status = 'published')`.
-Owner reads (admin CMS editing their own draft) require a separate policy:
-`USING (status = 'published' OR author_id = auth.uid())`.
-Two-layer defense: DAL functions for public reads must also include `WHERE status = 'published'` — do not rely on RLS alone (consistent with the project's two-layer privacy posture established in Phase 11).
-Verify via: `SELECT * FROM curated_lists` in a Supabase Studio session authenticated as a non-admin user. Zero draft rows should appear.
+Every SELECT policy on interaction tables must specify `TO authenticated` and a `USING` predicate that checks the viewer against the target's visibility rules. Anon reads must be blocked at the RLS layer, not just the DAL layer. Verify by querying `pg_policy` and confirming no policy targets the `anon` role or omits a role clause (which defaults to `PUBLIC`).
 
 **Warning signs:**
-A non-admin user visits `/explore/lists` and can see a list by its URL (`/explore/lists/[slug]`) that was never published. Or: a DAL integration test queries curated_lists without the status filter and returns draft rows.
+- A PostgREST anonymous `GET /rest/v1/likes` or `GET /rest/v1/comments` returns rows instead of an empty array or 401.
+- The migration adds `ENABLE ROW LEVEL SECURITY` and a `TO authenticated` INSERT policy but no SELECT policy (the omission means authed users can't read either — prompting a developer to add `USING (true)` as a quick fix).
 
-**Phase to address:** Curated Lists + CMS phase (Phase 46 or equivalent). The RLS migration and DAL WHERE clauses must both be present in the same plan before any list authoring begins.
-
----
-
-### CP-02: Server Action auth bypass on CMS mutations — owner-gate implemented in UI only
-
-**What goes wrong:**
-The in-app admin CMS route is "owner-gated" — only the operator (single user) can author lists. If the ownership check lives only in the route rendering logic (e.g., `if (user.id !== OWNER_ID) redirect('/explore')`) but not in the Server Actions that handle create/update/delete, any authenticated user who crafts a direct POST to the Server Action can mutate curated lists.
-
-**Why it happens:**
-UI-layer gates feel sufficient when there is only one user. But the app has multi-user auth already live (follows, public profiles). Any future user can hit Server Actions directly. "It's a single-user app" is not a durable security argument.
-
-**How to avoid:**
-Every CMS Server Action (`createCuratedList`, `updateCuratedList`, `publishList`, `unpublishList`, `deleteCuratedList`) must begin with:
-```ts
-const user = await getCurrentUser()
-if (user.id !== process.env.OWNER_USER_ID) {
-  throw new Error('Unauthorized')
-}
-```
-This is the same pattern as the DAL's `double-verified` auth gate used throughout the existing actions. Use a named constant `OWNER_USER_ID` from an env var — do not hardcode the UUID in source.
-Additionally: RLS on `curated_lists` should enforce `WITH CHECK (author_id = auth.uid())` on INSERT/UPDATE/DELETE, so even a service-role bypass would require the correct user.
-
-**Warning signs:**
-A Server Action file for CMS operations exists but does not call `getCurrentUser()` as its first statement. Or: the action calls `getCurrentUser()` but then only uses the result for display logic, not to enforce ownership.
-
-**Phase to address:** Curated Lists + CMS phase. Document as a success criterion: "Run `createCuratedList` as non-owner user — verify it throws Unauthorized."
+**Phase to address:**
+The schema + RLS migration phase (first phase of v6.0, likely Phase 53). Write `DO $$` grant-verification assertions at the end of the migration identical to the pattern in `20260423000046_phase11_secdef_revoke_public.sql`.
 
 ---
 
-### CP-03: LLM enrichment re-run overwrites high-confidence catalog data already in production
+### Pitfall 2: New SECURITY DEFINER helpers get anon EXECUTE by default (Supabase auto-grants)
 
 **What goes wrong:**
-The existing `updateCatalogTaste` uses first-write-wins (`WHERE confidence IS NULL`). The v5.1 catalog enrichment phase will run a richer backfill — potentially with photos, more spec data, or a better prompt. If the operator runs `db:reenrich-taste --force` without understanding that `--force` overwrites ALL rows regardless of confidence, high-confidence rows enriched from official photos get replaced by lower-quality text-only enrichments. The production catalog taste data degrades silently — `analyzeSimilarity()` starts producing worse verdicts.
+If a mutual-follow check or watch-visibility check is extracted into a `SECURITY DEFINER` helper function and created without explicit `REVOKE`/`GRANT` clauses, Supabase's `ALTER DEFAULT PRIVILEGES` auto-grants `EXECUTE` to `anon`, `authenticated`, and `service_role` immediately on creation. Any anon caller can probe the follow graph or watch visibility via PostgREST RPC — `REVOKE EXECUTE FROM PUBLIC` alone does NOT remove the direct anon grant.
 
 **Why it happens:**
-The `reenrich-taste.ts` script exists and accepts `--force`. The v5.1 enrichment phase has better inputs (more spec columns populated, better photos from the enrichment run). It is tempting to `--force` everything to get the "better" enrichment. But some rows already have `confidence = 0.9` from official photos in Phase 19.1. Force-overwriting those with text-only calls (confidence ~0.6) is a regression.
+This is the exact bug fixed in `20260423000046_phase11_secdef_revoke_public.sql` after the Phase 11 wear-visibility helpers shipped without REVOKE clauses. The pattern is easy to repeat when writing a new helper for the mutual-follow gate.
 
 **How to avoid:**
-For the v5.1 backfill run: use the default `db:backfill-taste` (NULL confidence only) to fill gaps, then `db:reenrich-taste --catalog-id=<uuid>` only for specific rows where the operator has identified that existing taste data is wrong.
-Add a new flag to `reenrich-taste.ts`: `--min-confidence-threshold=0.7` — only re-enriches rows where existing confidence is BELOW the threshold. This makes intentional upgrades safe without risking regression on high-confidence rows.
-Pre-run assertion: before any backfill/reenrich run in prod, log the count and distribution of existing confidence values: `SELECT confidence, count(*) FROM watches_catalog WHERE confidence IS NOT NULL GROUP BY confidence ORDER BY confidence`.
-
-**Warning signs:**
-After a backfill run, the average `confidence` across `watches_catalog` rows DECREASES. Or: a row previously enriched from a photo now has `extracted_from_photo = false`.
-
-**Phase to address:** Catalog Enrichment phase (before Explore module work). Add the confidence-threshold flag as a requirement.
-
----
-
-### CP-04: LLM hallucination corrupts factual spec fields — no validation boundary between taste and spec columns
-
-**What goes wrong:**
-v5.1 enrichment extends beyond taste attributes to factual spec backfill: movement type, case size, dial color, complications, photos. If the LLM is asked to produce both taste attributes (subjective, soft) AND factual specs (objective, hard) in the same call, it may hallucinate specs — e.g., reporting `case_size_mm = 40` for a watch that is 38mm, or `movement_type = 'manual'` for a watch that is automatic. These errors flow directly into the catalog's factual columns and affect `/search` filter results (a user filtering for 38-40mm case sizes finds or misses watches incorrectly).
-
-**Why it happens:**
-The existing enricher is strictly scoped to taste attributes (formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence). There is a clean boundary: the enricher never writes factual spec columns. If v5.1 tries to use the LLM to also backfill `movement_type`, `case_size_mm`, etc., it removes that boundary.
-
-**How to avoid:**
-Maintain the existing separation: the LLM enricher writes ONLY taste columns. Factual spec backfill (`movement_type`, `case_size_mm`, `dial_color`, etc.) must come from a different source — either manual operator entry, web scraping from known authoritative sources (brand.com, watch databases), or a separate LLM call with explicit confidence gating and a human review step before write.
-If the enrichment phase does use LLM for specs, require: (a) a `spec_confidence` field separate from `taste_confidence`; (b) a `spec_needs_review` boolean that gates spec writes behind operator approval; (c) never auto-write factual specs to production without a review step.
-The safest approach: enrichment phase uses LLM only for taste columns (existing pattern), uses manual operator data entry + scraping for spec columns.
-
-**Warning signs:**
-The enrichment plan proposes a single LLM call that outputs both taste attributes and factual specs in one tool-use block. Or: spec columns are being written from LLM output without a human review step.
-
-**Phase to address:** Catalog Enrichment phase. Document as a hard constraint: "LLM output writes taste columns only. Spec columns require either manual entry or a human-reviewed scrape."
-
----
-
-### CP-05: Broken catalog references in curated lists when a catalog row is deleted or replaced
-
-**What goes wrong:**
-A curated list contains FK references to `watches_catalog.id`. If a catalog row is deleted (e.g., during a future catalog cleanup or merge operation), the FK reference in the list either CASCADE DELETEs the list item (making the list silently shorter) or sets it to NULL (making the list render a broken card). Neither is surfaced to the admin — the published list is now broken in production.
-
-**Why it happens:**
-The `watches_catalog` table uses `ON DELETE SET NULL` for `watches.catalog_id`. If the same pattern is used for the curated list items junction table, list item rows survive but with a NULL `catalog_id` — the component tries to render a watch card with no data. If `ON DELETE CASCADE` is used instead, list items silently disappear.
-
-**How to avoid:**
-The curated list items table must use `ON DELETE RESTRICT` on `catalog_id` FK — blocking deletion of catalog rows that are referenced by a published list. This forces the operator to either: (a) remove the watch from the list before deleting the catalog row, or (b) unpublish the list first.
-For the `Where Collections Go` path module: same constraint — a path node that references a deleted catalog row must block the delete.
-In both cases, add a pre-delete check in the admin UI that warns: "This watch is referenced in [N] curated lists. Remove it from those lists before deleting."
-
-**Warning signs:**
-An admin deletes a catalog row and the published list on `/explore` renders a broken card or silently shows fewer watches than the list's advertised count.
-
-**Phase to address:** Curated Lists + CMS phase. The schema design decision (RESTRICT vs CASCADE vs SET NULL) must be explicit in the plan.
-
----
-
-### CP-06: Supabase SECDEF functions auto-granting EXECUTE to anon breaks admin-CMS isolation
-
-**What goes wrong:**
-The existing memory note (`project_supabase_secdef_grants.md`) documents that Supabase auto-grants EXECUTE to `anon`, `authenticated`, and `service_role` on public-schema functions by default. If any CMS-related SECURITY DEFINER function is created (e.g., a function to publish a list, refresh browse counts) without explicit `REVOKE EXECUTE FROM anon, authenticated` followed by `GRANT EXECUTE TO service_role`, any authenticated user can call the function directly from the Supabase client.
-
-**Why it happens:**
-This is a Supabase-specific behavior, not standard Postgres. Prior milestones (Phase 11) hit this: `REVOKE FROM PUBLIC` alone does not block anon. The grant to `authenticated` happens automatically and must be explicitly revoked per-role.
-
-**How to avoid:**
-Every SECURITY DEFINER function created in v5.1 (count refresh, publish trigger, etc.) must follow the existing pattern:
+Every new `SECURITY DEFINER` function must be followed immediately in the same migration by:
 ```sql
-REVOKE ALL ON FUNCTION fn_name() FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION fn_name() FROM anon;
-REVOKE EXECUTE ON FUNCTION fn_name() FROM authenticated;
-GRANT EXECUTE ON FUNCTION fn_name() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.<fn>(...) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.<fn>(...) TO authenticated;
 ```
-Add this to the migration template for any new SECDEF function. Verify post-migration: attempt to call the function as `authenticated` role — it must return a permission error.
+Then add a `DO $$` assertion block (as in Migration 6) that checks `has_function_privilege('anon', ..., 'EXECUTE')` returns false. This is not optional — the Supabase auto-grant makes the REVOKE/GRANT mandatory on every new public-schema function.
 
 **Warning signs:**
-A new SECDEF function is created in a migration file without explicit REVOKE statements after the function body. Or: the function appears in `information_schema.routines` with `SECURITY_TYPE = 'DEFINER'` but no REVOKE migration lines.
+- `SELECT has_function_privilege('anon', 'public.<new_fn>(...)', 'EXECUTE')` returns `true` after the migration runs.
+- The migration creates a helper but has no REVOKE/GRANT lines.
 
-**Phase to address:** Any phase that adds SECDEF functions (count refresh cache, publish helpers). The Catalog Enrichment phase is the most likely candidate.
-
----
-
-## Moderate Pitfalls
-
-Mistakes that cause incorrect behavior, UX regressions, or significant rework.
+**Phase to address:**
+Same schema + RLS migration phase. Add the `DO $$` assertion check to the migration's CI gate so a missing REVOKE fails the migration immediately rather than silently exposing the function.
 
 ---
 
-### MP-01: Catalog-derived count caching strategy not decided before Browse the Catalog ships
+### Pitfall 3: Asymmetric wishlist-comment gate enforced in only one layer (RLS-only or DAL-only)
 
 **What goes wrong:**
-The Browse the Catalog module shows brand/era/genre/price-band indices with counts (e.g., "Rolex (42)"). These counts are derived from `watches_catalog` via SQL aggregation. If no caching strategy is decided, two bad outcomes are possible: (a) live queries on every page load make Browse the Catalog slow for a count that barely changes; (b) `cacheLife({ revalidate: 86400 })` is applied blindly and counts are stale for a full day after catalog enrichment adds new rows.
+The wishlist-comment gate (mutual-follow required to comment on a wishlist watch) is implemented in either the RLS `USING` clause OR the DAL `WHERE` clause, but not both. The Drizzle `db` client connects via `DATABASE_URL` and **bypasses RLS entirely** (see `auth.ts` comment: "the Drizzle `db` client … connects directly to Postgres via DATABASE_URL and therefore BYPASSES RLS"). This means an RLS-only gate is invisible to any Server Action call. Conversely, a DAL-only gate is bypassed by any future direct Supabase JS client call or admin path.
 
 **Why it happens:**
-SEED-008 explicitly flags "Caching strategy for catalog-derived counts in Browse indices: static at build, ISR, or live?" as an open question. The temptation is to defer this to the phase and figure it out then. But the choice affects the data model: if count materialization requires a cron job or a pre-computed `counts_cache` table, that infrastructure must exist before the Browse module renders.
+The two-layer rule ("RLS at DB + DAL WHERE") is documented in PROJECT.md Key Decisions but requires conscious effort on a new table. Developers naturally write the logic once, test it in one context, and ship. The mutual-follow check is also non-trivial (two `follows` rows required, not one), which adds temptation to put it in only the layer that felt easier to test.
 
 **How to avoid:**
-Decide at roadmap time, not during the phase. Recommendation: use Next.js `cacheLife({ revalidate: 3600 })` (1-hour ISR) on the Browse index Server Component, paired with explicit `revalidateTag('catalog:browse')` calls in any Server Action that modifies `watches_catalog` (enrichment writes, admin edits). This is the same pattern as the existing `/explore` rails (5-minute TTL + revalidateTag on watch mutations). The existing `refresh-counts.ts` script (daily pg_cron) can also call `revalidateTag` after it runs.
-Document the tag name convention in the Browse phase plan.
+The wishlist-comment gate must be present in two independent places:
+1. RLS `WITH CHECK` policy on `comments INSERT`: incorporates `watches.status != 'wishlist' OR (mutual_follow_check)`.
+2. DAL `createComment` function: explicit pre-flight `WHERE` check on `watches.status` and the mutual-follow helper before the Drizzle insert.
+Write an integration test that calls the DAL function directly (bypassing RLS) with a non-mutual-follow viewer trying to comment on a wishlist watch, and asserts it is rejected.
 
 **Warning signs:**
-The Browse the Catalog module is shipped without a `cacheLife` declaration. Or: the phase CONTEXT.md says "we'll use live queries for now" — this will cause noticeable latency on the browse index pages.
+- The comments RLS migration has an INSERT policy but no reference to `watches.status` or a follow-graph check.
+- The DAL `createComment` function inserts without a pre-flight visibility check.
+- Tests only exercise the happy path (mutual follower can comment) without a negative case (non-mutual follower blocked).
 
-**Phase to address:** Explore Shell + Browse the Catalog phase. The caching decision must be in the plan before implementation.
+**Phase to address:**
+Schema + RLS migration phase AND the comments DAL phase. The integration test for the gate should be in the same plan as the DAL implementation, not deferred.
 
 ---
 
-### MP-02: Empty-module degradation not tested — modules render empty containers instead of hiding
+### Pitfall 4: Mutual-follow computed incorrectly (one-directional check)
 
 **What goes wrong:**
-SEED-008 states: "Modules with missing data degrade gracefully — never empty." The Hero must hide itself when no quality-gated list exists. The Curated Lists Rail must hide the entire module when there are zero published lists. In practice, components render their container (heading, padding, section chrome) but with no content — a visible empty box on the page.
+The mutual-follow check queries `follows WHERE follower_id = viewer AND following_id = owner` — this is a ONE-directional check (viewer follows owner). Mutual follow requires BOTH rows: viewer→owner AND owner→viewer. Using the unidirectional check silently grants wishlist-comment access to anyone who follows the owner, even if the owner does not follow them back.
 
 **Why it happens:**
-Developers test the happy path. The empty-state check is conditional logic that only runs when the data array is length 0, which never happens in a dev environment where the admin has seeded content. The empty container only surfaces in production before any lists are authored, or if all lists are unpublished.
+The `isFollowing(followerId, followingId)` DAL function already exists and does exactly one directional check. It is tempting to reuse it with one call rather than writing a separate `isMutualFollow` helper.
 
 **How to avoid:**
-Each module component must have an explicit early return of `null` (not an empty `<section>`) when its data is empty. The acceptance criteria for each module must include: "Render with empty data — module is absent from the DOM, no empty container."
-Write a test for each module with empty props: `expect(container).toBeEmptyDOMElement()` or `expect(queryByRole('region', { name: 'Curated Lists' })).not.toBeInTheDocument()`.
-The Hero's quality-gate logic (minimum watch count, has cover image, has intro copy) must be tested with lists that fail exactly one criterion at a time.
+Write an explicit `isMutualFollow(userA, userB)` DAL helper that checks for BOTH rows in a single query:
+```sql
+SELECT count(*) FROM follows
+WHERE (follower_id = $a AND following_id = $b)
+   OR (follower_id = $b AND following_id = $a)
+-- mutual = count >= 2
+```
+Or use two EXISTS subqueries in one round-trip. The helper must be used consistently in both the RLS policy (as a SECURITY DEFINER function) and the DAL. Add a test: A follows B but B does not follow A → wishlist comment blocked.
 
 **Warning signs:**
-A screenshot of `/explore` on a fresh environment (no lists authored yet) shows section headings with blank content beneath them. Or: the Hero renders a broken image placeholder when no list has a cover image.
+- The mutual-follow check is implemented as a single call to `isFollowing()` with no second call for the reverse direction.
+- The RLS policy uses a subquery that selects from `follows` with only one WHERE direction.
 
-**Phase to address:** Explore Shell (for the shell empty-module pattern) + Curated Lists Rail phase (for the specific list module). Each module acceptance checklist must include the zero-data test.
+**Phase to address:**
+Schema + RLS migration phase (when the SECDEF mutual-follow helper is written) AND the DAL phase that implements `createComment`.
 
 ---
 
-### MP-03: Bottom-sheet gated-open-change bug class — dismiss blocked during loading
+### Pitfall 5: Server Action authorization missing for edit/delete (IDOR on comment mutations)
 
 **What goes wrong:**
-The v5.0 FilterSheet bug: the sheet "could not be dismissed while a filtered query was in flight." The root cause: something in the parent was calling `onOpenChange` with a function that checked loading state before allowing close. The `WatchFacetSheet` component in `FilterSheet.tsx` passes `onOpenChange={setSheetOpen}` directly, which is correct. The bug likely manifested where a parent wrapped the open-state setter in a guard: `(open) => { if (!watchesIsLoading) setSheetOpen(open) }` — or where closing the sheet triggered a re-render that set loading state which re-opened the sheet.
-
-This class of bug recurs any time a modal/sheet's dismiss handler is made conditional on async state.
+The `editComment` and `deleteComment` Server Actions accept a `commentId` from the client and perform the mutation without verifying that the authenticated user is the comment author. Any authenticated user can forge a `commentId` and edit or delete another user's comment.
 
 **Why it happens:**
-The intent is usually "don't close the filter sheet while results are loading, because the user might not realize their filter is in flight." But this inverts user intent: the user explicitly dismissed the sheet. Loading state should never gate a user-initiated dismiss.
+Server Actions are HTTP-callable endpoints — the "user clicked a UI button that only appears on their own comment" is a UI constraint, not an authorization constraint. This is the same class of bug that `assertOwner()` and the `follows` action's `follower_id = getCurrentUser().id` pattern were built to prevent.
 
 **How to avoid:**
-The pattern to enforce in v5.1 (and for the v5.0 fix in the Polish phase): the `onOpenChange` prop passed to any Sheet/Dialog/BottomSheet must NEVER be wrapped in a loading-state guard. Dismiss is always allowed.
-If the concern is "the user dismissed the sheet before seeing the results," show a loading indicator inside the sheet or in the results area — do not block dismiss.
-For drag-to-dismiss: implement using `@base-ui/react` Dialog or a CSS `transition` on `transform: translateY` with a pointer-move handler. Do not reuse the Shadcn Sheet for drag-to-dismiss — Shadcn Sheet does not have native swipe-dismiss; adding it via `onPointerDown` / `onPointerMove` / `onPointerUp` handlers risks interfering with scroll.
-Success criterion: "Sheet can be dismissed at any point during a pending search query — loading state does not gate close."
+Every comment mutation Server Action must:
+1. Call `getCurrentUser()` first.
+2. Fetch the comment row by `commentId` and verify `comment.authorId === user.id` before modifying it.
+3. Return a generic error ("Not found") on mismatch — never "Not authorized" (reveals existence).
+The DAL function should also include the `WHERE author_id = viewerId` clause as a second layer so an RLS bypass path (future admin DAL) also requires explicit override.
 
 **Warning signs:**
-`onOpenChange` in any Sheet consumer is wrapped in a function with a conditional before calling `set*Open`. Or: the Sheet's `open` prop is derived from a loading state rather than a dedicated `boolean` state variable.
+- `editComment` or `deleteComment` Server Action does not call `getCurrentUser()` before the mutation.
+- The Drizzle DELETE or UPDATE query does not include a `WHERE author_id = ?` clause alongside `WHERE id = ?`.
 
-**Phase to address:** Polish phase (first phase of v5.1). Fix the dismiss-guard bug in the existing FilterSheet before building new sheet surfaces.
+**Phase to address:**
+The comments Server Actions phase.
 
 ---
 
-### MP-04: LLM enrichment rate limits cause silent partial failure at batch scale
+### Pitfall 6: Like-toggle notification spam on rapid like/unlike churn
 
 **What goes wrong:**
-The existing `backfill-taste.ts` processes rows sequentially with no rate-limit handling. At ~100 rows, the Anthropic API's `claude-sonnet-4-6` rate limits (requests-per-minute and tokens-per-minute) may cause 429 errors mid-batch. The current error handler catches the error, logs it, increments `totalFailed`, and continues — leaving those rows with `confidence = NULL`. The script reports "22 rows still have NULL confidence" at the end, but there is no retry logic and no distinction between "failed due to rate limit" vs "failed due to bad input."
+A user rapidly likes and unlikes a watch or wear. Each `like` transition fires `logNotification` for the watch owner. Because `likes` is a new notification type with no dedup UNIQUE index (unlike `watch_overlap`), the watch owner receives one notification per like event, even across a like→unlike→like sequence within seconds. The notification inbox fills with duplicate "X liked your watch" entries.
 
 **Why it happens:**
-At Phase 19.1 scale (<20 rows in the initial bootstrap), rate limits were never hit. At 100 rows, depending on vision vs text mode and prompt token count, the RPM limit (~50 for Tier 1 Sonnet) can be reached within 2 minutes of the script starting.
+The existing `notifications_watch_overlap_dedup` partial UNIQUE index is watch-overlap specific. The `follow` notification type has no dedup index either, which was acceptable because follow/unfollow churn is rare. Like toggling is much more prone to accidental double-taps and rapid-fire interaction.
 
 **How to avoid:**
-Add exponential backoff + retry (3 attempts, 2s/4s/8s delays) inside `enrichTasteAttributes` or in the batch loop, triggered on `status 429` or Anthropic SDK `RateLimitError`. Existing error handler: `catch (err) { ... totalFailed++ }` — add a pre-catch check for `err instanceof Anthropic.RateLimitError` and sleep before retrying.
-Add inter-row delay: `await new Promise(r => setTimeout(r, 800))` between rows in the batch loop. At 800ms/row, 100 rows takes ~80 seconds — well within the RPM limit.
-Add a `--delay-ms=N` CLI flag to the backfill script so the operator can tune the rate.
-After a run with failures, the script already instructs "re-run later" — but the operator needs to know WHICH rows failed. Log each failed `catalog_id` explicitly rather than just a count.
+Two complementary mitigations:
+1. Add a partial UNIQUE index on `notifications (user_id, actor_id, target_id, target_type, type, (created_at::date))` WHERE `type = 'liked'` — one like notification per actor+target+day.
+2. In `logNotification`, suppress the notification on `unlike` (the unlike path must NOT fire a notification). Only the transition to `liked=true` triggers the notification.
+The "X unliked your watch" event has no product value in this scope — suppress it entirely.
 
 **Warning signs:**
-A dry-run reports 100 rows; the live run reports 22 failed. All 22 failures are the same error type (`RateLimitError`). Or: the script completes in under 60 seconds for 100 rows (suspiciously fast — likely hitting rate limits and silently skipping).
+- The unlike path in the `toggleLike` Server Action calls `logNotification` unconditionally.
+- The `notifications` table has no dedup index for the like type.
+- Rapid test: like and unlike a watch 5 times in 10 seconds produces 5 notifications instead of 1.
 
-**Phase to address:** Catalog Enrichment phase. The rate-limit retry and inter-row delay must be in the enrichment script before the prod run.
+**Phase to address:**
+The likes Server Actions phase (same plan as `toggleLike`).
 
 ---
 
-### MP-05: Non-idempotent enrichment re-run creates duplicate state via vision vs text mode flip
+### Pitfall 7: N+1 when loading like/comment counts across a watch list or profile tab
 
 **What goes wrong:**
-A row has `extracted_from_photo = true` and `confidence = 0.85` from a vision-mode enrichment. The operator re-runs `db:reenrich-taste` for that row (e.g., because the photo was replaced). If the `photoSourcePath` is now NULL (the old photo was deleted from Storage), the enricher falls back to text mode and writes `extracted_from_photo = false` with lower confidence. The DB now has contradictory history: the row says it was NOT extracted from a photo, but the changelog (if any) shows it was. More practically: the Browse the Catalog module may show different taste groupings than expected because a high-confidence vision-enriched archetype was downgraded to a lower-confidence text guess.
+The profile collection tab loads N watches, then for each watch issues a separate `SELECT COUNT(*) FROM likes WHERE target_id = watchId` and `SELECT COUNT(*) FROM comments WHERE target_id = watchId`. With 50+ watches this is 100+ round-trips to Postgres, producing visible latency spikes.
 
 **Why it happens:**
-The enricher already handles this gracefully (falls back to text on photo fetch failure). The issue is operator awareness: running reenrich on a row without confirming the photo still exists will silently downgrade the enrichment quality.
+The count queries are easy to write per-watch inside a loop. The existing single-pass batch pattern used in `getFollowersForProfile` (a single `inArray` batch) requires an additional aggregation query that feels like over-engineering for the first implementation.
 
 **How to avoid:**
-Before re-enriching a row that has `extracted_from_photo = true`, confirm the photo path is still valid: attempt a signed-URL generation for the path. If it fails, warn the operator instead of silently falling back.
-Add a pre-run assertion to `reenrich-taste.ts`: when re-enriching a vision row, log a warning: "Photo not found for catalog_id={id} — will enrich text-only; confidence may be lower than existing value."
-Add a `--skip-if-higher-confidence` flag: if the existing confidence is above a threshold, skip rather than risk downgrade.
+Use a single batch query pattern matching the existing anti-N+1 precedent in `src/data/follows.ts`:
+```sql
+SELECT target_id, count(*)::int AS like_count
+FROM likes
+WHERE target_id = ANY($watchIds)
+GROUP BY target_id
+```
+Merge the results into a Map keyed by `watchId`, then attach counts to the already-fetched watch rows. Do the same for comment counts. Two extra queries total, not 2N. Note the `::int` cast — every `COUNT(*)` in this codebase is cast explicitly to avoid the Postgres `bigint` string serialization pitfall (see the `::int` cast documentation in Phase 18 Explore DAL).
 
 **Warning signs:**
-After a targeted reenrich, the row's `extracted_from_photo` flips from `true` to `false` unexpectedly. Or: confidence drops from 0.85 to 0.55 on a row that was previously vision-enriched.
+- Any DAL function contains a loop that calls `db.select().from(likes).where(eq(likes.targetId, id))` per-watch inside a `for` or `map`.
+- The Vercel function log shows 50+ DB queries for a single profile tab render.
 
-**Phase to address:** Catalog Enrichment phase. The `reenrich-taste.ts` script must include the photo-existence check before the prod run.
+**Phase to address:**
+The profile-tab rendering phase that surfaces counts on watch cards.
 
 ---
 
-### MP-06: Avatar upload reuses wrong bucket — mixing profile photos into catalog-source-photos
+### Pitfall 8: Cross-viewer Cache Component key leakage (like/comment counts or "liked?" state bleeds across users)
 
 **What goes wrong:**
-The v5.1 Polish phase adds avatar upload via Supabase Storage. The existing photo upload path (`catalog-source-photos` bucket, `src/lib/storage/catalogSourcePhotos.ts`) is well-established. The temptation is to reuse it for profile photos by just adding a new path convention (e.g., `{userId}/avatar/avatar.jpg`). But `catalog-source-photos` has RLS scoped to watch-catalog operations (its policies are tied to the catalog enricher's service-role access). Profile avatars have different access patterns: they should be publicly readable (like CDN-served profile photos) without signed URLs.
+A cached Server Component renders the like count or "already liked" state for a watch card without scoping the cache key to the viewer. Two different authenticated users share the same cached output: viewer A sees viewer B's like-state, or viewer A's "already liked" indicator is shown to viewer B who has never liked that watch.
 
 **Why it happens:**
-The bucket already exists, the upload helper is already written, and the EXIF-strip + JPEG-resize pipeline is already implemented. Reusing it for avatars seems like minimal friction.
+This repo has a documented history of cross-viewer cache leakage (PROJECT.md Phase 39c; MEMORY `project_cc_audit_2026_05_21.md`). The `cacheTag` family includes `viewer:${viewerId}` keys precisely because the `/u/[username]` layout was previously poisoned by shared cache entries. Interactive state (has the current viewer liked this?) is inherently viewer-dependent and must never be cached without a viewer dimension.
 
 **How to avoid:**
-Create a separate `avatars` bucket (or `profile-photos` bucket) with public-read policy, not signed-URL access. Profile photos need to be served directly via a public URL (`supabase.storage.from('avatars').getPublicUrl(path)`) so they can be used in `<img src>` without expiring. Signed URLs expire (60s in the existing enricher pattern) — unacceptable for a profile avatar rendered in navigation headers on every page.
-The upload pipeline (EXIF strip, canvas re-encode to JPEG, ≤1080px) can be reused as a utility function — just change the bucket name and the URL retrieval pattern (public URL vs signed URL).
-Add `remotePatterns` entry in `next.config.ts` for the new bucket's CDN hostname if it differs from the existing `catalog-source-photos` pattern.
+Any Server Component or `'use cache'` function that renders viewer-dependent state (the "did I like this?" boolean) must include `cacheTag(`viewer:${viewerId}`)` or an equivalent viewer-scoped key. The safest architecture: split the rendering into a public-count layer (viewer-agnostic, cacheable globally) and a viewer-state layer (viewer-keyed or uncached in a `<Suspense>` boundary). The public count can be aggressively cached; the viewer's own interaction state should not be.
 
 **Warning signs:**
-`ProfileSection.tsx` calls `uploadCatalogSourcePhoto` or `getCatalogSourcePhotoSignedUrl`. Or: the avatar URL stored in `profiles.avatar_url` is a signed URL with an expiry timestamp.
+- A `'use cache'` component renders a "You liked this" indicator but has no `viewer:${viewerId}` cache tag.
+- Two signed-in browsers show each other's like state after a page reload.
+- A `revalidateTag` call in the like Server Action does not include a viewer-scoped tag, so the cache is never invalidated for the right viewer.
 
-**Phase to address:** Polish phase. Avatar upload must use a new bucket, not the existing catalog bucket.
+**Phase to address:**
+The like/comment UI rendering phase. Establishing the cache key taxonomy for interaction state in the schema/RLS phase prevents ad-hoc decisions later.
 
 ---
 
-### MP-07: Hero auto-rotation logic creates a stale-cache collision with manual pin
+### Pitfall 9: Stale counts after revalidateTag (like/comment counts don't update after mutation)
 
 **What goes wrong:**
-The Hero has two selection modes: auto (most recently published quality-gated list) and manual pin (admin sets a specific list). If the Hero's Server Component is cached with `cacheLife({ revalidate: 604800 })` (weekly), and the admin sets a manual pin mid-week, the cache serves the old auto-selected hero for up to 7 days before revalidation. Unpinning has the same problem in reverse.
+After a user likes a watch, the like count on the card does not update — it stays at the pre-action count until the full Cache Component TTL expires. Or counts update for the actor but not for the watch owner's profile view of the same card.
 
 **Why it happens:**
-The cache tag for the Hero is likely `'explore:hero'`. If the pin-setting Server Action calls `revalidateTag('explore:hero')`, this works correctly. But if the action only calls `revalidatePath('/explore')` (path-based invalidation), and the Hero component is a nested cached Server Component using `'use cache'`, the cache tag invalidation does not propagate to the nested component.
+The `revalidateTag` call in the `toggleLike` Server Action invalidates the actor's viewer tag but not the tag for the watch owner's cached profile. The two-tag invalidation pattern (RYO via `updateTag` for the actor + `revalidateTag(..., 'max')` for cross-user fan-out) is established in Phase 13's notification bell and the `followUser`/`unfollowUser` actions, but it is easy to omit the cross-user leg when adding new mutations.
 
 **How to avoid:**
-The manual-pin Server Action must call `revalidateTag('explore:hero')` explicitly — not just `revalidatePath('/explore')`. This is consistent with the existing pattern (Phase 13 documented `updateTag` vs `revalidateTag` distinction; Phase 18 used `revalidateTag('explore', 'max')` for SWR fan-out).
-The pin status must be stored in the DB (a `config` or `cms_settings` table row), not in environment variables or a JSON file — so the Server Component always reads live pin state when cache is refreshed.
-Document the invalidation matrix for the Hero in the plan: what writes must call `revalidateTag('explore:hero')`? Answer: `publishList`, `unpublishList`, `setPinnedHero`, `clearPinnedHero`.
+Every like/comment write path must invalidate:
+1. `updateTag(`viewer:${actorId}:watch:${watchId}`)` — RYO for the actor (immediate).
+2. `revalidateTag(`profile:${ownerUsername}`, 'max')` — SWR fan-out so the watch owner's cached profile shell reflects the new count within the cache TTL.
+Mirror the exact pattern in `followUser` and `unfollowUser` in `src/app/actions/follows.ts`.
 
 **Warning signs:**
-Admin sets a manual pin; the `/explore` hero still shows the previous auto-selected list after navigating away and back. This is a cache tag miss on the pin action.
+- The `toggleLike` Server Action calls `updateTag` but not `revalidateTag` for the target watch owner.
+- The watch owner viewing their own profile in a second browser sees stale counts after someone else likes their watch.
 
-**Phase to address:** Curated Lists + Hero phase. The invalidation matrix must be in the plan before the Hero cache scope is written.
+**Phase to address:**
+The likes Server Actions phase, with an explicit plan task for the invalidation matrix.
 
 ---
 
-### MP-08: Turbopack `.next` cache serves stale Explore CSS — known prior pitfall
+### Pitfall 10: Cascade gap — likes/comments orphaned when the underlying watch or wear_event is deleted
 
 **What goes wrong:**
-The v5.1 Explore page is a new route with its own layout grid, module spacing, and responsive breakpoints. Turbopack's `.next/` cache has caused stale CSS in prior milestones (Phase 30's black bar, documented in `project_turbopack_next_cache_stale_css.md`). Responsive layout bugs on `/explore` may appear to be code errors but are actually stale cached CSS.
+A user deletes a watch. The watch row is deleted from `watches`. The `likes` and `comments` rows that referenced that watch's `id` remain in the database — they reference a non-existent row. Future queries that join against `watches` silently drop these rows or produce unexpected counts.
 
 **Why it happens:**
-Turbopack does not always invalidate `.next/` on CSS changes, particularly for global styles or newly added Tailwind utility classes. Dev server restart alone does not clear the cache.
+The `likes` and `comments` tables are new. If they store a `target_id uuid` column without a FK constraint (common in polymorphic designs), there is no database-level cascade. The developer relies on application-level cleanup, which is easy to forget on the delete path.
 
 **How to avoid:**
-The Polish phase and Explore Shell phase verification steps must include: "Clear `.next/` (`rm -rf .next`) and restart dev server before confirming any layout fix." Add this to the phase completion checklist.
-For the Explore page specifically: the `aspect-[4/5]` watch card fix (cards with variable metadata height) is a CSS chain that must be verified with computed styles in DevTools, not just source inspection — per the MP-07 pattern documented in the v5.0 PITFALLS.md.
+Two options:
+- **Per-table FKs (recommended):** Use `watch_id uuid REFERENCES watches(id) ON DELETE CASCADE` and `wear_event_id uuid REFERENCES wear_events(id) ON DELETE CASCADE` as separate nullable columns (one populated per row). This gives database-level cascade with no application code needed. Consistent with `wearEvents.watchId` which already uses `ON DELETE CASCADE`.
+- **Polymorphic with application cleanup:** If a single `target_id` / `target_type` polymorphic design is chosen, the `deleteWatch` and `deleteWearEvent` Server Actions must explicitly delete all related likes and comments before the parent delete. Requires a test that verifies orphan cleanup.
+Per-table FKs with cascade are the lower-risk path for this codebase.
 
 **Warning signs:**
-A Tailwind class is present in the JSX but the computed style in DevTools does not reflect it. Or: a layout regression appears on first load but disappears after a hard refresh.
+- The `likes` or `comments` table has a `target_id` column with no FK constraint.
+- The `deleteWatch` Server Action does not mention likes or comments in its cleanup logic.
+- After deleting a watch, `SELECT COUNT(*) FROM likes WHERE target_id = $deletedWatchId` still returns a non-zero count.
 
-**Phase to address:** Polish phase (watch-card height fix) and Explore Shell phase. Both verification steps must include the `.next/` cache clear.
+**Phase to address:**
+The schema + RLS migration phase. FK cascade strategy must be decided before the DAL is written, not retrofitted.
 
 ---
 
-### MP-09: Collector Archetype filter deep-links produce empty results if catalog lacks the tagged data
+### Pitfall 11: Wishlist→owned status-change flips the comment gate silently (existing comments now gated differently)
 
 **What goes wrong:**
-SEED-008 acceptance: "Every archetype produces a non-empty results page (validate at build time)." If the catalog enrichment has not been completed before the Archetypes module ships, a user taps "Dive Watch Devotee" and gets zero results — because `primary_archetype = 'dive'` matches zero catalog rows with sufficient confidence. The module renders but is functionally broken.
+User A has a wishlist watch. Mutual follower B comments on it (allowed). Later, User A marks the watch as owned. The watch is now in the "open comments" category — fine. But the gate-flip also works in reverse: if User A moves a watch FROM owned TO wishlist, existing comments from non-mutual-followers become newly gated. Those comments are not deleted, so they exist in the database but are hidden under the new stricter gate. The asymmetry also means that at the moment of status change, cached pages briefly show stale gate state.
 
 **Why it happens:**
-The implementation order in SEED-008 is: (1) Polish, (2) Catalog Enrichment, (3) Page Shell + Browse + Archetypes. If the Archetypes phase is implemented before the enrichment run completes in production, the archetype filter deep-links are broken in prod even though they work in dev (where the developer seeded their own test data).
+`watches.status` is a mutable field updated by `editWatch` / status-change actions. The comment-gate predicate is evaluated at comment-read time against the CURRENT status, not the status at comment-write time. Nobody writes migration logic for status changes because it looks like a pure application concern. Cache invalidation on status change is also easy to forget.
 
 **How to avoid:**
-The Archetypes phase must include a build-time or CI assertion: for each archetype config entry, verify the filter returns ≥1 result from the production catalog via a test against the staging DB or a snapshot. Do not ship Archetypes to prod until the catalog enrichment run is verified complete with sufficient coverage per archetype.
-Alternatively: add a runtime guard — if an archetype's prefiltered results page returns zero results, show a "No results yet — catalog expanding soon" placeholder rather than an empty search page. This is graceful degradation, not a fix.
+Two decisions must be made explicitly and locked in the plan:
+1. **owned→wishlist comment visibility:** Choose one behavior — hard-delete comments from non-mutual-followers, soft-hide (keep row, filter in DAL), or grandfather (keep visible). Defaulting to "grandfather" (keep visible, do not re-check the gate on existing comments) is simplest and least surprising to commenters. Document the chosen behavior in the plan.
+2. **Cache invalidation on status change:** `editWatch` / status-change Server Actions must call `revalidateTag(`profile:${ownerUsername}`, 'max')` so cached comment gates on the watch card are busted promptly.
+The test: move a watch from owned to wishlist and verify the comment section is gated for non-mutual-followers on the next render (new comments blocked; existing comments handled per the documented policy).
 
 **Warning signs:**
-Archetypes module ships before `db:backfill-taste` has been run in production. Or: the archetype config maps to `primary_archetype = 'field'` but zero catalog rows have `primary_archetype = 'field'` after enrichment.
+- The `editWatch` or status-change Server Action does not invalidate interaction-related cache tags.
+- The comment DAL reads `watches.status` but there is no plan task documenting the owned→wishlist transition behavior.
 
-**Phase to address:** Catalog Enrichment phase (run first, verify coverage). Archetypes phase (include post-enrichment coverage assertion in acceptance criteria).
+**Phase to address:**
+The comment visibility DAL phase. The owned→wishlist edge case must be in the plan's decision list before writing the gate predicate.
+
+---
+
+### Pitfall 12: notification_type enum extension requires rename+recreate, not ALTER TYPE ADD VALUE
+
+**What goes wrong:**
+Adding `liked` and `commented` to the existing `notification_type` pgEnum with `ALTER TYPE notification_type ADD VALUE 'liked'` fails inside a transaction block — Postgres does not allow `ADD VALUE` inside `BEGIN`/`COMMIT`. The developer adds it outside a transaction (non-atomic), or attempts it inside a transaction and gets an error, then retries the entire milestone migration in a broken state.
+
+**Why it happens:**
+Phase 24 DEBT-04 documented this exact problem and solved it with a rename+recreate pattern (PROJECT.md Key Decisions). The lesson is documented but easy to miss when starting a new phase. The current enum has two values (`follow`, `watch_overlap`) — extending it for v6.0 requires adding at least `liked` and `commented`.
+
+**How to avoid:**
+Follow the Phase 24 DEBT-04 pattern: rename the old enum, create a new enum with all values, migrate the column to use the new enum, then drop the old enum. Critical hazard: run the `pg_depend` query BEFORE renaming to identify all partial indexes or CHECK constraints bound to the enum type (documented in memory `project_drizzle_supabase_db_mismatch.md` as one of the 4 prod-push gotchas). Write the enum migration in its own SQL file, not bundled with table-creation DDL, so it can be isolated if it needs to be re-run.
+
+**Warning signs:**
+- The migration uses `ALTER TYPE notification_type ADD VALUE 'liked'` inside a `BEGIN`/`COMMIT` block.
+- The migration plan does not include a `pg_depend` pre-flight step.
+- The migration runs locally but fails on prod because prod has additional enum-dependent objects (partial indexes) not present locally.
+
+**Phase to address:**
+The notifications extension phase. Treat the enum migration as its own plan task with a pre-flight `pg_depend` query step.
+
+---
+
+### Pitfall 13: Mass-assignment on comment create/edit (unsanitized fields accepted from client)
+
+**What goes wrong:**
+The `createComment` or `editComment` Server Action accepts a raw object from the client and passes it to Drizzle without a strict Zod schema. A client can inject extra fields (`authorId`, `targetId`, `createdAt`) that get silently merged into the insert, potentially overriding the server-derived author identity or forging the target.
+
+**Why it happens:**
+Server Actions feel like internal function calls, so it is tempting to skip Zod validation. The existing `followUser` action uses `.strict()` specifically to reject extra keys, but a new developer writing a comment action may not know this convention.
+
+**How to avoid:**
+All comment and like Server Actions must use a Zod schema with `.strict()` that accepts ONLY the fields the client should supply (e.g., `body: z.string().trim().min(1).max(500)` for create; `body` only for edit). Fields like `authorId`, `watchId`, and `createdAt` must be derived server-side from `getCurrentUser()` and the validated input. Mirror the pattern in `src/app/actions/follows.ts` (the `followSchema = z.object({ userId }).strict()` precedent).
+
+**Warning signs:**
+- A Server Action accepts `data: Record<string, unknown>` and spreads it directly into a Drizzle `.values()` call.
+- The Zod schema includes `authorId` as an accepted field from the client.
+- No `.strict()` on the Zod schema.
+
+**Phase to address:**
+The comments Server Actions phase, specifically the plan task that writes the Zod schemas.
+
+---
+
+### Pitfall 14: Comment text handling — length, whitespace normalization, XSS-unsafe rendering
+
+**What goes wrong:**
+Three separate sub-problems can occur independently:
+- **Length enforcement absent at DB level:** The Zod schema enforces `max(500)` but there is no `CHECK (length(body) <= 500)` constraint in Postgres. An admin or service-role insert path can bypass the Server Action and insert an arbitrarily long comment that breaks the UI layout.
+- **Whitespace normalization missing:** A comment body of `"   "` (all spaces) passes `z.string().min(1)` but displays as blank. `z.string().trim().min(1)` is required; the trim must happen before the min check.
+- **XSS-unsafe rendering:** Comment body is rendered with `dangerouslySetInnerHTML` instead of as a React text child. Since comments are plain text (no markdown in v6.0 scope), the correct rendering is a React text child — never `dangerouslySetInnerHTML`.
+
+**Why it happens:**
+Each issue lives at a different layer. The DB CHECK is easiest to forget because Drizzle's pg-core DSL cannot express CHECK constraints (same pattern as the `notifications_no_self_notification` CHECK, which required a raw SQL migration with an idempotent `DO $$` guard). The XSS issue appears when a developer copies a rendering pattern from the CMS markdown path without recognizing that the comment body is untrusted user content.
+
+**How to avoid:**
+- DB layer: Add `CHECK (length(body) > 0 AND length(body) <= 500)` in the raw SQL migration (not the Drizzle schema file), with an idempotent `DO $$` guard matching the `notifications_no_self_notification` pattern.
+- Server Action: Use `z.string().trim().min(1).max(500)` — `.trim()` must precede `.min(1)`.
+- Rendering: Render comment body as `<p>{comment.body}</p>` — a React text child is inherently XSS-safe. Reference the existing `HighlightedText` component (used in people search) for the project's established XSS-safe rendering pattern.
+
+**Warning signs:**
+- The `comments` table migration has no `CHECK` constraint on `body` length.
+- The Zod schema uses `z.string().min(1).max(500)` without `.trim()`.
+- The comment rendering JSX includes `dangerouslySetInnerHTML`.
+
+**Phase to address:**
+Schema phase (DB CHECK), Server Actions phase (Zod trim), and UI rendering phase (JSX pattern).
+
+---
+
+### Pitfall 15: Optimistic UI rollback and count drift after like toggle
+
+**What goes wrong:**
+The like button uses an optimistic like-count increment (`useOptimistic` / local state) before the Server Action completes. If the Server Action fails (unauthenticated, or like constraint violation), the optimistic count is not rolled back — the UI shows a count that never persisted. After a page reload the count reverts to the true value. Alternatively, counts drift in the opposite direction: a race between two concurrent toggles produces a double-increment.
+
+**Why it happens:**
+The existing `NotificationRow` component uses `useOptimistic` and `useTransition` together (Phase 13). The rollback path (restoring the previous state on error) requires an `onError` / post-action state reset that is easy to omit. It is also tempting to increment the count optimistically AND toggle the icon — two separate optimistic updates that can drift independently.
+
+**How to avoid:**
+- Use `useOptimistic` with a reducer that takes the confirmed server state as the truth signal. After the Server Action resolves (success or error), reset to the server-confirmed count via `router.refresh()` or a subsequent tag invalidation.
+- Alternatively: optimistically toggle only the icon state (liked/not-liked), but NOT the numeric count. Let the count refresh server-authoritatively after the action completes.
+- Add a test for the error rollback path: mock the Server Action to throw, then assert the optimistic state reverted to the pre-action value.
+
+**Warning signs:**
+- The like button component calls `setOptimisticCount(prev + 1)` but has no corresponding reset on action failure.
+- The `useTransition` `startTransition` callback does not handle the error case.
+
+**Phase to address:**
+The like button UI phase.
 
 ---
 
@@ -337,14 +364,12 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Hardcode `OWNER_USER_ID` in source instead of env var | No env var setup needed | Owner changes (unlikely but possible); UUID visible in repo history | Never — use env var |
-| Single bucket for all photos (avatars + catalog photos) | Fewer Supabase buckets | RLS policies conflict; signed URLs used for public avatars (expiry issues) | Never |
-| Skip `status = 'published'` filter in DAL (rely on RLS only) | Simpler queries | One-layer privacy; RLS bypass via service role exposes drafts | Never for data with draft/published lifecycle |
-| `onOpenChange` wrapped in loading guard | "Prevents accidental dismiss" | Blocks user-initiated dismiss; violates UX contract | Never |
-| Use `revalidatePath('/explore')` instead of tagged cache invalidation | Simpler | Nested `'use cache'` components not invalidated by path revalidation | Never for nested Cache Components |
-| LLM for factual spec backfill without human review | Faster backfill | Hallucinated specs corrupt filter results silently | Never for factual spec columns |
-| Run `db:reenrich-taste --force` on all rows before verifying photo availability | Simpler invocation | Vision-enriched rows downgraded to text-only without awareness | Never without photo-existence pre-check |
-| Copy `watches_catalog` public-read RLS to `curated_lists` | Faster schema setup | Leaks drafts to all authenticated users | Never |
+| Polymorphic `target_id + target_type` instead of per-table FKs | One `likes` table, simpler schema | No DB-level cascade; orphan cleanup must be application-managed on every delete path; FK integrity checking is impossible | Never for this project — per-table FKs with cascade are available and safer |
+| Single-layer gate (RLS or DAL, not both) for wishlist-comment | Faster to implement | One layer break = security regression; Drizzle client bypasses RLS, so DAL-only gate is load-bearing | Never — the two-layer rule is a project invariant |
+| Skip dedup UNIQUE index for like notifications | Simpler migration | Notification spam on like-toggle churn; inbox fills quickly | Never — dedup at the DB layer is cheap insurance |
+| Render comment body as `dangerouslySetInnerHTML` | Easy CMS-copy paste | XSS if body is ever treated as HTML | Never for untrusted user content |
+| Inline mutual-follow check in every comment DAL call | No helper required | Copy-paste drift; one site gets the bidirectional check wrong | Never — extract to `isMutualFollow()` helper |
+| `ALTER TYPE ADD VALUE` for enum extension | Simpler than rename+recreate | Fails inside a transaction; non-atomic in prod | Never — Phase 24 DEBT-04 proved rename+recreate is the only safe path |
 
 ---
 
@@ -352,14 +377,11 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Supabase Storage (avatar upload) | Use `createSignedUrl` for avatar retrieval | Use `getPublicUrl` — avatars must be publicly readable without expiry |
-| Supabase Storage (avatar upload) | Upload to existing `catalog-source-photos` bucket | Create a separate `avatars` bucket with public-read policy |
-| Anthropic API (enrichment) | No inter-row delay → silent 429s mid-batch | Add 800ms+ delay between rows; add exponential backoff on `RateLimitError` |
-| Anthropic API (enrichment) | Force-reenrich all rows regardless of confidence | Use `--min-confidence-threshold` flag; never downgrade high-confidence rows |
-| Supabase RLS on CMS tables | Copy `USING (true)` from catalog tables | Add `status = 'published'` predicate for public reads |
-| Supabase SECDEF functions | Omit explicit REVOKE after function creation | Always: `REVOKE EXECUTE FROM anon, authenticated` immediately after function definition |
-| Next.js `'use cache'` + manual pin | `revalidatePath` does not reach nested cached components | Use `revalidateTag('explore:hero')` in pin/unpin Server Actions |
-| Drizzle + Supabase migrations | `drizzle-kit push` for prod | Always use `supabase db push --linked` for production schema changes |
+| Supabase SECDEF functions | `REVOKE EXECUTE FROM PUBLIC` alone; anon still has direct grant | `REVOKE EXECUTE FROM PUBLIC, anon` — both clauses required; add `DO $$` assertion to migration |
+| notification_type enum extension | `ALTER TYPE ADD VALUE` inside a transaction | Rename+recreate pattern (Phase 24 DEBT-04); pre-flight `pg_depend` query first |
+| Next.js 16 Cache Components + like counts | Cache a component that includes viewer-sensitive "liked?" state without a viewer-scoped tag | Split public count (cacheable) from viewer interaction state (viewer-keyed or uncached) |
+| `revalidateTag` for cross-user like count propagation | Invalidate only the actor's tag; watch owner sees stale count | Two-leg invalidation: `updateTag` for actor RYO + `revalidateTag(profile:${ownerUsername}, 'max')` for SWR fan-out |
+| Drizzle `db` client bypasses RLS | Treating RLS alone as the authz gate on Server Action paths | DAL `WHERE` clause with `authorId = viewerId` is load-bearing on every mutation that uses the Drizzle client |
 
 ---
 
@@ -367,10 +389,10 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Live SQL count aggregation on Browse indices per request | Browse the Catalog page takes 500ms+; slow under concurrent users | `cacheLife({ revalidate: 3600 })` + `revalidateTag('catalog:browse')` on enrichment writes | At any scale — aggregation is expensive without caching |
-| No inter-row delay in enrichment batch at 100 rows | 22 silent failures, `totalFailed = 22` at end | 800ms delay between rows; retry on 429 | Hits rate limit within 2 minutes at 100 rows |
-| Hero Server Component without cache scope | `/explore` page re-fetches hero data on every request | `'use cache'` with `cacheLife({ revalidate: 604800 })` + tag-based invalidation | At any traffic level — server renders are synchronous and block page delivery |
-| Curated list items JOIN at render time for count display | Rail card shows wrong count if items are added/removed without count column | Cache a `watch_count` on `curated_lists` row; update on item mutations | As list item count grows — N+1 risk if count is computed via subquery per card |
+| Per-watch like/comment count queries in a loop | Profile tab takes 1–3s to render; Vercel function log shows 50+ DB calls | Single `inArray` batch query + GROUP BY, merged via Map (follow the `mergeListEntries` pattern in `src/data/follows.ts`); use `::int` cast on every COUNT | Breaks noticeably at ~20 watches; catastrophic at the 500-watch target |
+| No index on `likes(target_id)` or `comments(target_id)` | COUNT queries full-scan the table | `CREATE INDEX likes_target_id_idx ON likes(target_id)` in schema migration | Invisible on a freshly seeded DB; breaks at a few thousand likes |
+| Fetching all comments to display count | Over-fetching; comment rows are potentially unbounded | Use a separate `SELECT COUNT(*) FROM comments WHERE target_id = ?` query, not `SELECT * ... .length` | Breaks at dozens of comments per watch |
+| No index on `comments(watch_id)` or `comments(wear_event_id)` for ordered comment list fetches | Comments list renders slowly; full table scans | Composite index `(watch_id, created_at DESC)` — ordered comment list is a primary query pattern | Breaks at thousands of comments |
 
 ---
 
@@ -378,11 +400,11 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Owner check only in route rendering, not in Server Actions | Any authenticated user can POST to CMS Server Actions | `getCurrentUser()` + owner ID assertion as first statement in every CMS Server Action |
-| `curated_lists` RLS allows reads of draft rows by authenticated users | Unpublished editorial content visible to non-admin collectors | RLS SELECT policy: `USING (status = 'published' OR author_id = auth.uid())` |
-| SECDEF function without explicit REVOKE | Authenticated users can call admin-only functions directly | Always REVOKE from anon and authenticated; GRANT to service_role only |
-| Avatar upload path traversal via malformed filename | Attacker uploads to another user's folder | Reuse `buildCatalogSourcePhotoPath` validation (UUID/pending check, no slashes in filename) |
-| CMS admin route accessible without auth check | Unauthenticated access to list authoring UI | Proxy.ts must block `/admin/*` routes; add to PUBLIC_PATHS exclusion |
+| `editComment` / `deleteComment` without `author_id` ownership check | Any authed user can edit or delete any comment (IDOR) | Verify `comment.authorId === getCurrentUser().id` in the Server Action before mutating; also add `WHERE author_id = ?` in the DAL |
+| RLS INSERT policy with no `WITH CHECK` clause | An authenticated user can insert a comment with any `author_id` (not their own) | Every INSERT policy must include `WITH CHECK (author_id = (SELECT auth.uid()))` |
+| Unidirectional follow check for mutual-follow gate | Non-mutual followers can comment on wishlist watches | Use `isMutualFollow(A, B)` checking BOTH directions in one query |
+| Missing self-notification guard on `liked` events | User who likes their own watch gets a notification | The existing D-24 self-guard in `logNotification` already handles this — verify v6.0 callers use the same logger, not a new ad-hoc insert |
+| `target_id` accepted from client without server-side resolution | Client forges a `target_id` pointing to a watch they cannot access | Derive `target_id` server-side from authenticated context; validate the target is visible to the actor before inserting |
 
 ---
 
@@ -390,29 +412,30 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Sheet dismiss blocked during loading | User feels stuck; cannot close filter drawer mid-query | Never gate `onOpenChange` on loading state; always allow user-initiated dismiss |
-| Wishlist cards show wear badges for wishlist watches | Confusing UI ("Never worn" on a watch you don't own) | Gate all wear UI on `status === 'owned'` |
-| Watch card height varies by metadata length | Grid looks inconsistent; some cards are taller than others | Fix metadata block to a consistent height; use `line-clamp` for overflowing text |
-| Hero shows broken image when list has no cover | First impression is broken | Hero quality gate must require `has cover image` — no cover, no hero eligibility |
-| Curated list rail shows rail heading + empty space | Signals emptiness to user before CMS has any content | Module must return `null` when zero published lists exist (no heading, no container) |
-| Where Collections Go path wraps on very narrow (360px) screens | Horizontal chain unreadable on smallest phones | Stack the path sequence vertically on screens <400px |
+| Like notification fires on unlike | Recipient gets a notification "X liked" followed by nothing; inbox noise | Only fire `logNotification` on transition to `liked = true`; unlike fires no notification |
+| Comment edit clears the body on cancel | Frustrating if edit was accidental | Initialize the edit textarea with the existing body; restore on cancel |
+| Like count goes to -1 if the user has not liked and double-clicks unlike | Visual bug | Guard the unlike path: if current like state is already false, treat the request as a no-op |
+| No empty state for zero comments | Page looks broken or incomplete | Render "Be the first to comment" copy for zero-comment state |
+| Comment submit on Enter with no Shift+Enter newline support | Users lose partial comments accidentally | Use Shift+Enter for newline; plain Enter submits; make this explicit in placeholder copy |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Curated Lists CMS:** Draft/publish status is gated in BOTH RLS AND DAL WHERE clause — verify by querying as non-owner authenticated user.
-- [ ] **CMS Server Actions:** Every mutation begins with `getCurrentUser()` + owner ID assertion — verify by calling createCuratedList as a non-owner user.
-- [ ] **Hero manual pin:** `revalidateTag('explore:hero')` is called in both `setPinnedHero` and `clearPinnedHero` Server Actions — verify by setting/clearing pin and confirming hero updates within one request.
-- [ ] **Catalog Enrichment:** `db:backfill-taste --dry-run` run before prod backfill to confirm cost estimate and row count.
-- [ ] **Catalog Enrichment:** After prod backfill, `SELECT primary_archetype, count(*) FROM watches_catalog GROUP BY primary_archetype` — verify each archetype has ≥1 row before Archetypes module ships.
-- [ ] **Avatar Upload:** Avatar bucket uses `getPublicUrl` not `createSignedUrl` — verify the URL stored in `profiles.avatar_url` does not contain an expiry parameter.
-- [ ] **Avatar Upload:** New bucket has public-read RLS and is listed in `next.config.ts` `remotePatterns`.
-- [ ] **Bottom-sheet dismiss:** Sheet can be closed while `watchesIsLoading = true` — verify by opening FilterSheet, starting a query, and dismissing before it resolves.
-- [ ] **Drag-to-dismiss:** Bottom-sheet drag gesture triggers close and does not scroll the page behind the sheet simultaneously.
-- [ ] **Empty-module degradation:** Each Explore module returns `null` (not an empty container) when its data array is empty — verify with a test using empty props.
-- [ ] **SECDEF functions:** Any new function has explicit `REVOKE EXECUTE FROM anon, authenticated` in its migration — check migration file before applying to prod.
-- [ ] **Where Collections Go:** A path with a deleted/unpublished catalog reference does not crash the page — verify by removing a catalog row referenced in a path.
+- [ ] **RLS SELECT policy:** Verify `TO authenticated` is present and `USING` predicate is non-trivial (not `USING (true)`) on both `likes` and `comments` tables.
+- [ ] **Mutual-follow gate:** Verify the gate is enforced at BOTH the RLS layer AND the DAL layer — not just one.
+- [ ] **SECDEF anon EXECUTE:** After migration, run `SELECT has_function_privilege('anon', 'public.<mutual_follow_fn>(...)', 'EXECUTE')` and confirm it returns `false`.
+- [ ] **Cascade on delete:** Verify that deleting a watch also deletes its likes and comments (FK `ON DELETE CASCADE` confirmed in migration, or explicit cleanup tested in `deleteWatch`).
+- [ ] **Edit/delete authorship check:** Confirm `editComment` and `deleteComment` reject requests where `comment.authorId !== getCurrentUser().id`.
+- [ ] **Like dedup:** Confirm a UNIQUE constraint (or application-level idempotence via `onConflictDoNothing`) prevents double-likes by the same user on the same target.
+- [ ] **Notification dedup:** Confirm a UNIQUE partial index on `notifications` for `type = 'liked'` per actor+target+day.
+- [ ] **Enum migration is atomic:** Confirm the `notification_type` enum extension uses rename+recreate inside a transaction, not `ALTER TYPE ADD VALUE`.
+- [ ] **Cache key includes viewer dimension:** Any `'use cache'` component rendering "did I like this?" state has a `viewer:${viewerId}` cache tag.
+- [ ] **Wishlist→owned status change:** Confirm that `editWatch` / status-change actions call `revalidateTag` to bust cached comment gates.
+- [ ] **Comment body trim:** Confirm Zod schema uses `.trim().min(1).max(500)` and the DB has a `CHECK (length(body) > 0 AND length(body) <= 500)` constraint.
+- [ ] **XSS rendering:** Confirm comment body is rendered as a React text child, not `dangerouslySetInnerHTML`.
+- [ ] **Self-notification guard:** Confirm `logNotification` skips if `actorId === recipientId` for like and comment events (D-24 self-guard in `logger.ts` already handles this — verify v6.0 callers use the same logger).
+- [ ] **`::int` cast on COUNT queries:** Every `COUNT(*)` in new DAL functions is cast `::int` to avoid Postgres `bigint` string serialization (established pattern in Phase 18 Explore DAL).
 
 ---
 
@@ -420,13 +443,14 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Draft lists leaked to public via RLS miss | LOW | Add `status = 'published'` predicate to RLS policy via new migration; unpublish any exposed drafts immediately |
-| Enrichment run downgrades high-confidence rows | MEDIUM | Run `reenrich-taste.ts --catalog-id=<uuid>` with vision inputs for each downgraded row; verify confidence restores |
-| Factual spec hallucination in catalog | HIGH | Manual operator review + correction for each affected row via admin edit UI; add `spec_needs_review` flag to catch future cases |
-| CMS Server Action unauthorized access discovered | LOW (single user) | Immediately add owner-gate assertion to affected actions; audit Server Action logs for unauthorized calls |
-| Avatar URL expiring (signed URL used instead of public) | LOW | Migrate `profiles.avatar_url` values to public URLs; update upload helper to use `getPublicUrl`; no data loss |
-| Rate-limit batch failure (22 NULL confidence rows) | LOW | Re-run `db:backfill-taste` (idempotent — processes only NULL rows); add delay flag to prevent recurrence |
-| Browse counts stale for 1 hour after enrichment | LOW | Call `revalidateTag('catalog:browse')` manually from admin script; counts refresh on next ISR cycle |
+| Anon RLS gap on likes/comments | HIGH — data already readable; requires emergency migration + access-log audit | Add `REVOKE` + `TO authenticated` policy in a hotfix migration; audit access logs for anon reads |
+| SECDEF function anon EXECUTE exposed | MEDIUM — function callable but no harmful data in isolation | `REVOKE EXECUTE FROM PUBLIC, anon` in a hotfix migration; add `DO $$` assertion |
+| Wishlist-comment gate in one layer only | HIGH — wishlist comments readable by non-mutual followers | Emergency patch for missing layer; audit existing comments for unauthorized inserts |
+| notification_type enum migration failure | MEDIUM — migration rollback; retry | Roll back; extract enum extension into its own SQL file following Phase 24 DEBT-04 pattern |
+| N+1 count queries causing timeout | MEDIUM — performance only; no data integrity issue | Replace per-watch queries with inArray batch; redeploy; no data migration required |
+| Stale cache counts after like mutation | LOW — UX only; resolves on TTL | Add missing `revalidateTag` calls to Server Action; redeploy |
+| Cascade gap leaves orphaned likes/comments | MEDIUM — data hygiene only | Write a one-time cleanup script; add FK cascade in a follow-up migration |
+| IDOR on comment edit/delete | HIGH — any user can corrupt any comment | Emergency: add `author_id` ownership check to Server Actions + DAL WHERE clause; audit comment table for unauthorized edits |
 
 ---
 
@@ -434,40 +458,39 @@ Archetypes module ships before `db:backfill-taste` has been run in production. O
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| CP-01: Draft RLS leak | Curated Lists + CMS phase | Query as non-owner authenticated user; zero draft rows returned |
-| CP-02: CMS Server Action auth bypass | Curated Lists + CMS phase | Call createCuratedList as non-owner; verify Unauthorized error |
-| CP-03: Force-reenrich overwrites high-confidence rows | Catalog Enrichment phase | Pre-run confidence distribution query; use NULL-only backfill by default |
-| CP-04: LLM hallucination in spec columns | Catalog Enrichment phase | LLM writes taste columns only; spec columns require manual/scrape + human review |
-| CP-05: Catalog FK breaks published lists | Curated Lists + CMS phase | Schema uses ON DELETE RESTRICT; pre-delete warning in admin UI |
-| CP-06: SECDEF auto-grant to anon | Any phase adding SECDEF functions | Post-migration: attempt function call as authenticated role; verify permission error |
-| MP-01: Browse count caching undefined | Explore Shell + Browse phase | cacheLife declared; revalidateTag called on enrichment writes |
-| MP-02: Empty-module renders container | All Explore module phases | Unit test each module with empty props; verify null return |
-| MP-03: Dismiss-blocked-during-loading | Polish phase (first phase) | Sheet can close while watchesIsLoading = true |
-| MP-04: Rate limits cause silent failures | Catalog Enrichment phase | Dry-run cost estimate; add 800ms delay + retry; log each failed catalog_id |
-| MP-05: Vision→text flip on reenrich | Catalog Enrichment phase | Photo-existence check before reenrich; log warning if photo missing |
-| MP-06: Avatar in wrong bucket | Polish phase | Avatar URL is public (no expiry); stored in separate bucket |
-| MP-07: Hero pin cache miss | Curated Lists + Hero phase | Set/clear pin; verify hero updates within one request |
-| MP-08: Turbopack stale CSS | Polish phase + Explore Shell phase | `rm -rf .next` before layout verification; computed styles in DevTools |
-| MP-09: Archetypes without catalog coverage | Archetypes phase | Each archetype filter returns ≥1 result from prod catalog post-enrichment |
+| Anon RLS on likes/comments (Pitfall 1) | Schema + RLS migration phase (Phase 53) | `DO $$` assertion in migration; test with anon Supabase client |
+| SECDEF anon EXECUTE (Pitfall 2) | Schema + RLS migration phase (Phase 53) | `has_function_privilege('anon', ..., 'EXECUTE')` = false assertion |
+| Asymmetric gate one-layer only (Pitfall 3) | Schema phase (RLS) + comments DAL phase | Integration test: non-mutual-follower can't comment on wishlist watch via direct DAL call |
+| Mutual-follow unidirectional (Pitfall 4) | Schema phase (SECDEF helper) + DAL phase | Unit test: A→B follow only → `isMutualFollow` returns false |
+| IDOR on edit/delete (Pitfall 5) | Comments Server Actions phase | Test: authenticated user B cannot delete user A's comment |
+| Like-toggle notification spam (Pitfall 6) | Likes Server Actions phase | Test: 5 rapid like/unlikes produce 1 notification, not 5 |
+| N+1 count queries (Pitfall 7) | Profile-tab rendering phase | Vercel function log shows ≤5 DB queries for a 50-watch profile |
+| Cross-viewer cache leakage (Pitfall 8) | Like/comment UI rendering phase | Two browsers with different users see correct per-viewer like state |
+| Stale counts after revalidateTag (Pitfall 9) | Likes Server Actions phase (invalidation matrix task) | After liking, watch owner's profile tab shows updated count within cache TTL |
+| Cascade gap on delete (Pitfall 10) | Schema + RLS migration phase | Delete a watch; confirm `SELECT COUNT(*) FROM likes WHERE target_id = $id` = 0 |
+| Wishlist→owned gate flip (Pitfall 11) | Comments DAL phase + status-change action review | Move owned→wishlist; confirm non-mutual-follower's new comment is blocked; existing comments handled per documented policy |
+| Enum migration wrong pattern (Pitfall 12) | Notifications extension phase | Migration runs cleanly inside a transaction; `pg_depend` pre-flight confirms no surprises |
+| Mass-assignment on create/edit (Pitfall 13) | Comments Server Actions phase | Test: payload with extra `authorId` field is rejected by Zod strict schema |
+| Comment text handling (Pitfall 14) | Schema phase (DB CHECK) + Server Actions phase (Zod trim) + UI phase | `"   "` rejected; body > 500 chars rejected at both layers; body renders as text child |
+| Optimistic UI rollback (Pitfall 15) | Like button UI phase | Test: Server Action error → optimistic state reverts to pre-action value |
 
 ---
 
 ## Sources
 
-- `src/components/search/FilterSheet.tsx` — bottom-sheet dismiss pattern; `onOpenChange={setSheetOpen}` is correct; dismiss-gate bug is in callers
-- `src/components/search/SearchPageClient.tsx` — `sheetOpen` state is independent of loading state; confirms dismiss bug was caller-side
-- `src/lib/taste/enricher.ts` — existing enricher scope (taste only); vision fallback to text; no retry logic; rate limit gap identified
-- `scripts/backfill-taste.ts` — sequential processing; no inter-row delay; `totalFailed` count only (no per-row logging); rate limit vulnerability at 100 rows
-- `src/lib/storage/catalogSourcePhotos.ts` — `createSignedUrl` pattern (60s TTL); signed URLs inappropriate for public avatars
-- `src/lib/types.ts` — `CatalogEntry`, `CatalogTasteAttributes` — confirms taste and spec columns are in the same table; boundary between them is enforced by convention only
-- `src/data/catalog.ts` — `sanitizeHttpUrl`, `sanitizeTagArray` — existing write-time validation for URL extractor output; confirms spec columns need similar write-time validation if LLM is used
-- `.planning/seeds/SEED-008-v5.1-explore-redesign.md` — module specs, acceptance criteria, open questions (caching strategy, CMS approach)
-- `.planning/PROJECT.md` — v5.1 scope, CMS decision (in-app admin), enrichment as "enrich half" before Explore modules
-- `CLAUDE.md` memory: `project_supabase_secdef_grants.md` — REVOKE FROM PUBLIC alone does not block anon; explicit per-role REVOKE required
-- `CLAUDE.md` memory: `project_turbopack_next_cache_stale_css.md` — dev server restart does not clear `.next/`; must `rm -rf .next`
-- `CLAUDE.md` memory: `project_drizzle_supabase_db_mismatch.md` — prod push via `supabase db push --linked` only
-- `.planning/research/PITFALLS.md` (v5.0) — MP-07 CSS chain blind spot; SECDEF grant pattern (Phase 11); revalidateTag vs revalidatePath distinction
+- `/Users/tylerwaneka/Documents/horlo/.planning/PROJECT.md` — Key Decisions table; Phase 11/13/24/39c incident history; two-layer privacy rationale; Cache Components poisoning incidents; Drizzle-client-bypasses-RLS note in `auth.ts` comment
+- `/Users/tylerwaneka/Documents/horlo/.planning/seeds/SEED-012-v6.0-social-interaction.md` — Locked scope decisions; asymmetric gate; open questions including wishlist→owned edge
+- `/Users/tylerwaneka/Documents/horlo/src/db/schema.ts` — `follows`, `watches`, `wearEvents`, `notifications`, `profileSettings` table shapes; cascade patterns; `watches.status` as mutable text column
+- `/Users/tylerwaneka/Documents/horlo/supabase/migrations/20260423000002_phase11_notifications.sql` — Dedup partial UNIQUE index pattern; self-notification CHECK; recipient-only RLS shape
+- `/Users/tylerwaneka/Documents/horlo/supabase/migrations/20260423000046_phase11_secdef_revoke_public.sql` — SECDEF anon EXECUTE fix; REVOKE from PUBLIC AND anon; `DO $$` assertion pattern
+- `/Users/tylerwaneka/Documents/horlo/src/lib/notifications/logger.ts` — D-18 opt-out; D-24 self-guard; fire-and-forget contract
+- `/Users/tylerwaneka/Documents/horlo/src/app/actions/follows.ts` — `.strict()` mass-assignment guard; two-leg revalidation (`updateTag` RYO + `revalidateTag` fan-out)
+- `/Users/tylerwaneka/Documents/horlo/src/data/follows.ts` — Anti-N+1 batch pattern; `isFollowing` unidirectional precedent (gap: no `isMutualFollow` helper exists yet)
+- `/Users/tylerwaneka/Documents/horlo/src/lib/auth.ts` — `assertOwner()` admin pattern; `getCurrentUser()` as per-action auth entry point; Drizzle-bypasses-RLS note
+- Memory `project_supabase_secdef_grants.md` — REVOKE FROM PUBLIC alone insufficient; Supabase auto-grants direct EXECUTE to anon/authenticated/service_role
+- Memory `project_cc_audit_2026_05_21.md` + `feedback_proxy_router_cache_poisoning.md` — Cross-viewer cache leakage hazard class; proxy redirect poisoning history
+- Memory `project_drizzle_supabase_db_mismatch.md` — 4 prod-push gotchas including enum-bound dependents requiring `pg_depend` query before enum cleanups
 
 ---
-*Pitfalls research for: v5.1 Explore Page Redesign (editorial CMS + catalog enrichment + Explore modules)*
-*Researched: 2026-05-16*
+*Pitfalls research for: v6.0 Social Interaction (likes + comments on watches + wear events)*
+*Researched: 2026-05-22*

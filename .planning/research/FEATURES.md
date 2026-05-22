@@ -1,365 +1,277 @@
-# Feature Research: v5.1 Explore Page Redesign
+# Feature Research: v6.0 Social Interaction — Likes + Comments
 
-**Domain:** Editorial / taste-driven discovery surface for a personal watch collection app
-**Researched:** 2026-05-16
-**Confidence:** MEDIUM — editorial and taste-media patterns are well-evidenced; watch-specific collector-path UX is lightly documented (community observation + adjacent domains)
+**Domain:** Scoped social interaction layer on a personal watch collection intelligence app
+**Researched:** 2026-05-22
+**Confidence:** HIGH — behavior patterns drawn from established collector/hobby platforms (Letterboxd, Goodreads, Rdio); interaction patterns (like toggle, flat comments, notification dedup) are well-documented and stable; Horlo-specific gating rules confirmed from SEED-012 + PROJECT.md locked decisions
 
 ---
 
 ## Scope Note
 
-SEED-008 already specifies the five module shapes. This file validates, enriches, and surfaces what the spec missed — organized per module with table stakes / differentiators / anti-features discipline, then cross-cutting concerns at the end. It does NOT restate the spec.
+This file covers ONLY the new likes and comments features in v6.0. Existing features — notifications infrastructure (Phase 13), follow graph (Phases 7–10), wear events (Phase 15), and profile surfaces (`/u/[username]/[tab]`) — are treated as pre-existing dependencies, not as features to spec.
+
+The locked scope from SEED-012 + PROJECT.md:
+- **Like targets:** individual `watches` rows + individual `wear_events` rows — open to any authenticated user
+- **Comment targets:** same individual rows — flat (no threads), authors can edit + delete their own
+- **Comment access asymmetry:** open on owned/sold/grail watches + wears; **mutual-followers-only** on wishlist watches
+- **Guardrail:** scoped and tasteful — explicitly NOT "Instagram for watches"
+- **Out of scope this milestone:** threaded replies, report/hide, moderation tooling
 
 ---
 
-## Module 1: Hero
+## Category 1: Likes
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Single prominent visual at page top | Any editorial destination sets tone with a dominant image — Pitchfork, Hodinkee, Letterboxd journal all do this | LOW | Spec says full-bleed; that's correct |
-| Tap/click navigates to content | Hero that doesn't link is a dead end — violates Phase 33b dead-end audit principles | LOW | Spec has this |
-| Text overlay: title + short subtitle | Bare image gives no context for what it leads to; users don't click mystery boxes | LOW | Spec implies but does not enumerate minimum fields |
-| Graceful hide when no eligible content | Empty hero is worse than no hero; spec has this right | LOW | No empty-state placeholder |
-| Loading skeleton | LCP matters; bare white flash before image loads reads as broken | LOW | Spec has this |
+| Like toggle (heart/thumbs icon) on watch rows and wear events | Any social-interaction surface users encounter in 2024+ — Letterboxd, Goodreads, Discord — has a like affordance on individual content items | LOW | Toggle must be a single tap/click; not a hold, not a menu |
+| Optimistic UI — icon flips immediately on tap | Users interpret any lag on a like as a broken button; half-second wait to confirm kills the interaction rhythm | LOW | Revert + surface error if server rejects; use `useOptimistic` (already established in the codebase — NotificationRow uses it) |
+| Like count visible on the item | Count signals validation without requiring a full likers list; standard pattern on Letterboxd, GitHub reactions, Goodreads | LOW | Show `0` or hide until first like; decide once — see differentiators |
+| Authenticated-only like; unauthenticated users see a locked state | Anonymous users clicking a like → redirect to auth or inline prompt; no silent no-op | LOW | Horlo proxy enforces auth globally; public profile viewers who aren't logged in will be on public routes — handle gracefully |
+| Like is idempotent — rapid double-tap does not double-count | Rapid taps on mobile are common; double-insert must be prevented at DB level | LOW | UNIQUE constraint on `(user_id, target_id, target_type)` enforces this; UI debounce as first layer |
+| Own watch: viewing user can still like their own wear events and watches | Letterboxd lets you "like" your own lists — not blocked; it signals self-endorsement | LOW | SEED-012 says likes are open; no self-block mandated |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Quality-gated auto-selection | Hero always feels intentional, not random; prevents a thin 1-watch list from headlining | MEDIUM | Spec calls for minimum watch count + cover image + intro copy thresholds — all three gates are necessary |
-| Manual pin with optional expiry date | Admin can spotlight a key list launch without indefinitely blocking auto-rotation | LOW | Spec has pin/clear; add an optional "expires at" date so admin doesn't need to remember to unpin |
-| Curator name visible in hero | Establishes editorial voice and gives collectors a person to follow; Hodinkee's byline model | LOW | Spec omits this — add curator attribution to hero layout |
-| Secondary format slot (featured collector) | Extend editorial surface beyond lists; data shape already planned | MEDIUM | Spec has discriminated union shape; don't wire it up initially but keep the slot in layout |
+| Like count hidden until N>0, then shown | Cleaner empty state on unworn / new watches; no "0 likes" anxiety signal | LOW | Show count only when count >= 1; empty = no counter at all |
+| Liker avatars strip (AvatarStack) for small-N likes | "3 people you follow liked this" is warmer than a raw count; Letterboxd does this for friends' ratings | MEDIUM | Cap at 3-5 avatars + overflow count; only viewers the current user follows — requires a JOIN on the follows table; defer if expensive |
+| "You liked this" persistent state on re-visit | User can see at a glance which watches they've already liked when browsing other profiles | LOW | Already implicit if like state is loaded per-viewer from DB; confirmed by the authenticated viewer's like row |
+| Viewer's own like highlighted in count tooltip | On hover/focus: "You and 4 others" — personalizes the count | LOW | Optional; useful on desktop; skip on mobile where tooltips are awkward |
 
 ### Anti-Features
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Auto-rotating hero carousel (multiple slides cycling) | Feels dynamic and surfaces more content | NNG research: users see slide 1 only; rotation before reading = comprehension failure; banner blindness triggered; A/B noise introduced | Single static hero per page load — rotation happens between sessions (weekly cadence), not within a session |
-| Hero personalized to viewer's collection | Seems like obvious improvement over editorial | Violates SEED-008 non-goal: two users should see roughly the same page; personalization belongs on Home | Hold editorial hero; add "Fits your collection" badge on list cards if similarity data available later |
-| Countdown timer showing "refreshes in N days" | Transparency about rotation cadence | Creates pressure to return on a specific day rather than organic curiosity; exposes admin scheduling | No countdown; hero feels fresh or it doesn't |
-
-### Spec Gaps Found
-
-- Minimum watch count threshold not specified — recommend 3 as floor (a 1- or 2-watch list is a stub, not a curated collection)
-- Cover image dimension requirements not specified — recommend 1200x630 minimum for hero full-bleed; must crop gracefully on mobile (object-fit: cover)
-- Intro copy length minimum not specified — recommend 50 characters minimum (one sentence) so hero subtitle has actual content
-- Curator attribution is absent from hero layout in spec — meaningful omission for editorial voice
+| Public "who liked this" list (full likers roster) | Transparency; social proof | Turns a like into a public endorsement record; creates social pressure around who liked what; directly contradicts "not Instagram" guardrail; Instagram itself removed public like counts in 2021 for this reason | Show count only; no full likers list in v6.0 |
+| Like leaderboards / "most-liked watches" on explore | Popularity signal | Popularity-based feeds are the core Instagram mechanism being avoided; shifts collector attention from taste to validation-seeking | Trending Watches on /explore already uses Horlo's algorithmic signals, not like counts |
+| Animated like burst (heart explosion, like Instagram Stories) | Feels expressive | Draws excessive attention to the interaction itself; moves toward Instagram aesthetic | Subtle icon fill/color change is sufficient |
+| Like reactions (multiple emoji types) | Nuance | Adds a reaction taxonomy decision, rendering complexity, and DB schema variance; not appropriate for a collector app | Single like; collectors express nuance through comments |
+| Like required before commenting | Prevents low-effort drive-by comments | Breaks natural comment flow; artificial gate | No gate; likes and comments are independent |
 
 ---
 
-## Module 2: Collector Archetypes
+## Category 2: Comments
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Chip rail renders all archetypes without overflow on mobile | Horizontal overflow at 375px reads as broken | LOW | Spec has this; enforce with wrapping or 2-row grid, not horizontal scroll on a fixed rail |
-| Tap produces non-empty results | Dead end on tap destroys trust; zero results reads as broken app | LOW | Spec mandates build-time validation |
-| Archetype filter state in URL | Shareable + browser-back works | LOW | Spec has this |
-| Short descriptive label per archetype | "Dive Watch Devotee" is clear; single-word chips like "Dive" lose identity context | LOW | Spec uses full descriptive names — maintain these |
-| Archetype-specific header copy above results | Confirms to the user that the filter is intentional, not a generic search dump | LOW | Spec has this |
+| Compose box visible under comments section on eligible watch / wear | Users expect to comment without navigating away; inline compose is required | LOW | Authed user only; unauthenticated → auth prompt |
+| Submit on Enter (with Shift+Enter for newline) or submit button | Keyboard users expect Enter to submit short-form social comments; Shift+Enter for multi-line is established muscle memory | LOW | Standard textarea behavior |
+| Character limit enforced with visible counter | Comments longer than ~500 characters shift toward blog-post territory; a counter near the limit prevents frustration-on-submit | LOW | Recommend 500 char max; counter appears at 400 (80%) and changes color at 480 (96%); hard block at 500 |
+| Empty comment blocked at client AND server | Submitting whitespace-only comment must not create a DB row | LOW | Trim + validate length > 0 before Server Action fires; Server Action validates again (two-layer) |
+| Comments ordered chronologically ascending (oldest first) | Consistent with all non-threaded comment surfaces: product detail pages, GitHub issues, Letterboxd film reviews, Goodreads book reviews | LOW | Newest-at-bottom places the compose box at the natural end of the thread |
+| Author's own comments: Edit button inline | Standard on every non-threaded comment surface (GitHub, Letterboxd, Discord) | MEDIUM | Edit in-place (expand textarea pre-filled with existing text); not a modal |
+| Author's own comments: Delete button inline with confirmation | Standard pattern; Goodreads, Letterboxd, GitHub all have it | LOW | Soft confirm ("Delete comment?" with Cancel/Delete) — not a disruptive dialog; one-row inline confirm is cleaner |
+| Edited flag ("[edited]" label after edit timestamp) | Comment credibility: readers know the text was changed after posting | LOW | Show "edited" badge next to timestamp; no revision history needed |
+| Comment count visible on the item card | Users scanning a profile grid should know which watches have discussion without opening them | LOW | Show count; 0 = no badge (or "Be first to comment" on detail view) |
+| Loading state during submit | Prevent double-submit; show that the action is in flight | LOW | Button disabled + spinner during Server Action pending state |
+| Error state if submit fails | Network failures happen; user must know their comment was NOT saved | LOW | Inline error below compose box; preserve draft text so user can retry |
+| Empty state when no comments yet | Silence reads as broken; a soft prompt encourages the first commenter | LOW | "No comments yet. Add one." — not a heavy empty-state illustration |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Archetype chip shows watch count | Sets expectations before tap ("Modern Sport · 18 watches" vs blank); Spotify genre tiles do this | LOW | Spec omits this — add count from catalog at build/ISR time |
-| Two additional archetypes covering under-served identities | Spec has 6 + "two TBD"; Tool Watch Minimalist and Complication Hunter fill the remaining identity space | MEDIUM | See taxonomy research below |
-| Archetype → curated list cross-link | "Browse Dive Watch Devotee curated lists" below results closes a dead end and connects modules | LOW | Not in spec — cheap to add |
+| Inline edit (no modal) | Keeps the user in context; modal-on-edit is disruptive for a short-form comment | MEDIUM | Replace comment text with editable textarea + Save/Cancel in the same row |
+| Comment count on profile grid cards | Encourages interaction discovery; user sees "3 comments" on a card and is drawn to open it | LOW | Piggybacks on the existing ProfileWatchCard component |
+| Comment author avatar + username link | Collector context: clicking a commenter navigates to their profile — consistent with the Rdio-style discovery flow | LOW | Reuse existing avatar + username link patterns from the follow/profile surfaces |
+| Optimistic comment append on submit | Comment appears in thread immediately before server confirms; rolls back with error if rejected | MEDIUM | Use `useOptimistic` (same pattern as NotificationRow); new comment appears grayed out until confirmed |
+| Relative timestamps ("2h ago", "3d ago") | Warmer and less clinical than absolute dates on conversational content | LOW | Absolute date on hover/focus for accessibility |
 
 ### Anti-Features
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| UGC / user-defined archetypes | Feels democratic | Requires moderation; dilutes editorial voice; naming inconsistency | Admin-only archetype config for now; revisit at 500+ users |
-| Personalized archetype ordering (reorder by viewer's collection fit) | Relevant-first feels smart | Breaks non-personalization principle; two users see different chip order and can't share the rail | Static editorial order |
-| Archetypes as a first-class /search filter type | Archetypes and search filters share vocabulary | Creates labeling conflicts with style/role tags | Archetypes deep-link into /search with presets but are not first-class filter types |
-
-### Watch Collecting Archetype Taxonomy (Research-Derived)
-
-Community evidence confirms these eight identity clusters cover the collector landscape:
-
-1. **Vintage Enthusiast** — patina, hand-wound, pre-1980 cases
-2. **Modern Sport** — ceramic bezels, in-house movements, 41-43mm
-3. **Dive Watch Devotee** — 200m+ WR, rotating bezel, tool-watch ethos
-4. **Dress Watch Aficionado** — sub-38mm, thin profile, leather strap
-5. **Microbrand Explorer** — independent design, direct-to-consumer, community-backed
-6. **Swiss Purist** — manufacture movements, Geneva Seal, finishing quality
-7. **Tool Watch Minimalist** (proposed TBD #1) — one watch for everything, functional over decorative, pilot/field watch style
-8. **Complication Hunter** (proposed TBD #2) — GMT, perpetual calendar, minute repeater, chronograph as primary buying driver
-
-### Spec Gaps Found
-
-- The two TBD archetypes need names — Tool Watch Minimalist and Complication Hunter are the recommendation
-- Chip rail layout not specified for desktop — recommend 4-column grid on >=768px
-- Count badge on chip not specified — strongly recommended for trust (non-empty guarantee before tap)
+| Threaded replies / nested comments | Richer conversation | Threads require reply targeting, UI nesting, depth limiting, and collapse affordances — materially more complex; SEED-012 locks this out explicitly | Flat comments only; threads are a future-milestone decision |
+| Comment reactions (react to a specific comment) | Expressiveness | Compounds the like taxonomy decision with a per-comment reaction layer; no clear ROI at small scale | Single like on the parent item covers the reaction use case |
+| Mention / @username tagging in comments | Social discoverability | Requires a mention autocomplete UI, parsed storage format, and a new notification type; scope-creep in this milestone | Plain text comments; mentions can be added later |
+| Markdown formatting in comments | Power-user expressiveness | Inconsistent render across surfaces; moderation-harder (hidden links); collector comments are conversational, not editorial | Plain text; no Markdown |
+| Comment pinning by post owner | Highlight best comment | Adds owner-privilege layer; no clear need at small scale | Not needed; flat chronological order is sufficient |
+| Report / hide / moderation queue | Community safety | Explicitly out of scope per PROJECT.md + SEED-012 at single-user scale; no moderation tooling this milestone | SEED-012 decision: revisit when scale warrants it |
+| Anonymous or display-name-only comments | Guest commenting | Contradicts the authenticated-only posture; breaks notification linkback; leaves no audit trail | All comments require auth; username is visible |
+| Comment export / history view | Transparency | No clear collector use case; adds admin surface complexity | Not needed in v6.0 |
 
 ---
 
-## Module 3: Curated Lists Rail
+## Category 3: Like + Comment Counts and Display
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Cover image per list card | Letterboxd evidence: visual-first browsing; cover image is the primary click attractor | LOW | Spec has this |
-| List title on card | Minimum identification | LOW | Spec has this |
-| Curator name on card | Attribution is editorial table stakes; Hodinkee bylines, Pitchfork bylines | LOW | Spec has this |
-| Watch count on card | Sets expectation before tap | LOW | Spec has this |
-| Optional 1-line description on card | Differentiates lists with similar titles | LOW | Spec has this |
-| List detail page: intro copy | What is this list about and why was it assembled? Without this, list is a gallery dump | LOW | Spec has this |
-| List detail page: per-item commentary | Separates editorial lists from search results; Letterboxd's per-film notes are the canonical model | MEDIUM | Spec has this — do not cut it |
-| Publish / unpublish toggle | Admin must prepare lists without publishing | LOW | Spec has this |
-| Zero-watch lists cannot publish | Validates list has substance before going live | LOW | Spec has this gate |
+| Count on the item detail page (watch detail, wear detail) | Users need to know social signal at a glance when viewing the item | LOW | Like count + comment count displayed near the interaction affordances |
+| Count on profile grid cards | Without counts on the grid, users cannot tell which items have social activity; they must open every card | LOW | Show like count and/or comment count on ProfileWatchCard |
+| Counts update after user's own action without full page refresh | If user likes a watch and the count stays at 0, they assume the tap failed | LOW | Count updated via optimistic state immediately; confirmed by server response |
+| Comment count links to or scrolls to comment section | A count that doesn't navigate anywhere is a dead end | LOW | Tap comment count → scroll to / expand comments section |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Published date visible on list card | Signals freshness; "Published 3 days ago" vs "8 months ago" affects click-through | LOW | Not in spec — add `published_at` timestamp distinct from `created_at` |
-| List mood tags (2-3 short tags per list) | Fast-scan browsing: "Vintage · Sub-$5K · Tool Watches" without reading title | LOW | Not in spec; cross-links to archetype taxonomy naturally |
-| Preview image strip (3 watch thumbnails) | Spotify playlist-style mosaic — taste preview without opening; stronger than cover image alone | MEDIUM | Not in spec — add if cover image alone tests as insufficient |
-| "Add to wishlist" inline on list items | Converts discovery directly into intent; reuses existing wishlist infrastructure | MEDIUM | Not in spec; high value if wishlist is a core collector loop |
+| Combined "N likes · N comments" single line | Compact: collector grid cards are small; a combined summary line uses one row instead of two | LOW | Format: "4 likes · 2 comments" or icons + counts inline |
+| Count disappears when zero (not "0 likes") | Cleaner visual on items with no social activity; avoids "nobody cared" signal on every item | LOW | CSS conditional — hide the row entirely when both counts are 0 |
 
 ### Anti-Features
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| UGC list submission | Community engagement | Moderation overhead; quality collapse; SEED-008 explicitly defers to 500+ users | Admin-only authoring now |
-| Pure chronological rail ordering with no editorial control | Simple, fair | Most recent list might be weak; stale top lists disappear from view | Admin drag-reorder or `display_order` field |
-| Infinite lists in rail | More content = more value | 12 cards is past scrolling attention; "View all" is the right pattern | Cap at 12 in rail, paginate on /explore/lists |
-| Rating or vote system on lists | Community engagement signal | Creates popularity bias crowding out new lists; gaming risk | Admin curates ordering |
-
-### Letterboxd Model — Validated Patterns
-
-- Per-item note when adding to list (optional but editorially encouraged)
-- List has title + description (Markdown-formatted) + visible curator
-- Featured lists are editorially selected, not algorithmic
-- Lists tagged by curator for taxonomy context
-
-### Spec Gaps Found
-
-- Per-item commentary is optional in spec — make it strongly encouraged in admin UX with a placeholder prompt ("Why does this watch belong on this list?")
-- List ordering within the rail is not specified — add `display_order` integer field + admin reorder UI
-- Published date not in data model — add `published_at` timestamp
-- Mood/thematic tags not in spec — add as optional admin-authored array field
+| Live count polling / Supabase Realtime subscription | "Real-time" counts feel modern | Supabase Realtime is capped at 200 concurrent WebSockets on the free tier; PROJECT.md Key Decision explicitly rejected Realtime in v2.0; the collector use case does not need sub-second count updates | SWR via `revalidateTag` on like/comment write; `router.refresh()` on own action |
+| Separate "likes" tab / page showing all liked watches | Bookmarking use case | Wishlist already serves the "I want to track this watch" intent; a separate likes tab is a second tracking surface with unclear differentiation | Wishlist = intent; likes = affirmation signal only |
 
 ---
 
-## Module 4: Where Collections Go
+## Category 4: Privacy Gating — Mutual-Follow Wishlist Comments
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Seed watch → follow-on watches as a visual sequence | The "path" framing must be sequential, not a grid; horizontal arrow chain is expected | MEDIUM | Spec has this |
-| Tap any watch → reference detail page | No dead ends — every node must navigate | LOW | Spec has this |
-| Data model: source field (manual / computed) | Required for future algorithmic layer | LOW | Spec has this |
-| Deleted/unpublished reference does not break page | Defensive rendering | MEDIUM | Requires null-safe path rendering |
-| "Explore all paths" link | Module doesn't feel like the full content extent | LOW | Spec has this |
+| Non-mutual viewer sees wishlist watch comment section as locked | Any privacy gate must communicate clearly that the section exists but is restricted — not a 404 or blank silence | LOW | Example copy: "Comments on wishlist watches are visible to mutual followers." with a "Follow [username]" CTA if the viewer does not yet follow them |
+| Owner always sees their own wishlist comments | Owner is not gated on their own content | LOW | DAL query includes `viewer_id = owner_id` bypass |
+| Mutual-follow check is bidirectional at query time | Gate requires A follows B AND B follows A — not just one direction | LOW | Two-row check on `follows` table: `EXISTS(... followerId=viewer AND followingId=owner)` AND `EXISTS(... followerId=owner AND followingId=viewer)` |
+| Writing a wishlist comment blocked for non-mutual viewers | Gate applies to both reading AND writing | LOW | Compose box hidden or disabled with the locked-state explanation |
+| Likes on wishlist watches remain OPEN (asymmetry preserved) | SEED-012 decision: "Confirm the asymmetry is intended: likes are open even on wishlists, but wishlist comments are mutual-follow gated." — confirmed in PROJECT.md | LOW | Like button visible and functional to any authed user regardless of follow relationship |
+| Gate message does not reveal comment content | The locked state must not leak comment counts or previews to non-mutual viewers | LOW | Count display on wishlist cards suppressed for non-mutual viewers; detail page shows locked state without count |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Editorial rationale per path | Without the "why," this is a sequence with no insight — the insight IS the differentiator | LOW | Not in spec — add `rationale` text field to path data model |
-| Path type label (Gateway, Natural Upgrade, Lateral, Deep-Dive) | Tells the user what kind of progression this represents before reading the sequence | LOW | Not in spec — cheap admin-authored label on path |
-| 10 seed paths at launch | Volume matters for rotation (3 paths shown per session from the pool) | LOW | Requires editorial authoring work, not code complexity |
+| "Follow [username] to unlock comments" CTA in locked state | Reduces friction for interested viewers who aren't yet mutual follows; converts the gate into a follow prompt | LOW | Only show if viewer does NOT already follow the owner (following but not followed back = show "waiting for them to follow back" copy) |
+| Locked state distinguished visually from "no comments yet" | User should immediately distinguish "gated" from "empty" — different icon/copy | LOW | Lock icon + brief explanation vs paperclip/speech-bubble icon + "be first to comment" |
 
 ### Anti-Features
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Algorithmic path generation from Day 1 | Scales automatically | No behavioral data yet (Phase D divestments schema just landed); algorithmic paths without signal produce noise | Hand-curate 10 seeds; data model supports computed layer later |
-| Social proof stats alongside paths ("42% of users who own X own Y") | Data-backed authority | Misleading at small user count; confuses editorial with social proof | Plain editorial rationale; add social data when n > 1000 |
-| Paths longer than 4 watches | Completeness | At 360px width, 4 nodes + arrows is already tight; 5+ overflow or lose visual identity | Cap at seed + 3 follow-ons per spec |
-
-### Collector Path Research — Natural Evolution Patterns
-
-From watch community research, the high-credibility collection evolution paths are:
-
-1. **Rolex Submariner → Explorer / GMT-Master / Sea-Dweller** (tool watch depth after entry)
-2. **Seiko Presage → Grand Seiko** (Japanese dial craft appreciation path)
-3. **Omega Speedmaster → Constellation / De Ville** (dress graduation from sport)
-4. **Microbrand → Swiss independent → Watchmaker ateliers** (indie collector escalation)
-5. **Rolex Datejust → Patek Calatrava** (dress watch graduation)
-
-These inform the 10 seed paths. Each needs an editorial rationale.
-
-### Spec Gaps Found
-
-- `rationale` text field missing from data model spec — add per-path editorial text (1-3 sentences)
-- Path type label not in spec — add optional admin-authored label
-- Mobile layout for path sequence not specified at 360px — recommend stacking seed + follow-ons vertically with numbered progression indicator on narrow screens
+| Gated comment count (show "3 comments, unlock to read") | Curiosity hook to drive follows | Creates FOMO pressure; contradicts the "not Instagram" guardrail; exposing counts behind a gate is the same psychological mechanism as Instagram's follower-gated stories | Show no count to non-mutual viewers; locked state is the only signal |
+| Temporary preview (first comment visible, rest locked) | Reduces friction | Preview of locked content is still a data leak; it also feels like a paywall tease, not a social-warmth gate | Full gate or no gate |
+| Per-watch opt-out for wishlist comment gating | Granularity | Watch-level override adds a settings surface per watch, inconsistent with the product's "simple by default" posture | Consistent policy: all wishlist watches gate comments for non-mutuals |
+| Comments on whole-collection/wishlist surfaces (not per-watch) | "Comment on my friend's wishlist" in SEED-012 verbatim | SEED-012 also asks "comment on the whole collection/wishlist as a surface, or on individual watches?" — PROJECT.md locked scope to individual watches + wear events; collection-surface comments are out of scope this milestone | Per-watch and per-wear only |
 
 ---
 
-## Module 5: Browse the Catalog
+## Category 5: Notifications Extension
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Brand index with counts | Any catalog surface shows "Rolex (42)" — expected pattern | LOW | Spec has this |
-| Era / Genre / Price band indices | The four natural browsing facets | LOW | All four must match /search facets (SRCH-16 synergy) |
-| Tap grouping → search results filtered | Navigation terminates in results, not another index page | LOW | Spec has this |
-| Empty groupings hidden | Zero-count entries create confusion | LOW | Spec has this |
-| Count accuracy with defined cache strategy | Stale counts destroy trust in the entire Browse surface | MEDIUM | Spec flags as open question — recommendation below |
+| Notification when someone likes your watch or wear | Standard social affordance: Letterboxd, Goodreads, GitHub all notify on like | LOW | Extend existing `notification_type` enum with `like_watch` and `like_wear` values (following the Phase 24 rename+recreate pattern — ALTER TYPE has no DROP VALUE) |
+| Notification when someone comments on your watch or wear | Equivalent to a comment reply in a flat system | LOW | Extend `notification_type` enum with `comment_watch` and `comment_wear` values |
+| Self-like and self-comment do NOT generate notifications | Existing `logNotification` self-guard (D-24) covers this; extend to new event types | LOW | DAL self-guard: `if (actorId === recipientId) return` |
+| Dedup: multiple likes on same item from different users group into one notification (time-windowed) | Prevents like-flood noise; existing partial UNIQUE index dedup pattern applies | MEDIUM | Dedup window per recipient + item; "5 people liked your Rolex Submariner" collapses to one notification row using existing partial UNIQUE pattern |
+| Notification links to the item that received the interaction | Notification is useless without a deeplink; must navigate to the watch detail or wear detail page | LOW | `watch_id` or `wear_event_id` stored on the notification row; link to `/watch/[id]` or `/wear/[wearEventId]` |
+| Like/comment notifications respect existing opt-out settings | Existing `notifyOnFollow` / `notifyOnWatchOverlap` opt-out pattern in Settings → Notifications | MEDIUM | Add `notifyOnLike` and `notifyOnComment` opt-out toggles in settings; both default ON |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Brand index: show representative watch image or brand logo | Visual recognition; Chrono24 uses this effectively | MEDIUM | Depends on catalog enrichment phase having brand imagery |
-| Era taxonomy: both decade and named era labels | "1970s" and "Neo-Vintage" are different semantic frames; collectors use both | MEDIUM | Spec flags era taxonomy as open question |
-| Alphabetical jump nav for Brand index | Standard on A-Z brand lists; essential once brand count exceeds ~20 | LOW | Not in spec |
+| Grouped notification copy: "Tyler and 2 others liked your Submariner" | Warmer and less noisy than 3 separate notifications | MEDIUM | Requires the existing notification collapsing logic (NotificationsInbox `watch_overlap` collapse pattern from Phase 13) applied to like events; reuse the time-window dedup index |
+| First comment on your watch shows comment preview text | "Tyler commented: 'This lume is incredible'" is more engaging than "Tyler commented on your Submariner" | LOW | Store a short preview (100 chars) on the notification row or truncate the body on render |
+| Comment-reply-to-me notification (someone comments after me on the same item) | Surfaces conversation threads to participants | MEDIUM | Track "commenters on item X" and notify all prior commenters when a new comment arrives; opt-out-able; do NOT notify if the new commenter is you |
 
 ### Anti-Features
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Live count queries per page load | Exact accuracy | COUNT(*) overhead at scale; catalog grows slowly enough that live counts are unnecessary | ISR with 24h revalidation; `revalidateTag('catalog-counts')` on admin catalog mutation |
-| Dynamic quantile price bands | Statistical precision | Band labels shift as catalog grows, making URLs unstable and filter presets break | Fixed editorial bands: Under $500 / $500-2K / $2K-10K / $10K-50K / $50K+ |
-| More than 6 price band buckets | Granularity | Long index harder to scan than /search; at 100 watches, fine-grained quantiles are noise | 5 fixed buckets covers the meaningful collector price psychology |
-| Free-text search within Browse | Utility | Browse is for index-style intent; search intent belongs in /search header | Link "looking for something specific?" to global search |
-
-### Open Questions — Recommendations
-
-**Era taxonomy:** Dual-mode — decade facets (1960s, 1970s...) AND named era facets (Vintage pre-1980, Neo-Vintage 1980-2000, Modern 2000-2015, Contemporary 2015+) as separate Browse dimensions. Both exist in collector vocabulary.
-
-**Price band ranges:** Fixed editorial buckets: Under $500 / $500-2K / $2K-10K / $10K-50K / $50K+. Static bands are stable, linkable, matchable to /search filter presets.
-
-**Cache strategy:** ISR at 24h for Browse counts. `revalidateTag('catalog-counts')` called from any catalog admin mutation. Catalog grows slowly (admin-gated); live counts are unnecessary overhead.
-
-### Spec Gaps Found
-
-- Alphabetical jump nav for Brand index not specified — needed once brand count exceeds ~20
-- Dual-era taxonomy not specified — both decade and named-era recommended
-- Price band ranges not specified — 5 fixed buckets above recommended
-- Route paths not fully enumerated — confirm: `/explore/brands`, `/explore/eras`, `/explore/genres`, `/explore/price-bands`
+| Email notification for every like/comment | Reach users who don't check the app | Like-volume emails will train users to unsubscribe from ALL Horlo emails, poisoning the auth email reputation on `mail.horlo.app` (Resend) | In-app notifications only in v6.0; email digest is a future-milestone decision after measuring like/comment volume |
+| Push notifications (browser push / PWA) | Real-time reach | No service worker / PWA infrastructure exists; adds significant scope for an MVP social layer | Not in v6.0; revisit at v7.0+ or when PWA investment is justified |
+| Like notification suppressed below threshold ("notify me only after 5 likes") | Noise reduction | Adds a settings UI with a number input; complexity without clear demand at single-user scale | Default dedup window covers the burst case; simple ON/OFF opt-out is sufficient |
+| Notification sound or badge on browser tab | Presence signal | No PWA infrastructure; tab badge requires service worker; these features belong to a native or PWA tier | Not in v6.0 |
 
 ---
 
-## Module 6: In-App Admin CMS
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| Auth-gated admin route (`/admin/*`) | Non-admin users must not reach this surface | LOW | Next.js middleware gate; check admin role in session |
-| List CRUD: create / edit / delete | Basic content lifecycle | LOW | Standard Server Actions pattern already established |
-| Draft vs Published states | Admin must prepare lists without publishing | LOW | `status: 'draft' | 'published'` column; no review/approval for single-author |
-| Watch picker for list items | Admin must search and add catalog watches to a list | MEDIUM | Reuses `searchCatalogWatches` DAL from Phase 19 |
-| Per-item commentary editor | Table stakes of editorial lists; without this, admin just assigns watches without context | LOW | Plain textarea sufficient for MVP; rich text is a differentiator |
-| Publish / unpublish with zero-watch gate | Spec has this | LOW | Server Action checks `watch_count >= 1` before flipping |
-| Hero pin: set / clear | Admin override of auto-rotation | LOW | Single FK on `hero_settings` table; null = auto |
-| Rail display order control | Editorial control over list ordering in rail | MEDIUM | `display_order` integer + admin reorder UI (drag or up/down) |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| Rich text (Markdown) for intro copy and per-item commentary | Formatting adds polish; Letterboxd uses Markdown | MEDIUM | Plain textarea ships in v5.1; Markdown upgrade is v5.x |
-| Preview mode before publish | Admin sees rendered list before publishing | MEDIUM | Next.js Draft Mode (`draftMode()`) supports this pattern |
-| Cover image upload (not URL) | Consistent with Supabase Storage pattern already established | MEDIUM | Reuse `catalog-source-photos` bucket from Phase 19.1 |
-| Duplicate list | Start a new editorial list from an existing one | LOW | SQL INSERT SELECT with new title; useful for themed series |
-
-### Anti-Features
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| Multi-author / contributor roles | Future-proofing | Single-author for personal app; role system adds complexity with no current beneficiary | Single admin role via session check; revisit if co-curators needed |
-| Scheduled publish (publish at time T) | Content calendar workflow | Over-engineered for single author publishing manually | Admin publishes manually |
-| Version history / rollback | Editorial safety net | `updated_at` timestamp is sufficient; full version history is CMS complexity without collaborator need | Keep `updated_at`; no version history |
-| Approval workflow / review state | Editorial rigor | Single author doesn't review their own work; adds a step with zero value | Draft → Published directly; no review state |
-
-### Single-Author Editorial Loop
-
-The complete authoring flow should complete in under 10 minutes for a well-formed list:
-
-1. Create list (title, cover image, intro copy)
-2. Add watches from catalog via search picker
-3. Add per-item commentary per watch
-4. Preview → Publish
-5. Optionally pin as hero
-6. Reorder rail display position
-
-Any feature that adds steps without improving output quality is an anti-feature for a single-author workflow.
-
----
-
-## Cross-Cutting Concerns
-
-### Feature Dependencies
+## Feature Dependencies
 
 ```
-Curated Lists Rail
-    └──requires──> Admin CMS (authoring)
-    └──requires──> Watch picker (catalog search DAL from Phase 19)
+Likes (toggle + count)
+    └──requires──> watches table (per-user rows) — existing
+    └──requires──> wear_events table — existing
+    └──requires──> follows table (for liker-avatar strip, if built) — existing
+    └──requires──> New: likes table (target_type, target_id, user_id, created_at)
 
-Hero
-    └──requires──> Curated Lists Rail (at least 1 published, quality-gated list)
-    └──requires──> Quality-gating logic (min watch count, cover image, intro copy)
+Comments (compose + edit + delete)
+    └──requires──> watches table — existing
+    └──requires──> wear_events table — existing
+    └──requires──> follows table (for mutual-follow gate) — existing
+    └──requires──> New: comments table (target_type, target_id, author_id, body, edited_at)
 
-Browse the Catalog
-    └──requires──> Catalog Enrichment phase (brand/era/genre fields populated)
-    └──requires──> ISR or mutation-triggered cache invalidation
+Wishlist comment gate
+    └──requires──> follows table bilateral check — existing
+    └──requires──> watches.status = 'wishlist' check — existing
 
-Collector Archetypes
-    └──requires──> /search accepting archetype preset in URL query string
-    └──requires──> Non-empty catalog results for each archetype filter
+Notification extension
+    └──requires──> notifications table + notification_type enum + logNotification DAL — existing (Phase 13)
+    └──requires──> notifyOn* opt-out columns on profiles/user_preferences — existing (Phase 13)
+    └──requires──> follows table (self-guard) — existing
+    └──requires──> Enum extension: like_watch, like_wear, comment_watch, comment_wear added via rename+recreate (Phase 24 DEBT-04 canonical pattern)
 
-Where Collections Go
-    └──requires──> catalog_id FK on path nodes (already in schema from v5.0 Layer C)
-    └──requires──> 10 seed paths authored before launch (editorial work, not code)
+Like/comment counts on profile grid cards
+    └──requires──> ProfileWatchCard component — existing
+    └──requires──> Like + comment count columns or sub-selects in getWatchesByUsernameForViewer DAL
 
-All modules
-    └──require──> /explore shell + responsive layout grid + nav integration
+Like/comment counts on wear detail
+    └──requires──> /wear/[wearEventId] route — existing (Phase 15)
+    └──requires──> getWearEventForViewer DAL extended with counts
+
+Two-layer privacy on likes and comments
+    └──requires──> Existing two-layer privacy pattern (RLS + DAL WHERE) — existing
+    └──requires──> RLS policies on new likes/comments tables scoped to authenticated users + owner visibility
 ```
 
 ### Dependency Notes
 
-- **Hero requires at least 1 published quality-gated list before it can show.** Hero and Curated Lists must be built in sequence — CMS first, then lists authored, then Hero enabled.
-- **Browse requires Catalog Enrichment.** A half-enriched catalog produces misleading brand/era/genre indices. The enrichment phase must land before Browse can be validated per spec.
-- **Archetypes require /search URL preset support.** Phase 40 (SRCH-16) landed faceted filters; confirm the archetype header slot was not included and needs to be added.
-- **Where Collections Go requires editorial authoring.** 10 seed paths must be authored before this module can be validated — this is an editorial dependency, not a code dependency.
+- **Enum extension (notification_type):** The Phase 24 `rename+recreate` pattern is the canonical approach — `ALTER TYPE … DROP VALUE` does not exist in Postgres. The partial UNIQUE index on notifications must survive the recreation. This is a known footgun; plan a migration task explicitly.
+- **Comments before notifications:** The comments table must exist before the notification event can reference `comment_id`. Comments DB migration is a hard prerequisite for the notification extension.
+- **Likes before comment-like gating:** Likes have no access gate (open to any authed user). Comments have the wishlist gate. These are independent; they can be built in parallel but the gate logic must not bleed across.
+- **Two-layer privacy on new tables:** Every new table (likes, comments) needs both RLS at DB and explicit DAL WHERE predicates. Do not rely on RLS alone — this is the established two-layer posture from v2.0 through v5.x.
+- **ProfileWatchCard count display:** Counts require either a JOIN+COUNT in the existing DAL read (preferred — avoids N+1) or a denormalized counter column updated on like/comment write. At <500 watches per user (PROJECT.md performance target), a JOIN+COUNT is acceptable. Denormalized counters are premature optimization.
+- **Cache invalidation:** Like/comment writes must call `revalidateTag` on the affected profile and item pages. The existing pattern (`updateTag` for read-your-own-writes, `revalidateTag('max')` for other-user invalidation) applies directly.
 
-### Freshness / Staleness Risk by Module
+---
 
-The largest UX failure mode for a non-personalized editorial surface is staleness. Research confirms users abandon editorial surfaces that feel stale.
+## MVP Definition
 
-| Module | Staleness Risk | Mitigation |
-|--------|---------------|------------|
-| Hero | LOW if 3+ quality-gated lists in pool | Weekly auto-rotation; admin pin override |
-| Curated Lists Rail | HIGH if admin doesn't publish new lists | Publish date visible on card; "View all" surfaces older content without polluting rail |
-| Collector Archetypes | NONE | Hardcoded config; evergreen by definition |
-| Where Collections Go | MEDIUM | 3 paths per session from 10-seed pool gives limited variety; data model supports computed paths later |
-| Browse the Catalog | LOW if ISR works | Catalog grows slowly; ISR 24h sufficient |
+### v6.0 Phase 1: Likes
 
-### Complexity Summary
+- [ ] Like toggle on `/watch/[id]` watch detail (owner view) + `/u/[username]/collection` card — open to any authed user
+- [ ] Like toggle on `/wear/[wearEventId]` wear detail
+- [ ] Like count displayed; hidden when 0
+- [ ] Optimistic toggle via `useOptimistic`
+- [ ] Notification: `like_watch` and `like_wear` events with dedup + opt-out
+- [ ] Two-layer RLS + DAL privacy on likes table
 
-| Module | Overall Complexity | Bottleneck |
-|--------|-------------------|------------|
-| Hero | MEDIUM | Quality-gating logic + rotation cron or weekly selection |
-| Collector Archetypes | LOW | URL preset format for /search + chip layout on mobile |
-| Curated Lists Rail | HIGH | Admin CMS build + per-item commentary editor + list data model |
-| Where Collections Go | MEDIUM | Path data model + seed content authoring + mobile layout at 360px |
-| Browse the Catalog | MEDIUM | Catalog enrichment dependency + era taxonomy decision + ISR cache |
-| Admin CMS | HIGH | Watch picker integration + cover image upload + publish workflow |
+### v6.0 Phase 2: Comments
 
-### Existing Infrastructure Dependencies
+- [ ] Comment compose/submit on watch detail + wear detail
+- [ ] Character limit (500), empty validation, submit button + Enter key
+- [ ] Chronological flat display, author avatar + username link
+- [ ] Edit own comment (inline) + delete own comment (inline confirm)
+- [ ] "[edited]" flag on modified comments
+- [ ] Comment count on watch cards and wear detail
+- [ ] Wishlist comment gate: mutual-follow check + locked-state UI + like-remains-open asymmetry
+- [ ] Notification: `comment_watch` and `comment_wear` events with dedup + opt-out
+- [ ] Two-layer RLS + DAL privacy on comments table
 
-| Explore Feature | Existing System | Confidence |
-|----------------|-----------------|------------|
-| Watch picker in admin CMS | `searchCatalogWatches` DAL — Phase 19 | HIGH |
-| Archetype deep-links | `/search` URL query params — Phase 40 SRCH-16 | MEDIUM (facets landed; archetype header slot not confirmed) |
-| Browse catalog counts | `watches_catalog` + `brands` + `watch_families` — Layer A/B | HIGH |
-| Cover image upload | Supabase Storage — `catalog-source-photos` bucket, Phase 19.1 | HIGH |
-| Path nodes as catalog references | `catalog_id` FK — Layer C | HIGH |
-| Wishlist action from list items | Wishlist infrastructure — existing | MEDIUM (interaction design untested in this context) |
+### Add After Validation (v6.x)
+
+- [ ] Optimistic comment append (adds after core submit flow is stable)
+- [ ] Liker avatars strip (AvatarStack) — requires follow-aware JOIN; validate count display is sufficient first
+- [ ] `notifyOnLike` + `notifyOnComment` opt-out toggles in Settings → Notifications
+- [ ] Comment-reply-to-me notification (commenters on same item)
+
+### Future Consideration (v7+)
+
+- [ ] Mention / @username tagging
+- [ ] Email digest for social notifications
+- [ ] Comment pinning
+- [ ] Threaded replies (full scope reassessment needed)
 
 ---
 
@@ -367,45 +279,60 @@ The largest UX failure mode for a non-personalized editorial surface is stalenes
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Page shell + nav integration | HIGH | LOW | P1 |
-| Browse the Catalog — all four indices | HIGH | MEDIUM | P1 |
-| Collector Archetypes chip rail | HIGH | LOW | P1 |
-| Admin CMS: list CRUD + watch picker | HIGH | HIGH | P1 |
-| Curated Lists Rail | HIGH | HIGH | P1 |
-| Hero auto-rotation + quality gate | HIGH | MEDIUM | P1 |
-| Where Collections Go — path data model + seeds | MEDIUM | MEDIUM | P1 |
-| Curator name in hero | MEDIUM | LOW | P1 |
-| Published date on list cards | MEDIUM | LOW | P2 |
-| `display_order` + rail reorder UI | MEDIUM | MEDIUM | P2 |
-| `rationale` field on paths | HIGH | LOW | P2 |
-| Path type label | MEDIUM | LOW | P2 |
-| Count badge on archetype chips | MEDIUM | LOW | P2 |
-| Hero pin optional expiry date | LOW | LOW | P2 |
-| Alphabetical jump nav for Brand index | MEDIUM | LOW | P2 |
-| Mood/thematic tags on lists | LOW | LOW | P3 |
-| Rich text / Markdown in CMS | LOW | MEDIUM | P3 |
-| Preview mode (Draft Mode) | LOW | MEDIUM | P3 |
-| "Add to wishlist" inline on list items | MEDIUM | MEDIUM | P3 |
-| Brand logos in Brand index | LOW | MEDIUM | P3 |
-| Duplicate list in admin CMS | LOW | LOW | P3 |
+| Like toggle + optimistic UI | HIGH | LOW | P1 |
+| Like count display | HIGH | LOW | P1 |
+| Notification: like events | HIGH | LOW | P1 |
+| Comment compose + submit | HIGH | LOW | P1 |
+| Comment list (flat, chronological) | HIGH | LOW | P1 |
+| Edit + delete own comment | HIGH | LOW | P1 |
+| Comment count on cards | HIGH | LOW | P1 |
+| Wishlist comment gate (mutual-follow) | HIGH | MEDIUM | P1 |
+| Two-layer RLS on likes + comments tables | HIGH | MEDIUM | P1 — non-negotiable privacy |
+| Notification: comment events | HIGH | MEDIUM | P1 |
+| `notifyOnLike` + `notifyOnComment` opt-out | MEDIUM | LOW | P2 |
+| "[edited]" flag on edited comments | MEDIUM | LOW | P2 |
+| Optimistic comment append | MEDIUM | MEDIUM | P2 |
+| Relative timestamps on comments | MEDIUM | LOW | P2 |
+| Like count hidden when 0 | MEDIUM | LOW | P2 |
+| "Follow to unlock" CTA in gate | MEDIUM | LOW | P2 |
+| Grouped like notification copy | MEDIUM | MEDIUM | P2 |
+| Comment preview in notification | LOW | LOW | P2 |
+| Liker AvatarStack | LOW | MEDIUM | P3 |
+| Comment-reply-to-me notification | LOW | MEDIUM | P3 |
+
+---
+
+## Comparable Product Patterns (Evidence Base)
+
+| Behavior | Letterboxd | Goodreads | GitHub Issues | Horlo v6.0 Decision |
+|----------|-----------|-----------|---------------|---------------------|
+| Like target | Individual film log entry | Review | Comment / Issue | Individual watch row + wear event |
+| Threads | Yes (reply to review) | Yes | Yes | NO — flat only |
+| Comment order | Newest-first | Oldest-first | Oldest-first | Oldest-first (natural thread read) |
+| Who liked list | Friends who liked (subset) | No | Reaction list visible | No full list — count only |
+| Edit own comment | Yes | Yes | Yes | Yes, inline |
+| Delete own comment | Yes | Yes | Yes | Yes, with inline confirm |
+| Gated comments | No | No | No | Yes — wishlist surface, mutual-follow only |
+| Notification dedup | Grouped (N people liked) | Minimal | Grouped (subscriptions) | Grouped by item + time window |
+| Report/moderation | Yes | Yes | Yes | NOT in v6.0 |
 
 ---
 
 ## Sources
 
-- SEED-008 v5.1 Explore Page Redesign spec (primary source — this file validates and enriches)
-- Letterboxd lists FAQ and featured lists explainer — per-item notes, curator attribution, featured list selection patterns
-- Nielsen Norman Group — carousel usability research; single static hero over rotation
-- Logical UX — rotating banner anti-pattern; static hero vs carousel engagement data
-- Baymard Institute — homepage carousel UX requirements
-- Hodinkee Reference Points series — editorial voice, byline attribution, collector-depth content patterns
-- Watch collecting community guides (Chrono24 Magazine, Teddy Baldassarre, Von Rieste, GearPatrol, Two Broke Watch Snobs) — collector archetype taxonomy, gateway watch patterns, collection evolution paths
-- Spotify Browse UX — genre/mood chip rail patterns, editorial playlist structure (mood + identity categories)
-- Material Design 3 Chips guidelines — chip component patterns for archetype rail
-- Next.js Draft Mode documentation — preview pattern for admin CMS
-- Revolution Watch — editorial coverage driving collecting behavior
-- Matt Crawford — Letterboxd lists organization patterns
+- SEED-012 v6.0 Social Interaction seed spec (primary source — all locked decisions originate here)
+- PROJECT.md v6.0 milestone section + Key Decisions log — confirms asymmetry, per-item target scope, notification extension approach
+- Phase 13 (notifications DAL + `logNotification` + `notification_type` enum + partial UNIQUE dedup) — baseline for notification extension
+- Phase 15 (wear events + `/wear/[wearEventId]` route) — wear-side interaction surface
+- Phase 24 (DEBT-04, notification_type enum rename+recreate) — canonical pattern for Postgres enum extension
+- Letterboxd UX analysis — item-scoped social interaction, flat reviews, no threads on individual log entries, curator-voice editorial pattern
+- Goodreads community patterns — book-level comments (reviews), flat ordering, edit/delete own
+- Nielsen Norman Group (notification design) — grouping vs dedup distinction; separate vs bundled notification strategy
+- Instagram like hiding (2021) — rationale for count-only vs full likers list; reducing social pressure is the design goal
+- `useOptimistic` hook (React 19, already in codebase via NotificationRow) — confirmed pattern for optimistic like toggle
+- Supabase Realtime rejection (PROJECT.md Key Decision, v2.0) — reason to use `revalidateTag` SWR pattern instead of live subscriptions
+- Character limit research: Threads = 500 chars for posts, LinkedIn comments = 1500, TikTok = 150; collector comments are conversational → 500 chars is the right balance for Horlo
 
 ---
-*Feature research for: v5.1 Explore Page Redesign — editorial / taste-driven discovery surface*
-*Researched: 2026-05-16*
+*Feature research for: v6.0 Social Interaction — scoped likes + comments on individual watches + wear events*
+*Researched: 2026-05-22*

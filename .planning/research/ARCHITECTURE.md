@@ -1,900 +1,823 @@
 # Architecture Research
 
-**Domain:** v5.1 Explore Page Redesign — editorial CMS, catalog enrichment pipeline, /explore route tree, in-app admin CMS, avatar upload
-**Researched:** 2026-05-16
-**Confidence:** HIGH — grounded directly in the existing codebase (schema.ts, explore/page.tsx, discovery.ts, auth.ts, backfill-taste.ts, storage utilities), PROJECT.md, SEED-008, and sibling STACK.md + PITFALLS.md outputs.
+**Domain:** v6.0 Social Interaction — likes + comments on watches and wear events
+**Researched:** 2026-05-22
+**Confidence:** HIGH — decisions derived directly from reading the existing codebase (schema.ts, DAL files, notifications logger, follows action)
 
 ---
 
-## Standard Architecture
+## 1. DATA MODEL DECISION
 
-### System Overview
+### Recommendation: Two Polymorphic Tables (reactions + comments)
 
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│  Browser / Client                                                      │
-│  ┌─────────────┐  ┌──────────────────┐  ┌───────────────────────────┐ │
-│  │ Zustand     │  │ Client Components │  │  Direct Supabase Storage  │ │
-│  │ filter-only │  │ (filter sheets,   │  │  upload (avatar, wear     │ │
-│  │ ephemeral   │  │  carousels, CMS   │  │  photos, cover images)    │ │
-│  │ state only  │  │  forms)           │  │                           │ │
-│  └─────────────┘  └──────────────────┘  └───────────────────────────┘ │
-└───────────────────────────────────────────────────────────────────────┘
-         | Server Actions / Next.js navigation
-         v
-┌───────────────────────────────────────────────────────────────────────┐
-│  Next.js 16 App Router (Server Layer)                                  │
-│  ┌────────────────────────────────────────────────────────────────┐   │
-│  │ proxy.ts — edge auth gate; blocks /admin/* + unauthenticated   │   │
-│  └────────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────┐     │
-│  │ Server Components  ('use cache' + cacheLife + cacheTag)       │     │
-│  │  /explore            — page shell (uncached: viewer gate)     │     │
-│  │  /explore/lists      — published lists index (ISR 1h)         │     │
-│  │  /explore/paths      — paths index (ISR 1h)                   │     │
-│  │  /explore/brands     — brand index (ISR 1h, tag:catalog:browse)│    │
-│  │  /explore/eras       — era index (ISR 1h, tag:catalog:browse) │     │
-│  │  HeroFeature         — cached weekly (tag:explore:hero)       │     │
-│  │  CuratedListsRail    — cached 5m (tag:explore:lists)          │     │
-│  │  CollectionPathsModule — cached 1h (tag:explore:paths)        │     │
-│  │  BrowseCatalogModule — cached 1h (tag:catalog:browse)         │     │
-│  └──────────────────────────────────────────────────────────────┘     │
-│  ┌──────────────────────────────────────────────────────────────┐     │
-│  │ Server Actions  (mutations, always auth-gated)                │     │
-│  │  src/app/actions/cms.ts — createList, updateList,             │     │
-│  │    publishList, unpublishList, deleteList,                    │     │
-│  │    createListItem, updateListItem, deleteListItem,            │     │
-│  │    setPinnedHero, clearPinnedHero                             │     │
-│  │  src/app/actions/paths.ts — createPath, updatePath, deletePath│     │
-│  │  src/app/actions/profile.ts — uploadAvatar (updated)          │     │
-│  └──────────────────────────────────────────────────────────────┘     │
-│  ┌──────────────────────────────────────────────────────────────┐     │
-│  │ DAL  src/data/ (server-only, two-layer privacy)               │     │
-│  │  cms.ts       — getCuratedLists, getCuratedList, getHeroFeature│    │
-│  │  paths.ts     — getCollectionPaths                            │     │
-│  │  browse.ts    — getBrandIndex, getEraIndex, getGenreIndex,    │     │
-│  │                 getPriceBandIndex                             │     │
-│  └──────────────────────────────────────────────────────────────┘     │
-│  ┌──────────────────────────────────────────────────────────────┐     │
-│  │ API Routes (one existing, no new ones for v5.1)               │     │
-│  │  POST /api/extract-watch  — existing, unchanged               │     │
-│  └──────────────────────────────────────────────────────────────┘     │
-└───────────────────────────────────────────────────────────────────────┘
-         | Drizzle ORM / SQL
-         v
-┌───────────────────────────────────────────────────────────────────────┐
-│  Supabase Postgres  (RLS enabled project-wide)                         │
-│  ┌─────────────────────┐  ┌──────────────────────────────────────┐   │
-│  │ Existing tables      │  │ New v5.1 tables                       │   │
-│  │  watches_catalog     │  │  curated_lists                        │   │
-│  │  brands              │  │  curated_list_items                   │   │
-│  │  watch_families      │  │  collection_paths                     │   │
-│  │  watch_variants      │  │  collection_path_nodes                │   │
-│  │  watch_lineage_edges │  │  cms_settings (hero pin + config)     │   │
-│  │  watches, profiles   │  └──────────────────────────────────────┘   │
-│  │  follows, etc.       │                                              │
-│  └─────────────────────┘                                              │
-│  ┌──────────────────────────────────────────────────────────────┐     │
-│  │ Supabase Storage                                              │     │
-│  │  catalog-source-photos (existing, private, signed URLs)       │     │
-│  │  wear-photos           (existing, private, signed URLs)       │     │
-│  │  avatars               (NEW, public bucket, getPublicUrl)     │     │
-│  │  explore-covers        (NEW, public bucket, getPublicUrl)     │     │
-│  └──────────────────────────────────────────────────────────────┘     │
-└───────────────────────────────────────────────────────────────────────┘
-         |
-┌───────────────────────────────────────────────────────────────────────┐
-│  Operator Tooling  scripts/                                            │
-│  backfill-taste.ts     (existing — extend for v5.1 enrichment run)    │
-│  reenrich-taste.ts     (existing — add --min-confidence-threshold)     │
-│  refresh-counts.ts     (existing — call revalidateTag after run)       │
-└───────────────────────────────────────────────────────────────────────┘
-```
+Use a single `reactions` table and a single `comments` table, each with `(target_type, target_id)` polymorphism. Do NOT use per-target tables.
 
----
+**Rationale:**
 
-## New Database Tables — Schema Sketches
+Horlo already uses this pattern implicitly: `activities.type` is a text discriminator and `activities.metadata` is polymorphic jsonb. `notifications.type` is a pgEnum discriminator with polymorphic jsonb payload. The DAL is comfortable with discriminated-type queries; adding a `target_type` column is no more complex.
 
-### (a) `curated_lists`
+Per-target tables (e.g. `watch_likes` + `wear_event_likes`) would require:
+- Separate RLS policies for each table (doubles the policy surface)
+- Separate DAL functions for count queries
+- Two nearly-identical Server Actions
 
-The primary CMS entity. One row per editorial list authored by the admin.
+The FK-integrity tradeoff is the honest cost of polymorphism. Postgres does not support a true polymorphic FK. The mitigation is a CHECK constraint on `target_type` to lock valid values, and application-layer enforcement in the DAL. Both target tables (`watches`, `wear_events`) are well-established; a comment or reaction pointing at a deleted watch row should cascade-delete. Use soft-orphan filtering at read time with an INNER JOIN on the target table. At MVP scale (<500 watches/user) this is fine.
+
+### Drizzle / SQL Sketch
 
 ```typescript
-// Drizzle schema sketch (src/db/schema.ts addition)
-export const curatedListStatusEnum = pgEnum('curated_list_status', ['draft', 'published'])
+// src/db/schema.ts additions
 
-export const curatedLists = pgTable(
-  'curated_lists',
+export const reactionTargetTypeEnum = pgEnum('reaction_target_type', [
+  'watch',
+  'wear_event',
+] as const)
+
+export const commentTargetTypeEnum = pgEnum('comment_target_type', [
+  'watch',
+  'wear_event',
+] as const)
+
+export const reactions = pgTable(
+  'reactions',
   {
-    id:           uuid('id').defaultRandom().primaryKey(),
-    // authorId references the owner user (admin only ever writes this table)
-    authorId:     uuid('author_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
-    title:        text('title').notNull(),
-    slug:         text('slug').notNull(),
-    introCopy:    text('intro_copy'),            // rendered as markdown via react-markdown
-    coverImagePath: text('cover_image_path'),    // Supabase Storage path in explore-covers bucket
-    status:       curatedListStatusEnum('status').notNull().default('draft'),
-    // watchCount cached to avoid subquery per card on the rail
-    watchCount:   integer('watch_count').notNull().default(0),
-    // hero quality gate flags: set on publish
-    hasIntroCopy:  boolean('has_intro_copy').notNull().default(false),
-    hasCoverImage: boolean('has_cover_image').notNull().default(false),
-    publishedAt:  timestamp('published_at', { withTimezone: true }),
-    createdAt:    timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt:    timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    id: uuid('id').defaultRandom().primaryKey(),
+    actorId: uuid('actor_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    targetType: reactionTargetTypeEnum('target_type').notNull(),
+    targetId: uuid('target_id').notNull(), // watches.id or wear_events.id
+    // 'like' is the only reaction type now; column exists for forward-compat
+    reactionType: text('reaction_type', { enum: ['like'] }).notNull().default('like'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    unique('curated_lists_slug_unique').on(table.slug),
-    index('curated_lists_status_published_at_idx').on(table.status, table.publishedAt),
-  ]
+    // Dedup: one reaction per (actor, target_type, target_id, reaction_type)
+    unique('reactions_unique').on(
+      table.actorId,
+      table.targetType,
+      table.targetId,
+      table.reactionType,
+    ),
+    index('reactions_target_idx').on(table.targetType, table.targetId),
+    index('reactions_actor_idx').on(table.actorId),
+  ],
+)
+
+export const comments = pgTable(
+  'comments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    targetType: commentTargetTypeEnum('target_type').notNull(),
+    targetId: uuid('target_id').notNull(), // watches.id or wear_events.id
+    body: text('body').notNull(),
+    // editedAt is NULL until the author edits; surfaces "edited" badge in UI
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('comments_target_idx').on(table.targetType, table.targetId),
+    index('comments_author_idx').on(table.authorId),
+  ],
 )
 ```
 
-**RLS policy shape (in Supabase migration SQL — not expressible in Drizzle DSL):**
+**Raw SQL migration additions (live in supabase/migrations — not expressible in Drizzle 0.45.2):**
 
 ```sql
--- Public readers see ONLY published rows
-CREATE POLICY "curated_lists_public_read"
-  ON curated_lists FOR SELECT
-  TO anon, authenticated
-  USING (status = 'published');
+-- CHECK constraint locks valid target_type values (defense in depth)
+ALTER TABLE reactions ADD CONSTRAINT reactions_target_type_check
+  CHECK (target_type IN ('watch', 'wear_event'));
 
--- Admin (author) can read their own drafts too
-CREATE POLICY "curated_lists_author_read_own"
-  ON curated_lists FOR SELECT
+ALTER TABLE comments ADD CONSTRAINT comments_target_type_check
+  CHECK (target_type IN ('watch', 'wear_event'));
+
+-- CHECK: body must be non-empty, max 2000 chars
+ALTER TABLE comments ADD CONSTRAINT comments_body_length_check
+  CHECK (length(body) BETWEEN 1 AND 2000);
+```
+
+---
+
+## 2. RLS DESIGN
+
+### The Asymmetry Problem
+
+Likes: open (any authed user, any watch status, any wear).
+Comments on owned/sold/grail watches + all wears: open (any authed user).
+Comments on **wishlist watches**: mutual-follow only.
+
+The hard part: detecting a watch's status inside the RLS policy. The `watches.status` column lives on the `watches` table. The `comments` table policy must subquery `watches` to discover status. Since the DAL uses a service-role client (bypasses RLS), the RLS on `comments` is the first-layer defense, the DAL WHERE clause is the load-bearing second layer — consistent with the established two-layer pattern.
+
+### RLS Policies
+
+```sql
+-- ENABLE ROW LEVEL SECURITY
+ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE comments  ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- reactions: SELECT — open (any authed user can see likes)
+-- ============================================================
+CREATE POLICY reactions_select
+  ON reactions FOR SELECT
   TO authenticated
-  USING (status = 'published' OR author_id = auth.uid());
+  USING (true);
 
--- Author can write; WITH CHECK enforces ownership on INSERT/UPDATE
-CREATE POLICY "curated_lists_author_write"
-  ON curated_lists FOR ALL
+-- reactions: INSERT — authed only; actor_id must equal auth.uid()
+CREATE POLICY reactions_insert
+  ON reactions FOR INSERT
+  TO authenticated
+  WITH CHECK (actor_id = auth.uid());
+
+-- reactions: DELETE — actor (liker) deletes own row only
+CREATE POLICY reactions_delete
+  ON reactions FOR DELETE
+  TO authenticated
+  USING (actor_id = auth.uid());
+
+-- No UPDATE on reactions — toggle is delete+insert.
+
+-- ============================================================
+-- comments: SELECT
+-- Open for owned/sold/grail watches and wear_event targets.
+-- Mutual-follow gate for wishlist watch targets.
+-- ============================================================
+CREATE POLICY comments_select
+  ON comments FOR SELECT
+  TO authenticated
+  USING (
+    target_type = 'wear_event'
+    OR
+    (
+      target_type = 'watch'
+      AND EXISTS (
+        SELECT 1 FROM watches w
+        WHERE w.id = comments.target_id
+          AND (
+            w.status IN ('owned', 'sold', 'grail')
+            OR
+            (
+              w.status = 'wishlist'
+              AND (
+                -- viewer is the watch owner
+                w.user_id = auth.uid()
+                OR
+                -- mutual follow: viewer follows owner AND owner follows viewer
+                (
+                  EXISTS (
+                    SELECT 1 FROM follows
+                    WHERE follower_id = auth.uid()
+                      AND following_id = w.user_id
+                  )
+                  AND
+                  EXISTS (
+                    SELECT 1 FROM follows
+                    WHERE follower_id = w.user_id
+                      AND following_id = auth.uid()
+                  )
+                )
+              )
+            )
+          )
+      )
+    )
+  );
+
+-- comments: INSERT — same asymmetric gate as SELECT
+CREATE POLICY comments_insert
+  ON comments FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    author_id = auth.uid()  -- mass-assignment guard
+    AND (
+      target_type = 'wear_event'
+      OR
+      (
+        target_type = 'watch'
+        AND EXISTS (
+          SELECT 1 FROM watches w
+          WHERE w.id = comments.target_id
+            AND (
+              w.status IN ('owned', 'sold', 'grail')
+              OR
+              (
+                w.status = 'wishlist'
+                AND (
+                  w.user_id = auth.uid()
+                  OR
+                  (
+                    EXISTS (
+                      SELECT 1 FROM follows
+                      WHERE follower_id = auth.uid()
+                        AND following_id = w.user_id
+                    )
+                    AND
+                    EXISTS (
+                      SELECT 1 FROM follows
+                      WHERE follower_id = w.user_id
+                        AND following_id = auth.uid()
+                    )
+                  )
+                )
+              )
+            )
+        )
+      )
+    )
+  );
+
+-- comments: UPDATE — author edits own comment body + sets edited_at
+CREATE POLICY comments_update
+  ON comments FOR UPDATE
   TO authenticated
   USING (author_id = auth.uid())
   WITH CHECK (author_id = auth.uid());
+
+-- comments: DELETE — author deletes own comment
+CREATE POLICY comments_delete
+  ON comments FOR DELETE
+  TO authenticated
+  USING (author_id = auth.uid());
 ```
 
-Two-layer defense: DAL public-read functions must also include `WHERE status = 'published'` — do not rely on RLS alone. This is the two-layer privacy posture established in Phase 11 and required per PITFALLS.md CP-01.
+**Important implementation note on `follows` reads inside the policy:** The `follows` table's RLS posture must allow authenticated reads for the mutual-follow subquery to work. Verify in the existing migration files (Phase 7–9) that `follows` has a SELECT policy for authenticated. If not, add one or replace the inline subquery with a `SECURITY DEFINER` helper function — but be sure to `REVOKE EXECUTE ON FUNCTION ... FROM anon` explicitly (per the project memory note: `REVOKE FROM PUBLIC` alone does not block anon in Supabase).
 
----
-
-### (b) `curated_list_items`
-
-Junction table: one row per watch in a list, with per-item editorial commentary.
+### DAL Second Layer (src/data/comments.ts, new file)
 
 ```typescript
-export const curatedListItems = pgTable(
-  'curated_list_items',
-  {
-    id:        uuid('id').defaultRandom().primaryKey(),
-    listId:    uuid('list_id').notNull()
-                 .references(() => curatedLists.id, { onDelete: 'cascade' }),
-    // ON DELETE RESTRICT: deleting a catalog row referenced in any list item is blocked.
-    // Admin must remove the watch from the list (or unpublish the list) before deleting
-    // the catalog row. Prevents silent broken cards on /explore.
-    catalogId: uuid('catalog_id').notNull()
-                 .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
-    commentary: text('commentary'),             // per-item editorial note; markdown
-    sortOrder:  integer('sort_order').notNull().default(0),
-    createdAt:  timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt:  timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    unique('curated_list_items_list_catalog_unique').on(table.listId, table.catalogId),
-    index('curated_list_items_list_id_sort_idx').on(table.listId, table.sortOrder),
-  ]
-)
-```
+import 'server-only'
+import { db } from '@/db'
+import { comments, follows, watches } from '@/db/schema'
+import { and, eq, sql, desc } from 'drizzle-orm'
 
-**FK shape rationale:** `ON DELETE CASCADE` from list (list deleted → items deleted, correct); `ON DELETE RESTRICT` from catalog (catalog deletion blocked if referenced by any list item — forces operator to clean up the list before deleting a catalog row). This prevents PITFALLS.md CP-05.
+// Mutual-follow check — two EXISTS in one round trip
+async function areMutualFollows(userA: string, userB: string): Promise<boolean> {
+  const rows = await db.execute(sql`
+    SELECT
+      EXISTS(SELECT 1 FROM follows WHERE follower_id = ${userA}::uuid AND following_id = ${userB}::uuid) AS a_follows_b,
+      EXISTS(SELECT 1 FROM follows WHERE follower_id = ${userB}::uuid AND following_id = ${userA}::uuid) AS b_follows_a
+  `)
+  const r = (rows as Array<{ a_follows_b: boolean; b_follows_a: boolean }>)[0]
+  return Boolean(r?.a_follows_b && r?.b_follows_a)
+}
 
-**RLS:** DAL join always filters by `curated_lists.status = 'published'` for public reads. A direct SELECT on `curated_list_items` by non-admin readers surfaces only items whose parent list is published via the JOIN-through strategy.
-
----
-
-### (c) `collection_paths` and `collection_path_nodes`
-
-Curated traversal patterns. Two tables: one for the path entity, one for the ordered sequence of catalog references.
-
-```typescript
-export const collectionPathSourceEnum = pgEnum('collection_path_source', ['manual', 'computed'])
-
-export const collectionPaths = pgTable(
-  'collection_paths',
-  {
-    id:        uuid('id').defaultRandom().primaryKey(),
-    title:     text('title').notNull(),         // e.g. "The Diver's Journey"
-    rationale: text('rationale'),               // editorial copy; markdown
-    source:    collectionPathSourceEnum('source').notNull().default('manual'),
-    status:    curatedListStatusEnum('status').notNull().default('draft'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index('collection_paths_status_idx').on(table.status),
-  ]
-)
-
-export const collectionPathNodes = pgTable(
-  'collection_path_nodes',
-  {
-    id:        uuid('id').defaultRandom().primaryKey(),
-    pathId:    uuid('path_id').notNull()
-                 .references(() => collectionPaths.id, { onDelete: 'cascade' }),
-    // ON DELETE RESTRICT: a path node cannot be orphaned. Operator must remove
-    // the node or unpublish the path before deleting the referenced catalog row.
-    catalogId: uuid('catalog_id').notNull()
-                 .references(() => watchesCatalog.id, { onDelete: 'restrict' }),
-    position:  integer('position').notNull(),   // 0 = seed; 1, 2, 3 = follow-on
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    unique('collection_path_nodes_path_position_unique').on(table.pathId, table.position),
-    index('collection_path_nodes_path_id_idx').on(table.pathId, table.position),
-  ]
-)
-```
-
-**RLS:** Same shape as `curated_lists` — `USING (status = 'published')` for public reads. Admin reads own drafts via the `OR author_id = auth.uid()` fallback (collection_paths does not have a direct author_id; use a service-role read in the admin CMS or add an `author_id` column matching the same pattern).
-
----
-
-### (d) `cms_settings`
-
-Single-row config table for Hero pin and quality-gate thresholds. Storing this in the DB (not environment variables) ensures the Hero Server Component reads live state on every cache refresh cycle.
-
-```typescript
-export const cmsSettings = pgTable(
-  'cms_settings',
-  {
-    id:                    uuid('id').defaultRandom().primaryKey(),
-    // Manual hero pin — overrides auto-selection while non-NULL
-    pinnedListId:          uuid('pinned_list_id')
-                             .references(() => curatedLists.id, { onDelete: 'set null' }),
-    // Hero quality gate thresholds (configurable without a deploy)
-    heroMinWatchCount:     integer('hero_min_watch_count').notNull().default(3),
-    heroRequiresIntroCopy: boolean('hero_requires_intro_copy').notNull().default(true),
-    heroRequiresCoverImage: boolean('hero_requires_cover_image').notNull().default(true),
-    updatedAt:             timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+// getCommentsForTarget — viewer-aware, two-layer
+export async function getCommentsForTarget(
+  viewerId: string,
+  targetType: 'watch' | 'wear_event',
+  targetId: string,
+): Promise<CommentRow[]> {
+  if (targetType === 'wear_event') {
+    // wear comments: open — return all
+    return db.select(/* ... */).from(comments)
+      .where(and(eq(comments.targetType, 'wear_event'), eq(comments.targetId, targetId)))
+      .orderBy(desc(comments.createdAt))
   }
-)
-```
 
-The `pinnedListId` FK uses `ON DELETE SET NULL` — if the pinned list is deleted, the pin clears automatically and auto-selection resumes.
+  // watch target: check status + mutual-follow gate
+  const [watchRow] = await db
+    .select({ userId: watches.userId, status: watches.status })
+    .from(watches).where(eq(watches.id, targetId)).limit(1)
 
----
+  if (!watchRow) return []
+  const isOwner = watchRow.userId === viewerId
 
-### FK Shape Summary
+  if (watchRow.status !== 'wishlist' || isOwner) {
+    // owned/sold/grail or owner: open
+    return db.select(/* ... */).from(comments)
+      .where(and(eq(comments.targetType, 'watch'), eq(comments.targetId, targetId)))
+      .orderBy(desc(comments.createdAt))
+  }
 
-| Relationship | FK Column | ON DELETE | Rationale |
-|---|---|---|---|
-| `curated_list_items.list_id → curated_lists.id` | `list_id` | CASCADE | Items deleted when parent list is deleted |
-| `curated_list_items.catalog_id → watches_catalog.id` | `catalog_id` | **RESTRICT** | Blocks catalog deletion if referenced in any list |
-| `collection_path_nodes.path_id → collection_paths.id` | `path_id` | CASCADE | Nodes deleted when path is deleted |
-| `collection_path_nodes.catalog_id → watches_catalog.id` | `catalog_id` | **RESTRICT** | Blocks catalog deletion if referenced in any path |
-| `cms_settings.pinned_list_id → curated_lists.id` | `pinned_list_id` | SET NULL | Pin clears automatically if the pinned list is deleted |
-| `curated_lists.author_id → users.id` | `author_id` | RESTRICT | Prevents orphaned lists if author account were deleted |
+  // wishlist watch: mutual-follow gate
+  const mutual = await areMutualFollows(viewerId, watchRow.userId)
+  if (!mutual) return []
 
----
+  return db.select(/* ... */).from(comments)
+    .where(and(eq(comments.targetType, 'watch'), eq(comments.targetId, targetId)))
+    .orderBy(desc(comments.createdAt))
+}
 
-### Migration Path
+// createComment — DAL re-derives access before insert (redundant with RLS; load-bearing second layer)
+export async function createComment(
+  authorId: string,
+  targetType: 'watch' | 'wear_event',
+  targetId: string,
+  body: string,
+): Promise<CommentRow> {
+  if (targetType === 'watch') {
+    const [watchRow] = await db
+      .select({ userId: watches.userId, status: watches.status })
+      .from(watches).where(eq(watches.id, targetId)).limit(1)
+    if (!watchRow) throw new Error('Watch not found')
+    const isOwner = watchRow.userId === authorId
+    if (watchRow.status === 'wishlist' && !isOwner) {
+      const mutual = await areMutualFollows(authorId, watchRow.userId)
+      if (!mutual) throw new Error('Access denied: mutual follow required')
+    }
+  }
+  const [row] = await db.insert(comments)
+    .values({ authorId, targetType, targetId, body })
+    .returning()
+  return row
+}
 
-All new tables follow the established Drizzle + Supabase split pattern:
-
-- **`src/db/schema.ts`** — column shapes, FK references, TypeScript type inference only
-- **Supabase migration `.sql` file** — authoritative DDL including RLS policies, GIN indexes, GRANT/REVOKE, CHECK constraints, enum creation
-- **Production push** — `supabase db push --linked` only (never `drizzle-kit push` to prod)
-
-Suggested single migration file for the initial schema: `supabase/migrations/20260516000000_phase_v51_cms_tables.sql` covering all five new tables and both new Storage buckets. The `curated_list_status` enum (shared by `curated_lists` and `collection_paths`) and the `collection_path_source` enum must be created before the tables that reference them.
-
----
-
-## `/explore` Route Tree + Rendering Strategy
-
-### Route Tree
-
-```
-src/app/
-├── explore/
-│   ├── page.tsx                    -- /explore shell (MODIFIED: 5-module layout)
-│   ├── collectors/
-│   │   └── page.tsx                -- existing /explore/collectors (unchanged)
-│   ├── watches/
-│   │   └── page.tsx                -- existing /explore/watches (unchanged)
-│   ├── lists/
-│   │   ├── page.tsx                -- NEW /explore/lists — all published lists
-│   │   └── [slug]/
-│   │       └── page.tsx            -- NEW /explore/lists/[slug] — list detail
-│   ├── paths/
-│   │   ├── page.tsx                -- NEW /explore/paths — all paths
-│   │   └── [id]/
-│   │       └── page.tsx            -- NEW /explore/paths/[id] — path detail
-│   ├── brands/
-│   │   └── page.tsx                -- NEW /explore/brands — brand index
-│   ├── eras/
-│   │   └── page.tsx                -- NEW /explore/eras — era index
-│   ├── genres/
-│   │   └── page.tsx                -- NEW /explore/genres — genre/style index
-│   └── price-bands/
-│       └── page.tsx                -- NEW /explore/price-bands — price-band index
-├── admin/
-│   ├── layout.tsx                  -- NEW — owner gate at layout level
-│   ├── lists/
-│   │   ├── page.tsx                -- NEW /admin/lists — list dashboard
-│   │   ├── new/
-│   │   │   └── page.tsx            -- NEW /admin/lists/new
-│   │   └── [id]/
-│   │       └── page.tsx            -- NEW /admin/lists/[id] — edit + publish
-│   └── paths/
-│       ├── page.tsx                -- NEW /admin/paths
-│       ├── new/
-│       │   └── page.tsx            -- NEW /admin/paths/new
-│       └── [id]/
-│           └── page.tsx            -- NEW /admin/paths/[id]
+// editComment: WHERE author_id = authorId AND id = commentId (IDOR guard)
+// deleteComment: WHERE author_id = authorId AND id = commentId (IDOR guard)
 ```
 
 ---
 
-### Rendering Strategy
+## 3. NOTIFICATIONS EXTENSION
 
-#### `/explore` main shell
+### Enum Migration Strategy
 
-The page-level Server Component remains uncached to preserve viewer-dependent logic (the sparse-network hero gate that checks `followingCount` and `wearEventsCount`). Each of the 5 modules is a separately-cached nested Server Component. This is an extension of the existing Phase 18/25 rail pattern.
+**Use `ALTER TYPE ... ADD VALUE`, not recreate.** Phase 24 used a destructive rename+recreate (the `T-24-PARTIDX` footgun) because it was removing values, not adding them. Adding values with `ALTER TYPE ... ADD VALUE IF NOT EXISTS` is safe in Postgres 14+ and does not require dropping indexes bound to the enum.
 
-```
-ExplorePage (Server Component, uncached — viewer-dependent gate)
-├── HeroFeature ('use cache', cacheLife 604800, cacheTag('explore:hero'))
-├── CollectorArchetypes (hardcoded config — no DB fetch, no cache needed)
-├── CuratedListsRail ('use cache', cacheLife 300, cacheTag('explore:lists'))
-├── CollectionPathsModule ('use cache', cacheLife 3600, cacheTag('explore:paths'))
-└── BrowseCatalogModule ('use cache', cacheLife 3600, cacheTag('catalog:browse'))
-```
+**Critical:** `ALTER TYPE ... ADD VALUE` cannot run inside a Postgres transaction block. Each ADD VALUE must be its own migration file, or the migration must be written to execute those statements outside a transaction. Test on local first. In Supabase migrations, wrap the block appropriately or use separate files.
 
-**Cache scopes by module:**
-
-| Module | Cache TTL | Cache Tags | What Invalidates It |
-|---|---|---|---|
-| HeroFeature | 604800s (weekly) | `explore:hero` | `setPinnedHero`, `clearPinnedHero`, `publishList`, `unpublishList` |
-| CuratedListsRail | 300s (5m) | `explore:lists` | `publishList`, `unpublishList`, `updateList` (cover, title changes) |
-| CollectionPathsModule | 3600s (1h) | `explore:paths` | `createPath`, `updatePath`, `deletePath` |
-| BrowseCatalogModule | 3600s (1h) | `catalog:browse` | Enrichment script writes, `refresh-counts.ts` run |
-| CollectorArchetypes | N/A — no fetch | N/A | Config change requires a deploy |
-
-**Critical constraint — `revalidateTag`, not `revalidatePath`.** Nested `'use cache'` Server Components are not invalidated by `revalidatePath('/explore')`. Every Server Action that mutates CMS data must call `revalidateTag(tag)` for each affected module. This is the established codebase pattern (Phase 13 `updateTag` vs `revalidateTag` distinction; Phase 18 `revalidateTag('explore', 'max')` for SWR fan-out). PITFALLS.md MP-07 documents the specific Hero pin cache-miss failure mode.
-
-#### Browse index sub-routes
-
-Each of `/explore/brands`, `/explore/eras`, `/explore/genres`, `/explore/price-bands` is a Server Component that runs a GROUP BY aggregation query and caches the result under the `catalog:browse` tag.
-
-```typescript
-// Pattern for each Browse index page (e.g., src/app/explore/brands/page.tsx)
-export default async function BrandsIndexPage() {
-  const brands = await getBrandIndex()
-  // render groups with counts
-}
-
-// src/data/browse.ts
-async function getBrandIndex() {
-  'use cache'
-  cacheTag('catalog:browse')
-  cacheLife({ revalidate: 3600 })
-  return db
-    .select({ name: brands.name, slug: brands.slug, count: sql<number>`count(*)::int` })
-    .from(watchesCatalog)
-    .innerJoin(brands, eq(watchesCatalog.brandId, brands.id))
-    .groupBy(brands.id, brands.name, brands.slug)
-    .orderBy(desc(sql`count(*)`))
-}
-```
-
-These sub-routes share the `catalog:browse` cache tag with the BrowseCatalogModule on the main `/explore` page, so enrichment writes invalidate all of them simultaneously.
-
-#### List detail (`/explore/lists/[slug]`)
-
-A Server Component with its own cache scope:
-
-```typescript
-'use cache'
-cacheTag('explore:lists', `list:${slug}`)
-cacheLife({ revalidate: 3600 })
-```
-
-`publishList` and `unpublishList` call `revalidateTag('explore:lists')` to invalidate all list pages. `updateList` on a specific list can call `revalidateTag(`list:${id}`)` for precision invalidation.
-
-#### `/admin/*` routes
-
-No cache — always fresh. Admin routes must render live draft state so the operator sees current content. Since `proxy.ts` blocks these routes for non-owners at the edge, no cache security risk.
-
----
-
-## In-App Admin CMS — Owner Gating
-
-### Route Guard (layout level)
-
-`src/app/admin/layout.tsx` performs owner verification at the layout level:
-
-```typescript
-import { getCurrentUser } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-
-const OWNER_USER_ID = process.env.OWNER_USER_ID!
-
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser()
-  if (user.id !== OWNER_USER_ID) redirect('/explore')
-  return <>{children}</>
-}
-```
-
-Add `/admin` to the non-public paths in `proxy.ts` (the `PUBLIC_PATHS` constant from Phase 14) so unauthenticated users are redirected to `/login` before the layout gate runs.
-
-### Server Action Pattern — Every CMS Action
-
-Route-level gating is insufficient because Server Actions are directly callable HTTP endpoints. Every Server Action in `src/app/actions/cms.ts` must assert ownership as its literal first statement:
-
-```typescript
-'use server'
-import { getCurrentUser } from '@/lib/auth'
-
-const OWNER_USER_ID = process.env.OWNER_USER_ID!
-
-async function assertOwner() {
-  const user = await getCurrentUser()
-  if (user.id !== OWNER_USER_ID) throw new Error('Unauthorized')
-  return user
-}
-
-export async function createCuratedList(data: CreateListInput) {
-  const user = await assertOwner()  // ALWAYS FIRST — see PITFALLS.md CP-02
-  // ... mutation logic
-  revalidateTag('explore:lists')
-}
-
-export async function publishList(listId: string) {
-  const user = await assertOwner()  // ALWAYS FIRST
-  // validate: watch_count >= 1 (cannot publish empty list)
-  // set status = 'published', publishedAt = now(), has_intro_copy, has_cover_image flags
-  revalidateTag('explore:lists')
-  revalidateTag('explore:hero')     // hero eligibility pool changes when a list publishes
-}
-
-export async function setPinnedHero(listId: string) {
-  const user = await assertOwner()  // ALWAYS FIRST
-  // UPDATE cms_settings SET pinned_list_id = listId
-  revalidateTag('explore:hero')     // NOT revalidatePath — see PITFALLS.md MP-07
-}
-```
-
-The RLS `WITH CHECK (author_id = auth.uid())` on `curated_lists` provides database-layer defense-in-depth — even a crafted request reaching the Supabase client directly is blocked.
-
-### Server Actions vs API Routes
-
-All CMS mutations are Server Actions, not API routes. The sole API route (`POST /api/extract-watch`) exists specifically because it must proxy external fetches server-side to avoid CORS and keep the Anthropic API key off the client. CMS mutations are direct DB writes — no such requirement exists. Server Actions are the correct pattern for this codebase.
-
-### `OWNER_USER_ID` Environment Variable
-
-The owner's Supabase Auth UUID is stored in `OWNER_USER_ID` env var — set in Vercel environment variables and `.env.local`. Never hardcode the UUID in source code; it must not appear in git history.
-
----
-
-## Catalog Enrichment — Where It Runs
-
-### Where: Operator Script (extend `scripts/backfill-taste.ts`)
-
-The v5.1 catalog enrichment is a one-time operator-run backfill of ~100 existing `watches_catalog` rows. The established precedent in `scripts/backfill-taste.ts` is the correct approach at this scale.
-
-Do not use:
-- An API route — exposes enrichment as an HTTP endpoint, creates a security surface, cannot exceed Vercel's function timeout for 100 rows
-- pg_cron — enrichment is a one-time fill, not a recurring scheduled task
-- Anthropic Batch API — appropriate for 1,000+ rows; adds async polling complexity for no benefit at 100 rows (STACK.md confirmed)
-
-### Idempotency and Resumability
-
-The existing `backfill-taste.ts` already handles idempotency via first-write-wins (`AND confidence IS NULL` predicate in `updateCatalogTaste`). Running the script multiple times is safe; already-enriched rows are skipped.
-
-Required additions before the v5.1 prod run (see PITFALLS.md MP-04 and MP-05):
-
-1. **Rate-limit retry** — exponential backoff (2s/4s/8s, 3 attempts) triggered on `Anthropic.RateLimitError` inside the batch loop. The existing `catch (err) { totalFailed++ }` handler must distinguish rate-limit errors from other failures.
-2. **Inter-row delay** — `await new Promise(r => setTimeout(r, 800))` between rows. At 800ms/row, 100 rows takes ~80 seconds, safely within the RPM limit.
-3. **Per-row failure logging** — log each failed `catalog_id` explicitly, not just a cumulative count.
-4. **`--min-confidence-threshold` flag on `reenrich-taste.ts`** — only re-enriches rows where existing confidence is BELOW the threshold, preventing high-confidence vision-enriched rows from being silently downgraded (PITFALLS.md CP-03, MP-05).
-5. **Photo-existence pre-check** — when re-enriching a vision-enriched row (`extracted_from_photo = true`), verify the photo path still resolves before running the LLM call. Warn the operator if the photo is missing instead of silently falling back to text mode.
-
-### After the Enrichment Run
-
-The enrichment script calls `revalidateTag('catalog:browse')` after successful completion (or the operator runs `npm run db:refresh-counts` which is extended to do the same). This invalidates the Browse index cache so updated archetype/era data is reflected immediately.
-
-Post-run assertion before any Archetypes-module ship:
 ```sql
-SELECT primary_archetype, count(*) FROM watches_catalog GROUP BY primary_archetype ORDER BY count DESC;
-```
-Each archetype config entry must have at least one matching row in the catalog.
-
----
-
-## Avatar Upload — Supabase Storage
-
-### Bucket: `avatars` (new, public)
-
-A separate public-read bucket distinct from `catalog-source-photos` (private, signed URLs). Profile avatars must be publicly accessible without expiry. Signed URLs expire (60s in the existing enricher pattern) — an expiring avatar URL breaks navigation headers on every page after expiry (PITFALLS.md MP-06).
-
-```
-Supabase Storage buckets after v5.1:
-  catalog-source-photos  — private; signed URLs (existing)
-  wear-photos            — private; signed URLs (existing)
-  avatars                — PUBLIC; getPublicUrl (NEW)
-  explore-covers         — PUBLIC; getPublicUrl (NEW — curated list covers + hero images)
+-- One migration per ADD VALUE, or verify supabase migration runner handles non-transactional DDL
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'watch_like';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'wear_like';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'watch_comment';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'wear_comment';
 ```
 
-### Upload Pattern
+**Update schema.ts:**
+```typescript
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'follow',
+  'watch_overlap',
+  'watch_like',
+  'wear_like',
+  'watch_comment',
+  'wear_comment',
+])
+```
 
-The client-side EXIF-strip + canvas-resize-to-JPEG-1080px pipeline exists in `src/lib/storage/catalogSourcePhotos.ts` and `src/lib/storage/wearPhotos.ts`. For avatar upload, extract the shared resize+encode logic into `src/lib/storage/imageUtils.ts` and call it from a new `src/lib/storage/avatars.ts` with `getPublicUrl` retrieval:
+**Add opt-out columns to profileSettings:**
+```typescript
+notifyOnLike: boolean('notify_on_like').notNull().default(true),
+notifyOnComment: boolean('notify_on_comment').notNull().default(true),
+```
+
+### Notification Payload Types (src/lib/notifications/types.ts additions)
 
 ```typescript
-// src/lib/storage/avatars.ts
-const AVATARS_BUCKET = 'avatars'
-
-export function buildAvatarPath(userId: string): string {
-  return `${userId}/avatar.jpg`   // fixed path; upload overwrites previous avatar
+export interface WatchLikePayload {
+  actor_username: string
+  actor_display_name: string | null
+  watch_id: string
+  watch_brand: string
+  watch_model: string
 }
 
-export function getAvatarPublicUrl(path: string): string {
-  const supabase = createSupabaseClient()
-  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path)
-  return data.publicUrl            // no expiry; public bucket
+export interface WearLikePayload {
+  actor_username: string
+  actor_display_name: string | null
+  wear_event_id: string
+  watch_brand: string
+  watch_model: string
+}
+
+export interface WatchCommentPayload {
+  actor_username: string
+  actor_display_name: string | null
+  watch_id: string
+  watch_brand: string
+  watch_model: string
+  comment_id: string
+  comment_preview: string // first 120 chars
+}
+
+export interface WearCommentPayload {
+  actor_username: string
+  actor_display_name: string | null
+  wear_event_id: string
+  watch_brand: string
+  watch_model: string
+  comment_id: string
+  comment_preview: string
 }
 ```
 
-After upload, `uploadAvatar` Server Action (in `src/app/actions/profile.ts`) updates `profiles.avatar_url` to the public URL. The URL stored in the column must not contain an expiry parameter — verify this in acceptance testing.
+### logNotification Extension
 
-Add the Supabase Storage CDN hostname for the `avatars` bucket to `next.config.ts` `remotePatterns` if it differs from the existing `catalog-source-photos` entry.
+The `LogNotificationInput` discriminated union gains four new branches. The logger's internal structure does not change — only the type union widens and the opt-out check gains two new branches:
 
----
+```typescript
+// New union branches:
+| { type: 'watch_like'; recipientUserId: string; actorUserId: string; payload: WatchLikePayload }
+| { type: 'wear_like'; recipientUserId: string; actorUserId: string; payload: WearLikePayload }
+| { type: 'watch_comment'; recipientUserId: string; actorUserId: string; payload: WatchCommentPayload }
+| { type: 'wear_comment'; recipientUserId: string; actorUserId: string; payload: WearCommentPayload }
 
-## Architectural Patterns
-
-### Pattern 1: Nested 'use cache' with Tag-Based Invalidation
-
-**What:** Page-level Server Component renders uncached (preserves viewer-dependent logic). Module-level Server Components each have their own `'use cache'` scope with named tags. Server Actions that mutate data call `revalidateTag(tag)` — not `revalidatePath`.
-
-**When to use:** Any page that mixes viewer-dependent gating with globally-cacheable editorial content. The existing `/explore` page uses this pattern; v5.1 extends it to 5 modules.
-
-**Trade-off:** Requires maintaining an explicit invalidation matrix for every write path. Worth it — the alternative (page-level caching) would either serve stale viewer-dependent state or skip caching entirely.
-
-### Pattern 2: Two-Layer Privacy on Draft/Published Content
-
-**What:** RLS `USING (status = 'published')` at the DB layer + explicit `WHERE status = 'published'` in every DAL public-read function. Neither layer alone is sufficient.
-
-**When to use:** Any table with a draft/published lifecycle: `curated_lists`, `collection_paths`.
-
-**Trade-off:** Slightly more DAL code. Required — single-layer is fragile (Phase 11 established this as a project-wide constraint).
-
-### Pattern 3: Owner-Asserting Server Actions
-
-**What:** `assertOwner()` called as the literal first statement in every CMS Server Action. Route-level layout gating is defense-in-depth only.
-
-**When to use:** Any Server Action that performs admin-only writes.
-
-**Trade-off:** Minor repetition of the owner check. Required — Server Actions are HTTP-callable endpoints that bypass layout-level gates.
-
-### Pattern 4: ON DELETE RESTRICT for Editorial Catalog References
-
-**What:** `curated_list_items.catalog_id` and `collection_path_nodes.catalog_id` use `ON DELETE RESTRICT`. This prevents catalog deletion from silently breaking published editorial content.
-
-**Contrast with:** `watches.catalog_id` which uses `ON DELETE SET NULL` — per-user watch entries survive catalog cleanup gracefully because the user still owns the physical watch.
-
-**When to use:** Any table that references a catalog row in a way that would produce a broken user-facing UI if the catalog row disappeared.
-
----
-
-## Data Flow
-
-### Hero Selection Flow
-
-```
-Server request to /explore
-  -> ExplorePage (uncached)
-    -> HeroFeature ('use cache', weekly TTL)
-      -> getCmsSettings()  -- read pinnedListId
-      IF pinnedListId IS NOT NULL:
-        -> getCuratedList(pinnedListId)  -- return pinned list as hero
-      ELSE:
-        -> SELECT FROM curated_lists
-             WHERE status = 'published'
-             AND watch_count >= heroMinWatchCount
-             AND has_intro_copy = true
-             AND has_cover_image = true
-             ORDER BY published_at DESC
-             LIMIT 1
-      -> render HeroFeature with resolved HeroFeatureData
-      -> IF no eligible list: return null (module hidden, not empty container)
-
-Admin sets pin -> setPinnedHero(listId) Server Action
-  -> assertOwner()
-  -> UPDATE cms_settings SET pinned_list_id = listId
-  -> revalidateTag('explore:hero')   -- NOT revalidatePath('/explore')
-  -> hero updates on next request cycle
+// New opt-out branches in logNotification body:
+const notifyOnLike = settings?.notifyOnLike ?? true
+const notifyOnComment = settings?.notifyOnComment ?? true
+if ((input.type === 'watch_like' || input.type === 'wear_like') && !notifyOnLike) return
+if ((input.type === 'watch_comment' || input.type === 'wear_comment') && !notifyOnComment) return
 ```
 
-### CMS Authoring Flow
+### Dedup Strategy for Likes
 
-```
-Admin visits /admin/lists/new
-  -> proxy.ts blocks unauthenticated users -> /login
-  -> AdminLayout assertOwner() -- server-side
-  -> renders CMS form (Server Component shell, Client form)
+Create partial UNIQUE indexes on `notifications` for like types — same pattern as `notifications_watch_overlap_dedup`:
 
-Admin submits create form
-  -> createCuratedList Server Action
-    -> assertOwner()               -- FIRST
-    -> validate: title required, slug unique
-    -> INSERT INTO curated_lists (status = 'draft')
-    -> revalidateTag('explore:lists')
-    -> redirect to /admin/lists/{id}
+```sql
+-- Dedup: one like-notification per (recipient, actor, target)
+-- Actor can unlike+re-like; notification fires only on the first like.
+CREATE UNIQUE INDEX notifications_watch_like_dedup
+  ON notifications (user_id, actor_id, (payload->>'watch_id'))
+  WHERE type = 'watch_like';
 
-Admin adds watches to list
-  -> addListItem Server Action
-    -> assertOwner()
-    -> INSERT INTO curated_list_items
-    -> UPDATE curated_lists SET watch_count = watch_count + 1, updated_at = now()
-    -> revalidateTag(`list:${listId}`)
-
-Admin publishes list
-  -> publishList Server Action
-    -> assertOwner()
-    -> validate: watch_count >= 1 (cannot publish empty list)
-    -> UPDATE status = 'published', publishedAt = now()
-    -> UPDATE has_intro_copy, has_cover_image quality-gate flags
-    -> revalidateTag('explore:lists')
-    -> revalidateTag('explore:hero')  -- list now in hero eligibility pool
+CREATE UNIQUE INDEX notifications_wear_like_dedup
+  ON notifications (user_id, actor_id, (payload->>'wear_event_id'))
+  WHERE type = 'wear_like';
 ```
 
-### Catalog Enrichment Flow
+The `toggleReaction` DAL returns `{ liked: boolean }`. The Server Action calls `logNotification` **only when `liked === true`** (first like). On `liked === false` (unlike/retraction), no notification is sent. If the same actor likes again after unliking, the dedup index produces an ON CONFLICT DO NOTHING — no duplicate notification.
 
-```
-Operator runs: npm run db:backfill-taste (extended for v5.1)
-  -> scripts/backfill-taste.ts
-    -> SELECT catalog rows WHERE confidence IS NULL (idempotent predicate)
-    -> FOR EACH row:
-        -> IF photoPath exists AND storage resolves: vision mode
-        -> ELSE: text-only mode (log warning if photo was expected)
-        -> call claude-sonnet-4-6 with strict tool_use
-        -> write taste columns via updateCatalogTaste (first-write-wins DAL)
-        -> await 800ms (rate limit buffer between rows)
-        -> ON RateLimitError: exponential backoff retry (2s / 4s / 8s)
-        -> ON other failure: log catalog_id + error; continue
-    -> log coverage distribution: SELECT primary_archetype, count(*) GROUP BY ...
-    -> revalidateTag('catalog:browse')
-```
+**Comments:** No dedup needed — each new comment is a distinct event. Only fire `logNotification` on INSERT, never on UPDATE (edit).
 
-### Avatar Upload Flow
+**Self-guard:** Unchanged — the existing logger `if (recipientUserId === actorUserId) return` covers this. Owners commenting/liking their own content produce no notification.
 
-```
-User visits /settings -> Profile tab (ProfileSection.tsx)
-  -> AvatarUpload Client Component renders
-  -> user selects file
-    -> EXIF strip (client-side, via imageUtils.ts shared utility)
-    -> canvas resize to JPEG <= 1080px
-    -> supabase.storage.from('avatars').upload(buildAvatarPath(userId), blob)
-    -> supabase.storage.from('avatars').getPublicUrl(path) -> publicUrl
-  -> uploadAvatar Server Action
-    -> getCurrentUser()               -- auth gate
-    -> UPDATE profiles SET avatar_url = publicUrl
-    -> revalidateTag(`profile:${user.id}`)
-    -> return new publicUrl
-  -> AvatarUpload renders new avatar from publicUrl (no expiry, public bucket)
+### Notification Bell Cache Invalidation
+
+Same pattern as `followUser`:
+```typescript
+// After like/comment write where liked === true (or after new comment INSERT):
+revalidateTag(`viewer:${watchOwnerId}`, 'max')
 ```
 
 ---
 
-## Component Boundaries
+## 4. COUNT STRATEGY (Anti-N+1)
 
-| Component | Location | Responsibility | Renders As |
-|---|---|---|---|
-| `ExplorePage` | `src/app/explore/page.tsx` | Shell, viewer gate, 5-module composition | Server Component (uncached) |
-| `HeroFeature` | `src/components/explore/HeroFeature.tsx` | Hero selection, quality gate, render | Server Component ('use cache') |
-| `CollectorArchetypes` | `src/components/explore/CollectorArchetypes.tsx` | Hardcoded archetype chip rail | Server Component (no cache needed) |
-| `CuratedListsRail` | `src/components/explore/CuratedListsRail.tsx` | Published list rail (up to 12) | Server Component ('use cache') |
-| `CollectionPathsModule` | `src/components/explore/CollectionPathsModule.tsx` | 3 rotating published paths | Server Component ('use cache') |
-| `BrowseCatalogModule` | `src/components/explore/BrowseCatalogModule.tsx` | 4-facet entry points with counts | Server Component ('use cache') |
-| `AdminLayout` | `src/app/admin/layout.tsx` | Owner gate (layout level) | Server Component (uncached) |
-| `CmsListForm` | `src/components/admin/CmsListForm.tsx` | Create/edit list (title, intro, cover) | Client Component (form state) |
-| `CmsListItemsEditor` | `src/components/admin/CmsListItemsEditor.tsx` | Add/reorder/annotate watches in list | Client Component |
-| `AvatarUpload` | `src/components/profile/AvatarUpload.tsx` | File picker + resize + upload | Client Component |
+### Decision: Aggregated On-Read, Batched Per Target List
 
-**New DAL files:**
+Do NOT add denormalized `like_count` / `comment_count` columns to `watches` or `wear_events`. The existing `watches_catalog.ownersCount` / `wishlistCount` are refreshed by pg_cron — that model works for a daily batch but is wrong for real-time social counts (a like fires a notification in seconds; a stale count showing 0 for 24 hours is broken UX).
 
-| File | Functions |
-|---|---|
-| `src/data/cms.ts` | `getPublishedLists`, `getCuratedList`, `getHeroFeature`, `getPublishedPaths` |
-| `src/data/browse.ts` | `getBrandIndex`, `getEraIndex`, `getGenreIndex`, `getPriceBandIndex` |
+On-read aggregation with batching eliminates the drift problem and is simple at MVP scale (<500 watches/user, expected comment/like counts per watch in the low dozens).
 
-**New storage files:**
+```typescript
+// src/data/reactions.ts
 
-| File | Functions |
-|---|---|
-| `src/lib/storage/avatars.ts` | `buildAvatarPath`, `getAvatarPublicUrl` |
-| `src/lib/storage/exploreCovers.ts` | `buildCoverPath`, `getCoverPublicUrl` |
-| `src/lib/storage/imageUtils.ts` | Shared EXIF-strip + canvas-resize (extracted from existing storage files) |
+// Batch count query — one round trip for all watches on a page
+export async function getLikeCountsForTargets(
+  targets: Array<{ targetType: 'watch' | 'wear_event'; targetId: string }>
+): Promise<Map<string, number>> {
+  if (targets.length === 0) return new Map()
+  const rows = await db.execute(sql`
+    SELECT target_type, target_id::text, COUNT(*)::int AS like_count
+    FROM reactions
+    WHERE reaction_type = 'like'
+      AND (target_type::text, target_id::text) IN (
+        ${sql.join(
+          targets.map(t => sql`(${t.targetType}, ${t.targetId})`),
+          sql`, `
+        )}
+      )
+    GROUP BY target_type, target_id
+  `)
+  const map = new Map<string, number>()
+  for (const r of rows as Array<{ target_type: string; target_id: string; like_count: number }>) {
+    map.set(`${r.target_type}:${r.target_id}`, r.like_count)
+  }
+  return map
+}
 
----
+// Viewer's own liked state — which of the current targets has the viewer liked?
+export async function getViewerLikedTargets(
+  viewerId: string,
+  targets: Array<{ targetType: 'watch' | 'wear_event'; targetId: string }>
+): Promise<Set<string>> {
+  if (targets.length === 0 || !viewerId) return new Set()
+  const rows = await db
+    .select({ targetType: reactions.targetType, targetId: reactions.targetId })
+    .from(reactions)
+    .where(
+      and(
+        eq(reactions.actorId, viewerId),
+        eq(reactions.reactionType, 'like'),
+        // inArray on composite is not directly supported by Drizzle DSL;
+        // use raw SQL tuple IN — same pattern as getOverlapRecipients
+        sql`(target_type::text, target_id::text) IN (${sql.join(
+          targets.map(t => sql`(${t.targetType}, ${t.targetId})`),
+          sql`, `
+        )})`,
+      )
+    )
+  return new Set(rows.map(r => `${r.targetType}:${r.targetId}`))
+}
+```
 
-## Suggested Build Order
+**Comment counts** follow the same pattern:
+```typescript
+export async function getCommentCountsForTargets(
+  targets: Array<{ targetType: 'watch' | 'wear_event'; targetId: string }>
+): Promise<Map<string, number>> {
+  // same GROUP BY pattern as getLikeCountsForTargets, querying comments table
+}
+```
 
-Dependencies drive this order. Each phase builds on stable foundations from the previous one.
+**Usage in a collection-page Server Component:**
+```typescript
+const userWatches = await getWatchesByUser(ownerId)
+const targets = userWatches.map(w => ({ targetType: 'watch' as const, targetId: w.id }))
 
-### Phase 1: Polish (no new DB tables; standalone)
-
-- Filter drawer dismiss bug fix + `@base-ui/react/drawer` migration in `sheet.tsx`
-- Wishlist card wear-UI gate (`status === 'owned'` guard in `ProfileWatchCard.tsx`)
-- Watch card fixed-height metadata block
-- Avatar upload: create `avatars` public bucket + `src/lib/storage/avatars.ts` + `AvatarUpload` component + `ProfileSection.tsx` rewrite
-- Update `claude-sonnet-4-20250514` → `claude-sonnet-4-6` in `src/lib/extractors/llm.ts` (model deprecates June 15, 2026)
-
-Avatar upload belongs in Polish because it requires only the new `avatars` bucket and an update to `profiles.avatar_url` — no new tables.
-
-### Phase 2: Catalog Enrichment (prerequisite for Browse + Archetypes)
-
-- Extend `backfill-taste.ts`: rate-limit retry, 800ms inter-row delay, per-row failure logging
-- Add `--min-confidence-threshold` to `reenrich-taste.ts`
-- Add photo-existence pre-check to `reenrich-taste.ts`
-- Run backfill against production
-- Verify archetype coverage via `SELECT primary_archetype, count(*) GROUP BY ...` before proceeding to Phase 4
-
-This phase must complete and be verified in prod before Phase 4 (Browse + Archetypes) ships, because:
-- Browse indices show counts derived from enriched `era`, `style_tags`, `primary_archetype` columns
-- Collector Archetype deep-links produce empty results if `primary_archetype` is NULL on all catalog rows
-
-### Phase 3: CMS Data Model + Admin Routes (prerequisite for Curated Lists Rail and Hero)
-
-- DB migration: all 5 new tables + RLS policies + enum types
-- Create `explore-covers` public Storage bucket
-- `src/data/cms.ts` DAL (public reads with `WHERE status = 'published'`)
-- `src/app/actions/cms.ts` Server Actions (owner-gated, `assertOwner()` first)
-- `src/app/actions/paths.ts` Server Actions
-- `/admin/lists/*` and `/admin/paths/*` routes + CMS forms
-- Seed initial 10 collection paths via admin UI
-
-The admin routes and CMS data model must exist before any front-end module reads from them (Curated Lists Rail, Hero). Without content in `curated_lists`, those modules render null — which is correct graceful degradation, but they cannot be meaningfully tested.
-
-### Phase 4: Explore Shell + Browse + Archetypes
-
-- New `/explore` page shell (5-module grid layout; replaces existing)
-- `src/data/browse.ts` with `cacheTag('catalog:browse')` + `cacheLife({ revalidate: 3600 })`
-- Browse the Catalog module + 4 sub-routes (`/explore/brands`, `/explore/eras`, `/explore/genres`, `/explore/price-bands`)
-- Collector Archetypes chip rail (hardcoded config, no new DB queries)
-- Add `catalog:browse` `revalidateTag` call to `refresh-counts.ts`
-
-Catalog enrichment (Phase 2) must be complete in prod before this phase ships so archetype deep-links return non-empty results.
-
-### Phase 5: Curated Lists Rail + Hero + Where Collections Go
-
-- Curated Lists Rail component (reads `curated_lists` via `src/data/cms.ts`)
-- `/explore/lists` all-lists page + `/explore/lists/[slug]` detail page
-- Hero module with auto-selection logic, quality gate, and manual-pin support
-- `cms_settings` read/write (pin + quality threshold)
-- Where Collections Go module (`collection_paths` + `collection_path_nodes`)
-- `/explore/paths` all-paths page + `/explore/paths/[id]` detail page
-- Invalidation matrix for Hero: `setPinnedHero`, `clearPinnedHero`, `publishList`, `unpublishList` all call `revalidateTag('explore:hero')`
-
-Hero depends on: curated lists existing in the DB (Phase 3) AND at least one published list meeting quality thresholds (admin-authored content). Hero must hide gracefully (return `null`, not an empty container) when no eligible list exists.
+const [likeCounts, commentCounts, viewerLikedSet] = await Promise.all([
+  getLikeCountsForTargets(targets),
+  getCommentCountsForTargets(targets),
+  viewerId ? getViewerLikedTargets(viewerId, targets) : Promise.resolve(new Set<string>()),
+])
+// 3 queries total regardless of collection size
+```
 
 ---
 
-## Modified vs New — Explicit Inventory
+## 5. CACHING STRATEGY
 
-### Modified Files (extend; do not break existing contracts)
+### Cache Tags
 
-| File | What Changes |
-|---|---|
-| `src/app/explore/page.tsx` | Add 5-module layout; replace existing 3-rail composition |
-| `src/db/schema.ts` | Add 5 new table exports + 2 new enum exports |
-| `src/lib/types.ts` | Add `CuratedList`, `CuratedListItem`, `CollectionPath`, `HeroFeature` discriminated union types |
-| `scripts/backfill-taste.ts` | Rate-limit retry + inter-row delay + per-row failure logging |
-| `scripts/reenrich-taste.ts` | `--min-confidence-threshold` flag + photo-existence pre-check |
-| `scripts/refresh-counts.ts` | Call `revalidateTag('catalog:browse')` after count refresh |
-| `src/components/ui/sheet.tsx` | Migrate `@base-ui/react/dialog` -> `@base-ui/react/drawer`; public API unchanged |
-| `src/components/profile/ProfileSection.tsx` | Add `AvatarUpload` component; replace URL-string stub |
-| `src/components/watch/ProfileWatchCard.tsx` | Gate all wear UI on `status === 'owned'` |
-| `next.config.ts` | Add `avatars` + `explore-covers` bucket CDN domains to `remotePatterns` |
-| `proxy.ts` (PUBLIC_PATHS) | Add `/admin` prefix to non-public path list |
-| `src/lib/extractors/llm.ts` | `claude-sonnet-4-20250514` -> `claude-sonnet-4-6` (one-line change, deprecation June 15 2026) |
+```
+reactions:{targetType}:{targetId}   — like count for a specific watch/wear
+comments:{targetType}:{targetId}    — comment thread for a specific watch/wear
+viewer:{userId}:reactions           — viewer's own liked state (RYO)
+```
 
-### New Files
+**Collection page (ProfileWatchCard grid):** The profile page is already tagged `profile:{username}` with `cacheLife({revalidate: 300})`. Wire reaction/comment counts into that same cache envelope — adding `revalidateTag('profile:{username}', 'max')` to `toggleLikeAction` and `addCommentAction` is sufficient. This slightly over-invalidates (any like anywhere on the profile refreshes the whole grid) but is simple and correct at MVP scale.
 
-| File | What It Is |
-|---|---|
-| `src/data/cms.ts` | DAL for public reads of curated lists + hero + paths |
-| `src/data/browse.ts` | DAL for Browse index aggregation queries |
-| `src/app/actions/cms.ts` | Owner-gated Server Actions for all CMS mutations |
-| `src/app/actions/paths.ts` | Owner-gated Server Actions for path authoring |
-| `src/app/admin/layout.tsx` | Owner gate layout |
-| `src/app/admin/lists/**` | Admin CMS pages for list authoring |
-| `src/app/admin/paths/**` | Admin CMS pages for path authoring |
-| `src/app/explore/lists/**` | Public list index + list detail routes |
-| `src/app/explore/paths/**` | Public paths index + path detail routes |
-| `src/app/explore/brands/page.tsx` | Brand index |
-| `src/app/explore/eras/page.tsx` | Era index |
-| `src/app/explore/genres/page.tsx` | Genre/style index |
-| `src/app/explore/price-bands/page.tsx` | Price-band index |
-| `src/components/explore/HeroFeature.tsx` | Hero module |
-| `src/components/explore/CuratedListsRail.tsx` | Lists rail |
-| `src/components/explore/CollectorArchetypes.tsx` | Archetype chip rail |
-| `src/components/explore/CollectionPathsModule.tsx` | Paths module |
-| `src/components/explore/BrowseCatalogModule.tsx` | Browse module |
-| `src/components/admin/CmsListForm.tsx` | List authoring form |
-| `src/components/admin/CmsListItemsEditor.tsx` | Per-item commentary + reorder editor |
-| `src/lib/storage/avatars.ts` | Avatar upload helpers |
-| `src/lib/storage/exploreCovers.ts` | Cover image upload helpers |
-| `src/lib/storage/imageUtils.ts` | Shared EXIF-strip + canvas-resize (extracted from existing) |
-| `supabase/migrations/20260516000000_phase_v51_cms_tables.sql` | Authoritative DDL for all new tables + RLS policies |
+**Per-watch detail page `/watch/[id]`:** High-engagement surface; give counts their own tag so a like on this watch doesn't invalidate all other watches. Use `cacheTag(`reactions:watch:${watchId}`)` on the WatchSocialBar component.
+
+**Wear detail page `/wear/[wearEventId]`:** Same as per-watch. Tag with `reactions:wear_event:${wearEventId}`.
+
+**Comment thread caching: skip caching or scope by viewerId.** The mutual-follow gate makes the comment list viewer-dependent for wishlist watches. A shared cache without viewerId scoping would leak denied comments to viewers who gained mutual-follow status since the last cache fill. Either:
+- Option A: Render CommentThread as a plain uncached Server Component inside Suspense. Simple and safe.
+- Option B: Cache with `cacheTag(`comments:watch:${watchId}`, `viewer:${viewerId}`)`. Doubles the cache entries but is correct.
+
+**Recommendation: Option A.** Comment threads are short (flat, no threads), low-traffic, and not on a hot cache path. Avoid the viewer-scoped cache complexity until scale demands it.
+
+### Optimistic UI for Likes
+
+```typescript
+// src/components/social/LikeButton.tsx — Client Component
+'use client'
+import { useOptimistic, useTransition } from 'react'
+import { toggleLikeAction } from '@/app/actions/reactions'
+
+export function LikeButton({
+  initialCount,
+  initialLiked,
+  targetType,
+  targetId,
+}: {
+  initialCount: number
+  initialLiked: boolean
+  targetType: 'watch' | 'wear_event'
+  targetId: string
+}) {
+  const [optimistic, addOptimistic] = useOptimistic(
+    { count: initialCount, liked: initialLiked },
+    (state) => ({
+      count: state.liked ? state.count - 1 : state.count + 1,
+      liked: !state.liked,
+    }),
+  )
+  const [, startTransition] = useTransition()
+
+  function handleClick() {
+    startTransition(async () => {
+      addOptimistic(undefined)
+      await toggleLikeAction({ targetType, targetId })
+    })
+  }
+
+  return (
+    <button onClick={handleClick} aria-pressed={optimistic.liked}>
+      {optimistic.liked ? 'Unlike' : 'Like'} {optimistic.count}
+    </button>
+  )
+}
+```
+
+Mirror the existing `NotificationRow` pattern (useOptimistic + useTransition). On Server Action error, the optimistic state reverts automatically.
+
+**Server Action cache invalidation pattern:**
+```typescript
+// src/app/actions/reactions.ts
+export async function toggleLikeAction(data: unknown): Promise<ActionResult<{ liked: boolean }>> {
+  const user = await getCurrentUser()
+  const parsed = toggleLikeSchema.safeParse(data) // Zod .strict()
+  // ... validation
+
+  const result = await toggleReactionDAL(user.id, parsed.data.targetType, parsed.data.targetId)
+
+  // RYO: viewer's own liked state
+  updateTag(`viewer:${user.id}:reactions`)
+  // SWR: count visible to all viewers of this target
+  revalidateTag(`reactions:${parsed.data.targetType}:${parsed.data.targetId}`, 'max')
+  // Profile page cache (covers count badge on collection grid)
+  if (ownerUsername) revalidateTag(`profile:${ownerUsername}`, 'max')
+
+  // Notification: only on first like
+  if (result.liked && targetOwnerId !== user.id) {
+    await logNotification({
+      type: parsed.data.targetType === 'watch' ? 'watch_like' : 'wear_like',
+      recipientUserId: targetOwnerId,
+      actorUserId: user.id,
+      payload: { /* pre-resolved actor profile fields */ },
+    })
+    revalidateTag(`viewer:${targetOwnerId}`, 'max') // bell unread dot
+  }
+
+  return { success: true, data: result }
+}
+```
 
 ---
+
+## 6. RENDERING SURFACES AND BUILD ORDER
+
+### New Components
+
+| Component | Type | Location | Responsibility |
+|-----------|------|----------|----------------|
+| `LikeButton` | Client | `src/components/social/LikeButton.tsx` | Optimistic like toggle + count |
+| `CommentThread` | Server | `src/components/social/CommentThread.tsx` | Flat list of CommentRow items |
+| `CommentForm` | Client | `src/components/social/CommentForm.tsx` | Add new comment; useTransition |
+| `EditCommentForm` | Client | `src/components/social/EditCommentForm.tsx` | Inline edit for author |
+| `WatchSocialBar` | Server | `src/components/social/WatchSocialBar.tsx` | Batch-fetches counts + viewer state; renders LikeButton + comment count |
+| `WearSocialBar` | Server | `src/components/social/WearSocialBar.tsx` | Same for wear targets |
+
+### Modified Components/Pages
+
+| File | Change |
+|------|--------|
+| `src/components/watch/ProfileWatchCard.tsx` | Add `<WatchSocialBar>` below card footer |
+| `src/app/watch/[id]/page.tsx` | Add `<WatchSocialBar>` + `<CommentThread>` + `<CommentForm>` below detail |
+| `src/app/wear/[wearEventId]/page.tsx` | Add `<WearSocialBar>` + `<CommentThread>` + `<CommentForm>` below wear photo |
+| `src/components/layout/NotificationRow.tsx` | Render 4 new notification types (copy + icon) |
+| `src/app/settings/page.tsx` (Notifications section) | Add `notifyOnLike` + `notifyOnComment` toggles |
+
+### Dependency-Ordered Build Sequence
+
+**Phase 53 — Schema + RLS + Enum (no UI yet)**
+- `src/db/schema.ts`: add `reactions`, `comments`, `reactionTargetTypeEnum`, `commentTargetTypeEnum`
+- `src/db/schema.ts`: extend `notificationTypeEnum` with 4 new values
+- `src/db/schema.ts`: add `notifyOnLike`, `notifyOnComment` to `profileSettings`
+- Supabase migration: CREATE TABLE reactions + comments, CHECK constraints, indexes, 7 RLS policies
+- Supabase migration: `ALTER TYPE notification_type ADD VALUE IF NOT EXISTS` x4 (outside transaction)
+- Supabase migration: ADD COLUMN notify_on_like + notify_on_comment to profile_settings
+- Integration test stubs: verify reactions_select allows any authed, comments_select blocks non-mutual on wishlist watch
+
+**Phase 54 — DAL**
+- `src/data/reactions.ts` (new): `toggleReaction`, `getLikeCountsForTargets`, `getViewerLikedTargets`
+- `src/data/comments.ts` (new): `getCommentsForTarget`, `getCommentCountsForTargets`, `createComment`, `editComment`, `deleteComment`; `areMutualFollows` helper
+- `src/lib/notifications/types.ts`: add 4 new payload interfaces
+- `src/lib/notifications/logger.ts`: extend union + opt-out check branches
+- DAL integration tests: wishlist mutual-follow gate, open gate (owned), self-action guard
+
+**Phase 55 — Server Actions**
+- `src/app/actions/reactions.ts` (new): `toggleLikeAction` (Zod .strict, double-auth, revalidateTag, logNotification)
+- `src/app/actions/comments.ts` (new): `addCommentAction`, `editCommentAction`, `deleteCommentAction`
+- Extend profileSettings action for 2 new notify toggles
+- Notification dedup partial UNIQUE indexes for `watch_like` + `wear_like`
+
+**Phase 56 — Like UI**
+- `LikeButton` Client Component (optimistic)
+- `WatchSocialBar` + `WearSocialBar` Server Components (3 parallel queries each)
+- Wire `WatchSocialBar` into `ProfileWatchCard` (collection + wishlist tabs)
+- Wire `WatchSocialBar` into `/watch/[id]` page
+- Wire `WearSocialBar` into `/wear/[wearEventId]` page
+- Add cache tags to tagged components; verify revalidation e2e
+
+**Phase 57 — Comment Thread UI**
+- `CommentThread` Server Component (flat list; edit/delete affordances for author)
+- `CommentForm` Client Component (add new comment; Sonner toast on error)
+- `EditCommentForm` Client Component (inline body edit)
+- Wire into `/watch/[id]` + `/wear/[wearEventId]`
+- Verify wishlist gate: non-mutual viewer sees CommentThread rendered as empty/hidden, not an error
+
+**Phase 58 — Notification UI + Settings**
+- Extend `NotificationRow` for 4 new types (icon + copy per type; mirror existing row shape)
+- Add `notifyOnLike` + `notifyOnComment` toggles to Settings Notifications section
+- UAT: like fires bell dot on recipient, no self-notification, dedup holds on unlike+re-like
+
+---
+
+## System Overview
+
+```
+RENDERING SURFACES
+  ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
+  │ ProfileWatchCard│  │  /watch/[id]      │  │ /wear/[wearEventId]  │
+  │ (grid, owner +  │  │  detail page      │  │ detail page          │
+  │  non-owner)     │  │                  │  │                      │
+  └────────┬────────┘  └────────┬─────────┘  └──────────┬───────────┘
+           │                   │                        │
+  ┌────────▼───────────────────▼────────────────────────▼────────────┐
+  │    WatchSocialBar / WearSocialBar (Server Component)              │
+  │    getLikeCountsForTargets + getViewerLikedTargets (batch)        │
+  │    LikeButton (Client, useOptimistic) | comment count link        │
+  │    CommentThread (Server, uncached) | CommentForm (Client)        │
+  └───────────────────────────────┬───────────────────────────────────┘
+                                  │
+SERVER ACTIONS (Zod .strict + double-auth + revalidateTag)
+  ┌──────────────────┐  ┌─────────────────────────────────────────────┐
+  │ toggleLikeAction │  │ addCommentAction / editCommentAction /       │
+  │ updateTag(RYO)   │  │ deleteCommentAction                          │
+  │ revalidateTag    │  │ revalidateTag(`comments:*`)                  │
+  │ logNotification  │  │ logNotification (on INSERT only)             │
+  └────────┬─────────┘  └────────────────────────┬────────────────────┘
+           │                                     │
+DAL (server-only, service-role Drizzle client)
+  ┌──────────────────┐  ┌─────────────────────────────────────────────┐
+  │ reactions.ts     │  │ comments.ts                                  │
+  │ toggleReaction   │  │ getCommentsForTarget (wishlist gate here)    │
+  │ count batchers   │  │ createComment (gate re-derived pre-insert)   │
+  └────────┬─────────┘  └────────────────────────┬────────────────────┘
+           │                                     │
+POSTGRES / SUPABASE
+  ┌────────────────────────────────────────────────────────────────────┐
+  │ reactions table ─── RLS (open select, actor_id=auth.uid() write)   │
+  │ comments table  ─── RLS (open / mutual-follow gate for wishlist)   │
+  │ notification_type enum + 4 new ADD VALUE entries                   │
+  │ profile_settings + notifyOnLike + notifyOnComment                  │
+  │ Partial UNIQUE indexes: notifications_watch_like_dedup etc.        │
+  └────────────────────────────────────────────────────────────────────┘
+```
+
+## Component Responsibilities
+
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `reactions` table | Stores likes across watch + wear targets | `users` (actor FK), DAL |
+| `comments` table | Stores flat comment threads | `users` (author FK), `watches` (status for gate), DAL |
+| `src/data/reactions.ts` | Like toggle, count batch, viewer-liked batch | Drizzle db, `reactions` table |
+| `src/data/comments.ts` | Comment CRUD + wishlist access gate | Drizzle db, `comments`, `watches`, `follows` |
+| `src/lib/notifications/logger.ts` | Fire-and-forget notification write | `profileSettings` (opt-out), `notifications` |
+| `LikeButton` | Optimistic like UI | toggleLikeAction (Server Action) |
+| `CommentThread` | Render flat list with author affordances | Server Component; getCommentsForTarget |
+| `WatchSocialBar` | Batch counts + viewer state; renders children | getLikeCountsForTargets, getViewerLikedTargets, getCommentCountsForTargets |
+| Server Actions (reactions/comments) | Mutation + cache tag invalidation | DAL, logNotification, revalidateTag/updateTag |
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: `revalidatePath('/explore')` for nested cached modules
+### Anti-Pattern 1: Denormalized Like/Comment Counts on Watch Rows
 
-**What people do:** Call `revalidatePath('/explore')` in a CMS Server Action after publishing a list.
-**Why it's wrong:** Nested `'use cache'` Server Components (HeroFeature, CuratedListsRail) are not invalidated by path revalidation. The cache persists until TTL expiry — up to 7 days for the Hero.
-**Do this instead:** `revalidateTag('explore:hero')` and `revalidateTag('explore:lists')` explicitly in every mutation that affects those modules.
+**What people do:** Add `like_count` / `comment_count` columns to `watches`, increment/decrement in a trigger or Server Action.
 
-### Anti-Pattern 2: Route-level owner gate without Server Action assertion
+**Why it's wrong:** Counts drift on partial failures (insert succeeds, decrement fails); triggers add schema-layer complexity; at 500 watches/user the batch-aggregate approach is one query, not 500.
 
-**What people do:** Check `user.id !== OWNER_USER_ID` in `AdminLayout` and assume that is sufficient.
-**Why it's wrong:** Server Actions are directly-callable HTTP endpoints. Any authenticated user who knows the action's URL can POST to it, bypassing the layout.
-**Do this instead:** `assertOwner()` as the literal first statement in every CMS Server Action.
+**Do this instead:** Batch GROUP BY aggregate at read time via `getLikeCountsForTargets`, 3 queries total per page.
 
-### Anti-Pattern 3: Signed URLs for public avatar retrieval
+### Anti-Pattern 2: Caching Comment Threads Without Viewer Scoping
 
-**What people do:** Reuse `createSignedUrl` from the existing catalog-source-photos pattern for avatar retrieval.
-**Why it's wrong:** Signed URLs expire (60s default in the enricher pattern). Avatar URLs appear in navigation headers — an expiring URL breaks the header on every page.
-**Do this instead:** `getPublicUrl()` from the `avatars` public bucket. No expiry parameter in the returned URL.
+**What people do:** Cache the comment thread Server Component with a tag keyed only on `(targetType, targetId)`, shared across all viewers.
 
-### Anti-Pattern 4: Copying catalog `USING (true)` RLS to CMS tables
+**Why it's wrong:** The wishlist mutual-follow gate is per-viewer. A cached thread filled for viewer A (who has mutual follows with the owner) would serve to viewer B (who doesn't) if the same cache key is used.
 
-**What people do:** Apply `USING (true)` public-read RLS to `curated_lists` the way `watches_catalog` uses it.
-**Why it's wrong:** `watches_catalog` is intentionally public with no draft state. `curated_lists` has a draft/published lifecycle — `USING (true)` exposes every draft the admin is writing.
-**Do this instead:** `USING (status = 'published')` for public reads; a separate `OR author_id = auth.uid()` predicate for admin self-reads.
+**Do this instead:** Either render CommentThread uncached inside Suspense, or scope the cache key with viewerId.
 
-### Anti-Pattern 5: LLM enrichment writes to factual spec columns
+### Anti-Pattern 3: Sending Like Notification on Every Toggle
 
-**What people do:** Extend the enrichment LLM call to produce `case_size_mm`, `movement_type`, `dial_color` alongside taste attributes.
-**Why it's wrong:** LLM hallucination on factual specs corrupts search filter results silently. A user filtering for 38-40mm watches gets wrong results without any visible error.
-**Do this instead:** LLM writes taste columns only (existing scope: formality, sportiness, heritage_score, primary_archetype, era_signal, design_motifs, confidence, extracted_from_photo). Spec column backfill requires manual operator entry or a human-reviewed scrape step.
+**What people do:** Fire `logNotification` in the Server Action without checking the toggle direction.
 
----
+**Why it's wrong:** Unlike (retraction) generates a "you got a like" notification, which is confusing and noisy.
 
-## Integration Points Summary
+**Do this instead:** Check `result.liked === true` before calling logNotification. The dedup index handles the edge case of rapid unlike+re-like.
 
-| New Feature | Integrates With | How |
-|---|---|---|
-| Curated Lists Rail | `watches_catalog` | FK + JOIN for watch card data on list detail pages |
-| Curated Lists Rail | `explore-covers` bucket | `getPublicUrl` for cover images |
-| Hero | `curated_lists` | quality-gate SELECT + `cms_settings` pin read |
-| Hero | `explore:hero` cache tag | `revalidateTag` in publish, unpublish, setPinnedHero, clearPinnedHero |
-| Browse Indices | `watches_catalog`, `brands`, `watch_families` | GROUP BY aggregation; same public-read RLS |
-| Collector Archetypes | `/search` route | Deep-link with archetype filter in query string (no new DB queries) |
-| Where Collections Go | `watches_catalog` | FK via `collection_path_nodes.catalog_id` |
-| Admin CMS | `users` + Supabase Auth | `OWNER_USER_ID` assertion in every Server Action |
-| Avatar Upload | `avatars` public bucket | `getPublicUrl` (no signed URLs); `profiles.avatar_url` updated |
-| Catalog Enrichment | `scripts/backfill-taste.ts` | Extend existing script; first-write-wins idempotency preserved |
+### Anti-Pattern 4: ALTER TYPE ... ADD VALUE Inside a Transaction
+
+**What people do:** Write the enum ADD VALUE statements inside the default Supabase migration transaction block.
+
+**Why it's wrong:** Postgres does not allow `ALTER TYPE ... ADD VALUE` inside a transaction block. The migration will fail.
+
+**Do this instead:** Each ADD VALUE needs its own standalone statement outside a transaction, or use a separate migration file that supabase runs non-transactionally. Test on local before pushing to prod.
 
 ---
 
-## Sources
+## Integration Points
 
-- `src/db/schema.ts` — existing table definitions, FK shapes, enum patterns, ON DELETE behaviors (HIGH confidence — read directly)
-- `src/app/explore/page.tsx` — existing /explore Server Component shell, nested rail pattern (HIGH confidence — read directly)
-- `src/data/discovery.ts` — DAL two-layer privacy pattern, `cacheTag`/`cacheLife` usage, `::int` cast convention (HIGH confidence — read directly)
-- `src/lib/auth.ts` — `getCurrentUser()`, `UnauthorizedError`, `getCurrentUserFull()` patterns (HIGH confidence — read directly)
-- `scripts/backfill-taste.ts` — sequential enrichment pattern, idempotency, missing rate-limit handling (HIGH confidence — referenced in PITFALLS.md + STACK.md)
-- `.planning/PROJECT.md` — current architecture state post-v5.0, key decisions log, current milestone scope (HIGH confidence — read directly)
-- `.planning/seeds/SEED-008-v5.1-explore-redesign.md` — module specs, implementation order, open questions, success conditions (HIGH confidence — read directly)
-- `.planning/research/STACK.md` (sibling) — technology decisions: `@base-ui/react/drawer`, `react-markdown`, image storage strategy, enrichment approach (HIGH confidence — reconciled; all guidance consistent)
-- `.planning/research/PITFALLS.md` (sibling) — CP-01/02/05/06, MP-01/06/07 referenced throughout; all guidance consistent (HIGH confidence — reconciled)
-- CLAUDE.md memory: `project_drizzle_supabase_db_mismatch.md` — prod push via `supabase db push --linked` only (HIGH confidence)
-- CLAUDE.md memory: `project_supabase_secdef_grants.md` — REVOKE pattern for any SECDEF functions added (HIGH confidence)
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Supabase Postgres | Drizzle service-role client (bypasses RLS); RLS is first-layer | Same pattern as all existing tables |
+| Supabase Auth | `auth.uid()` used in RLS policy USING/WITH CHECK clauses | Same as `notifications`, `divestments`, `follows` |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `comments` DAL → `follows` table | Direct Drizzle query for mutual-follow check | Verify follows has authenticated SELECT policy |
+| `comments` DAL → `watches` table | Direct Drizzle query for status check | Service-role bypasses watches RLS; correct here |
+| Server Actions → `logNotification` | Awaited (per the followUser pattern) | Must complete before revalidateTag so bell cache is accurate |
+| `LikeButton` → toggleLikeAction | Server Action call inside startTransition | useOptimistic reverts on error automatically |
+| `profileSettings` → opt-out columns | Extended in schema, read in logger | Same read pattern as existing notifyOnFollow |
 
 ---
-*Architecture research for: v5.1 Explore Page Redesign (Horlo)*
-*Researched: 2026-05-16*
+
+*Architecture research for: Horlo v6.0 Social Interaction (likes + comments)*
+*Researched: 2026-05-22*

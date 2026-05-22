@@ -1,8 +1,8 @@
 # Stack Research
 
-**Domain:** v5.1 Explore Page Redesign — in-app CMS, catalog enrichment, polish pass, /explore
-**Researched:** 2026-05-16
-**Confidence:** HIGH — all version claims verified via Context7, official Anthropic docs, and npm
+**Domain:** v6.0 Social Interaction — likes + comments on individual watches and wear events
+**Researched:** 2026-05-22
+**Confidence:** HIGH — all claims verified against existing codebase, schema, and established patterns
 
 ---
 
@@ -12,146 +12,176 @@
 |------------|---------|--------|
 | Next.js App Router | 16.2.3 | Locked |
 | React | 19.2.4 | Locked |
-| TypeScript | ^5 | Locked |
+| TypeScript | ^5 strict | Locked |
 | Tailwind CSS 4 | ^4 | Locked |
-| Zustand | ^5.0.12 | Locked |
-| Supabase (Postgres + Auth + Storage + RLS) | @supabase/supabase-js ^2.103.0 | Locked |
-| Drizzle ORM | ^0.45.2 | Locked |
-| @anthropic-ai/sdk | ^0.88.0 | Locked — see enrichment section |
-| @base-ui/react | 1.3.0 | Locked — includes Drawer (see below) |
-| embla-carousel-react | 8.6.0 | Already installed |
+| Supabase (Postgres + Auth + RLS) | @supabase/supabase-js ^2.103.0 + @supabase/ssr ^0.10.2 | Locked |
+| Drizzle ORM | ^0.45.2 (postgres-js, prepare:false) | Locked |
+| Zod | ^4.3.6 | Locked — .strict() on every Server Action |
+| Next.js Cache Components (cacheTag / revalidateTag / updateTag) | 16.2.3 built-in | Locked |
 | lucide-react | ^1.8.0 | Locked |
+| sonner | ^2.0.7 | Locked — ThemedToaster already mounted |
 
 ---
 
-## v5.1 Stack Analysis by Feature Area
+## v6.0 Stack Analysis by Concern
 
-### (a) In-App CMS: Rich Text vs Plain Textarea + Markdown Renderer
+### (1) Persistence — likes + comments tables
 
-**Verdict: Plain `<textarea>` inputs + `react-markdown` renderer. No rich-text editor.**
+**Verdict: Existing Drizzle + Supabase Postgres + RLS stack is sufficient. No new persistence layer.**
 
-**Rationale:**
+Two new Drizzle table definitions added to `src/db/schema.ts`:
 
-The CMS authors two content types: list intro copy (a few sentences of editorial context) and per-item watch commentary (1-3 sentence callouts per watch). Neither requires embedded images, tables, footnotes, or inline media. The audience is a single owner on a personal app — the authoring surface is not a public editorial tool.
+- `watch_likes` — `(id uuid PK, watch_id uuid FK → watches ON DELETE CASCADE, user_id uuid FK → users ON DELETE CASCADE, created_at timestamp)` with a UNIQUE pair `(watch_id, user_id)` so every user can like a watch at most once. Partial dedup index handled in raw SQL migration following the `notifications` pattern (Drizzle 0.45.2 cannot express partial indexes in pg-core DSL).
 
-A rich-text editor (TipTap, Quill, Slate.js, Lexical) introduces 150–400 kB of bundle weight, a shadow DOM or ProseMirror/Y.js dependency, and serialization complexity (HTML vs JSON vs markdown storage). None of that complexity is justified here.
+- `wear_likes` — same shape but `wear_event_id` FK → `wear_events ON DELETE CASCADE`. A separate table is cleaner than a polymorphic `target_type` column — no NULL-column smell, no cross-target index confusion, RLS policies are independent per surface, and FK cascade behavior is precise per target.
 
-The right split is:
-- **Authoring:** plain `<textarea>` (already in `src/components/ui/textarea.tsx`). Store the value as a markdown string column on the DB row (text, no special type).
-- **Reading/display:** render with `react-markdown` on the list detail page and the hero. This is a pure renderer — no editor runtime, no interactive state. Bundle weight is ~11 kB gzip (no plugins). It handles `**bold**`, `_italic_`, `[links](url)`, paragraph breaks, and numbered/bulleted lists — everything the CMS copy needs.
+- `comments` — `(id uuid PK, watch_id uuid nullable FK, wear_event_id uuid nullable FK, author_id uuid FK → users ON DELETE CASCADE, body text NOT NULL, edited_at timestamp nullable, created_at timestamp, updated_at timestamp)`. A single table with two nullable FK columns is the right choice here: the comment body, author, timestamps, and edit mechanics are identical across both targets; separate `watch_comments` and `wear_comments` tables would duplicate every constraint and RLS policy. A CHECK constraint (`(watch_id IS NULL) != (wear_event_id IS NULL)` — exactly one target) lives in the raw SQL migration.
 
-`react-markdown` at latest (10.1.0 as of 2026-05-16) is React 19 compatible and has no peer dependency conflicts with the existing stack.
-
-**What NOT to add:** TipTap, Quill, Slate.js, Lexical, Contentlayer, Sanity, or any third-party CMS. The CMS decision was already resolved in PROJECT.md (2026-05-16): in-app admin route only.
-
-**Integration point:** The existing `<Textarea>` component in `src/components/ui/textarea.tsx` is used as-is. The markdown renderer is added alongside it on the display side.
-
-**New dependency: `react-markdown@^10.1.0`**
-
-```bash
-npm install react-markdown
-```
-
----
-
-### (b) Images: Hero, Curated-List Covers, Avatars
-
-**Verdict: Supabase Storage for upload/serving + Next.js `<Image>` for display. No image transformation library needed. Supabase image transforms are NOT available on the free plan.**
-
-**Rationale:**
-
-**Supabase Storage image transformation is a Pro Plan feature** (confirmed via official Supabase docs, 2026-05-16). The project runs on the free tier. Do not add the Supabase custom Next.js image loader — it would silently fail on the free plan.
-
-The existing `next.config.ts` already has `images: { unoptimized: true }` to avoid SSRF risk from arbitrary watch page URLs. This setting applies project-wide. For user-controlled Supabase storage images (avatars, cover photos), the approach is:
-- Upload pre-resized JPEGs from the client (the existing pattern in `src/lib/storage/catalogSourcePhotos.ts` and `src/lib/storage/wearPhotos.ts` already does canvas-reencoded JPEG ≤1080px with EXIF strip before upload).
-- Serve via signed URLs for private buckets, or via public bucket URLs for public cover/hero images. Use standard `<img>` tags or Next.js `<Image unoptimized>` for display.
-- Hero and curated-list cover images should live in a new **public** Supabase Storage bucket (no signed URL required — public read RLS). This avoids signed URL expiry on the `/explore` page which is globally cached.
-
-**Avatar upload** reuses the EXIF-strip + ≤1080px JPEG canvas pattern already in place from the WYWT photo flow (`heic2any`, canvas re-encode, client-direct upload). No new tooling needed. The existing `exifr` devDependency handles EXIF stripping during development.
-
-**What NOT to add:** Cloudinary, Imgix, Sharp, or any server-side image processing library. Sharp would require a native Node.js binary and complicates Vercel deploys. The client-side canvas resize approach already ships and works.
+RLS follows the existing two-layer pattern already in use for `notifications`, `follows`, and `wear_events`: USING (read-side) + WITH CHECK (write-side) on Postgres, plus explicit `WHERE userId = currentUserId` in every DAL function. The wishlist-comment mutual-follow gate is enforced at the DAL WHERE layer (a subquery or EXISTS against the `follows` table checking both directions), not as an RLS policy — mutual-follow logic is too dynamic for a clean USING expression.
 
 **No new dependencies.**
 
 ---
 
-### (c) Bottom-Sheet Drag/Swipe-to-Dismiss
+### (2) Schema additions — notification_type enum extension
 
-**Verdict: Migrate `FilterSheet.tsx` from `@base-ui/react/dialog` to `@base-ui/react/drawer`. No new library needed. Do NOT add vaul.**
+**Verdict: Add `'like'` and `'comment'` to the existing `notification_type` pgEnum. Follow the Phase 24 enum-rename procedure.**
 
-**Rationale:**
+The `notificationTypeEnum` currently has two values: `'follow'` and `'watch_overlap'`. The Phase 24 CONTEXT.md (and the `project_drizzle_supabase_db_mismatch.md` memory entry) documents the procedure for modifying an enum with dependent partial indexes: query `pg_depend` before writing the migration, use the rename+recreate pattern, and rebuild partial indexes that reference the enum type. The `profileSettings` table needs two new boolean columns: `notifyOnLike` and `notifyOnComment` (both `DEFAULT true`, following the existing `notifyOnFollow` / `notifyOnWatchOverlap` pattern).
 
-The existing `src/components/ui/sheet.tsx` wraps `@base-ui/react/dialog` (a Dialog primitive — `import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"`). The Dialog does not handle touch-swipe gestures. The fix from the bug report ("filter sheet felt stuck, could not be dismissed during a pending query") is a separate logical issue — but drag-to-dismiss requires switching the primitive.
-
-`@base-ui/react` version 1.3.0 is already installed and ships a `drawer` package at `@base-ui/react/drawer`. The Drawer component includes:
-- Native swipe-to-dismiss with `swipeDirection` prop (`'up' | 'down' | 'left' | 'right'`; default `'down'` for bottom sheets)
-- CSS data attributes for swipe-direction-aware exit animations (`data-swipe-direction`, `data-ending-style`)
-- A `Drawer.SwipeArea` sub-component for drag handle affordance
-- `data-base-ui-swipe-ignore` attribute to opt specific children out of swipe dismissal (important for filter chip scroll areas)
-
-The correct migration is: replace `@base-ui/react/dialog` with `@base-ui/react/drawer` inside `sheet.tsx`, add `swipeDirection="down"`, and add CSS exit animations keyed on `data-swipe-direction`. The component's public API (`Sheet`, `SheetContent`, `SheetTrigger`, etc.) stays identical — `FilterSheet.tsx` (now `WatchFacetSheet`) needs no changes beyond the import.
-
-**vaul is NOT needed.** vaul (Emil Kowalski's drawer) is a React-specific gesture library that predates base-ui's Drawer. Since `@base-ui/react` 1.3.0 is already installed and provides equivalent functionality natively, adding vaul would be redundant weight. vaul also has a different component API that would require a larger migration surface.
-
-**No new dependencies.** The change is a refactor of `src/components/ui/sheet.tsx` to use the already-installed `@base-ui/react/drawer`.
-
-**Integration note:** The "fix dismiss during pending query" bug is orthogonal to swipe-to-dismiss and should be handled separately — it is a state management issue in `FilterSheet.tsx`, not a primitive issue. Do not conflate the two fixes.
-
----
-
-### (d) Catalog Enrichment: Anthropic Vision + Model Verification
-
-**Verdict: Everything already in place. No new dependencies. Use sequential processing, not the Batch API. Model ID `claude-sonnet-4-6` is current.**
-
-**Model ID:**
-
-`claude-sonnet-4-6` is confirmed as the **current recommended API ID** for Claude Sonnet, verified against the official Anthropic models overview page (2026-05-16). It is a pinned snapshot (not an evergreen pointer). The existing `src/lib/taste/enricher.ts` already uses this exact model ID. No change needed.
-
-Note: `claude-sonnet-4-20250514` (the previous ID used in `src/lib/extractors/llm.ts`) is **deprecated and retires June 15, 2026**. That file should be updated to `claude-sonnet-4-6` as part of v5.1 — but this is a one-line change, not a new dependency.
-
-**Vision input mechanics:**
-
-The existing enricher already implements vision mode correctly:
-- Fetches photo bytes from Supabase Storage via a 60-second signed URL
-- Re-encodes as base64 JPEG
-- Passes `{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photoBase64 } }` in the `messages` content array alongside a text prompt
-- Degrades to text-only mode if photo fetch fails
-
-This pattern is confirmed correct against current Anthropic SDK docs. No changes needed.
-
-**Batch API vs Sequential:**
-
-The v5.1 enrichment task is ~100 rows. The Anthropic Batch API is appropriate for 1,000+ rows where 24-hour async processing is acceptable. The existing `scripts/backfill-taste.ts` runs sequentially with a configurable `--batch-size` flag (default 20 rows per invocation), which is the right approach for a one-time ~100-row operator task. The sequential script already handles idempotency (first-write-wins via `AND confidence IS NULL` predicate), resume, dry-run, and cost logging.
-
-The Batch API DOES support tool_use and vision (confirmed via official Anthropic batch processing docs) — it is technically usable here. But it is overkill: most batches of 100 finish in under an hour sequentially anyway, and the existing sequential script already has all the scaffolding. The Batch API would require additional polling logic to wait for results before writing to the DB.
-
-**Recommendation:** Reuse `scripts/backfill-taste.ts` directly or extend it with a `--catalog-v5-1` flag. Do not introduce the Batch API for this scale.
+The existing `logNotification` function in `src/lib/notifications/logger.ts` extends cleanly — add new union arms to `LogNotificationInput`, new opt-out checks in the guard block, and new raw-SQL dedup inserts for like dedup (one like per watch/wear per actor is already enforced by the UNIQUE index, so `ON CONFLICT DO NOTHING` is the correct conflict clause). The fire-and-forget caller contract (void call, internal try/catch, pre-resolved actor profile in payload) is unchanged.
 
 **No new dependencies.**
 
 ---
 
-### (e) Hero + Curated Lists Rail: Carousel
+### (3) Server Actions + Drizzle mutation path
 
-**embla-carousel-react 8.6.0 is already installed.** The rotating hero does not require a carousel library — it shows one item per page load (server-selected). The curated lists rail is a horizontally scrollable container; CSS `overflow-x: auto` with `-webkit-overflow-scrolling: touch` suffices on mobile. If a snap-scroll rail is needed, embla-carousel-react is already available.
+**Verdict: Existing Server Actions + Drizzle pattern is fully sufficient. No alternative mutation mechanism needed.**
+
+The like and comment write paths map cleanly onto the existing pattern:
+
+- `likeWatch(watchId)` — auth guard → Zod `.strict()` input → Drizzle `db.insert(watchLikes).values(...).onConflictDoNothing()` → `revalidateTag('watch-likes:${watchId}')` + fire-and-forget `logNotification` for the watch owner → return `{ success: true }`.
+- `unlikeWatch(watchId)` — auth guard → Drizzle `db.delete(watchLikes).where(and(eq(watchLikes.watchId, watchId), eq(watchLikes.userId, currentUser.id)))` → `revalidateTag(...)` → return `{ success: true }`.
+- `addComment(watchId | wearEventId, body)` — auth guard → Zod `.strict()` with `body: z.string().min(1).max(1000)` (define a max on the first pass; 1000 chars is a reasonable social comment ceiling) → mutual-follow check for wishlist-watch target (DAL helper, not inline SA logic) → `db.insert(comments).values(...)` → `revalidateTag('comments:${targetKey}')` + `logNotification` → return `{ success: true, comment: { id, body, createdAt } }`.
+- `editComment(commentId, body)` — auth guard → Drizzle update with `WHERE id = commentId AND author_id = currentUser.id` (ownership enforced in SQL, not just application layer) → sets `edited_at = now()` → `revalidateTag(...)`.
+- `deleteComment(commentId)` — same ownership-in-SQL pattern.
+
+All existing conventions apply: Zod `.strict()` prevents mass assignment, two-layer privacy (RLS + DAL WHERE), `revalidateTag` or `updateTag` for cache invalidation.
 
 **No new dependencies.**
 
 ---
 
-### (f) Admin CMS Route: Auth Gating
+### (4) Cache invalidation — likes and comments with Cache Components
 
-The admin route (`/admin/lists`, `/admin/lists/[id]`) must be owner-gated. The existing auth system (Supabase Auth + `src/lib/auth.ts` proxy enforcement) handles this. Add a server-side check comparing the session user to a hardcoded owner email constant (the single-user pattern already used in the codebase). No new auth library or middleware needed.
+**Verdict: Existing `cacheTag` / `revalidateTag` / `updateTag` pattern is sufficient. Standard tags, no new infrastructure.**
+
+Cache tags follow the established naming convention:
+
+- `'watch-likes:${watchId}'` — cached like count + viewer-has-liked state for a watch
+- `'wear-likes:${wearEventId}'` — same for wear events
+- `'watch-comments:${watchId}'` — cached comment list for a watch
+- `'wear-comments:${wearEventId}'` — cached comment list for a wear event
+- `'notifications'` + `'viewer:${recipientId}'` — already used; like/comment notification writes call `revalidateTag('viewer:${recipientId}')` on the recipient's notification cache (same as Phase 13 pattern)
+
+Like toggles use `updateTag` (read-your-own-writes, same as `markNotificationRead`) rather than `revalidateTag` — the toggling user sees their own state immediately. Comment adds use `revalidateTag` to fan out to all viewers of that watch/wear.
+
+The Cache Components (Server Components marked `'use cache'`) for like counts and comment lists are straightforward: `cacheTag(['watch-likes:${watchId}', 'viewer:${viewerId}'])` when the component shows viewer-specific state (has-liked), `cacheTag('watch-likes:${watchId}')` for the count-only variant visible to all.
+
+**No new dependencies.**
 
 ---
 
-## Summary: New Dependencies
+### (5) Realtime — should Supabase Realtime be used for live like/comment updates?
 
-| Package | Version | Why Needed | Justified? |
-|---------|---------|------------|------------|
-| `react-markdown` | `^10.1.0` | Render markdown intro copy + per-item commentary on list detail + hero | YES — lightest viable renderer; no rich-text editor needed |
+**Verdict: No. Supabase Realtime is overkill for v6.0. Optimistic UI + revalidateTag is the correct architecture.**
 
-**All other v5.1 features are covered by the existing stack.** The base-ui/drawer migration, avatar upload, hero images, and catalog enrichment are refactors and configuration changes, not new dependencies.
+The decision against Realtime rests on four grounds:
+
+**Usage pattern is not live/collaborative.** Horlo's social layer is scoped and tasteful — not a feed-driven attention machine (explicit guardrail from SEED-012 and PROJECT.md). Users are not co-editing a document or watching a live stream of likes accumulate. The context is: a collector visits a watch detail page, leaves a comment, and expects it to appear immediately — for themselves. Other viewers see updates when they (re)visit or refresh. This is the same UX contract as GitHub issues or Letterboxd reviews, not Discord or Twitter.
+
+**Optimistic UI already covers the primary UX need.** The viewer who likes or comments sees the result immediately via optimistic state (`useOptimistic` + `startTransition`). The server revalidation (via `revalidateTag`) ensures other visitors see accurate counts on their next load. The delta between "I just liked this" and "when the other person sees my like" is not a UX problem at this product stage.
+
+**Realtime adds infrastructure surface that the existing stack deliberately avoids.** Supabase Realtime requires: a WebSocket connection per client tab (maintained via `@supabase/supabase-js` `createClient().channel()`), RLS must be configured for Realtime (separate from table RLS — Realtime uses the `supabase_realtime` role), and you must explicitly enable Realtime publication per table in the Supabase dashboard (`supabase_realtime` publication). None of this infrastructure exists in the codebase today. The Cache Components + Server Action architecture (which aggressively avoids client-side data fetching) is architecturally incompatible with Realtime's WebSocket subscription model — Realtime events arrive in Client Components, but the data lives in cached Server Components. Threading Realtime updates into the Server Component cache invalidation chain would require a dedicated Client Component subscriber that calls `router.refresh()` or fires a revalidation on Realtime events — essentially building a polling mechanism on top of a push mechanism.
+
+**@supabase/supabase-js already includes the Realtime client**, so there is no npm install barrier. But the infrastructure setup cost (Realtime RLS, publication config, client connection lifecycle, reconnection handling, tab/window deduplication) is non-trivial. That cost is only justified when the UX requires live updates — which v6.0 does not, given the explicit "not Instagram" guardrail.
+
+**The right upgrade path:** If a future version requires live comment feeds (v7.0+), Supabase Realtime with `postgres_changes` events on the `comments` table is the natural choice. The table schema and RLS are already in place by then. The upgrade is additive — no existing code is displaced.
+
+**Decision: Do not add Supabase Realtime for v6.0.**
+
+---
+
+### (6) Optimistic mutations — likes and comment submission
+
+**Verdict: Existing React 19 `useOptimistic` + `useTransition` pattern is sufficient. No library needed.**
+
+The codebase already has three clean examples of this pattern:
+
+- `NotificationRow.tsx` — `useOptimistic<Date | null, Date | null>` for per-row read state, with `startTransition(async () => { setOptimisticReadAt(new Date()); await markNotificationRead(...) })`. Snap-back on failure is automatic (React restores server truth when the transition rejects).
+- `PrivacyToggleRow.tsx` — `useOptimistic(initialValue)` for boolean toggle with rollback-on-failure log.
+- `FollowButton.tsx` — `useState` + `useTransition` with explicit rollback (`setIsFollowing(!next)` on error). Deliberately not `useOptimistic` here because compound state (isFollowing + mobileRevealed) required explicit control.
+
+For a LikeButton, `useOptimistic` is the correct choice (same shape as `PrivacyToggleRow` — single boolean + count delta). The optimistic state holds `{ isLiked: boolean, count: number }` and the reducer flips the boolean and increments/decrements the count. Snap-back on failure is free.
+
+For comment submission, `useOptimistic` holds a pending comment (shown with a "posting..." indicator) appended to the list. On success, `revalidateTag` brings the server-authoritative list. On failure, the pending comment is removed automatically. This is identical to how GitHub handles comment submission.
+
+**No new library needed.** `useOptimistic` is built into React 19. The pattern is established in the codebase.
+
+---
+
+### (7) Relative time formatting — comment/like timestamps
+
+**Verdict: `timeAgo()` from `src/lib/timeAgo.ts` already exists and covers the required format.**
+
+`timeAgo()` (shipped in Phase 10) produces the exact social-feed format needed for comment timestamps: `now`, `3m`, `2h`, `4d`, `2w`, `Apr 21`. It accepts an optional `now` parameter for deterministic testing. It is already used in `NotificationRow.tsx` and the home feed activity components.
+
+`relativeTime.ts` (shipped in Phase 47) uses `Intl.RelativeTimeFormat` for the curated-list editorial voice ("Today", "3 days ago"). The comments surface uses the terse feed format (`timeAgo`), not the editorial voice. Do not use `relativeTime.ts` for social comment timestamps — keep the two surfaces distinct per the D-01 comment in that file.
+
+**No new library needed** (no `date-fns`, no `dayjs`, no `timeago.js`). `timeAgo(comment.createdAt)` is the correct call.
+
+---
+
+### (8) Comment input / textarea handling
+
+**Verdict: Plain `<textarea>` (existing `src/components/ui/textarea.tsx`) is sufficient. No rich-text editor, no markdown input, no mention system.**
+
+Comment body is plain text. v6.0 scope explicitly excludes: threading, @mentions, emoji reactions, markdown rendering, image embeds. The existing `<Textarea>` primitive (already used in `WatchForm`, `ProfileEditForm`, `WywtPostDialog`) is the right component. Wire it with a controlled value, `onKeyDown` for Ctrl+Enter / Cmd+Enter submit, and `maxLength={1000}` matching the Zod schema on the Server Action.
+
+Character count display (e.g., "142/1000") is a nice-to-have, implementable with a `value.length` derived value — no library.
+
+**No new dependencies.**
+
+---
+
+### (9) @mentions or user tagging
+
+**Verdict: Out of scope for v6.0. Do not add.**
+
+No mention parsing, no `@` autocomplete, no user lookup in comment input. The scope guardrail ("scoped and tasteful, not Instagram for watches") explicitly keeps the interaction surface minimal. A mention system requires a separate typeahead component, server-side user search on `@` keypress, mention storage (usually stored as rich objects alongside plain text), and notification routing for mentioned users. That is a v8.0+ concern.
+
+**What NOT to add:** `tribute.js`, `quill-mention`, any mention/typeahead library.
+
+---
+
+## Summary: New Dependencies for v6.0
+
+**Zero new runtime dependencies.**
+
+All v6.0 social interaction features are implemented entirely with the existing stack:
+
+| Concern | How Handled | New Dep? |
+|---------|-------------|----------|
+| Persistence (likes + comments tables) | Drizzle table definitions + Supabase migrations | None |
+| Mutation (like/unlike/addComment/editComment/deleteComment) | Server Actions + Drizzle + Zod .strict() | None |
+| Cache invalidation | cacheTag / revalidateTag / updateTag (Next.js 16 built-in) | None |
+| Optimistic UI (like toggle, pending comment) | React 19 useOptimistic + useTransition | None |
+| Realtime live updates | Not needed — optimistic UI + revalidateTag sufficient | None |
+| Relative timestamps | src/lib/timeAgo.ts (already exists) | None |
+| Comment textarea | src/components/ui/textarea.tsx (already exists) | None |
+| Notification extension | logNotification + notificationTypeEnum extension | None |
+| Two-layer privacy (RLS + DAL WHERE) | Existing pattern, applied to new tables | None |
 
 ---
 
@@ -159,43 +189,56 @@ The admin route (`/admin/lists`, `/admin/lists/[id]`) must be owner-gated. The e
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| TipTap / Quill / Slate / Lexical | Rich-text editors are overkill for single-owner editorial copy; 150–400 kB bundle | Plain `<Textarea>` + `react-markdown` |
-| vaul | `@base-ui/react/drawer` (already installed, v1.3.0) provides equivalent swipe-to-dismiss natively | `@base-ui/react/drawer` |
-| Sanity / Contentlayer / any third-party CMS | Rejected in PROJECT.md — adds auth surface, webhook complexity, and external billing | In-app admin route (Next.js) |
-| Supabase image transform loader | Requires Pro Plan; project is on free tier | Client-side canvas resize before upload (already in place) |
-| Sharp / Imgix / Cloudinary | Native binaries, server-side complexity, not needed at this scale | Client-side canvas resize (already in place) |
-| Anthropic Batch API | Appropriate for 1,000+ rows; 100 rows is sequential territory | Existing `scripts/backfill-taste.ts` sequential script |
+| Supabase Realtime / WebSocket subscriptions | Overkill for a non-live, non-feed interaction model; "not Instagram" is an explicit product guardrail; Cache Components architecture is incompatible with client-side Realtime subscriptions without significant bridging work | Optimistic UI (`useOptimistic`) + `revalidateTag` on Server Action completion |
+| date-fns / dayjs / timeago.js | A relative-time formatter already exists at `src/lib/timeAgo.ts` with the exact social-feed format (terse: `3m`, `2h`, `4d`) and deterministic test support | `timeAgo()` from `src/lib/timeAgo.ts` |
+| TipTap / Quill / Lexical (rich-text editor) | Comments are plain text; v6.0 scope has no markdown rendering, @mentions, or media embeds in comments | Plain `<Textarea>` from `src/components/ui/textarea.tsx` |
+| tribute.js / quill-mention / typeahead for @mentions | @mentions are out of scope for v6.0 | Defer to v8.0+ |
+| Polymorphic `reactions` / `target_type` table | NULL-column smell, cross-target index confusion, RLS policies harder to isolate; separate `watch_likes` + `wear_likes` is cleaner | Separate tables per target with independent RLS |
+| SWR / React Query / TanStack Query | Server Actions + Cache Components + revalidateTag handle the mutation → invalidation → refetch cycle; adding a client-side data fetching layer would create two sources of truth | Server Actions + Cache Components |
 
 ---
 
-## Version Compatibility Notes
+## Schema Additions Summary
 
-| Change | Impact |
-|--------|--------|
-| `@base-ui/react/drawer` replaces `@base-ui/react/dialog` in `sheet.tsx` | Internal to `sheet.tsx`; external API (`Sheet`, `SheetContent`, etc.) unchanged. `WatchFacetSheet.tsx` has no import changes. |
-| `react-markdown@^10.1.0` | React 19 compatible; no peer conflicts. Server Component safe (pure renderer, no client hooks). |
-| `claude-sonnet-4-6` model ID | Already in `enricher.ts`. Update `src/lib/extractors/llm.ts` to replace deprecated `claude-sonnet-4-20250514` before June 15, 2026. |
-
----
-
-## Installation
-
-```bash
-# Only one new runtime dependency for v5.1
-npm install react-markdown
 ```
+watch_likes     (id, watch_id → watches, user_id → users, created_at)
+                UNIQUE (watch_id, user_id) — one like per user per watch
+
+wear_likes      (id, wear_event_id → wear_events, user_id → users, created_at)
+                UNIQUE (wear_event_id, user_id) — one like per user per wear
+
+comments        (id, watch_id nullable, wear_event_id nullable, author_id → users,
+                 body text NOT NULL, edited_at nullable, created_at, updated_at)
+                CHECK: exactly one of watch_id / wear_event_id is non-null
+                INDEX: (watch_id, created_at) for comment list reads
+                INDEX: (wear_event_id, created_at) for wear comment list reads
+
+notification_type enum: add 'like', 'comment' values (Phase 24 rename+recreate procedure)
+profile_settings: add notifyOnLike boolean DEFAULT true, notifyOnComment boolean DEFAULT true
+```
+
+---
+
+## Integration Points for Roadmap
+
+- **logNotification extension** — `src/lib/notifications/logger.ts` adds `'like'` and `'comment'` union arms; the fire-and-forget contract and self-guard are unchanged.
+- **Two-layer privacy on wishlist comments** — the mutual-follow check (`WHERE EXISTS (SELECT 1 FROM follows WHERE follower_id = $viewerId AND following_id = $watchOwnerId) AND EXISTS (... reverse)`) runs in the DAL `WHERE` clause, not RLS. RLS handles the baseline (authenticated read); DAL handles the business rule. This matches how `getWearEventsForViewer` already handles the followers visibility tier.
+- **Cache tag naming** — `'watch-likes:${watchId}'`, `'wear-likes:${wearEventId}'`, `'watch-comments:${watchId}'`, `'wear-comments:${wearEventId}'`. Like toggler uses `updateTag` (RYO); comment add uses `revalidateTag` (fan-out).
+- **LikeButton component** — Client Component, `useOptimistic<{isLiked: boolean, count: number}, boolean>`, `useTransition`, Server Action call inside transition. Same architecture as `FollowButton` but with `useOptimistic` instead of `useState` (compound state is simpler here — count is derived from the liked boolean + initial count).
+- **CommentForm component** — Client Component, controlled `<Textarea>`, Ctrl+Enter / Cmd+Enter submit, `useOptimistic` for pending comment list append, `useTransition` for the Server Action call.
+- **Comment edit/delete** — author-only affordances; ownership enforced in SQL (`WHERE id = $commentId AND author_id = $currentUserId`) not just application logic. `edited_at` timestamp shown alongside comment timestamp if set.
 
 ---
 
 ## Sources
 
-- `@base-ui/react` Drawer docs — Context7 `/mui/base-ui`, verified swipe-to-dismiss, `swipeDirection` prop, `data-base-ui-swipe-ignore` attribute (HIGH confidence)
-- Anthropic models overview — https://platform.claude.com/docs/en/about-claude/models/overview — confirmed `claude-sonnet-4-6` as current Sonnet ID; `claude-sonnet-4-20250514` deprecated June 15, 2026 (HIGH confidence)
-- Anthropic batch processing — https://platform.claude.com/docs/en/build-with-claude/batch-processing — confirmed tool_use + vision supported in Batch API; 100,000 request limit; 50% cost reduction (HIGH confidence)
-- Supabase Storage image transformations — https://supabase.com/docs/guides/storage/serving/image-transformations — confirmed Pro Plan required; free tier excluded (HIGH confidence)
-- `react-markdown` — Context7 `/remarkjs/react-markdown`; npm latest 10.1.0 (HIGH confidence)
-- Existing codebase — `src/components/ui/sheet.tsx`, `src/lib/taste/enricher.ts`, `scripts/backfill-taste.ts`, `next.config.ts` — read directly (HIGH confidence)
+- Existing codebase — `src/lib/notifications/logger.ts`, `src/db/schema.ts`, `src/components/notifications/NotificationRow.tsx`, `src/components/profile/FollowButton.tsx`, `src/components/settings/PrivacyToggleRow.tsx`, `src/lib/timeAgo.ts`, `src/lib/relativeTime.ts` — read directly (HIGH confidence)
+- `package.json` — confirmed `@supabase/supabase-js ^2.103.0` (includes Realtime client), `drizzle-orm ^0.45.2`, `zod ^4.3.6` (HIGH confidence)
+- `.planning/PROJECT.md` — confirmed v6.0 scope, "not Instagram" guardrail, Cache Components architecture, two-layer privacy pattern (HIGH confidence)
+- `.planning/seeds/SEED-012-v6.0-social-interaction.md` — confirmed locked decisions: likes open, wishlist comments mutual-follow-only, no threads, no moderation (HIGH confidence)
+- `project_drizzle_supabase_db_mismatch.md` memory — confirmed prod-push procedure and enum-modification pattern from Phase 24 (HIGH confidence)
+- React 19 `useOptimistic` docs — built into React 19.2.4 (already installed); no additional package required (HIGH confidence)
 
 ---
-*Stack research for: Horlo v5.1 Explore Page Redesign*
-*Researched: 2026-05-16*
+*Stack research for: Horlo v6.0 Social Interaction (likes + comments)*
+*Researched: 2026-05-22*
