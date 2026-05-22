@@ -157,7 +157,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 
 ### 🔄 v6.0 Social Interaction (Phases 53-58)
 
-- [ ] **Phase 53: Schema + RLS + Enum Extension** — interaction tables, two-layer security foundation
+- [x] **Phase 53: Schema + RLS + Enum Extension** — interaction tables, two-layer security foundation (completed 2026-05-22)
 - [ ] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement
 - [ ] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out
 - [ ] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages
@@ -195,7 +195,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 **Plans**: 3 plans
   - [x] 53-01-PLAN.md — Author schema.ts + DDL migration (tables/RLS/REVOKE/CHECK/assertions) + non-transactional enum migration
   - [x] 53-02-PLAN.md — [BLOCKING] Apply both migrations to live local DB (DO $$ assertions fire) + cascade/duplicate-like smokes
-  - [ ] 53-03-PLAN.md — Push both migrations to prod via `supabase db push --linked` (checkpoint: human-action) + prod enum-count verify
+  - [x] 53-03-PLAN.md — Push both migrations to prod via `supabase db push --linked` (checkpoint: human-action) + prod enum-count verify
 
 ### Phase 54: DAL — Reactions, Comments + Gate Logic
 **Goal**: Server-side functions can read and write likes and comments with the wishlist mutual-follow gate enforced as a second privacy layer — independently of RLS — so a non-mutual-follower calling the DAL directly is rejected for wishlist watches.
@@ -263,7 +263,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 53. Schema + RLS + Enum Extension | 2/3 | In Progress|  |
+| 53. Schema + RLS + Enum Extension | 3/3 | Complete   | 2026-05-22 |
 | 54. DAL — Reactions, Comments + Gate Logic | 0/TBD | Not started | - |
 | 55. Server Actions + Notification Dedup | 0/TBD | Not started | - |
 | 56. Like UI | 0/TBD | Not started | - |
