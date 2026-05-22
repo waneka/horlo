@@ -8,11 +8,13 @@ scope: large
 related_phases: [v4.0 Phase 17 (watches_catalog as catalog identity), v4.0 Phase 19.1 (taste enrichment as parallel "fire-and-forget on catalog write" pattern)]
 ---
 
-# SEED-005: v6.0 Market Value — Watch Charts integration + total-value insights
+# SEED-005: Market Value — Watch Charts integration + total-value insights
+
+> **Re-slotted 2026-05-22 (operator decision):** This is NOT v6.0. The v6.0 slot is **Social Interaction (SEED-012)**. Market Value is bumped to a **future unnamed milestone** (sits after v8.0 per the 2026-05-19 roadmap reshape) and still requires the **SEED-007 pricing-API spike** first.
 
 ## The Idea
 
-v6.0 brings real market pricing into the product as a first-class data dimension. Three surfaces:
+This milestone brings real market pricing into the product as a first-class data dimension. Three surfaces:
 
 1. **Total collection value** on Collection page header — sum of market price across owned watches, with a paid-vs-market toggle
 2. **Paid-vs-market chart** in `/insights` — visualize the spread between what the user paid and current market value, including individual watches drifting up/down

@@ -1,6 +1,7 @@
 ---
 id: SEED-012
-status: dormant
+status: active
+activated: 2026-05-22 — promoted to the v6.0 Social Interaction milestone via /gsd-new-milestone
 planted: 2026-05-19
 planted_during: 2026-05-19 bug/feature triage — post-v5.1 notes review
 trigger_when: starting milestone v6.0, after v5.2 closes.
