@@ -84,7 +84,7 @@ Items acknowledged and deferred at v5.1 milestone close (2026-05-19):
 | audit (parser) | 3 resolved HUMAN-UAT files (43/45/46); 45 counts 6 numbered tests as "open" | non-blocking — files are `resolved` |
 | audit (backlog) | 9 seeds (SEED-001..010) — future-milestone backlog | expected to persist |
 | audit (misid) | `.planning/debug/knowledge-base.md` flagged as a debug session | non-blocking — reference doc, not a session |
-| carryover | DEBT-12 — prod `drizzle.__drizzle_migrations` journal repair | opportunistic — fold into next prod-deploy phase needing `drizzle-kit migrate` |
+| carryover | DEBT-12 — prod `drizzle.__drizzle_migrations` journal repair | ✅ resolved 2026-05-21 — ran `scripts/repair-drizzle-journal.ts --apply` against prod (11 rows inserted, table now 12, `drizzle-kit migrate` no-op) |
 | carryover | Phase 39c UAT Issue 2 — stale `removeWatch` rail/projection state | small fix phase or debug session when ready |
 | carryover | 31 v3.0 + Phase 35/41 human-verification UAT items | operator-approved deferral |
 | carryover | Smaller: `LayoutProps` TS error, `useWatchSearchVerdictCache` signOut leak, Phase 999.1 directory archival, WatchForm unused imports, SMTP-06 staging sender split, WristOverlaySvg geometry redesign | tracked in PROJECT.md `## Requirements → Active` |
