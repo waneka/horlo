@@ -22,20 +22,27 @@ ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'wear_like';
 ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'watch_comment';
 ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'wear_comment';
 
--- Post-enum-extension assertion (phase24 lines 94-130 pattern, adapted for ADD VALUE)
+-- Post-enum-extension assertion (WR-03 fix: presence-based check, not exact-count)
 -- This DO $$ block does NOT open an explicit transaction boundary — safe in this file.
--- Verifies the enum now has exactly 6 values: follow, watch_overlap, watch_like,
--- wear_like, watch_comment, wear_comment.
+-- Verifies the 4 Phase 53 values are now present in notification_type.
+-- WR-03 fix: replaced `enum_count <> 6` exact-count with a presence-of-4-values check
+-- so supabase db reset replay survives a future 7th or 8th enum value without failing here.
 DO $$
 DECLARE
-  enum_count int;
+  missing_count int;
 BEGIN
-  SELECT count(*) INTO enum_count
-    FROM pg_enum
-    JOIN pg_type ON pg_enum.enumtypid = pg_type.oid
-   WHERE pg_type.typname = 'notification_type';
+  SELECT count(*) INTO missing_count
+    FROM (VALUES
+      ('watch_like'::text), ('wear_like'::text),
+      ('watch_comment'::text), ('wear_comment'::text)
+    ) AS expected(val)
+    WHERE expected.val NOT IN (
+      SELECT pe.enumlabel FROM pg_enum pe
+      JOIN pg_type pt ON pe.enumtypid = pt.oid
+      WHERE pt.typname = 'notification_type'
+    );
 
-  IF enum_count <> 6 THEN
-    RAISE EXCEPTION 'Phase 53 enum migration failed -- notification_type has % values, expected 6', enum_count;
+  IF missing_count > 0 THEN
+    RAISE EXCEPTION 'Phase 53 enum migration failed -- % of 4 expected values missing from notification_type', missing_count;
   END IF;
 END $$;
