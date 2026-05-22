@@ -267,7 +267,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
-| 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete   | 2026-05-22 |
+| 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 0/TBD | Not started | - |
 | 56. Like UI | 0/TBD | Not started | - |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
