@@ -20,12 +20,12 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 - [ ] **CMNT-01**: A user can post a comment on an individual watch (subject to the wishlist gate, GATE-01).
 - [ ] **CMNT-02**: A user can post a comment on a wear post.
-- [ ] **CMNT-03**: Comments render as a flat, **newest-first** list showing the author avatar, linked username, body, and relative timestamp. (Operator decision 2026-05-22 — overrides the research SUMMARY's oldest-first suggestion; compose box sits above the list.)
+- [ ] **CMNT-03**: Comments render as a flat, **oldest-first** (chronological) list showing the author avatar, linked username, body, and relative timestamp; the compose box sits **below** the list (conversation convention).
 - [ ] **CMNT-04**: A comment is limited to 500 characters, enforced at the input, the Server Action (Zod `.strict()`), and the database (CHECK); empty/whitespace-only comments are rejected.
 - [ ] **CMNT-05**: The comment box shows a live character counter as the user nears the 500-char limit.
 - [ ] **CMNT-06**: A comment author can edit their own comment in place; an edited comment shows an "[edited]" indicator.
 - [ ] **CMNT-07**: A comment author can delete their own comment via an inline confirm; non-authors cannot edit or delete.
-- [ ] **CMNT-08**: A new comment appears optimistically at the top of the list (pending state) and reconciles on success / rolls back on failure.
+- [ ] **CMNT-08**: A new comment appears optimistically at the bottom of the list (pending state) and reconciles on success / rolls back on failure.
 - [ ] **CMNT-09**: The comment count shows on watch detail and wear detail.
 
 ### Wishlist Comment Gate (GATE)
@@ -96,46 +96,54 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIKE-01 | — | Pending |
-| LIKE-02 | — | Pending |
-| LIKE-03 | — | Pending |
-| LIKE-04 | — | Pending |
-| LIKE-05 | — | Pending |
-| CMNT-01 | — | Pending |
-| CMNT-02 | — | Pending |
-| CMNT-03 | — | Pending |
-| CMNT-04 | — | Pending |
-| CMNT-05 | — | Pending |
-| CMNT-06 | — | Pending |
-| CMNT-07 | — | Pending |
-| CMNT-08 | — | Pending |
-| CMNT-09 | — | Pending |
-| GATE-01 | — | Pending |
-| GATE-02 | — | Pending |
-| GATE-03 | — | Pending |
-| GATE-04 | — | Pending |
-| GATE-05 | — | Pending |
-| NOTIF-11 | — | Pending |
-| NOTIF-12 | — | Pending |
-| NOTIF-13 | — | Pending |
-| NOTIF-14 | — | Pending |
-| NOTIF-15 | — | Pending |
-| NOTIF-16 | — | Pending |
-| FEED-06 | — | Pending |
-| FEED-07 | — | Pending |
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| SEC-03 | — | Pending |
-| SEC-04 | — | Pending |
-| SEC-05 | — | Pending |
-| SEC-06 | — | Pending |
-| DISP-01 | — | Pending |
+| LIKE-01 | Phase 56 | Pending |
+| LIKE-02 | Phase 56 | Pending |
+| LIKE-03 | Phase 56 | Pending |
+| LIKE-04 | Phase 56 | Pending |
+| LIKE-05 | Phase 53 | Pending |
+| CMNT-01 | Phase 57 | Pending |
+| CMNT-02 | Phase 57 | Pending |
+| CMNT-03 | Phase 57 | Pending |
+| CMNT-04 | Phase 57 | Pending |
+| CMNT-05 | Phase 57 | Pending |
+| CMNT-06 | Phase 57 | Pending |
+| CMNT-07 | Phase 57 | Pending |
+| CMNT-08 | Phase 57 | Pending |
+| CMNT-09 | Phase 57 | Pending |
+| GATE-01 | Phase 54 | Pending |
+| GATE-02 | Phase 53 | Pending |
+| GATE-03 | Phase 57 | Pending |
+| GATE-04 | Phase 54 | Pending |
+| GATE-05 | Phase 54 | Pending |
+| NOTIF-11 | Phase 55 | Pending |
+| NOTIF-12 | Phase 55 | Pending |
+| NOTIF-13 | Phase 55 | Pending |
+| NOTIF-14 | Phase 55 | Pending |
+| NOTIF-15 | Phase 58 | Pending |
+| NOTIF-16 | Phase 58 | Pending |
+| FEED-06 | Phase 57 | Pending |
+| FEED-07 | Phase 57 | Pending |
+| SEC-01 | Phase 53 | Pending |
+| SEC-02 | Phase 54 | Pending |
+| SEC-03 | Phase 55 | Pending |
+| SEC-04 | Phase 53 | Pending |
+| SEC-05 | Phase 55 | Pending |
+| SEC-06 | Phase 53 | Pending |
+| DISP-01 | Phase 57 | Pending |
 
 **Coverage:**
 - v1 requirements: 34 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 34 ⚠️ (filled by roadmapper)
+- Mapped to phases: 34 ✓
+- Unmapped: 0 ✓
+
+Phase breakdown:
+- Phase 53 (Schema + RLS + Enum Extension): SEC-01, SEC-04, SEC-06, LIKE-05, GATE-02 — 5 requirements
+- Phase 54 (DAL): GATE-01, GATE-04, GATE-05, SEC-02 — 4 requirements
+- Phase 55 (Server Actions + Notification Dedup): SEC-03, SEC-05, NOTIF-11, NOTIF-12, NOTIF-13, NOTIF-14 — 6 requirements
+- Phase 56 (Like UI): LIKE-01, LIKE-02, LIKE-03, LIKE-04 — 4 requirements
+- Phase 57 (Comment Thread UI + Feed Extension + Grid Counts): CMNT-01..09, GATE-03, FEED-06, FEED-07, DISP-01 — 13 requirements
+- Phase 58 (Notification UI + Settings Opt-Out): NOTIF-15, NOTIF-16 — 2 requirements
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-05-22 after /gsd-new-milestone (v6.0 Social Interaction)*
+*Last updated: 2026-05-22 — traceability filled by roadmapper (v6.0 roadmap created)*

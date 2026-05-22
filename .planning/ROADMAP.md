@@ -10,11 +10,11 @@
 - ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
 - ✅ **v5.1 Explore Page Redesign** — Phases 43-47 (shipped 2026-05-19) — [archive](milestones/v5.1-ROADMAP.md)
 - ✅ **v5.2 Polish + Taxonomy** — Phases 48-50 + 49.1 + 50.1 (shipped 2026-05-20) — [archive](milestones/v5.2-ROADMAP.md)
-- 📋 **v6.0 Social Interaction** — planted (SEED-012)
+- 🔄 **v6.0 Social Interaction** — Phases 53-58 (in progress)
 - 📋 **v7.0 Watch Photos** — planted (SEED-013)
 - 📋 **v8.0 Add-Watch Redesign** — planted (SEED-010)
 - 💤 **Catalog Expansion** — unscheduled; catalog strategy under review (SEED-009)
-- 💤 **Market Value** — future, after v8.0 (SEED-005; needs the SEED-007 pricing spike)
+- 💤 **Market Value** — future, after v8.0 (SEED-005; needs the SEED-007 pricing spike first)
 
 ## Phases
 
@@ -155,9 +155,14 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 
 </details>
 
-### 📋 v6.0 Social Interaction (Planted)
+### 🔄 v6.0 Social Interaction (Phases 53-58)
 
-Not yet roadmapped — seeded as SEED-012. A scoped social layer on the existing Rdio-style discovery: open likes on collections/wishlists/wears; comments on wears + collections for any authed user, wishlist comments gated to mutual followers. Explicitly not "Instagram for watches."
+- [ ] **Phase 53: Schema + RLS + Enum Extension** — interaction tables, two-layer security foundation
+- [ ] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement
+- [ ] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out
+- [ ] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages
+- [ ] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts
+- [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
 
 ### 📋 v7.0 Watch Photos (Planted)
 
@@ -175,9 +180,96 @@ Seeded as SEED-009 — catalog breadth expansion past the ~100-row bootstrap. Un
 
 Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits after v8.0; needs the SEED-007 market-pricing API spike first. (No longer numbered v6.0 — that slot is now Social Interaction.)
 
+## Phase Details
+
+### Phase 53: Schema + RLS + Enum Extension
+**Goal**: The database has all tables, constraints, and security policies required for likes and comments to exist safely — no interaction data can be read or written by unauthenticated users, cascading deletes are guaranteed, and the notification enum carries the four new event types.
+**Depends on**: Phase 52 (Cache Components canonical pattern — already complete)
+**Requirements**: SEC-01, SEC-04, SEC-06, LIKE-05, GATE-02
+**Success Criteria** (what must be TRUE):
+  1. Migration runs cleanly on both local and prod; `likes` and `comments` tables exist with FK constraints that cascade-delete rows when the parent watch or wear event is removed.
+  2. A Postgres assertion in-migration confirms anon role cannot SELECT from the new tables (two-layer security: RLS `TO authenticated` + DAL WHERE).
+  3. Any SECURITY DEFINER helper introduced (e.g., `isMutualFollow`) has EXECUTE revoked from PUBLIC and anon, verified by an in-migration `DO $$` assertion.
+  4. `notification_type` enum carries four new values (`watch_like`, `wear_like`, `watch_comment`, `wear_comment`) via `ALTER TYPE ... ADD VALUE IF NOT EXISTS` statements executed outside a transaction block.
+  5. A UNIQUE constraint on the likes table prevents duplicate likes for the same (actor, target) pair, verifiable by attempting a duplicate insert and observing a constraint violation.
+**Plans**: TBD
+
+### Phase 54: DAL — Reactions, Comments + Gate Logic
+**Goal**: Server-side functions can read and write likes and comments with the wishlist mutual-follow gate enforced as a second privacy layer — independently of RLS — so a non-mutual-follower calling the DAL directly is rejected for wishlist watches.
+**Depends on**: Phase 53
+**Requirements**: GATE-01, GATE-04, GATE-05, SEC-02
+**Success Criteria** (what must be TRUE):
+  1. `getLikesForTarget` and `createLike` in `src/data/reactions.ts` enforce two-layer privacy: RLS blocks anon at the DB layer, DAL WHERE scopes to authenticated viewer.
+  2. `getCommentsForTarget` returns comments for any authenticated viewer on owned/sold/grail watches and wears; on wishlist watches it returns comments only when the viewer is a mutual follower.
+  3. `createComment` on a wishlist watch rejects a non-mutual-follower caller with a gate error — verified by an integration test that calls the DAL directly (bypassing RLS) as a non-mutual-follower.
+  4. The collection owner can always read and create comments on their own watches regardless of the gate (GATE-04 verified in the same integration test suite).
+  5. `isMutualFollow(userA, userB)` checks both directions in a single query and returns false when A follows B but B does not follow A.
+**Plans**: TBD
+
+### Phase 55: Server Actions + Notification Dedup
+**Goal**: All like and comment mutations are callable from the UI through Zod-validated Server Actions that re-verify auth server-side, invalidate the correct cache tags, and fire like/comment notifications with deduplication — with no IDOR or cross-viewer cache leakage possible.
+**Depends on**: Phase 54
+**Requirements**: SEC-03, SEC-05, NOTIF-11, NOTIF-12, NOTIF-13, NOTIF-14
+**Success Criteria** (what must be TRUE):
+  1. `toggleLikeAction` and all comment actions (`addCommentAction`, `editCommentAction`, `deleteCommentAction`) call `getCurrentUser()` first and verify ownership/authorship server-side before any mutation — a crafted request with a mismatched `authorId` is rejected.
+  2. Like notifications fire only on the `liked = true` direction (not unlike), are never sent to the watch/wear owner from themselves, and a dedup partial UNIQUE index on `notifications` prevents duplicate like notification rows for the same actor/target pair.
+  3. Rapid like → unlike → like sequences produce at most one like notification entry (dedup confirmed in an integration or unit test against the dedup index).
+  4. Comment notifications fire on every new comment that is not self-authored; the actor and target are stored correctly so the bell can deep-link to the watch or wear.
+  5. Cache tags (`reactions:{targetType}:{targetId}`, `viewer:{userId}:reactions`) are invalidated on mutation: `updateTag` for read-your-own-writes, `revalidateTag(..., 'max')` for cross-user fan-out — viewer A's like state does not appear in viewer B's cache.
+**Plans**: TBD
+
+### Phase 56: Like UI
+**Goal**: Any authenticated viewer can like or unlike individual watches and wear posts from the detail pages, with optimistic UI that reflects their action immediately and rolls back cleanly on failure — like counts are visible next to the control and hidden when zero.
+**Depends on**: Phase 55
+**Requirements**: LIKE-01, LIKE-02, LIKE-03, LIKE-04
+**Success Criteria** (what must be TRUE):
+  1. A viewer can click the like control on any watch detail page (`/watch/[id]`) and on any wear detail page (`/wear/[wearEventId]`) regardless of the watch's status (owned/sold/grail/wishlist).
+  2. The like control reflects the viewer's current like state (liked / not liked) without a page reload; toggling updates the state optimistically and snaps back if the Server Action returns an error.
+  3. The like count appears next to the control when at least one like exists and is hidden when the count is zero.
+  4. Liking the same watch or wear twice (e.g., via double-click or concurrent tabs) results in exactly one like row — the UNIQUE constraint is the backstop, and the UI does not show an error to the user for idempotent re-likes.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 57: Comment Thread UI + Feed Extension + Grid Counts
+**Goal**: Any authenticated viewer can read comments on watches and wears, compose and post new comments, edit or delete their own comments in place — with the wishlist mutual-follow gate reflected in a clear locked-state UI — and comment activity surfaces correctly in the Network Activity feed and on profile grid cards.
+**Depends on**: Phase 56
+**Requirements**: CMNT-01, CMNT-02, CMNT-03, CMNT-04, CMNT-05, CMNT-06, CMNT-07, CMNT-08, CMNT-09, GATE-03, FEED-06, FEED-07, DISP-01
+**Success Criteria** (what must be TRUE):
+  1. A viewer can post a comment on a watch (owned/sold/grail) or wear event; comments appear newest-first with the compose box above the list, showing author avatar, linked username, body text, and relative timestamp.
+  2. The compose box enforces a 500-character limit: the input itself, the Server Action (Zod `.strict()`), and the database CHECK all reject oversized or whitespace-only input; a live character counter appears as the user nears the limit.
+  3. A comment author can edit their own comment in place (showing an "[edited]" indicator after save) and delete it via an inline confirm; non-authors see neither control.
+  4. A new comment appears optimistically at the top of the list in a pending state and reconciles to the server-confirmed row on success, or disappears with a rollback indicator on failure.
+  5. A non-mutual-follower viewing a wishlist watch sees a "Follow [username] to comment" locked-state CTA instead of the compose box, with no comment content visible; an owner always sees the compose box on their own watches.
+  6. When a user comments on a watch or wear, a comment activity is recorded and appears in the home Network Activity feed for their followers — but a comment on a mutual-follow-gated wishlist watch is not surfaced to viewers who are not eligible to see it.
+  7. Profile collection and wishlist grid cards show a "X likes · Y comments" line per watch sourced from a single batched query (no N+1 on grid load).
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 58: Notification UI + Settings Opt-Out
+**Goal**: Like and comment notifications appear in the existing bell/inbox with clear copy and deep-links to the target watch or wear, like notifications for the same target are grouped, and users can independently opt out of each notification type in Settings.
+**Depends on**: Phase 57
+**Requirements**: NOTIF-15, NOTIF-16
+**Success Criteria** (what must be TRUE):
+  1. The bell dot and `/notifications` inbox render `watch_like`, `wear_like`, `watch_comment`, and `wear_comment` notification types with copy that names the actor and the target, and each notification links directly to the relevant watch or wear detail page.
+  2. Multiple likes on the same target are grouped into a single notification row ("Tyler and 2 others liked your Submariner") rather than one row per like.
+  3. The Settings → Notifications section exposes `notifyOnLike` and `notifyOnComment` toggles; disabling `notifyOnLike` suppresses future like notification rows from being created (verified by toggling off, liking a watch, and confirming no new notification row appears).
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 53. Schema + RLS + Enum Extension | 0/TBD | Not started | - |
+| 54. DAL — Reactions, Comments + Gate Logic | 0/TBD | Not started | - |
+| 55. Server Actions + Notification Dedup | 0/TBD | Not started | - |
+| 56. Like UI | 0/TBD | Not started | - |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
+| 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
+
 ## Next Up
 
-v5.2 Polish + Taxonomy shipped 2026-05-20 — 5 phases, 21 plans, 6/6 requirements. Audit status `passed` (after D-DEBT-01 + D-DRIFT-01 closed inline). Up next: run `/gsd-new-milestone` to begin the next milestone (likely v6.0 Social Interaction per SEED-012, or another seed per current product priorities).
+v6.0 Social Interaction roadmapped 2026-05-22 — 6 phases (53-58), 34 requirements. Run `/gsd-plan-phase 53` to begin Phase 53.
 
 ### Phase 51: Profile Route PPR Opt-Out — recurrence-3 fix for /u/[username]/[tab] 404
 

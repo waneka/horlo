@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: planning
-last_updated: "2026-05-22T07:15:40.409Z"
+last_updated: "2026-05-22T00:00:00.000Z"
 last_activity: 2026-05-22
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,26 +17,26 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
+See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 52 — option-d-cache-components-canonical-pattern-fix-for-u-userna
+**Current focus:** v6.0 Social Interaction — roadmapped, ready to begin Phase 53
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 53 — Schema + RLS + Enum Extension (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-22 — Milestone v6.0 started
+Status: Roadmap complete; ready for `/gsd-plan-phase 53`
+Last activity: 2026-05-22 — v6.0 roadmap created (6 phases, 34 requirements)
+
+Progress: ░░░░░░░░░░ 0% (0/6 phases complete)
 
 ## Performance Metrics
 
-- v5.1: 5 phases (43-47), 27 plans, 269 commits over 3 days
-- 32/32 v5.1 requirements shipped
+- v5.2: 5 phases (48-50 + 49.1 + 50.1), 21 plans, 34 tasks over 2 days
+- 6/6 v5.2 requirements shipped
+- Phase 52 (post-v5.2 hotfix): 9 plans, recurrence-4/5 React #419 eliminated
 - Blockers encountered: 0
-- Phase 49.1 P01: 3 min, 3 tasks, 3 files
-- Phase 49.1 P06: 18 min, 2 tasks, 27 files
-- Phase 49.1 P07: 4 min, 2 tasks, 2 files
 
 ## Accumulated Context
 
@@ -45,6 +45,7 @@ Last activity: 2026-05-22 — Milestone v6.0 started
 - Phase 49.1 inserted after Phase 49: Remove genre surface — implements Phase 49 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (TAX-02) (URGENT)
 - Phase 50.1 inserted after Phase 50: URL canonicalization — implements Phase 50 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (Variant B; ARCH-02) (URGENT)
 - Phase 52 added: Option D — Cache Components canonical pattern fix for /u/[username]/[tab] (recurrence-4 React #419) — supersedes Phase 51 layout-fix; sourced from `.planning/audits/cache-components-2026-05-21-followup.md`
+- v6.0 roadmap created 2026-05-22: 6 phases (53-58), 34 requirements mapped 34/34
 
 ### Key Decisions
 
@@ -59,16 +60,22 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **Phase 49.1 Plan 06 — PRIMARY_ARCHETYPE_SET deleted, PRIMARY_ARCHETYPES kept.** Once the archetype block in `validateAndCleanTaste` was removed, `PRIMARY_ARCHETYPE_SET` had zero remaining consumers and was deleted. `PRIMARY_ARCHETYPES` const + `PrimaryArchetype` type re-export both retained per D-EXPLORE-02 (consumed by `/explore` CollectorArchetypes rail's SQL ANY() filter).
 - **Phase 49.1 Plan 07 — drizzle-kit push deferred to main repo.** Claude Code worktrees do not include `.env.local`, so `DATABASE_URL` is unavailable inside the worktree and `drizzle-kit push` cannot connect to local Postgres. Schema.ts edit + 0012 SQL file are the source-of-truth artifacts; user runs `npx drizzle-kit push` in the main repo post-merge. `drizzle-kit check` already passes without the journal entry, confirming structural consistency. Manual edit of `drizzle/meta/_journal.json` rejected (T-49.1-16: drizzle-kit owns the file).
 - **Phase 49.1 Plan 07 — bare `ALTER TABLE ... DROP COLUMN IF EXISTS` (no `DO $$` guard).** The 0011 analog wraps the statement in a `DO $$` block to guard a NOT NULL constraint check, which does not apply to a column drop. `IF EXISTS` alone provides full idempotency for the drop operation; the implicitly-dropped `watches_catalog_primary_archetype_check` CHECK constraint requires no explicit `DROP CONSTRAINT`.
+- **`unstable_instant = false` on `/u/[username]/[tab]` is PERMANENT (Phase 52).** `prefetch:'runtime'` fires an aborting secondary prerender (React #419); `prefetch:'static'` fails at build time on a two-dynamic-param route. Do NOT re-enable. Real fix is structural: sync layout + Suspense + ProfileChrome + inner ProfileTabContent.
+- **v6.0 data model choice deferred to Phase 53 discuss/spec.** SUMMARY.md recommends per-target tables (separate `watch_likes`, `wear_likes`) over polymorphic; final decision is made during Phase 53 planning, not locked in the roadmap.
+- **v6.0 comment order is newest-first (operator decision 2026-05-22).** Overrides SUMMARY.md oldest-first suggestion. Compose box sits above the list.
+- **v6.0 character limit is 500 (operator decision via REQUIREMENTS.md).** Consistent across Zod, DB CHECK, and `<Textarea maxLength>`.
+- **Likes do NOT generate feed activities (operator decision).** Likes surface only in bell notifications; only comments generate Network Activity feed entries (FEED-06).
 
-### v5.2 Phase Structure
+### v6.0 Phase Structure
 
 | Phase | Goal | Requirements |
 |-------|------|--------------|
-| 48 | Fix wishlist mislabel + dark-mode chip contrast | BUG-01, BUG-02 |
-| 49 | Genre vs style taxonomy spike — written recommendation | TAX-01 |
-| 49.1 | Remove genre surface (drop primary_archetype, delete /explore/genres, rebalance taste weights) | TAX-02 |
-| 50 | Two watch-detail views architecture spike — written decision | ARCH-01 |
-| Phase 49.1 P05 | 6 min | 1 tasks | 2 files |
+| 53 | Interaction tables, constraints, RLS, enum extension | SEC-01, SEC-04, SEC-06, LIKE-05, GATE-02 |
+| 54 | DAL with mutual-follow gate and two-layer enforcement | GATE-01, GATE-04, GATE-05, SEC-02 |
+| 55 | Server Actions with Zod validation, dedup, notification fan-out | SEC-03, SEC-05, NOTIF-11, NOTIF-12, NOTIF-13, NOTIF-14 |
+| 56 | LikeButton UI on watch and wear detail pages | LIKE-01, LIKE-02, LIKE-03, LIKE-04 |
+| 57 | Comment compose/list/edit/delete, gate UI, feed extension, grid counts | CMNT-01..09, GATE-03, FEED-06, FEED-07, DISP-01 |
+| 58 | Bell/inbox for new notification types, Settings opt-out toggles | NOTIF-15, NOTIF-16 |
 
 ### Deferred Items
 
@@ -88,6 +95,12 @@ Items acknowledged and deferred at v5.1 milestone close (2026-05-19):
 ### Blockers/Concerns
 
 None blocking.
+
+Open pre-flights for Phase 53 discuss/spec:
+- **Data model choice** — per-target tables (SUMMARY recommendation) vs. polymorphic; must be decided before schema migration is authored.
+- **`follows` SELECT RLS policy** — check Phase 7-9 migrations; if absent, add policy or use SECDEF helper (triggers REVOKE/GRANT requirement).
+- **`ALTER TYPE ... ADD VALUE` outside transaction block** — four `watch_like`, `wear_like`, `watch_comment`, `wear_comment` values; must be standalone statements in the migration file.
+- **Wishlist → owned grandfather policy** — existing comments from non-mutual-followers when a watch moves to wishlist; simplest: grandfather (keep rows, gate only new writes). Document before writing `getCommentsForTarget`.
 
 ### Quick Tasks Completed
 
@@ -125,21 +138,19 @@ Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
 | seed | SEED-002-hybrid-recommender | dormant | Future milestone (planned v6+) |
 | seed | SEED-003-onboarding-cold-start-flow | dormant | Future milestone |
 | seed | SEED-004-v5-discovery-north-star | dormant | Future milestone |
-| seed | SEED-005-v6-market-value | dormant | Future v6.0 milestone |
+| seed | SEED-005-v6-market-value | dormant | Future milestone (after v8.0) |
 | seed | SEED-007-market-pricing-api-spike | dormant | Future spike |
-| seed | SEED-008-v5.1-explore-redesign | active | Active seed for next milestone (v5.1 → v5.2 reorder; revisit at /gsd-new-milestone) |
 | seed | SEED-010-v5.3-add-watch-redesign | dormant | Future v8 milestone |
-| seed | SEED-012-v6.0-social-interaction | dormant | Future v6.0 milestone |
+| seed | SEED-012-v6.0-social-interaction | active | This milestone |
 | seed | SEED-013-v7.0-watch-photos | dormant | Future v7.0 milestone |
-
-23 items acknowledged. SEED-011 (this milestone) flipped to `implemented` separately.
 
 ## Session Continuity
 
-Last activity: 2026-05-20 — Phase 49.1 Plan 07 complete (schema.ts dropped, drizzle/0012 migration authored, drizzle-kit push deferred to main repo).
-Stopped at: Phase 52 context gathered
-Next action: User runs `npx drizzle-kit push` in main repo to apply local DB drop, then execute Plan 08 (supabase prod migration push).
+Last activity: 2026-05-22 — v6.0 roadmap created (6 phases, 34/34 requirements mapped)
+Stopped at: Roadmap written; REQUIREMENTS.md traceability filled
+Next action: Run `/gsd-plan-phase 53` to begin Phase 53 (Schema + RLS + Enum Extension)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd-plan-phase 53` to plan Phase 53 (Schema + RLS + Enum Extension)
+- Discuss/spec during Phase 53 planning must resolve: data model choice (per-target vs. polymorphic) + `follows` RLS pre-flight
