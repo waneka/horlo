@@ -26,21 +26,29 @@ let selectCallCount = 0
 // Terminal mock — resolves with whatever `mockRows` is at call time.
 let mockRows: unknown[] = []
 
+// Default chainable `db.select` implementation. Extracted so `beforeEach` can RESTORE
+// it: `vi.clearAllMocks()` clears call history but NOT implementations, so the wishlist
+// branches below that override `db.select` via `mockImplementation` would otherwise bleed
+// their per-call-alternating impl into later tests (e.g. getLikesForTarget). Restoring the
+// default before each test isolates them.
+function defaultSelectImpl() {
+  selectCallCount++
+  return {
+    from: vi.fn(() => ({
+      where: vi.fn(() => ({
+        // .limit(1) path — used by canViewerCommentOnTarget watch row fetch
+        limit: vi.fn().mockImplementation(() => Promise.resolve(mockRows)),
+        // also resolves directly for isMutualFollow / getLikesForTarget (no limit())
+        then: (resolve: (v: unknown[]) => unknown) => Promise.resolve(mockRows).then(resolve),
+      })),
+    })),
+  }
+}
+
 vi.mock('@/db', () => ({
   db: {
-    select: vi.fn(() => {
-      selectCallCount++
-      return {
-        from: vi.fn(() => ({
-          where: vi.fn(() => ({
-            // .limit(1) path — used by canViewerCommentOnTarget watch row fetch
-            limit: vi.fn().mockImplementation(() => Promise.resolve(mockRows)),
-            // also resolves directly for isMutualFollow / getLikesForTarget (no limit())
-            then: (resolve: (v: unknown[]) => unknown) => Promise.resolve(mockRows).then(resolve),
-          })),
-        })),
-      }
-    }),
+    // Implementation is (re)installed in beforeEach via defaultSelectImpl.
+    select: vi.fn(),
   },
 }))
 
@@ -49,11 +57,15 @@ vi.mock('@/db', () => ({
 import { isMutualFollow } from '@/data/follows'
 import { canViewerCommentOnTarget } from '@/data/comments'
 import { getLikesForTarget } from '@/data/reactions'
+import { db } from '@/db'
 
 beforeEach(() => {
   mockRows = []
   selectCallCount = 0
   vi.clearAllMocks()
+  // Restore the default chainable impl — otherwise a prior test's mockImplementation
+  // override (wishlist branches) survives clearAllMocks and corrupts later tests.
+  ;(db.select as ReturnType<typeof vi.fn>).mockImplementation(defaultSelectImpl)
 })
 
 // ---------------------------------------------------------------------------
