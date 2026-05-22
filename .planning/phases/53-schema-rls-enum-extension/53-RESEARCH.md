@@ -629,14 +629,14 @@ notifyOnComment: boolean('notify_on_comment').notNull().default(true),
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Migration file timestamp format for the enum-only file**
+1. **RESOLVED: Migration file timestamp format for the enum-only file**
    - What we know: Last migration is `20260520070000_phase49_1_drop_primary_archetype.sql`. Phase 53 runs on 2026-05-22. Timestamps must be strictly greater.
    - What's unclear: Whether `20260522000001` (sequence suffix) or a timestamp offset (e.g., `20260522000001`) is preferred.
    - Recommendation: Use `20260522000000_phase53_likes_comments_rls.sql` and `20260522000001_phase53_notification_enum.sql`. The `000001` suffix makes the enum file strictly after the DDL file on the same day.
 
-2. **`updated_at` trigger on `comments` table**
+2. **RESOLVED: `updated_at` trigger on `comments` table**
    - What we know: Phase 37 added an `updated_at` trigger for `divestments` (PL/pgSQL `BEFORE UPDATE` trigger). `comments` has `updated_at` for edit tracking (CMNT-06 `edited_at` already covers the user-visible "edited" badge; `updated_at` is a housekeeping column).
    - What's unclear: Whether the planner should include an `updated_at` trigger in Phase 53 or treat it as a Phase 54/55 concern.
    - Recommendation: Include the `updated_at` trigger in Phase 53 for completeness (Phase 54/55 update comments via `editComment` which sets `edited_at`; the `updated_at` trigger ensures consistency). Cost is one additional 3-line PL/pgSQL function matching the Phase 37 pattern.

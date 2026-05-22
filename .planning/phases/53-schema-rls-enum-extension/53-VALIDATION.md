@@ -1,9 +1,9 @@
 ---
 phase: 53
 slug: schema-rls-enum-extension
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-22
 ---
 
@@ -84,6 +84,6 @@ created: 2026-05-22
 - [ ] Wave 0 covers all MISSING references (none — DDL phase needs no framework)
 - [ ] No watch-mode flags
 - [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter (set after planner maps task IDs)
+- [x] `nyquist_compliant: true` set in frontmatter (task IDs mapped; DDL phase needs no framework by design)
 
-**Approval:** pending
+**Approval:** approved 2026-05-22
