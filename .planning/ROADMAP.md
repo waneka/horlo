@@ -203,12 +203,12 @@ Plans:
 **Depends on:** Phase 51 (Branch B 307 + `no-store` contract must remain live through this fix)
 **Source:** `.planning/audits/cache-components-2026-05-21-followup.md` (Option D plan, supersedes the original audit's "three forward options")
 **Related:** `.planning/audits/cache-components-2026-05-21.md`, `.planning/debug/resolved/profile-page-404-top-nav.md`
-**Plans:** 7/9 plans executed
+**Plans:** 8/9 plans executed
 
 Plans:
 **Wave 1**
 - [x] 52-01-PLAN.md — Wave 0: invert Test 1 + add Tests 4/5 to tests/profile-route-51.test.ts (TDD source-grep scaffolds, expected to fail on current main)
-- [ ] 52-02-PLAN.md — Wave 0: install @playwright/test + @next/playwright, scaffold playwright.config.ts + tests/e2e/{auth-setup,profile-tab-instant}.test.ts (e2e regression contract)
+- [x] 52-02-PLAN.md — Wave 0: install @playwright/test + @next/playwright, scaffold playwright.config.ts + tests/e2e/{auth-setup,profile-tab-instant}.test.ts (e2e regression contract)
 - [x] 52-03-PLAN.md — Wave 1: Step 1 probe — add only `unstable_instant = { prefetch: 'static' }` to [tab]/page.tsx, capture validator output verbatim into 52-03-VALIDATOR-OUTPUT.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
