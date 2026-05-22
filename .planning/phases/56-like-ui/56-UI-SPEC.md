@@ -1,10 +1,11 @@
 ---
 phase: 56
 slug: like-ui
-status: draft
+status: approved
 shadcn_initialized: true
 preset: not applicable
 created: 2026-05-22
+reviewed_at: 2026-05-22
 ---
 
 # Phase 56 — UI Design Contract
