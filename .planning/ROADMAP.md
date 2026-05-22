@@ -227,7 +227,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   - [x] 55-02-PLAN.md — Wave 1: dedup-index migration (NOTIF-14) + in-place WR-03 enum-assertion fix + local apply + ActionResult `code` field (D-09)
   - [x] 55-03-PLAN.md — Wave 1: logger extension — 4 payload types, union widening, notifyOnLike/Comment opt-out reads, raw-SQL ON CONFLICT like branches (NOTIF-11/12/13/14)
   - [x] 55-04-PLAN.md — Wave 2: toggleLikeAction (SEC-03 IDOR + SEC-05 two-tag cache + liked-only awaited notification)
-  - [ ] 55-05-PLAN.md — Wave 2: addCommentAction/editCommentAction/deleteCommentAction (SEC-03 + NOTIF-12 INSERT-only + D-09 gate code + profile-only invalidation)
+  - [x] 55-05-PLAN.md — Wave 2: addCommentAction/editCommentAction/deleteCommentAction (SEC-03 + NOTIF-12 INSERT-only + D-09 gate code + profile-only invalidation)
   - [ ] 55-06-PLAN.md — Wave 3: [BLOCKING] pre-push gate + `supabase db push --linked` prod push, confirm both dedup indexes live (D-03, autonomous:false)
 
 ### Phase 56: Like UI
@@ -274,7 +274,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 |-------|----------------|--------|-----------|
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
-| 55. Server Actions + Notification Dedup | 4/6 | In Progress|  |
+| 55. Server Actions + Notification Dedup | 5/6 | In Progress|  |
 | 56. Like UI | 0/TBD | Not started | - |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: executing
-stopped_at: Completed 55-01 Wave 0 test scaffolds
-last_updated: "2026-05-22T20:40:11.913Z"
+stopped_at: Completed 55-05 comment Server Actions
+last_updated: "2026-05-22T20:52:00.000Z"
 last_activity: 2026-05-22
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 ## Current Position
 
 Phase: 55 (Server Actions + Notification Dedup) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-05-22
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -66,6 +66,9 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **v6.0 comment order is newest-first (operator decision 2026-05-22).** Overrides SUMMARY.md oldest-first suggestion. Compose box sits above the list.
 - **v6.0 character limit is 500 (operator decision via REQUIREMENTS.md).** Consistent across Zod, DB CHECK, and `<Textarea maxLength>`.
 - **Likes do NOT generate feed activities (operator decision).** Likes surface only in bell notifications; only comments generate Network Activity feed entries (FEED-06).
+- **55-05: D-09 gate-catch — inner try/catch for createComment catches CommentGateError before generic handler.** Returns `code:'gate'` discriminant; Phase 57 branches to GATE-03 locked-state CTA without string-matching.
+- **55-05: deleteCommentAction returns `{ id: parsed.data.commentId }` — DAL deleteComment returns void.** Avoids an extra DB read to re-fetch the comment row before deletion.
+- **55-05: NOTIF-12 INSERT-only enforced at action layer.** Only `addCommentAction` calls `logNotification`; `editCommentAction` and `deleteCommentAction` never fire notifications.
 
 ### v6.0 Phase Structure
 
@@ -84,6 +87,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | Phase 54 P03 | 287 | 2 tasks | 1 files |
 | Phase 55-server-actions-notification-dedup P01 | 4 | 3 tasks | 3 files |
 | Phase 55 P03 | 256 | 2 tasks | 3 files |
+| Phase 55-server-actions-notification-dedup P05 | 12 | 2 tasks | 1 files |
 
 ### Deferred Items
 
