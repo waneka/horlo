@@ -32,7 +32,8 @@ See `.planning/MILESTONES.md` and `.planning/milestones/v5.2-ROADMAP.md` for ful
 - **Likes** (open to any authenticated user) on **individual watches** and **wear posts**
 - **Comments** on **individual watches** and **wears** — flat (no threads); authors can **edit + delete** their own
 - **Comment access asymmetry:** open on owned/sold/grail watches + wears; **mutual-followers-only** on wishlist watches
-- **Notifications:** extend the v3.0 notifications system with new like/comment events (opt-out + dedup)
+- **Notifications:** extend the v3.0 notifications system (🔔 bell/inbox, not the activity feed) with new like/comment events (opt-out + dedup)
+- **Activity feed:** comments (NOT likes) surface in the home Network Activity feed, respecting feed privacy + the comment gate
 - Two-layer privacy (RLS + DAL `WHERE`) on every interaction read/write
 
 **Scope guardrails:** like/comment targets are the per-user `watches` row + the `wear_events` row (not whole-collection surfaces); likes only on wears + individual watches; **NO** threaded replies, **NO** report/hide/moderation this milestone (single-user scale — revisit later). Builds on v3.0 notifications (Phase 13), v3.0 wears (Phase 15), v2.0 follow graph + two-layer privacy (Phases 7–10). Source seed: **SEED-012**. Phase numbering continues from **Phase 53**.
