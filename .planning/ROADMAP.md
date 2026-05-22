@@ -194,7 +194,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   5. A UNIQUE constraint on the likes table prevents duplicate likes for the same (actor, target) pair, verifiable by attempting a duplicate insert and observing a constraint violation.
 **Plans**: 3 plans
   - [x] 53-01-PLAN.md — Author schema.ts + DDL migration (tables/RLS/REVOKE/CHECK/assertions) + non-transactional enum migration
-  - [ ] 53-02-PLAN.md — [BLOCKING] Apply both migrations to live local DB (DO $$ assertions fire) + cascade/duplicate-like smokes
+  - [x] 53-02-PLAN.md — [BLOCKING] Apply both migrations to live local DB (DO $$ assertions fire) + cascade/duplicate-like smokes
   - [ ] 53-03-PLAN.md — Push both migrations to prod via `supabase db push --linked` (checkpoint: human-action) + prod enum-count verify
 
 ### Phase 54: DAL — Reactions, Comments + Gate Logic
@@ -263,7 +263,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 53. Schema + RLS + Enum Extension | 1/3 | In Progress|  |
+| 53. Schema + RLS + Enum Extension | 2/3 | In Progress|  |
 | 54. DAL — Reactions, Comments + Gate Logic | 0/TBD | Not started | - |
 | 55. Server Actions + Notification Dedup | 0/TBD | Not started | - |
 | 56. Like UI | 0/TBD | Not started | - |
