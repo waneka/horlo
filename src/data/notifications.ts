@@ -13,7 +13,8 @@ export interface NotificationRow {
   id: string
   userId: string
   actorId: string | null
-  type: 'follow' | 'watch_overlap'
+  // Phase 53 D-09: enum extended to 6 values (watch_like, wear_like, watch_comment, wear_comment added)
+  type: 'follow' | 'watch_overlap' | 'watch_like' | 'wear_like' | 'watch_comment' | 'wear_comment'
   payload: Record<string, unknown>
   readAt: Date | null
   createdAt: Date

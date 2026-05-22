@@ -18,7 +18,9 @@ import { cn } from '@/lib/utils'
  */
 export interface NotificationRowData {
   id: string
-  type: 'follow' | 'watch_overlap'
+  // Phase 53 D-09: extended to 6 values; the component renders null for unknown
+  // types (B-8 guard below) so Phase 56-58 can ship new type rendering incrementally.
+  type: 'follow' | 'watch_overlap' | 'watch_like' | 'wear_like' | 'watch_comment' | 'wear_comment'
   payload: Record<string, unknown>
   readAt: Date | null
   createdAt: Date | string
@@ -125,9 +127,10 @@ function resolveHref(row: NotificationRowData): string {
     const watchId = p.watch_id ?? ''
     return `/u/${username}?focusWatch=${watchId}`
   }
-  // Exhaustive: type is 'follow' or 'watch_overlap'; both handled above.
-  const _exhaustive: never = row.type
-  throw new Error(`Unhandled notification type in resolveHref: ${String(_exhaustive)}`)
+  // Phase 53 D-09: new types (watch_like, wear_like, watch_comment, wear_comment) render null
+  // at the NotificationRow guard above — resolveHref is never called for them.
+  // The early-return guard means this path is unreachable for now; fall back to '#' safely.
+  return '#'
 }
 
 function resolveCopy(
@@ -170,7 +173,8 @@ function resolveCopy(
     )
   }
 
-  // Exhaustive: type is 'follow' or 'watch_overlap'; both handled above.
-  const _exhaustive: never = row.type
-  throw new Error(`Unhandled notification type in resolveCopy: ${String(_exhaustive)}`)
+  // Phase 53 D-09: new types (watch_like, wear_like, watch_comment, wear_comment) render null
+  // at the NotificationRow guard above — resolveCopy is never called for them.
+  // The early-return guard means this path is unreachable for now; fall back to null safely.
+  return null
 }

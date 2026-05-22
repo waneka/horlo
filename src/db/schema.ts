@@ -29,9 +29,15 @@ export const wearVisibilityEnum = pgEnum('wear_visibility', [
 // ----- Phase 11: notification_type enum (NOTIF-01, D-09) -----
 // Narrowed to 2 values in Phase 24 (DEBT-05) after prod migration applied.
 // Stub values with no write-path removed (see Phase 24 migration for history).
+// Phase 53 D-09: 4 new values added via ALTER TYPE ADD VALUE in raw SQL migration
+// (20260522000001_phase53_notification_enum.sql — non-transactional, no BEGIN/COMMIT).
 export const notificationTypeEnum = pgEnum('notification_type', [
   'follow',
   'watch_overlap',
+  'watch_like',
+  'wear_like',
+  'watch_comment',
+  'wear_comment',
 ])
 
 // ----- Phase 35 D-01: movement type pgEnum (CAT-16) -----
@@ -263,6 +269,9 @@ export const profileSettings = pgTable('profile_settings', {
   notificationsLastSeenAt: timestamp('notifications_last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   notifyOnFollow: boolean('notify_on_follow').notNull().default(true),
   notifyOnWatchOverlap: boolean('notify_on_watch_overlap').notNull().default(true),
+  // Phase 53 D-10: opt-out columns for new v6.0 interaction types
+  notifyOnLike:    boolean('notify_on_like').notNull().default(true),
+  notifyOnComment: boolean('notify_on_comment').notNull().default(true),
 
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
@@ -300,6 +309,74 @@ export const wearEvents = pgTable(
     index('wear_events_watch_worn_at_idx').on(table.watchId, table.wornDate),
     unique('wear_events_unique_day').on(table.userId, table.watchId, table.wornDate),
   ]
+)
+
+// ----- Phase 53 D-01: watch_likes table (LIKE-05, SEC-01, SEC-06) -----
+// Column shapes only. UNIQUE constraint (watch_likes_unique_pair), RLS policies,
+// GRANT/REVOKE, and DO $$ assertions live in
+// supabase/migrations/20260522000000_phase53_likes_comments_rls.sql.
+// Drizzle 0.45.2 cannot express RLS in the pg-core DSL — raw SQL is authoritative.
+export const watchLikes = pgTable(
+  'watch_likes',
+  {
+    id:        uuid('id').defaultRandom().primaryKey(),
+    userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    watchId:   uuid('watch_id').notNull().references(() => watches.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('watch_likes_unique_pair').on(table.userId, table.watchId),
+    index('watch_likes_watch_id_idx').on(table.watchId),
+    index('watch_likes_user_id_idx').on(table.userId),
+  ],
+)
+
+// ----- Phase 53 D-01: wear_likes table (LIKE-05, SEC-01, SEC-06) -----
+// Column shapes only. UNIQUE constraint (wear_likes_unique_pair), RLS policies,
+// GRANT/REVOKE, and DO $$ assertions live in
+// supabase/migrations/20260522000000_phase53_likes_comments_rls.sql.
+export const wearLikes = pgTable(
+  'wear_likes',
+  {
+    id:          uuid('id').defaultRandom().primaryKey(),
+    userId:      uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    wearEventId: uuid('wear_event_id').notNull().references(() => wearEvents.id, { onDelete: 'cascade' }),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('wear_likes_unique_pair').on(table.userId, table.wearEventId),
+    index('wear_likes_wear_event_id_idx').on(table.wearEventId),
+    index('wear_likes_user_id_idx').on(table.userId),
+  ],
+)
+
+// ----- Phase 53 D-02: comments table (GATE-02, SEC-01, SEC-04, SEC-06) -----
+// Column shapes only. CHECK constraints (comments_exactly_one_target: XOR of nullable FKs;
+// comments_body_length: char_length <= 500 AND non-blank) and all RLS policies live in
+// supabase/migrations/20260522000000_phase53_likes_comments_rls.sql (D-12).
+// Drizzle 0.45.2 cannot express CHECK constraints or RLS in the pg-core DSL —
+// raw SQL is authoritative for those. This table definition is the source of truth
+// for column types and type inference only.
+export const comments = pgTable(
+  'comments',
+  {
+    id:          uuid('id').defaultRandom().primaryKey(),
+    authorId:    uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    // Exactly one of watchId / wearEventId must be non-null — enforced by DB CHECK
+    watchId:     uuid('watch_id').references(() => watches.id, { onDelete: 'cascade' }),
+    wearEventId: uuid('wear_event_id').references(() => wearEvents.id, { onDelete: 'cascade' }),
+    body:        text('body').notNull(),
+    // editedAt: set by editComment Server Action (Phase 55); null means never edited (CMNT-06)
+    editedAt:    timestamp('edited_at', { withTimezone: true }),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt:   timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('comments_watch_id_created_at_idx').on(table.watchId, table.createdAt),
+    index('comments_wear_event_id_created_at_idx').on(table.wearEventId, table.createdAt),
+    index('comments_author_id_idx').on(table.authorId),
+    // NOTE: no unique() — comments intentionally have no UNIQUE constraint (D-02 / Pitfall 5)
+  ],
 )
 
 // ----- Phase 11: notifications table (NOTIF-01) -----
