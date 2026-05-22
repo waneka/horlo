@@ -39,8 +39,9 @@ setup('authenticate as seeded local user', async ({ page }) => {
     timeout: 30_000,
   })
 
-  // Sanity: the session cookie round-trips (storageState will be non-empty).
-  await page.context().storageState({ path: STORAGE_STATE })
-  const state = await page.context().storageState()
+  // Persist + sanity-check in one call: storageState({ path }) writes to disk
+  // AND returns the state, so the cookie round-trip is verified without a
+  // second call.
+  const state = await page.context().storageState({ path: STORAGE_STATE })
   expect(state.cookies.length).toBeGreaterThan(0)
 })

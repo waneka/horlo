@@ -33,7 +33,8 @@ import { ProfileShellSkeleton } from './profile-shell-skeleton'
 // `[tab]/page.tsx` therefore exports `unstable_instant = false` (opt-out).
 // The bug-prevention contract on this route is the STRUCTURAL pattern
 // (sync layout + Suspense + async ProfileChrome — below) plus the
-// Plan 52-02 Playwright e2e test, NOT the build validator.
+// Plan 52-02 tab-navigation e2e test
+// (tests/e2e/profile-tab-nav.test.ts), NOT the build validator.
 //
 // Invariants this layout still upholds:
 //   * Persistent chrome — the <main> wrapper survives across

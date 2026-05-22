@@ -104,29 +104,31 @@ describe('Phase 51 — profile route PPR opt-out', () => {
     expect(source.includes('cacheLife({ revalidate: 300 })')).toBe(true)
   })
 
-  it('page exports unstable_instant for build-time validator gate (REQ-52-01)', () => {
+  it('page declares an explicit unstable_instant route-segment config (REQ-52-01)', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'src/app/u/[username]/[tab]/page.tsx'),
       'utf8',
     )
 
-    // REQ-52-01 / D-52-01 / D-52-03: The `unstable_instant` export is the
-    // CI gate that prevents recurrence-5. It is NOT a runtime feature — it is
-    // a validator signal to the Next 16 build/prefetch pipeline that this page
-    // participates in instant navigation (profile chrome stays mounted across
-    // tab clicks; only the per-tab content streams). Without this export the
-    // page cannot be registered as an instant-navigation leaf in the router
-    // tree. Adding it is the primary structural invariant asserted by D-52-01.
-    // See node_modules/next/dist/docs/01-app/02-guides/instant-navigation.md
-    // and .planning/audits/cache-components-2026-05-21-followup.md Step 6.
+    // REQ-52-01: the route MUST carry an explicit `unstable_instant`
+    // declaration. The VALUE evolved across Phase 52 + the recurrence-5
+    // debug cycle:
+    //   Plan 52-03: { prefetch: 'static' }   (initial probe)
+    //   Plan 52-05: { prefetch: 'runtime', samples } (D-52-DEV-01)
+    //   recurrence-5 fix: false  (opt-out — runtime fired an aborting
+    //     secondary prerender = #419; static fails the build; the
+    //     validator is unusable on this two-dynamic-param route).
+    // Current intended value is `false`. This test pins only the PRESENCE
+    // of an explicit declaration (any of the three forms) so that nobody
+    // silently DELETES it — deleting it reverts the route to Next's
+    // default instant-nav prefetch behavior, which is what we are opting
+    // out of. The recurrence-prevention contract itself is the structural
+    // shape (Tests 1 + 5) + the Plan 52-02 e2e nav test, NOT this export.
+    // See .planning/debug/resolved/profile-404-419-recurrence-5.md and
+    // .planning/audits/cache-components-2026-05-21-followup.md.
     //
-    // Regex matches both `export const unstable_instant = ...` and
-    // `export const unstable_instant: <type> = ...` — Phase 52 D-52-DEV-01
-    // ships with an inline type annotation because the Next 16.2.3 segment
-    // validator empirically requires the explicit `RuntimeSample[]` shape
-    // (the `as const` form trips an "Invalid segment configuration" check
-    // at build time; the annotated form is accepted). Both forms satisfy
-    // the contract.
+    // Regex matches `export const unstable_instant = false`,
+    // `... = { prefetch: ... }`, and `... : <type> = ...`.
     expect(/export\s+const\s+unstable_instant\b/.test(source)).toBe(true)
   })
 

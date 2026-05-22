@@ -48,8 +48,10 @@ import type { WatchWithWear } from '@/lib/types'
 // broke prod with React #419; `static` fails the build), so the
 // recurrence-prevention contract is the STRUCTURAL pattern below —
 // outer-sync / inner-async / Suspense (D-52-16) — backed by the
-// Plan 52-02 Playwright instant() e2e test, NOT the build validator.
-// Full rationale in the comment block on the export itself.
+// Plan 52-02 tab-navigation e2e test (tests/e2e/profile-tab-nav.test.ts),
+// NOT the build validator. (That test was reshaped away from the
+// `@next/playwright` instant() helper once this route opted out of
+// instant-nav.) Full rationale in the comment block on the export itself.
 //
 // D-52-CF-03 / Phase 39c Pitfall 5 PRESERVED — notFound() calls inside
 // ProfileTabContent stay in their original relative ordering: invalid
@@ -85,9 +87,11 @@ import type { WatchWithWear } from '@/lib/types'
 // (sync layout + <Suspense> + async runtime-API consumers — D-52-16). The
 // `unstable_instant` validator was only ever a build-time guard; this
 // route's shape can't satisfy it in either mode without a side effect, so
-// we opt out explicitly and rely on the Playwright instant() e2e test
-// (Plan 52-02) for runtime regression protection. The opt-out exempts the
-// segment from instant-nav VALIDATION; it does NOT disable Cache
+// we opt out explicitly and rely on the Plan 52-02 tab-navigation e2e
+// test (tests/e2e/profile-tab-nav.test.ts — a direct no-404/no-#419
+// assertion, NOT the instant() helper, which is inapplicable once the
+// route opts out) for runtime regression protection. The opt-out exempts
+// the segment from instant-nav VALIDATION; it does NOT disable Cache
 // Components / PPR for the route. See SEED-014 for the broader sweep.
 export const unstable_instant = false
 
@@ -102,19 +106,25 @@ export const unstable_instant = false
 // correctly flagging it. Removing the export removed the validation,
 // not the bug, and recurrences 3 + 4 followed.
 //
-// Phase 52 reinstates the export AS A VALIDATOR per
+// That diagnosis (validator-not-cause) is CORRECT IN PRINCIPLE, per
 // node_modules/next/dist/docs/01-app/02-guides/instant-navigation.md
 // ("How validation works") + the audit followup at
 // .planning/audits/cache-components-2026-05-21-followup.md
-// § "What changed since the original audit" (lines 47-60). The
-// validator runs at every shared layout boundary in this route during
-// `npm run dev` and `npm run build`; combined with the canonical
-// sync-outer + async-inner `ProfileTabContent` inside `<Suspense>`
-// shape above (D-52-16 structural lock), it forms the recurrence-5
-// prevention contract (D-52-03 — failing build IS the CI gate).
+// § "What changed since the original audit" (lines 47-60).
+//
+// RECURRENCE-5 OUTCOME (debug session profile-404-419-recurrence-5):
+// despite being right in principle, the validator is UNUSABLE on this
+// specific route, so the export is set to `false` (opt-out, above) —
+// NOT reinstated as an active gate. `prefetch: 'runtime'` builds but
+// fires a secondary server prerender that aborts (a fresh React #419);
+// `prefetch: 'static'` fails the build (two-dynamic-param route, no
+// static shell). There is therefore NO build-time CI gate on this
+// route. The recurrence-prevention contract is the structural shape
+// (D-52-16, above) + the Plan 52-02 tab-navigation e2e test.
 //
 // Full decision record: .planning/phases/52-option-d-cache-components-
-// canonical-pattern-fix-for-u-userna/52-CONTEXT.md (D-52-11).
+// canonical-pattern-fix-for-u-userna/52-CONTEXT.md (D-52-11) +
+// .planning/debug/resolved/profile-404-419-recurrence-5.md.
 
 const VALID_TABS = [
   'collection',

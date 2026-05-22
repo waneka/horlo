@@ -44,10 +44,12 @@ test('profile chrome survives tab navigation — no 404, no React #419 (REQ-52-0
     if (REACT_419.test(err.message)) reactErrors.push(err.message)
   })
 
-  // Initial load — must render the chrome, not 404.
+  // Initial load — must render the chrome, not 404. Assert the h1 by role
+  // only (ProfileHeader renders `displayName ?? @username`, so matching the
+  // username text is fragile if the test user ever gets a display name).
   const firstResp = await page.goto(`/u/${PROFILE}/collection`)
   expect(firstResp?.status(), 'initial /collection load must not be 404').toBeLessThan(400)
-  await expect(page.getByRole('heading', { name: new RegExp(PROFILE) })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByRole('tablist')).toBeVisible()
 
   // Navigate every tab via its tab-strip trigger (data-tab-id is unambiguous;
@@ -57,8 +59,8 @@ test('profile chrome survives tab navigation — no 404, no React #419 (REQ-52-0
     await page.waitForURL(`**/u/${PROFILE}/${tab}`, { timeout: 15_000 })
     // Persistent-chrome invariant: heading + tablist remain visible across nav.
     await expect(
-      page.getByRole('heading', { name: new RegExp(PROFILE) }),
-      `heading must stay mounted on /${tab}`,
+      page.getByRole('heading', { level: 1 }),
+      `profile heading (h1) must stay mounted on /${tab}`,
     ).toBeVisible()
     await expect(
       page.getByRole('tablist'),
