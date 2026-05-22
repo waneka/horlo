@@ -159,7 +159,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 
 - [x] **Phase 53: Schema + RLS + Enum Extension** — interaction tables, two-layer security foundation (completed 2026-05-22)
 - [x] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement (completed 2026-05-22)
-- [ ] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out
+- [x] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out (completed 2026-05-22)
 - [ ] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages
 - [ ] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts
 - [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
@@ -228,7 +228,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   - [x] 55-03-PLAN.md — Wave 1: logger extension — 4 payload types, union widening, notifyOnLike/Comment opt-out reads, raw-SQL ON CONFLICT like branches (NOTIF-11/12/13/14)
   - [x] 55-04-PLAN.md — Wave 2: toggleLikeAction (SEC-03 IDOR + SEC-05 two-tag cache + liked-only awaited notification)
   - [x] 55-05-PLAN.md — Wave 2: addCommentAction/editCommentAction/deleteCommentAction (SEC-03 + NOTIF-12 INSERT-only + D-09 gate code + profile-only invalidation)
-  - [ ] 55-06-PLAN.md — Wave 3: [BLOCKING] pre-push gate + `supabase db push --linked` prod push, confirm both dedup indexes live (D-03, autonomous:false)
+  - [x] 55-06-PLAN.md — Wave 3: [BLOCKING] pre-push gate + `supabase db push --linked` prod push, confirm both dedup indexes live (D-03, autonomous:false)
 
 ### Phase 56: Like UI
 **Goal**: Any authenticated viewer can like or unlike individual watches and wear posts from the detail pages, with optimistic UI that reflects their action immediately and rolls back cleanly on failure — like counts are visible next to the control and hidden when zero.
@@ -274,7 +274,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 |-------|----------------|--------|-----------|
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
-| 55. Server Actions + Notification Dedup | 5/6 | In Progress|  |
+| 55. Server Actions + Notification Dedup | 6/6 | Complete   | 2026-05-22 |
 | 56. Like UI | 0/TBD | Not started | - |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
