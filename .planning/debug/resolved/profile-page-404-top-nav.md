@@ -690,3 +690,42 @@ files_changed:
   - src/lib/constants/public-paths.ts (add isProfilePath predicate)
   - src/proxy.ts (add isProfile check to auth gate bypass)
   - tests/proxy.test.ts (add profile route ungating test suite)
+
+---
+
+## Recurrence 4 + 5 addendum (2026-05-21) — Cache Components / instant-nav layer
+
+The recurrence-3 fix above (proxy ungating, then Phase 51's Branch B re-gate with
+`Cache-Control: no-store`) addressed the PROXY layer. Two more recurrences surfaced at the
+Cache Components / instant-navigation layer and were closed by Phase 52 + the recurrence-5
+debug session:
+
+**Recurrence 4 (2026-05-20 night):** React #419 + 404 on authenticated tab nav, ~10 min after
+the Phase 51 layout-fix deploy (after the 300s `cacheLife` window rolled over). Root cause:
+top-level runtime-API access (`await params`, `await getCurrentUser()`) OUTSIDE a Suspense
+boundary in `layout.tsx` and `[tab]/page.tsx` — the structural defect the Next 16
+`unstable_instant` validator (removed in Phase 39c) had previously been flagging. Fixed in
+Phase 52 (Plans 04+05): sync layout + `<Suspense>` + async `ProfileChrome`; sync outer page +
+inner async `ProfileTabContent` inside `<Suspense>` (D-52-16 structural lock).
+
+**Recurrence 5 (2026-05-21):** Phase 52 *mostly* fixed it but introduced a NEW failure —
+React #419 on page-load for ALL profile pages + intermittent per-tab/per-device 404s. Root
+cause: Phase 52 D-52-DEV-01 set `unstable_instant = { prefetch: 'runtime' }` (to make the
+build pass — `prefetch: 'static'` fails the build on this two-dynamic-param route). `'runtime'`
+mode is NOT just a validator option: it fires a SECOND server-side prerender
+(`finalRuntimeServerPrerender`) on every request that aborts before `ProfileTabContent`'s
+async work completes → the #419, plus an incomplete RSC segment cached in the Flight payload
+that replays as the intermittent 404s. Fixed by `export const unstable_instant = false` (opt
+out of the validator entirely; keep the Plan 04/05 structural fix). Verified in prod (deploy
+horlo-6n7pnfdpu, commit 83499c8): #419 gone, zero 404s, held clean through two full cacheLife
+rollovers. Full investigation: `.planning/debug/resolved/profile-404-419-recurrence-5.md`.
+
+**Standing lesson across all 5 recurrences:** the profile route is structurally
+prerender-eligible while requiring viewer-specific, cookie-dependent rendering. Every fix that
+didn't address the layer the symptom actually lived in (proxy → Router Cache → Cache
+Components → instant-nav prefetch) bought time but not closure. The durable invariants are:
+(1) anon `/u/*` → 307 + `Cache-Control: no-store` (proxy layer, Phase 51 Branch B); (2) all
+runtime-API access inside Suspense via async consumers (Cache Components layer, Phase 52
+Plans 04/05); (3) no `unstable_instant` runtime-prefetch on this route (instant-nav layer,
+recurrence-5). Regression guard now leans on the Plan 52-02 Playwright e2e test (the build
+validator is opted out).

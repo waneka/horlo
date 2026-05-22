@@ -1,12 +1,12 @@
 ---
-status: fix_applied_awaiting_prod_uat
+status: resolved
 trigger: "Recurrence-5 of the profile-route 404 bug, observed in prod after the Phase 52 deploy (commit b5106db, prod deploy horlo-jgb6rup55). Phase 52 mostly improved things but did NOT fully fix it: intermittent per-tab/per-device 404s on /collection and /wishlist, plus React #419 on page-load for ALL profile pages."
 created: 2026-05-21
 updated: 2026-05-21
 related: [profile-page-404-top-nav.md (recurrences 1-4, resolved), Phase 52 (Option D fix)]
 root_cause: "unstable_instant: { prefetch: 'runtime' } triggers a secondary server-side prerender (finalRuntimeServerPrerender) on every request that aborts before ProfileTabContent's async work completes → React #419 on page load + an incomplete RSC segment cached in the Flight payload that the client replays as intermittent tab-nav 404s. Introduced by Phase 52 D-52-DEV-01. The validator cannot be used on this two-dynamic-param route in either mode: 'runtime' breaks prod, 'static' fails the build (E-00)."
 fix: "src/app/u/[username]/[tab]/page.tsx — unstable_instant = false (opt out of validation). Keeps the Plan 52-04/05 structural fix. Build clean (33/33 static pages); profile-route-51 5/5 pass. Comments in [tab]/page.tsx + layout.tsx updated to the opt-out + recurrence-5 addendum."
-verification: "PENDING — prod-only bug, cannot repro locally. Requires operator signed-in UAT post-deploy through the 300s cacheLife window (recurrence-4 hit ~10 min post-deploy)."
+verification: "PASSED — operator signed-in UAT in prod (deploy horlo-6n7pnfdpu, commit 83499c8). #419 gone on page load; zero 404s across all profile tabs. Held clean through TWO full 300s cacheLife window rollovers (~10 min and ~20 min post-deploy) — the exact window recurrence-4 slipped through. Resolved 2026-05-21."
 ---
 
 # Debug: profile-404-419-recurrence-5
