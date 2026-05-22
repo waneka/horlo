@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "db:backfill-catalog": "tsx --env-file=.env.local scripts/backfill-catalog.ts",
     "db:refresh-counts": "tsx --env-file=.env.local scripts/refresh-counts.ts",
     "db:backfill-taste": "tsx --env-file=.env.local scripts/backfill-taste.ts",
@@ -55,6 +56,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@next/playwright": "^16.2.6",
+    "@playwright/test": "^1.60.0",
     "@react-email/components": "^1.0.12",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",

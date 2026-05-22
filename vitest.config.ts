@@ -9,6 +9,10 @@ export default defineConfig({
     setupFiles: ['./tests/setup.tsx'],
     globals: true,
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx', 'src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // Phase 52-02: Playwright e2e tests live under tests/e2e/ and run via
+    // `npm run test:e2e` (playwright), NOT vitest. Exclude them explicitly so
+    // `npm run test` does not try to load Playwright's test runner.
+    exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**', '.next/**'],
   },
   resolve: {
     alias: {

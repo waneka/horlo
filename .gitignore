@@ -52,3 +52,8 @@ supabase/snippets/
 
 # react-email — generated HTML exports are regenerable; source of truth is emails/*.tsx
 emails/out/
+
+# Phase 52-02: Playwright artifacts
+tests/e2e/storageState.json
+playwright-report/
+test-results/
