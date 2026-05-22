@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { cache } from 'react'
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { follows, profiles, profileSettings, watches } from '@/db/schema'
@@ -66,6 +66,32 @@ export async function isFollowing(
     )
     .limit(1)
   return rows.length > 0
+}
+
+/**
+ * Returns true only when both the A→B and B→A follow rows exist. Checks both
+ * directions in a single round-trip via two FILTER aggregates — this is a
+ * dedicated bidirectional sibling of `isFollowing`, NOT a composition of two
+ * `isFollowing` calls (GATE-05).
+ */
+export async function isMutualFollow(
+  userA: string,
+  userB: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({
+      aToB: sql<number>`count(*) FILTER (WHERE ${follows.followerId} = ${userA} AND ${follows.followingId} = ${userB})::int`,
+      bToA: sql<number>`count(*) FILTER (WHERE ${follows.followerId} = ${userB} AND ${follows.followingId} = ${userA})::int`,
+    })
+    .from(follows)
+    .where(
+      or(
+        and(eq(follows.followerId, userA), eq(follows.followingId, userB)),
+        and(eq(follows.followerId, userB), eq(follows.followingId, userA)),
+      ),
+    )
+  const row = rows[0]
+  return (row?.aToB ?? 0) >= 1 && (row?.bToA ?? 0) >= 1
 }
 
 // ---------------------------------------------------------------------------
