@@ -2,7 +2,14 @@ import 'server-only'
 import { db } from '@/db'
 import { notifications, profileSettings } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
-import type { FollowPayload, WatchOverlapPayload } from './types'
+import type {
+  FollowPayload,
+  WatchOverlapPayload,
+  WatchLikePayload,
+  WearLikePayload,
+  WatchCommentPayload,
+  WearCommentPayload,
+} from './types'
 
 /**
  * logNotification — fire-and-forget write path for Phase 13.
@@ -44,6 +51,30 @@ export type LogNotificationInput =
       actorUserId: string
       payload: WatchOverlapPayload
     }
+  | {
+      type: 'watch_like'
+      recipientUserId: string
+      actorUserId: string
+      payload: WatchLikePayload
+    }
+  | {
+      type: 'wear_like'
+      recipientUserId: string
+      actorUserId: string
+      payload: WearLikePayload
+    }
+  | {
+      type: 'watch_comment'
+      recipientUserId: string
+      actorUserId: string
+      payload: WatchCommentPayload
+    }
+  | {
+      type: 'wear_comment'
+      recipientUserId: string
+      actorUserId: string
+      payload: WearCommentPayload
+    }
 
 export async function logNotification(input: LogNotificationInput): Promise<void> {
   try {
@@ -56,6 +87,8 @@ export async function logNotification(input: LogNotificationInput): Promise<void
       .select({
         notifyOnFollow: profileSettings.notifyOnFollow,
         notifyOnWatchOverlap: profileSettings.notifyOnWatchOverlap,
+        notifyOnLike: profileSettings.notifyOnLike,       // Phase 55 NOTIF-13 (schema.ts:273)
+        notifyOnComment: profileSettings.notifyOnComment, // Phase 55 NOTIF-13 (schema.ts:274)
       })
       .from(profileSettings)
       .where(eq(profileSettings.userId, input.recipientUserId))
@@ -63,9 +96,13 @@ export async function logNotification(input: LogNotificationInput): Promise<void
 
     const notifyOnFollow = settings?.notifyOnFollow ?? true
     const notifyOnOverlap = settings?.notifyOnWatchOverlap ?? true
+    const notifyOnLike = settings?.notifyOnLike ?? true
+    const notifyOnComment = settings?.notifyOnComment ?? true
 
     if (input.type === 'follow' && !notifyOnFollow) return
     if (input.type === 'watch_overlap' && !notifyOnOverlap) return
+    if ((input.type === 'watch_like' || input.type === 'wear_like') && !notifyOnLike) return
+    if ((input.type === 'watch_comment' || input.type === 'wear_comment') && !notifyOnComment) return
 
     if (input.type === 'watch_overlap') {
       // Raw SQL — hits partial UNIQUE `notifications_watch_overlap_dedup`.
@@ -83,11 +120,48 @@ export async function logNotification(input: LogNotificationInput): Promise<void
       return
     }
 
-    // follow — straightforward Drizzle insert (no dedup index for follow type).
+    // watch_like — raw SQL with bare ON CONFLICT DO NOTHING.
+    // Targets partial UNIQUE index `notifications_watch_like_dedup` (payload->>'watch_id').
+    // NOTIF-14: Drizzle .onConflictDoNothing() targets the PK — does NOT trigger partial
+    // UNIQUE indexes. Bare ON CONFLICT DO NOTHING checks ALL unique constraints including
+    // partial ones (PostgreSQL semantics).
+    if (input.type === 'watch_like') {
+      await db.execute(sql`
+        INSERT INTO notifications (user_id, actor_id, type, payload)
+        VALUES (
+          ${input.recipientUserId}::uuid,
+          ${input.actorUserId}::uuid,
+          'watch_like',
+          ${input.payload}::jsonb
+        )
+        ON CONFLICT DO NOTHING
+      `)
+      return
+    }
+
+    // wear_like — raw SQL with bare ON CONFLICT DO NOTHING.
+    // Targets partial UNIQUE index `notifications_wear_like_dedup` (payload->>'wear_event_id').
+    // Same rationale as watch_like above — bare ON CONFLICT DO NOTHING is load-bearing.
+    if (input.type === 'wear_like') {
+      await db.execute(sql`
+        INSERT INTO notifications (user_id, actor_id, type, payload)
+        VALUES (
+          ${input.recipientUserId}::uuid,
+          ${input.actorUserId}::uuid,
+          'wear_like',
+          ${input.payload}::jsonb
+        )
+        ON CONFLICT DO NOTHING
+      `)
+      return
+    }
+
+    // follow, watch_comment, wear_comment — standard Drizzle insert (no dedup index).
+    // Each comment is a distinct event (NOTIF-12); follow has no dedup index.
     await db.insert(notifications).values({
       userId: input.recipientUserId,
       actorId: input.actorUserId,
-      type: 'follow',
+      type: input.type,
       payload: input.payload,
     })
   } catch (err) {

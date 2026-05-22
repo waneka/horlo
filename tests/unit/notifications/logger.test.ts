@@ -41,7 +41,10 @@ vi.mock('@/db/schema', () => ({
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((_col: unknown, _val: unknown) => ({ _tag: 'eq', _col, _val })),
   sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({ _tag: 'sql', strings, values }),
+    (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const sqlText = strings.join('?') // static string segments joined — contains the SQL literal text
+      return { _tag: 'sql', strings, values, toString: () => sqlText }
+    },
     { empty: { _tag: 'sql_empty' } }
   ),
 }))
