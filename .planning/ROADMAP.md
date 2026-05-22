@@ -223,7 +223,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   4. Comment notifications fire on every new comment that is not self-authored; the actor and target are stored correctly so the bell can deep-link to the watch or wear.
   5. Cache tags (`reactions:{targetType}:{targetId}`, `viewer:{userId}:reactions`) are invalidated on mutation: `updateTag` for read-your-own-writes, `revalidateTag(..., 'max')` for cross-user fan-out — viewer A's like state does not appear in viewer B's cache.
 **Plans**: 6 plans
-  - [ ] 55-01-PLAN.md — Wave 0: Nyquist test scaffolds (reactions/comments action tests + extend logger.test.ts) — RED until impl
+  - [x] 55-01-PLAN.md — Wave 0: Nyquist test scaffolds (reactions/comments action tests + extend logger.test.ts) — RED until impl
   - [ ] 55-02-PLAN.md — Wave 1: dedup-index migration (NOTIF-14) + in-place WR-03 enum-assertion fix + local apply + ActionResult `code` field (D-09)
   - [ ] 55-03-PLAN.md — Wave 1: logger extension — 4 payload types, union widening, notifyOnLike/Comment opt-out reads, raw-SQL ON CONFLICT like branches (NOTIF-11/12/13/14)
   - [ ] 55-04-PLAN.md — Wave 2: toggleLikeAction (SEC-03 IDOR + SEC-05 two-tag cache + liked-only awaited notification)
@@ -274,7 +274,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 |-------|----------------|--------|-----------|
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
-| 55. Server Actions + Notification Dedup | 0/6 | Not started | - |
+| 55. Server Actions + Notification Dedup | 1/6 | In Progress|  |
 | 56. Like UI | 0/TBD | Not started | - |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |

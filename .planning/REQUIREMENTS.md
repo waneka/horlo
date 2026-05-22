@@ -38,10 +38,10 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 ### Notifications (NOTIF — continues Phase 13's NOTIF-01..10)
 
-- [ ] **NOTIF-11**: An owner is notified when another user likes their watch or wear (never self-notified).
-- [ ] **NOTIF-12**: An owner is notified when another user comments on their watch or wear (never self-notified).
-- [ ] **NOTIF-13**: Like notifications for the same target are grouped ("X and N others liked …") rather than one per like.
-- [ ] **NOTIF-14**: Rapid like/unlike churn does not produce duplicate/spam notifications (deduped).
+- [x] **NOTIF-11**: An owner is notified when another user likes their watch or wear (never self-notified).
+- [x] **NOTIF-12**: An owner is notified when another user comments on their watch or wear (never self-notified).
+- [x] **NOTIF-13**: Like notifications for the same target are grouped ("X and N others liked …") rather than one per like.
+- [x] **NOTIF-14**: Rapid like/unlike churn does not produce duplicate/spam notifications (deduped).
 - [ ] **NOTIF-15**: A user can independently opt out of like notifications and comment notifications in Settings → Notifications (`notifyOnLike`, `notifyOnComment`).
 - [ ] **NOTIF-16**: Like/comment notifications render with clear copy and deep-link to the target in the existing inbox + bell.
 
@@ -54,9 +54,9 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 - [x] **SEC-01**: The new likes and comments tables enforce two-layer privacy — Postgres RLS (authenticated-only, no anon read/write) AND an explicit DAL `WHERE`/gate check.
 - [x] **SEC-02**: The wishlist-comment mutual-follow gate is enforced in BOTH layers, verified by an integration test where a non-mutual-follower calling the DAL directly is rejected.
-- [ ] **SEC-03**: Like/comment create/edit/delete Server Actions re-verify auth + ownership/authorship server-side (no IDOR, no client-trusted author/target, Zod `.strict()`).
+- [x] **SEC-03**: Like/comment create/edit/delete Server Actions re-verify auth + ownership/authorship server-side (no IDOR, no client-trusted author/target, Zod `.strict()`).
 - [x] **SEC-04**: Any SECURITY DEFINER helper introduced (e.g., mutual-follow) revokes EXECUTE from PUBLIC and anon, asserted in-migration.
-- [ ] **SEC-05**: Viewer-specific like state and gated comment threads do not leak across viewers via the cache (per-viewer scoping; gated threads not served from a shared cache).
+- [x] **SEC-05**: Viewer-specific like state and gated comment threads do not leak across viewers via the cache (per-viewer scoping; gated threads not served from a shared cache).
 - [x] **SEC-06**: Deleting a watch or wear event removes its associated likes and comments (no orphaned interaction rows).
 
 ### Display (DISP)
@@ -115,19 +115,19 @@ Which phases cover which requirements. Filled during roadmap creation.
 | GATE-03 | Phase 57 | Pending |
 | GATE-04 | Phase 54 | Complete |
 | GATE-05 | Phase 54 | Complete |
-| NOTIF-11 | Phase 55 | Pending |
-| NOTIF-12 | Phase 55 | Pending |
-| NOTIF-13 | Phase 55 | Pending |
-| NOTIF-14 | Phase 55 | Pending |
+| NOTIF-11 | Phase 55 | Complete |
+| NOTIF-12 | Phase 55 | Complete |
+| NOTIF-13 | Phase 55 | Complete |
+| NOTIF-14 | Phase 55 | Complete |
 | NOTIF-15 | Phase 58 | Pending |
 | NOTIF-16 | Phase 58 | Pending |
 | FEED-06 | Phase 57 | Pending |
 | FEED-07 | Phase 57 | Pending |
 | SEC-01 | Phase 53 | Complete |
 | SEC-02 | Phase 54 | Complete |
-| SEC-03 | Phase 55 | Pending |
+| SEC-03 | Phase 55 | Complete |
 | SEC-04 | Phase 53 | Complete |
-| SEC-05 | Phase 55 | Pending |
+| SEC-05 | Phase 55 | Complete |
 | SEC-06 | Phase 53 | Complete |
 | DISP-01 | Phase 57 | Pending |
 
