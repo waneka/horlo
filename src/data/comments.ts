@@ -117,6 +117,11 @@ export async function createComment(input: {
     })
     .returning()
 
+  if (!rows[0]) {
+    // Defensive: an allowed insert always returns the new row; a missing row
+    // means the write silently no-op'd. Fail loud rather than return undefined-as-Comment.
+    throw new Error(`createComment insert returned no row: authorId=${authorId}, target=${target.type}:${target.id}`)
+  }
   return rows[0]
 }
 
@@ -173,6 +178,13 @@ export async function editComment(
     .where(and(eq(comments.id, commentId), eq(comments.authorId, authorId)))
     .returning()
 
+  if (!rows[0]) {
+    // Zero rows = comment missing OR caller is not the author (IDOR no-op).
+    // Mirror the updateWatch/deleteWatch house pattern: throw rather than
+    // return undefined-as-Comment, so a Phase 55 caller cannot mistake a
+    // blocked edit for a successful one (WR-01).
+    throw new Error(`Comment not found or access denied: commentId=${commentId}, authorId=${authorId}`)
+  }
   return rows[0]
 }
 
