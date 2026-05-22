@@ -25,6 +25,16 @@ import { ProfileShellSkeleton } from './profile-shell-skeleton'
 // been flagging. See .planning/phases/52-.../52-CONTEXT.md and
 // .planning/audits/cache-components-2026-05-21-followup.md.
 //
+// RECURRENCE-5 ADDENDUM (debug session profile-404-419-recurrence-5):
+// the validator is correct in PRINCIPLE but UNUSABLE on this specific
+// route — `prefetch: 'runtime'` fired a secondary server prerender that
+// aborted (a NEW React #419 on page load) and `prefetch: 'static'` fails
+// the build (two-dynamic-param route can't synthesize a static shell).
+// `[tab]/page.tsx` therefore exports `unstable_instant = false` (opt-out).
+// The bug-prevention contract on this route is the STRUCTURAL pattern
+// (sync layout + Suspense + async ProfileChrome — below) plus the
+// Plan 52-02 Playwright e2e test, NOT the build validator.
+//
 // Invariants this layout still upholds:
 //   * Persistent chrome — the <main> wrapper survives across
 //     sibling tab navigations (collection ↔ wishlist ↔ worn …)

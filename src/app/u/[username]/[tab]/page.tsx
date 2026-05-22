@@ -42,11 +42,14 @@ import type { WatchWithWear } from '@/lib/types'
 // node_modules/next/dist/docs/01-app/01-getting-started/15-instant.md
 // (ProductPage example) + audit followup Step 2 + RESEARCH.md Pattern 2.
 //
-// The `unstable_instant = { prefetch: 'static' }` export below is the
-// build/dev validator (Plan 52-03 added it; Plan 52-08 rewrites the
-// adjacent stale comment block). The validator + this outer-sync /
-// inner-async / Suspense structure together form the recurrence-5
-// prevention contract.
+// The `unstable_instant` export below is set to `false` (validator
+// OPT-OUT) — recurrence-5 fix (debug session profile-404-419-recurrence-5).
+// The validator is unusable on this route in either mode (`runtime`
+// broke prod with React #419; `static` fails the build), so the
+// recurrence-prevention contract is the STRUCTURAL pattern below —
+// outer-sync / inner-async / Suspense (D-52-16) — backed by the
+// Plan 52-02 Playwright instant() e2e test, NOT the build validator.
+// Full rationale in the comment block on the export itself.
 //
 // D-52-CF-03 / Phase 39c Pitfall 5 PRESERVED — notFound() calls inside
 // ProfileTabContent stay in their original relative ordering: invalid
@@ -62,24 +65,31 @@ import type { WatchWithWear } from '@/lib/types'
 // See .planning/phases/52-.../52-CONTEXT.md, 52-RESEARCH.md Pattern 2,
 // .planning/audits/cache-components-2026-05-21-followup.md § Step 2.
 
-// Phase 52 D-52-DEV-01 — empirically refined from audit followup Step 1.
-// The canonical instant.md example uses `{ prefetch: 'static' }` on a
-// single-dynamic-segment route. The Next 16.2.3 validator empirically
-// requires samples for routes with dynamic params (the error message
-// itself reads "Add it to the sample's `params` object"). Per the
-// documented TypeScript interface in
-// node_modules/next/.../instant.md, samples is the `RuntimeSample[]`
-// shape used with `prefetch: 'runtime'`. Using runtime keeps validation
-// active at every shared layout boundary (the recurrence-5 contract
-// per D-52-03) while supplying representative param values the
-// prerender phase needs to materialize a static shell.
-export const unstable_instant: {
-  prefetch: 'runtime'
-  samples: Array<{ params: Record<string, string> }>
-} = {
-  prefetch: 'runtime',
-  samples: [{ params: { username: 'twwaneka', tab: 'collection' } }],
-}
+// Phase 52 recurrence-5 fix (debug session profile-404-419-recurrence-5).
+//
+// This route opts OUT of the instant-navigation validator. Both validating
+// modes are unusable here:
+//   * `{ prefetch: 'runtime', samples }` BUILDS but triggers a SECOND
+//     server-side prerender (`finalRuntimeServerPrerender`) on every
+//     request that aborts before ProfileTabContent's async work completes
+//     → React #419 on page load + an incomplete RSC segment cached in the
+//     Flight payload that the client replays as intermittent tab-nav 404s.
+//     (This was the recurrence-5 prod bug; D-52-DEV-01 reversed.)
+//   * `{ prefetch: 'static' }` FAILS the build — the two-dynamic-param
+//     route (`[username]` + `[tab]`) cannot synthesize a static shell and
+//     the static variant accepts no `samples` to feed the validator, so it
+//     errors `INSTANT_VALIDATION_ERROR` on the in-Suspense `await
+//     paramsPromise` sites in ProfileChrome + ProfileTabContent.
+//
+// The ACTUAL recurrence-4 fix is the structural change in Plans 52-04/05
+// (sync layout + <Suspense> + async runtime-API consumers — D-52-16). The
+// `unstable_instant` validator was only ever a build-time guard; this
+// route's shape can't satisfy it in either mode without a side effect, so
+// we opt out explicitly and rely on the Playwright instant() e2e test
+// (Plan 52-02) for runtime regression protection. The opt-out exempts the
+// segment from instant-nav VALIDATION; it does NOT disable Cache
+// Components / PPR for the route. See SEED-014 for the broader sweep.
+export const unstable_instant = false
 
 // Phase 52 D-52-11 — DIAGNOSIS REVERSAL of the Phase 39c "REMOVED
 // 2026-05-14" entry.
