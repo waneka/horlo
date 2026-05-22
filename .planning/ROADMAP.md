@@ -193,7 +193,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   4. `notification_type` enum carries four new values (`watch_like`, `wear_like`, `watch_comment`, `wear_comment`) via `ALTER TYPE ... ADD VALUE IF NOT EXISTS` statements executed outside a transaction block.
   5. A UNIQUE constraint on the likes table prevents duplicate likes for the same (actor, target) pair, verifiable by attempting a duplicate insert and observing a constraint violation.
 **Plans**: 3 plans
-  - [ ] 53-01-PLAN.md — Author schema.ts + DDL migration (tables/RLS/REVOKE/CHECK/assertions) + non-transactional enum migration
+  - [x] 53-01-PLAN.md — Author schema.ts + DDL migration (tables/RLS/REVOKE/CHECK/assertions) + non-transactional enum migration
   - [ ] 53-02-PLAN.md — [BLOCKING] Apply both migrations to live local DB (DO $$ assertions fire) + cascade/duplicate-like smokes
   - [ ] 53-03-PLAN.md — Push both migrations to prod via `supabase db push --linked` (checkpoint: human-action) + prod enum-count verify
 
@@ -263,7 +263,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 53. Schema + RLS + Enum Extension | 0/3 | Not started | - |
+| 53. Schema + RLS + Enum Extension | 1/3 | In Progress|  |
 | 54. DAL — Reactions, Comments + Gate Logic | 0/TBD | Not started | - |
 | 55. Server Actions + Notification Dedup | 0/TBD | Not started | - |
 | 56. Like UI | 0/TBD | Not started | - |

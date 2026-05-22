@@ -14,7 +14,7 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 - [ ] **LIKE-02**: A user can like and unlike any wear post at `/wear/[wearEventId]`.
 - [ ] **LIKE-03**: Like state and count update optimistically and roll back on server failure.
 - [ ] **LIKE-04**: The like count shows next to the control on watch detail and wear detail; hidden when zero.
-- [ ] **LIKE-05**: A user cannot like the same target twice (idempotent, enforced by a UNIQUE constraint).
+- [x] **LIKE-05**: A user cannot like the same target twice (idempotent, enforced by a UNIQUE constraint).
 
 ### Comments (CMNT)
 
@@ -31,7 +31,7 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 ### Wishlist Comment Gate (GATE)
 
 - [ ] **GATE-01**: Comments on a watch with status `wishlist` are restricted to mutual followers; comments on owned/sold/grail watches and on wears are open to any authenticated user.
-- [ ] **GATE-02**: Likes remain open to any authenticated user on all watches, including wishlist watches (the intended asymmetry).
+- [x] **GATE-02**: Likes remain open to any authenticated user on all watches, including wishlist watches (the intended asymmetry).
 - [ ] **GATE-03**: A non-mutual-follower viewing a wishlist watch sees a "Follow [username] to comment" locked-state CTA instead of the compose box, with no gated comment content leaked.
 - [ ] **GATE-04**: The collection owner can always comment on their own watches regardless of the gate.
 - [ ] **GATE-05**: The mutual-follow relationship is computed bidirectionally via a dedicated `isMutualFollow` check (not reused from one-directional `isFollowing`).
@@ -52,12 +52,12 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 ### Privacy & Security (SEC)
 
-- [ ] **SEC-01**: The new likes and comments tables enforce two-layer privacy — Postgres RLS (authenticated-only, no anon read/write) AND an explicit DAL `WHERE`/gate check.
+- [x] **SEC-01**: The new likes and comments tables enforce two-layer privacy — Postgres RLS (authenticated-only, no anon read/write) AND an explicit DAL `WHERE`/gate check.
 - [ ] **SEC-02**: The wishlist-comment mutual-follow gate is enforced in BOTH layers, verified by an integration test where a non-mutual-follower calling the DAL directly is rejected.
 - [ ] **SEC-03**: Like/comment create/edit/delete Server Actions re-verify auth + ownership/authorship server-side (no IDOR, no client-trusted author/target, Zod `.strict()`).
-- [ ] **SEC-04**: Any SECURITY DEFINER helper introduced (e.g., mutual-follow) revokes EXECUTE from PUBLIC and anon, asserted in-migration.
+- [x] **SEC-04**: Any SECURITY DEFINER helper introduced (e.g., mutual-follow) revokes EXECUTE from PUBLIC and anon, asserted in-migration.
 - [ ] **SEC-05**: Viewer-specific like state and gated comment threads do not leak across viewers via the cache (per-viewer scoping; gated threads not served from a shared cache).
-- [ ] **SEC-06**: Deleting a watch or wear event removes its associated likes and comments (no orphaned interaction rows).
+- [x] **SEC-06**: Deleting a watch or wear event removes its associated likes and comments (no orphaned interaction rows).
 
 ### Display (DISP)
 
@@ -100,7 +100,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | LIKE-02 | Phase 56 | Pending |
 | LIKE-03 | Phase 56 | Pending |
 | LIKE-04 | Phase 56 | Pending |
-| LIKE-05 | Phase 53 | Pending |
+| LIKE-05 | Phase 53 | Complete |
 | CMNT-01 | Phase 57 | Pending |
 | CMNT-02 | Phase 57 | Pending |
 | CMNT-03 | Phase 57 | Pending |
@@ -111,7 +111,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | CMNT-08 | Phase 57 | Pending |
 | CMNT-09 | Phase 57 | Pending |
 | GATE-01 | Phase 54 | Pending |
-| GATE-02 | Phase 53 | Pending |
+| GATE-02 | Phase 53 | Complete |
 | GATE-03 | Phase 57 | Pending |
 | GATE-04 | Phase 54 | Pending |
 | GATE-05 | Phase 54 | Pending |
@@ -123,12 +123,12 @@ Which phases cover which requirements. Filled during roadmap creation.
 | NOTIF-16 | Phase 58 | Pending |
 | FEED-06 | Phase 57 | Pending |
 | FEED-07 | Phase 57 | Pending |
-| SEC-01 | Phase 53 | Pending |
+| SEC-01 | Phase 53 | Complete |
 | SEC-02 | Phase 54 | Pending |
 | SEC-03 | Phase 55 | Pending |
-| SEC-04 | Phase 53 | Pending |
+| SEC-04 | Phase 53 | Complete |
 | SEC-05 | Phase 55 | Pending |
-| SEC-06 | Phase 53 | Pending |
+| SEC-06 | Phase 53 | Complete |
 | DISP-01 | Phase 57 | Pending |
 
 **Coverage:**
