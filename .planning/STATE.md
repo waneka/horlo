@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.2
-milestone_name: Polish + Taxonomy
-status: ready_to_plan
-stopped_at: Phase 52 context gathered
-last_updated: "2026-05-21T19:51:08.447Z"
-last_activity: 2026-05-21 -- Phase 52 execution started
+milestone: v6.0
+milestone_name: Social Interaction
+status: planning
+last_updated: "2026-05-22T07:15:40.409Z"
+last_activity: 2026-05-22
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 19
-  completed_plans: 9
-  percent: 67
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,13 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-19 — v5.1 milestone close)
 
 ## Current Position
 
-Phase: 999.1
-Plan: Not started
-Plans: 8 of 8 executable plans complete (9th is the phase overview)
-Verification: 7/7 must-haves passed (2026-05-21)
-Code review: 2 critical, 6 warning, 3 info (advisory — phase shipped; follow-up via `/gsd-code-review 51 --fix`)
-Prod status: Deployed to https://www.horlo.app at commit 84779ae; operator UAT PASS (zero 404s, two click cycles)
-Last activity: 2026-05-22
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-22 — Milestone v6.0 started
 
 ## Performance Metrics
 
