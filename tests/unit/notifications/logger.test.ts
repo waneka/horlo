@@ -28,7 +28,14 @@ vi.mock('@/db', () => ({
 
 vi.mock('@/db/schema', () => ({
   notifications: { userId: 'user_id', actorId: 'actor_id', type: 'type', payload: 'payload' },
-  profileSettings: { userId: 'user_id', notifyOnFollow: 'notify_on_follow', notifyOnWatchOverlap: 'notify_on_watch_overlap' },
+  profileSettings: {
+    userId: 'user_id',
+    notifyOnFollow: 'notify_on_follow',
+    notifyOnWatchOverlap: 'notify_on_watch_overlap',
+    // Phase 55 — extended for NOTIF-13/NOTIF-14 opt-out tests
+    notifyOnLike: 'notify_on_like',
+    notifyOnComment: 'notify_on_comment',
+  },
 }))
 
 vi.mock('drizzle-orm', () => ({
@@ -179,6 +186,237 @@ describe('logNotification', () => {
       })
 
       expect(db.execute).toHaveBeenCalledTimes(1)
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // Phase 55 extensions — NOTIF-13, NOTIF-14, opt-out for like/comment types
+  // -----------------------------------------------------------------------
+
+  describe('NOTIF-13 — payload key alignment (watch_like vs wear_like)', () => {
+    it('watch_like: payload carries watch_id (not wear_event_id)', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: true }])
+      ;(db.execute as Mock).mockResolvedValue(undefined)
+
+      const watchLikePayload = {
+        actor_username: 'actorname',
+        actor_display_name: 'Actor Name',
+        watch_id: '22222222-3333-4444-8555-666666666666',
+        watch_brand: 'Rolex',
+        watch_model: 'Submariner',
+      }
+
+      await logNotification({
+        type: 'watch_like',
+        recipientUserId,
+        actorUserId,
+        payload: watchLikePayload as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      // The payload passed to db.execute must contain watch_id and NOT wear_event_id
+      expect(db.execute).toHaveBeenCalledTimes(1)
+      const callArg = (db.execute as Mock).mock.calls[0][0]
+      expect(String(callArg)).not.toContain('wear_event_id')
+      // The payload object passed to the logger includes watch_id
+      expect(watchLikePayload).toHaveProperty('watch_id')
+      expect(watchLikePayload).not.toHaveProperty('wear_event_id')
+    })
+
+    it('wear_like: payload carries wear_event_id (not watch_id) — LANDMINE: column-style key', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: true }])
+      ;(db.execute as Mock).mockResolvedValue(undefined)
+
+      const wearLikePayload = {
+        actor_username: 'actorname',
+        actor_display_name: 'Actor Name',
+        wear_event_id: '33333333-4444-4555-8666-777777777777', // MUST be wear_event_id, not wear_id
+        watch_brand: 'Omega',
+        watch_model: 'Seamaster',
+      }
+
+      await logNotification({
+        type: 'wear_like',
+        recipientUserId,
+        actorUserId,
+        payload: wearLikePayload as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      // Must use db.execute (dedup path) for wear_like
+      expect(db.execute).toHaveBeenCalledTimes(1)
+      expect(db.insert).not.toHaveBeenCalled()
+      // The payload object carries wear_event_id (column-style) — dedup index key
+      expect(wearLikePayload).toHaveProperty('wear_event_id')
+      expect(wearLikePayload).not.toHaveProperty('watch_id')
+      expect(wearLikePayload).not.toHaveProperty('wear_id')
+    })
+  })
+
+  describe('NOTIF-14 — ON CONFLICT DO NOTHING raw SQL for like types', () => {
+    it('watch_like: uses db.execute with ON CONFLICT DO NOTHING (dedup index path, not db.insert)', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: true }])
+      ;(db.execute as Mock).mockResolvedValue(undefined)
+
+      await logNotification({
+        type: 'watch_like',
+        recipientUserId,
+        actorUserId,
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          watch_id: '22222222-3333-4444-8555-666666666666',
+          watch_brand: 'Rolex',
+          watch_model: 'Sub',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      expect(db.execute).toHaveBeenCalledTimes(1)
+      expect(db.insert).not.toHaveBeenCalled()
+      // Assert the SQL string contains ON CONFLICT DO NOTHING
+      const callArg = (db.execute as Mock).mock.calls[0][0]
+      expect(String(callArg)).toContain('ON CONFLICT DO NOTHING')
+    })
+
+    it('wear_like: uses db.execute with ON CONFLICT DO NOTHING (dedup index path, not db.insert)', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: true }])
+      ;(db.execute as Mock).mockResolvedValue(undefined)
+
+      await logNotification({
+        type: 'wear_like',
+        recipientUserId,
+        actorUserId,
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          wear_event_id: '33333333-4444-4555-8666-777777777777',
+          watch_brand: 'Omega',
+          watch_model: 'Sea',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      expect(db.execute).toHaveBeenCalledTimes(1)
+      expect(db.insert).not.toHaveBeenCalled()
+      const callArg = (db.execute as Mock).mock.calls[0][0]
+      expect(String(callArg)).toContain('ON CONFLICT DO NOTHING')
+    })
+  })
+
+  describe('Phase 55 opt-out checks (notifyOnLike, notifyOnComment)', () => {
+    it('skips watch_like insert when notifyOnLike is false', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: false, notifyOnComment: true }])
+
+      await logNotification({
+        type: 'watch_like',
+        recipientUserId,
+        actorUserId,
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          watch_id: '22222222-3333-4444-8555-666666666666',
+          watch_brand: 'Rolex',
+          watch_model: 'Sub',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      expect(db.execute).not.toHaveBeenCalled()
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('skips watch_comment insert when notifyOnComment is false', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: false }])
+
+      await logNotification({
+        type: 'watch_comment',
+        recipientUserId,
+        actorUserId,
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          watch_id: '22222222-3333-4444-8555-666666666666',
+          watch_brand: 'Rolex',
+          watch_model: 'Sub',
+          comment_id: '44444444-5555-4666-8777-888888888888',
+          comment_preview: 'Nice watch!',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      expect(db.execute).not.toHaveBeenCalled()
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('comment types use db.insert (standard Drizzle path, no dedup)', () => {
+    it('watch_comment uses db.insert NOT db.execute (comments have no dedup index)', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: true }])
+      const { valuesMock } = setupInsertChain()
+
+      await logNotification({
+        type: 'watch_comment',
+        recipientUserId,
+        actorUserId,
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          watch_id: '22222222-3333-4444-8555-666666666666',
+          watch_brand: 'Rolex',
+          watch_model: 'Sub',
+          comment_id: '44444444-5555-4666-8777-888888888888',
+          comment_preview: 'Nice watch!',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      // comment types fall through to db.insert (no dedup index needed for comments)
+      expect(db.insert).toHaveBeenCalledTimes(1)
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'watch_comment' })
+      )
+      expect(db.execute).not.toHaveBeenCalled()
+    })
+
+    it('wear_comment uses db.insert NOT db.execute', async () => {
+      setupSelectChain([{ notifyOnFollow: true, notifyOnWatchOverlap: true, notifyOnLike: true, notifyOnComment: true }])
+      const { valuesMock } = setupInsertChain()
+
+      await logNotification({
+        type: 'wear_comment',
+        recipientUserId,
+        actorUserId,
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          wear_event_id: '33333333-4444-4555-8666-777777777777',
+          watch_brand: 'Omega',
+          watch_model: 'Sea',
+          comment_id: '44444444-5555-4666-8777-888888888888',
+          comment_preview: 'Cool wrist shot!',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      expect(db.insert).toHaveBeenCalledTimes(1)
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'wear_comment' })
+      )
+      expect(db.execute).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Phase 55 self-guard (NOTIF-11/12 "never self")', () => {
+    it('self-guard: recipientUserId === actorUserId → early return, no DB call for watch_like', async () => {
+      await logNotification({
+        type: 'watch_like',
+        recipientUserId,
+        actorUserId: recipientUserId, // same as recipient
+        payload: {
+          actor_username: 'x',
+          actor_display_name: null,
+          watch_id: '22222222-3333-4444-8555-666666666666',
+          watch_brand: 'Rolex',
+          watch_model: 'Sub',
+        } as Parameters<typeof logNotification>[0]['payload'],
+      })
+
+      expect(db.select).not.toHaveBeenCalled()
+      expect(db.execute).not.toHaveBeenCalled()
       expect(db.insert).not.toHaveBeenCalled()
     })
   })
