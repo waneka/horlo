@@ -203,7 +203,7 @@ Plans:
 **Depends on:** Phase 51 (Branch B 307 + `no-store` contract must remain live through this fix)
 **Source:** `.planning/audits/cache-components-2026-05-21-followup.md` (Option D plan, supersedes the original audit's "three forward options")
 **Related:** `.planning/audits/cache-components-2026-05-21.md`, `.planning/debug/resolved/profile-page-404-top-nav.md`
-**Plans:** 8/9 plans executed
+**Plans:** 9/9 plans complete
 
 Plans:
 **Wave 1**
@@ -221,7 +221,7 @@ Plans:
 - [x] 52-08-PLAN.md — Wave 3: doc reversals — rewrite [tab]/page.tsx + loading.tsx + profile-gate.tsx comments + annotate 51-CONTEXT.md (D-52-11/12/14)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 52-09-PLAN.md — Wave 4: pre-deploy gates + Vercel deploy + Branch B curl verification + operator UAT (2x cycles + 15-min cache-revalidation wait) — recurrence-4 prevention contract
+- [x] 52-09-PLAN.md — Wave 4: pre-deploy gates + Vercel deploy + Branch B curl verification + operator UAT (2x cycles + 15-min cache-revalidation wait) — recurrence-4 prevention contract
 
 **Scope (provisional — validator output drives final shape):**
 - Add `unstable_instant = { prefetch: 'static' }` to `src/app/u/[username]/[tab]/page.tsx` (validation export)
