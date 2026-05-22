@@ -55,8 +55,10 @@ Exceptions:
 |------|------|--------|-------------|
 | Body | 14px (`text-sm`) | 400 regular | 1.5 (`leading-normal`) |
 | Label | 12px (`text-xs`) | 600 semibold | 1.25 (`leading-tight`) |
-| Heading | 24px (`text-2xl`) | 700 bold | 1.2 (`leading-tight`) |
+| Heading | 24px (`text-2xl`) | 600 semibold (`font-semibold`) | 1.2 (`leading-tight`) |
 | Display | 36px (`text-4xl`) | 400 regular | 1.2 |
+
+Two font weights only: **400 regular** and **600 semibold**. No weight-700 (`font-bold`) reference anywhere in this phase. Heading hierarchy is established by size differential (24px heading vs 14px body), not weight escalation. The heading Tailwind class is `font-semibold` — confirm this resolves to `font-weight: 600`, not `font-bold` / `font-weight: 700`.
 
 **LikeButton-specific typography:**
 - Count digit: `text-sm` (14px) at weight 400 — same visual weight as the icon, reads as a supporting stat, not a headline.
@@ -200,6 +202,18 @@ overlay divs (absolute children of the outer div):
   content (links inside): pointer-events-auto ← on the clickable username link only
 ```
 
+**The `relative` class is mandatory on the photo container div. There are exactly 4 callsites that need it — executor must patch all 4 and not stop early:**
+
+| File | Approx line | Condition | Action |
+|------|-------------|-----------|--------|
+| `WearPhotoClient.tsx` | ~L94 | signed-URL happy path | **ALREADY HAS `relative`** — leave as-is |
+| `WearPhotoClient.tsx` | ~L68 | `status==='failed'` + `watchImageUrl` fallback | **MISSING `relative`** — add it |
+| `WearPhotoClient.tsx` | ~L81 | `status==='failed'` + no-photo fallback | **MISSING `relative`** — add it |
+| `WearDetailHero.tsx` | ~L33 | `watchImageUrl` path | **MISSING `relative`** — add it |
+| `WearDetailHero.tsx` | ~L46 | no-photo fallback | **MISSING `relative`** — add it |
+
+That is 4 additions across 2 files (L94 is already patched and must not be double-applied). The class string `"w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"` becomes `"relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"` at each of the 4 missing callsites.
+
 **Top overlay (avatar + username + timestamp):**
 ```
   position: absolute; inset-x-0; top: 0; z-index: 10
@@ -220,8 +234,6 @@ Content: `[brand: text-sm font-semibold] [model: text-sm font-normal]` all `text
 
 **No-photo fallback correctness (D-08):**
 The fallback renders `bg-muted` with `items-center justify-center`. The existing centered `{brand} {model}` text must be REMOVED from the fallback's interior — brand/model moves to the bottom overlay. The fallback becomes a plain `bg-muted` block. The overlay divs are rendered on top regardless of photo presence. Text color: `text-foreground` (not white) on the muted fallback since `--muted` is light in light mode and dark text has adequate contrast.
-
-**The `relative` class is mandatory on the photo container div and is NOT currently present in `WearPhotoClient.tsx` or `WearDetailHero.tsx`** (both use the class string `"w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"` without `relative`). The overlay approach requires adding `relative` to that class string. Executor must add it at all callsites.
 
 **Assert:** After clearing `.next/` cache (`rm -rf .next`), the photo renders at 4:5 aspect ratio with overlays positioned correctly at top and bottom edges. The muted fallback shows overlays, not centered text.
 
@@ -304,9 +316,10 @@ No third-party registry blocks. No new shadcn components being added — `Heart`
 | `src/app/globals.css` | Full token palette inspected. `--destructive` selected for liked-heart (oklch hue 27, red family). `--muted-foreground` for idle heart. `--accent` explicitly NOT used for heart. |
 | `src/components/profile/FollowButton.tsx` | Optimistic pattern, `viewerId: string | null`, `aria-pressed`/`aria-busy`/`aria-label`, `disabled={pending}`, rollback shape. All mirrored. |
 | `src/components/watch/WatchDetail.tsx` | Confirmed `min-h-[44px]` touch-target precedent at L168. Title block location at ~L135-145. |
-| `src/components/wear/WearDetailHero.tsx` | Confirmed `w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto` class string — missing `relative` noted as mandatory addition. |
-| `src/components/wear/WearPhotoClient.tsx` | Same class string confirmed. `relative` must be added. Fallback chain structure understood. |
+| `src/components/wear/WearDetailHero.tsx` | Confirmed `w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto` class string — `relative` missing at ~L33 (watchImageUrl path) and ~L46 (no-photo fallback). Both must be patched. |
+| `src/components/wear/WearPhotoClient.tsx` | Same class string. `relative` already present at ~L94 (signed-URL path). Missing at ~L68 (failed+watchImageUrl) and ~L81 (failed+no-photo). Both must be patched. |
 | `src/components/wear/WearDetailMetadata.tsx` | Confirmed existing collector row + watch row + note layout. All collector/watch content migrates to photo overlays. |
+| UI checker revision (2026-05-22) | Issue 1: heading weight changed 700→600 semibold (max-2-weight rule). Issue 2: overlay `relative` callsite table updated to enumerate all 4 missing sites precisely. |
 | User input | 0 questions asked — all design contract questions answered by upstream context and codebase inspection. |
 
 ---
