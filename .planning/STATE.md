@@ -113,8 +113,8 @@ Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
 | Category | Item | Status | Notes |
 |----------|------|--------|-------|
 | debug | knowledge-base | resolved-index | False positive — `.planning/debug/knowledge-base.md` is the resolved-sessions index, not an open session |
-| verification | Phase 49.1 | human_needed | D-DEBT-02: 5 prod/visual user-action gates (prod db push, prod migration test, 3 browser smokes) — documented in v5.2-MILESTONE-AUDIT.md; non-blocking post-deploy items |
-| uat | Phase 48 | passed | False positive — 0 pending scenarios; the related D-DEBT-03 dark-mode UAT is documented in v5.2-MILESTONE-AUDIT.md |
+| verification | Phase 49.1 | ✅ resolved 2026-05-21 | D-DEBT-02 cleared via `/gsd-audit-uat`: Gate 1 prod push verified applied+synced (`supabase migration list --linked`); Gates 3/4 code-verified; Gate 5 operator-confirmed `/explore/genres` → 404 |
+| uat | Phase 48 | ✅ resolved 2026-05-21 | D-DEBT-03 dark-mode `/search` chip legibility operator-confirmed in real browser (5 chip groups post-49.1, not 7) |
 | quick_task | 260413-qp3-price-prominence-and-filter-collapse | stale-slug | Stale quick-task reference; no `.planning/quick-tasks/` directory present |
 | quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | stale-slug | Stale quick-task reference |
 | quick_task | 260421-srx-wrap-follower-following-counts-in-link-o | stale-slug | Stale quick-task reference |
