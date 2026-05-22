@@ -158,7 +158,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 ### 🔄 v6.0 Social Interaction (Phases 53-58)
 
 - [x] **Phase 53: Schema + RLS + Enum Extension** — interaction tables, two-layer security foundation (completed 2026-05-22)
-- [ ] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement
+- [x] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement (completed 2026-05-22)
 - [ ] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out
 - [ ] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages
 - [ ] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts
@@ -210,7 +210,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 **Plans**: 3 plans
   - [x] 54-01-PLAN.md — Wave 0: test scaffolds (localhost-gated SEC-02/GATE-04/GATE-05 integration suite + mocked-db unit suite); RED until impl lands
   - [x] 54-02-PLAN.md — Wave 1: isMutualFollow bidirectional single-query check (GATE-05) in follows.ts + reactions.ts likes DAL (getLikesForTarget/createLike/deleteLike)
-  - [ ] 54-03-PLAN.md — Wave 2: comments.ts gate (canViewerCommentOnTarget + CommentGateError + createComment/getCommentsForTarget/edit/delete) — GATE-01, GATE-04, SEC-02
+  - [x] 54-03-PLAN.md — Wave 2: comments.ts gate (canViewerCommentOnTarget + CommentGateError + createComment/getCommentsForTarget/edit/delete) — GATE-01, GATE-04, SEC-02
 
 ### Phase 55: Server Actions + Notification Dedup
 **Goal**: All like and comment mutations are callable from the UI through Zod-validated Server Actions that re-verify auth server-side, invalidate the correct cache tags, and fire like/comment notifications with deduplication — with no IDOR or cross-viewer cache leakage possible.
@@ -267,7 +267,7 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
-| 54. DAL — Reactions, Comments + Gate Logic | 2/3 | In Progress|  |
+| 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete   | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 0/TBD | Not started | - |
 | 56. Like UI | 0/TBD | Not started | - |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
