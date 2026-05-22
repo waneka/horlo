@@ -207,7 +207,10 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   3. `createComment` on a wishlist watch rejects a non-mutual-follower caller with a gate error — verified by an integration test that calls the DAL directly (bypassing RLS) as a non-mutual-follower.
   4. The collection owner can always read and create comments on their own watches regardless of the gate (GATE-04 verified in the same integration test suite).
   5. `isMutualFollow(userA, userB)` checks both directions in a single query and returns false when A follows B but B does not follow A.
-**Plans**: TBD
+**Plans**: 3 plans
+  - [ ] 54-01-PLAN.md — Wave 0: test scaffolds (localhost-gated SEC-02/GATE-04/GATE-05 integration suite + mocked-db unit suite); RED until impl lands
+  - [ ] 54-02-PLAN.md — Wave 1: isMutualFollow bidirectional single-query check (GATE-05) in follows.ts + reactions.ts likes DAL (getLikesForTarget/createLike/deleteLike)
+  - [ ] 54-03-PLAN.md — Wave 2: comments.ts gate (canViewerCommentOnTarget + CommentGateError + createComment/getCommentsForTarget/edit/delete) — GATE-01, GATE-04, SEC-02
 
 ### Phase 55: Server Actions + Notification Dedup
 **Goal**: All like and comment mutations are callable from the UI through Zod-validated Server Actions that re-verify auth server-side, invalidate the correct cache tags, and fire like/comment notifications with deduplication — with no IDOR or cross-viewer cache leakage possible.
