@@ -9,8 +9,9 @@
 //
 // EXPECTED RED until Plan 02 lands WearCard at src/components/wear/WearCard.tsx
 
+import type { JSX } from 'react'
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 // SC-4: the import itself resolves to a function (single shared source).
 // This module path is the canonical location per RESEARCH.md §Project Structure.
@@ -85,7 +86,11 @@ describe('WearCard — SC-4 single-source + D-09 wishlist gate (Wave 0 RED)', ()
         permalinkUrl="/wear/we-002"
       />,
     )
-    // The text "Add to wishlist" must appear somewhere in the rendered output
+    // Open the overflow menu so the portal-rendered items are in the DOM.
+    // @base-ui/react/menu portals the popup; items are absent until trigger click.
+    const trigger = screen.getByRole('button', { name: 'More options' })
+    fireEvent.click(trigger)
+    // The text "Add to wishlist" must appear in the dropdown popup
     expect(
       screen.getByText('Add to wishlist'),
       'showAddToWishlist=true → wishlist menu item present',
