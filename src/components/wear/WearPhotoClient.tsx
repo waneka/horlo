@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { PhotoSkeleton } from './PhotoSkeleton'
+import { WearPhotoOverlays } from './WearDetailHero'
 
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 300
@@ -34,6 +35,10 @@ const RETRY_DELAY_MS = 300
  * D-05: ?retry=N is a query-string append only — we are NOT re-minting the
  * signed URL. Server-side mint happens once per page request in the
  * Suspense-wrapped server child; this client only varies the query string.
+ *
+ * Phase 56 D-05/06/07/08: all 3 photo containers now render WearPhotoOverlays.
+ * The 2 failed-state containers gain `relative` (previously missing). The
+ * signed-URL happy-path container at ~L94 already had `relative` — not touched.
  */
 export function WearPhotoClient({
   signedUrl,
@@ -41,12 +46,20 @@ export function WearPhotoClient({
   watchImageUrl,
   brand,
   model,
+  username,
+  displayName,
+  avatarUrl,
+  createdAt,
 }: {
   signedUrl: string
   altText: string
   watchImageUrl: string | null
   brand: string
   model: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  createdAt: Date
 }) {
   const [status, setStatus] = useState<'pending' | 'loaded' | 'failed'>('pending')
   const [retryCount, setRetryCount] = useState(0)
@@ -65,7 +78,7 @@ export function WearPhotoClient({
     // Fall through to the parent's existing fallback chain.
     if (watchImageUrl) {
       return (
-        <div className="w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
+        <div className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={watchImageUrl}
@@ -73,17 +86,33 @@ export function WearPhotoClient({
             className="w-full h-full object-cover"
             loading="eager"
           />
+          <WearPhotoOverlays
+            username={username}
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            createdAt={createdAt}
+            brand={brand}
+            model={model}
+            hasPhoto={true}
+          />
         </div>
       )
     }
     return (
       <div
-        className="w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"
+        className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"
         aria-label={`No photo — ${brand} ${model}`}
       >
-        <span className="text-sm font-semibold text-muted-foreground">
-          {brand} {model}
-        </span>
+        {/* Brand/model text removed — moves to bottom overlay (D-06) */}
+        <WearPhotoOverlays
+          username={username}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          createdAt={createdAt}
+          brand={brand}
+          model={model}
+          hasPhoto={false}
+        />
       </div>
     )
   }
@@ -118,6 +147,15 @@ export function WearPhotoClient({
           }, RETRY_DELAY_MS)
         }}
         style={status === 'pending' ? { visibility: 'hidden' } : undefined}
+      />
+      <WearPhotoOverlays
+        username={username}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        createdAt={createdAt}
+        brand={brand}
+        model={model}
+        hasPhoto={true}
       />
     </div>
   )
