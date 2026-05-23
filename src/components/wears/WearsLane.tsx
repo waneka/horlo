@@ -51,6 +51,10 @@ function getEmblaDuration(): number {
   }
 }
 
+// Minimum horizontal drag distance (px) required to trigger a cross-user swipe.
+// Below this threshold a tap or minor slide at the boundary is ignored.
+const CROSS_USER_THRESHOLD_PX = 50
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -70,16 +74,26 @@ interface WearsLaneProps {
  *
  * Drives embla-carousel-react with startIndex clamped to slides.length-1.
  * On comment sheet open, pauses swipe via emblaApi.reInit({ watchDrag: false })
- * (D-10/D-11). Close affordance: top-left X → router.back().
+ * (D-10/D-11). Close affordance: top-right X → router.back().
  *
  * Full-screen on mobile (fixed inset-0 h-dvh overflow-hidden), centered
- * 600px column on desktop (md:static md:inset-auto md:h-auto md:overflow-visible)
+ * 600px column on desktop (md:relative md:inset-auto md:h-auto md:overflow-visible)
  * per UI-SPEC §7 and §Route-Specific Layout Contracts (SC-2).
  *
- * Cross-user swipe (D-06): when the user reaches the first or last slide and
- * attempts to continue swiping, the component navigates to the previous or next
- * user's lane. Guarded: no nav when railIndex === -1, no neighbor exists, or
- * commentOpen is true.
+ * Cross-user swipe (D-06): when the user is at the first or last slide and
+ * releases a pointer drag that exceeds CROSS_USER_THRESHOLD_PX, the component
+ * navigates to the previous or next user's lane via router.replace (so the
+ * previous lane is replaced in history, not stacked — one close → home).
+ * Guarded: no nav when railIndex === -1, no neighbor exists, commentOpen is
+ * true, or the navigated single-flight ref is set.
+ *
+ * Detection strategy (replaces 'settle'-based approach):
+ *   Cross-user intent is detected at pointerup on the window, not in the
+ *   embla 'settle' event. This avoids: (a) spurious settles from reInit
+ *   (comment-sheet open/close), (b) 'settle' never firing for single-wear
+ *   lanes that have nothing to scroll, (c) the race between embla snap-back
+ *   and navigation. The pointerup handler checks: at boundary slide + correct
+ *   swipe direction + drag distance > threshold → navigate immediately.
  */
 export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, railIndex }: WearsLaneProps) {
   const router = useRouter()
@@ -123,7 +137,7 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
 
   // D-06 + #6: cross-user boundary navigation.
   //
-  // Named helper so BOTH the swipe-boundary settle effect AND the desktop arrow buttons
+  // Named helper so BOTH the pointer-release boundary effect AND the desktop arrow buttons
   // can invoke cross-user navigation without duplicating railUsernames/railIndex math.
   //
   // Guards honored by goToNeighbor:
@@ -131,6 +145,9 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   //   - commentOpen === true (sheet open): no-op
   //   - navigated.current === true (single-flight): no-op
   //   - no neighbor in direction: no-op
+  //
+  // Uses router.replace (not router.push) so the previous user's lane is replaced
+  // in history rather than stacked — one close tap → home (H2 fix).
   const navigated = useRef(false)
 
   const goToNeighbor = (direction: 'next' | 'prev') => {
@@ -141,54 +158,93 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       const nextUsername = railUsernames[railIndex + 1]
       if (!nextUsername) return
       navigated.current = true
-      router.push(`/wears/${nextUsername}`)
+      router.replace(`/wears/${nextUsername}`)
     } else {
       const prevUsername = railUsernames[railIndex - 1]
       if (!prevUsername) return
       navigated.current = true
-      router.push(`/wears/${prevUsername}`)
+      router.replace(`/wears/${prevUsername}`)
     }
   }
 
-  // Detection strategy: embla with containScroll:false allows over-drag at the
-  // boundary slide, but snaps back. We detect forward/backward intent by comparing
-  // pointerdown X to pointerup X. On 'settle', if the user dragged past the
-  // boundary AND canScrollNext/canScrollPrev is false, call goToNeighbor.
+  // Cross-user boundary detection via pointer events (H1 fix).
   //
-  // dragDeltaX stores (pointerUpX - pointerDownX) after pointerup fires:
-  //   negative delta = swiped left = forward intent (toward next user)
-  //   positive delta = swiped right = backward intent (toward prev user)
-  const pointerDownX = useRef<number | null>(null)
-  const dragDeltaX = useRef<number | null>(null)
+  // Strategy: detect gesture intent at pointerup rather than in embla's 'settle'
+  // event. This avoids spurious cross-user navigations caused by:
+  //   (a) emblaApi.reInit() (comment-sheet open/close) firing 'settle' while
+  //       dragDeltaX.current is non-null from a prior drag
+  //   (b) 'settle' never firing for single-wear lanes (nothing to scroll — the
+  //       carousel is already settled, so over-dragging snaps back silently)
+  //   (c) Keyboard / programmatic scrolls that fire 'settle' without a gesture
+  //
+  // Two effects, same rationale as before:
+  //   Effect A — pointer tracking (stable deps: emblaApi, railIndex).
+  //     Attaches pointerdown to the embla root (tracks drag origin inside the
+  //     carousel). Attaches pointerup to window (captures fast drags that end
+  //     outside the viewport — WR-01). At pointerup, immediately evaluates the
+  //     cross-user boundary condition and calls goToNeighbor if met.
+  //   Effect B — exposes current goToNeighbor guard state to Effect A's closure
+  //     via a ref, so Effect A never needs to re-register when commentOpen or
+  //     router changes (avoids tearing down listeners mid-drag — CR-01).
+  //
+  // Boundary condition checked at pointerup:
+  //   - At last slide AND user swiped left (delta < -CROSS_USER_THRESHOLD_PX) → next user
+  //   - At first slide AND user swiped right (delta > CROSS_USER_THRESHOLD_PX) → prev user
+  //
+  // Note: canScrollNext/canScrollPrev is NOT used here. containScroll:false means
+  // embla does not block drags at boundaries — the slide position check
+  // (isFirst / isLast) is the correct boundary signal. canScroll* reflects
+  // whether additional snaps exist, which is equivalent for multi-slide lanes but
+  // identical to the position check for single-slide lanes (both isFirst AND
+  // isLast are true simultaneously there — position check handles both correctly).
 
-  // Effect A: pointer tracking only.
+  const pointerDownX = useRef<number | null>(null)
+
+  // Stable ref to the current goToNeighbor guard state — lets Effect A call
+  // goToNeighbor without being in its deps array (avoids listener re-registration
+  // on commentOpen / router change mid-drag).
+  const goToNeighborRef = useRef(goToNeighbor)
+  useEffect(() => {
+    goToNeighborRef.current = goToNeighbor
+    // goToNeighbor is re-created each render (inline function) — update the ref
+    // whenever the component re-renders so Effect A always calls the latest version.
+    // Intentionally no deps array: always sync the ref.
+  })
+
+  // Effect A: pointer tracking + boundary detection at pointerup.
   //
-  // Deps: [emblaApi, railIndex] — deliberately excludes commentOpen, router,
-  // and railUsernames. This prevents the effect from tearing down and
-  // re-registering pointer listeners mid-drag when the comment sheet opens or
-  // closes, which would reset dragDeltaX.current and silently swallow a
-  // cross-user swipe gesture (CR-01).
-  //
-  // onPointerDown attaches to the embla root (we only start tracking when the
-  // drag begins inside the carousel). onPointerUp attaches to window so a drag
-  // that ends outside the embla viewport (common on desktop fast drags) still
-  // records dragDeltaX (WR-01).
+  // Deps: [emblaApi, railIndex] — stable. commentOpen and router are accessed
+  // via goToNeighborRef, not captured in this effect's closure.
   useEffect(() => {
     if (!emblaApi) return
-    // Guard: actor not in the rail — no pointer tracking needed.
+    // Guard: actor not in the rail — no cross-user pointer tracking needed.
     if (railIndex === -1) return
 
     const root = emblaApi.rootNode()
 
     const onPointerDown = (e: PointerEvent) => {
       pointerDownX.current = e.clientX
-      dragDeltaX.current = null
     }
 
     const onPointerUp = (e: PointerEvent) => {
-      if (pointerDownX.current !== null) {
-        dragDeltaX.current = e.clientX - pointerDownX.current
-        pointerDownX.current = null
+      if (pointerDownX.current === null) return
+      const delta = e.clientX - pointerDownX.current
+      pointerDownX.current = null
+
+      if (!emblaApi) return
+      const snapList = emblaApi.scrollSnapList()
+      const current = emblaApi.selectedScrollSnap()
+      const isLast = current === snapList.length - 1
+      const isFirst = current === 0
+
+      // Forward intent: swiped left past threshold at last slide → next user.
+      if (isLast && delta < -CROSS_USER_THRESHOLD_PX) {
+        goToNeighborRef.current('next')
+        return
+      }
+      // Backward intent: swiped right past threshold at first slide → prev user.
+      if (isFirst && delta > CROSS_USER_THRESHOLD_PX) {
+        goToNeighborRef.current('prev')
       }
     }
 
@@ -201,57 +257,6 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
     }
   }, [emblaApi, railIndex])
 
-  // Effect B: settle handler.
-  //
-  // Re-registers when commentOpen/router/railUsernames/railIndex change so that
-  // onSettle always closes over the freshest navigation state. Pointer tracking
-  // is in a separate effect (Effect A above) and is NOT torn down when these
-  // deps change — dragDeltaX.current is therefore stable across
-  // comment-sheet open/close cycles.
-  useEffect(() => {
-    if (!emblaApi) return
-    // Guard: actor not in the rail — disable cross-user navigation entirely.
-    if (railIndex === -1) return
-
-    const onSettle = () => {
-      // Guard: sheet open — never navigate while the comment sheet is visible.
-      if (commentOpen) return
-      // Guard: already navigated — single-flight until remount.
-      if (navigated.current) return
-
-      const snapList = emblaApi.scrollSnapList()
-      const current = emblaApi.selectedScrollSnap()
-      const isLast = current === snapList.length - 1
-      const isFirst = current === 0
-
-      // Require a pointer-driven drag (not keyboard / programmatic scroll).
-      if (dragDeltaX.current === null) return
-      const delta = dragDeltaX.current
-      dragDeltaX.current = null
-
-      if (isLast && !emblaApi.canScrollNext()) {
-        // Last slide, no next snap. Proceed only if the user swiped left (forward intent).
-        if (delta >= 0) return // Swiped right or no movement — don't cross forward
-        goToNeighbor('next')
-      } else if (isFirst && !emblaApi.canScrollPrev()) {
-        // First slide, no prev snap. Proceed only if the user swiped right (backward intent).
-        if (delta <= 0) return // Swiped left or no movement — don't cross backward
-        goToNeighbor('prev')
-      }
-    }
-
-    emblaApi.on('settle', onSettle)
-
-    return () => {
-      emblaApi.off('settle', onSettle)
-    }
-    // goToNeighbor is intentionally omitted from deps: it is a stable inline function
-    // that closes over railUsernames, railIndex, commentOpen, and router — all of which
-    // ARE in this effect's deps array. Including the function object itself would cause
-    // unnecessary re-registrations.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emblaApi, railUsernames, railIndex, commentOpen, router])
-
   // #3/#6: derived values for progress segments and arrow visibility.
   const hasNextUser = railIndex !== -1 && !!railUsernames[railIndex + 1]
   const hasPrevUser = railIndex !== -1 && !!railUsernames[railIndex - 1]
@@ -259,44 +264,46 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const isFirstSegment = selectedIndex === 0
 
   return (
-    // Outer container: positional anchor for the close button and arrow buttons.
+    // Outer container: positional anchor for the close button, progress bar, and arrow buttons.
     // Mobile: fixed inset-0 h-dvh overflow-hidden (full-screen, no nav chrome).
-    // Desktop (md+): static, auto height, centered 600px column.
-    <div className="fixed inset-0 h-dvh overflow-hidden md:static md:inset-auto md:h-auto md:overflow-visible">
+    // Desktop (md+): relative (preserves positioning context for absolute children),
+    // auto height, centered 600px column. md:static would break absolute positioning.
+    <div className="fixed inset-0 h-dvh overflow-hidden md:relative md:inset-auto md:h-auto md:overflow-visible">
 
       {/* #3: Top segmented progress indicator.
           Absolutely positioned over the outer container (above photo scrims at z-10).
           Full-width with horizontal padding; pointer-events-none so swipes pass through.
-          The X close button overlays at the right end via absolute positioning. */}
+          The X close button overlays at the right end via absolute positioning.
+          Desktop: constrained to the 600px column via max-w + mx-auto. */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center gap-1 px-3 pt-3 pointer-events-none md:max-w-[600px] md:mx-auto">
         {slides.map((_, i) => (
           <div
             key={i}
             className={
               'h-[3px] flex-1 rounded-full transition-opacity duration-200 ' +
-              (i === selectedIndex ? 'bg-white opacity-90' : 'bg-white opacity-30')
+              (i === selectedIndex
+                ? 'bg-white opacity-90 md:bg-foreground md:opacity-70'
+                : 'bg-white opacity-30 md:bg-foreground md:opacity-20')
             }
           />
         ))}
         {/* Cross-user boundary hint: subtle chevron at the trailing end of the segment
             row when on the last segment and a next rail user exists.
-            text-white at low opacity; no accent color; non-interactive (pointer-events-none). */}
+            text-white on mobile (dark photo), text-foreground on desktop (light bg). */}
         {isLastSegment && hasNextUser && (
-          <ChevronRight className="size-3 text-white opacity-40 shrink-0" aria-hidden />
+          <ChevronRight className="size-3 text-white opacity-40 md:text-foreground md:opacity-30 shrink-0" aria-hidden />
         )}
       </div>
 
-      {/* #4: Close affordance — repositioned from top-left to top-RIGHT.
-          Sits in the top band above the centered 4:5 photo (the empty band created by
-          justify-center). The WearCard's own overflow menu (also top-3 right-3) is
-          anchored to the WearCard's relative container, which sits vertically centered
-          lower in the slide — no visual collision.
+      {/* #4: Close affordance — top-RIGHT.
+          Sits in the top band above the centered 4:5 photo.
+          On desktop: dark foreground icon for contrast on light background.
           Kept outside embla's pointer-listener tree to avoid swipe-vs-click races. */}
       <button
         type="button"
         aria-label="Close"
         onClick={() => router.back()}
-        className="absolute top-3 right-3 z-30 min-h-[44px] min-w-[44px] flex items-center justify-center text-white"
+        className="absolute top-3 right-3 z-30 min-h-[44px] min-w-[44px] flex items-center justify-center text-white md:text-foreground"
       >
         <X className="size-5" aria-hidden />
       </button>
@@ -322,8 +329,9 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       </div>
 
       {/* #6: Desktop-only prev/next edge arrows — hidden on mobile (swipe-only).
-          Vertically centered on the photo using absolute positioning.
-          Reuse goToNeighbor for cross-user nav at the first/last slide boundary. */}
+          Vertically centered on the outer container using absolute positioning.
+          Requires md:relative on the outer container (H3 fix) to anchor correctly.
+          Semi-transparent dark circle provides contrast on the light desktop background. */}
 
       {/* Left arrow — shown when not at first slide OR when a previous rail user exists */}
       {(!isFirstSegment || hasPrevUser) && (
@@ -338,7 +346,7 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
               goToNeighbor('prev')
             }
           }}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-white"
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
         >
           <ChevronLeft className="size-5" aria-hidden />
         </button>
@@ -357,7 +365,7 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
               goToNeighbor('next')
             }
           }}
-          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-white"
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
         >
           <ChevronRight className="size-5" aria-hidden />
         </button>
