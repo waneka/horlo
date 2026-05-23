@@ -13,8 +13,8 @@ import {
  * The inline variant must NOT receive those props.
  */
 type WearCommentHostProps =
-  | { variant: 'bottom-sheet'; open: boolean; onOpenChange: (v: boolean) => void }
-  | { variant: 'inline'; open?: never; onOpenChange?: never }
+  | { variant: 'bottom-sheet'; wearEventId: string; open: boolean; onOpenChange: (v: boolean) => void }
+  | { variant: 'inline'; wearEventId: string; open?: never; onOpenChange?: never }
 
 /**
  * Comment host shell — bottom-sheet + inline variants (D-10).
@@ -28,6 +28,9 @@ type WearCommentHostProps =
  */
 export function WearCommentHost({
   variant,
+  // wearEventId is threaded from WearCard for Phase 57 comment fetching/posting.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  wearEventId: _wearEventId,
   open,
   onOpenChange,
 }: WearCommentHostProps) {

@@ -185,11 +185,12 @@ export function WearCard({
       {commentHostVariant === 'bottom-sheet' ? (
         <WearCommentHost
           variant="bottom-sheet"
+          wearEventId={wearEventId}
           open={commentOpen}
           onOpenChange={handleCommentOpenChange}
         />
       ) : (
-        <WearCommentHost variant="inline" />
+        <WearCommentHost variant="inline" wearEventId={wearEventId} />
       )}
     </div>
   )
