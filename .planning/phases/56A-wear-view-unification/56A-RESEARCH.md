@@ -591,7 +591,9 @@ This phase is NOT a rename/refactor/migration phase — it is a new-feature buil
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three resolved during pattern-mapping/planning: nav-hiding = Option B pathname check; `getProfileByUsername` already exists (no new resolver); initial slide index via server `searchParams ?from`. Resolutions documented inline below and in PATTERNS.md.
 
 1. **How to hide nav on `/wears/[username]`?**
    - What we know: root layout renders `<Header>` and `<BottomNavServer>` for all routes. `BottomNav` hides for `isPublicPath`. Neither currently has a `/wears` exemption.

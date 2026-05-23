@@ -122,7 +122,7 @@ embla: `import useEmblaCarousel from 'embla-carousel-react'`; copy `getEmblaDura
 
     Close affordance (UI-SPEC §4): a `<button aria-label="Close" onClick={() => router.back()} className="absolute top-3 left-3 z-20 min-h-[44px] min-w-[44px] flex items-center justify-center text-white">` with an `X` (lucide-react size-5). `const router = useRouter()` from 'next/navigation'. (No "View in stories" control — D-03; no progress bars — UI-SPEC §Deferred.)
 
-    Define and export a `WearSlide` type (or import a shared type) so the page can build the array. Keep WearCard the single owner of the engagement row + overflow + comment host — the lane only positions the carousel + close button.
+    Define and export a `WearSlide` type in THIS file (`src/components/wears/WearsLane.tsx`) — this is the canonical location; the server page imports `WearSlide` from `@/components/wears/WearsLane`. (PATTERNS.md mentions `@/lib/wywtTypes` — ignore that; do NOT create a new shared types file.) Keep WearCard the single owner of the engagement row + overflow + comment host — the lane only positions the carousel + close button.
   </action>
   <verify>
     <automated>npx tsc --noEmit 2>&1 | grep -c "WearsLane" | grep -q "^0$" && echo OK</automated>
@@ -171,10 +171,11 @@ embla: `import useEmblaCarousel from 'embla-carousel-react'`; copy `getEmblaDura
 
     Render `<WearsLane slides={slides} initialSlideIndex={initialSlideIndex} viewerId={viewerId} />`.
 
-    Imports: notFound, redirect from 'next/navigation'; Suspense from 'react'; getCurrentUser from '@/lib/auth'; getProfileByUsername from '@/data/profiles'; getActiveWearsForUser, getWearRailForViewer from '@/data/wearEvents'; getLikesForTargetCached from '@/data/reactions'; getWatchesByUser from '@/data/watches'; createSupabaseServerClient from '@/lib/supabase/server'; WearsLane from '@/components/wears/WearsLane'; PhotoSkeleton from '@/components/wear/PhotoSkeleton'.
+    Imports: notFound, redirect from 'next/navigation'; Suspense from 'react'; getCurrentUser from '@/lib/auth'; getProfileByUsername from '@/data/profiles'; getActiveWearsForUser, getWearRailForViewer from '@/data/wearEvents'; getLikesForTargetCached from '@/data/reactions'; getWatchesByUser from '@/data/watches'; createSupabaseServerClient from '@/lib/supabase/server'; WearsLane (and the `WearSlide` type) from '@/components/wears/WearsLane'; PhotoSkeleton from '@/components/wear/PhotoSkeleton'. Type the built array as `WearSlide[]`.
   </action>
   <verify>
-    <automated>npm run test -- phase56a-wears-lane && npm run build</automated>
+    <automated>npm run test -- phase56a-wears-lane</automated>
+    <!-- npm run build runs at the plan-level <verification> block, not per-task (build latency would mask the test signal) -->
   </verify>
   <acceptance_criteria>
     - File `src/app/wears/[username]/page.tsx` exists and `export default async function` is present
