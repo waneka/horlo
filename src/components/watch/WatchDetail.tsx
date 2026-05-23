@@ -48,8 +48,8 @@ interface WatchDetailProps {
    * `undefined` means a defensive default for any non-Plan-04 caller; treat as null.
    */
   verdict?: VerdictBundle | null
-  /** Phase 56 D-03: viewer identity for LikeButton (null impossible — watch page is auth-only). */
-  viewerId?: string | null
+  /** Phase 56 D-03: viewer identity for LikeButton (auth-only route; always a string). */
+  viewerId?: string
   /** Phase 56 D-03: server-hydrated initial like state from getLikesForTargetCached. */
   initialLikeState?: { liked: boolean; count: number }
 }
@@ -154,7 +154,7 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
           {viewerId !== undefined && initialLikeState !== undefined && (
             <div className="flex items-center gap-2 mt-3">
               <LikeButton
-                viewerId={viewerId ?? null}
+                viewerId={viewerId}
                 target={{ type: 'watch', id: watch.id }}
                 initialLiked={initialLikeState.liked}
                 initialCount={initialLikeState.count}
