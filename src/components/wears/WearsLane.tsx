@@ -110,6 +110,16 @@ interface WearsLaneProps {
  * the embla instance. Without the key, the App Router reuses the same
  * instance, leaving navigated.current=true (cross-user nav locked) and embla
  * carrying stale slide state from the previous user.
+ *
+ * R4 fix: navigated.current is also explicitly reset to false at the START of
+ * each onPointerDown gesture. This defends against Next.js 16's Router Cache
+ * restoring a stale WearsLane instance (with navigated.current=true) when
+ * router.replace navigates back to an already-cached /wears/<user> URL —
+ * defeating the key={username} remount. The reset at pointerdown re-arms the
+ * guard for every new gesture, regardless of whether the instance was remounted
+ * or cache-restored. The single-flight guard (navigated.current=true) still
+ * prevents double-fire within a single gesture because it is set in goToNeighbor
+ * before the router.replace call and is only cleared on the next pointerdown.
  */
 export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, railIndex }: WearsLaneProps) {
   const router = useRouter()
@@ -119,6 +129,14 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const [selectedIndex, setSelectedIndex] = useState(
     Math.max(0, Math.min(initialSlideIndex, slides.length - 1))
   )
+
+  // R4 DEBUG BADGE: pointer-down/up counters rendered in the on-screen badge.
+  // These are refs incremented in handlers, with state mirrors that trigger re-render.
+  // REMOVE THIS BLOCK next round once the stuck-state is confirmed fixed.
+  const pointerDownCountRef = useRef(0)
+  const pointerUpCountRef = useRef(0)
+  const [debugPd, setDebugPd] = useState(0)
+  const [debugPu, setDebugPu] = useState(0)
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     startIndex: Math.max(0, Math.min(initialSlideIndex, slides.length - 1)),
@@ -171,10 +189,20 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   //     Without this, backward-crossed multi-wear lanes opened at slide 0, so the
   //     forward-cross condition (isLast) was never met on re-entry → stuck.
   //
-  // navigated.current is automatically reset on the next cross-user navigate because
-  // page.tsx keys WearsLane by username — router.replace to a new user triggers a
-  // full remount, re-initializing the ref to false (W1 fix).
+  // R4 fix: navigated.current is reset to false at the START of each onPointerDown
+  // (see Effect A below). This defends against Next.js 16 Router Cache restoring a
+  // stale instance with navigated.current=true on a revisited /wears/<user> URL,
+  // which would defeat the key={username} remount and lock cross-user nav on the 3rd hop.
+  // The single-flight guard still works: navigated is set true in goToNeighbor before
+  // router.replace, and cleared on the next gesture's pointerdown.
   const navigated = useRef(false)
+
+  // Defensive mount reset (R4 belt-and-suspenders): in case the Router Cache restores
+  // this instance without triggering a React remount, reset navigated on mount so the
+  // component always starts fresh regardless of prior cached state.
+  useEffect(() => {
+    navigated.current = false
+  }, [])
 
   const goToNeighbor = (direction: 'next' | 'prev') => {
     if (railIndex === -1) return
@@ -243,6 +271,11 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   //
   // Deps: [emblaApi, railIndex] — stable. commentOpen and router are accessed
   // via goToNeighborRef, not captured in this effect's closure.
+  //
+  // R4 fix: onPointerDown now resets navigated.current=false before recording the
+  // drag origin. This re-arms the single-flight guard on every fresh gesture,
+  // defending against the Router-Cache-restore case where a stale instance is
+  // returned with navigated.current=true (3rd-hop symmetric stuck state).
   useEffect(() => {
     if (!emblaApi) return
     // Guard: actor not in the rail — no cross-user pointer tracking needed.
@@ -251,10 +284,25 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
     const root = emblaApi.rootNode()
 
     const onPointerDown = (e: PointerEvent) => {
+      // R4 fix: reset the single-flight guard at the start of every gesture.
+      // This is the primary defense against Router-Cache-restore returning a stale
+      // instance with navigated.current=true. A fresh pointerdown always fires even
+      // on a cache-restored instance, so this reset is unconditional and robust.
+      navigated.current = false
       pointerDownX.current = e.clientX
+
+      // R4 DEBUG BADGE: increment counter + trigger re-render for badge display.
+      // REMOVE next round once stuck-state is confirmed fixed.
+      pointerDownCountRef.current += 1
+      setDebugPd(pointerDownCountRef.current)
     }
 
     const onPointerUp = (e: PointerEvent) => {
+      // R4 DEBUG BADGE: increment counter + trigger re-render.
+      // REMOVE next round once stuck-state is confirmed fixed.
+      pointerUpCountRef.current += 1
+      setDebugPu(pointerUpCountRef.current)
+
       if (pointerDownX.current === null) return
       const delta = e.clientX - pointerDownX.current
       pointerDownX.current = null
@@ -290,6 +338,9 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const hasPrevUser = railIndex !== -1 && !!railUsernames[railIndex - 1]
   const isLastSegment = selectedIndex === slides.length - 1
   const isFirstSegment = selectedIndex === 0
+
+  // R4 DEBUG BADGE: derive snap info for display. Only safe to read when emblaApi is available.
+  const snapCount = emblaApi ? emblaApi.scrollSnapList().length : slides.length
 
   return (
     // Outer container: positional anchor for the close button and progress bar.
@@ -406,6 +457,34 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
           </button>
         )}
 
+      </div>
+
+      {/* R4 DEBUG BADGE — TEMPORARY. Remove next round once stuck-state is confirmed fixed.
+          Fixed bottom-left, high z, pointer-events-none so it does not interfere with swipes.
+          Low opacity so it does not obscure content. Shows live state for on-phone triage:
+            nav  = navigated.current (true = guard armed; should be false when stuck if R4 fix works)
+            pd   = total pointerdown count (should increment on every swipe attempt)
+            pu   = total pointerup count (should increment on every swipe release)
+            i    = selectedIndex / snapCount-1 (current slide / last slide index)
+            last = isLastSegment (true = at last slide; forward-cross requires this)
+            1st  = isFirstSegment (true = at first slide; backward-cross requires this)
+            rIdx = railIndex (-1 = not in rail)
+            nxt  = hasNextUser (true = a next rail user exists)
+            prv  = hasPrevUser (true = a prev rail user exists)
+          Tiebreaker logic:
+            - If stuck AND nav=true → R4 fix incomplete (navigated not being reset in time)
+            - If stuck AND pu does NOT increment on swipe → pointer listeners dropped on cache-restore
+            - If stuck AND last=false when expecting to be at boundary → still a position issue */}
+      <div
+        className="fixed bottom-4 left-2 z-50 pointer-events-none opacity-60 text-[10px] leading-tight font-mono bg-black/70 text-white rounded px-1.5 py-1"
+        aria-hidden
+      >
+        <div>nav={String(navigated.current)}</div>
+        <div>pd={debugPd} pu={debugPu}</div>
+        <div>i={selectedIndex}/{snapCount - 1}</div>
+        <div>last={String(isLastSegment)} 1st={String(isFirstSegment)}</div>
+        <div>rIdx={railIndex}</div>
+        <div>nxt={String(hasNextUser)} prv={String(hasPrevUser)}</div>
       </div>
     </div>
   )
