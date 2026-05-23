@@ -259,7 +259,18 @@ Plans:
   3. `/wear/[id]` keeps the nav bars, is vertically scrollable, shows a single wear (no swipe) with the same photo/overlay card, the like control, and an inline comment list; it is reachable by direct URL / share / notification and has a working back/close affordance.
   4. The wear-content card, the LikeButton, and the comment component are single shared components rendered by both routes (visual + behavioral parity; divergence limited to container chrome).
   5. The legacy WYWT client overlay (`WywtOverlay`/`WywtSlide` modal that left the URL on `/`) is replaced by the routed `/wears/[username]` experience; the "Add to wishlist" action is preserved or relocated per the spec decision (open fork).
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1**
+- [ ] 56A-01-PLAN.md — Wave 0 test scaffolds + getActiveWearsForUser DAL (48h/oldest-first/three-tier gate, raw photoUrl)
+- [ ] 56A-02-PLAN.md — Shared components: WearCard + WearCommentHost (empty placeholder body) + WearOverflowMenu (D-12/D-10/D-08/D-09)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 56A-03-PLAN.md — /wears/[username] stories lane page + WearsLane carousel (SC-1/SC-2, D-04/05/06/07, F-2)
+- [ ] 56A-04-PLAN.md — /wear/[id] refactor to shared WearCard + EN-6 anon cleanup (SC-3/SC-4, D-02)
+
+**Wave 3** *(blocked on Wave 2; deletion gated after lane renders, SC-5)*
+- [ ] 56A-05-PLAN.md — WywtRail → router.push rewire + nav-hiding (BottomNav/SlimTopNav) + delete WywtOverlay/WywtSlide (SC-1/SC-2/SC-5)
 **UI hint**: yes
 
 ### Phase 57: Comment Thread UI + Feed Extension + Grid Counts
