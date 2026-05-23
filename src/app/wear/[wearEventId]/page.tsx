@@ -3,11 +3,13 @@ import { Suspense } from 'react'
 
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getWearEventByIdForViewer } from '@/data/wearEvents'
+import { getLikesForTargetCached } from '@/data/reactions'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { WearDetailHero } from '@/components/wear/WearDetailHero'
 import { WearDetailMetadata } from '@/components/wear/WearDetailMetadata'
 import { WearPhotoClient } from '@/components/wear/WearPhotoClient'
 import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
+import { LikeButton } from '@/components/shared/LikeButton'
 
 /**
  * Wear detail page (WYWT-17, WYWT-18, WYWT-21).
@@ -27,6 +29,11 @@ import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
  *
  * Anonymous viewers (no session) are allowed — the DAL returns wears
  * marked visibility='public' on profile_public=true actors for null viewer.
+ *
+ * Phase 56 D-04/05/06/07: footer action row with LikeButton added.
+ * Overlay content props (username/displayName/avatarUrl/createdAt) threaded
+ * through WearPhotoStreamed into WearPhotoClient and WearDetailHero.
+ * Anon sentinel '__anon__' used for getLikesForTargetCached when viewerId is null.
  */
 export default async function WearDetailPage({
   params,
@@ -49,6 +56,13 @@ export default async function WearDetailPage({
   const wear = await getWearEventByIdForViewer(viewerId, wearEventId)
   if (!wear) notFound()
 
+  // Anon sentinel: getLikesForTargetCached expects a non-null string.
+  // '__anon__' is never a real UUID, so bool_or(userId='__anon__') = false
+  // for all real rows — viewerHasLiked is always false for anon (correct).
+  // The count is still correct (not viewer-filtered).
+  const ANON_SENTINEL = '__anon__'
+  const likeState = await getLikesForTargetCached(viewerId ?? ANON_SENTINEL, { type: 'wear', id: wearEventId })
+
   const altText = wear.username
     ? `${wear.username} wearing ${wear.brand} ${wear.model}`
     : `Watch on wrist — ${wear.brand} ${wear.model}`
@@ -62,18 +76,26 @@ export default async function WearDetailPage({
           brand={wear.brand}
           model={wear.model}
           altText={altText}
+          username={wear.username}
+          displayName={wear.displayName}
+          avatarUrl={wear.avatarUrl}
+          createdAt={wear.createdAt}
         />
       </Suspense>
       <WearDetailMetadata
-        username={wear.username}
-        displayName={wear.displayName}
-        avatarUrl={wear.avatarUrl}
-        brand={wear.brand}
-        model={wear.model}
-        watchImageUrl={wear.watchImageUrl}
         note={wear.note}
-        createdAt={wear.createdAt}
       />
+      {/* Phase 56 D-04: footer action row — [reserved comment slot] [LikeButton right] */}
+      <div className="flex items-center px-4 py-3 border-t border-border md:max-w-[600px] md:mx-auto">
+        {/* Reserved for Phase 57 comment input — sized to accept a textarea without re-layout */}
+        <div className="flex-1 min-h-[44px]" aria-hidden />
+        <LikeButton
+          viewerId={viewerId}
+          target={{ type: 'wear', id: wearEventId }}
+          initialLiked={likeState.viewerHasLiked}
+          initialCount={likeState.count}
+        />
+      </div>
     </article>
   )
 }
@@ -83,6 +105,10 @@ export default async function WearDetailPage({
  * Suspense boundary (the parent's await on getWearEventByIdForViewer is
  * not enough to suspend without an explicit boundary around the slow
  * subtree). 60-min TTL, never cached. Pitfall F-2.
+ *
+ * Phase 56: receives overlay content props (username/displayName/avatarUrl/
+ * createdAt) and forwards them to WearPhotoClient and WearDetailHero so the
+ * overlays render on all photo paths including the no-photo fallback.
  */
 async function WearPhotoStreamed({
   photoUrl,
@@ -90,12 +116,20 @@ async function WearPhotoStreamed({
   brand,
   model,
   altText,
+  username,
+  displayName,
+  avatarUrl,
+  createdAt,
 }: {
   photoUrl: string | null
   watchImageUrl: string | null
   brand: string
   model: string
   altText: string
+  username: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  createdAt: Date
 }) {
   let signedUrl: string | null = null
   if (photoUrl) {
@@ -117,6 +151,10 @@ async function WearPhotoStreamed({
         watchImageUrl={watchImageUrl}
         brand={brand}
         model={model}
+        username={username}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        createdAt={createdAt}
       />
     )
   }
@@ -126,6 +164,10 @@ async function WearPhotoStreamed({
       brand={brand}
       model={model}
       altText={altText}
+      username={username}
+      displayName={displayName}
+      avatarUrl={avatarUrl}
+      createdAt={createdAt}
     />
   )
 }
