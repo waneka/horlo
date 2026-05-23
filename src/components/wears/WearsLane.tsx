@@ -59,6 +59,10 @@ interface WearsLaneProps {
   slides: WearSlide[]
   initialSlideIndex: number
   viewerId: string
+  /** The ordered list of usernames in the home rail (D-06). Server-derived; never from URL. */
+  railUsernames: string[]
+  /** The index of the current actor within railUsernames; -1 if not in the rail (manual URL). */
+  railIndex: number
 }
 
 /**
@@ -71,8 +75,13 @@ interface WearsLaneProps {
  * Full-screen on mobile (fixed inset-0 h-dvh overflow-hidden), centered
  * 600px column on desktop (md:static md:inset-auto md:h-auto md:overflow-visible)
  * per UI-SPEC §7 and §Route-Specific Layout Contracts (SC-2).
+ *
+ * Cross-user swipe (D-06): when the user reaches the first or last slide and
+ * attempts to continue swiping, the component navigates to the previous or next
+ * user's lane. Guarded: no nav when railIndex === -1, no neighbor exists, or
+ * commentOpen is true.
  */
-export function WearsLane({ slides, initialSlideIndex, viewerId }: WearsLaneProps) {
+export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, railIndex }: WearsLaneProps) {
   const router = useRouter()
   const { markViewed } = useViewedWears()
   const [commentOpen, setCommentOpen] = useState(false)

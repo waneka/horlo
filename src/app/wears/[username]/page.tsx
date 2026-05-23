@@ -64,8 +64,11 @@ export default async function WearsPage({
   // railUsernames defines the cross-user swipe sequence.
   // Cross-user advance is a follow-on seam — data is server-fresh and available here.
   const railData = await getWearRailForViewer(viewerId)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const railUsernames = railData.tiles.map((t) => t.username)
+  // Case-insensitive match to mirror getProfileByUsername's lookup semantics (Pitfall 3).
+  const railIndex = railUsernames.findIndex(
+    (u) => u?.toLowerCase() === username.toLowerCase(),
+  )
 
   // Per-wear like state.
   const likeStates = await Promise.all(
@@ -148,6 +151,8 @@ export default async function WearsPage({
         slides={slides}
         initialSlideIndex={initialSlideIndex}
         viewerId={viewerId}
+        railUsernames={railUsernames}
+        railIndex={railIndex}
       />
     </Suspense>
   )
