@@ -13,6 +13,7 @@ must_haves:
     - "/wear/[id] keeps the nav bars, is vertically scrollable, shows a single wear (no swipe) using the SAME shared WearCard (SC-3, SC-4)"
     - "/wear/[id] renders the shared LikeButton + the inline comment host section + the overflow menu via WearCard (D-12)"
     - "/wear/[id] is a plain full-page route reached by direct URL / share / notification — NOT a Next.js intercepting/parallel route (no @modal or (.)wear/[id] segment); back/close is the browser/nav back affordance (D-02, SC-3)"
+    - "/wear/[id] offers entry into the swipe lane ONLY via the avatar/username link (→ /u/[username] profile, inherited from the shared WearCard); it has NO dedicated 'View in stories' control (D-03)"
     - "The dead __anon__ sentinel and anonymous-viewer try/catch are removed; the route is auth-only (EN-6)"
     - "The per-request signed-URL Suspense pattern (WearPhotoStreamed / Pitfall F-2) is preserved"
   artifacts:
