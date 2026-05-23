@@ -245,7 +245,7 @@ Plans:
 - [x] 56-01-PLAN.md — LikeButton component + Wave 0 tests + getLikesForTargetCached cached read (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 56-02-PLAN.md — Watch detail page wiring: LikeButton under title + server hydration (Wave 2)
+- [x] 56-02-PLAN.md — Watch detail page wiring: LikeButton under title + server hydration (Wave 2)
 - [ ] 56-03-PLAN.md — Wear detail redesign: photo overlays + footer LikeButton + anon hydration (Wave 2)
 **UI hint**: yes
 
@@ -282,7 +282,7 @@ Plans:
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
-| 56. Like UI | 1/3 | In Progress|  |
+| 56. Like UI | 2/3 | In Progress|  |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
