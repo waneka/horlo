@@ -41,6 +41,12 @@ const RETRY_DELAY_MS = 300
  * (previously missing). The signed-URL happy-path container at ~L94 already
  * had `relative` — not touched. Overlays are suppressed during 'pending' to
  * avoid painting text over the PhotoSkeleton shimmer (D-08 overlay contract).
+ *
+ * T3 (R5 desktop polish): `md:max-h-[70vh]` added to all three photo containers.
+ * With aspect-[4/5] + max-h, width auto-shrinks to preserve the ratio so the
+ * whole WearCard (photo + engagement row + inline comment seam) fits vertically
+ * on a typical laptop. Mobile is unaffected — mobile lane is fixed full-screen
+ * (inset-0 h-dvh), not affected by max-h on the photo element.
  */
 export function WearPhotoClient({
   signedUrl,
@@ -82,7 +88,7 @@ export function WearPhotoClient({
     // Fall through to the parent's existing fallback chain.
     if (watchImageUrl) {
       return (
-        <div data-testid="wear-photo-container" className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
+        <div data-testid="wear-photo-container" className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto md:max-h-[70vh]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={watchImageUrl}
@@ -106,7 +112,7 @@ export function WearPhotoClient({
     return (
       <div
         data-testid="wear-photo-container"
-        className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"
+        className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto md:max-h-[70vh]"
         aria-label={`No photo — ${brand} ${model}`}
       >
         {/* Brand/model text removed — moves to bottom overlay (D-06) */}
@@ -127,7 +133,7 @@ export function WearPhotoClient({
   const src = retryCount === 0 ? signedUrl : `${signedUrl}${signedUrl.includes('?') ? '&' : '?'}retry=${retryCount}`
 
   return (
-    <div data-testid="wear-photo-container" className="w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto relative">
+    <div data-testid="wear-photo-container" className="w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto md:max-h-[70vh] relative">
       {status === 'pending' && (
         <div className="absolute inset-0">
           <PhotoSkeleton />

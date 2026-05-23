@@ -24,6 +24,11 @@ import { cn } from '@/lib/utils'
  * (CONTEXT.md D-20). Full-bleed on mobile (edge-to-edge); rounded + capped
  * width on md+ so the hero doesn't feel stretched on desktop.
  *
+ * T3 (R5 desktop polish): `md:max-h-[70vh]` added to both photo containers
+ * in WearDetailHero. With aspect-[4/5] + max-h, width auto-shrinks to preserve
+ * the ratio so the full wear detail page fits vertically on a typical laptop.
+ * Mobile unaffected (full-bleed on mobile, no max-h constraint there).
+ *
  * Native <img>, NOT next/image (Pitfall F-2 carry-forward).
  */
 
@@ -143,7 +148,7 @@ export function WearDetailHero({
 }): JSX.Element {
   if (watchImageUrl) {
     return (
-      <div data-testid="wear-photo-container" className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
+      <div data-testid="wear-photo-container" className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto md:max-h-[70vh]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={watchImageUrl}
@@ -167,7 +172,7 @@ export function WearDetailHero({
   return (
     <div
       data-testid="wear-photo-container"
-      className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"
+      className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto md:max-h-[70vh]"
       aria-label={`No photo — ${brand} ${model}`}
     >
       {/* Brand/model text removed — moves to bottom overlay (D-06) */}

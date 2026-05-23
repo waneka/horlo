@@ -130,14 +130,6 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
     Math.max(0, Math.min(initialSlideIndex, slides.length - 1))
   )
 
-  // R4 DEBUG BADGE: pointer-down/up counters rendered in the on-screen badge.
-  // These are refs incremented in handlers, with state mirrors that trigger re-render.
-  // REMOVE THIS BLOCK next round once the stuck-state is confirmed fixed.
-  const pointerDownCountRef = useRef(0)
-  const pointerUpCountRef = useRef(0)
-  const [debugPd, setDebugPd] = useState(0)
-  const [debugPu, setDebugPu] = useState(0)
-
   const [emblaRef, emblaApi] = useEmblaCarousel({
     startIndex: Math.max(0, Math.min(initialSlideIndex, slides.length - 1)),
     align: 'start',
@@ -290,19 +282,9 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       // on a cache-restored instance, so this reset is unconditional and robust.
       navigated.current = false
       pointerDownX.current = e.clientX
-
-      // R4 DEBUG BADGE: increment counter + trigger re-render for badge display.
-      // REMOVE next round once stuck-state is confirmed fixed.
-      pointerDownCountRef.current += 1
-      setDebugPd(pointerDownCountRef.current)
     }
 
     const onPointerUp = (e: PointerEvent) => {
-      // R4 DEBUG BADGE: increment counter + trigger re-render.
-      // REMOVE next round once stuck-state is confirmed fixed.
-      pointerUpCountRef.current += 1
-      setDebugPu(pointerUpCountRef.current)
-
       if (pointerDownX.current === null) return
       const delta = e.clientX - pointerDownX.current
       pointerDownX.current = null
@@ -338,9 +320,6 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const hasPrevUser = railIndex !== -1 && !!railUsernames[railIndex - 1]
   const isLastSegment = selectedIndex === slides.length - 1
   const isFirstSegment = selectedIndex === 0
-
-  // R4 DEBUG BADGE: derive snap info for display. Only safe to read when emblaApi is available.
-  const snapCount = emblaApi ? emblaApi.scrollSnapList().length : slides.length
 
   return (
     // Outer container: positional anchor for the close button and progress bar.
@@ -388,8 +367,8 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
        * buttons anchor to the 600px photo column edges, not the full-width
        * outer container. Must NOT be overflow-hidden (the embla viewport keeps
        * its own overflow-hidden). Mobile: full-height passthrough (h-full).
-       * Desktop: centers the 600px column; arrows positioned left-0/right-0
-       * of this wrapper sit at the photo column edges, not the viewport edges.
+       * Desktop: centers the 600px column; arrows positioned left-2/right-2
+       * of this wrapper sit slightly inset from the photo column edges (T2 fix).
        */}
       <div className="relative h-full md:max-w-[600px] md:mx-auto">
 
@@ -414,8 +393,8 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
         </div>
 
         {/* #6: Desktop-only prev/next edge arrows — hidden on mobile (swipe-only).
-            Anchored to the photo-column wrapper (W3 fix): left-0/right-0 of the
-            600px column, not the full-width outer container.
+            Anchored to the photo-column wrapper (W3 fix): left-2/right-2 of the
+            600px column (T2 fix: small gap so arrows don't sit flush at the edge).
             Vertically centered via absolute top-1/2 -translate-y-1/2.
             Semi-transparent dark circle provides contrast on the light desktop background. */}
 
@@ -432,7 +411,7 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
                 goToNeighbor('prev')
               }
             }}
-            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
+            className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
           >
             <ChevronLeft className="size-5" aria-hidden />
           </button>
@@ -451,40 +430,12 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
                 goToNeighbor('next')
               }
             }}
-            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
+            className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
           >
             <ChevronRight className="size-5" aria-hidden />
           </button>
         )}
 
-      </div>
-
-      {/* R4 DEBUG BADGE — TEMPORARY. Remove next round once stuck-state is confirmed fixed.
-          Fixed bottom-left, high z, pointer-events-none so it does not interfere with swipes.
-          Low opacity so it does not obscure content. Shows live state for on-phone triage:
-            nav  = navigated.current (true = guard armed; should be false when stuck if R4 fix works)
-            pd   = total pointerdown count (should increment on every swipe attempt)
-            pu   = total pointerup count (should increment on every swipe release)
-            i    = selectedIndex / snapCount-1 (current slide / last slide index)
-            last = isLastSegment (true = at last slide; forward-cross requires this)
-            1st  = isFirstSegment (true = at first slide; backward-cross requires this)
-            rIdx = railIndex (-1 = not in rail)
-            nxt  = hasNextUser (true = a next rail user exists)
-            prv  = hasPrevUser (true = a prev rail user exists)
-          Tiebreaker logic:
-            - If stuck AND nav=true → R4 fix incomplete (navigated not being reset in time)
-            - If stuck AND pu does NOT increment on swipe → pointer listeners dropped on cache-restore
-            - If stuck AND last=false when expecting to be at boundary → still a position issue */}
-      <div
-        className="fixed bottom-4 left-2 z-50 pointer-events-none opacity-60 text-[10px] leading-tight font-mono bg-black/70 text-white rounded px-1.5 py-1"
-        aria-hidden
-      >
-        <div>nav={String(navigated.current)}</div>
-        <div>pd={debugPd} pu={debugPu}</div>
-        <div>i={selectedIndex}/{snapCount - 1}</div>
-        <div>last={String(isLastSegment)} 1st={String(isFirstSegment)}</div>
-        <div>rIdx={railIndex}</div>
-        <div>nxt={String(hasNextUser)} prv={String(hasPrevUser)}</div>
       </div>
     </div>
   )
