@@ -161,9 +161,21 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const pointerDownX = useRef<number | null>(null)
   const dragDeltaX = useRef<number | null>(null)
 
+  // Effect A: pointer tracking only.
+  //
+  // Deps: [emblaApi, railIndex] — deliberately excludes commentOpen, router,
+  // and railUsernames. This prevents the effect from tearing down and
+  // re-registering pointer listeners mid-drag when the comment sheet opens or
+  // closes, which would reset dragDeltaX.current and silently swallow a
+  // cross-user swipe gesture (CR-01).
+  //
+  // onPointerDown attaches to the embla root (we only start tracking when the
+  // drag begins inside the carousel). onPointerUp attaches to window so a drag
+  // that ends outside the embla viewport (common on desktop fast drags) still
+  // records dragDeltaX (WR-01).
   useEffect(() => {
     if (!emblaApi) return
-    // Guard: actor not in the rail — disable cross-user navigation entirely.
+    // Guard: actor not in the rail — no pointer tracking needed.
     if (railIndex === -1) return
 
     const root = emblaApi.rootNode()
@@ -179,6 +191,27 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
         pointerDownX.current = null
       }
     }
+
+    root.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointerup', onPointerUp)
+
+    return () => {
+      root.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointerup', onPointerUp)
+    }
+  }, [emblaApi, railIndex])
+
+  // Effect B: settle handler.
+  //
+  // Re-registers when commentOpen/router/railUsernames/railIndex change so that
+  // onSettle always closes over the freshest navigation state. Pointer tracking
+  // is in a separate effect (Effect A above) and is NOT torn down when these
+  // deps change — dragDeltaX.current is therefore stable across
+  // comment-sheet open/close cycles.
+  useEffect(() => {
+    if (!emblaApi) return
+    // Guard: actor not in the rail — disable cross-user navigation entirely.
+    if (railIndex === -1) return
 
     const onSettle = () => {
       // Guard: sheet open — never navigate while the comment sheet is visible.
@@ -207,13 +240,9 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       }
     }
 
-    root.addEventListener('pointerdown', onPointerDown)
-    root.addEventListener('pointerup', onPointerUp)
     emblaApi.on('settle', onSettle)
 
     return () => {
-      root.removeEventListener('pointerdown', onPointerDown)
-      root.removeEventListener('pointerup', onPointerUp)
       emblaApi.off('settle', onSettle)
     }
     // goToNeighbor is intentionally omitted from deps: it is a stable inline function
