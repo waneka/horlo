@@ -160,7 +160,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 - [x] **Phase 53: Schema + RLS + Enum Extension** — interaction tables, two-layer security foundation (completed 2026-05-22)
 - [x] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement (completed 2026-05-22)
 - [x] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out (completed 2026-05-22)
-- [ ] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages
+- [x] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages (completed 2026-05-23)
 - [ ] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts
 - [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
 
@@ -246,7 +246,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 56-02-PLAN.md — Watch detail page wiring: LikeButton under title + server hydration (Wave 2)
-- [ ] 56-03-PLAN.md — Wear detail redesign: photo overlays + footer LikeButton + anon hydration (Wave 2)
+- [x] 56-03-PLAN.md — Wear detail redesign: photo overlays + footer LikeButton + anon hydration (Wave 2)
 **UI hint**: yes
 
 ### Phase 57: Comment Thread UI + Feed Extension + Grid Counts
@@ -282,7 +282,7 @@ Plans:
 | 53. Schema + RLS + Enum Extension | 3/3 | Complete    | 2026-05-22 |
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
-| 56. Like UI | 2/3 | In Progress|  |
+| 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
