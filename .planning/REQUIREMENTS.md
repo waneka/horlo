@@ -10,10 +10,10 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 ### Likes (LIKE)
 
-- [ ] **LIKE-01**: A user can like and unlike any individual watch on a collector's profile (owned/sold/grail/wishlist); the control reflects the viewer's current like state.
-- [ ] **LIKE-02**: A user can like and unlike any wear post at `/wear/[wearEventId]`.
-- [ ] **LIKE-03**: Like state and count update optimistically and roll back on server failure.
-- [ ] **LIKE-04**: The like count shows next to the control on watch detail and wear detail; hidden when zero.
+- [x] **LIKE-01**: A user can like and unlike any individual watch on a collector's profile (owned/sold/grail/wishlist); the control reflects the viewer's current like state.
+- [x] **LIKE-02**: A user can like and unlike any wear post at `/wear/[wearEventId]`.
+- [x] **LIKE-03**: Like state and count update optimistically and roll back on server failure.
+- [x] **LIKE-04**: The like count shows next to the control on watch detail and wear detail; hidden when zero.
 - [x] **LIKE-05**: A user cannot like the same target twice (idempotent, enforced by a UNIQUE constraint).
 
 ### Comments (CMNT)
@@ -96,10 +96,10 @@ Which phases cover which requirements. Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIKE-01 | Phase 56 | Pending |
-| LIKE-02 | Phase 56 | Pending |
-| LIKE-03 | Phase 56 | Pending |
-| LIKE-04 | Phase 56 | Pending |
+| LIKE-01 | Phase 56 | Complete |
+| LIKE-02 | Phase 56 | Complete |
+| LIKE-03 | Phase 56 | Complete |
+| LIKE-04 | Phase 56 | Complete |
 | LIKE-05 | Phase 53 | Complete |
 | CMNT-01 | Phase 57 | Pending |
 | CMNT-02 | Phase 57 | Pending |
