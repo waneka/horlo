@@ -35,8 +35,10 @@ Close UAT gaps #3 (MINOR), #4 (COSMETIC), #6 (MINOR) — all of which live in th
 of WearsLane.tsx and all of which sit on top of plan 56A-06's cross-user wiring:
 
 - #3: IG-stories segmented progress indicator at the top — one segment per wear in the current
-  user's lane, the current wear highlighted. (Was deferred in 56A-UI-SPEC; user now wants it for
-  sense-of-place.)
+  user's lane, the current wear highlighted. (Was explicitly DEFERRED in 56A-CONTEXT.md <deferred>
+  and 56A-RESEARCH.md "Deferred Ideas" pre-UAT; UAT batch 2 — 56A-HUMAN-UAT.md gap #3 — reauthorizes
+  it for this gap-closure pass after the user saw the live lane and wanted it for sense-of-place. The
+  deferral is intentionally lifted here.)
 - #4: move the close (X) from top-3 left-3 to top-3 right-3 so it sits in the empty band above
   the vertically-centered 4:5 photo and no longer overlaps the avatar — coordinated with the
   progress indicator placement.
@@ -206,8 +208,9 @@ UI-SPEC contracts to honor:
       min-h-[44px] min-w-[44px], with aria-labels "Previous wear"/"Next wear".
     - Right arrow calls scrollNext() mid-lane and 06's forward cross-user nav at the last slide.
     - Left arrow calls scrollPrev() mid-lane and 06's backward cross-user nav at the first slide.
-    - The cross-user logic is the SAME shared function used by the swipe boundary (no duplicated
-      railUsernames/railIndex math).
+    - The cross-user navigation logic is extracted into a NAMED function in WearsLane.tsx (not an
+      inline closure) so it is callable from BOTH the swipe-boundary effect (56A-06) and the arrow
+      onClick — the arrows reuse this same named function with no duplicated railUsernames/railIndex math.
     - npx tsc --noEmit and npm run lint report no new errors for WearsLane.tsx.
   </acceptance_criteria>
   <done>Desktop users can navigate wears (and cross user lanes at boundaries) via edge arrows; arrows are hidden on mobile.</done>

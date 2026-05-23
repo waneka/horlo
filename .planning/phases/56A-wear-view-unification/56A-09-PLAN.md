@@ -129,7 +129,8 @@ Test harness available:
     are split so the fix targets the actually-collapsed node, not a guess.)
   </action>
   <verify>
-    <automated>MISSING — manual mobile-viewport diagnosis; Task 2 adds the automated regression test (tests/e2e/wears-lane.test.ts). Confirm the dev server builds: npm run build 2>&1 | tail -5</automated>
+    <automated>npm run build 2>&1 | tail -5</automated>
+    <manual>Mobile-viewport diagnosis is hands-on (375px responsive devtools / device) and not headless-automatable; the rendered-result regression assertion lives in Task 2 (tests/e2e/wears-lane.test.ts).</manual>
   </verify>
   <acceptance_criteria>
     - The mobile collapse is reproduced on a ~375px viewport AND confirmed absent on desktop for the same wear.
