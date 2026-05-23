@@ -263,7 +263,7 @@ Plans:
 Plans:
 **Wave 1**
 - [x] 56A-01-PLAN.md — Wave 0 test scaffolds + getActiveWearsForUser DAL (48h/oldest-first/three-tier gate, raw photoUrl)
-- [ ] 56A-02-PLAN.md — Shared components: WearCard + WearCommentHost (empty placeholder body) + WearOverflowMenu (D-12/D-10/D-08/D-09)
+- [x] 56A-02-PLAN.md — Shared components: WearCard + WearCommentHost (empty placeholder body) + WearOverflowMenu (D-12/D-10/D-08/D-09)
 
 **Wave 2** *(blocked on Wave 1)*
 - [ ] 56A-03-PLAN.md — /wears/[username] stories lane page + WearsLane carousel (SC-1/SC-2, D-04/05/06/07, F-2)
@@ -307,7 +307,7 @@ Plans:
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
-| 56a. Wear View Unification | 1/5 | In Progress|  |
+| 56a. Wear View Unification | 2/5 | In Progress|  |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
