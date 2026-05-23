@@ -102,6 +102,10 @@ function NavLink({ href, icon: Icon, label, active }: NavLinkProps) {
 export function BottomNav({ username, ownedWatches, viewerId }: BottomNavProps) {
   const pathname = usePathname() ?? ''
   if (isPublicPath(pathname)) return null
+  // Stories lane is full-screen / no nav chrome (SC-2, UI-SPEC §Route Layout — Option B).
+  // Client-side render gate only — no impact on proxy auth redirect (isPublicPath controls that).
+  // /wears/ is NOT added to public-paths so the proxy auth gate remains active (T-56A-14).
+  if (pathname.startsWith('/wears/')) return null
   if (!username) return null
 
   const isHome = pathname === '/'

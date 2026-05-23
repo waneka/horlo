@@ -46,6 +46,10 @@ export function SlimTopNav({
 }: SlimTopNavProps) {
   const pathname = usePathname() ?? ''
   if (isPublicPath(pathname)) return null
+  // Hide SlimTopNav on the stories lane (UI-SPEC §Route Layout — Option B).
+  // Client-side render gate only — no impact on proxy auth redirect (isPublicPath controls that).
+  // /wears/ is NOT added to public-paths so the proxy auth gate remains active (T-56A-14).
+  if (pathname.startsWith('/wears/')) return null
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur md:hidden">
