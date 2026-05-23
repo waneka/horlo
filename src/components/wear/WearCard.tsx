@@ -132,6 +132,7 @@ export function WearCard({
             permalinkUrl={permalinkUrl}
             showAddToWishlist={showAddToWishlist}
             onPhoto={hasPhoto}
+            showGoToPost={commentHostVariant === 'bottom-sheet'}
           />
         </div>
       </div>
@@ -145,7 +146,7 @@ export function WearCard({
             type="button"
             aria-label="Open comments"
             onClick={handleOpenComments}
-            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-white"
+            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
           >
             <MessageCircle className="size-5" aria-hidden />
           </button>

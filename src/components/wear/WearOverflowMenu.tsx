@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { MoreHorizontal, Link as LinkIcon } from 'lucide-react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { MoreHorizontal, Link as LinkIcon, Check, ArrowUpRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import {
@@ -20,12 +21,20 @@ interface WearOverflowMenuProps {
   showAddToWishlist: boolean
   /** true → text-white trigger (over photo); false → text-foreground */
   onPhoto: boolean
+  /**
+   * true on the stories lane (/wears/[username]) → show "Go to wear post"
+   * (in-app nav to the /wear/[id] permalink). false on the detail page itself,
+   * where that destination IS the current page (D-01/D-02).
+   */
+  showGoToPost: boolean
 }
 
 /**
  * Overflow "…" menu for wear cards (D-01, D-08, D-09).
  *
- * Always shows "Copy link" (D-01).
+ * Stories lane: "Go to wear post" (in-app nav to the permalink) + "Copy link".
+ * Detail page: "Copy link" only (you are already on the post).
+ * "Copy link" shows an inline "Copied!" confirmation before the menu closes.
  * Conditionally shows "Add to wishlist" only when showAddToWishlist is true (D-09).
  * Preserves WR-03 double-submit guard from WywtSlide.tsx pattern.
  */
@@ -34,9 +43,38 @@ export function WearOverflowMenu({
   permalinkUrl,
   showAddToWishlist,
   onPhoto,
+  showGoToPost,
 }: WearOverflowMenuProps) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const [status, setStatus] = useState<'idle' | 'added' | 'error'>('idle')
+  const [copied, setCopied] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next)
+    if (next) setCopied(false) // reset the confirmation each time the menu opens
+    if (!next && closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+
+  const handleCopyLink = () => {
+    const absolute = `${window.location.origin}${permalinkUrl}`
+    navigator.clipboard.writeText(absolute)
+    setCopied(true)
+    // Keep the menu open briefly so the user sees "Copied!", then close.
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => setOpen(false), 900)
+  }
 
   const handleAddToWishlist = () => {
     // WR-03 double-submit guard: block when in-flight (pending) OR already succeeded.
@@ -54,7 +92,7 @@ export function WearOverflowMenu({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
         aria-label="More options"
         className={cn(
@@ -66,15 +104,18 @@ export function WearOverflowMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        {/* D-01: Copy link — always visible */}
-        <DropdownMenuItem
-          onClick={() => {
-            const absolute = `${window.location.origin}${permalinkUrl}`
-            navigator.clipboard.writeText(absolute)
-          }}
-        >
-          <LinkIcon className="size-4" />
-          Copy link
+        {/* D-01: in-app nav to the permalink — stories lane only (detail page is already here) */}
+        {showGoToPost && (
+          <DropdownMenuItem onClick={() => router.push(permalinkUrl)}>
+            <ArrowUpRight className="size-4" />
+            Go to wear post
+          </DropdownMenuItem>
+        )}
+
+        {/* D-01: Copy link — stays open to show an inline "Copied!" confirmation */}
+        <DropdownMenuItem closeOnClick={false} onClick={handleCopyLink}>
+          {copied ? <Check className="size-4" /> : <LinkIcon className="size-4" />}
+          {copied ? 'Copied!' : 'Copy link'}
         </DropdownMenuItem>
 
         {/* D-09: Add to wishlist — only when showAddToWishlist is true */}

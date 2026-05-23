@@ -131,7 +131,7 @@ export function WearsLane({ slides, initialSlideIndex, viewerId }: WearsLaneProp
         {/* Embla slide container */}
         <div className="flex h-full">
           {slides.map((slide) => (
-            <div key={slide.wearEventId} className="flex-[0_0_100%] min-w-0">
+            <div key={slide.wearEventId} className="flex-[0_0_100%] min-w-0 flex flex-col justify-center">
               <WearCard
                 {...slide}
                 viewerId={viewerId}
