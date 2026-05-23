@@ -241,7 +241,10 @@ Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits aft
   4. Liking the same watch or wear twice (e.g., via double-click or concurrent tabs) results in exactly one like row — the UNIQUE constraint is the backstop, and the UI does not show an error to the user for idempotent re-likes.
 **Plans**: 3 plans
 Plans:
+**Wave 1**
 - [ ] 56-01-PLAN.md — LikeButton component + Wave 0 tests + getLikesForTargetCached cached read (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 56-02-PLAN.md — Watch detail page wiring: LikeButton under title + server hydration (Wave 2)
 - [ ] 56-03-PLAN.md — Wear detail redesign: photo overlays + footer LikeButton + anon hydration (Wave 2)
 **UI hint**: yes
