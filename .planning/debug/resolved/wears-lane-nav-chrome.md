@@ -1,9 +1,10 @@
 ---
 slug: wears-lane-nav-chrome
-status: pending-human-verify
+status: resolved
 trigger: "Phase 56A WearsLane cross-user stories navigation + desktop chrome bugs found in on-device prod UAT"
 created: 2026-05-23T20:02:32Z
-updated: 2026-05-24T01:00:00Z
+updated: 2026-05-24T01:30:00Z
+resolved: 2026-05-24T01:30:00Z
 phase: 56A-wear-view-unification
 files_in_scope:
   - src/components/wears/WearsLane.tsx
@@ -217,7 +218,7 @@ fix: |
   Round 3: (R3) goToNeighbor('prev') appends ?at=last to router.replace URL. page.tsx reads `at` from searchParams; when at==='last' and no ?from, initialSlideIndex = wears.length - 1. Instagram-stories landing rule: forward→first slide, backward→last slide. (Did not resolve stuck state — R3 root cause disproven.)
   Round 4 (CONFIRMED FIXED): (R4) Reset navigated.current=false at the start of onPointerDown — re-arms the guard on every fresh gesture regardless of cache/remount state. Defensive mount-effect reset also added. Temp debug badge added and then removed in R5.
   Round 5 (cleanup + desktop polish): (T1) Debug badge removed. (T2) Arrow buttons inset left-2/right-2 from photo column edge for visual separation. (T3) md:max-h-[70vh] on all 5 aspect-[4/5] photo containers in WearPhotoClient.tsx and WearDetailHero.tsx — constrains desktop photo height so engagement bar stays on-screen on a laptop.
-verification: PENDING human verify on laptop (commit c19acc7). Verify: (1) arrows have a small gap from the photo edges; (2) like/comment bar is fully visible on laptop without scrolling.
+verification: CONFIRMED on laptop by user ("confirmed", 2026-05-24) at commit c19acc7 — debug badge gone, arrows have a gap from the photo edges, like/comment bar fully visible (photo capped at md:max-h-[70vh]). Stuck-state fix (R4) confirmed working on mobile prod earlier the same session ("that worked!"). All 5 original UAT batch-2 gaps + the 6 debug wrinkles resolved on-device.
 files_changed:
   - src/components/wears/WearsLane.tsx
   - src/app/wears/[username]/page.tsx
