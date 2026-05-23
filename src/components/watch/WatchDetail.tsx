@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { LikeButton } from '@/components/shared/LikeButton'
 import { editWatch, removeWatch } from '@/app/actions/watches'
 import { markAsWorn } from '@/app/actions/wearEvents'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
@@ -47,6 +48,10 @@ interface WatchDetailProps {
    * `undefined` means a defensive default for any non-Plan-04 caller; treat as null.
    */
   verdict?: VerdictBundle | null
+  /** Phase 56 D-03: viewer identity for LikeButton (null impossible — watch page is auth-only). */
+  viewerId?: string | null
+  /** Phase 56 D-03: server-hydrated initial like state from getLikesForTargetCached. */
+  initialLikeState?: { liked: boolean; count: number }
 }
 
 function formatDate(dateStr?: string): string {
@@ -68,7 +73,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -144,6 +149,18 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
               <p className="text-sm text-muted-foreground mt-1">Ref. {watch.reference}</p>
             )}
           </div>
+
+          {/* Phase 56 D-03: LikeButton — visible to all authenticated viewers (D-09) */}
+          {viewerId !== undefined && initialLikeState !== undefined && (
+            <div className="flex items-center gap-2 mt-3">
+              <LikeButton
+                viewerId={viewerId ?? null}
+                target={{ type: 'watch', id: watch.id }}
+                initialLiked={initialLikeState.liked}
+                initialCount={initialLikeState.count}
+              />
+            </div>
+          )}
 
           {/* Last worn line (owned/grail only, owner only — non-owners do not see owner's wear state) */}
           {viewerCanEdit && (watch.status === 'owned' || watch.status === 'grail') && (
