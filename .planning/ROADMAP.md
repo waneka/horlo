@@ -273,7 +273,7 @@ Plans:
 - [x] 56A-05-PLAN.md — WywtRail → router.push rewire + nav-hiding (BottomNav/SlimTopNav) + delete WywtOverlay/WywtSlide (SC-1/SC-2/SC-5)
 
 **Gap Closure — UAT batch 2** *(6 gaps from 56A-HUMAN-UAT)*
-- [ ] 56A-06-PLAN.md — [GC wave 1] Cross-user swipe foundation: pass railUsernames+actor index to WearsLane + embla boundary → router.push to neighbor lane (gap #1, D-06/SC-1)
+- [x] 56A-06-PLAN.md — [GC wave 1] Cross-user swipe foundation: pass railUsernames+actor index to WearsLane + embla boundary → router.push to neighbor lane (gap #1, D-06/SC-1)
 - [ ] 56A-08-PLAN.md — [GC wave 1] Watch brand/model → /watch/[watchId] link in shared WearPhotoOverlays; un-discard watchId (gap #2, D-01)
 - [ ] 56A-07-PLAN.md — [GC wave 2, deps 06] WearsLane top-chrome: IG progress indicator + close→top-right + desktop edge arrows (gaps #3/#4/#6)
 - [ ] 56A-09-PLAN.md — [GC wave 2, deps 08] BLOCKER: diagnose+fix mobile photo collapse on /wear/[id] + rendered-result Playwright regression test (gap #5; autonomous:false)
@@ -313,7 +313,7 @@ Plans:
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
-| 56a. Wear View Unification | 5/5 | Complete   | 2026-05-23 |
+| 56a. Wear View Unification | 6/9 | In Progress|  |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
