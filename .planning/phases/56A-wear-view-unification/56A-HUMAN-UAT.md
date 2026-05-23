@@ -8,7 +8,7 @@ updated: 2026-05-23
 
 ## Current Test
 
-[4/4 core tests passed — awaiting additional user feedback before batch-pushing 4 staged refinements + re-verify]
+[testing complete — 4/4 core checkpoints passed; 6 gaps captured below for gap-closure (/gsd-plan-phase 56A --gaps). Batch-1 refinements committed but NOT yet pushed — fold into the one gap-closure deploy.]
 
 ## Tests
 
@@ -78,11 +78,19 @@ blocked: 0
   artifacts: [src/components/wears/WearsLane.tsx]
   missing: ["move close button from top-3 left-3 → top-3 right-3 (coordinate with progress indicator placement)"]
 
-- truth: "On /wear/[id], dedicated user-info and watch-info sections are present (in addition to / instead of the photo overlays)"
+- truth: "On /wear/[id], the wear photo (and its avatar/username + brand/model overlays) renders on MOBILE"
   status: failed
-  reason: "User reported: 'the user info and watch info sections are missing' on the detail permalink. Currently that info lives only as overlays ON the photo (shared WearCard). NEEDS CLARIFICATION: dedicated tappable sections below the photo (profile row + watch row) vs. relying on the existing overlays."
-  severity: major
-  surface: /wear/[id]
-  artifacts: [src/app/wear/[wearEventId]/page.tsx, src/components/wear/WearCard.tsx]
-  missing: ["DESIGN: confirm desired sections", "render below-photo user/watch info sections on the detail variant only (container-chrome divergence, D-12)"]
+  reason: "User CLARIFIED on retest: the photo + overlays render correctly on DESKTOP but DO NOT RENDER AT ALL on MOBILE for the same wear post (so 'user/watch info sections missing' = the whole photo+overlay block is collapsed/blank on mobile). Likely a regression from the 56A-04 WearCard refactor. WearPhotoClient (w-full aspect-[4/5]) and the page wrapper (article flex flex-col gap-4 pt-4 → Suspense → WearCard) look correct in static analysis, so suspect a parent layout / global CSS / mobile aspect-ratio collapse — needs a running mobile viewport to diagnose."
+  severity: blocker
+  surface: /wear/[id] (mobile)
+  artifacts: [src/app/wear/[wearEventId]/page.tsx, src/components/wear/WearCard.tsx, src/components/wear/WearPhotoClient.tsx, "route layout.tsx / globals.css (suspected)"]
+  missing: ["diagnose mobile-only photo collapse with a running mobile viewport", "fix the CSS chain so aspect-[4/5] renders on mobile (assert the chain explicitly, per the UI-SPEC CSS-chain blind-spot note)"]
+
+- truth: "On /wears/[username] DESKTOP, left/right arrow controls (centered vertically on the photo edges) navigate between wears (desktop has no swipe)"
+  status: failed
+  reason: "User feature request: mobile swipe is intuitive and fine; desktop has no touch swipe, so add prev/next arrow icons centered vertically on the photo's left/right edges. Should drive embla scrollPrev/scrollNext and (with the cross-user wiring) cross user boundaries too."
+  severity: minor
+  surface: /wears/[username] (desktop)
+  artifacts: [src/components/wears/WearsLane.tsx]
+  missing: ["desktop-only (md:) prev/next arrow buttons → emblaApi.scrollPrev()/scrollNext()", "hide on mobile; coordinate with cross-user boundary nav"]
 ```
