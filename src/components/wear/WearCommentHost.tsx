@@ -7,12 +7,14 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 
-interface WearCommentHostProps {
-  variant: 'bottom-sheet' | 'inline'
-  /** bottom-sheet variant: controlled open state lifted to WearCard */
-  open?: boolean
-  onOpenChange?: (v: boolean) => void
-}
+/**
+ * Discriminated union: the bottom-sheet variant REQUIRES open + onOpenChange
+ * so the sheet can never become stuck open (no missing-handler footgun).
+ * The inline variant must NOT receive those props.
+ */
+type WearCommentHostProps =
+  | { variant: 'bottom-sheet'; open: boolean; onOpenChange: (v: boolean) => void }
+  | { variant: 'inline'; open?: never; onOpenChange?: never }
 
 /**
  * Comment host shell — bottom-sheet + inline variants (D-10).
