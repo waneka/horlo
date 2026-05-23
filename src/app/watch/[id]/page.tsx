@@ -5,6 +5,7 @@ import { getWatchByIdForViewer, getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
 import { getCatalogById } from '@/data/catalog'
 import { getMostRecentWearDate } from '@/data/wearEvents'
+import { getLikesForTargetCached } from '@/data/reactions'
 import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import type { VerdictBundle } from '@/lib/verdict/types'
@@ -33,6 +34,10 @@ export default async function WatchPage({ params }: WatchPageProps) {
   }
 
   const { watch, isOwner } = result
+
+  // Phase 56 D-03: hydrate like state server-side via cached aggregate read.
+  // user.id is always a string on this auth-only route (getCurrentUser throws for anon).
+  const likeState = await getLikesForTargetCached(user.id, { type: 'watch', id })
 
   // Non-owner never receives lastWornDate — conservative default that honors
   // worn_public intent without adding a separate flag lookup (T-RDB-03).
@@ -77,6 +82,8 @@ export default async function WatchPage({ params }: WatchPageProps) {
         lastWornDate={lastWornDate}
         viewerCanEdit={isOwner}
         verdict={verdict}
+        viewerId={user.id}
+        initialLikeState={{ liked: likeState.viewerHasLiked, count: likeState.count }}
       />
 
       {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
