@@ -95,6 +95,15 @@ interface WearsLaneProps {
  *   and navigation. The pointerup handler checks: at boundary slide + correct
  *   swipe direction + drag distance > threshold → navigate immediately.
  *
+ * Instagram-stories landing rule (R3 fix — W1 stuck-state):
+ *   - Forward cross → next user's FIRST slide (slide 0). No hint needed; page.tsx
+ *     defaults initialSlideIndex=0.
+ *   - Backward cross → previous user's LAST slide. goToNeighbor('prev') appends
+ *     ?at=last so page.tsx sets initialSlideIndex=wears.length-1. Without this,
+ *     a backward-crossed lane always opened at slide 0. For multi-wear users
+ *     that meant the forward-cross condition (isLast) was never met on re-entry,
+ *     locking cross-user nav after the first A→B→A round trip.
+ *
  * W1 fix: page.tsx keys this component by username (`key={username}`) so that
  * navigating to a different user's lane via router.replace (same dynamic
  * route segment) triggers a full remount — resetting navigated.current and
@@ -156,6 +165,12 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   // Uses router.replace (not router.push) so the previous user's lane is replaced
   // in history rather than stacked — one close tap → home (H2 fix).
   //
+  // Landing rule (R3 fix):
+  //   - 'next': no hint → page.tsx defaults to slide 0 (first). Correct for IG-stories.
+  //   - 'prev': appends ?at=last → page.tsx sets initialSlideIndex=wears.length-1 (last).
+  //     Without this, backward-crossed multi-wear lanes opened at slide 0, so the
+  //     forward-cross condition (isLast) was never met on re-entry → stuck.
+  //
   // navigated.current is automatically reset on the next cross-user navigate because
   // page.tsx keys WearsLane by username — router.replace to a new user triggers a
   // full remount, re-initializing the ref to false (W1 fix).
@@ -169,12 +184,14 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       const nextUsername = railUsernames[railIndex + 1]
       if (!nextUsername) return
       navigated.current = true
+      // Forward: land at first slide (default; no hint needed).
       router.replace(`/wears/${nextUsername}`)
     } else {
       const prevUsername = railUsernames[railIndex - 1]
       if (!prevUsername) return
       navigated.current = true
-      router.replace(`/wears/${prevUsername}`)
+      // Backward: land at last slide so forward-cross is immediately available.
+      router.replace(`/wears/${prevUsername}?at=last`)
     }
   }
 

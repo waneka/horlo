@@ -36,10 +36,10 @@ export default async function WearsPage({
 }: {
   // Next.js 16 App Router: params and searchParams are Promises — must be awaited.
   params: Promise<{ username: string }>
-  searchParams: Promise<{ from?: string }>
+  searchParams: Promise<{ from?: string; at?: string }>
 }) {
   const { username } = await params
-  const { from: fromWearEventId } = await searchParams
+  const { from: fromWearEventId, at } = await searchParams
 
   // Auth-only, no anon sentinel (EN-6). Proxy redirects anon to /login.
   // Do NOT wrap in try/catch for UnauthorizedError.
@@ -103,15 +103,25 @@ export default async function WearsPage({
     }),
   )
 
-  // Build the initial slide index (D-05 "open at oldest unviewed").
-  // Wears are already oldest-first. If ?from is provided, find its index.
-  // T-56A-07: `from` is used only as an index lookup within `wears` (already
-  // filtered by getActiveWearsForUser's three-tier gate). A `from` not in the
-  // gated set falls back to index 0 — no IDOR exposure.
+  // Build the initial slide index.
+  //
+  // Priority order:
+  //   1. ?from=<wearEventId> — opens the lane at the specific wear (e.g. home rail tap).
+  //      T-56A-07: `from` is used only as an index lookup within `wears` (already
+  //      filtered by getActiveWearsForUser's three-tier gate). A `from` not in the
+  //      gated set falls back to index 0 — no IDOR exposure.
+  //   2. ?at=last — opens the lane at the last slide (backward cross-user nav, R3 fix).
+  //      goToNeighbor('prev') in WearsLane.tsx appends ?at=last so that the
+  //      backward-crossed lane opens at its last slide. Without this, all cross-user
+  //      nav landed at slide 0, and forward-cross (isLast condition) was never met
+  //      after a backward crossing → stuck for multi-wear users.
+  //   3. Default → slide 0 (first/oldest wear).
   let initialSlideIndex = 0
   if (fromWearEventId) {
     const idx = wears.findIndex((w) => w.id === fromWearEventId)
     if (idx !== -1) initialSlideIndex = idx
+  } else if (at === 'last') {
+    initialSlideIndex = wears.length - 1
   }
 
   // Build WearSlide array.
