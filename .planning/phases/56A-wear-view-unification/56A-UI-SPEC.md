@@ -43,8 +43,8 @@ Declared values (must be multiples of 4):
 
 Exceptions:
 - **Touch targets**: minimum 44px height/width on all interactive controls (LikeButton, comment trigger, overflow "…" button, close button). Source: existing `min-h-[44px] min-w-[44px]` in `LikeButton.tsx`.
-- **Bottom nav height**: `80px + env(safe-area-inset-bottom)` — existing constant, untouched on routes where nav renders.
-- **Safe-area inset**: `env(safe-area-inset-bottom)` applied to engagement row bottom padding on the stories route so the row clears the iOS home indicator when bottom nav is hidden.
+- **Bottom nav height**: `h-[calc(80px+env(safe-area-inset-bottom))]` — existing inline calc form in `BottomNav.tsx`, untouched on routes where nav renders.
+- **Safe-area inset (stories engagement row)**: The engagement row on the stories lane must clear the iOS home indicator when the bottom nav is hidden. The row uses `pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]` — inline calc matching the project's existing `BottomNav.tsx` pattern (`pb-[env(safe-area-inset-bottom)]` with explicit base padding). No `pb-safe` utility exists in `globals.css`; the inline calc form is mandatory.
 - **Overlay inset**: photo overlays use `p-3` (12px) per existing `WearPhotoOverlays` convention — not changing.
 
 ---
@@ -56,18 +56,20 @@ Pre-populated from `src/app/layout.tsx` and existing component code. No changes 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px (text-sm) | 400 (regular) | 1.5 | Notes, timestamps, comment placeholder text, overflow menu items |
-| Label | 14px (text-sm) | 600 (semibold) | 1.4 | Username in overlay, brand name in overlay, bottom-nav labels (12px), sheet title |
-| Heading | 16px (text-base) | 500 (medium) | 1.4 | Sheet title ("Comments") per existing `font-medium` in SheetTitle |
+| Label | 14px (text-sm) | 600 (semibold) | 1.4 | Username in overlay, brand name in overlay, bottom-nav labels (12px), inline comment section heading |
 | Display | n/a | n/a | n/a | No display text in this phase |
 
 Notes:
 - Overlay text (avatar username, brand, model, timestamp) is `text-sm` (14px) per existing `WearPhotoOverlays` — carried forward unchanged into the shared `WearCard`.
 - `text-[12px] leading-[16px] font-semibold` for bottom-nav labels — existing constant, not touched.
 - Monospace font is not used in this phase.
+- **SheetTitle ("Comments")** renders as `font-medium` (weight 500) via the existing `sheet.tsx` component class — this is component-inherited behavior, not a new token declaration. Weight 500 is not declared as a design token for this phase.
 
 ---
 
 ## Color
+
+Color follows a 60/30/10 distribution: dominant `--background` (60%), `--card`/`--muted` surfaces (30%), `--accent` reserved for active nav only (10%).
 
 All color values are CSS custom properties from `src/app/globals.css` (shadcn base-nova, neutral hue). Light and dark modes both defined.
 
@@ -121,7 +123,8 @@ Rendered at the bottom of the `WearCard` on BOTH routes. This row is part of the
 
 **Stories lane** (over the photo, outside the `aspect-[4/5]` container, pinned to bottom of slide):
 - Positioned immediately below the card's aspect container within the slide, OR rendered as a footer within the full-height slide area below the card. Default: footer below the card, not overlapping the photo. The photo's bottom gradient scrim provides visual context but the engagement row itself is NOT overlaid on top of the photo.
-- Layout: `flex items-center px-4 py-3`. Left slot: comment icon button (MessageCircle, 20px, `text-white`). Right slot: `LikeButton` (existing component, unchanged). Between: `flex-1` spacer.
+- Layout: `flex items-center px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]`. Left slot: comment icon button (MessageCircle, 20px, `text-white`). Right slot: `LikeButton` (existing component, unchanged). Between: `flex-1` spacer.
+- The `pb-[calc(0.75rem+env(safe-area-inset-bottom))]` bottom padding clears the iOS home indicator (env(safe-area-inset-bottom) > 0 on notched devices) when the bottom nav is hidden on this route. On non-notched devices the calc resolves to `0.75rem` = 12px, matching the `pt-3` top value. No `pb-safe` utility exists in `globals.css`; the inline calc is the only safe-area mechanism in this project.
 - Background: `bg-transparent` on the stories lane (the body below the photo is the page background, which is `bg-background`). No explicit background needed — it sits below the full-screen photo.
 - Touch targets: all buttons `min-h-[44px] min-w-[44px]`.
 
@@ -201,7 +204,7 @@ Client Component wrapping embla-carousel-react.
 - Nav hiding approach: add `pathname.startsWith('/wears/')` check to `BottomNav` client-side visibility predicate (Option B from RESEARCH.md A2 assumption). Also hide `SlimTopNav` via the same pathname check. This follows the existing `isPublicPath` pattern and avoids route-group restructuring.
 - Container: `h-dvh overflow-hidden fixed inset-0 bg-background z-0`.
 - Top-left: X close button. Top-right: "…" overflow. Both `absolute z-20`.
-- Photo card: full-width `aspect-[4/5]`. Below photo: engagement row, optional note (2-line truncated).
+- Photo card: full-width `aspect-[4/5]`. Below photo: engagement row (`flex items-center px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]`), optional note (2-line truncated).
 - Bottom-sheet comment host renders portaled over the photo via `SheetPortal`.
 
 **Desktop (`md+`, 768px and above):**
@@ -293,14 +296,14 @@ No third-party registries declared. All components are either existing codebase 
 | `56A-CONTEXT.md` | 12 locked decisions (D-01..D-12), Claude's Discretion areas, deferred items |
 | `56A-RESEARCH.md` | Embla pause pattern, Sheet component API, WearCard extraction boundary, nav hiding options A/B, signed-URL pitfall F-2 |
 | `components.json` | shadcn base-nova preset, lucide icon library |
-| `src/app/globals.css` | Full color token set (oklch values), light/dark mode variables |
+| `src/app/globals.css` | Full color token set (oklch values), light/dark mode variables; confirmed no `pb-safe` utility |
 | `src/app/layout.tsx` | IBM Plex Sans font, viewport-fit:cover |
 | `src/components/wear/WearDetailHero.tsx` | Overlay layout (top/bottom scrim, text-sm classes, hasPhoto switch, p-3 insets) |
 | `src/components/wear/WearPhotoClient.tsx` | 3-retry state machine, aspect-[4/5] container, md:max-w-[600px] convention, native img |
 | `src/app/wear/[wearEventId]/page.tsx` | Engagement row pattern, footer border-t, existing comment slot placeholder |
 | `src/components/shared/LikeButton.tsx` | Heart icon, min-h/w-[44px], text-destructive on liked state |
-| `src/components/ui/sheet.tsx` | SheetContent side="bottom" animation classes, max-h behavior |
-| `src/components/layout/BottomNav.tsx` | isPublicPath pattern, md:hidden, h-[80px+safe-area] |
+| `src/components/ui/sheet.tsx` | SheetContent side="bottom" animation classes, max-h behavior, font-medium on SheetTitle |
+| `src/components/layout/BottomNav.tsx` | isPublicPath pattern, md:hidden, `h-[calc(80px+env(safe-area-inset-bottom))]` + `pb-[env(safe-area-inset-bottom)]` inline calc pattern |
 | `src/components/home/WywtOverlay.tsx` | getEmblaDuration(), existing embla usage, prefers-reduced-motion |
 | User input (auto mode) | 0 (all questions resolved from upstream + codebase + documented defaults) |
 
