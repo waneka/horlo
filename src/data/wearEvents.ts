@@ -2,7 +2,7 @@ import 'server-only'
 
 import { db } from '@/db'
 import { wearEvents, profileSettings, follows, profiles, watches } from '@/db/schema'
-import { eq, and, desc, inArray, gte, or, sql } from 'drizzle-orm'
+import { eq, and, desc, inArray, gte, or, sql, asc } from 'drizzle-orm'
 import type { WywtTile, WywtRailData } from '@/lib/wywtTypes'
 import type { WearVisibility } from '@/lib/wearVisibility'
 
@@ -423,4 +423,111 @@ export async function getWearEventsCountByUser(userId: string): Promise<number> 
     .from(wearEvents)
     .where(eq(wearEvents.userId, userId))
   return rows[0]?.count ?? 0
+}
+
+/**
+ * Returns ALL wear events for `actorId` within the 48h window (D-04),
+ * visible to `viewerId`, ordered oldest→newest (D-05).
+ *
+ * Three-tier visibility gate mirrors getWearEventsForViewer. The 48h
+ * cutoff uses wornDate (matches getWearRailForViewer's cutoffDate).
+ *
+ * Returns raw photoUrl (Storage path) — caller (page.tsx) mints signed
+ * URLs per-request. Pitfall F-2: never cache signed URLs.
+ *
+ * Also returns brand/model/watchImageUrl/username/displayName/avatarUrl
+ * (JOINed) so the caller has everything for WearCard without extra reads.
+ */
+export async function getActiveWearsForUser(
+  viewerId: string,
+  actorId: string,
+) {
+  // 48h cutoff — exact same calculation as getWearRailForViewer lines 318-320:
+  const cutoffMs = Date.now() - 48 * 60 * 60 * 1000
+  const cutoffDate = new Date(cutoffMs).toISOString().slice(0, 10)
+
+  // G-5 self-bypass: owner sees all their own active wears regardless of visibility.
+  if (viewerId === actorId) {
+    return db
+      .select({
+        id: wearEvents.id,
+        userId: wearEvents.userId,
+        watchId: wearEvents.watchId,
+        wornDate: wearEvents.wornDate,
+        note: wearEvents.note,
+        photoUrl: wearEvents.photoUrl, // raw Storage path — Pitfall F-2
+        visibility: wearEvents.visibility,
+        createdAt: wearEvents.createdAt,
+        username: profiles.username,
+        displayName: profiles.displayName,
+        avatarUrl: profiles.avatarUrl,
+        brand: watches.brand,
+        model: watches.model,
+        watchImageUrl: watches.imageUrl,
+      })
+      .from(wearEvents)
+      .innerJoin(profiles, eq(profiles.id, wearEvents.userId))
+      .innerJoin(watches, eq(watches.id, wearEvents.watchId))
+      .where(
+        and(
+          eq(wearEvents.userId, actorId),
+          gte(wearEvents.wornDate, cutoffDate),
+        ),
+      )
+      .orderBy(asc(wearEvents.wornDate), asc(wearEvents.createdAt)) // oldest-first (D-05)
+  }
+
+  // Resolve follow relationship — one row lookup, not per-event JOIN.
+  // Same pattern as getWearEventsForViewer lines 173-186.
+  let viewerFollowsActor = false
+  const followRowsResult = await db
+    .select({ id: follows.id })
+    .from(follows)
+    .where(
+      and(
+        eq(follows.followerId, viewerId),
+        eq(follows.followingId, actorId),
+      ),
+    )
+    .limit(1)
+  viewerFollowsActor = followRowsResult.length > 0
+
+  // Same predicate composition as getWearEventsForViewer lines 191-196.
+  const visibilityPredicate = viewerFollowsActor
+    ? or(
+        eq(wearEvents.visibility, 'public'),
+        eq(wearEvents.visibility, 'followers'),
+      )
+    : eq(wearEvents.visibility, 'public')
+
+  return db
+    .select({
+      id: wearEvents.id,
+      userId: wearEvents.userId,
+      watchId: wearEvents.watchId,
+      wornDate: wearEvents.wornDate,
+      note: wearEvents.note,
+      photoUrl: wearEvents.photoUrl, // raw Storage path — Pitfall F-2
+      visibility: wearEvents.visibility,
+      createdAt: wearEvents.createdAt,
+      username: profiles.username,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+      brand: watches.brand,
+      model: watches.model,
+      watchImageUrl: watches.imageUrl,
+    })
+    .from(wearEvents)
+    .innerJoin(profileSettings, eq(profileSettings.userId, wearEvents.userId))
+    .innerJoin(profiles, eq(profiles.id, wearEvents.userId))
+    .innerJoin(watches, eq(watches.id, wearEvents.watchId))
+    .where(
+      and(
+        eq(wearEvents.userId, actorId),
+        gte(wearEvents.wornDate, cutoffDate),
+        eq(profileSettings.profilePublic, true), // G-4 outer gate
+        visibilityPredicate,
+      ),
+    )
+    .orderBy(asc(wearEvents.wornDate), asc(wearEvents.createdAt)) // oldest-first (D-05)
 }
