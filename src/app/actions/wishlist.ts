@@ -36,8 +36,8 @@ const schema = z.object({ wearEventId: z.string().uuid() }).strict()
  * moment with one-tap no-friction UX.
  *
  * Three-tier visibility gate (Phase 12 / WYWT-10): the source wear event
- * must be the viewer's own (G-5 self-bypass) OR the actor's profile_public
- * must be true (G-4 outer gate) AND one of:
+ * must NOT be the viewer's own (D-09 — own-wear blocked, not bypassed) AND
+ * the actor's profile_public must be true (G-4 outer gate) AND one of:
  *   - wear_events.visibility = 'public', OR
  *   - wear_events.visibility = 'followers' AND viewer follows actor (G-3
  *     directional: viewer is the follower).
@@ -88,8 +88,16 @@ export async function addToWishlistFromWearEvent(
 
   // Three-tier visibility gate. Self-bypass (G-5) FIRST.
   const isSelf = row.actorId === user.id
+
+  // D-09: own-wear guard — viewer cannot wishlist their own wear event.
+  // The UI hides the button when isSelf, but this server-side gate closes
+  // the direct-POST bypass (Letterboxd-style 404 — no existence leak).
+  if (isSelf) {
+    return { success: false, error: 'Wear event not found' }
+  }
+
   let isFollower = false
-  if (!isSelf && row.visibility === 'followers') {
+  if (row.visibility === 'followers') {
     // Only resolve the follow relationship when needed (followers tier).
     // 'public' tier doesn't need a follow check; 'private' is rejected
     // unconditionally for non-self.
@@ -107,10 +115,9 @@ export async function addToWishlistFromWearEvent(
   }
 
   const canSee =
-    isSelf ||
-    (row.profilePublic &&
-      (row.visibility === 'public' ||
-        (row.visibility === 'followers' && isFollower)))
+    row.profilePublic &&
+    (row.visibility === 'public' ||
+      (row.visibility === 'followers' && isFollower))
 
   if (!canSee) {
     // Uniform error string preserves Letterboxd-style 404 (RESEARCH Open Question #3).
