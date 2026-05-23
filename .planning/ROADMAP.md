@@ -267,7 +267,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 - [x] 56A-03-PLAN.md — /wears/[username] stories lane page + WearsLane carousel (SC-1/SC-2, D-04/05/06/07, F-2)
-- [ ] 56A-04-PLAN.md — /wear/[id] refactor to shared WearCard + EN-6 anon cleanup (SC-3/SC-4, D-02)
+- [x] 56A-04-PLAN.md — /wear/[id] refactor to shared WearCard + EN-6 anon cleanup (SC-3/SC-4, D-02)
 
 **Wave 3** *(blocked on Wave 2; deletion gated after lane renders, SC-5)*
 - [ ] 56A-05-PLAN.md — WywtRail → router.push rewire + nav-hiding (BottomNav/SlimTopNav) + delete WywtOverlay/WywtSlide (SC-1/SC-2/SC-5)
@@ -307,7 +307,7 @@ Plans:
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
-| 56a. Wear View Unification | 3/5 | In Progress|  |
+| 56a. Wear View Unification | 4/5 | In Progress|  |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
