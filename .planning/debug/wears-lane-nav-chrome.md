@@ -1,13 +1,15 @@
 ---
 slug: wears-lane-nav-chrome
-status: checkpoint:human-verify
+status: pending-human-verify
 trigger: "Phase 56A WearsLane cross-user stories navigation + desktop chrome bugs found in on-device prod UAT"
 created: 2026-05-23T20:02:32Z
-updated: 2026-05-23T23:45:00Z
+updated: 2026-05-24T01:00:00Z
 phase: 56A-wear-view-unification
 files_in_scope:
   - src/components/wears/WearsLane.tsx
   - src/app/wears/[username]/page.tsx
+  - src/components/wear/WearPhotoClient.tsx
+  - src/components/wear/WearDetailHero.tsx
 ---
 
 # Debug Session: wears-lane-nav-chrome
@@ -90,13 +92,21 @@ ROUND 4 FIX APPLIED (commit 82abe3e) — pending on-device prod verify:
 
 fix (R4) applied and verified in source:
   1. navigated.current confirmed never reset in prior code — only intended reset was key={username} remount (defeated by Router Cache restore on revisited URL).
-  2. PRIMARY FIX: added `navigated.current = false` at the very start of onPointerDown handler (Effect A, before recording pointerDownX). This re-arms the guard on every fresh gesture. Robust against Router-Cache-restore because a fresh pointerdown always fires even on a cache-restored instance.
+  2. PRIMARY FIX: added `navigated.current = false` at the very top of onPointerDown handler (Effect A, before recording pointerDownX). This re-arms the guard on every fresh gesture. Robust against Router-Cache-restore because a fresh pointerdown always fires even on a cache-restored instance.
   3. DEFENSIVE FIX: added `useEffect(() => { navigated.current = false }, [])` mount reset — belt-and-suspenders for any other cache-restore path that doesn't trigger a React remount.
   4. DEBUG BADGE: added a fixed bottom-left div (z-50, pointer-events-none, opacity-60) showing: nav={navigated.current}, pd={debugPd}, pu={debugPu}, i={selectedIndex}/{snapCount-1}, last={isLastSegment}, 1st={isFirstSegment}, rIdx={railIndex}, nxt={hasNextUser}, prv={hasPrevUser}. Tracks pointerdown/up counts via refs+state to confirm pointer listeners are alive on cache-restored instances.
   5. BUILD: npm run build clean.
   6. COMMIT: 82abe3e. PUSHED: git push origin main → Vercel deploy triggered.
 
 next_action (R4): User tests on-device (phone) after Vercel deploy. Test A→B→A→B AND B→A→B→A. Report: stuck or not. If still stuck: report the debug badge readout at the moment of stuck. Tiebreaker: nav=true → navigated guard still stale; pu not incrementing → pointer listeners dropped; last=false → still position issue.
+
+ROUND 4 VERIFIED ON PROD (2026-05-24): "that worked!" — STUCK STATE FIXED. ROOT CAUSE CONFIRMED: `navigated` ref was set-once-never-reset; Next 16 Router Cache restored the stale WearsLane instance on router.replace revisit to a cached /wears/<user> URL (defeating key={username} remount); resetting `navigated.current=false` in onPointerDown re-arms per gesture and fixes it. DURABLE LESSON: in Next App Router, per-instance client refs must NOT rely on key-remount to reset across soft-navigations to revisited dynamic URLs — reset on user interaction instead.
+
+ROUND 5 (final — cleanup + desktop polish, then RESOLVE):
+- T1 (MANDATORY cleanup): REMOVE the temporary R4 debug badge — the fixed bottom-left div AND the pointerdown/pointerup counter state+refs (debugPd/debugPu) added solely for it. KEEP the navigated-reset-on-pointerdown fix and the defensive mount reset.
+- T2 (desktop polish): add a small gap/padding between each nav arrow and the side of the photo — the md: arrows currently sit flush at the photo-column edge; inset/separate them slightly so they don't touch the photo. Desktop-only; mobile unaffected (arrows hidden).
+- T3 (desktop polish): the 4:5 photo at md:max-w-[600px] (~750px tall) pushes the engagement (like/comment) bar off-screen on a laptop. Constrain the photo by VIEWPORT HEIGHT on desktop so the whole WearCard (photo + engagement row + inline comment seam) fits — add an `md:max-h-[70vh]` to the aspect-[4/5] photo container (width follows the aspect ratio) in WearPhotoClient.tsx (and WearDetailHero if it has its own container); keep mobile full-screen behavior unchanged. Choose N (~70vh, tune) so the engagement bar is visible on a typical laptop; user verifies on their laptop.
+next_action (R5): DONE — debug badge removed (T1); arrow gap applied left-2/right-2 (T2); md:max-h-[70vh] added to all 5 photo containers across WearPhotoClient.tsx + WearDetailHero.tsx (T3); npm run build clean; commit c19acc7 pushed → Vercel deploying. Awaiting human verify on laptop.
 
 ## Evidence
 
@@ -166,6 +176,19 @@ next_action (R4): User tests on-device (phone) after Vercel deploy. Test A→B�
     COMMIT: 82abe3e. PUSHED.
     AWAITING: on-device prod verify.
 
+- timestamp: 2026-05-24T01:00:00Z
+  note: |
+    ROUND 5 APPLIED (commit c19acc7):
+    T1 (cleanup): debug badge removed from WearsLane.tsx. Removed: fixed bottom-left <div> (z-50, pointer-events-none, opacity-60), debugPd/debugPu useState, pointerDownCountRef/pointerUpCountRef useRef, all badge increment calls in onPointerDown/onPointerUp, snapCount derived value (was only for badge). All badge-related code gone. KEPT: navigated.current=false in onPointerDown (R4 primary fix), useEffect mount reset (R4 defensive fix).
+    T2 (desktop arrows gap): left-0/right-0 changed to left-2/right-2 on both arrow buttons inside the photo-column wrapper. Gives ~8px gap between arrow circle and photo edge. Desktop-only (arrows are hidden on mobile via hidden md:flex).
+    T3 (desktop photo max-height): md:max-h-[70vh] added to all 5 aspect-[4/5] photo containers:
+      - WearPhotoClient.tsx: 3 containers (watchImageUrl fallback, no-photo fallback, signed-URL happy path)
+      - WearDetailHero.tsx: 2 containers (watchImageUrl branch, no-photo placeholder branch)
+    With aspect-[4/5] + max-h, the width auto-shrinks to preserve the ratio. At 70vh on a 900px-tall laptop = 630px max, narrowing the 600px-wide photo to preserve 4:5 only if it would otherwise exceed 630px. Mobile unaffected (full-screen fixed lane is not constrained by max-h on the photo element itself).
+    BUILD: npm run build clean (TypeScript + full page generation, 34 routes).
+    COMMIT: c19acc7. PUSHED → Vercel deploying.
+    AWAITING: human verify on laptop — (1) arrow gap from photo, (2) like/comment bar fully visible on screen.
+
 ## Eliminated
 
 - 'settle' timing race as the sole H1 explanation: the more direct failure mode is reInit-triggered settle events (comment sheet toggling). Both modes cause spurious cross-user navigation and are eliminated by the pointerup approach.
@@ -186,17 +209,20 @@ root_cause: |
   (W3) Desktop arrows at viewport edges, not photo column edges.
   Round 3 stuck-state root cause (after W1 disproven as the full cause):
   (R3) Landing position: every cross-user nav replaced to /wears/<user> with no positional hint → initialSlideIndex=0 always. Forward-cross requires isLast (last slide). After A→B(fwd)→A(back at slide 0), forward swipe moves within A's wears (not at last) → cannot re-cross → stuck for multi-wear users. DISPROVEN by prod test — symmetric 3rd-hop stuck state persisted.
-  Round 4 root cause (CURRENT — pending verification):
-  (R4) Next.js 16 Router Cache restores stale WearsLane instance when router.replace revisits a cached /wears/<user> URL, defeating the key={username} remount. navigated.current stays true on the restored instance. 3rd cross-user hop always revisits a cached URL → hits `if (navigated.current) return` in goToNeighbor → stuck. Symmetric: A.navigated=true cached → B.navigated=true cached → nav3 restores A with navigated=true → stuck.
+  Round 4 root cause (CONFIRMED — verified by prod test "that worked!"):
+  (R4) Next.js 16 Router Cache restores stale WearsLane instance when router.replace revisits a cached /wears/<user> URL, defeating the key={username} remount. navigated.current stays true on the restored instance. 3rd cross-user hop always revisits a cached URL → hits `if (navigated.current) return` in goToNeighbor → stuck. Symmetric: A.navigated=true cached → B.navigated=true cached → nav3 restores A with navigated=true → stuck. FIX: reset navigated.current=false at the start of every onPointerDown gesture — re-arms the guard unconditionally on every fresh gesture, even on a cache-restored instance.
 fix: |
   Round 1: (1) Dropped embla 'settle' detection → window pointerup with 50px threshold. (2) router.push → router.replace. (3) md:static → md:relative; arrow/progress contrast fixes.
   Round 2: (W1) key={username} on <WearsLane> in page.tsx for clean per-user remount. (W2) ChevronRight caret removed. (W3) Embla viewport wrapped in relative md:max-w-[600px] md:mx-auto div; arrows anchored to that wrapper.
   Round 3: (R3) goToNeighbor('prev') appends ?at=last to router.replace URL. page.tsx reads `at` from searchParams; when at==='last' and no ?from, initialSlideIndex = wears.length - 1. Instagram-stories landing rule: forward→first slide, backward→last slide. (Did not resolve stuck state — R3 root cause disproven.)
-  Round 4 (PENDING VERIFICATION): (R4) Reset navigated.current=false at the start of onPointerDown — re-arms the guard on every fresh gesture regardless of cache/remount state. Defensive mount-effect reset also added. Temp debug badge added (bottom-left fixed div) for on-phone triage if still stuck.
-verification: PENDING — requires on-device prod test after Vercel deploy (commit 82abe3e). Test A→B→A→B AND B→A→B→A on phone. If still stuck: read debug badge values at moment of stuck and report.
+  Round 4 (CONFIRMED FIXED): (R4) Reset navigated.current=false at the start of onPointerDown — re-arms the guard on every fresh gesture regardless of cache/remount state. Defensive mount-effect reset also added. Temp debug badge added and then removed in R5.
+  Round 5 (cleanup + desktop polish): (T1) Debug badge removed. (T2) Arrow buttons inset left-2/right-2 from photo column edge for visual separation. (T3) md:max-h-[70vh] on all 5 aspect-[4/5] photo containers in WearPhotoClient.tsx and WearDetailHero.tsx — constrains desktop photo height so engagement bar stays on-screen on a laptop.
+verification: PENDING human verify on laptop (commit c19acc7). Verify: (1) arrows have a small gap from the photo edges; (2) like/comment bar is fully visible on laptop without scrolling.
 files_changed:
   - src/components/wears/WearsLane.tsx
   - src/app/wears/[username]/page.tsx
+  - src/components/wear/WearPhotoClient.tsx
+  - src/components/wear/WearDetailHero.tsx
 
 ## Verification Constraint
 
