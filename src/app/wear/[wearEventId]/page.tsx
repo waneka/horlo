@@ -1,15 +1,14 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
-import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { getWearEventByIdForViewer } from '@/data/wearEvents'
 import { getLikesForTargetCached } from '@/data/reactions'
+import { getWatchesByUser } from '@/data/watches'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { WearDetailHero } from '@/components/wear/WearDetailHero'
+import { WearCard } from '@/components/wear/WearCard'
 import { WearDetailMetadata } from '@/components/wear/WearDetailMetadata'
-import { WearPhotoClient } from '@/components/wear/WearPhotoClient'
 import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
-import { LikeButton } from '@/components/shared/LikeButton'
 
 /**
  * Wear detail page (WYWT-17, WYWT-18, WYWT-21).
@@ -27,13 +26,17 @@ import { LikeButton } from '@/components/shared/LikeButton'
  * NOT cached). Pitfall F-2: signed URLs are per-request and per-user;
  * caching them across either axis is a security + freshness bug.
  *
- * Anonymous viewers (no session) are allowed — the DAL returns wears
- * marked visibility='public' on profile_public=true actors for null viewer.
+ * Phase 56A EN-6: both wear routes are auth-only — the proxy redirects
+ * unauthenticated users to /login. The anon sentinel and the anonymous-viewer
+ * try/catch have been removed (56A EN-6); getCurrentUser() throws
+ * UnauthorizedError for anon users, which is not caught here.
  *
- * Phase 56 D-04/05/06/07: footer action row with LikeButton added.
- * Overlay content props (username/displayName/avatarUrl/createdAt) threaded
- * through WearPhotoStreamed into WearPhotoClient and WearDetailHero.
- * Anon sentinel '__anon__' used for getLikesForTargetCached when viewerId is null.
+ * Phase 56A SC-4: refactored to render the shared WearCard
+ * (commentHostVariant="inline") in place of the bespoke inline hero +
+ * footer action row. Visual and behavioral parity with the stories lane.
+ *
+ * Phase 56 D-04/05/06/07: footer action row with LikeButton is now
+ * owned by WearCard.
  */
 export default async function WearDetailPage({
   params,
@@ -43,29 +46,37 @@ export default async function WearDetailPage({
 }) {
   const { wearEventId } = await params
 
-  let viewerId: string | null = null
-  try {
-    const user = await getCurrentUser()
-    viewerId = user.id
-  } catch (err) {
-    // Anonymous viewer is an allowed path for public wear events on
-    // profile_public profiles. Any non-auth error still surfaces.
-    if (!(err instanceof UnauthorizedError)) throw err
-  }
+  // Auth-only, no anon sentinel (EN-6). Proxy redirects anon to /login.
+  // Do NOT wrap in try/catch for UnauthorizedError.
+  const user = await getCurrentUser()
+  const viewerId = user.id
 
   const wear = await getWearEventByIdForViewer(viewerId, wearEventId)
   if (!wear) notFound()
 
-  // Anon sentinel: getLikesForTargetCached expects a non-null string.
-  // '__anon__' is never a real UUID, so bool_or(userId='__anon__') = false
-  // for all real rows — viewerHasLiked is always false for anon (correct).
-  // The count is still correct (not viewer-filtered).
-  const ANON_SENTINEL = '__anon__'
-  const likeState = await getLikesForTargetCached(viewerId ?? ANON_SENTINEL, { type: 'wear', id: wearEventId })
+  // Real viewerId — no sentinel needed (EN-6 cleanup).
+  const likeState = await getLikesForTargetCached(viewerId, { type: 'wear', id: wearEventId })
 
   const altText = wear.username
     ? `${wear.username} wearing ${wear.brand} ${wear.model}`
     : `Watch on wrist — ${wear.brand} ${wear.model}`
+
+  // D-09: showAddToWishlist is false when:
+  //   1. The wear belongs to the viewer (own wear).
+  //   2. The viewer already has the watch (owned or wishlist) matched by brand+model.
+  // Matches the same logic as the stories lane (Plan 03).
+  const viewerWatches = await getWatchesByUser(viewerId)
+  const viewerOwnedOrWishlist = viewerWatches.filter(
+    (v) => v.status === 'owned' || v.status === 'wishlist',
+  )
+  const viewerHasWatch = (brand: string, model: string): boolean =>
+    viewerOwnedOrWishlist.some(
+      (v) =>
+        v.brand.toLowerCase() === brand.toLowerCase() &&
+        v.model.toLowerCase() === model.toLowerCase(),
+    )
+  const showAddToWishlist =
+    wear.userId !== viewerId && !viewerHasWatch(wear.brand, wear.model)
 
   return (
     <article className="flex flex-col gap-4 pt-4">
@@ -80,22 +91,18 @@ export default async function WearDetailPage({
           displayName={wear.displayName}
           avatarUrl={wear.avatarUrl}
           createdAt={wear.createdAt}
+          watchId={wear.watchId}
+          viewerId={viewerId}
+          wearEventId={wearEventId}
+          initialLiked={likeState.viewerHasLiked}
+          initialCount={likeState.count}
+          showAddToWishlist={showAddToWishlist}
+          permalinkUrl={`/wear/${wearEventId}`}
         />
       </Suspense>
       <WearDetailMetadata
         note={wear.note}
       />
-      {/* Phase 56 D-04: footer action row — [reserved comment slot] [LikeButton right] */}
-      <div className="flex items-center px-4 py-3 border-t border-border md:max-w-[600px] md:mx-auto">
-        {/* Reserved for Phase 57 comment input — sized to accept a textarea without re-layout */}
-        <div className="flex-1 min-h-[44px]" aria-hidden />
-        <LikeButton
-          viewerId={viewerId}
-          target={{ type: 'wear', id: wearEventId }}
-          initialLiked={likeState.viewerHasLiked}
-          initialCount={likeState.count}
-        />
-      </div>
     </article>
   )
 }
@@ -106,9 +113,10 @@ export default async function WearDetailPage({
  * not enough to suspend without an explicit boundary around the slow
  * subtree). 60-min TTL, never cached. Pitfall F-2.
  *
- * Phase 56: receives overlay content props (username/displayName/avatarUrl/
- * createdAt) and forwards them to WearPhotoClient and WearDetailHero so the
- * overlays render on all photo paths including the no-photo fallback.
+ * Phase 56A SC-4: returns the shared WearCard (commentHostVariant="inline")
+ * instead of WearPhotoClient/WearDetailHero directly. WearCard owns the
+ * photo layer, overlays, engagement row (LikeButton + comment trigger),
+ * overflow menu, and the inline comment host section.
  */
 async function WearPhotoStreamed({
   photoUrl,
@@ -120,6 +128,13 @@ async function WearPhotoStreamed({
   displayName,
   avatarUrl,
   createdAt,
+  watchId,
+  viewerId,
+  wearEventId,
+  initialLiked,
+  initialCount,
+  showAddToWishlist,
+  permalinkUrl,
 }: {
   photoUrl: string | null
   watchImageUrl: string | null
@@ -130,6 +145,13 @@ async function WearPhotoStreamed({
   displayName: string | null
   avatarUrl: string | null
   createdAt: Date
+  watchId: string
+  viewerId: string
+  wearEventId: string
+  initialLiked: boolean
+  initialCount: number
+  showAddToWishlist: boolean
+  permalinkUrl: string
 }) {
   let signedUrl: string | null = null
   if (photoUrl) {
@@ -140,34 +162,25 @@ async function WearPhotoStreamed({
     signedUrl = data?.signedUrl ?? null
   }
 
-  // If we have a signed URL, hand off to the Client retry component (D-02).
-  // If we don't (no photo or mint failed), fall back to the server hero
-  // which renders the watchImageUrl branch or the no-photo placeholder.
-  if (signedUrl) {
-    return (
-      <WearPhotoClient
-        signedUrl={signedUrl}
-        altText={altText}
-        watchImageUrl={watchImageUrl}
-        brand={brand}
-        model={model}
-        username={username}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        createdAt={createdAt}
-      />
-    )
-  }
   return (
-    <WearDetailHero
+    <WearCard
+      signedUrl={signedUrl}
       watchImageUrl={watchImageUrl}
-      brand={brand}
-      model={model}
       altText={altText}
       username={username}
       displayName={displayName}
       avatarUrl={avatarUrl}
       createdAt={createdAt}
+      brand={brand}
+      model={model}
+      watchId={watchId}
+      viewerId={viewerId}
+      wearEventId={wearEventId}
+      initialLiked={initialLiked}
+      initialCount={initialCount}
+      commentHostVariant="inline"
+      showAddToWishlist={showAddToWishlist}
+      permalinkUrl={permalinkUrl}
     />
   )
 }
