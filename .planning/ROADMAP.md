@@ -259,7 +259,7 @@ Plans:
   3. `/wear/[id]` keeps the nav bars, is vertically scrollable, shows a single wear (no swipe) with the same photo/overlay card, the like control, and an inline comment list; it is reachable by direct URL / share / notification and has a working back/close affordance.
   4. The wear-content card, the LikeButton, and the comment component are single shared components rendered by both routes (visual + behavioral parity; divergence limited to container chrome).
   5. The legacy WYWT client overlay (`WywtOverlay`/`WywtSlide` modal that left the URL on `/`) is replaced by the routed `/wears/[username]` experience; the "Add to wishlist" action is preserved or relocated per the spec decision (open fork).
-**Plans**: 5 plans
+**Plans**: 9 plans (5 initial + 4 gap-closure from UAT batch 2)
 Plans:
 **Wave 1**
 - [x] 56A-01-PLAN.md — Wave 0 test scaffolds + getActiveWearsForUser DAL (48h/oldest-first/three-tier gate, raw photoUrl)
@@ -271,6 +271,12 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2; deletion gated after lane renders, SC-5)*
 - [x] 56A-05-PLAN.md — WywtRail → router.push rewire + nav-hiding (BottomNav/SlimTopNav) + delete WywtOverlay/WywtSlide (SC-1/SC-2/SC-5)
+
+**Gap Closure — UAT batch 2** *(6 gaps from 56A-HUMAN-UAT)*
+- [ ] 56A-06-PLAN.md — [GC wave 1] Cross-user swipe foundation: pass railUsernames+actor index to WearsLane + embla boundary → router.push to neighbor lane (gap #1, D-06/SC-1)
+- [ ] 56A-08-PLAN.md — [GC wave 1] Watch brand/model → /watch/[watchId] link in shared WearPhotoOverlays; un-discard watchId (gap #2, D-01)
+- [ ] 56A-07-PLAN.md — [GC wave 2, deps 06] WearsLane top-chrome: IG progress indicator + close→top-right + desktop edge arrows (gaps #3/#4/#6)
+- [ ] 56A-09-PLAN.md — [GC wave 2, deps 08] BLOCKER: diagnose+fix mobile photo collapse on /wear/[id] + rendered-result Playwright regression test (gap #5; autonomous:false)
 **UI hint**: yes
 
 ### Phase 57: Comment Thread UI + Feed Extension + Grid Counts
