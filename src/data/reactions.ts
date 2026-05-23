@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { cacheTag } from 'next/cache'
 import { and, eq, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
@@ -111,4 +112,41 @@ export async function deleteLike(
         ),
       )
   }
+}
+
+// ---------------------------------------------------------------------------
+// Cached read — getLikesForTargetCached (Phase 56, LIKE-01/02, SEC-05)
+// ---------------------------------------------------------------------------
+
+/**
+ * 'use cache' wrapper around getLikesForTarget with Phase-55 cache tags.
+ *
+ * CRITICAL (SEC-05): viewerId MUST be passed as an explicit function argument
+ * (not resolved inside this scope) so Next.js serializes it into the cache key.
+ * Distinct viewers get distinct cache entries — viewer A's viewerHasLiked cannot
+ * be served to viewer B.
+ *
+ * Tags match what toggleLikeAction fires (must match exactly):
+ *   revalidateTag('reactions:{type}:{id}', 'max') → busts the cross-user count
+ *   updateTag('viewer:{userId}:reactions')         → busts this viewer's liked state
+ *
+ * Anon path: pass '__anon__' sentinel for null viewerId. The SQL
+ * bool_or(userId = '__anon__') evaluates false over all real UUID rows — correct.
+ * The viewer:__anon__:reactions tag is never invalidated — also correct.
+ *
+ * IMPORTANT: Do not resolve auth inside this scope — request-time APIs
+ * (auth helpers, cookie/header access) are forbidden inside 'use cache'
+ * (Next.js 16.2.3 constraint). Auth is resolved in the page (uncached)
+ * and passed in as viewerId.
+ *
+ * No cacheLife added: the action uses revalidateTag('max') + updateTag for
+ * immediate expiry; the default lifetime is correct for a tag-busted read.
+ */
+export async function getLikesForTargetCached(
+  viewerId: string,
+  target: LikeTarget,
+): Promise<LikesResult> {
+  'use cache'
+  cacheTag(`reactions:${target.type}:${target.id}`, `viewer:${viewerId}:reactions`)
+  return getLikesForTarget(viewerId, target)
 }
