@@ -52,6 +52,7 @@ export function WearPhotoClient({
   displayName,
   avatarUrl,
   createdAt,
+  watchId,
 }: {
   signedUrl: string
   altText: string
@@ -62,6 +63,7 @@ export function WearPhotoClient({
   displayName: string | null
   avatarUrl: string | null
   createdAt: Date
+  watchId: string
 }) {
   const [status, setStatus] = useState<'pending' | 'loaded' | 'failed'>('pending')
   const [retryCount, setRetryCount] = useState(0)
@@ -96,6 +98,7 @@ export function WearPhotoClient({
             brand={brand}
             model={model}
             hasPhoto={true}
+            watchId={watchId}
           />
         </div>
       )
@@ -114,6 +117,7 @@ export function WearPhotoClient({
           brand={brand}
           model={model}
           hasPhoto={false}
+          watchId={watchId}
         />
       </div>
     )
@@ -159,6 +163,7 @@ export function WearPhotoClient({
           brand={brand}
           model={model}
           hasPhoto={true}
+          watchId={watchId}
         />
       )}
     </div>

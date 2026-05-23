@@ -40,6 +40,8 @@ interface WearPhotoOverlaysProps {
   model: string
   /** true = overlay text white (on scrimmed photo); false = text-foreground (muted fallback, D-08) */
   hasPhoto: boolean
+  /** brand/model → /watch/[watchId] link (D-01) */
+  watchId: string
 }
 
 /**
@@ -59,6 +61,7 @@ export function WearPhotoOverlays({
   brand,
   model,
   hasPhoto,
+  watchId,
 }: WearPhotoOverlaysProps): JSX.Element {
   const textClass = hasPhoto ? 'text-white' : 'text-foreground'
 
@@ -93,14 +96,20 @@ export function WearPhotoOverlays({
         </div>
       </div>
 
-      {/* Bottom overlay: brand + model */}
+      {/* Bottom overlay: brand + model → /watch/[watchId] (D-01) */}
       <div
         className="absolute inset-x-0 bottom-0 z-10 pointer-events-none"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 40%)' }}
       >
-        <div className="flex flex-col p-3">
-          <span className={cn('text-sm font-semibold', textClass)}>{brand}</span>
-          <span className={cn('text-sm', textClass)}>{model}</span>
+        <div className="flex flex-col p-3 pointer-events-auto">
+          <Link
+            href={`/watch/${watchId}`}
+            className={cn('text-sm hover:opacity-80', textClass)}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="font-semibold">{brand}</span>
+            <span className="block">{model}</span>
+          </Link>
         </div>
       </div>
     </>
@@ -120,6 +129,7 @@ export function WearDetailHero({
   displayName,
   avatarUrl,
   createdAt,
+  watchId,
 }: {
   watchImageUrl: string | null
   brand: string
@@ -129,6 +139,7 @@ export function WearDetailHero({
   displayName: string | null
   avatarUrl: string | null
   createdAt: Date
+  watchId: string
 }): JSX.Element {
   if (watchImageUrl) {
     return (
@@ -148,6 +159,7 @@ export function WearDetailHero({
           brand={brand}
           model={model}
           hasPhoto={true}
+          watchId={watchId}
         />
       </div>
     )
@@ -166,6 +178,7 @@ export function WearDetailHero({
         brand={brand}
         model={model}
         hasPhoto={false}
+        watchId={watchId}
       />
     </div>
   )

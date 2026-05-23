@@ -68,7 +68,7 @@ export function WearCard({
   createdAt,
   brand,
   model,
-  watchId: _watchId,
+  watchId,
   viewerId,
   wearEventId,
   initialLiked,
@@ -111,6 +111,7 @@ export function WearCard({
             displayName={displayName}
             avatarUrl={avatarUrl}
             createdAt={createdAt}
+            watchId={watchId}
           />
         ) : (
           <WearDetailHero
@@ -122,6 +123,7 @@ export function WearCard({
             displayName={displayName}
             avatarUrl={avatarUrl}
             createdAt={createdAt}
+            watchId={watchId}
           />
         )}
 
