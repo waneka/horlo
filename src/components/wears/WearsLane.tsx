@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -114,6 +114,89 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       emblaApi.off('select', handleSelect)
     }
   }, [emblaApi, slides, markViewed])
+
+  // D-06: cross-user boundary navigation.
+  //
+  // Detection strategy: embla with containScroll:false allows over-drag at the
+  // boundary slide, but snaps back. We detect forward/backward intent by comparing
+  // pointerdown X to pointerup X. On 'settle', if the user dragged past the
+  // boundary AND canScrollNext/canScrollPrev is false, push to the neighbor lane.
+  //
+  // dragDeltaX stores (pointerUpX - pointerDownX) after pointerup fires:
+  //   negative delta = swiped left = forward intent (toward next user)
+  //   positive delta = swiped right = backward intent (toward prev user)
+  //
+  // Single-flight: `navigated` ref prevents a second router.push until remount.
+  // Guards: railIndex === -1 (not in rail), no neighbor in requested direction,
+  //         commentOpen === true (sheet is open — never navigate while sheet is open).
+  const navigated = useRef(false)
+  const pointerDownX = useRef<number | null>(null)
+  const dragDeltaX = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!emblaApi) return
+    // Guard: actor not in the rail — disable cross-user navigation entirely.
+    if (railIndex === -1) return
+
+    const root = emblaApi.rootNode()
+
+    const onPointerDown = (e: PointerEvent) => {
+      pointerDownX.current = e.clientX
+      dragDeltaX.current = null
+    }
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (pointerDownX.current !== null) {
+        dragDeltaX.current = e.clientX - pointerDownX.current
+        pointerDownX.current = null
+      }
+    }
+
+    const onSettle = () => {
+      // Guard: sheet open — never navigate while the comment sheet is visible.
+      if (commentOpen) return
+      // Guard: already navigated — single-flight until remount.
+      if (navigated.current) return
+
+      const snapList = emblaApi.scrollSnapList()
+      const current = emblaApi.selectedScrollSnap()
+      const isLast = current === snapList.length - 1
+      const isFirst = current === 0
+
+      // Require a pointer-driven drag (not keyboard / programmatic scroll).
+      if (dragDeltaX.current === null) return
+      const delta = dragDeltaX.current
+      dragDeltaX.current = null
+
+      if (isLast && !emblaApi.canScrollNext()) {
+        // Last slide, no next snap. Proceed only if the user swiped left (forward intent).
+        if (delta >= 0) return // Swiped right or no movement — don't cross forward
+        const nextUsername = railUsernames[railIndex + 1]
+        if (!nextUsername) return // At the end of the rail — do nothing
+        navigated.current = true
+        // Forward cross: open next user's lane at its default (oldest-unviewed, D-05).
+        router.push(`/wears/${nextUsername}`)
+      } else if (isFirst && !emblaApi.canScrollPrev()) {
+        // First slide, no prev snap. Proceed only if the user swiped right (backward intent).
+        if (delta <= 0) return // Swiped left or no movement — don't cross backward
+        const prevUsername = railUsernames[railIndex - 1]
+        if (!prevUsername) return // At the start of the rail — do nothing
+        navigated.current = true
+        // Backward cross: open previous user's lane at its default.
+        router.push(`/wears/${prevUsername}`)
+      }
+    }
+
+    root.addEventListener('pointerdown', onPointerDown)
+    root.addEventListener('pointerup', onPointerUp)
+    emblaApi.on('settle', onSettle)
+
+    return () => {
+      root.removeEventListener('pointerdown', onPointerDown)
+      root.removeEventListener('pointerup', onPointerUp)
+      emblaApi.off('settle', onSettle)
+    }
+  }, [emblaApi, railUsernames, railIndex, commentOpen, router])
 
   return (
     // Outer container: positional anchor for the close button.
