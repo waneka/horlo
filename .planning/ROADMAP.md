@@ -249,9 +249,22 @@ Plans:
 - [x] 56-03-PLAN.md — Wear detail redesign: photo overlays + footer LikeButton + anon hydration (Wave 2)
 **UI hint**: yes
 
+### Phase 56a: Wear View Unification
+**Goal**: Unify the two disconnected wear-viewing experiences into two purpose-built routes that share one wear-content card, one LikeButton, and one comment component — so likes/comments are reachable while browsing instead of stranded on an orphan permalink — BEFORE the comment thread UI is built. `/wears/[username]` is the full-screen, no-nav, viewport-fit "stories" lane (swipe through a user's active wears ~48h, then user→user) with Reels-style INLINE engagement (comments in a bottom sheet over the photo); `/wear/[id]` is the conventional nav-retaining, vertically-scrollable single-wear permalink (inline comment list) reached by direct URL / share / notification deep-link.
+**Depends on**: Phase 56
+**Requirements**: TBD — defined at discuss/spec. UX/architecture restructuring: consumes LIKE-01..04 (Phase 56) and establishes the shared component contracts that shape CMNT-* delivery in Phase 57; relates to the WYWT feature (Phases 10/15) and FEED-06/07. See seed `wear-view-unification` + note `wear-view-unification-decisions`.
+**Success Criteria** (what must be TRUE):
+  1. Tapping a wear in the home rail opens `/wears/[username]` (a real route — not a client-only modal with the URL stuck on `/`), showing that user's active wears (~48h) in a swipeable carousel that advances user→user.
+  2. `/wears/[username]` is full-screen on mobile (no nav chrome), fits the viewport without page scroll, and offers inline like + comment (comments open in a bottom sheet over the photo) — no navigation away to engage.
+  3. `/wear/[id]` keeps the nav bars, is vertically scrollable, shows a single wear (no swipe) with the same photo/overlay card, the like control, and an inline comment list; it is reachable by direct URL / share / notification and has a working back/close affordance.
+  4. The wear-content card, the LikeButton, and the comment component are single shared components rendered by both routes (visual + behavioral parity; divergence limited to container chrome).
+  5. The legacy WYWT client overlay (`WywtOverlay`/`WywtSlide` modal that left the URL on `/`) is replaced by the routed `/wears/[username]` experience; the "Add to wishlist" action is preserved or relocated per the spec decision (open fork).
+**Plans**: TBD
+**UI hint**: yes
+
 ### Phase 57: Comment Thread UI + Feed Extension + Grid Counts
 **Goal**: Any authenticated viewer can read comments on watches and wears, compose and post new comments, edit or delete their own comments in place — with the wishlist mutual-follow gate reflected in a clear locked-state UI — and comment activity surfaces correctly in the Network Activity feed and on profile grid cards.
-**Depends on**: Phase 56
+**Depends on**: Phase 56a
 **Requirements**: CMNT-01, CMNT-02, CMNT-03, CMNT-04, CMNT-05, CMNT-06, CMNT-07, CMNT-08, CMNT-09, GATE-03, FEED-06, FEED-07, DISP-01
 **Success Criteria** (what must be TRUE):
   1. A viewer can post a comment on a watch (owned/sold/grail) or wear event; comments appear newest-first with the compose box above the list, showing author avatar, linked username, body text, and relative timestamp.
@@ -283,6 +296,7 @@ Plans:
 | 54. DAL — Reactions, Comments + Gate Logic | 3/3 | Complete    | 2026-05-22 |
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
+| 56a. Wear View Unification | 0/TBD | Not started | - |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
