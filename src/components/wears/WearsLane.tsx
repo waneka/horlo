@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
-import { X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import { WearCard } from '@/components/wear/WearCard'
@@ -85,6 +85,10 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const router = useRouter()
   const { markViewed } = useViewedWears()
   const [commentOpen, setCommentOpen] = useState(false)
+  // #3: progress indicator — tracks selected slide index (driven by embla 'select' event)
+  const [selectedIndex, setSelectedIndex] = useState(
+    Math.max(0, Math.min(initialSlideIndex, slides.length - 1))
+  )
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     startIndex: Math.max(0, Math.min(initialSlideIndex, slides.length - 1)),
@@ -99,11 +103,13 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
     emblaApi.reInit({ watchDrag: !commentOpen })
   }, [emblaApi, commentOpen])
 
-  // onSelect → markViewed: mirrors WywtOverlay.tsx lines 69-83.
+  // onSelect → markViewed (mirrors WywtOverlay.tsx lines 69-83) + update progress indicator.
+  // Single select handler — do NOT add a second 'select' listener for selectedIndex.
   useEffect(() => {
     if (!emblaApi) return
     const handleSelect = () => {
       const i = emblaApi.selectedScrollSnap()
+      setSelectedIndex(i)
       const slide = slides[i]
       if (slide) markViewed(slide.wearEventId)
     }
@@ -115,21 +121,43 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
     }
   }, [emblaApi, slides, markViewed])
 
-  // D-06: cross-user boundary navigation.
+  // D-06 + #6: cross-user boundary navigation.
   //
+  // Named helper so BOTH the swipe-boundary settle effect AND the desktop arrow buttons
+  // can invoke cross-user navigation without duplicating railUsernames/railIndex math.
+  //
+  // Guards honored by goToNeighbor:
+  //   - railIndex === -1 (not in rail): no-op
+  //   - commentOpen === true (sheet open): no-op
+  //   - navigated.current === true (single-flight): no-op
+  //   - no neighbor in direction: no-op
+  const navigated = useRef(false)
+
+  const goToNeighbor = (direction: 'next' | 'prev') => {
+    if (railIndex === -1) return
+    if (commentOpen) return
+    if (navigated.current) return
+    if (direction === 'next') {
+      const nextUsername = railUsernames[railIndex + 1]
+      if (!nextUsername) return
+      navigated.current = true
+      router.push(`/wears/${nextUsername}`)
+    } else {
+      const prevUsername = railUsernames[railIndex - 1]
+      if (!prevUsername) return
+      navigated.current = true
+      router.push(`/wears/${prevUsername}`)
+    }
+  }
+
   // Detection strategy: embla with containScroll:false allows over-drag at the
   // boundary slide, but snaps back. We detect forward/backward intent by comparing
   // pointerdown X to pointerup X. On 'settle', if the user dragged past the
-  // boundary AND canScrollNext/canScrollPrev is false, push to the neighbor lane.
+  // boundary AND canScrollNext/canScrollPrev is false, call goToNeighbor.
   //
   // dragDeltaX stores (pointerUpX - pointerDownX) after pointerup fires:
   //   negative delta = swiped left = forward intent (toward next user)
   //   positive delta = swiped right = backward intent (toward prev user)
-  //
-  // Single-flight: `navigated` ref prevents a second router.push until remount.
-  // Guards: railIndex === -1 (not in rail), no neighbor in requested direction,
-  //         commentOpen === true (sheet is open — never navigate while sheet is open).
-  const navigated = useRef(false)
   const pointerDownX = useRef<number | null>(null)
   const dragDeltaX = useRef<number | null>(null)
 
@@ -171,19 +199,11 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       if (isLast && !emblaApi.canScrollNext()) {
         // Last slide, no next snap. Proceed only if the user swiped left (forward intent).
         if (delta >= 0) return // Swiped right or no movement — don't cross forward
-        const nextUsername = railUsernames[railIndex + 1]
-        if (!nextUsername) return // At the end of the rail — do nothing
-        navigated.current = true
-        // Forward cross: open next user's lane at its default (oldest-unviewed, D-05).
-        router.push(`/wears/${nextUsername}`)
+        goToNeighbor('next')
       } else if (isFirst && !emblaApi.canScrollPrev()) {
         // First slide, no prev snap. Proceed only if the user swiped right (backward intent).
         if (delta <= 0) return // Swiped left or no movement — don't cross backward
-        const prevUsername = railUsernames[railIndex - 1]
-        if (!prevUsername) return // At the start of the rail — do nothing
-        navigated.current = true
-        // Backward cross: open previous user's lane at its default.
-        router.push(`/wears/${prevUsername}`)
+        goToNeighbor('prev')
       }
     }
 
@@ -196,21 +216,58 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
       root.removeEventListener('pointerup', onPointerUp)
       emblaApi.off('settle', onSettle)
     }
+    // goToNeighbor is intentionally omitted from deps: it is a stable inline function
+    // that closes over railUsernames, railIndex, commentOpen, and router — all of which
+    // ARE in this effect's deps array. Including the function object itself would cause
+    // unnecessary re-registrations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emblaApi, railUsernames, railIndex, commentOpen, router])
 
+  // #3/#6: derived values for progress segments and arrow visibility.
+  const hasNextUser = railIndex !== -1 && !!railUsernames[railIndex + 1]
+  const hasPrevUser = railIndex !== -1 && !!railUsernames[railIndex - 1]
+  const isLastSegment = selectedIndex === slides.length - 1
+  const isFirstSegment = selectedIndex === 0
+
   return (
-    // Outer container: positional anchor for the close button.
+    // Outer container: positional anchor for the close button and arrow buttons.
     // Mobile: fixed inset-0 h-dvh overflow-hidden (full-screen, no nav chrome).
     // Desktop (md+): static, auto height, centered 600px column.
     <div className="fixed inset-0 h-dvh overflow-hidden md:static md:inset-auto md:h-auto md:overflow-visible">
-      {/* Close affordance — sibling of the embla viewport, not inside it.
-          Positioned absolute to this outer container (z-20 above scrims at z-10).
+
+      {/* #3: Top segmented progress indicator.
+          Absolutely positioned over the outer container (above photo scrims at z-10).
+          Full-width with horizontal padding; pointer-events-none so swipes pass through.
+          The X close button overlays at the right end via absolute positioning. */}
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center gap-1 px-3 pt-3 pointer-events-none md:max-w-[600px] md:mx-auto">
+        {slides.map((_, i) => (
+          <div
+            key={i}
+            className={
+              'h-[3px] flex-1 rounded-full transition-opacity duration-200 ' +
+              (i === selectedIndex ? 'bg-white opacity-90' : 'bg-white opacity-30')
+            }
+          />
+        ))}
+        {/* Cross-user boundary hint: subtle chevron at the trailing end of the segment
+            row when on the last segment and a next rail user exists.
+            text-white at low opacity; no accent color; non-interactive (pointer-events-none). */}
+        {isLastSegment && hasNextUser && (
+          <ChevronRight className="size-3 text-white opacity-40 shrink-0" aria-hidden />
+        )}
+      </div>
+
+      {/* #4: Close affordance — repositioned from top-left to top-RIGHT.
+          Sits in the top band above the centered 4:5 photo (the empty band created by
+          justify-center). The WearCard's own overflow menu (also top-3 right-3) is
+          anchored to the WearCard's relative container, which sits vertically centered
+          lower in the slide — no visual collision.
           Kept outside embla's pointer-listener tree to avoid swipe-vs-click races. */}
       <button
         type="button"
         aria-label="Close"
         onClick={() => router.back()}
-        className="absolute top-3 left-3 z-20 min-h-[44px] min-w-[44px] flex items-center justify-center text-white"
+        className="absolute top-3 right-3 z-30 min-h-[44px] min-w-[44px] flex items-center justify-center text-white"
       >
         <X className="size-5" aria-hidden />
       </button>
@@ -234,6 +291,48 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
           ))}
         </div>
       </div>
+
+      {/* #6: Desktop-only prev/next edge arrows — hidden on mobile (swipe-only).
+          Vertically centered on the photo using absolute positioning.
+          Reuse goToNeighbor for cross-user nav at the first/last slide boundary. */}
+
+      {/* Left arrow — shown when not at first slide OR when a previous rail user exists */}
+      {(!isFirstSegment || hasPrevUser) && (
+        <button
+          type="button"
+          aria-label="Previous wear"
+          onClick={() => {
+            if (!emblaApi) return
+            if (emblaApi.canScrollPrev()) {
+              emblaApi.scrollPrev()
+            } else {
+              goToNeighbor('prev')
+            }
+          }}
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-white"
+        >
+          <ChevronLeft className="size-5" aria-hidden />
+        </button>
+      )}
+
+      {/* Right arrow — shown when not at last slide OR when a next rail user exists */}
+      {(!isLastSegment || hasNextUser) && (
+        <button
+          type="button"
+          aria-label="Next wear"
+          onClick={() => {
+            if (!emblaApi) return
+            if (emblaApi.canScrollNext()) {
+              emblaApi.scrollNext()
+            } else {
+              goToNeighbor('next')
+            }
+          }}
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-white"
+        >
+          <ChevronRight className="size-5" aria-hidden />
+        </button>
+      )}
     </div>
   )
 }
