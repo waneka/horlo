@@ -143,7 +143,7 @@ export function WearDetailHero({
 }): JSX.Element {
   if (watchImageUrl) {
     return (
-      <div className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
+      <div data-testid="wear-photo-container" className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={watchImageUrl}
@@ -166,6 +166,7 @@ export function WearDetailHero({
   }
   return (
     <div
+      data-testid="wear-photo-container"
       className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"
       aria-label={`No photo — ${brand} ${model}`}
     >

@@ -82,7 +82,7 @@ export function WearPhotoClient({
     // Fall through to the parent's existing fallback chain.
     if (watchImageUrl) {
       return (
-        <div className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
+        <div data-testid="wear-photo-container" className="relative w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={watchImageUrl}
@@ -105,6 +105,7 @@ export function WearPhotoClient({
     }
     return (
       <div
+        data-testid="wear-photo-container"
         className="relative w-full aspect-[4/5] flex items-center justify-center bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto"
         aria-label={`No photo — ${brand} ${model}`}
       >
@@ -126,7 +127,7 @@ export function WearPhotoClient({
   const src = retryCount === 0 ? signedUrl : `${signedUrl}${signedUrl.includes('?') ? '&' : '?'}retry=${retryCount}`
 
   return (
-    <div className="w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto relative">
+    <div data-testid="wear-photo-container" className="w-full aspect-[4/5] overflow-hidden bg-muted md:rounded-lg md:max-w-[600px] md:mx-auto relative">
       {status === 'pending' && (
         <div className="absolute inset-0">
           <PhotoSkeleton />

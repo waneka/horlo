@@ -142,9 +142,9 @@ test.describe('wears-lane — SC-1/SC-2/SC-3 (Wave 0 RED)', () => {
     await page.waitForURL('**/wear/**', { timeout: 10_000 })
 
     // Wait for the photo container to be present in the DOM.
-    // The aspect-[4/5] container is the direct parent of the wear photo img.
-    // We target it via its distinctive combination of classes.
-    const photoContainer = page.locator('.aspect-\\[4\\/5\\]').first()
+    // Selected via data-testid so the selector is durable against Tailwind class
+    // renames or aspect-ratio config changes (IN-02).
+    const photoContainer = page.locator('[data-testid="wear-photo-container"]').first()
     await expect(photoContainer).toBeVisible({ timeout: 10_000 })
 
     const box = await photoContainer.boundingBox()
