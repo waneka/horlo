@@ -1,25 +1,19 @@
 'use client'
 
 import { useState, lazy, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 
 import { WywtTile } from '@/components/home/WywtTile'
 import { useViewedWears } from '@/hooks/useViewedWears'
 import type { WywtRailData, WywtTile as WywtTileData } from '@/lib/wywtTypes'
 import type { Watch } from '@/lib/types'
 
-// Lazy-load the overlay + post dialog so they stay out of the initial home-
-// page bundle. Most home-page renders never open either: a user scrolls,
-// reads the feed, and leaves. Deferring the cost to first-tap keeps the
-// primary hook (the rail strip) fast.
-const WywtOverlay = lazy(() =>
-  import('@/components/home/WywtOverlay').then((m) => ({
-    default: m.WywtOverlay,
-  })),
-)
-// Phase 15 Plan 03b D-04: the self-placeholder tap now opens the full
-// WywtPostDialog (two-step photo-post flow) instead of WatchPickerDialog
-// (quick-log markAsWorn). Non-self tile taps continue to open WywtOverlay
-// (Phase 10 pattern preserved per WYWT-18 / phase 10-06).
+// Lazy-load the post dialog so it stays out of the initial home-page bundle.
+// Most home-page renders never open it: a user scrolls, reads the feed, and
+// leaves. Non-self tile taps now navigate to the routed /wears/[username] lane
+// (SC-1, Phase 56A Plan 05) — the overlay is gone.
+// Phase 15 Plan 03b D-04: the self-placeholder tap opens the full
+// WywtPostDialog (two-step photo-post flow).
 const WywtPostDialog = lazy(() =>
   import('@/components/wywt/WywtPostDialog').then((m) => ({
     default: m.WywtPostDialog,
@@ -55,9 +49,8 @@ export function WywtRail({
   data: WywtRailData
   ownedWatches: Watch[]
 }) {
+  const router = useRouter()
   const { viewed, markViewed, hydrated } = useViewedWears()
-  const [overlayOpen, setOverlayOpen] = useState(false)
-  const [activeTileIndex, setActiveTileIndex] = useState(0)
   const [pickerOpen, setPickerOpen] = useState(false)
 
   // Compose the rail. The self-placeholder is prepended only when the viewer
@@ -77,16 +70,12 @@ export function WywtRail({
   ]
 
   const openAt = (tile: WywtTileData) => {
-    // Mark the tile as viewed immediately on open and drive the overlay's
-    // initial slide. The overlay will also fire onViewed when the user swipes,
-    // but the first-tap case is handled here so the rail's ring updates even
-    // if the overlay fails to mount.
+    // Mark the tile as viewed immediately so the rail ring updates even if
+    // navigation is slow or fails. Pass ?from= so the lane opens at the tapped
+    // slide index (D-05). The server page reads searchParams.from and passes
+    // initialSlideIndex as a prop to WearsLane.
     markViewed(tile.wearEventId)
-    const dataIndex = data.tiles.findIndex(
-      (t) => t.wearEventId === tile.wearEventId,
-    )
-    setActiveTileIndex(Math.max(0, dataIndex))
-    setOverlayOpen(true)
+    router.push(`/wears/${tile.username}?from=${tile.wearEventId}`)
   }
 
   return (
@@ -113,19 +102,6 @@ export function WywtRail({
           </div>
         ))}
       </div>
-
-      <Suspense fallback={null}>
-        {overlayOpen && (
-          <WywtOverlay
-            tiles={data.tiles}
-            initialIndex={activeTileIndex}
-            open={overlayOpen}
-            onOpenChange={setOverlayOpen}
-            onViewed={markViewed}
-            viewerId={data.viewerId}
-          />
-        )}
-      </Suspense>
 
       <Suspense fallback={null}>
         {pickerOpen && (
