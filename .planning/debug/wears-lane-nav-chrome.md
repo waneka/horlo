@@ -1,9 +1,9 @@
 ---
 slug: wears-lane-nav-chrome
-status: investigating
+status: checkpoint:human-verify
 trigger: "Phase 56A WearsLane cross-user stories navigation + desktop chrome bugs found in on-device prod UAT"
 created: 2026-05-23T20:02:32Z
-updated: 2026-05-23T23:00:00Z
+updated: 2026-05-23T23:45:00Z
 phase: 56A-wear-view-unification
 files_in_scope:
   - src/components/wears/WearsLane.tsx
@@ -79,6 +79,25 @@ fix (R3): Instagram-stories landing rule:
 
 next_action (R3): Test on-device after Vercel deploy. Multi-wear scenario: open first rail user from home, swipe forward to user B, swipe back to user A, swipe forward again — should cross to B, not get stuck. Repeat A→B→A→B several times.
 
+ROUND 3 VERIFIED ON PROD (2026-05-23): STILL STUCK. New decisive clue: SYMMETRIC and on the 3rd nav — "A→B→A→stuck AND B→A→B→stuck". The landing-position fix (R3) did NOT help → DISPROVEN. Round 4:
+
+hypothesis (R4 — STUCK STATE, high confidence): the 3rd navigation always RETURNS to a previously-visited /wears/<user> URL. The `navigated` ref (WearsLane.tsx:151) is set true on goToNeighbor (160/165) and NEVER reset in code — the only intended reset was the key={username} remount. But Next 16's Router Cache RESTORES the stale WearsLane instance when soft-navigating (router.replace) back to an already-cached URL, defeating the remount → `navigated.current` stays true on the restored instance → 3rd cross-user nav hits `if (navigated.current) return` → stuck. Symmetric because the 3rd hop always revisits a cached URL (relates to MEMORY proxy/Router-Cache notes on dynamic routes).
+  Trace: nav1 A→B sets A.navigated=true (A cached with this state). nav2 B→A sets B.navigated=true. nav3 A→B → A instance restored from cache with navigated=true → goToNeighbor returns → stuck. Mirror for B→A→B.
+fix (R4): stop relying on remount. Reset `navigated.current = false` at the START of each gesture in onPointerDown (re-arms per swipe regardless of cache/remount). Optionally also reset defensively on mount + railIndex change. The single-flight guard still prevents double-fire within one gesture.
+INSURANCE (this round only): add a TEMP on-screen debug badge (small fixed div, e.g. bottom-left, low z) showing live state so the user can read it ON THEIR PHONE if still stuck: `nav={navigated.current} pd={pointerDownCount} pu={pointerUpCount} i={current}/{snapCount-1} last={isLast} first={isFirst} rIdx={railIndex} next={!!railUsernames[railIndex+1]} prev={!!railUsernames[railIndex-1]}`. This is the tiebreaker if R4-fix fails: if `nav=true` at the stuck moment → confirms the navigated-stale hypothesis; if `pu` doesn't increment on swipe → pointer listeners dropped on cache restore (hypothesis b); if `last=false` → still a position issue. REMOVE the badge next round once confirmed.
+
+ROUND 4 FIX APPLIED (commit 82abe3e) — pending on-device prod verify:
+
+fix (R4) applied and verified in source:
+  1. navigated.current confirmed never reset in prior code — only intended reset was key={username} remount (defeated by Router Cache restore on revisited URL).
+  2. PRIMARY FIX: added `navigated.current = false` at the very start of onPointerDown handler (Effect A, before recording pointerDownX). This re-arms the guard on every fresh gesture. Robust against Router-Cache-restore because a fresh pointerdown always fires even on a cache-restored instance.
+  3. DEFENSIVE FIX: added `useEffect(() => { navigated.current = false }, [])` mount reset — belt-and-suspenders for any other cache-restore path that doesn't trigger a React remount.
+  4. DEBUG BADGE: added a fixed bottom-left div (z-50, pointer-events-none, opacity-60) showing: nav={navigated.current}, pd={debugPd}, pu={debugPu}, i={selectedIndex}/{snapCount-1}, last={isLastSegment}, 1st={isFirstSegment}, rIdx={railIndex}, nxt={hasNextUser}, prv={hasPrevUser}. Tracks pointerdown/up counts via refs+state to confirm pointer listeners are alive on cache-restored instances.
+  5. BUILD: npm run build clean.
+  6. COMMIT: 82abe3e. PUSHED: git push origin main → Vercel deploy triggered.
+
+next_action (R4): User tests on-device (phone) after Vercel deploy. Test A→B→A→B AND B→A→B→A. Report: stuck or not. If still stuck: report the debug badge readout at the moment of stuck. Tiebreaker: nav=true → navigated guard still stale; pu not incrementing → pointer listeners dropped; last=false → still position issue.
+
 ## Evidence
 
 - timestamp: 2026-05-23T20:02:32Z
@@ -108,7 +127,7 @@ next_action (R3): Test on-device after Vercel deploy. Multi-wear scenario: open 
     W1 ROOT CAUSE CONFIRMED: page.tsx line 150 renders <WearsLane> with no key. App Router same-segment route (router.replace /wears/A → /wears/B) reuses same instance; navigated.current stays true permanently after first cross-user nav; embla has no reInit on slides change (only on commentOpen). FIX: key={username} added to <WearsLane> in page.tsx — forces full remount per user, resetting navigated ref and embla from scratch.
     W2: ChevronRight caret block (former lines 290-295) removed from progress bar. isLastSegment + hasNextUser consts retained (used by arrow visibility at lines 337/356).
     W3: Embla viewport extracted from the outer container into a new `relative h-full md:max-w-[600px] md:mx-auto` wrapper div (NOT overflow-hidden). Arrow buttons moved inside that wrapper and use absolute left-0/right-0 — now anchored to the 600px photo column on desktop, not the full viewport. Embla viewport div no longer carries md:max-w-[600px] md:mx-auto (those moved to the wrapper). Progress bar and close button remain absolutely positioned on the outer container — unaffected.
-    BUILD: npm run build clean (no TypeScript errors, no compile errors).
+    BUILD: npm run build clean.
     COMMIT: 39794c4
 
 - timestamp: 2026-05-23T22:15:00Z
@@ -132,11 +151,27 @@ next_action (R3): Test on-device after Vercel deploy. Multi-wear scenario: open 
     COMMIT: 8bcc672
     PUSHED: git push origin main → Vercel deploy triggered.
 
+- timestamp: 2026-05-23T23:45:00Z
+  note: |
+    ROUND 4 FIX APPLIED (commit 82abe3e):
+    R4 hypothesis verified against live source:
+    - navigated ref (line 177): const navigated = useRef(false). Set true in goToNeighbor at lines 186 and 192. NEVER reset anywhere in component — confirmed. Only intended reset was key={username} remount.
+    - onPointerDown (prior lines 253-255): only set pointerDownX.current. No navigated reset.
+    - Router Cache behavior: router.replace back to a cached /wears/<user> URL can restore the stale React tree without triggering a React remount — defeating key={username}. navigated.current stays true on the restored instance → 3rd hop always hits `if (navigated.current) return` → stuck. Symmetric because 3rd hop always revisits a cached URL.
+    FIX APPLIED:
+    (1) PRIMARY: navigated.current = false added at the very top of onPointerDown, before pointerDownX.current = e.clientX. Every fresh gesture re-arms the guard unconditionally.
+    (2) DEFENSIVE: useEffect(() => { navigated.current = false }, []) mount reset added.
+    (3) DEBUG BADGE: fixed bottom-left div, z-50, pointer-events-none, opacity-60. Shows nav/pd/pu/i/last/1st/rIdx/nxt/prv live. Pointer-down/up counters use refs (pointerDownCountRef, pointerUpCountRef) incremented in Effect A + state mirrors (debugPd, debugPu) to trigger re-render.
+    BUILD: npm run build clean.
+    COMMIT: 82abe3e. PUSHED.
+    AWAITING: on-device prod verify.
+
 ## Eliminated
 
 - 'settle' timing race as the sole H1 explanation: the more direct failure mode is reInit-triggered settle events (comment sheet toggling). Both modes cause spurious cross-user navigation and are eliminated by the pointerup approach.
 - ROUND 2 navigated-ref / no-remount hypothesis: DISPROVEN by prod test — key={username} remount resets navigated.current every cross-user nav but the stuck state persists. The stuck state is a LANDING-POSITION problem (always lands at slide 0; forward-cross needs the last slide), not a stale-client-state problem.
 - Rail reorder hypothesis: DISPROVEN by source — getWearRailForViewer orders by wornDate desc with no viewed filtering; railUsernames/railIndex are stable.
+- ROUND 3 landing-position hypothesis (R3): DISPROVEN by prod test — ?at=last fix did NOT resolve stuck state. New decisive clue: symmetric and on 3rd nav → Router Cache restore of stale navigated.current is the actual cause (R4).
 
 ## Resolution
 
@@ -150,12 +185,15 @@ root_cause: |
   (W2) Progress-bar ChevronRight caret not desired.
   (W3) Desktop arrows at viewport edges, not photo column edges.
   Round 3 stuck-state root cause (after W1 disproven as the full cause):
-  (R3) Landing position: every cross-user nav replaced to /wears/<user> with no positional hint → initialSlideIndex=0 always. Forward-cross requires isLast (last slide). After A→B(fwd)→A(back at slide 0), forward swipe moves within A's wears (not at last) → cannot re-cross → stuck for multi-wear users.
+  (R3) Landing position: every cross-user nav replaced to /wears/<user> with no positional hint → initialSlideIndex=0 always. Forward-cross requires isLast (last slide). After A→B(fwd)→A(back at slide 0), forward swipe moves within A's wears (not at last) → cannot re-cross → stuck for multi-wear users. DISPROVEN by prod test — symmetric 3rd-hop stuck state persisted.
+  Round 4 root cause (CURRENT — pending verification):
+  (R4) Next.js 16 Router Cache restores stale WearsLane instance when router.replace revisits a cached /wears/<user> URL, defeating the key={username} remount. navigated.current stays true on the restored instance. 3rd cross-user hop always revisits a cached URL → hits `if (navigated.current) return` in goToNeighbor → stuck. Symmetric: A.navigated=true cached → B.navigated=true cached → nav3 restores A with navigated=true → stuck.
 fix: |
   Round 1: (1) Dropped embla 'settle' detection → window pointerup with 50px threshold. (2) router.push → router.replace. (3) md:static → md:relative; arrow/progress contrast fixes.
   Round 2: (W1) key={username} on <WearsLane> in page.tsx for clean per-user remount. (W2) ChevronRight caret removed. (W3) Embla viewport wrapped in relative md:max-w-[600px] md:mx-auto div; arrows anchored to that wrapper.
-  Round 3: (R3) goToNeighbor('prev') appends ?at=last to router.replace URL. page.tsx reads `at` from searchParams; when at==='last' and no ?from, initialSlideIndex = wears.length - 1. Instagram-stories landing rule: forward→first slide, backward→last slide.
-verification: PENDING — requires on-device prod test after Vercel deploy (commit 8bcc672). Multi-wear scenario: open first rail user from home, swipe A→B→A→B repeatedly — should not get stuck.
+  Round 3: (R3) goToNeighbor('prev') appends ?at=last to router.replace URL. page.tsx reads `at` from searchParams; when at==='last' and no ?from, initialSlideIndex = wears.length - 1. Instagram-stories landing rule: forward→first slide, backward→last slide. (Did not resolve stuck state — R3 root cause disproven.)
+  Round 4 (PENDING VERIFICATION): (R4) Reset navigated.current=false at the start of onPointerDown — re-arms the guard on every fresh gesture regardless of cache/remount state. Defensive mount-effect reset also added. Temp debug badge added (bottom-left fixed div) for on-phone triage if still stuck.
+verification: PENDING — requires on-device prod test after Vercel deploy (commit 82abe3e). Test A→B→A→B AND B→A→B→A on phone. If still stuck: read debug badge values at moment of stuck and report.
 files_changed:
   - src/components/wears/WearsLane.tsx
   - src/app/wears/[username]/page.tsx
