@@ -69,7 +69,8 @@ export function WearOverflowMenu({
         {/* D-01: Copy link — always visible */}
         <DropdownMenuItem
           onClick={() => {
-            navigator.clipboard.writeText(permalinkUrl)
+            const absolute = `${window.location.origin}${permalinkUrl}`
+            navigator.clipboard.writeText(absolute)
           }}
         >
           <LinkIcon className="size-4" />
