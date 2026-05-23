@@ -97,9 +97,9 @@ export function WearCard({
   const hasPhoto = signedUrl !== null || watchImageUrl !== null
 
   return (
-    <div>
+    <div className="w-full">
       {/* Photo layer + overflow menu anchor */}
-      <div className="relative">
+      <div className="relative w-full">
         {signedUrl !== null ? (
           <WearPhotoClient
             signedUrl={signedUrl}

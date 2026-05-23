@@ -119,4 +119,53 @@ test.describe('wears-lane — SC-1/SC-2/SC-3 (Wave 0 RED)', () => {
     })
     expect(isScrollable, '/wear/[id] must be vertically scrollable').toBe(true)
   })
+
+  // ── SC-4: /wear/[id] photo renders non-zero at 4:5 on a 375px mobile viewport ──
+  test('wears-lane SC-4: /wear/[id] photo block has non-zero ~4:5 dimensions at 375px mobile viewport', async ({
+    page,
+  }) => {
+    // Set mobile viewport before navigating (iPhone-class width).
+    await page.setViewportSize({ width: 375, height: 812 })
+
+    // Navigate to the worn tab to find a /wear/[id] link (same as SC-3).
+    await page.goto(`/u/${PROFILE}/worn`)
+    await page.waitForLoadState('networkidle')
+
+    const wearLink = page.locator('a[href^="/wear/"]').first()
+    const wearLinkCount = await wearLink.count()
+    if (wearLinkCount === 0) {
+      test.skip(true, 'No wear event links found on worn tab — cannot assert mobile photo render')
+      return
+    }
+
+    await wearLink.click()
+    await page.waitForURL('**/wear/**', { timeout: 10_000 })
+
+    // Wait for the photo container to be present in the DOM.
+    // The aspect-[4/5] container is the direct parent of the wear photo img.
+    // We target it via its distinctive combination of classes.
+    const photoContainer = page.locator('.aspect-\\[4\\/5\\]').first()
+    await expect(photoContainer).toBeVisible({ timeout: 10_000 })
+
+    const box = await photoContainer.boundingBox()
+
+    // SC-4: the photo container must not be collapsed on mobile.
+    expect(box, 'Photo container bounding box must not be null').not.toBeNull()
+    if (!box) return
+
+    // Width should fill most of the 375px mobile viewport (definitely > 300px, not collapsed).
+    expect(box.width, `Photo width (${box.width}px) must be > 300px on a 375px viewport`).toBeGreaterThan(300)
+
+    // Height should approximate a 4:5 portrait ratio (box.width * 5/4), within 10%.
+    const expectedHeight = box.width * (5 / 4)
+    const tolerance = expectedHeight * 0.1
+    expect(
+      box.height,
+      `Photo height (${box.height}px) must be within 10% of ${expectedHeight.toFixed(1)}px (4:5 portrait)`,
+    ).toBeGreaterThan(expectedHeight - tolerance)
+    expect(
+      box.height,
+      `Photo height (${box.height}px) must be within 10% of ${expectedHeight.toFixed(1)}px (4:5 portrait)`,
+    ).toBeLessThan(expectedHeight + tolerance)
+  })
 })
