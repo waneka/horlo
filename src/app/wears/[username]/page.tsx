@@ -147,7 +147,15 @@ export default async function WearsPage({
 
   return (
     <Suspense fallback={<PhotoSkeleton />}>
+      {/*
+       * W1 fix: key={username} forces a full remount of WearsLane when the
+       * route changes to a different user (router.replace on same dynamic
+       * segment). Without the key, the App Router reuses the same instance
+       * across /wears/A → /wears/B, leaving navigated.current=true (stuck)
+       * and embla carrying the previous user's slide state.
+       */}
       <WearsLane
+        key={username}
         slides={slides}
         initialSlideIndex={initialSlideIndex}
         viewerId={viewerId}

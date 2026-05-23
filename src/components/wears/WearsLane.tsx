@@ -94,6 +94,13 @@ interface WearsLaneProps {
  *   lanes that have nothing to scroll, (c) the race between embla snap-back
  *   and navigation. The pointerup handler checks: at boundary slide + correct
  *   swipe direction + drag distance > threshold → navigate immediately.
+ *
+ * W1 fix: page.tsx keys this component by username (`key={username}`) so that
+ * navigating to a different user's lane via router.replace (same dynamic
+ * route segment) triggers a full remount — resetting navigated.current and
+ * the embla instance. Without the key, the App Router reuses the same
+ * instance, leaving navigated.current=true (cross-user nav locked) and embla
+ * carrying stale slide state from the previous user.
  */
 export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, railIndex }: WearsLaneProps) {
   const router = useRouter()
@@ -148,6 +155,10 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   //
   // Uses router.replace (not router.push) so the previous user's lane is replaced
   // in history rather than stacked — one close tap → home (H2 fix).
+  //
+  // navigated.current is automatically reset on the next cross-user navigate because
+  // page.tsx keys WearsLane by username — router.replace to a new user triggers a
+  // full remount, re-initializing the ref to false (W1 fix).
   const navigated = useRef(false)
 
   const goToNeighbor = (direction: 'next' | 'prev') => {
@@ -264,7 +275,7 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
   const isFirstSegment = selectedIndex === 0
 
   return (
-    // Outer container: positional anchor for the close button, progress bar, and arrow buttons.
+    // Outer container: positional anchor for the close button and progress bar.
     // Mobile: fixed inset-0 h-dvh overflow-hidden (full-screen, no nav chrome).
     // Desktop (md+): relative (preserves positioning context for absolute children),
     // auto height, centered 600px column. md:static would break absolute positioning.
@@ -274,7 +285,9 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
           Absolutely positioned over the outer container (above photo scrims at z-10).
           Full-width with horizontal padding; pointer-events-none so swipes pass through.
           The X close button overlays at the right end via absolute positioning.
-          Desktop: constrained to the 600px column via max-w + mx-auto. */}
+          Desktop: constrained to the 600px column via max-w + mx-auto.
+          W2 fix: ChevronRight boundary-hint caret removed (isLastSegment/hasNextUser
+          consts retained — still used by arrow visibility conditions below). */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center gap-1 px-3 pt-3 pointer-events-none md:max-w-[600px] md:mx-auto">
         {slides.map((_, i) => (
           <div
@@ -287,12 +300,6 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
             }
           />
         ))}
-        {/* Cross-user boundary hint: subtle chevron at the trailing end of the segment
-            row when on the last segment and a next rail user exists.
-            text-white on mobile (dark photo), text-foreground on desktop (light bg). */}
-        {isLastSegment && hasNextUser && (
-          <ChevronRight className="size-3 text-white opacity-40 md:text-foreground md:opacity-30 shrink-0" aria-hidden />
-        )}
       </div>
 
       {/* #4: Close affordance — top-RIGHT.
@@ -308,68 +315,81 @@ export function WearsLane({ slides, initialSlideIndex, viewerId, railUsernames, 
         <X className="size-5" aria-hidden />
       </button>
 
-      {/* Embla viewport — emblaRef applied here only, not on the outer wrapper */}
-      <div
-        ref={emblaRef}
-        className="h-full overflow-hidden bg-background md:max-w-[600px] md:mx-auto"
-      >
-        {/* Embla slide container */}
-        <div className="flex h-full">
-          {slides.map((slide) => (
-            <div key={slide.wearEventId} className="flex-[0_0_100%] min-w-0 flex flex-col justify-center">
-              <WearCard
-                {...slide}
-                viewerId={viewerId}
-                commentHostVariant="bottom-sheet"
-                onCommentOpenChange={setCommentOpen}
-              />
-            </div>
-          ))}
+      {/*
+       * W3 fix: Photo column wrapper — relative positioned so desktop arrow
+       * buttons anchor to the 600px photo column edges, not the full-width
+       * outer container. Must NOT be overflow-hidden (the embla viewport keeps
+       * its own overflow-hidden). Mobile: full-height passthrough (h-full).
+       * Desktop: centers the 600px column; arrows positioned left-0/right-0
+       * of this wrapper sit at the photo column edges, not the viewport edges.
+       */}
+      <div className="relative h-full md:max-w-[600px] md:mx-auto">
+
+        {/* Embla viewport — emblaRef applied here only, not on any wrapper */}
+        <div
+          ref={emblaRef}
+          className="h-full overflow-hidden bg-background"
+        >
+          {/* Embla slide container */}
+          <div className="flex h-full">
+            {slides.map((slide) => (
+              <div key={slide.wearEventId} className="flex-[0_0_100%] min-w-0 flex flex-col justify-center">
+                <WearCard
+                  {...slide}
+                  viewerId={viewerId}
+                  commentHostVariant="bottom-sheet"
+                  onCommentOpenChange={setCommentOpen}
+                />
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* #6: Desktop-only prev/next edge arrows — hidden on mobile (swipe-only).
+            Anchored to the photo-column wrapper (W3 fix): left-0/right-0 of the
+            600px column, not the full-width outer container.
+            Vertically centered via absolute top-1/2 -translate-y-1/2.
+            Semi-transparent dark circle provides contrast on the light desktop background. */}
+
+        {/* Left arrow — shown when not at first slide OR when a previous rail user exists */}
+        {(!isFirstSegment || hasPrevUser) && (
+          <button
+            type="button"
+            aria-label="Previous wear"
+            onClick={() => {
+              if (!emblaApi) return
+              if (emblaApi.canScrollPrev()) {
+                emblaApi.scrollPrev()
+              } else {
+                goToNeighbor('prev')
+              }
+            }}
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </button>
+        )}
+
+        {/* Right arrow — shown when not at last slide OR when a next rail user exists */}
+        {(!isLastSegment || hasNextUser) && (
+          <button
+            type="button"
+            aria-label="Next wear"
+            onClick={() => {
+              if (!emblaApi) return
+              if (emblaApi.canScrollNext()) {
+                emblaApi.scrollNext()
+              } else {
+                goToNeighbor('next')
+              }
+            }}
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
+          >
+            <ChevronRight className="size-5" aria-hidden />
+          </button>
+        )}
+
       </div>
-
-      {/* #6: Desktop-only prev/next edge arrows — hidden on mobile (swipe-only).
-          Vertically centered on the outer container using absolute positioning.
-          Requires md:relative on the outer container (H3 fix) to anchor correctly.
-          Semi-transparent dark circle provides contrast on the light desktop background. */}
-
-      {/* Left arrow — shown when not at first slide OR when a previous rail user exists */}
-      {(!isFirstSegment || hasPrevUser) && (
-        <button
-          type="button"
-          aria-label="Previous wear"
-          onClick={() => {
-            if (!emblaApi) return
-            if (emblaApi.canScrollPrev()) {
-              emblaApi.scrollPrev()
-            } else {
-              goToNeighbor('prev')
-            }
-          }}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
-        >
-          <ChevronLeft className="size-5" aria-hidden />
-        </button>
-      )}
-
-      {/* Right arrow — shown when not at last slide OR when a next rail user exists */}
-      {(!isLastSegment || hasNextUser) && (
-        <button
-          type="button"
-          aria-label="Next wear"
-          onClick={() => {
-            if (!emblaApi) return
-            if (emblaApi.canScrollNext()) {
-              emblaApi.scrollNext()
-            } else {
-              goToNeighbor('next')
-            }
-          }}
-          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 min-h-[44px] min-w-[44px] items-center justify-center text-foreground bg-background/70 rounded-full shadow"
-        >
-          <ChevronRight className="size-5" aria-hidden />
-        </button>
-      )}
     </div>
   )
 }
