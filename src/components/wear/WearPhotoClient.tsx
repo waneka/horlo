@@ -36,9 +36,11 @@ const RETRY_DELAY_MS = 300
  * signed URL. Server-side mint happens once per page request in the
  * Suspense-wrapped server child; this client only varies the query string.
  *
- * Phase 56 D-05/06/07/08: all 3 photo containers now render WearPhotoOverlays.
- * The 2 failed-state containers gain `relative` (previously missing). The
- * signed-URL happy-path container at ~L94 already had `relative` — not touched.
+ * Phase 56 D-05/06/07/08: all 3 photo containers render WearPhotoOverlays once
+ * photo (or fallback) is shown. The 2 failed-state containers gain `relative`
+ * (previously missing). The signed-URL happy-path container at ~L94 already
+ * had `relative` — not touched. Overlays are suppressed during 'pending' to
+ * avoid painting text over the PhotoSkeleton shimmer (D-08 overlay contract).
  */
 export function WearPhotoClient({
   signedUrl,
@@ -148,15 +150,17 @@ export function WearPhotoClient({
         }}
         style={status === 'pending' ? { visibility: 'hidden' } : undefined}
       />
-      <WearPhotoOverlays
-        username={username}
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        createdAt={createdAt}
-        brand={brand}
-        model={model}
-        hasPhoto={true}
-      />
+      {status !== 'pending' && (
+        <WearPhotoOverlays
+          username={username}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          createdAt={createdAt}
+          brand={brand}
+          model={model}
+          hasPhoto={true}
+        />
+      )}
     </div>
   )
 }
