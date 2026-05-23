@@ -1,9 +1,19 @@
 ---
 phase: 56-like-ui
 verified: 2026-05-23T18:26:00Z
-status: human_needed
+status: passed
+human_verified: 2026-05-22
+human_uat: 56-HUMAN-UAT.md (4/4 passed on prod)
 score: 9/9 must-haves verified
 overrides_applied: 0
+human_uat_resolution: |
+  All 4 human-verification items passed on prod (horlo.app) 2026-05-22.
+  NOTE on item 3 (anon wear): the wear page is auth-gated by src/proxy.ts (PUBLIC_PATHS
+  only), so anon never reaches the like button — the security intent (anon cannot like,
+  redirected to /login) is satisfied at the page guard. User PREFERS this. CONTEXT D-10
+  ("anon sees count on wear") is SUPERSEDED — wear detail is auth-only like watch detail.
+  6 enhancement notes (EN-1..6) captured in 56-HUMAN-UAT.md for a follow-up polish round
+  (not blockers; phase goal verified).
 human_verification:
   - test: "Visit a wear page WITH a signed photo. Confirm: avatar + username + relative timestamp render top-left over a scrim gradient; brand/model render bottom-left over a scrim gradient; photo displays at 4:5 aspect ratio. Click the heart in the footer to confirm toggle + count."
     expected: "Overlays are readable, positioned correctly, and not visible over the PhotoSkeleton during the CDN propagation window. The heart toggles fill and count updates immediately."
