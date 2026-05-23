@@ -552,7 +552,12 @@ Step 2.6: SKIPPED — Phase 56 is a pure frontend wiring phase with no external 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Resolved at plan time (Phase 56 plans, 2026-05-22): (1) `getLikesForTargetCached` lives as a
+> module-level `'use cache'` export in `src/data/reactions.ts`; (2) the wear footer is inlined in
+> `wear/[wearEventId]/page.tsx` (no `WearFooterRow.tsx`); (3) overlays are a shared `WearPhotoOverlays`
+> sub-component exported from `WearDetailHero.tsx` and imported into `WearPhotoClient.tsx`.
 
 1. **Where exactly should `getLikesForTargetCached` live?**
    - What we know: It must be `import 'server-only'`-safe; it calls `getLikesForTarget` from `src/data/reactions.ts` which already has `import 'server-only'`.
