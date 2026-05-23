@@ -1,9 +1,9 @@
 ---
 slug: wears-lane-nav-chrome
-status: pending-human-verify
+status: investigating
 trigger: "Phase 56A WearsLane cross-user stories navigation + desktop chrome bugs found in on-device prod UAT"
 created: 2026-05-23T20:02:32Z
-updated: 2026-05-23T21:45:00Z
+updated: 2026-05-23T23:00:00Z
 phase: 56A-wear-view-unification
 files_in_scope:
   - src/components/wears/WearsLane.tsx
@@ -65,6 +65,20 @@ next_action: Deploy to prod (git push origin main → Vercel) and test on-device
 reasoning_checkpoint:
 tdd_checkpoint:
 
+ROUND 2 VERIFIED ON PROD (2026-05-23): W2 (caret removed) and W3 (arrows adjacent to photo) CONFIRMED GOOD. W1 STUCK STATE STILL REPRODUCES — the key={username} remount did NOT fix it, so the `navigated`-ref/no-remount hypothesis is DISPROVEN as the cause. Round 3:
+
+hypothesis (R3 — STUCK STATE, refined): NOT the rail mapping (getWearRailForViewer is ordered by wornDate desc with NO viewed-state filtering — railUsernames/railIndex are STABLE across navigations, verified in src/data/wearEvents.ts:376-380). The real cause is LANDING POSITION: every cross-user nav lands at slide 0 because goToNeighbor uses router.replace('/wears/<user>') with no positional hint and page.tsx defaults initialSlideIndex=0 (page.tsx:111) when there's no ?from. But FORWARD-cross requires being at the LAST slide (isLast). Repro trace: A opened from rail with ?from=<most-recent> → lands at A's LAST slide → forward crosses to B ✓; B reached via replace (no from) → slide 0 → swipe-right crosses back to A ✓; A reached via replace (no from) → slide 0 → forward swipe moves WITHIN A's wears (not at last) → cannot re-cross → "stuck". Only bites MULTI-wear users (single-wear: slide 0 == last, so forward would still cross). This explains why the key remount was irrelevant.
+
+ROUND 3 FIX APPLIED (commit 8bcc672) — pending on-device prod verify:
+
+fix (R3): Instagram-stories landing rule:
+  - FORWARD cross → next user's FIRST slide (slide 0). Already correct; kept.
+  - BACKWARD cross → previous user's LAST slide. goToNeighbor('prev') now appends ?at=last to the router.replace URL. page.tsx destructures `at` from searchParams (same await pattern as `from`); when at==='last' and no ?from, sets initialSlideIndex = wears.length - 1. ?from takes precedence if somehow both are present.
+  - Result: A→B(fwd)→A(back, lands at A's LAST slide)→forward re-crosses to B cleanly. No stuck.
+  - Build: npm run build clean.
+
+next_action (R3): Test on-device after Vercel deploy. Multi-wear scenario: open first rail user from home, swipe forward to user B, swipe back to user A, swipe forward again — should cross to B, not get stuck. Repeat A→B→A→B several times.
+
 ## Evidence
 
 - timestamp: 2026-05-23T20:02:32Z
@@ -97,9 +111,32 @@ tdd_checkpoint:
     BUILD: npm run build clean (no TypeScript errors, no compile errors).
     COMMIT: 39794c4
 
+- timestamp: 2026-05-23T22:15:00Z
+  note: |
+    ROUND 2 PROD VERIFICATION (user): "still getting stuck. everything else looks good." → W2 (caret) + W3 (desktop arrows adjacent to photo) CONFIRMED FIXED. W1 stuck-state STILL reproduces despite the key={username} remount (commit 39794c4).
+    CONSEQUENCE: the `navigated`-ref-not-resetting / no-remount hypothesis is DISPROVEN as the cause of the stuck state — the key remount provably resets navigated each cross-user nav, yet it's still stuck.
+    Read getWearRailForViewer (src/data/wearEvents.ts:317-407): rail tiles ordered by `desc(wornDate), desc(createdAt)`, deduped one-per-user, NO viewed-state filter/reorder. So railUsernames/railIndex are STABLE across navigations → neighbor mapping is NOT the bug.
+    Read page.tsx: initialSlideIndex defaults to 0 (line 111); only ?from sets a non-zero index. goToNeighbor (WearsLane.tsx) replaces to `/wears/<user>` with NO positional hint → always lands at slide 0.
+    NEW ROOT CAUSE: forward-cross requires isLast (last slide); cross-user nav always lands at slide 0; so after A→B(fwd)→A(back), A is at slide 0 and forward-swipe moves within A instead of crossing → "stuck" for multi-wear users.
+
+- timestamp: 2026-05-23T23:00:00Z
+  note: |
+    ROUND 3 FIX CONFIRMED IN CODE + BUILD CLEAN (commit 8bcc672):
+    Root cause verified in source: goToNeighbor('prev') at WearsLane.tsx called router.replace(`/wears/${prevUsername}`) with no positional hint; page.tsx searchParams type was `{ from?: string }` with no `at` field; initialSlideIndex block (lines 111-115) only checked fromWearEventId.
+    FIX APPLIED:
+    (1) WearsLane.tsx goToNeighbor: prev branch → router.replace(`/wears/${prevUsername}?at=last`). next branch unchanged (slide 0 default is correct for forward).
+    (2) page.tsx: searchParams type extended to `{ from?: string; at?: string }`. Destructure `at` alongside `from`. initialSlideIndex priority: ?from → ?at=last → 0. When at==='last' and no fromWearEventId: initialSlideIndex = wears.length - 1.
+    Result: A→B(fwd,slide 0)→A(back, lands at A's LAST slide)→forward swipe sees isLast=true → crosses to B. No stuck.
+    Single-wear user unaffected (slide 0 === last, both directions work regardless).
+    BUILD: npm run build clean.
+    COMMIT: 8bcc672
+    PUSHED: git push origin main → Vercel deploy triggered.
+
 ## Eliminated
 
 - 'settle' timing race as the sole H1 explanation: the more direct failure mode is reInit-triggered settle events (comment sheet toggling). Both modes cause spurious cross-user navigation and are eliminated by the pointerup approach.
+- ROUND 2 navigated-ref / no-remount hypothesis: DISPROVEN by prod test — key={username} remount resets navigated.current every cross-user nav but the stuck state persists. The stuck state is a LANDING-POSITION problem (always lands at slide 0; forward-cross needs the last slide), not a stale-client-state problem.
+- Rail reorder hypothesis: DISPROVEN by source — getWearRailForViewer orders by wornDate desc with no viewed filtering; railUsernames/railIndex are stable.
 
 ## Resolution
 
@@ -108,14 +145,17 @@ root_cause: |
   (1) H1 — Cross-user swipe detection used embla 'settle' event, which fires spuriously on emblaApi.reInit() (comment-sheet open/close) and is unreliable for single-wear lanes. No magnitude threshold meant any tiny drag at the boundary crossed users.
   (2) H2 — router.push stacked history; close button (router.back) went to previous user's lane instead of home.
   (3) H3 — Outer container used md:static (not a positioning context), so absolute progress bar, close button, and arrows were not anchored to the lane column on desktop. Chrome was text-white, invisible on light desktop background.
-  Plus three Round 2 wrinkles found after Round 1 prod verification:
-  (W1) navigated.current ref never reset + no key on <WearsLane> → App Router reused same instance on router.replace cross-user nav → stuck after 2+ crossings.
+  Plus Round 2 wrinkles found after Round 1 prod verification:
+  (W1) navigated.current ref never reset + no key on <WearsLane> → App Router reused same instance on router.replace cross-user nav → stuck after 2+ crossings. (key={username} fix was necessary but not sufficient.)
   (W2) Progress-bar ChevronRight caret not desired.
   (W3) Desktop arrows at viewport edges, not photo column edges.
+  Round 3 stuck-state root cause (after W1 disproven as the full cause):
+  (R3) Landing position: every cross-user nav replaced to /wears/<user> with no positional hint → initialSlideIndex=0 always. Forward-cross requires isLast (last slide). After A→B(fwd)→A(back at slide 0), forward swipe moves within A's wears (not at last) → cannot re-cross → stuck for multi-wear users.
 fix: |
   Round 1: (1) Dropped embla 'settle' detection → window pointerup with 50px threshold. (2) router.push → router.replace. (3) md:static → md:relative; arrow/progress contrast fixes.
   Round 2: (W1) key={username} on <WearsLane> in page.tsx for clean per-user remount. (W2) ChevronRight caret removed. (W3) Embla viewport wrapped in relative md:max-w-[600px] md:mx-auto div; arrows anchored to that wrapper.
-verification: PENDING — requires on-device prod test after git push origin main → Vercel deploy.
+  Round 3: (R3) goToNeighbor('prev') appends ?at=last to router.replace URL. page.tsx reads `at` from searchParams; when at==='last' and no ?from, initialSlideIndex = wears.length - 1. Instagram-stories landing rule: forward→first slide, backward→last slide.
+verification: PENDING — requires on-device prod test after Vercel deploy (commit 8bcc672). Multi-wear scenario: open first rail user from home, swipe A→B→A→B repeatedly — should not get stuck.
 files_changed:
   - src/components/wears/WearsLane.tsx
   - src/app/wears/[username]/page.tsx
