@@ -265,3 +265,24 @@ describe('LikeButton — idempotent re-like (SC#4)', () => {
     consoleSpy.mockRestore()
   })
 })
+
+// ---------------------------------------------------------------------------
+// 9. 'wear' discriminator — guards against accidental 'wear_event' regression
+// ---------------------------------------------------------------------------
+
+describe('LikeButton — wear target discriminator', () => {
+  it('calls toggleLikeAction with type=wear when target is a wear event', async () => {
+    ;(toggleLikeAction as Mock).mockResolvedValue({
+      success: true,
+      data: { liked: true, count: 1 },
+    })
+    renderButton({
+      target: { type: 'wear', id: WEAR_ID },
+      initialLiked: false,
+      initialCount: 0,
+    })
+    fireEvent.click(screen.getByRole('button'))
+    await flush()
+    expect(toggleLikeAction).toHaveBeenCalledWith({ type: 'wear', id: WEAR_ID })
+  })
+})
