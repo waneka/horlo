@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: Social Interaction
 status: executing
 stopped_at: Phase 56A UI-SPEC approved
-last_updated: "2026-05-23T15:26:28.028Z"
-last_activity: 2026-05-23 -- Phase 56A planning complete
+last_updated: "2026-05-23T15:38:15.359Z"
+last_activity: 2026-05-23
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 21
-  completed_plans: 16
-  percent: 76
+  completed_plans: 17
+  percent: 81
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 56 — Like UI
+**Current focus:** Phase 56A — wear-view-unification
 
 ## Current Position
 
-Phase: 56 (Like UI) — EXECUTING
-Plan: 3 of 3
+Phase: 56A (wear-view-unification) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-05-23 -- Phase 56A planning complete
+Last activity: 2026-05-23
 
-Progress: [██████████] 100%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | Phase 55-server-actions-notification-dedup P05 | 12 | 2 tasks | 1 files |
 | Phase 56-like-ui P01 | 258 | 3 tasks | 3 files |
 | Phase 56-like-ui P02 | 156s | 2 tasks | 2 files |
+| Phase 56A-wear-view-unification P01 | 5m | 2 tasks | 5 files |
 
 ### Deferred Items
 
