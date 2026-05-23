@@ -1,9 +1,9 @@
 ---
 slug: wears-lane-nav-chrome
-status: checkpoint:human-verify
+status: pending-human-verify
 trigger: "Phase 56A WearsLane cross-user stories navigation + desktop chrome bugs found in on-device prod UAT"
 created: 2026-05-23T20:02:32Z
-updated: 2026-05-23T21:00:00Z
+updated: 2026-05-23T21:45:00Z
 phase: 56A-wear-view-unification
 files_in_scope:
   - src/components/wears/WearsLane.tsx
@@ -27,7 +27,7 @@ files_in_scope:
 - D2: Desktop swiping does not advance between users (same as M1).
 - D3: Desktop top progress-bar segments do not appear.
 
-**Error messages:** None — purely behavioral/visual. tsc + build clean; local e2e SKIPS (empty local test DB, no wear rows).
+**Error messages:** None — purely behavioral/visual. tsc + build clean; local e2e SKIPS (empty local test DB).
 
 **Timeline:** Introduced by the 56A gap-closure round (plans 56A-06 cross-user swipe, 56A-07 progress/close/arrows) just deployed to prod. Never worked correctly on-device.
 
@@ -52,9 +52,17 @@ Outer container is `md:static` (line ~265). `position: static` is NOT a position
 
 ## Current Focus
 
-hypothesis: H1 (fragile settle-based cross-user detection), H2 (router.push stacking), H3 (md:static + white-on-light desktop chrome) — ALL THREE CONFIRMED AGAINST LIVE CODE AND FIXED.
-next_action: Human verify on device (mobile swipe + close) and desktop (arrows + progress bar).
-reasoning_checkpoint: All three root causes confirmed by source read. H1: settle fires on reInit (comment open/close) and never fires for single-wear lanes. H2: router.push confirmed at lines 144/149. H3: md:static confirmed at line 265; absolute chrome children lose anchor.
+ROUND 1 VERIFIED ON PROD (2026-05-23): cross-user swipe now works, close→home works, comment-sheet no longer triggers spurious jumps, desktop arrows + progress bar now appear. THREE new wrinkles found in the same UAT pass — Round 2:
+
+ROUND 2 FIXES APPLIED (commit 39794c4) — pending on-device prod verify:
+
+hypothesis (R2):
+- W1 (STUCK STATE — real bug): the `navigated` single-flight ref (WearsLane.tsx:151) is set true on cross-user nav (lines 160/165) but NEVER reset, and WearsLane is NOT keyed/remounted on a new user — page.tsx renders `<WearsLane>` without a `key` so the App Router reuses the SAME instance across `/wears/[A]`→`/wears/[B]` (router.replace, same dynamic route). So after navigating, `navigated.current` stays true AND the embla instance carries stale slide state (no reInit on `slides` change — only on commentOpen). Result: cross-user nav locks up after a few crossings ("swipe to next, swipe back, then stuck"). LIKELY FIX: give `<WearsLane>` a `key` tied to the actor username/route param in page.tsx → clean remount per user resets `navigated` + re-inits embla with the correct slides + resets selectedIndex. (Confirm the no-remount/stale-embla causation; a defensive `navigated.current=false` reset on railIndex/slides change is a lighter alternative but the key/remount is more robust.)
+- W2 (UI): remove the cross-user boundary-hint caret from the progress bar (the `{isLastSegment && hasNextUser && <ChevronRight/>}` block at WearsLane.tsx:290-295). Keep `isLastSegment`/`hasNextUser` — still used by the arrow visibility conditions.
+- W3 (UI): desktop arrows are anchored to the full-width outer container (`absolute left-0`/`right-0`, lines 349/368) so they sit at the VIEWPORT edges, not the centered 600px photo column. Move them adjacent to the photo: wrap the embla viewport in a `relative md:max-w-[600px] md:mx-auto` container (NOT overflow-hidden) and anchor the arrows to THAT (photo-column edges) — e.g. left-0/right-0 of the column, or just outside it. Verify visually on desktop.
+
+next_action: Deploy to prod (git push origin main → Vercel) and test on-device. Verify: (1) mobile stuck-state is gone — can swipe A→B→A→B without getting stuck; (2) progress-bar caret is gone; (3) desktop arrows appear adjacent to the photo column, not at screen edges.
+reasoning_checkpoint:
 tdd_checkpoint:
 
 ## Evidence
@@ -73,6 +81,22 @@ tdd_checkpoint:
     (2) H2: router.push → router.replace in both goToNeighbor branches.
     (3) H3: md:static → md:relative on outer container. Arrow buttons: text-white → text-foreground bg-background/70 rounded-full shadow (contrast on light desktop bg). Progress segments: added md:bg-foreground md:opacity-70/20 variants. Close button: added md:text-foreground. Build passed clean.
 
+- timestamp: 2026-05-23T20:30:00Z
+  note: |
+    ROUND 1 PROD VERIFICATION (user, on device): "much better". Cross-user swipe works, close→home works, comment-sheet dismiss no longer triggers a jump, desktop arrows + progress bar now render. Round 1 (H1/H2/H3) CONFIRMED FIXED on-device. Three new wrinkles (Round 2):
+    W1 STUCK STATE: "open first user, swipe to next user, swipe back to first user → can't swipe to advance to next user anymore — stuck, can only close and start over." Orchestrator source read: `navigated` ref (WearsLane.tsx:151) set true at 160/165, never reset; no `key` on <WearsLane> in page.tsx → instance reused across cross-user router.replace nav → stale `navigated` (and stale embla, since reInit only runs on commentOpen, not on slides change). Primary fix candidate: key WearsLane by username for a clean per-user remount.
+    W2: remove the progress-bar caret (ChevronRight boundary hint, lines 290-295).
+    W3: desktop arrows are at viewport edges (left-0/right-0 on the full-width outer container); move adjacent to the centered 600px photo column.
+
+- timestamp: 2026-05-23T21:45:00Z
+  note: |
+    ROUND 2 FIXES CONFIRMED IN CODE + BUILD CLEAN:
+    W1 ROOT CAUSE CONFIRMED: page.tsx line 150 renders <WearsLane> with no key. App Router same-segment route (router.replace /wears/A → /wears/B) reuses same instance; navigated.current stays true permanently after first cross-user nav; embla has no reInit on slides change (only on commentOpen). FIX: key={username} added to <WearsLane> in page.tsx — forces full remount per user, resetting navigated ref and embla from scratch.
+    W2: ChevronRight caret block (former lines 290-295) removed from progress bar. isLastSegment + hasNextUser consts retained (used by arrow visibility at lines 337/356).
+    W3: Embla viewport extracted from the outer container into a new `relative h-full md:max-w-[600px] md:mx-auto` wrapper div (NOT overflow-hidden). Arrow buttons moved inside that wrapper and use absolute left-0/right-0 — now anchored to the 600px photo column on desktop, not the full viewport. Embla viewport div no longer carries md:max-w-[600px] md:mx-auto (those moved to the wrapper). Progress bar and close button remain absolutely positioned on the outer container — unaffected.
+    BUILD: npm run build clean (no TypeScript errors, no compile errors).
+    COMMIT: 39794c4
+
 ## Eliminated
 
 - 'settle' timing race as the sole H1 explanation: the more direct failure mode is reInit-triggered settle events (comment sheet toggling). Both modes cause spurious cross-user navigation and are eliminated by the pointerup approach.
@@ -80,17 +104,21 @@ tdd_checkpoint:
 ## Resolution
 
 root_cause: |
-  Three independent bugs:
+  Three independent bugs (Round 1):
   (1) H1 — Cross-user swipe detection used embla 'settle' event, which fires spuriously on emblaApi.reInit() (comment-sheet open/close) and is unreliable for single-wear lanes. No magnitude threshold meant any tiny drag at the boundary crossed users.
   (2) H2 — router.push stacked history; close button (router.back) went to previous user's lane instead of home.
   (3) H3 — Outer container used md:static (not a positioning context), so absolute progress bar, close button, and arrows were not anchored to the lane column on desktop. Chrome was text-white, invisible on light desktop background.
+  Plus three Round 2 wrinkles found after Round 1 prod verification:
+  (W1) navigated.current ref never reset + no key on <WearsLane> → App Router reused same instance on router.replace cross-user nav → stuck after 2+ crossings.
+  (W2) Progress-bar ChevronRight caret not desired.
+  (W3) Desktop arrows at viewport edges, not photo column edges.
 fix: |
-  (1) Dropped embla 'settle' detection. Replaced with window pointerup listener checking boundary slide position + swipe direction + 50px threshold. goToNeighborRef pattern keeps Effect A deps stable (no listener teardown mid-drag).
-  (2) router.push → router.replace in goToNeighbor.
-  (3) md:static → md:relative. Arrow buttons: bg-background/70 rounded-full shadow + text-foreground. Progress + close: md:text-foreground / md:bg-foreground variants.
-verification: PENDING — requires on-device prod test (mobile swipe + close, desktop arrows/progress).
+  Round 1: (1) Dropped embla 'settle' detection → window pointerup with 50px threshold. (2) router.push → router.replace. (3) md:static → md:relative; arrow/progress contrast fixes.
+  Round 2: (W1) key={username} on <WearsLane> in page.tsx for clean per-user remount. (W2) ChevronRight caret removed. (W3) Embla viewport wrapped in relative md:max-w-[600px] md:mx-auto div; arrows anchored to that wrapper.
+verification: PENDING — requires on-device prod test after git push origin main → Vercel deploy.
 files_changed:
   - src/components/wears/WearsLane.tsx
+  - src/app/wears/[username]/page.tsx
 
 ## Verification Constraint
 
