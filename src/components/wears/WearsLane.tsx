@@ -107,13 +107,13 @@ export function WearsLane({ slides, initialSlideIndex, viewerId }: WearsLaneProp
   }, [emblaApi, slides, markViewed])
 
   return (
+    // Outer container: positional anchor for the close button.
     // Mobile: fixed inset-0 h-dvh overflow-hidden (full-screen, no nav chrome).
     // Desktop (md+): static, auto height, centered 600px column.
-    <div
-      ref={emblaRef}
-      className="fixed inset-0 h-dvh overflow-hidden md:static md:inset-auto md:h-auto md:overflow-visible bg-background md:max-w-[600px] md:mx-auto"
-    >
-      {/* Close affordance — top-left X, z-20 above gradient scrims (z-10) */}
+    <div className="fixed inset-0 h-dvh overflow-hidden md:static md:inset-auto md:h-auto md:overflow-visible">
+      {/* Close affordance — sibling of the embla viewport, not inside it.
+          Positioned absolute to this outer container (z-20 above scrims at z-10).
+          Kept outside embla's pointer-listener tree to avoid swipe-vs-click races. */}
       <button
         type="button"
         aria-label="Close"
@@ -123,18 +123,24 @@ export function WearsLane({ slides, initialSlideIndex, viewerId }: WearsLaneProp
         <X className="size-5" aria-hidden />
       </button>
 
-      {/* Embla slide container */}
-      <div className="flex h-full">
-        {slides.map((slide) => (
-          <div key={slide.wearEventId} className="flex-[0_0_100%] min-w-0">
-            <WearCard
-              {...slide}
-              viewerId={viewerId}
-              commentHostVariant="bottom-sheet"
-              onCommentOpenChange={setCommentOpen}
-            />
-          </div>
-        ))}
+      {/* Embla viewport — emblaRef applied here only, not on the outer wrapper */}
+      <div
+        ref={emblaRef}
+        className="h-full overflow-hidden bg-background md:max-w-[600px] md:mx-auto"
+      >
+        {/* Embla slide container */}
+        <div className="flex h-full">
+          {slides.map((slide) => (
+            <div key={slide.wearEventId} className="flex-[0_0_100%] min-w-0">
+              <WearCard
+                {...slide}
+                viewerId={viewerId}
+                commentHostVariant="bottom-sheet"
+                onCommentOpenChange={setCommentOpen}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
