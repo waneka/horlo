@@ -52,6 +52,8 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
         notificationsLastSeenAt: new Date('2026-04-01T00:00:00Z'),
         notifyOnFollow: true,
         notifyOnWatchOverlap: false,
+        notifyOnLike: false,
+        notifyOnComment: true,
       },
     ]
     const settings = await getProfileSettings('user-with-row')
@@ -63,6 +65,8 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
       notificationsLastSeenAt: new Date('2026-04-01T00:00:00Z'),
       notifyOnFollow: true,
       notifyOnWatchOverlap: false,
+      notifyOnLike: false,
+      notifyOnComment: true,
     })
   })
 

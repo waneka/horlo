@@ -89,7 +89,10 @@ function collapseWatchOverlaps(rows: NotificationRowData[]): NotificationRowData
       const brand = p.watch_brand_normalized ?? ''
       const model = p.watch_model_normalized ?? ''
       const day = toUtcDayKey(row.createdAt)
-      const key = `${brand}|${model}|${day}`
+      // Type-prefixed for parity with watch_like/wear_like keys below — keeps all three
+      // group keys in the shared Map collision-free even if a normalized brand string
+      // ever coincides with a type token (WR-01).
+      const key = `watch_overlap|${brand}|${model}|${day}`
       const existing = groups.get(key)
       if (existing) existing.push(row)
       else groups.set(key, [row])
