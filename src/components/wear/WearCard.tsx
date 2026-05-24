@@ -8,6 +8,7 @@ import { WearDetailHero } from '@/components/wear/WearDetailHero'
 import { LikeButton } from '@/components/shared/LikeButton'
 import { WearCommentHost } from '@/components/wear/WearCommentHost'
 import { WearOverflowMenu } from '@/components/wear/WearOverflowMenu'
+import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -40,6 +41,17 @@ interface WearCardProps {
    * The stories lane (Plan 03) uses this to pause embla swipe.
    */
   onCommentOpenChange?: (open: boolean) => void
+
+  // Phase 57 Plan 05: comment-thread + gate props (server-resolved)
+  initialComments: CommentWithAuthor[]
+  canComment: boolean
+  ownerFollowsViewer: boolean
+  viewerIsFollowing: boolean
+  ownerUserId: string
+  ownerUsername: string
+  viewerAuthor: CommentAuthor | null
+  /** CMNT-09: comment count badge — hidden at zero in both engagement rows */
+  commentCount: number
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +69,9 @@ interface WearCardProps {
  *   - WearOverflowMenu (absolute top-3 right-3 z-20 over the photo)
  *   - engagement row: comment trigger (left) + LikeButton (right)
  *   - WearCommentHost (bottom-sheet or inline, driven by commentHostVariant)
+ *
+ * Phase 57 Plan 05: comment-thread props threaded through to WearCommentHost;
+ * CMNT-09 count badge added next to the comment trigger in both engagement rows.
  */
 export function WearCard({
   signedUrl,
@@ -77,6 +92,14 @@ export function WearCard({
   showAddToWishlist,
   permalinkUrl,
   onCommentOpenChange,
+  initialComments,
+  canComment,
+  ownerFollowsViewer,
+  viewerIsFollowing,
+  ownerUserId,
+  ownerUsername,
+  viewerAuthor,
+  commentCount,
 }: WearCardProps) {
   // Bottom-sheet variant: WearCard owns the open state and exposes it for swipe-pause.
   const [commentOpen, setCommentOpen] = useState(false)
@@ -143,14 +166,17 @@ export function WearCard({
       {commentHostVariant === 'bottom-sheet' ? (
         /* Stories lane: safe-area bottom padding, no border */
         <div className="flex items-center px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          {/* Comment trigger — left slot */}
+          {/* Comment trigger — left slot (CMNT-09: count badge hidden at zero) */}
           <button
             type="button"
             aria-label="Open comments"
             onClick={handleOpenComments}
-            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
           >
             <MessageCircle className="size-5" aria-hidden />
+            {commentCount > 0 && (
+              <span className="text-sm tabular-nums text-muted-foreground">{commentCount}</span>
+            )}
           </button>
           <div className="flex-1" />
           {/* LikeButton — right slot */}
@@ -164,14 +190,17 @@ export function WearCard({
       ) : (
         /* Detail page: border-t, text-muted-foreground, md constrained */
         <div className="flex items-center px-4 py-3 border-t border-border md:max-w-[600px] md:mx-auto">
-          {/* Comment trigger — scrolls to inline section */}
+          {/* Comment trigger — scrolls to inline section (CMNT-09: count badge hidden at zero) */}
           <button
             type="button"
             aria-label="View comments"
             onClick={handleScrollToComments}
-            className="inline-flex items-center justify-center min-h-[44px] min-w-[44px]"
+            className="inline-flex items-center gap-1 justify-center min-h-[44px] min-w-[44px]"
           >
             <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
+            {commentCount > 0 && (
+              <span className="text-sm tabular-nums text-muted-foreground">{commentCount}</span>
+            )}
           </button>
           <div className="flex-1" />
           {/* LikeButton — right slot */}
@@ -191,9 +220,28 @@ export function WearCard({
           wearEventId={wearEventId}
           open={commentOpen}
           onOpenChange={handleCommentOpenChange}
+          initialComments={initialComments}
+          canComment={canComment}
+          ownerFollowsViewer={ownerFollowsViewer}
+          viewerIsFollowing={viewerIsFollowing}
+          ownerUserId={ownerUserId}
+          ownerUsername={ownerUsername}
+          viewerId={viewerId}
+          viewerAuthor={viewerAuthor}
         />
       ) : (
-        <WearCommentHost variant="inline" wearEventId={wearEventId} />
+        <WearCommentHost
+          variant="inline"
+          wearEventId={wearEventId}
+          initialComments={initialComments}
+          canComment={canComment}
+          ownerFollowsViewer={ownerFollowsViewer}
+          viewerIsFollowing={viewerIsFollowing}
+          ownerUserId={ownerUserId}
+          ownerUsername={ownerUsername}
+          viewerId={viewerId}
+          viewerAuthor={viewerAuthor}
+        />
       )}
     </div>
   )
