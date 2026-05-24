@@ -18,6 +18,11 @@ interface CommentThreadProps {
   ownerUsername: string
   /** Whether the viewer is already following the owner — needed for GATE-03 state selection */
   viewerIsFollowing: boolean
+  /**
+   * SC-6 (Phase 57.1 Plan 03): pass-through to CommentList — suppresses compose slot for the
+   * owner on /watch/[id]. WearCommentHost never passes this prop (stays undefined → falsy).
+   */
+  suppressCompose?: boolean
 }
 
 export async function CommentThread({
@@ -28,6 +33,7 @@ export async function CommentThread({
   ownerUserId,
   ownerUsername,
   viewerIsFollowing,
+  suppressCompose,
 }: CommentThreadProps) {
   // Gated viewers (non-mutual-follow on wishlist) get [] from the DAL (D-04/D-06).
   // Pass '' for anon — the DAL handles the non-mutual path; wear targets are always open.
@@ -69,6 +75,7 @@ export async function CommentThread({
         viewerId={viewerId}
         viewerAuthor={viewerAuthor}
         viewerIsFollowing={viewerIsFollowing}
+        suppressCompose={suppressCompose}
       />
     </section>
   )
