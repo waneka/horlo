@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 
 import { addCommentAction } from '@/app/actions/comments'
 import type { CommentTarget } from '@/data/comments'
@@ -23,6 +24,8 @@ interface CommentListProps {
   viewerAuthor: CommentAuthor | null
   /** true when the viewer is already following the owner (viewer→owner direction) */
   viewerIsFollowing: boolean
+  /** SC-5 (Phase 57.1): optional callback to propagate optimistic count deltas to WearCard */
+  onCountChange?: (delta: number) => void
 }
 
 /**
@@ -48,7 +51,9 @@ export function CommentList({
   viewerId,
   viewerAuthor,
   viewerIsFollowing,
+  onCountChange,
 }: CommentListProps) {
+  const router = useRouter()
   const [comments, setComments] = useState<CommentWithAuthor[]>(initialComments)
   const [canComment, setCanComment] = useState(initialCanComment)
   const [pending, startTransition] = useTransition()
@@ -80,6 +85,8 @@ export function CommentList({
     // Insert at TOP — newest-first (CMNT-03 / CMNT-08).
     // Functional update so we never capture a stale `comments` snapshot (CR-01).
     setComments((prev) => [optimistic, ...prev])
+    // SC-5 (Phase 57.1): propagate +1 to WearCard local count (optional — noop on /watch/[id])
+    onCountChange?.(+1)
 
     startTransition(async () => {
       const result = await addCommentAction({ type: target.type, id: target.id, body })
@@ -88,6 +95,8 @@ export function CommentList({
         // concurrent edit/delete that landed while the action was in flight is preserved
         // (CR-01 — a plain setComments(comments) would blow those away).
         setComments((prev) => prev.filter((c) => c.id !== optimistic.id))
+        // SC-5 (Phase 57.1): reverse the optimistic +1 on rollback (covers both gate-reject and generic fail)
+        onCountChange?.(-1)
         // Gate rejection: the action gate is the race backstop (T-57-13 / D-09)
         if (result.code === 'gate') {
           setCanComment(false)
@@ -96,6 +105,7 @@ export function CommentList({
         return
       }
       // Reconcile: replace temp id with server-confirmed row (preserving author)
+      // Note: no onCountChange call here — the +1 from the optimistic insert already stands (D-03)
       setComments((prev) =>
         prev.map((c) =>
           c.id === optimistic.id ? { ...result.data, author: optimistic.author } : c,
@@ -103,6 +113,11 @@ export function CommentList({
       )
       // Clear compose box on success by re-mounting CommentCompose
       setComposeKey((k) => k + 1)
+      // D-01 (Phase 57.1): re-fetch RSC payload so /watch/[id] count badge updates.
+      // Uses router.refresh() from next/navigation (client cache only — NOT next/cache server refresh).
+      // Safe: /watch/[id] has no unstable_instant; CommentThread is uncached RSC; client state preserved.
+      // Harmless on wears surfaces — local optimistic count survives the RSC merge per Next.js docs.
+      router.refresh()
     })
   }
 
@@ -112,6 +127,8 @@ export function CommentList({
 
   function handleDeleteOptimistic(id: string) {
     setComments((prev) => prev.filter((c) => c.id !== id))
+    // SC-5 (Phase 57.1): decrement count optimistically when a comment is removed
+    onCountChange?.(-1)
   }
 
   function handleRollbackDelete(comment: CommentWithAuthor) {
@@ -130,6 +147,8 @@ export function CommentList({
       next.splice(insertIdx, 0, comment)
       return next
     })
+    // SC-5 (Phase 57.1): restore count when delete is rolled back
+    onCountChange?.(+1)
   }
 
   return (
