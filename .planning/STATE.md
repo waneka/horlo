@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
-status: executing
-stopped_at: Phase 56A executed (5/5 plans, automated verification 10/10); 4 human-UAT items pending device testing; /gsd-secure-phase not yet run
-last_updated: "2026-05-23T18:39:39.359Z"
+status: ready_to_plan
+stopped_at: Phase 56A COMPLETE — 9/9 plans, verification 16/16, UAT 10/10 on-device, security 16/16 threats closed. Ready to plan Phase 57.
+last_updated: "2026-05-23T20:45:00.000Z"
 last_activity: 2026-05-23
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 25
-  completed_plans: 25
-  percent: 100
+  total_phases: 7
+  completed_phases: 5
+  total_plans: 34
+  completed_plans: 34
+  percent: 71
 ---
 
 # Project State
@@ -21,16 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 56A — wear-view-unification
+**Current focus:** Phase 57 — Comment Thread UI + Feed Extension + Grid Counts
 
 ## Current Position
 
-Phase: 56A (wear-view-unification) — EXECUTING
-Plan: 5 of 9
-Status: Ready to execute
+Phase: 57 (comment-thread-ui-feed-extension-grid-counts) — READY TO PLAN
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-23
 
-Progress: [██████████] 100%
+Progress: [██████████████░░░░░░] 71% (5/7 phases — 53,54,55,56,56A done; 57,58 remain)
+
+<!-- NOTE: phase.complete CLI set next_phase=999.1 (a [x]-complete v3.0 archived phase) and broke the progress block (7/6=117%). Corrected by hand: real next phase is 57 per the ROADMAP milestone checklist + Progress table (56 done, 57/58 Not started). -->
+
 
 ## Performance Metrics
 
@@ -164,11 +167,11 @@ Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
 
 ## Session Continuity
 
-Last activity: 2026-05-22 — v6.0 roadmap created (6 phases, 34/34 requirements mapped)
-Stopped at: Phase 56A executed (5/5 plans, automated verification 10/10); 4 human-UAT items pending device testing; /gsd-secure-phase not yet run
-Next action: Run `/gsd-plan-phase 53` to begin Phase 53 (Schema + RLS + Enum Extension)
+Last activity: 2026-05-23 — Phase 56A closed out (UAT 10/10 on-device, security 16/16 threats closed, transition complete)
+Stopped at: Phase 56A COMPLETE. Ready to plan Phase 57 (Comment Thread UI + Feed Extension + Grid Counts).
+Next action: Run `/gsd-discuss-phase 57` (or `/gsd-plan-phase 57`) to begin Phase 57
 
 ## Operator Next Steps
 
-- Run `/gsd-plan-phase 53` to plan Phase 53 (Schema + RLS + Enum Extension)
-- Discuss/spec during Phase 53 planning must resolve: data model choice (per-target vs. polymorphic) + `follows` RLS pre-flight
+- Run `/gsd-discuss-phase 57` to gather context for Phase 57 (Comment Thread UI + Feed Extension + Grid Counts), then `/gsd-plan-phase 57`
+- Phase 57 delivers CMNT-01..09, GATE-03, FEED-06, FEED-07, DISP-01 and consumes the shared WearCard/WearCommentHost contract established by Phase 56A
