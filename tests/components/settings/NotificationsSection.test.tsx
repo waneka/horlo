@@ -34,11 +34,18 @@ describe('NotificationsSection — Phase 22 D-01 migration', () => {
     updateMock.mockResolvedValue({ success: true, data: undefined })
   })
 
-  it('renders 2 PrivacyToggleRow instances — notifyOnFollow, notifyOnWatchOverlap', () => {
+  it('renders 4 PrivacyToggleRow instances — notifyOnFollow, notifyOnWatchOverlap, notifyOnLike, notifyOnComment', () => {
     render(<NotificationsSection settings={settings} />)
     expect(screen.getByText('New Followers')).toBeInTheDocument()
     expect(screen.getByText('Watch Overlaps')).toBeInTheDocument()
-    expect(screen.getAllByRole('switch')).toHaveLength(2)
+    expect(screen.getByText('Likes')).toBeInTheDocument()
+    expect(screen.getByText('Comments')).toBeInTheDocument()
+    expect(screen.getAllByRole('switch')).toHaveLength(4)
+  })
+
+  it('renders the section title as "Notifications"', () => {
+    render(<NotificationsSection settings={settings} />)
+    expect(screen.getByText('Notifications')).toBeInTheDocument()
   })
 
   it('regression: notifyOnFollow toggle behavior unchanged from SettingsClient', async () => {
@@ -47,6 +54,26 @@ describe('NotificationsSection — Phase 22 D-01 migration', () => {
     await user.click(screen.getByRole('switch', { name: 'New Followers' }))
     expect(updateMock).toHaveBeenCalledWith({
       field: 'notifyOnFollow',
+      value: false,
+    })
+  })
+
+  it('likes toggle calls updateProfileSettings with { field: notifyOnLike, value: false }', async () => {
+    render(<NotificationsSection settings={settings} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('switch', { name: 'Likes' }))
+    expect(updateMock).toHaveBeenCalledWith({
+      field: 'notifyOnLike',
+      value: false,
+    })
+  })
+
+  it('comments toggle calls updateProfileSettings with { field: notifyOnComment, value: false }', async () => {
+    render(<NotificationsSection settings={settings} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('switch', { name: 'Comments' }))
+    expect(updateMock).toHaveBeenCalledWith({
+      field: 'notifyOnComment',
       value: false,
     })
   })
