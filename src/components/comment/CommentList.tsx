@@ -26,6 +26,14 @@ interface CommentListProps {
   viewerIsFollowing: boolean
   /** SC-5 (Phase 57.1): optional callback to propagate optimistic count deltas to WearCard */
   onCountChange?: (delta: number) => void
+  /**
+   * SC-6 (Phase 57.1 Plan 03): when true, suppress the compose slot entirely (null).
+   * Used on /watch/[id] for the owner — renders neither CommentCompose nor CommentGateLocked
+   * (D-02: silent suppression; showing CommentGateLocked to a non-gated owner would leak
+   * gate-state semantics). The comment list below the compose slot is unaffected.
+   * WearCommentHost never passes this prop (stays undefined → falsy → existing behavior).
+   */
+  suppressCompose?: boolean
 }
 
 /**
@@ -52,6 +60,7 @@ export function CommentList({
   viewerAuthor,
   viewerIsFollowing,
   onCountChange,
+  suppressCompose,
 }: CommentListProps) {
   const router = useRouter()
   const [comments, setComments] = useState<CommentWithAuthor[]>(initialComments)
@@ -153,8 +162,10 @@ export function CommentList({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Compose above the list (CMNT-08) or locked gate state */}
-      {canComment ? (
+      {/* Compose above the list (CMNT-08) or locked gate state.
+          SC-6 (Phase 57.1 Plan 03): when suppressCompose=true (owner on /watch/[id]),
+          render null — neither CommentCompose nor CommentGateLocked (D-02 silent suppression). */}
+      {!suppressCompose && (canComment ? (
         <CommentCompose
           key={composeKey}
           viewerId={viewerId}
@@ -169,7 +180,7 @@ export function CommentList({
           viewerId={viewerId}
           viewerIsFollowing={viewerIsFollowing}
         />
-      )}
+      ))}
 
       {/* Comment list: newest-first (initialComments arrives DESC from DAL) */}
       {comments.map((c) => (
