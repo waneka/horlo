@@ -755,22 +755,22 @@ export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn' | 'co
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`deleteCommentAction` + `revalidateTag`**
+1. **`deleteCommentAction` + `revalidateTag`** — RESOLVED: treat as an oversight, fixed. Plan 02 Task 3 converts `deleteCommentAction` to read-then-delete (mirroring `editCommentAction`'s owner-lookup) and adds `revalidateTag('profile:{username}', 'max')` so grid count badges refresh on delete.
    - What we know: `editCommentAction` resolves owner + calls `revalidateTag`. `deleteCommentAction` does not (verified against source).
-   - What's unclear: Was this intentional (grid count not refreshed on delete is acceptable) or an oversight?
-   - Recommendation: Treat as an oversight — add the owner lookup + `revalidateTag` to `deleteCommentAction` to keep grid counts accurate. Planner: confirm and add to the action edit task.
+   - What's unclear (now settled): Was this intentional (grid count not refreshed on delete is acceptable) or an oversight? → Settled as an oversight; the fix is the cheap read-then-delete already used by edit.
+   - Recommendation (now applied): add the owner lookup + `revalidateTag` to `deleteCommentAction` to keep grid counts accurate. Implemented in Plan 02 Task 3.
 
-2. **Two `ActivityType` definitions**
+2. **Two `ActivityType` definitions** — RESOLVED: keep both definitions in sync. Plan 02 Task 2 widens `ActivityType` to add `'commented'` in BOTH `src/data/activities.ts:21` and `src/lib/feedTypes.ts:12` in the same task, and notes the dedup-vs-keep-in-sync decision (with import-cycle check) in the Plan 02 SUMMARY. The default is keep-in-sync; dedup is only taken if no import cycle results.
    - What we know: Both `src/data/activities.ts:21` and `src/lib/feedTypes.ts:12` define `ActivityType` with identical values.
-   - What's unclear: Should they be deduplicated (one import the other) or kept separate?
-   - Recommendation: Deduplicate in Phase 57 — have `feedTypes.ts` import from `activities.ts` (or vice versa). This prevents them diverging again. Low risk refactor.
+   - What's unclear (now settled): Should they be deduplicated (one import the other) or kept separate? → Settled: keep in sync within one task (Plan 02 Task 2); optional dedup only if it introduces no import cycle, documented in SUMMARY.
+   - Recommendation (now applied): widen both in lockstep in Plan 02 Task 2; dedup is optional and gated on no-cycle.
 
-3. **`watchId` in addCommentAction SELECT for logActivity**
+3. **`watchId` in addCommentAction SELECT for logActivity** — RESOLVED: extend the SELECT. Plan 02 Task 3 extends the existing `addCommentAction` watch SELECT (~lines 73-83) to also fetch `imageUrl` and `status` (keeping `userId`, `brand`, `model`) so the `commented` activity metadata can carry `imageUrl` (feed thumbnail) and `watchStatus` (the D-12 gate key).
    - What we know: The current `addCommentAction` SELECT for watch target resolves `userId`, `brand`, `model` (line 74-83). It does NOT select `imageUrl` or `status`.
-   - What's unclear: The `logActivity` metadata needs `imageUrl` (for feed thumbnail) and `watchStatus` (for the D-12 gate).
-   - Recommendation: Extend the existing SELECT in `addCommentAction` to also fetch `imageUrl` and `status` from the watches row. Low-risk addition to existing query.
+   - What's unclear (now settled): The `logActivity` metadata needs `imageUrl` (for feed thumbnail) and `watchStatus` (for the D-12 gate). → Settled: extend the existing SELECT, no new query.
+   - Recommendation (now applied): extend the existing SELECT in `addCommentAction` to also fetch `imageUrl` and `status` from the watches row. Implemented in Plan 02 Task 3.
 
 ---
 
