@@ -103,6 +103,10 @@ export function WearCard({
 }: WearCardProps) {
   // Bottom-sheet variant: WearCard owns the open state and exposes it for swipe-pause.
   const [commentOpen, setCommentOpen] = useState(false)
+  // SC-5 (Phase 57.1 CMNT-08/CMNT-09): local comment count — starts from server-resolved prop,
+  // updated optimistically via onCountChange from WearCommentHost → CommentList.
+  // D-03: purely local state; no reconcile; self-corrects on next page load.
+  const [localCommentCount, setLocalCommentCount] = useState(commentCount)
 
   const handleCommentOpenChange = (open: boolean) => {
     setCommentOpen(open)
@@ -174,8 +178,8 @@ export function WearCard({
             className="inline-flex items-center gap-1 justify-center min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground"
           >
             <MessageCircle className="size-5" aria-hidden />
-            {commentCount > 0 && (
-              <span className="text-sm tabular-nums text-muted-foreground">{commentCount}</span>
+            {localCommentCount > 0 && (
+              <span className="text-sm tabular-nums text-muted-foreground">{localCommentCount}</span>
             )}
           </button>
           <div className="flex-1" />
@@ -198,8 +202,8 @@ export function WearCard({
             className="inline-flex items-center gap-1 justify-center min-h-[44px] min-w-[44px]"
           >
             <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
-            {commentCount > 0 && (
-              <span className="text-sm tabular-nums text-muted-foreground">{commentCount}</span>
+            {localCommentCount > 0 && (
+              <span className="text-sm tabular-nums text-muted-foreground">{localCommentCount}</span>
             )}
           </button>
           <div className="flex-1" />
@@ -228,6 +232,7 @@ export function WearCard({
           ownerUsername={ownerUsername}
           viewerId={viewerId}
           viewerAuthor={viewerAuthor}
+          onCountChange={(delta) => setLocalCommentCount((n) => Math.max(0, n + delta))}
         />
       ) : (
         <WearCommentHost
@@ -241,6 +246,7 @@ export function WearCard({
           ownerUsername={ownerUsername}
           viewerId={viewerId}
           viewerAuthor={viewerAuthor}
+          onCountChange={(delta) => setLocalCommentCount((n) => Math.max(0, n + delta))}
         />
       )}
     </div>
