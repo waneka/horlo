@@ -298,7 +298,7 @@ export async function deleteCommentAction(
     const [commentRow] = await db
       .select()
       .from(commentsTable)
-      .where(eq(commentsTable?.id, parsed.data.commentId))
+      .where(eq(commentsTable.id, parsed.data.commentId))
       .limit(1)
 
     await deleteComment(user.id, parsed.data.commentId)
