@@ -1,10 +1,11 @@
 ---
 phase: 57
 slug: comment-thread-ui-feed-extension-grid-counts
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-05-24
+reviewed_at: 2026-05-23
 ---
 
 # Phase 57 — UI Design Contract
@@ -87,6 +88,12 @@ Second semantic color: `--destructive` — reserved for (1) delete confirm row t
 
 ---
 
+## Visuals
+
+**Primary focal point:** The `CommentCompose` textarea is the primary visual anchor of the comment section. Its position at the top of the thread (compose-above-list, per D-03) ensures it receives attention before any existing comments. On initial render the textarea is unfocused but visually dominant — full-width, bordered, 3-row height — distinguishing it from the comment list below.
+
+---
+
 ## Component Inventory
 
 ### New components (`src/components/comment/`)
@@ -147,8 +154,8 @@ ownerUsername: string         // for GATE-03 copy
 
 **Edit/delete controls (author only, always visible):**
 - Layout: `flex items-center gap-2 mt-1` row below the body.
-- Pencil button: `<button>` with `<Pencil className="size-4 text-muted-foreground hover:text-foreground" />`. Touch target: `min-h-[44px] min-w-[44px] inline-flex items-center justify-center`.
-- Trash button: `<button>` with `<Trash2 className="size-4 text-muted-foreground hover:text-destructive" />`. Same touch target class.
+- Pencil button: `<button aria-label="Edit comment">` with `<Pencil className="size-4 text-muted-foreground hover:text-foreground" aria-hidden />`. Touch target: `min-h-[44px] min-w-[44px] inline-flex items-center justify-center`.
+- Trash button: `<button aria-label="Delete comment">` with `<Trash2 className="size-4 text-muted-foreground hover:text-destructive" aria-hidden />`. Same touch target class.
 - Both: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md`.
 - `disabled={pending}` on both while any transition is in progress.
 
@@ -258,7 +265,7 @@ Added inside `<CardContent className="px-3 py-2 flex flex-col gap-1 flex-1">`, a
       </>
     )}
     {likeCount > 0 && commentCount > 0 && (
-      <span className="mx-0.5">·</span>
+      <span className="mx-1">·</span>
     )}
     {commentCount > 0 && (
       <>
@@ -302,7 +309,7 @@ const VERBS: Record<RawFeedRow['type'], string> = {
 
 ### `CommentItem` spacing
 - Avatar to right block: `gap-3` (12px) — slightly tighter than the 16px feed-row gap because comments are subordinate to the page.
-- Meta line bottom to body: `mt-0.5` (2px) — tight to signal same-author grouping.
+- Meta line bottom to body: `mt-1` (4px) — tight to signal same-author grouping.
 - Body bottom to edit/delete row: `mt-1` (4px).
 - Between `CommentItem` siblings: `gap-4` (16px) on the parent container.
 
