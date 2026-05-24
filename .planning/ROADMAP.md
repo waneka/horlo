@@ -337,7 +337,14 @@ Plans:
   1. The bell dot and `/notifications` inbox render `watch_like`, `wear_like`, `watch_comment`, and `wear_comment` notification types with copy that names the actor and the target, and each notification links directly to the relevant watch or wear detail page.
   2. Multiple likes on the same target are grouped into a single notification row ("Tyler and 2 others liked your Submariner") rather than one row per like.
   3. The Settings → Notifications section exposes `notifyOnLike` and `notifyOnComment` toggles; disabling `notifyOnLike` suppresses future like notification rows from being created (verified by toggling off, liking a watch, and confirming no new notification row appears).
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+- [ ] 58-01-PLAN.md — Settings persistence chain: widen ProfileSettings/VisibilityField/DEFAULT_SETTINGS/getProfileSettings/upsert + VISIBILITY_FIELDS Zod allowlist + test fixture (NOTIF-15 wiring; DRIFT-1/2/3 + Pitfall 5)
+- [ ] 58-02-PLAN.md — Inbox rendering: NotificationRow 4-type guard + copy + deep-links + comment-preview line, NotificationsInbox like-collapse (NOTIF-16; D-01..D-08)
+
+**Wave 2** *(blocked on 58-01 — shares NotificationsSection.test.tsx + ProfileSettings type)*
+- [ ] 58-03-PLAN.md — Settings UI: Likes + Comments PrivacyToggleRows, rename title to "Notifications", widen Pick + test assertions (NOTIF-15 UI; D-09/D-10/D-11)
 **UI hint**: yes
 
 ## Progress
