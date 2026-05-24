@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
-status: verifying
+status: ready_to_plan
 stopped_at: "Phase 57.1 Plan 03 complete — SC-6 own-watch compose suppression shipped; phase 57.1 complete, ready for Phase 58 (Notification UI)"
 last_updated: "2026-05-24T17:07:25.052Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 8
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 34
   completed_plans: 34
-  percent: 100
+  percent: 113
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 ## Current Position
 
-Phase: 57.1 (comment-ui-polish-own-watch-suppression) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 999.1
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-24
 
 Progress: [██████████] 100%
