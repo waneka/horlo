@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: ready_to_plan
-stopped_at: Phase 57 complete — verified (human_needed); CR-01/WR-04/WR-05 code-review fixes applied
-last_updated: "2026-05-24T06:58:56.677Z"
+stopped_at: Phase 57.1 inserted (Phase 57 prod-UAT polish) — ready to plan
+last_updated: "2026-05-24T15:42:40.817Z"
 last_activity: 2026-05-24
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 6
   total_plans: 31
   completed_plans: 31
-  percent: 86
+  percent: 75
 ---
 
 # Project State
@@ -21,18 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 58 — notification-ui-settings-opt-out (next; Phase 57 complete)
+**Current focus:** Phase 57.1 — comment-ui-polish-own-watch-suppression (INSERTED; Phase 57 complete + prod-deployed)
 
 ## Current Position
 
-Phase: 58
+Phase: 57.1
 Plan: Not started
-Status: Ready to discuss/plan
+Status: Ready to plan
 Last activity: 2026-05-24
 
-Progress: [█████████░] 86%
+Progress: [████████░░] 75%
 
-<!-- NOTE: phase.complete CLI again mis-set next_phase=999.1 (a [x]-complete v3.0 archived phase) and broke the progress block (8/7=114%). Corrected by hand: Phase 57 is COMPLETE; the real next phase is 58 (Notification UI + Settings Opt-Out) per the ROADMAP v6.0 milestone checklist (53/54/55/56/56a/57 done, 58 Not started). Same recurring CLI bug as the prior phase-57 correction. -->
+<!-- NOTE: Phase 57 COMPLETE + pushed to prod (2026-05-24). Phase 57.1 inserted (decimal gap-closure) from Phase 57 prod-UAT: comment-UI polish + own-watch compose suppression. v6.0 now has 8 phases (53/54/55/56/56a/57 done = 6; 57.1 + 58 not started). NOTE: gsd-sdk phase.complete AND state.add-roadmap-evolution both keep corrupting this progress block (next_phase=999.1, completed_phases>actual, percent>100) — see memory project_phase_complete_999_1_misset; hand-corrected. Real next = 57.1, then 58 (Notification UI). -->
+
+Out of scope from Phase 57 UAT (captured as seeds): SEED-015 (inline like/comment from profile grid), SEED-016 (`/watch/[id]` redesign).
 
 ## Performance Metrics
 
@@ -49,6 +51,7 @@ Progress: [█████████░] 86%
 - Phase 50.1 inserted after Phase 50: URL canonicalization — implements Phase 50 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (Variant B; ARCH-02) (URGENT)
 - Phase 52 added: Option D — Cache Components canonical pattern fix for /u/[username]/[tab] (recurrence-4 React #419) — supersedes Phase 51 layout-fix; sourced from `.planning/audits/cache-components-2026-05-21-followup.md`
 - v6.0 roadmap created 2026-05-22: 6 phases (53-58), 34 requirements mapped 34/34
+- Phase 57.1 inserted after Phase 57: Comment UI Polish + Own-Watch Suppression — Phase 57 prod-UAT polish + own-watch compose suppression (URGENT)
 
 ### Key Decisions
 

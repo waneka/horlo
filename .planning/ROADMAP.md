@@ -162,6 +162,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 - [x] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out (completed 2026-05-22)
 - [x] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages (completed 2026-05-23)
 - [x] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts (completed 2026-05-24)
+- [ ] **Phase 57.1: Comment UI Polish + Own-Watch Suppression** (INSERTED) — wears-lane drawer max-width + inline post/edit-delete + optimistic count badge + suppress compose on own watches; from Phase 57 prod UAT
 - [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
 
 ### 📋 v7.0 Watch Photos (Planted)
@@ -306,6 +307,21 @@ Plans:
 - [x] 57-06-PLAN.md — DISP-01 grid count line on ProfileWatchCard + batched read in ProfileTabContent
 **UI hint**: yes
 
+### Phase 57.1: Comment UI Polish + Own-Watch Suppression (INSERTED)
+**Goal**: Polish the Phase 57 comment surfaces from prod UAT and refine the comment gate — center the wears-lane comment drawer with a max-width on desktop, move the Post button inline with the compose input, render each comment's edit/delete controls inline (not stacked below), add bottom spacing to the wears-lane drawer, make the comment-count badge update optimistically on post (no refresh), and suppress the compose box on the viewer's OWN watches (notes cover that — reverses the Phase 57 owner-can-comment case for watches only; wears and all other viewers unchanged).
+**Depends on**: Phase 57
+**Requirements**: refines CMNT-01, CMNT-08, CMNT-09, GATE-03 (Phase 57)
+**Success Criteria** (what must be TRUE):
+  1. On desktop, the `/wears/[username]` comment drawer content is centered with a max-width (not stretched full-width); mobile layout unchanged.
+  2. The Post button sits inline with the comment compose input on both the wears-lane drawer and `/wear/[wearEventId]` (shared `CommentCompose`, so `/watch/[id]` inherits it).
+  3. Each comment's edit/delete controls render inline with the comment row, not stacked below it, on both wear hosts (shared `CommentItem`).
+  4. The `/wears/[username]` comment drawer has adequate bottom spacing.
+  5. Posting a comment increments the visible comment-count badge immediately (optimistic), without a refresh — required on the wears-lane + `/wear/[wearEventId]`; on `/watch/[id]` where architecturally feasible (count badge in `WatchDetail` vs the `CommentThread` RSC sibling are separate subtrees).
+  6. A viewer viewing their OWN watch at `/watch/[id]` does not see a comment compose box (owner case of CMNT-01 reversed); every other viewer's comment access is unchanged.
+**Plans**: TBD
+**UI hint**: yes
+**Source**: Phase 57 prod UAT 2026-05-24. Out of scope → SEED-015 (inline grid like/comment), SEED-016 (`/watch/[id]` redesign).
+
 ### Phase 58: Notification UI + Settings Opt-Out
 **Goal**: Like and comment notifications appear in the existing bell/inbox with clear copy and deep-links to the target watch or wear, like notifications for the same target are grouped, and users can independently opt out of each notification type in Settings.
 **Depends on**: Phase 57
@@ -327,6 +343,7 @@ Plans:
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete    | 2026-05-24 |
+| 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 0/TBD | Not started | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up
