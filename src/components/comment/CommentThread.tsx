@@ -76,6 +76,9 @@ export async function CommentThread({
         viewerAuthor={viewerAuthor}
         viewerIsFollowing={viewerIsFollowing}
         suppressCompose={suppressCompose}
+        // D-01: CommentThread is the /watch/[id] surface — enable RSC refresh on post
+        // success so the count badge updates. Wears hosts (WearCommentHost) never set this.
+        refreshRouteOnMutation
       />
     </section>
   )

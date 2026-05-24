@@ -34,6 +34,13 @@ interface CommentListProps {
    * WearCommentHost never passes this prop (stays undefined → falsy → existing behavior).
    */
   suppressCompose?: boolean
+  /**
+   * D-01 (Phase 57.1): when true, call router.refresh() on post success so the host route's
+   * RSC count badge re-fetches. Set ONLY by CommentThread (the /watch/[id] surface). D-01 scopes
+   * this to /watch/[id] ("must not affect wears surfaces") and D-03 keeps wears purely optimistic-
+   * local — so WearCommentHost must NOT pass this (stays undefined → falsy → no refresh on wears).
+   */
+  refreshRouteOnMutation?: boolean
 }
 
 /**
@@ -61,6 +68,7 @@ export function CommentList({
   viewerIsFollowing,
   onCountChange,
   suppressCompose,
+  refreshRouteOnMutation,
 }: CommentListProps) {
   const router = useRouter()
   const [comments, setComments] = useState<CommentWithAuthor[]>(initialComments)
@@ -122,11 +130,14 @@ export function CommentList({
       )
       // Clear compose box on success by re-mounting CommentCompose
       setComposeKey((k) => k + 1)
-      // D-01 (Phase 57.1): re-fetch RSC payload so /watch/[id] count badge updates.
+      // D-01 (Phase 57.1): re-fetch RSC payload so the /watch/[id] count badge updates.
       // Uses router.refresh() from next/navigation (client cache only — NOT next/cache server refresh).
       // Safe: /watch/[id] has no unstable_instant; CommentThread is uncached RSC; client state preserved.
-      // Harmless on wears surfaces — local optimistic count survives the RSC merge per Next.js docs.
-      router.refresh()
+      // Gated to refreshRouteOnMutation (set only by CommentThread → /watch/[id]) so wears surfaces
+      // stay purely optimistic-local (D-01 "must not affect wears surfaces" + D-03 no-refetch).
+      if (refreshRouteOnMutation) {
+        router.refresh()
+      }
     })
   }
 
