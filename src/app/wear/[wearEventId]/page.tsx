@@ -6,9 +6,12 @@ import { getWearEventByIdForViewer } from '@/data/wearEvents'
 import { getLikesForTargetCached } from '@/data/reactions'
 import { getWatchesByUser } from '@/data/watches'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { getCommentsForTarget } from '@/data/comments'
+import { getProfilesByIds } from '@/data/profiles'
 import { WearCard } from '@/components/wear/WearCard'
 import { WearDetailMetadata } from '@/components/wear/WearDetailMetadata'
 import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
+import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
 /**
  * Wear detail page (WYWT-17, WYWT-18, WYWT-21).
@@ -98,6 +101,8 @@ export default async function WearDetailPage({
           initialCount={likeState.count}
           showAddToWishlist={showAddToWishlist}
           permalinkUrl={`/wear/${wearEventId}`}
+          ownerUserId={wear.userId}
+          ownerUsername={wear.username ?? ''}
         />
       </Suspense>
       <WearDetailMetadata
@@ -135,6 +140,8 @@ async function WearPhotoStreamed({
   initialCount,
   showAddToWishlist,
   permalinkUrl,
+  ownerUserId,
+  ownerUsername,
 }: {
   photoUrl: string | null
   watchImageUrl: string | null
@@ -152,6 +159,8 @@ async function WearPhotoStreamed({
   initialCount: number
   showAddToWishlist: boolean
   permalinkUrl: string
+  ownerUserId: string
+  ownerUsername: string
 }) {
   let signedUrl: string | null = null
   if (photoUrl) {
@@ -161,6 +170,33 @@ async function WearPhotoStreamed({
       .createSignedUrl(photoUrl, 60 * 60)
     signedUrl = data?.signedUrl ?? null
   }
+
+  // Phase 57 Plan 05: resolve comment thread + gate signals (uncached — no 'use cache').
+  // Wear targets are NEVER wishlist-gated (GATE-01): canComment=true always,
+  // ownerFollowsViewer=false, viewerIsFollowing=false.
+  const target = { type: 'wear' as const, id: wearEventId }
+  const rawComments = await getCommentsForTarget(viewerId, target)
+
+  // Batch-enrich comment authors + include viewerId for optimistic insert.
+  const authorIds = [...new Set(rawComments.map((c) => c.authorId))]
+  if (!authorIds.includes(viewerId)) {
+    authorIds.push(viewerId)
+  }
+  const profileMap = await getProfilesByIds(authorIds)
+
+  const fallbackAuthor: CommentAuthor = { username: 'unknown', displayName: null, avatarUrl: null }
+
+  const initialComments: CommentWithAuthor[] = rawComments.map((c) => ({
+    ...c,
+    author: profileMap.get(c.authorId) ?? fallbackAuthor,
+  }))
+
+  const viewerAuthor: CommentAuthor | null = profileMap.get(viewerId) ?? null
+
+  const canComment = true         // GATE-01: wear targets always open
+  const ownerFollowsViewer = false // no wishlist gate on wears
+  const viewerIsFollowing = false  // no wishlist gate on wears
+  const commentCount = initialComments.length
 
   return (
     <WearCard
@@ -181,6 +217,14 @@ async function WearPhotoStreamed({
       commentHostVariant="inline"
       showAddToWishlist={showAddToWishlist}
       permalinkUrl={permalinkUrl}
+      initialComments={initialComments}
+      canComment={canComment}
+      ownerFollowsViewer={ownerFollowsViewer}
+      viewerIsFollowing={viewerIsFollowing}
+      ownerUserId={ownerUserId}
+      ownerUsername={ownerUsername}
+      viewerAuthor={viewerAuthor}
+      commentCount={commentCount}
     />
   )
 }

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 
 import { WearCard } from '@/components/wear/WearCard'
 import { useViewedWears } from '@/hooks/useViewedWears'
+import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
 // ---------------------------------------------------------------------------
 // Types — canonical location; src/app/wears/[username]/page.tsx imports from here
@@ -16,6 +17,10 @@ import { useViewedWears } from '@/hooks/useViewedWears'
  * One slide's data passed from the server page to WearsLane.
  * Matches WearCardProps minus the fields the lane controls (viewerId,
  * commentHostVariant, onCommentOpenChange) plus wearEventId.
+ *
+ * Phase 57 Plan 05: extended with comment-thread + gate fields (server-resolved).
+ * Wear targets are ungated (GATE-01): canComment=true, ownerFollowsViewer=false,
+ * viewerIsFollowing=false.
  */
 export interface WearSlide {
   wearEventId: string
@@ -33,6 +38,15 @@ export interface WearSlide {
   initialCount: number
   showAddToWishlist: boolean
   permalinkUrl: string
+  // Phase 57 Plan 05: comment-thread + gate props (server-resolved)
+  initialComments: CommentWithAuthor[]
+  canComment: boolean
+  ownerFollowsViewer: boolean
+  viewerIsFollowing: boolean
+  ownerUserId: string
+  ownerUsername: string
+  viewerAuthor: CommentAuthor | null
+  commentCount: number
 }
 
 // ---------------------------------------------------------------------------

@@ -2,14 +2,16 @@ import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { getCurrentUser } from '@/lib/auth'
-import { getProfileByUsername } from '@/data/profiles'
+import { getProfileByUsername, getProfilesByIds } from '@/data/profiles'
 import { getActiveWearsForUser, getWearRailForViewer } from '@/data/wearEvents'
 import { getLikesForTargetCached } from '@/data/reactions'
 import { getWatchesByUser } from '@/data/watches'
+import { getCommentsForTarget } from '@/data/comments'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { WearsLane } from '@/components/wears/WearsLane'
 import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
 import type { WearSlide } from '@/components/wears/WearsLane'
+import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
 /**
  * /wears/[username] — Stories lane server page (SC-1, D-04..D-07, D-09).
@@ -73,6 +75,39 @@ export default async function WearsPage({
   // Per-wear like state.
   const likeStates = await Promise.all(
     wears.map((w) => getLikesForTargetCached(viewerId, { type: 'wear', id: w.id })),
+  )
+
+  // Per-wear comment reads (Phase 57 Plan 05).
+  // BOUNDED-FANOUT NOTE (vs DISP-01): This Promise.all over getCommentsForTarget is acceptable
+  // and NOT a DISP-01 violation. DISP-01 targets the 500-watch profile-collection grid (Plan 06)
+  // where a per-card query would scale with collection size. Here the fan-out is over the
+  // ACTIVE-WEARS set (~48h window, typically <10 wears) — the same shape as the already-approved
+  // per-slide likeStates Promise.all above. Author enrichment is collapsed into ONE getProfilesByIds
+  // batch across all slides (not per-slide). Wear targets are ungated (GATE-01): canComment=true,
+  // ownerFollowsViewer=false, viewerIsFollowing=false.
+  const rawCommentLists = await Promise.all(
+    wears.map((w) => getCommentsForTarget(viewerId, { type: 'wear', id: w.id })),
+  )
+
+  // Batch-resolve author profiles for all comment authors across ALL slides in ONE query.
+  // Collect unique authorIds across all slides + include viewerId for optimistic insert.
+  const allAuthorIds = [
+    ...new Set([
+      ...rawCommentLists.flatMap((comments) => comments.map((c) => c.authorId)),
+      viewerId,
+    ]),
+  ]
+  const profileMap = await getProfilesByIds(allAuthorIds)
+
+  const fallbackAuthor: CommentAuthor = { username: 'unknown', displayName: null, avatarUrl: null }
+  const viewerAuthor: CommentAuthor | null = profileMap.get(viewerId) ?? null
+
+  // Build enriched CommentWithAuthor[] per slide.
+  const commentLists: CommentWithAuthor[][] = rawCommentLists.map((rawComments) =>
+    rawComments.map((c) => ({
+      ...c,
+      author: profileMap.get(c.authorId) ?? fallbackAuthor,
+    })),
   )
 
   // Viewer's watches for wishlist applicability (D-09).
@@ -152,6 +187,16 @@ export default async function WearsPage({
       initialCount: likeStates[i].count,
       showAddToWishlist,
       permalinkUrl: `/wear/${w.id}`,
+      // Phase 57 Plan 05: comment-thread + gate props (server-resolved).
+      // Wear targets are ungated (GATE-01).
+      initialComments: commentLists[i],
+      canComment: true,
+      ownerFollowsViewer: false,
+      viewerIsFollowing: false,
+      ownerUserId: w.userId,
+      ownerUsername: w.username ?? '',
+      viewerAuthor,
+      commentCount: commentLists[i].length,
     }
   })
 

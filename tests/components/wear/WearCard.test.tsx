@@ -51,6 +51,14 @@ describe('WearCard — SC-4 single-source + D-09 wishlist gate (Wave 0 RED)', ()
         commentHostVariant="inline"
         showAddToWishlist={false}
         permalinkUrl="/wear/we-001"
+        initialComments={[]}
+        canComment={true}
+        ownerFollowsViewer={false}
+        viewerIsFollowing={false}
+        ownerUserId="u-001"
+        ownerUsername="alice"
+        viewerAuthor={null}
+        commentCount={0}
       />,
     )
     // The text "Add to wishlist" must not appear at all
@@ -84,6 +92,14 @@ describe('WearCard — SC-4 single-source + D-09 wishlist gate (Wave 0 RED)', ()
         commentHostVariant="inline"
         showAddToWishlist={true}
         permalinkUrl="/wear/we-002"
+        initialComments={[]}
+        canComment={true}
+        ownerFollowsViewer={false}
+        viewerIsFollowing={false}
+        ownerUserId="u-002"
+        ownerUsername="bob"
+        viewerAuthor={null}
+        commentCount={0}
       />,
     )
     // Open the overflow menu so the portal-rendered items are in the DOM.
