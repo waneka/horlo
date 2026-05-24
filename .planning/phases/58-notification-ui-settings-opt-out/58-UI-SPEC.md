@@ -1,10 +1,11 @@
 ---
 phase: 58
 slug: notification-ui-settings-opt-out
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova / neutral / cssVariables
 created: 2026-05-24
+reviewed_at: 2026-05-24
 ---
 
 # Phase 58 — UI Design Contract
@@ -47,7 +48,7 @@ Exceptions:
 - Notification row min-height: 48px (`min-h-12`) — existing convention in `NotificationRow`
 - Toggle row min-height: 48px (`min-h-12`) — existing convention in `PrivacyToggleRow`
 - Notification row vertical padding: 8px (`py-2`) — existing convention
-- Comment preview top margin: 2px (`mt-0.5`) — half-unit, approved for tight secondary-line proximity
+- Comment preview top margin: 4px (`mt-1`) — tight secondary-line gap, grid-compliant
 
 Source: `NotificationRow.tsx:98`, `PrivacyToggleRow.tsx:44`
 
@@ -62,7 +63,7 @@ Source: `NotificationRow.tsx:98`, `PrivacyToggleRow.tsx:44`
 | Actor name — read | 14px (`text-sm`) | 400 normal | 1.5 | `text-sm font-normal text-foreground` | Actor name when row is read |
 | Watch model name | 14px (`text-sm`) | 600 semibold | 1.5 | `text-sm font-semibold text-foreground` | Watch/wear model in copy (`<span className="font-semibold text-foreground">`) |
 | Timestamp / secondary | 14px (`text-sm`) | 400 normal | 1.5 | `text-muted-foreground` inline | `· {timeLabel}` suffix; always muted, never bold |
-| Comment preview line | 12px (`text-xs`) | 400 normal | 1.5 | `text-xs text-muted-foreground line-clamp-2 mt-0.5` | Comment body preview only — like rows have NO second line |
+| Comment preview line | 12px (`text-xs`) | 400 normal | 1.5 | `text-xs text-muted-foreground line-clamp-2 mt-1` | Comment body preview only — like rows have NO second line |
 | Toggle description | 12px (`text-xs`) | 400 normal | 1.5 | `text-xs text-muted-foreground` | PrivacyToggleRow description sub-label |
 | Bucket header | 12px (`text-xs`) | 400 normal | — | `text-xs font-normal uppercase tracking-wide text-muted-foreground` | Today / Yesterday / Earlier sticky subheaders |
 | Settings section title | 14px (`text-sm`) | varies (SettingsSection) | — | (rendered by `SettingsSection` wrapper) | "Notifications" (renamed from "Email notifications") |
@@ -105,6 +106,8 @@ Source: `NotificationRow.tsx:98-99`, `PrivacyToggleRow.tsx:57-59`, `globals.css:
 ## Component Inventory
 
 All components below are EXISTING — Phase 58 extends them; it does not create new ones.
+
+**Primary visual anchor:** the unread indicator stripe (`border-l-2 border-l-accent`) + bold actor name — existing convention, not new design.
 
 ### NotificationRow (extended — primary edit target)
 
@@ -154,7 +157,7 @@ Applies to `watch_comment` and `wear_comment` only. Like rows (`watch_like`, `we
 
 ```tsx
 {commentPreview && (
-  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{commentPreview}</p>
+  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{commentPreview}</p>
 )}
 ```
 
