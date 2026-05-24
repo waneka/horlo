@@ -298,7 +298,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 - [x] 57-02-PLAN.md — Backend correctness: newest-first reconcile (CMNT-03) + addCommentAction logActivity (FEED-06) + getFeedForUser target-owner gate (FEED-07/D-12) + deleteCommentAction revalidate fix + ActivityRow verb
-- [ ] 57-03-PLAN.md — DISP-01 batched grid-count DAL getBatchedWatchCounts (no N+1, D-10 comment-gate)
+- [x] 57-03-PLAN.md — DISP-01 batched grid-count DAL getBatchedWatchCounts (no N+1, D-10 comment-gate)
 - [ ] 57-04-PLAN.md — Shared comment components (CommentThread/List/Item/Compose/GateLocked) + getProfilesByIds (CMNT-01..08, GATE-03)
 
 **Wave 3** *(blocked on Wave 2)*
@@ -326,7 +326,7 @@ Plans:
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
-| 57. Comment Thread UI + Feed Extension + Grid Counts | 2/6 | In Progress|  |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 3/6 | In Progress|  |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up
