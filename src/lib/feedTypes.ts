@@ -9,7 +9,11 @@
 
 import type { WearVisibility } from '@/lib/wearVisibility'
 
-export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn'
+// NOTE: This type is also defined in src/data/activities.ts — both must be kept in sync.
+// Deduplication was not performed to avoid introducing an import cycle (activities.ts
+// imports from feedTypes.ts via the RawFeedRow type; feedTypes.ts importing from
+// activities.ts would create a circular dependency).
+export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn' | 'commented'
 
 /**
  * Keyset pagination cursor for the Network Activity feed (F-04).
@@ -44,11 +48,14 @@ export interface RawFeedRow {
   // watch_worn rows; legacy rows omit it; non-watch_worn rows never
   // populate it). Downstream consumers should default to 'public' or
   // omit display when absent.
+  // Phase 57 (FEED-06): wearEventId is OPTIONAL (only present for
+  // 'commented' rows on wear targets; used for navigation link in ActivityRow).
   metadata: {
     brand: string
     model: string
     imageUrl: string | null
     visibility?: WearVisibility
+    wearEventId?: string
   }
   userId: string
   username: string

@@ -8,10 +8,14 @@ import { timeAgo } from '@/lib/timeAgo'
 import type { RawFeedRow } from '@/lib/feedTypes'
 
 // F-02 flat verbs — exact strings locked by UI-SPEC § Copywriting § Verbs.
+// 'commented on' added for Phase 57 FEED-06/D-11 (verb-only, no comment preview text).
+// NOTE: Record is exhaustive over ActivityType; adding 'commented' to the union
+// without updating this map would be a TypeScript compile error.
 const VERBS: Record<RawFeedRow['type'], string> = {
   watch_added: 'added',
   wishlist_added: 'wishlisted',
   watch_worn: 'wore',
+  commented: 'commented on',
 }
 
 /**
@@ -50,6 +54,14 @@ export function ActivityRow({ row }: { row: RawFeedRow }) {
             <Link
               href={`/watch/${row.watchId}`}
               aria-label={`${watchName} detail`}
+              className="relative z-10 hover:underline focus-visible:underline focus-visible:outline-none"
+            >
+              {watchName}
+            </Link>
+          ) : row.metadata.wearEventId ? (
+            <Link
+              href={`/wear/${row.metadata.wearEventId}`}
+              aria-label={`${watchName} wear detail`}
               className="relative z-10 hover:underline focus-visible:underline focus-visible:outline-none"
             >
               {watchName}

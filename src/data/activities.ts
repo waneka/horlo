@@ -18,7 +18,7 @@ export interface RawFeedPage {
   nextCursor: FeedCursor | null
 }
 
-export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn'
+export type ActivityType = 'watch_added' | 'wishlist_added' | 'watch_worn' | 'commented'
 
 export type WatchAddedMetadata = {
   brand: string
@@ -45,10 +45,27 @@ export type WatchWornMetadata = {
   visibility: WearVisibility
 }
 
+/**
+ * Phase 57 FEED-06: metadata for 'commented' activity rows.
+ * targetType distinguishes watch vs. wear comments for D-12 gate and navigation.
+ * wearEventId is stored in metadata only (activities table has no wearEventId column).
+ * NOTE: targetType uses 'wear' NOT 'wear_event' (Landmine #1).
+ */
+export type CommentedMetadata = {
+  brand: string
+  model: string
+  imageUrl: string | null
+  targetType: 'watch' | 'wear'
+  targetOwnerId: string
+  watchStatus?: string
+  wearEventId?: string
+}
+
 export type ActivityMetadata =
   | WatchAddedMetadata
   | WishlistAddedMetadata
   | WatchWornMetadata
+  | CommentedMetadata
 
 export async function logActivity(
   userId: string,
@@ -67,6 +84,12 @@ export async function logActivity(
   type: 'watch_worn',
   watchId: string | null,
   metadata: WatchWornMetadata,
+): Promise<void>
+export async function logActivity(
+  userId: string,
+  type: 'commented',
+  watchId: string | null,
+  metadata: CommentedMetadata,
 ): Promise<void>
 export async function logActivity(
   userId: string,
@@ -162,6 +185,18 @@ export async function getFeedForUser(
           (${activities.type} = 'watch_added'     AND ${profileSettings.collectionPublic} = true)
           OR (${activities.type} = 'wishlist_added' AND ${profileSettings.wishlistPublic} = true)
           OR (${activities.type} = 'watch_worn'     AND ${activities.metadata}->>'visibility' IN ('public','followers'))
+          OR (${activities.type} = 'commented' AND (
+            ${activities.metadata}->>'targetType' = 'wear'
+            OR (${activities.metadata}->>'targetType' = 'watch' AND ${activities.metadata}->>'watchStatus' != 'wishlist')
+            OR (${activities.metadata}->>'targetType' = 'watch' AND ${activities.metadata}->>'watchStatus' = 'wishlist'
+                AND EXISTS (
+                  SELECT 1 FROM follows f1
+                  JOIN follows f2
+                    ON f2.follower_id = f1.following_id AND f2.following_id = f1.follower_id
+                  WHERE f1.follower_id = ${viewerId}
+                    AND f1.following_id = (${activities.metadata}->>'targetOwnerId')::uuid
+                ))
+          ))
         )`,
         cursorClause,
       ),
@@ -205,6 +240,7 @@ function normalizeMetadata(raw: unknown): RawFeedRow['metadata'] {
       model: typeof m.model === 'string' ? m.model : '',
       imageUrl: typeof m.imageUrl === 'string' ? m.imageUrl : null,
       ...(visibility ? { visibility } : {}),
+      ...(typeof m.wearEventId === 'string' ? { wearEventId: m.wearEventId } : {}),
     }
   }
   return { brand: '', model: '', imageUrl: null }
