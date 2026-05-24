@@ -10,6 +10,8 @@ interface SortableProfileWatchCardProps {
   watch: Watch
   lastWornDate: string | null
   showWishlistMeta: boolean
+  likeCount?: number // threaded through to ProfileWatchCard (DISP-01)
+  commentCount?: number // threaded through to ProfileWatchCard (DISP-01)
 }
 
 /**
@@ -38,6 +40,8 @@ export function SortableProfileWatchCard({
   watch,
   lastWornDate,
   showWishlistMeta,
+  likeCount,
+  commentCount,
 }: SortableProfileWatchCardProps) {
   const {
     attributes,
@@ -95,6 +99,8 @@ export function SortableProfileWatchCard({
           watch={watch}
           lastWornDate={lastWornDate}
           showWishlistMeta={showWishlistMeta}
+          likeCount={likeCount}
+          commentCount={commentCount}
         />
       </div>
       {showDropIndicatorAfter && (

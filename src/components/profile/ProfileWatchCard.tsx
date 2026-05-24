@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Watch as WatchIcon } from 'lucide-react'
+import { Watch as WatchIcon, Heart, MessageCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -14,12 +14,16 @@ interface ProfileWatchCardProps {
   watch: Watch
   lastWornDate: string | null // YYYY-MM-DD or null
   showWishlistMeta?: boolean // when true, show targetPrice + notes preview (Wishlist tab)
+  likeCount?: number // from batched query (DISP-01); hidden at zero
+  commentCount?: number // 0 for gated viewers (D-10 enforcement is in the query)
 }
 
 export function ProfileWatchCard({
   watch,
   lastWornDate,
   showWishlistMeta = false,
+  likeCount,
+  commentCount,
 }: ProfileWatchCardProps) {
   const safeUrl = getSafeImageUrl(watch.imageUrl)
   const days = daysSince(lastWornDate ?? undefined)
@@ -109,6 +113,26 @@ export function ProfileWatchCard({
           )}
           {showWishlistMeta && watch.notes && (
             <p className="line-clamp-2 text-xs text-muted-foreground">Notes: {watch.notes}</p>
+          )}
+          {/* D-09 / DISP-01: like + comment count line. Whole line removed when both zero. */}
+          {((likeCount ?? 0) > 0 || (commentCount ?? 0) > 0) && (
+            <p className="text-xs text-muted-foreground tabular-nums flex items-center gap-1">
+              {(likeCount ?? 0) > 0 && (
+                <>
+                  <Heart className="size-3" aria-hidden />
+                  {likeCount}
+                </>
+              )}
+              {(likeCount ?? 0) > 0 && (commentCount ?? 0) > 0 && (
+                <span className="mx-1">·</span>
+              )}
+              {(commentCount ?? 0) > 0 && (
+                <>
+                  <MessageCircle className="size-3" aria-hidden />
+                  {commentCount}
+                </>
+              )}
+            </p>
           )}
         </CardContent>
       </Card>
