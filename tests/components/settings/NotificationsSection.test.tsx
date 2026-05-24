@@ -24,6 +24,8 @@ import { NotificationsSection } from '@/components/settings/NotificationsSection
 const settings = {
   notifyOnFollow: true,
   notifyOnWatchOverlap: true,
+  notifyOnLike: true,
+  notifyOnComment: true,
 }
 
 describe('NotificationsSection — Phase 22 D-01 migration', () => {
