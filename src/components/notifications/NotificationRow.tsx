@@ -49,7 +49,10 @@ export function NotificationRow({ row }: NotificationRowProps) {
 
   // B-8: unknown types render null — silent no-op, never a broken card.
   // AFTER hooks so Rules of Hooks are honored.
-  if (row.type !== 'follow' && row.type !== 'watch_overlap') {
+  // Phase 58: extended to a 6-type allowlist (D-08); genuinely-unknown future
+  // types (e.g. 'price_drop') still return null safely.
+  const KNOWN_TYPES = ['follow', 'watch_overlap', 'watch_like', 'wear_like', 'watch_comment', 'wear_comment']
+  if (!KNOWN_TYPES.includes(row.type)) {
     return null
   }
 
@@ -61,6 +64,9 @@ export function NotificationRow({ row }: NotificationRowProps) {
 
   const href = resolveHref(row)
   const copy = resolveCopy(row, actorName, actorCount, isUnread)
+  // D-02: comment preview second line — only present on comment payloads;
+  // like payloads have no comment_preview field so this is null for like rows.
+  const commentPreview = (row.payload as { comment_preview?: string })?.comment_preview ?? null
 
   function activate() {
     if (pending) return
@@ -108,6 +114,9 @@ export function NotificationRow({ row }: NotificationRowProps) {
       <div className="flex-1 min-w-0 text-sm text-foreground">
         {copy}
         <span className="text-muted-foreground"> · {timeLabel}</span>
+        {commentPreview && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{commentPreview}</p>
+        )}
       </div>
     </div>
   )
@@ -127,9 +136,16 @@ function resolveHref(row: NotificationRowData): string {
     const watchId = p.watch_id ?? ''
     return `/u/${username}?focusWatch=${watchId}`
   }
-  // Phase 53 D-09: new types (watch_like, wear_like, watch_comment, wear_comment) render null
-  // at the NotificationRow guard above — resolveHref is never called for them.
-  // The early-return guard means this path is unreachable for now; fall back to '#' safely.
+  // D-07: watch_like / watch_comment → /watch/{watch_id}
+  if (row.type === 'watch_like' || row.type === 'watch_comment') {
+    const watchId = (row.payload as { watch_id?: string })?.watch_id ?? ''
+    return `/watch/${watchId}`
+  }
+  // D-07: wear_like / wear_comment → /wear/{wear_event_id}
+  if (row.type === 'wear_like' || row.type === 'wear_comment') {
+    const wearEventId = (row.payload as { wear_event_id?: string })?.wear_event_id ?? ''
+    return `/wear/${wearEventId}`
+  }
   return '#'
 }
 
@@ -173,8 +189,74 @@ function resolveCopy(
     )
   }
 
-  // Phase 53 D-09: new types (watch_like, wear_like, watch_comment, wear_comment) render null
-  // at the NotificationRow guard above — resolveCopy is never called for them.
-  // The early-return guard means this path is unreachable for now; fall back to null safely.
+  // D-01: watch_like — "{actor} liked your {model}" / grouped: "{actor} + {N-1} others liked your {model}"
+  if (row.type === 'watch_like') {
+    const watchModel = (row.payload as { watch_model?: string })?.watch_model ?? 'a watch'
+    if (actorCount > 1) {
+      return (
+        <>
+          <span className={actorClass}>{actorName}</span>
+          <span> + {actorCount - 1} others liked your </span>
+          <span className="font-semibold text-foreground">{watchModel}</span>
+        </>
+      )
+    }
+    return (
+      <>
+        <span className={actorClass}>{actorName}</span>
+        <span> liked your </span>
+        <span className="font-semibold text-foreground">{watchModel}</span>
+      </>
+    )
+  }
+
+  // D-01: wear_like — "{actor} liked your {model} wear" / grouped: "{actor} + {N-1} others liked your {model} wear"
+  if (row.type === 'wear_like') {
+    const watchModel = (row.payload as { watch_model?: string })?.watch_model ?? 'a watch'
+    if (actorCount > 1) {
+      return (
+        <>
+          <span className={actorClass}>{actorName}</span>
+          <span> + {actorCount - 1} others liked your </span>
+          <span className="font-semibold text-foreground">{watchModel}</span>
+          <span> wear</span>
+        </>
+      )
+    }
+    return (
+      <>
+        <span className={actorClass}>{actorName}</span>
+        <span> liked your </span>
+        <span className="font-semibold text-foreground">{watchModel}</span>
+        <span> wear</span>
+      </>
+    )
+  }
+
+  // D-01: watch_comment — "{actor} commented on your {model}" (D-05: never grouped)
+  if (row.type === 'watch_comment') {
+    const watchModel = (row.payload as { watch_model?: string })?.watch_model ?? 'a watch'
+    return (
+      <>
+        <span className={actorClass}>{actorName}</span>
+        <span> commented on your </span>
+        <span className="font-semibold text-foreground">{watchModel}</span>
+      </>
+    )
+  }
+
+  // D-01: wear_comment — "{actor} commented on your {model} wear" (D-05: never grouped)
+  if (row.type === 'wear_comment') {
+    const watchModel = (row.payload as { watch_model?: string })?.watch_model ?? 'a watch'
+    return (
+      <>
+        <span className={actorClass}>{actorName}</span>
+        <span> commented on your </span>
+        <span className="font-semibold text-foreground">{watchModel}</span>
+        <span> wear</span>
+      </>
+    )
+  }
+
   return null
 }
