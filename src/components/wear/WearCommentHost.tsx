@@ -34,6 +34,8 @@ type WearCommentHostProps =
       ownerUsername: string
       viewerId: string | null
       viewerAuthor: CommentAuthor | null
+      /** SC-5 (Phase 57.1): optional count-change callback threaded from WearCard local state */
+      onCountChange?: (delta: number) => void
     }
   | {
       variant: 'inline'
@@ -48,6 +50,8 @@ type WearCommentHostProps =
       ownerUsername: string
       viewerId: string | null
       viewerAuthor: CommentAuthor | null
+      /** SC-5 (Phase 57.1): optional count-change callback threaded from WearCard local state */
+      onCountChange?: (delta: number) => void
     }
 
 /**
@@ -77,6 +81,7 @@ export function WearCommentHost({
   ownerUsername,
   viewerId,
   viewerAuthor,
+  onCountChange,
 }: WearCommentHostProps) {
   const target = { type: 'wear' as const, id: wearEventId }
 
@@ -84,20 +89,25 @@ export function WearCommentHost({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="bg-background max-h-[60vh] overflow-y-auto z-50">
-          <SheetHeader>
-            <SheetTitle>Comments</SheetTitle>
-          </SheetHeader>
-          <CommentList
-            initialComments={initialComments}
-            target={target}
-            canComment={canComment}
-            ownerFollowsViewer={ownerFollowsViewer}
-            viewerIsFollowing={viewerIsFollowing}
-            ownerUserId={ownerUserId}
-            ownerUsername={ownerUsername}
-            viewerId={viewerId}
-            viewerAuthor={viewerAuthor}
-          />
+          {/* SC-1 + SC-4 (Phase 57.1): inner wrapper centers content at 640px on desktop;
+              pb-[calc(1.5rem+env(safe-area-inset-bottom))] clears the iPhone home indicator. */}
+          <div className="mx-auto w-full max-w-[640px] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+            <SheetHeader>
+              <SheetTitle>Comments</SheetTitle>
+            </SheetHeader>
+            <CommentList
+              initialComments={initialComments}
+              target={target}
+              canComment={canComment}
+              ownerFollowsViewer={ownerFollowsViewer}
+              viewerIsFollowing={viewerIsFollowing}
+              ownerUserId={ownerUserId}
+              ownerUsername={ownerUsername}
+              viewerId={viewerId}
+              viewerAuthor={viewerAuthor}
+              onCountChange={onCountChange}
+            />
+          </div>
         </SheetContent>
       </Sheet>
     )
@@ -120,6 +130,7 @@ export function WearCommentHost({
         ownerUsername={ownerUsername}
         viewerId={viewerId}
         viewerAuthor={viewerAuthor}
+        onCountChange={onCountChange}
       />
     </section>
   )
