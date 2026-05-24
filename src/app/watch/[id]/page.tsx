@@ -49,6 +49,15 @@ export default async function WatchPage({ params }: WatchPageProps) {
     canViewerCommentOnTarget(user.id, target),
   ])
 
+  // SC-6 (Phase 57.1 Plan 03): route-level display gate for own-watch compose suppression.
+  // canComment is the raw DAL result (TRUE for the owner via GATE-04 — intentional; do NOT change).
+  // canCommentDisplay is a presentation derivative ONLY: false for the owner so CommentThread
+  // receives canComment=false, preventing it from rendering a compose box to the owner.
+  // The DAL authorization gate (canViewerCommentOnTarget / GATE-04) is UNCHANGED.
+  // Note: the comment-count read below deliberately keeps the raw `canComment` (CMNT-09 / RESEARCH
+  // count-read correction) — switching to canCommentDisplay would zero the owner's badge.
+  const canCommentDisplay = isOwner ? false : canComment
+
   // Phase 57 Plan 05: GATE-03 signals — only resolve isFollowing when needed (wishlist gate).
   // ownerFollowsViewer: owner→viewer direction (GATE-03 State 1 vs 2 copy).
   // viewerIsFollowing: viewer→owner direction (CommentGateLocked State 1 vs 2 selection).
@@ -160,11 +169,12 @@ export default async function WatchPage({ params }: WatchPageProps) {
         <CommentThread
           viewerId={user.id}
           target={target}
-          canComment={canComment}
+          canComment={canCommentDisplay}
           ownerFollowsViewer={ownerFollowsViewer}
           viewerIsFollowing={viewerIsFollowing}
           ownerUserId={ownerUserId}
           ownerUsername={ownerProfile?.username ?? ''}
+          suppressCompose={isOwner}
         />
       </Suspense>
 
