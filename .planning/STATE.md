@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: ready_to_plan
-stopped_at: Phase 57 UI-SPEC approved
+stopped_at: Phase 57 complete — verified (human_needed); CR-01/WR-04/WR-05 code-review fixes applied
 last_updated: "2026-05-24T06:58:56.677Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 7
-  completed_phases: 8
+  completed_phases: 6
   total_plans: 31
   completed_plans: 31
-  percent: 114
+  percent: 86
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 57 — comment-thread-ui-feed-extension-grid-counts
+**Current focus:** Phase 58 — notification-ui-settings-opt-out (next; Phase 57 complete)
 
 ## Current Position
 
-Phase: 999.1
+Phase: 58
 Plan: Not started
-Status: Ready to plan
+Status: Ready to discuss/plan
 Last activity: 2026-05-24
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
-<!-- NOTE: phase.complete CLI set next_phase=999.1 (a [x]-complete v3.0 archived phase) and broke the progress block (7/6=117%). Corrected by hand: real next phase is 57 per the ROADMAP milestone checklist + Progress table (56 done, 57/58 Not started). -->
+<!-- NOTE: phase.complete CLI again mis-set next_phase=999.1 (a [x]-complete v3.0 archived phase) and broke the progress block (8/7=114%). Corrected by hand: Phase 57 is COMPLETE; the real next phase is 58 (Notification UI + Settings Opt-Out) per the ROADMAP v6.0 milestone checklist (53/54/55/56/56a/57 done, 58 Not started). Same recurring CLI bug as the prior phase-57 correction. -->
 
 ## Performance Metrics
 
