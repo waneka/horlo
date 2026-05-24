@@ -3,7 +3,7 @@ import { PrivacyToggleRow } from './PrivacyToggleRow'
 import type { ProfileSettings } from '@/data/profiles'
 
 interface NotificationsSectionProps {
-  settings: Pick<ProfileSettings, 'notifyOnFollow' | 'notifyOnWatchOverlap'>
+  settings: Pick<ProfileSettings, 'notifyOnFollow' | 'notifyOnWatchOverlap' | 'notifyOnLike' | 'notifyOnComment'>
 }
 
 /**
@@ -15,7 +15,7 @@ export function NotificationsSection({
   settings,
 }: NotificationsSectionProps) {
   return (
-    <SettingsSection title="Email notifications">
+    <SettingsSection title="Notifications">
       <div className="divide-y divide-border">
         <PrivacyToggleRow
           label="New Followers"
@@ -28,6 +28,18 @@ export function NotificationsSection({
           description="Get notified when another collector owns a watch you own."
           field="notifyOnWatchOverlap"
           initialValue={settings.notifyOnWatchOverlap}
+        />
+        <PrivacyToggleRow
+          label="Likes"
+          description="Get notified when someone likes your watches or wear posts."
+          field="notifyOnLike"
+          initialValue={settings.notifyOnLike}
+        />
+        <PrivacyToggleRow
+          label="Comments"
+          description="Get notified when someone comments on your watches or wear posts."
+          field="notifyOnComment"
+          initialValue={settings.notifyOnComment}
         />
       </div>
     </SettingsSection>
