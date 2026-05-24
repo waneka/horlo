@@ -294,7 +294,7 @@ Plans:
 **Plans**: 6 plans
 Plans:
 **Wave 1**
-- [ ] 57-01-PLAN.md — Wave 0 test scaffolds: comment-order/gate/grid-count DAL tests + FEED-07 leak case + action FEED-06/delete-revalidate cases (RED)
+- [x] 57-01-PLAN.md — Wave 0 test scaffolds: comment-order/gate/grid-count DAL tests + FEED-07 leak case + action FEED-06/delete-revalidate cases (RED)
 
 **Wave 2** *(blocked on Wave 1)*
 - [ ] 57-02-PLAN.md — Backend correctness: newest-first reconcile (CMNT-03) + addCommentAction logActivity (FEED-06) + getFeedForUser target-owner gate (FEED-07/D-12) + deleteCommentAction revalidate fix + ActivityRow verb
@@ -326,7 +326,7 @@ Plans:
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
-| 57. Comment Thread UI + Feed Extension + Grid Counts | 0/6 | Planned | - |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 1/6 | In Progress|  |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up

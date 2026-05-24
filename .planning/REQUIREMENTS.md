@@ -18,21 +18,21 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 ### Comments (CMNT)
 
-- [ ] **CMNT-01**: A user can post a comment on an individual watch (subject to the wishlist gate, GATE-01).
-- [ ] **CMNT-02**: A user can post a comment on a wear post.
-- [ ] **CMNT-03**: Comments render as a flat, **oldest-first** (chronological) list showing the author avatar, linked username, body, and relative timestamp; the compose box sits **below** the list (conversation convention).
-- [ ] **CMNT-04**: A comment is limited to 500 characters, enforced at the input, the Server Action (Zod `.strict()`), and the database (CHECK); empty/whitespace-only comments are rejected.
+- [x] **CMNT-01**: A user can post a comment on an individual watch (subject to the wishlist gate, GATE-01).
+- [x] **CMNT-02**: A user can post a comment on a wear post.
+- [x] **CMNT-03**: Comments render as a flat, **oldest-first** (chronological) list showing the author avatar, linked username, body, and relative timestamp; the compose box sits **below** the list (conversation convention).
+- [x] **CMNT-04**: A comment is limited to 500 characters, enforced at the input, the Server Action (Zod `.strict()`), and the database (CHECK); empty/whitespace-only comments are rejected.
 - [ ] **CMNT-05**: The comment box shows a live character counter as the user nears the 500-char limit.
-- [ ] **CMNT-06**: A comment author can edit their own comment in place; an edited comment shows an "[edited]" indicator.
-- [ ] **CMNT-07**: A comment author can delete their own comment via an inline confirm; non-authors cannot edit or delete.
+- [x] **CMNT-06**: A comment author can edit their own comment in place; an edited comment shows an "[edited]" indicator.
+- [x] **CMNT-07**: A comment author can delete their own comment via an inline confirm; non-authors cannot edit or delete.
 - [ ] **CMNT-08**: A new comment appears optimistically at the bottom of the list (pending state) and reconciles on success / rolls back on failure.
-- [ ] **CMNT-09**: The comment count shows on watch detail and wear detail.
+- [x] **CMNT-09**: The comment count shows on watch detail and wear detail.
 
 ### Wishlist Comment Gate (GATE)
 
 - [x] **GATE-01**: Comments on a watch with status `wishlist` are restricted to mutual followers; comments on owned/sold/grail watches and on wears are open to any authenticated user.
 - [x] **GATE-02**: Likes remain open to any authenticated user on all watches, including wishlist watches (the intended asymmetry).
-- [ ] **GATE-03**: A non-mutual-follower viewing a wishlist watch sees a "Follow [username] to comment" locked-state CTA instead of the compose box, with no gated comment content leaked.
+- [x] **GATE-03**: A non-mutual-follower viewing a wishlist watch sees a "Follow [username] to comment" locked-state CTA instead of the compose box, with no gated comment content leaked.
 - [x] **GATE-04**: The collection owner can always comment on their own watches regardless of the gate.
 - [x] **GATE-05**: The mutual-follow relationship is computed bidirectionally via a dedicated `isMutualFollow` check (not reused from one-directional `isFollowing`).
 
@@ -47,8 +47,8 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 ### Activity Feed (FEED — continues v2.0's FEED-01..05)
 
-- [ ] **FEED-06**: When a user comments on a watch or wear, a comment activity is recorded and surfaces in the home Network Activity feed for that user's followers (respecting the existing own-or-followed feed privacy). **Likes do NOT generate feed activities** (operator decision — likes live only in bell notifications).
-- [ ] **FEED-07**: Comment feed activities respect the comment's own visibility — a comment on a mutual-follow-gated wishlist watch, or on a private collection/profile, is not surfaced to feed viewers who are not eligible to see that comment (no leak of gated content via the feed).
+- [x] **FEED-06**: When a user comments on a watch or wear, a comment activity is recorded and surfaces in the home Network Activity feed for that user's followers (respecting the existing own-or-followed feed privacy). **Likes do NOT generate feed activities** (operator decision — likes live only in bell notifications).
+- [x] **FEED-07**: Comment feed activities respect the comment's own visibility — a comment on a mutual-follow-gated wishlist watch, or on a private collection/profile, is not surfaced to feed viewers who are not eligible to see that comment (no leak of gated content via the feed).
 
 ### Privacy & Security (SEC)
 
@@ -61,7 +61,7 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 ### Display (DISP)
 
-- [ ] **DISP-01**: Profile collection/wishlist grid cards show a combined "X likes · Y comments" line per watch, sourced from a single batched query (no N+1).
+- [x] **DISP-01**: Profile collection/wishlist grid cards show a combined "X likes · Y comments" line per watch, sourced from a single batched query (no N+1).
 
 ## Future Requirements
 
@@ -101,18 +101,18 @@ Which phases cover which requirements. Filled during roadmap creation.
 | LIKE-03 | Phase 56 | Complete |
 | LIKE-04 | Phase 56 | Complete |
 | LIKE-05 | Phase 53 | Complete |
-| CMNT-01 | Phase 57 | Pending |
-| CMNT-02 | Phase 57 | Pending |
-| CMNT-03 | Phase 57 | Pending |
-| CMNT-04 | Phase 57 | Pending |
+| CMNT-01 | Phase 57 | Complete |
+| CMNT-02 | Phase 57 | Complete |
+| CMNT-03 | Phase 57 | Complete |
+| CMNT-04 | Phase 57 | Complete |
 | CMNT-05 | Phase 57 | Pending |
-| CMNT-06 | Phase 57 | Pending |
-| CMNT-07 | Phase 57 | Pending |
+| CMNT-06 | Phase 57 | Complete |
+| CMNT-07 | Phase 57 | Complete |
 | CMNT-08 | Phase 57 | Pending |
-| CMNT-09 | Phase 57 | Pending |
+| CMNT-09 | Phase 57 | Complete |
 | GATE-01 | Phase 54 | Complete |
 | GATE-02 | Phase 53 | Complete |
-| GATE-03 | Phase 57 | Pending |
+| GATE-03 | Phase 57 | Complete |
 | GATE-04 | Phase 54 | Complete |
 | GATE-05 | Phase 54 | Complete |
 | NOTIF-11 | Phase 55 | Complete |
@@ -121,15 +121,15 @@ Which phases cover which requirements. Filled during roadmap creation.
 | NOTIF-14 | Phase 55 | Complete |
 | NOTIF-15 | Phase 58 | Pending |
 | NOTIF-16 | Phase 58 | Pending |
-| FEED-06 | Phase 57 | Pending |
-| FEED-07 | Phase 57 | Pending |
+| FEED-06 | Phase 57 | Complete |
+| FEED-07 | Phase 57 | Complete |
 | SEC-01 | Phase 53 | Complete |
 | SEC-02 | Phase 54 | Complete |
 | SEC-03 | Phase 55 | Complete |
 | SEC-04 | Phase 53 | Complete |
 | SEC-05 | Phase 55 | Complete |
 | SEC-06 | Phase 53 | Complete |
-| DISP-01 | Phase 57 | Pending |
+| DISP-01 | Phase 57 | Complete |
 
 **Coverage:**
 - v1 requirements: 34 total
