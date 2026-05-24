@@ -291,7 +291,19 @@ Plans:
   5. A non-mutual-follower viewing a wishlist watch sees a "Follow [username] to comment" locked-state CTA instead of the compose box, with no comment content visible; an owner always sees the compose box on their own watches.
   6. When a user comments on a watch or wear, a comment activity is recorded and appears in the home Network Activity feed for their followers — but a comment on a mutual-follow-gated wishlist watch is not surfaced to viewers who are not eligible to see it.
   7. Profile collection and wishlist grid cards show a "X likes · Y comments" line per watch sourced from a single batched query (no N+1 on grid load).
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+**Wave 1**
+- [ ] 57-01-PLAN.md — Wave 0 test scaffolds: comment-order/gate/grid-count DAL tests + FEED-07 leak case + action FEED-06/delete-revalidate cases (RED)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 57-02-PLAN.md — Backend correctness: newest-first reconcile (CMNT-03) + addCommentAction logActivity (FEED-06) + getFeedForUser target-owner gate (FEED-07/D-12) + deleteCommentAction revalidate fix + ActivityRow verb
+- [ ] 57-03-PLAN.md — DISP-01 batched grid-count DAL getBatchedWatchCounts (no N+1, D-10 comment-gate)
+- [ ] 57-04-PLAN.md — Shared comment components (CommentThread/List/Item/Compose/GateLocked) + getProfilesByIds (CMNT-01..08, GATE-03)
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 57-05-PLAN.md — Host wiring: WearCommentHost seam fill + watch/wear/wears-lane comment threads + CMNT-09 footer counts
+- [ ] 57-06-PLAN.md — DISP-01 grid count line on ProfileWatchCard + batched read in ProfileTabContent
 **UI hint**: yes
 
 ### Phase 58: Notification UI + Settings Opt-Out
@@ -314,7 +326,7 @@ Plans:
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
-| 57. Comment Thread UI + Feed Extension + Grid Counts | 0/TBD | Not started | - |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 0/6 | Planned | - |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up
