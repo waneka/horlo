@@ -48,7 +48,7 @@ vi.mock('@/db', () => ({
     select: vi.fn(),
   },
 }))
-vi.mock('@/db/schema', () => ({ watches: {}, wearEvents: {} }))
+vi.mock('@/db/schema', () => ({ watches: {}, wearEvents: {}, comments: {} }))
 vi.mock('drizzle-orm', () => ({ eq: vi.fn() }))
 
 import { addCommentAction, editCommentAction, deleteCommentAction } from '@/app/actions/comments'

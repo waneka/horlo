@@ -15,8 +15,9 @@ import {
   CommentGateError,
 } from '@/data/comments'
 import type { Comment, CommentTarget } from '@/data/comments'
+import { logActivity } from '@/data/activities'
 import { db } from '@/db'
-import { watches, wearEvents } from '@/db/schema'
+import { watches, wearEvents, comments as commentsTable } from '@/db/schema'
 
 // Mass-assignment protection (SEC-03, T-55-IDOR): Zod .strict() rejects any
 // payload keys other than the declared fields. The authorId is NEVER accepted
@@ -69,10 +70,18 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
     let ownerId: string
     let watchBrand: string
     let watchModel: string
+    let watchImageUrl: string | null = null
+    let watchStatus: string | undefined = undefined
 
     if (target.type === 'watch') {
       const [watchRow] = await db
-        .select({ userId: watches.userId, brand: watches.brand, model: watches.model })
+        .select({
+          userId: watches.userId,
+          brand: watches.brand,
+          model: watches.model,
+          imageUrl: watches.imageUrl,   // for feed thumbnail (FEED-06 logActivity metadata)
+          status: watches.status,       // for D-12 gate in feed (watchStatus field)
+        })
         .from(watches)
         .where(eq(watches.id, target.id))
         .limit(1)
@@ -82,8 +91,10 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
       ownerId = watchRow.userId
       watchBrand = watchRow.brand ?? ''
       watchModel = watchRow.model ?? ''
+      watchImageUrl = watchRow.imageUrl ?? null
+      watchStatus = watchRow.status ?? undefined
     } else {
-      // 'wear' target: look up wearEvent → parent watch for brand/model
+      // 'wear' target: look up wearEvent → parent watch for brand/model/imageUrl
       const [wearRow] = await db
         .select({ userId: wearEvents.userId, watchId: wearEvents.watchId })
         .from(wearEvents)
@@ -93,7 +104,7 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
       if (!wearRow) return { success: false, error: 'Not found' }
 
       const [watchRow] = await db
-        .select({ brand: watches.brand, model: watches.model })
+        .select({ brand: watches.brand, model: watches.model, imageUrl: watches.imageUrl })
         .from(watches)
         .where(eq(watches.id, wearRow.watchId))
         .limit(1)
@@ -101,6 +112,7 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
       ownerId = wearRow.userId
       watchBrand = watchRow?.brand ?? ''
       watchModel = watchRow?.model ?? ''
+      watchImageUrl = watchRow?.imageUrl ?? null
     }
 
     // Pre-resolve actor profile so logNotification has denormalized fields.
@@ -174,6 +186,24 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
       }
       // Bell cache on RECIPIENT — invalidate after the awaited insert so the dot lights up.
       revalidateTag(`viewer:${ownerId}`, 'max')
+
+      // FEED-06 / D-13: log 'commented' activity INSERT-only (never on edit/delete).
+      // Guarded by the same ownerId !== user.id condition as logNotification (D-13).
+      // watchId is null for wear targets (activities table has no wearEventId column;
+      // wearEventId is carried in metadata only — Landmine #7 from PATTERNS.md).
+      await logActivity(
+        user.id,
+        'commented',
+        target.type === 'watch' ? target.id : null,
+        {
+          brand: watchBrand,
+          model: watchModel,
+          imageUrl: watchImageUrl,
+          targetType: target.type,           // 'watch' or 'wear' — NOT 'wear_event' (Landmine #1)
+          targetOwnerId: ownerId,
+          ...(target.type === 'watch' ? { watchStatus } : { wearEventId: target.id }),
+        },
+      )
     }
 
     return { success: true, data: comment }
@@ -257,9 +287,50 @@ export async function deleteCommentAction(
 
   try {
     // authorId is ALWAYS getCurrentUser().id — never a client-supplied value.
-    // The DAL deleteComment scopes the WHERE clause by (id, authorId) (T-55-IDOR).
-    // NO logNotification call — NOTIF-12 INSERT-only (delete never fires a notification).
+    // NO logNotification or logActivity call — NOTIF-12 / D-13 INSERT-only (delete never fires).
+    //
+    // Read-then-delete: fetch comment row BEFORE deleting so we can resolve the
+    // target owner for profile cache invalidation (Pitfall-6 gap — Phase 55 missed
+    // revalidateTag on delete). Mirrors editCommentAction's owner-lookup pattern.
+    // IDOR on the read: commentId is a UUID; reading watchId/wearEventId for cache
+    // invalidation is low-risk. The delete itself (deleteComment) is IDOR-protected
+    // by (id, authorId) WHERE scope.
+    const [commentRow] = await db
+      .select()
+      .from(commentsTable)
+      .where(eq(commentsTable?.id, parsed.data.commentId))
+      .limit(1)
+
     await deleteComment(user.id, parsed.data.commentId)
+
+    // Resolve owner + revalidate profile cache (mirrors editCommentAction owner-lookup)
+    if (commentRow?.watchId) {
+      const [watchRow] = await db
+        .select({ userId: watches.userId })
+        .from(watches)
+        .where(eq(watches.id, commentRow.watchId))
+        .limit(1)
+
+      if (watchRow) {
+        const ownerProfile = await getProfileById(watchRow.userId)
+        if (ownerProfile?.username) {
+          revalidateTag(`profile:${ownerProfile.username}`, 'max')
+        }
+      }
+    } else if (commentRow?.wearEventId) {
+      const [wearRow] = await db
+        .select({ userId: wearEvents.userId })
+        .from(wearEvents)
+        .where(eq(wearEvents.id, commentRow.wearEventId))
+        .limit(1)
+
+      if (wearRow) {
+        const ownerProfile = await getProfileById(wearRow.userId)
+        if (ownerProfile?.username) {
+          revalidateTag(`profile:${ownerProfile.username}`, 'max')
+        }
+      }
+    }
 
     return { success: true, data: { id: parsed.data.commentId } }
   } catch (err) {
