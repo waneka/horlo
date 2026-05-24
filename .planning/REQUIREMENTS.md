@@ -25,7 +25,7 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 - [ ] **CMNT-05**: The comment box shows a live character counter as the user nears the 500-char limit.
 - [x] **CMNT-06**: A comment author can edit their own comment in place; an edited comment shows an "[edited]" indicator.
 - [x] **CMNT-07**: A comment author can delete their own comment via an inline confirm; non-authors cannot edit or delete.
-- [ ] **CMNT-08**: A new comment appears optimistically at the **top** of the list (pending state) and reconciles on success / rolls back on failure (newest-first, ROADMAP SC4 — supersedes the original bottom wording).
+- [x] **CMNT-08**: A new comment appears optimistically at the **top** of the list (pending state) and reconciles on success / rolls back on failure (newest-first, ROADMAP SC4 — supersedes the original bottom wording).
 - [x] **CMNT-09**: The comment count shows on watch detail and wear detail.
 
 ### Wishlist Comment Gate (GATE)
@@ -108,7 +108,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | CMNT-05 | Phase 57 | Pending |
 | CMNT-06 | Phase 57 | Complete |
 | CMNT-07 | Phase 57 | Complete |
-| CMNT-08 | Phase 57 | Pending |
+| CMNT-08 | Phase 57 | Complete |
 | CMNT-09 | Phase 57 | Complete |
 | GATE-01 | Phase 54 | Complete |
 | GATE-02 | Phase 53 | Complete |
