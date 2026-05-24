@@ -21,6 +21,7 @@ import { CommonGroundTabContent } from '@/components/profile/CommonGroundTabCont
 import { InsightsTabContent } from '@/components/profile/InsightsTabContent'
 import { resolveCommonGround } from '../common-ground-gate'
 import { isFollowing } from '@/data/follows'
+import { getBatchedWatchCountsCached } from '@/data/reactions'
 import {
   styleDistribution,
   roleDistribution,
@@ -340,6 +341,21 @@ export async function ProfileTabContent({
     const ownedWatches = watches.filter((w) => w.status === 'owned')
     const collectionCount = ownedWatches.length
 
+    // DISP-01: batched like + comment counts resolved ONCE per grid render.
+    // viewerId is always non-null on /u/* (Phase 51 Branch B auth gate).
+    // For safety, pass empty counts for anon viewers (should not be reached
+    // on this auth-gated route, but guards against any future access change).
+    // getBatchedWatchCountsCached carries its own 'use cache' wrapper —
+    // ProfileTabContent must NOT be marked 'use cache' (Cache Components
+    // landmine; D-52-16 / T-57-16). The Map is converted to a plain Record
+    // before crossing the server→client boundary (Maps don't serialize).
+    const watchIds = watches.map((w) => w.id)
+    const countsMap = viewerId !== null
+      ? await getBatchedWatchCountsCached(viewerId, watchIds, profile.username)
+      : new Map<string, { likeCount: number; commentCount: number }>()
+    const counts: Record<string, { likeCount: number; commentCount: number }> =
+      Object.fromEntries(countsMap)
+
     if (tab === 'collection') {
       return (
         <CollectionTabContent
@@ -347,6 +363,7 @@ export async function ProfileTabContent({
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           hasUrlExtract={hasUrlExtract}
+          counts={counts}
         />
       )
     }
@@ -359,6 +376,7 @@ export async function ProfileTabContent({
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           username={profile.username}
+          counts={counts}
         />
       )
     }

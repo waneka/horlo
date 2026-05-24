@@ -25,6 +25,9 @@ interface CollectionTabContentProps {
    *  shows a two-button fallback (disabled "Add by URL" + tooltip + "Add manually")
    *  instead of the standard AddWatchCard. Server-derived in [tab]/page.tsx. */
   hasUrlExtract: boolean
+  /** DISP-01: batched like + comment counts resolved once per grid in ProfileTabContent.
+   *  Key: watchId. Values passed per card to ProfileWatchCard. */
+  counts?: Record<string, { likeCount: number; commentCount: number }>
 }
 
 export function CollectionTabContent({
@@ -32,6 +35,7 @@ export function CollectionTabContent({
   wearDates,
   isOwner,
   hasUrlExtract,
+  counts,
 }: CollectionTabContentProps) {
   const pathname = usePathname() ?? ''
   // Phase 28 D-08 — capture entry pathname so the Add-Watch flow can
@@ -183,6 +187,8 @@ export function CollectionTabContent({
             key={watch.id}
             watch={watch}
             lastWornDate={wearDates[watch.id] ?? null}
+            likeCount={counts?.[watch.id]?.likeCount}
+            commentCount={counts?.[watch.id]?.commentCount}
           />
         ))}
         {/* AddWatchCard removed from grid end — button above the grid owns the CTA (D-06, PLSH-05) */}

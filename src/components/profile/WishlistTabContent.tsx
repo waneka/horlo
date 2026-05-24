@@ -36,6 +36,9 @@ interface WishlistTabContentProps {
   /** Phase 25 D-10: surfaces non-owner copy "{username} hasn't added any
    *  wishlist watches yet." Threaded from [tab]/page.tsx (profile.username). */
   username: string
+  /** DISP-01: batched like + comment counts resolved once per grid in ProfileTabContent.
+   *  Key: watchId. Values passed per card to ProfileWatchCard. */
+  counts?: Record<string, { likeCount: number; commentCount: number }>
 }
 
 export function WishlistTabContent({
@@ -43,6 +46,7 @@ export function WishlistTabContent({
   wearDates,
   isOwner,
   username,
+  counts,
 }: WishlistTabContentProps) {
   const pathname = usePathname() ?? ''
   // Phase 28 D-08 — capture entry pathname so the Add-Watch flow can
@@ -95,6 +99,8 @@ export function WishlistTabContent({
             watch={watch}
             lastWornDate={wearDates[watch.id] ?? null}
             showWishlistMeta
+            likeCount={counts?.[watch.id]?.likeCount}
+            commentCount={counts?.[watch.id]?.commentCount}
           />
         ))}
       </div>
@@ -120,7 +126,7 @@ export function WishlistTabContent({
           </Button>
         </div>
       )}
-      <OwnerWishlistGrid watches={watches} wearDates={wearDates} />
+      <OwnerWishlistGrid watches={watches} wearDates={wearDates} counts={counts} />
     </>
   )
 }
@@ -142,9 +148,11 @@ export function WishlistTabContent({
 function OwnerWishlistGrid({
   watches,
   wearDates,
+  counts,
 }: {
   watches: Watch[]
   wearDates: Record<string, string>
+  counts?: Record<string, { likeCount: number; commentCount: number }>
 }) {
   const watchesById = useMemo(
     () => Object.fromEntries(watches.map((w) => [w.id, w])),
@@ -263,6 +271,8 @@ function OwnerWishlistGrid({
                 watch={watchesById[id]}
                 lastWornDate={wearDates[id] ?? null}
                 showWishlistMeta
+                likeCount={counts?.[id]?.likeCount}
+                commentCount={counts?.[id]?.commentCount}
               />
             ))}
           {/* AddWatchCard removed — button above the grid owns the CTA (D-06, PLSH-05) */}
