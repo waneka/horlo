@@ -161,7 +161,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 - [x] **Phase 54: DAL — Reactions, Comments + Gate Logic** — data access layer with mutual-follow enforcement (completed 2026-05-22)
 - [x] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out (completed 2026-05-22)
 - [x] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages (completed 2026-05-23)
-- [ ] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts
+- [x] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts (completed 2026-05-24)
 - [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
 
 ### 📋 v7.0 Watch Photos (Planted)
@@ -303,7 +303,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 - [x] 57-05-PLAN.md — Host wiring: WearCommentHost seam fill + watch/wear/wears-lane comment threads + CMNT-09 footer counts
-- [ ] 57-06-PLAN.md — DISP-01 grid count line on ProfileWatchCard + batched read in ProfileTabContent
+- [x] 57-06-PLAN.md — DISP-01 grid count line on ProfileWatchCard + batched read in ProfileTabContent
 **UI hint**: yes
 
 ### Phase 58: Notification UI + Settings Opt-Out
@@ -326,7 +326,7 @@ Plans:
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
-| 57. Comment Thread UI + Feed Extension + Grid Counts | 5/6 | In Progress|  |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete   | 2026-05-24 |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up
