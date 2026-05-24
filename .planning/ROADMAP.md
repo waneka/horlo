@@ -302,7 +302,7 @@ Plans:
 - [x] 57-04-PLAN.md — Shared comment components (CommentThread/List/Item/Compose/GateLocked) + getProfilesByIds (CMNT-01..08, GATE-03)
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 57-05-PLAN.md — Host wiring: WearCommentHost seam fill + watch/wear/wears-lane comment threads + CMNT-09 footer counts
+- [x] 57-05-PLAN.md — Host wiring: WearCommentHost seam fill + watch/wear/wears-lane comment threads + CMNT-09 footer counts
 - [ ] 57-06-PLAN.md — DISP-01 grid count line on ProfileWatchCard + batched read in ProfileTabContent
 **UI hint**: yes
 
@@ -326,7 +326,7 @@ Plans:
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
-| 57. Comment Thread UI + Feed Extension + Grid Counts | 4/6 | In Progress|  |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 5/6 | In Progress|  |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up

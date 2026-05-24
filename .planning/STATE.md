@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: Social Interaction
 status: executing
 stopped_at: Phase 57 UI-SPEC approved
-last_updated: "2026-05-24T06:21:34.097Z"
+last_updated: "2026-05-24T06:47:09.185Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 30
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 ## Current Position
 
 Phase: 57 (comment-thread-ui-feed-extension-grid-counts) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 <!-- NOTE: phase.complete CLI set next_phase=999.1 (a [x]-complete v3.0 archived phase) and broke the progress block (7/6=117%). Corrected by hand: real next phase is 57 per the ROADMAP milestone checklist + Progress table (56 done, 57/58 Not started). -->
 
@@ -98,6 +98,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | Phase 57 P01 | 11m | 2 tasks | 5 files |
 | Phase 57 P02 | ~25m | 3 tasks | 7 files |
 | Phase 57-comment-thread-ui-feed-extension-grid-counts P03 | 8m | 1 tasks | 1 files |
+| Phase 57-comment-thread-ui-feed-extension-grid-counts P05 | 35m | 3 tasks | 8 files |
 
 ### Deferred Items
 
