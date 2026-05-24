@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
-status: verifying
+status: ready_to_plan
 stopped_at: Phase 57 UI-SPEC approved
 last_updated: "2026-05-24T06:58:56.677Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 7
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 31
   completed_plans: 31
-  percent: 100
+  percent: 114
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 ## Current Position
 
-Phase: 57 (comment-thread-ui-feed-extension-grid-counts) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 999.1
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-24
 
 Progress: [██████████] 100%

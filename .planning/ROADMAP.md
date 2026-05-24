@@ -326,7 +326,7 @@ Plans:
 | 55. Server Actions + Notification Dedup | 6/6 | Complete    | 2026-05-22 |
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
-| 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete   | 2026-05-24 |
+| 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete    | 2026-05-24 |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up
