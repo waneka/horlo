@@ -163,7 +163,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 - [x] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages (completed 2026-05-23)
 - [x] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts (completed 2026-05-24)
 - [x] **Phase 57.1: Comment UI Polish + Own-Watch Suppression** (INSERTED) — wears-lane drawer max-width + inline post/edit-delete + optimistic count badge + suppress compose on own watches; from Phase 57 prod UAT (completed 2026-05-24)
-- [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
+- [x] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles (completed 2026-05-24)
 
 ### 📋 v7.0 Watch Photos (Planted)
 
@@ -344,7 +344,7 @@ Plans:
 - [x] 58-02-PLAN.md — Inbox rendering: NotificationRow 4-type guard + copy + deep-links + comment-preview line, NotificationsInbox like-collapse (NOTIF-16; D-01..D-08)
 
 **Wave 2** *(blocked on 58-01 — shares NotificationsSection.test.tsx + ProfileSettings type)*
-- [ ] 58-03-PLAN.md — Settings UI: Likes + Comments PrivacyToggleRows, rename title to "Notifications", widen Pick + test assertions (NOTIF-15 UI; D-09/D-10/D-11)
+- [x] 58-03-PLAN.md — Settings UI: Likes + Comments PrivacyToggleRows, rename title to "Notifications", widen Pick + test assertions (NOTIF-15 UI; D-09/D-10/D-11)
 **UI hint**: yes
 
 ## Progress
@@ -358,7 +358,7 @@ Plans:
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete    | 2026-05-24 |
 | 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 3/3 | Complete    | 2026-05-24 |
-| 58. Notification UI + Settings Opt-Out | 2/3 | In Progress|  |
+| 58. Notification UI + Settings Opt-Out | 3/3 | Complete   | 2026-05-24 |
 
 ## Next Up
 

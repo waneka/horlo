@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: executing
-stopped_at: Phase 58 Plan 02 complete
-last_updated: "2026-05-24T20:35:00.000Z"
-last_activity: 2026-05-24 -- Phase 58 Plan 02 complete (notification row render + like collapse)
+stopped_at: Phase 58 Plan 03 complete
+last_updated: "2026-05-24T20:36:30.000Z"
+last_activity: 2026-05-24 -- Phase 58 Plan 03 complete (NotificationsSection UI — Likes + Comments toggles, renamed title, widened Pick)
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 37
-  completed_plans: 36
-  percent: 97
+  completed_plans: 37
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 58 — notification-ui-settings-opt-out (plan 02 complete, plan 03 pending)
+**Current focus:** Phase 58 — notification-ui-settings-opt-out (all 3 plans complete)
 
 ## Current Position
 
 Phase: 58
-Plan: 02 complete
+Plan: 03 complete (all plans done)
 Status: Executing
-Last activity: 2026-05-24 -- Phase 58 Plan 02 complete (notification row render + like collapse)
+Last activity: 2026-05-24 -- Phase 58 Plan 03 complete (NotificationsSection UI — Likes + Comments toggles)
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 <!-- NOTE: Phase 57.1 COMPLETE (2026-05-24): comment-UI polish + own-watch compose suppression — 3/3 plans, build green, 6/6 must-haves structurally verified, 5 human items in 57.1-HUMAN-UAT.md to verify on the Vercel prod deploy. v6.0 has 8 phases: 53/54/55/56/56a/57/57.1 done = 7; 58 (Notification UI) not started. NOTE: gsd-sdk phase.complete corrupted this progress block again (next_phase=999.1, completed_phases=9>actual 7, percent=113>100) — see memory project_phase_complete_999_1_misset; hand-corrected to Phase 58 / 7 of 8 / 88%. Real next = 58 (discuss → plan → execute). -->
 
@@ -111,6 +111,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | Phase 57.1-comment-ui-polish-own-watch-suppression P01 | 5m | 2 tasks | 2 files |
 | Phase 57.1-comment-ui-polish-own-watch-suppression P02 | 7m | 3 tasks | 3 files |
 | Phase 57.1 P03 | 10m | 3 tasks | 3 files |
+| Phase 58 P03 | 73 | 2 tasks | 2 files |
 
 ### Deferred Items
 
