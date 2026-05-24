@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: executing
-stopped_at: Phase 57.1 context gathered
-last_updated: "2026-05-24T16:51:06.735Z"
+stopped_at: "Phase 57.1 Plan 02 complete — ready for Plan 03 (SC-6 own-watch suppression)"
+last_updated: "2026-05-24T17:01:14.371Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 34
-  completed_plans: 32
-  percent: 94
+  completed_plans: 33
+  percent: 97
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 ## Current Position
 
 Phase: 57.1 (comment-ui-polish-own-watch-suppression) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-24
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 <!-- NOTE: Phase 57 COMPLETE + pushed to prod (2026-05-24). Phase 57.1 inserted (decimal gap-closure) from Phase 57 prod-UAT: comment-UI polish + own-watch compose suppression. v6.0 now has 8 phases (53/54/55/56/56a/57 done = 6; 57.1 + 58 not started). NOTE: gsd-sdk phase.complete AND state.add-roadmap-evolution both keep corrupting this progress block (next_phase=999.1, completed_phases>actual, percent>100) — see memory project_phase_complete_999_1_misset; hand-corrected. Real next = 57.1, then 58 (Notification UI). -->
 
@@ -74,6 +74,8 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **55-05: D-09 gate-catch — inner try/catch for createComment catches CommentGateError before generic handler.** Returns `code:'gate'` discriminant; Phase 57 branches to GATE-03 locked-state CTA without string-matching.
 - **55-05: deleteCommentAction returns `{ id: parsed.data.commentId }` — DAL deleteComment returns void.** Avoids an extra DB read to re-fetch the comment row before deletion.
 - **55-05: NOTIF-12 INSERT-only enforced at action layer.** Only `addCommentAction` calls `logNotification`; `editCommentAction` and `deleteCommentAction` never fire notifications.
+- **57.1-02: SC-5/D-03 — WearCard local commentCount state with onCountChange callback chain.** Optimistic count is purely local (WearCard useState); propagated via optional onCountChange callback through WearCommentHost to CommentList. No context or store needed. Math.max(0) guard prevents negative badge.
+- **57.1-02: D-01 — router.refresh() (next/navigation) on CommentList post success.** Fires after setComposeKey on all surfaces; harmless on wears (local state survives RSC merge); provides /watch/[id] count badge update without manual refresh. NOT router from next/cache (server-only).
 
 ### v6.0 Phase Structure
 
@@ -104,6 +106,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | Phase 57-comment-thread-ui-feed-extension-grid-counts P05 | 35m | 3 tasks | 8 files |
 | Phase 57 P06 | 15m | 2 tasks | 5 files |
 | Phase 57.1-comment-ui-polish-own-watch-suppression P01 | 5m | 2 tasks | 2 files |
+| Phase 57.1-comment-ui-polish-own-watch-suppression P02 | 7m | 3 tasks | 3 files |
 
 ### Deferred Items
 
