@@ -21,7 +21,8 @@ interface CommentGateLockedProps {
  *
  * State 1 (viewer has not followed owner): "Follow {owner} to comment" + FollowButton inline
  * State 2 (viewer follows, owner has not followed back): "{owner} needs to follow you back before you can comment" — no button
- * State 3 (mutual — canComment=true): this component is never rendered; CommentCompose renders instead.
+ * State 3 (signals say mutual but the server gate rejected — a stale-gate race):
+ *   show a refresh affordance so the viewer is never stranded with no compose box and no message (WR-05).
  *
  * Copy strings MUST match 57-UI-SPEC Copywriting Contract exactly.
  * FollowButton is REUSED (not re-implemented) — handles anon bounce + optimistic toggle.
@@ -64,7 +65,21 @@ export function CommentGateLocked({
     )
   }
 
-  // State 3 (both following — mutual): should not render (canComment would be true).
-  // Defensive fallback: render nothing.
-  return null
+  // State 3: client signals say mutual but the server gate flipped canComment=false
+  // (stale-gate race, e.g. a just-completed follow-back). Never strand the viewer with
+  // a silently-disappeared compose box — offer an explicit refresh path (WR-05).
+  return (
+    <div className="rounded-md bg-muted px-4 py-4 flex flex-col gap-2 border border-border">
+      <p className="text-sm font-semibold text-foreground">
+        Refresh the page to comment
+      </p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="self-start text-sm font-medium text-primary underline-offset-2 hover:underline"
+      >
+        Refresh
+      </button>
+    </div>
+  )
 }
