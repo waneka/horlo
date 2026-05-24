@@ -47,36 +47,38 @@ export function CommentCompose({ viewerId, pending, onSubmit }: CommentComposePr
   const isDisabled = pending || isBlank || isOverLimit
 
   return (
-    <div className="flex flex-col gap-2">
-      <textarea
-        maxLength={500}
-        rows={3}
-        placeholder="Add a comment…"
-        disabled={pending}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-      />
-      <div className="flex items-center justify-between">
+    <div className="flex items-end gap-2">
+      {/* Textarea wrapper — grows to fill */}
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <textarea
+          maxLength={500}
+          rows={3}
+          placeholder="Add a comment…"
+          disabled={pending}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+        />
         {body.length >= 450 && (
           <span
             className={cn(
-              'text-xs tabular-nums self-end',
+              'text-xs tabular-nums text-right',
               body.length >= 480 ? 'text-destructive' : 'text-muted-foreground',
             )}
           >
             {body.length}/500
           </span>
         )}
-        <button
-          type="button"
-          disabled={isDisabled}
-          className="self-end h-8 px-4 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-50 ml-auto"
-          onClick={handleSubmit}
-        >
-          Post
-        </button>
       </div>
+      {/* Post button — right-aligned, inline */}
+      <button
+        type="button"
+        disabled={isDisabled}
+        className="flex-shrink-0 self-end h-8 px-4 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-50 min-h-[44px] min-w-[44px]"
+        onClick={handleSubmit}
+      >
+        Post
+      </button>
     </div>
   )
 }
