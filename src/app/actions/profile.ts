@@ -59,6 +59,8 @@ const VISIBILITY_FIELDS = [
   'wishlistPublic',
   'notifyOnFollow',
   'notifyOnWatchOverlap',
+  'notifyOnLike',
+  'notifyOnComment',
 ] as const
 
 const updateSettingsSchema = z

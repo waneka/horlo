@@ -13,6 +13,9 @@ export interface ProfileSettings {
   notificationsLastSeenAt: Date
   notifyOnFollow: boolean
   notifyOnWatchOverlap: boolean
+  // Phase 58 additions (NOTIF-15, D-09/D-11):
+  notifyOnLike: boolean
+  notifyOnComment: boolean
 }
 
 export type VisibilityField =
@@ -21,6 +24,8 @@ export type VisibilityField =
   | 'wishlistPublic'
   | 'notifyOnFollow'
   | 'notifyOnWatchOverlap'
+  | 'notifyOnLike'
+  | 'notifyOnComment'
 
 const DEFAULT_SETTINGS: Omit<ProfileSettings, 'userId'> = {
   profilePublic: true,
@@ -29,6 +34,8 @@ const DEFAULT_SETTINGS: Omit<ProfileSettings, 'userId'> = {
   notificationsLastSeenAt: new Date(0), // safe default: epoch means "everything is newer, show dot" for missing rows
   notifyOnFollow: true,
   notifyOnWatchOverlap: true,
+  notifyOnLike: true,
+  notifyOnComment: true,
 }
 
 export async function getProfileByUsername(username: string) {
@@ -106,6 +113,8 @@ export async function getProfileSettings(userId: string): Promise<ProfileSetting
       notificationsLastSeenAt: rows[0].notificationsLastSeenAt,
       notifyOnFollow: rows[0].notifyOnFollow,
       notifyOnWatchOverlap: rows[0].notifyOnWatchOverlap,
+      notifyOnLike: rows[0].notifyOnLike,
+      notifyOnComment: rows[0].notifyOnComment,
     }
   }
   return { userId, ...DEFAULT_SETTINGS }
@@ -161,6 +170,8 @@ export async function updateProfileSettingsField(
       wishlistPublic: field === 'wishlistPublic' ? value : true,
       notifyOnFollow: field === 'notifyOnFollow' ? value : true,
       notifyOnWatchOverlap: field === 'notifyOnWatchOverlap' ? value : true,
+      notifyOnLike: field === 'notifyOnLike' ? value : true,
+      notifyOnComment: field === 'notifyOnComment' ? value : true,
       // notificationsLastSeenAt omitted — DB DEFAULT now() applies on insert
       updatedAt: new Date(),
     })

@@ -47,6 +47,8 @@ const stubProps = {
     notificationsLastSeenAt: new Date(0),
     notifyOnFollow: true,
     notifyOnWatchOverlap: true,
+    notifyOnLike: true,
+    notifyOnComment: true,
   } satisfies ProfileSettings,
   preferences: {
     preferredStyles: [],

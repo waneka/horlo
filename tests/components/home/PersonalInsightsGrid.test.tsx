@@ -101,6 +101,8 @@ beforeEach(() => {
     notificationsLastSeenAt: new Date(0),
     notifyOnFollow: true,
     notifyOnWatchOverlap: true,
+    notifyOnLike: true,
+    notifyOnComment: true,
   })
 })
 
@@ -411,6 +413,8 @@ describe('PersonalInsightsGrid — WR-02 Common Ground privacy gates', () => {
       notificationsLastSeenAt: new Date(0),
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
+      notifyOnLike: true,
+      notifyOnComment: true,
     })
     const { container } = await renderAsync(
       PersonalInsightsGrid({ viewerId: 'v1' }),
@@ -464,6 +468,8 @@ describe('PersonalInsightsGrid — WR-02 Common Ground privacy gates', () => {
       notificationsLastSeenAt: new Date(0),
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
+      notifyOnLike: true,
+      notifyOnComment: true,
     })
     vi.mocked(getTasteOverlapData).mockResolvedValue({
       viewer: { watches: [w], preferences: {} as never, tasteTags: [] },
