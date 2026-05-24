@@ -64,11 +64,17 @@ export function NotificationsInbox({ rows, now = new Date() }: NotificationsInbo
 }
 
 /**
- * NOTIF-08: collapse adjacent watch_overlap rows that share
- * (brand_normalized, model_normalized, calendar day). The most-recent row
- * wins for actor display (avatar + name); actor_count is the group size.
+ * NOTIF-08 / NOTIF-13: collapse groupable notification rows by (type, target_id, UTC-day).
  *
- * Non-overlap rows (follow) pass through unchanged.
+ * Grouped types:
+ *   - watch_overlap: keyed by (brand_normalized, model_normalized, day) — legacy key format
+ *   - watch_like: keyed by (type, watch_id, day) — type-prefixed to prevent collision with watch_overlap
+ *   - wear_like: keyed by (type, wear_event_id, day)
+ *
+ * Non-grouped types (pass through unchanged):
+ *   - follow, watch_comment, wear_comment — comments are never grouped (D-05)
+ *
+ * The most-recent row wins for actor display (avatar + name); actorCount is the group size.
  *
  * Pitfall 7: rows are already viewer-scoped by DAL WHERE user_id = viewerId,
  * so the group key does NOT need recipientUserId.
@@ -78,18 +84,34 @@ function collapseWatchOverlaps(rows: NotificationRowData[]): NotificationRowData
   const nonOverlap: NotificationRowData[] = []
 
   for (const row of rows) {
-    if (row.type !== 'watch_overlap') {
+    if (row.type === 'watch_overlap') {
+      const p = row.payload as { watch_brand_normalized?: string; watch_model_normalized?: string }
+      const brand = p.watch_brand_normalized ?? ''
+      const model = p.watch_model_normalized ?? ''
+      const day = toUtcDayKey(row.createdAt)
+      const key = `${brand}|${model}|${day}`
+      const existing = groups.get(key)
+      if (existing) existing.push(row)
+      else groups.set(key, [row])
+    } else if (row.type === 'watch_like') {
+      // D-04: group watch_like by (type, watch_id, UTC-day)
+      // Type prefix prevents collision with watch_overlap groups sharing the same watch_id (Pitfall 2)
+      const targetId = (row.payload as { watch_id?: string })?.watch_id ?? ''
+      const key = `${row.type}|${targetId}|${toUtcDayKey(row.createdAt)}`
+      const existing = groups.get(key)
+      if (existing) existing.push(row)
+      else groups.set(key, [row])
+    } else if (row.type === 'wear_like') {
+      // D-04: group wear_like by (type, wear_event_id, UTC-day)
+      const targetId = (row.payload as { wear_event_id?: string })?.wear_event_id ?? ''
+      const key = `${row.type}|${targetId}|${toUtcDayKey(row.createdAt)}`
+      const existing = groups.get(key)
+      if (existing) existing.push(row)
+      else groups.set(key, [row])
+    } else {
+      // follow, watch_comment, wear_comment — pass through unchanged (D-05)
       nonOverlap.push(row)
-      continue
     }
-    const p = row.payload as { watch_brand_normalized?: string; watch_model_normalized?: string }
-    const brand = p.watch_brand_normalized ?? ''
-    const model = p.watch_model_normalized ?? ''
-    const day = toUtcDayKey(row.createdAt)
-    const key = `${brand}|${model}|${day}`
-    const existing = groups.get(key)
-    if (existing) existing.push(row)
-    else groups.set(key, [row])
   }
 
   const collapsed: NotificationRowData[] = [...nonOverlap]
