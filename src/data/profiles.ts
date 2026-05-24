@@ -2,7 +2,7 @@ import 'server-only'
 
 import { db } from '@/db'
 import { profiles, profileSettings, follows } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 
 export interface ProfileSettings {
   userId: string
@@ -52,6 +52,37 @@ export async function getProfileById(userId: string) {
     .where(eq(profiles.id, userId))
     .limit(1)
   return rows[0] ?? null
+}
+
+/**
+ * Batch-fetch author profiles by a list of user IDs.
+ * Returns a Map keyed by userId for O(1) lookup during comment enrichment (Plan 04).
+ * Early-returns an empty Map for empty input (avoids a no-arg inArray that some drivers reject).
+ */
+export async function getProfilesByIds(
+  ids: string[],
+): Promise<Map<string, { username: string; displayName: string | null; avatarUrl: string | null }>> {
+  if (ids.length === 0) return new Map()
+
+  const rows = await db
+    .select({
+      id: profiles.id,
+      username: profiles.username,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+    })
+    .from(profiles)
+    .where(inArray(profiles.id, ids))
+
+  const map = new Map<string, { username: string; displayName: string | null; avatarUrl: string | null }>()
+  for (const row of rows) {
+    map.set(row.id, {
+      username: row.username,
+      displayName: row.displayName,
+      avatarUrl: row.avatarUrl,
+    })
+  }
+  return map
 }
 
 /**
