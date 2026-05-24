@@ -1,11 +1,15 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { getCurrentUser } from '@/lib/auth'
 import { getWatchByIdForViewer, getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
 import { getCatalogById } from '@/data/catalog'
 import { getMostRecentWearDate } from '@/data/wearEvents'
 import { getLikesForTargetCached } from '@/data/reactions'
+import { getProfileById } from '@/data/profiles'
+import { canViewerCommentOnTarget, getCommentsForTarget } from '@/data/comments'
+import { isFollowing } from '@/data/follows'
 import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import type { VerdictBundle } from '@/lib/verdict/types'
@@ -13,6 +17,8 @@ import { WatchDetail } from '@/components/watch/WatchDetail'
 import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
 import { SameFamilyRail } from '@/components/insights/SameFamilyRail'
 import { LineageRail } from '@/components/insights/LineageRail'
+import { CommentThread } from '@/components/comment/CommentThread'
+import { CommentThreadSkeleton } from '@/components/comment/CommentThreadSkeleton'
 import { getSameFamilyForCatalog, getLineageForReference } from '@/data/hierarchy'
 import { Button } from '@/components/ui/button'
 
@@ -33,11 +39,39 @@ export default async function WatchPage({ params }: WatchPageProps) {
     notFound()
   }
 
-  const { watch, isOwner } = result
+  const { watch, isOwner, ownerUserId } = result
 
   // Phase 56 D-03: hydrate like state server-side via cached aggregate read.
   // user.id is always a string on this auth-only route (getCurrentUser throws for anon).
-  const likeState = await getLikesForTargetCached(user.id, { type: 'watch', id })
+  const target = { type: 'watch' as const, id }
+  const [likeState, canComment] = await Promise.all([
+    getLikesForTargetCached(user.id, target),
+    canViewerCommentOnTarget(user.id, target),
+  ])
+
+  // Phase 57 Plan 05: GATE-03 signals — only resolve isFollowing when needed (wishlist gate).
+  // ownerFollowsViewer: owner→viewer direction (GATE-03 State 1 vs 2 copy).
+  // viewerIsFollowing: viewer→owner direction (CommentGateLocked State 1 vs 2 selection).
+  // Both are false when canComment=true (gate is open) or non-wishlist watch.
+  const ownerFollowsViewer =
+    !canComment && watch.status === 'wishlist'
+      ? await isFollowing(ownerUserId, user.id)
+      : false
+  const viewerIsFollowing =
+    !canComment && watch.status === 'wishlist'
+      ? await isFollowing(user.id, ownerUserId)
+      : false
+
+  // Resolve comment count for the WatchDetail footer badge (CMNT-09).
+  // Single-read: call getCommentsForTarget once and use .length for the footer count.
+  // CommentThread will use its own internal call — this one extra uncached read is
+  // acceptable vs. adding an initialComments prop chain through WatchDetail (D-03 pattern).
+  const commentCount = canComment
+    ? (await getCommentsForTarget(user.id, target)).length
+    : 0
+
+  // Resolve owner profile for CommentThread (ownerUsername prop).
+  const ownerProfile = await getProfileById(ownerUserId)
 
   // Non-owner never receives lastWornDate — conservative default that honors
   // worn_public intent without adding a separate flag lookup (T-RDB-03).
@@ -84,6 +118,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
         verdict={verdict}
         viewerId={user.id}
         initialLikeState={{ liked: likeState.viewerHasLiked, count: likeState.count }}
+        commentCount={commentCount}
       />
 
       {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
@@ -116,6 +151,22 @@ export default async function WatchPage({ params }: WatchPageProps) {
           3-CTA block. */}
       <SameFamilyRail rows={sameFamily} />
       <LineageRail rows={lineage} />
+
+      {/* Phase 57 Plan 05 CMNT-01: CommentThread RSC sibling — uncached, in Suspense.
+          Rendered at the server tree level (NOT imported inside the 'use client' WatchDetail
+          island — B1 invariant). CommentThread fetches its own comment list internally.
+          viewerIsFollowing resolved server-side (GATE-03 / D-03 plan constraint). */}
+      <Suspense fallback={<CommentThreadSkeleton />}>
+        <CommentThread
+          viewerId={user.id}
+          target={target}
+          canComment={canComment}
+          ownerFollowsViewer={ownerFollowsViewer}
+          viewerIsFollowing={viewerIsFollowing}
+          ownerUserId={ownerUserId}
+          ownerUsername={ownerProfile?.username ?? ''}
+        />
+      </Suspense>
 
       {/* Phase 39b NSV-06 — Fresh-account 3-CTA block (Add to Wishlist /
           Add to Collection / Skip). UI-SPEC § Render Order line 266 — first

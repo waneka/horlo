@@ -193,7 +193,7 @@ export async function getWatchById(userId: string, watchId: string): Promise<Wat
 export async function getWatchByIdForViewer(
   viewerId: string,
   watchId: string,
-): Promise<{ watch: Watch; isOwner: boolean } | null> {
+): Promise<{ watch: Watch; isOwner: boolean; ownerUserId: string } | null> {
   const rows = await db
     .select({
       watch: watches,
@@ -227,6 +227,10 @@ export async function getWatchByIdForViewer(
   return {
     watch: mapRowToWatch(row.watch),
     isOwner: row.watch.userId === viewerId,
+    // Phase 57 Plan 05: expose ownerUserId for GATE-03 signal resolution + CommentThread.
+    // userId is stripped from the Watch domain type (DB-internal field); surfaced here
+    // for the watch-detail page to resolve follow-direction signals without a second query.
+    ownerUserId: row.watch.userId,
   }
 }
 

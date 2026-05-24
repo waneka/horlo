@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, Watch as WatchIcon } from 'lucide-react'
+import { Check, MessageCircle, Watch as WatchIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,6 +52,12 @@ interface WatchDetailProps {
   viewerId?: string
   /** Phase 56 D-03: server-hydrated initial like state from getLikesForTargetCached. */
   initialLikeState?: { liked: boolean; count: number }
+  /**
+   * Phase 57 CMNT-09: comment count for the footer badge.
+   * Hidden at zero. The comment thread renders as an RSC sibling below — this count
+   * is display-only (no tap behavior; thread is already visible). Optional for backward compat.
+   */
+  commentCount?: number
 }
 
 function formatDate(dateStr?: string): string {
@@ -73,7 +79,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -159,6 +165,13 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
                 initialLiked={initialLikeState.liked}
                 initialCount={initialLikeState.count}
               />
+              {/* Phase 57 CMNT-09: comment count badge — hidden at zero (no tap; thread is visible below) */}
+              {(commentCount ?? 0) > 0 && (
+                <span className="inline-flex items-center gap-1 text-sm tabular-nums text-muted-foreground px-2 min-h-[44px]">
+                  <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
+                  {commentCount}
+                </span>
+              )}
             </div>
           )}
 
