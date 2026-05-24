@@ -216,6 +216,134 @@ describe('getFeedForUser — SQL shape (unit)', () => {
 })
 
 // ---------------------------------------------------------------------------
+// PART A-2 — Wave 0 scaffold: FEED-07 / D-12 leak guard (Wave 0 RED)
+//
+// A commented-on-wishlist-watch activity must NOT surface to a non-mutual
+// feed viewer. These tests assert the SQL WHERE shape — mirroring the
+// existing Phase 12 'visibility' test (lines 189-214 above).
+//
+// EXPECTED TO FAIL (RED) on current main because:
+//   - getFeedForUser WHERE clause has no 'commented' branch (lines 161-165)
+//   - The WHERE clause does NOT reference 'targetOwnerId' or 'commented'
+// Plan 02 adds the 'commented' branch + target-owner mutual-follow subquery.
+// ---------------------------------------------------------------------------
+
+describe('getFeedForUser — FEED-07 gated-wishlist-comment leak guard (Wave 0 RED)', () => {
+  beforeEach(() => {
+    mockRows = []
+    calls = []
+  })
+
+  // FEED-07: the WHERE clause must include the literal string 'commented'
+  // so the inner gate has a branch for commented activity rows.
+  // FAILS TODAY because the WHERE sql`` template has no 'commented' literal.
+  it('FEED-07: WHERE clause references "commented" activity type (D-12 gate branch present)', async () => {
+    await getFeedForUser('viewer-uuid', null, 20)
+
+    const whereCall = calls.find((c) => c.op === 'where')
+    expect(whereCall).toBeDefined()
+
+    // Walk the Drizzle AST looking for the string 'commented'
+    const seen = new WeakSet()
+    function hasCommented(val: unknown): boolean {
+      if (!val || typeof val !== 'object') return false
+      if (seen.has(val as object)) return false
+      seen.add(val as object)
+      const obj = val as Record<string, unknown>
+      // sql template chunks: value arrays contain raw SQL strings
+      if (Array.isArray(obj.value)) {
+        for (const chunk of obj.value) {
+          if (typeof chunk === 'string' && chunk.includes('commented')) return true
+        }
+      }
+      // queryChunks (another Drizzle internal shape)
+      if (Array.isArray(obj.queryChunks)) {
+        for (const chunk of obj.queryChunks) {
+          if (typeof chunk === 'string' && chunk.includes('commented')) return true
+        }
+      }
+      for (const v of Object.values(obj)) {
+        if (hasCommented(v)) return true
+      }
+      return false
+    }
+
+    // ASSERT: WHERE clause must contain 'commented' — fails today (no such branch)
+    expect(hasCommented(whereCall!.args)).toBe(true)
+  })
+
+  // FEED-07: the WHERE clause for the 'commented' branch must gate on targetOwnerId
+  // using a mutual-follow EXISTS subquery (D-12).
+  // FAILS TODAY — no 'commented' branch exists.
+  it('FEED-07: WHERE clause for commented branch references "targetOwnerId" for the wishlist mutual-follow gate', async () => {
+    await getFeedForUser('viewer-uuid', null, 20)
+
+    const whereCall = calls.find((c) => c.op === 'where')
+    expect(whereCall).toBeDefined()
+
+    const seen2 = new WeakSet()
+    function hasTargetOwnerId(val: unknown): boolean {
+      if (!val || typeof val !== 'object') return false
+      if (seen2.has(val as object)) return false
+      seen2.add(val as object)
+      const obj = val as Record<string, unknown>
+      if (Array.isArray(obj.value)) {
+        for (const chunk of obj.value) {
+          if (typeof chunk === 'string' && chunk.includes('targetOwnerId')) return true
+        }
+      }
+      if (Array.isArray(obj.queryChunks)) {
+        for (const chunk of obj.queryChunks) {
+          if (typeof chunk === 'string' && chunk.includes('targetOwnerId')) return true
+        }
+      }
+      for (const v of Object.values(obj)) {
+        if (hasTargetOwnerId(v)) return true
+      }
+      return false
+    }
+
+    // ASSERT: WHERE clause must reference targetOwnerId — fails today
+    expect(hasTargetOwnerId(whereCall!.args)).toBe(true)
+  })
+
+  // FEED-07: the WHERE clause must reference 'watchStatus' to distinguish
+  // wishlist comments (gated) from non-wishlist comments (open).
+  // FAILS TODAY — no 'commented' branch exists.
+  it('FEED-07: WHERE clause references "watchStatus" to gate wishlist-targeted commented rows', async () => {
+    await getFeedForUser('viewer-uuid', null, 20)
+
+    const whereCall = calls.find((c) => c.op === 'where')
+    expect(whereCall).toBeDefined()
+
+    const seen3 = new WeakSet()
+    function hasWatchStatus(val: unknown): boolean {
+      if (!val || typeof val !== 'object') return false
+      if (seen3.has(val as object)) return false
+      seen3.add(val as object)
+      const obj = val as Record<string, unknown>
+      if (Array.isArray(obj.value)) {
+        for (const chunk of obj.value) {
+          if (typeof chunk === 'string' && chunk.includes('watchStatus')) return true
+        }
+      }
+      if (Array.isArray(obj.queryChunks)) {
+        for (const chunk of obj.queryChunks) {
+          if (typeof chunk === 'string' && chunk.includes('watchStatus')) return true
+        }
+      }
+      for (const v of Object.values(obj)) {
+        if (hasWatchStatus(v)) return true
+      }
+      return false
+    }
+
+    // ASSERT: WHERE clause must reference watchStatus — fails today
+    expect(hasWatchStatus(whereCall!.args)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // PART B — Integration tests (run only against a live local Supabase stack):
 // seeds 3 profiles with varying privacy settings + a follow graph, asserts
 // F-05 own-filter, F-06 all four privacy branches, keyset stability, and
