@@ -37,6 +37,8 @@ describe('getProfileSettings — DAL visibility-gate defaults', () => {
       notificationsLastSeenAt: new Date(0),
       notifyOnFollow: true,
       notifyOnWatchOverlap: true,
+      notifyOnLike: true,
+      notifyOnComment: true,
     })
   })
 
