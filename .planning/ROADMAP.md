@@ -318,7 +318,14 @@ Plans:
   4. The `/wears/[username]` comment drawer has adequate bottom spacing.
   5. Posting a comment increments the visible comment-count badge immediately (optimistic), without a refresh — required on the wears-lane + `/wear/[wearEventId]`; on `/watch/[id]` where architecturally feasible (count badge in `WatchDetail` vs the `CommentThread` RSC sibling are separate subtrees).
   6. A viewer viewing their OWN watch at `/watch/[id]` does not see a comment compose box (owner case of CMNT-01 reversed); every other viewer's comment access is unchanged.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+- [ ] 57.1-01-PLAN.md — Shared leaf polish: CommentCompose inline Post button (SC-2) + CommentItem inline edit/delete controls & inline delete confirm (SC-3 + D-04)
+- [ ] 57.1-02-PLAN.md — Optimistic count + drawer chrome: WearCommentHost 640px center + safe-area bottom (SC-1/SC-4), CommentList onCountChange branches + router.refresh() (SC-5/CMNT-08/D-01/D-03), WearCard local count state
+
+**Wave 2** *(blocked on Wave 1 — shares CommentList.tsx with 57.1-02)*
+- [ ] 57.1-03-PLAN.md — Own-watch compose suppression: CommentList suppressCompose→null slot (SC-6/D-02), CommentThread pass-through, /watch/[id] canCommentDisplay + suppressCompose={isOwner} (CMNT-01/CMNT-09/GATE-03)
 **UI hint**: yes
 **Source**: Phase 57 prod UAT 2026-05-24. Out of scope → SEED-015 (inline grid like/comment), SEED-016 (`/watch/[id]` redesign).
 
