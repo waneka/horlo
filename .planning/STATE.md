@@ -8,10 +8,10 @@ last_updated: "2026-05-24T17:07:25.052Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 8
-  completed_phases: 9
+  completed_phases: 7
   total_plans: 34
   completed_plans: 34
-  percent: 113
+  percent: 88
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 57.1 — comment-ui-polish-own-watch-suppression
+**Current focus:** Phase 58 — notification-ui-settings-opt-out (not started)
 
 ## Current Position
 
-Phase: 999.1
+Phase: 58
 Plan: Not started
-Status: Ready to plan
+Status: Ready to discuss
 Last activity: 2026-05-24
 
-Progress: [██████████] 100%
+Progress: [█████████░] 88%
 
-<!-- NOTE: Phase 57 COMPLETE + pushed to prod (2026-05-24). Phase 57.1 inserted (decimal gap-closure) from Phase 57 prod-UAT: comment-UI polish + own-watch compose suppression. v6.0 now has 8 phases (53/54/55/56/56a/57 done = 6; 57.1 + 58 not started). NOTE: gsd-sdk phase.complete AND state.add-roadmap-evolution both keep corrupting this progress block (next_phase=999.1, completed_phases>actual, percent>100) — see memory project_phase_complete_999_1_misset; hand-corrected. Real next = 57.1, then 58 (Notification UI). -->
+<!-- NOTE: Phase 57.1 COMPLETE (2026-05-24): comment-UI polish + own-watch compose suppression — 3/3 plans, build green, 6/6 must-haves structurally verified, 5 human items in 57.1-HUMAN-UAT.md to verify on the Vercel prod deploy. v6.0 has 8 phases: 53/54/55/56/56a/57/57.1 done = 7; 58 (Notification UI) not started. NOTE: gsd-sdk phase.complete corrupted this progress block again (next_phase=999.1, completed_phases=9>actual 7, percent=113>100) — see memory project_phase_complete_999_1_misset; hand-corrected to Phase 58 / 7 of 8 / 88%. Real next = 58 (discuss → plan → execute). -->
 
 Out of scope from Phase 57 UAT (captured as seeds): SEED-015 (inline like/comment from profile grid), SEED-016 (`/watch/[id]` redesign).
 
@@ -180,11 +180,12 @@ Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
 
 ## Session Continuity
 
-Last activity: 2026-05-23 — Phase 56A closed out (UAT 10/10 on-device, security 16/16 threats closed, transition complete)
-Stopped at: Phase 57.1 context gathered
-Next action: Run `/gsd-discuss-phase 57` (or `/gsd-plan-phase 57`) to begin Phase 57
+Last activity: 2026-05-24 — Phase 57.1 complete (comment-UI polish + own-watch suppression); 3/3 plans, build green, 6/6 structural must-haves verified; 5 human items pending prod verification (57.1-HUMAN-UAT.md)
+Stopped at: Phase 57.1 complete — ready for Phase 58 (Notification UI + Settings Opt-Out)
+Next action: Push origin main → verify the 5 Phase 57.1 human items on the Vercel prod deploy; then `/gsd-discuss-phase 58` (or `/gsd-plan-phase 58`) to begin Phase 58
 
 ## Operator Next Steps
 
-- Run `/gsd-discuss-phase 57` to gather context for Phase 57 (Comment Thread UI + Feed Extension + Grid Counts), then `/gsd-plan-phase 57`
-- Phase 57 delivers CMNT-01..09, GATE-03, FEED-06, FEED-07, DISP-01 and consumes the shared WearCard/WearCommentHost contract established by Phase 56A
+- Verify Phase 57.1 on prod: push origin main, then confirm the 5 human items in `.planning/phases/57.1-comment-ui-polish-own-watch-suppression/57.1-HUMAN-UAT.md` (drawer centering, iPhone safe-area, optimistic badge, /watch count refresh, own-watch no-compose). Run `/gsd-verify-work 57.1` to record results.
+- Then run `/gsd-discuss-phase 58` for Phase 58 (Notification UI + Settings Opt-Out — NOTIF-15, NOTIF-16), then `/gsd-plan-phase 58`.
+- Pre-existing cleanup (out of 57.1 scope): `CommentGateLocked.tsx:79` uses `font-medium` (introduced in Phase 57 WR-05) — fails `tests/no-raw-palette.test.ts`.
