@@ -95,20 +95,68 @@ export function CommentItem({
 
       {/* Right block: meta + body + controls */}
       <div className="flex-1 min-w-0">
-        {/* Meta line: username · timeAgo [· edited] */}
-        <p className="text-xs text-muted-foreground">
-          <Link
-            href={`/u/${comment.author.username}/collection`}
-            className="font-semibold text-foreground hover:underline focus-visible:underline focus-visible:outline-none"
-          >
-            {comment.author.username}
-          </Link>
-          {' · '}
-          {timeAgo(comment.createdAt)}
-          {comment.editedAt && (
-            <> · <span className="text-xs text-muted-foreground">edited</span></>
+        {/* Meta line: username · timeAgo [· edited] + inline author controls */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <p className="text-xs text-muted-foreground flex-1 min-w-0">
+            <Link
+              href={`/u/${comment.author.username}/collection`}
+              className="font-semibold text-foreground hover:underline focus-visible:underline focus-visible:outline-none"
+            >
+              {comment.author.username}
+            </Link>
+            {' · '}
+            {timeAgo(comment.createdAt)}
+            {comment.editedAt && (
+              <> · <span className="text-xs text-muted-foreground">edited</span></>
+            )}
+          </p>
+          {/* SC-3: icons inline on meta row when author, not editing/deleting */}
+          {isAuthor && !isEditing && !isDeleting && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                aria-label="Edit comment"
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  setEditBody(comment.body)
+                  setIsEditing(true)
+                }}
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+              >
+                <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" aria-hidden />
+              </button>
+              <button
+                aria-label="Delete comment"
+                type="button"
+                disabled={pending}
+                onClick={() => setIsDeleting(true)}
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+              >
+                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" aria-hidden />
+              </button>
+            </div>
           )}
-        </p>
+          {/* D-04: delete confirm inline on meta row, replaces icons when isDeleting */}
+          {isDeleting && !isEditing && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                type="button"
+                className="text-sm text-destructive hover:underline focus-visible:outline-none"
+                onClick={handleDeleteConfirm}
+              >
+                Delete?
+              </button>
+              <span className="text-muted-foreground mx-1">·</span>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:underline focus-visible:outline-none"
+                onClick={() => setIsDeleting(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Body — edit-in-place swaps to textarea */}
         {isEditing ? (
@@ -152,53 +200,6 @@ export function CommentItem({
           </p>
         )}
 
-        {/* Author controls: Pencil + Trash (ONLY when author, not while editing/deleting) */}
-        {isAuthor && !isEditing && !isDeleting && (
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              aria-label="Edit comment"
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                setEditBody(comment.body)
-                setIsEditing(true)
-              }}
-              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
-            >
-              <Pencil className="size-4 text-muted-foreground hover:text-foreground" aria-hidden />
-            </button>
-            <button
-              aria-label="Delete comment"
-              type="button"
-              disabled={pending}
-              onClick={() => setIsDeleting(true)}
-              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
-            >
-              <Trash2 className="size-4 text-muted-foreground hover:text-destructive" aria-hidden />
-            </button>
-          </div>
-        )}
-
-        {/* Inline delete confirm: "Delete? · Cancel" (NO AlertDialog — D-06) */}
-        {isDeleting && !isEditing && (
-          <div className="flex items-center gap-1 mt-1">
-            <button
-              type="button"
-              className="text-sm text-destructive hover:underline focus-visible:outline-none"
-              onClick={handleDeleteConfirm}
-            >
-              Delete?
-            </button>
-            <span className="text-muted-foreground mx-1">·</span>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground hover:underline focus-visible:outline-none"
-              onClick={() => setIsDeleting(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
