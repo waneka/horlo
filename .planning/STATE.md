@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
-status: executing
-stopped_at: Phase 58 Plan 03 complete
+status: complete
+stopped_at: Phase 58 complete — milestone v6.0 phases all done (prod HUMAN-UAT pending on 57.1 + 58)
 last_updated: "2026-05-24T20:36:30.000Z"
-last_activity: 2026-05-24 -- Phase 58 Plan 03 complete (NotificationsSection UI — Likes + Comments toggles, renamed title, widened Pick)
+last_activity: 2026-05-24 -- Phase 58 complete (Notification UI + Settings Opt-Out; 3/3 must-haves structurally verified, build green, 3 human items in 58-HUMAN-UAT.md to verify on prod)
 progress:
-  total_phases: 9
-  completed_phases: 9
+  total_phases: 8
+  completed_phases: 8
   total_plans: 37
   completed_plans: 37
   percent: 100
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 58 — notification-ui-settings-opt-out (all 3 plans complete)
+**Current focus:** Milestone v6.0 Social Interaction — all 8 phases complete (build done); prod HUMAN-UAT verification pending before milestone wrap-up
 
 ## Current Position
 
-Phase: 58
-Plan: 03 complete (all plans done)
-Status: Executing
-Last activity: 2026-05-24 -- Phase 58 Plan 03 complete (NotificationsSection UI — Likes + Comments toggles)
+Phase: 58 (last phase of v6.0 — complete)
+Plan: —
+Status: Milestone v6.0 phases complete (prod verification pending)
+Last activity: 2026-05-24
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% (8/8 v6.0 phases)
 
-<!-- NOTE: Phase 57.1 COMPLETE (2026-05-24): comment-UI polish + own-watch compose suppression — 3/3 plans, build green, 6/6 must-haves structurally verified, 5 human items in 57.1-HUMAN-UAT.md to verify on the Vercel prod deploy. v6.0 has 8 phases: 53/54/55/56/56a/57/57.1 done = 7; 58 (Notification UI) not started. NOTE: gsd-sdk phase.complete corrupted this progress block again (next_phase=999.1, completed_phases=9>actual 7, percent=113>100) — see memory project_phase_complete_999_1_misset; hand-corrected to Phase 58 / 7 of 8 / 88%. Real next = 58 (discuss → plan → execute). -->
+<!-- NOTE: Phase 58 COMPLETE (2026-05-24): Notification UI + Settings Opt-Out — 3/3 plans, build green (next build exit 0), 3/3 must-haves structurally verified, code review clean (0 critical; WR-01/WR-02 fixed), 3 human items in 58-HUMAN-UAT.md to verify on the Vercel prod deploy (4-type render + deep-links, live like-grouping, opt-out round-trip). v6.0 has 8 phases (53/54/55/56/56a/57/57.1/58) — ALL DONE. Milestone v6.0 build complete. gsd-sdk phase.complete corrupted this block again (next_phase=999.1 archived, completed_phases=10>8, percent=111>100) — see memory project_phase_complete_999_1_misset; hand-corrected to 8/8 / 100% / milestone complete. PENDING PROD VERIFICATION: 57.1 (5 items) + 58 (3 items) HUMAN-UAT on Vercel. Real next = deploy to prod (push origin main) → verify HUMAN-UAT items → /gsd-complete-milestone v6.0 (or report prod issues → /gsd-plan-phase 58 --gaps). -->
 
 Out of scope from Phase 57 UAT (captured as seeds): SEED-015 (inline like/comment from profile grid), SEED-016 (`/watch/[id]` redesign).
 
