@@ -77,14 +77,17 @@ export function CommentList({
       author: fallbackAuthor,
     }
 
-    // Insert at TOP — newest-first (CMNT-03 / CMNT-08)
-    setComments([optimistic, ...comments])
+    // Insert at TOP — newest-first (CMNT-03 / CMNT-08).
+    // Functional update so we never capture a stale `comments` snapshot (CR-01).
+    setComments((prev) => [optimistic, ...prev])
 
     startTransition(async () => {
       const result = await addCommentAction({ type: target.type, id: target.id, body })
       if (!result.success) {
-        // Rollback to pre-submit state
-        setComments(comments)
+        // Rollback: remove ONLY the optimistic row via a functional update, so any
+        // concurrent edit/delete that landed while the action was in flight is preserved
+        // (CR-01 — a plain setComments(comments) would blow those away).
+        setComments((prev) => prev.filter((c) => c.id !== optimistic.id))
         // Gate rejection: the action gate is the race backstop (T-57-13 / D-09)
         if (result.code === 'gate') {
           setCanComment(false)
