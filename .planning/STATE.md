@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: executing
-stopped_at: Phase 58 UI-SPEC approved
-last_updated: "2026-05-24T20:21:58.936Z"
-last_activity: 2026-05-24 -- Phase 58 planning complete
+stopped_at: Phase 58 Plan 02 complete
+last_updated: "2026-05-24T20:35:00.000Z"
+last_activity: 2026-05-24 -- Phase 58 Plan 02 complete (notification row render + like collapse)
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 37
-  completed_plans: 35
-  percent: 95
+  completed_plans: 36
+  percent: 97
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 58 — notification-ui-settings-opt-out (not started)
+**Current focus:** Phase 58 — notification-ui-settings-opt-out (plan 02 complete, plan 03 pending)
 
 ## Current Position
 
 Phase: 58
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-24 -- Phase 58 planning complete
+Plan: 02 complete
+Status: Executing
+Last activity: 2026-05-24 -- Phase 58 Plan 02 complete (notification row render + like collapse)
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 <!-- NOTE: Phase 57.1 COMPLETE (2026-05-24): comment-UI polish + own-watch compose suppression — 3/3 plans, build green, 6/6 must-haves structurally verified, 5 human items in 57.1-HUMAN-UAT.md to verify on the Vercel prod deploy. v6.0 has 8 phases: 53/54/55/56/56a/57/57.1 done = 7; 58 (Notification UI) not started. NOTE: gsd-sdk phase.complete corrupted this progress block again (next_phase=999.1, completed_phases=9>actual 7, percent=113>100) — see memory project_phase_complete_999_1_misset; hand-corrected to Phase 58 / 7 of 8 / 88%. Real next = 58 (discuss → plan → execute). -->
 
@@ -77,6 +77,8 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **57.1-02: SC-5/D-03 — WearCard local commentCount state with onCountChange callback chain.** Optimistic count is purely local (WearCard useState); propagated via optional onCountChange callback through WearCommentHost to CommentList. No context or store needed. Math.max(0) guard prevents negative badge.
 - **57.1-02: D-01 — router.refresh() (next/navigation) on CommentList post success.** Fires after setComposeKey on all surfaces; harmless on wears (local state survives RSC merge); provides /watch/[id] count badge update without manual refresh. NOT router from next/cache (server-only).
 - **57.1-03: SC-6 — suppressCompose prop chain (page → CommentThread → CommentList).** Display-only gate: `canCommentDisplay = isOwner ? false : canComment` + `suppressCompose={isOwner}`. CommentList renders null compose slot (neither CommentCompose nor CommentGateLocked, D-02). CMNT-09 count badge preserved: count read keeps raw `canComment` (RESEARCH correction supersedes UI-SPEC). DAL/GATE-04 unchanged. WearCommentHost never passes suppressCompose.
+- **58-02: B-8 guard replaced with KNOWN_TYPES allowlist of 6 values (D-08).** Genuinely-unknown future types still return null. Type-prefixed collapse key (`type|targetId|UTC-day`) prevents `watch_like` merging with `watch_overlap` groups sharing the same `watch_id`.
+- **58-02: comment_preview rendered as plain-text JSX children (T-58-03).** No `dangerouslySetInnerHTML` — React auto-escapes. `wear` suffix appended as a separate `<span>` after the model span to preserve model bolding.
 
 ### v6.0 Phase Structure
 

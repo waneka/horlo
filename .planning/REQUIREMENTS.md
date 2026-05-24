@@ -43,7 +43,7 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 - [x] **NOTIF-13**: Like notifications for the same target are grouped ("X and N others liked …") rather than one per like.
 - [x] **NOTIF-14**: Rapid like/unlike churn does not produce duplicate/spam notifications (deduped).
 - [x] **NOTIF-15**: A user can independently opt out of like notifications and comment notifications in Settings → Notifications (`notifyOnLike`, `notifyOnComment`).
-- [ ] **NOTIF-16**: Like/comment notifications render with clear copy and deep-link to the target in the existing inbox + bell.
+- [x] **NOTIF-16**: Like/comment notifications render with clear copy and deep-link to the target in the existing inbox + bell.
 
 ### Activity Feed (FEED — continues v2.0's FEED-01..05)
 
@@ -120,7 +120,7 @@ Which phases cover which requirements. Filled during roadmap creation.
 | NOTIF-13 | Phase 55 | Complete |
 | NOTIF-14 | Phase 55 | Complete |
 | NOTIF-15 | Phase 58 | Complete |
-| NOTIF-16 | Phase 58 | Pending |
+| NOTIF-16 | Phase 58 | Complete |
 | FEED-06 | Phase 57 | Complete |
 | FEED-07 | Phase 57 | Complete |
 | SEC-01 | Phase 53 | Complete |

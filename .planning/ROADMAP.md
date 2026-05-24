@@ -341,7 +341,7 @@ Plans:
 Plans:
 **Wave 1**
 - [x] 58-01-PLAN.md — Settings persistence chain: widen ProfileSettings/VisibilityField/DEFAULT_SETTINGS/getProfileSettings/upsert + VISIBILITY_FIELDS Zod allowlist + test fixture (NOTIF-15 wiring; DRIFT-1/2/3 + Pitfall 5)
-- [ ] 58-02-PLAN.md — Inbox rendering: NotificationRow 4-type guard + copy + deep-links + comment-preview line, NotificationsInbox like-collapse (NOTIF-16; D-01..D-08)
+- [x] 58-02-PLAN.md — Inbox rendering: NotificationRow 4-type guard + copy + deep-links + comment-preview line, NotificationsInbox like-collapse (NOTIF-16; D-01..D-08)
 
 **Wave 2** *(blocked on 58-01 — shares NotificationsSection.test.tsx + ProfileSettings type)*
 - [ ] 58-03-PLAN.md — Settings UI: Likes + Comments PrivacyToggleRows, rename title to "Notifications", widen Pick + test assertions (NOTIF-15 UI; D-09/D-10/D-11)
@@ -358,7 +358,7 @@ Plans:
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete    | 2026-05-24 |
 | 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 3/3 | Complete    | 2026-05-24 |
-| 58. Notification UI + Settings Opt-Out | 1/3 | In Progress|  |
+| 58. Notification UI + Settings Opt-Out | 2/3 | In Progress|  |
 
 ## Next Up
 
