@@ -287,4 +287,264 @@ describe('NotificationRow', () => {
     })
 
   })
+
+  // ---------------------------------------------------------------------------
+  // New types: watch_like, wear_like, watch_comment, wear_comment (D-01/D-02/D-03/D-07/D-08)
+  // ---------------------------------------------------------------------------
+
+  describe('watch_like type — single actor', () => {
+    it('renders "liked your {model}" copy', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_like',
+            payload: { watch_id: 'w-1', watch_model: 'Submariner' },
+          })}
+        />,
+      )
+      const text = getNotifCopyText(container)
+      expect(text).toContain('liked your')
+      expect(text).toContain('Submariner')
+    })
+
+    it('renders no comment-preview <p> for like row', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_like',
+            payload: { watch_id: 'w-1', watch_model: 'Submariner' },
+          })}
+        />,
+      )
+      const preview = container.querySelector('.line-clamp-2')
+      expect(preview).toBeNull()
+    })
+
+    it('click navigates to /watch/{watch_id} via router.push', async () => {
+      mockPush.mockClear()
+      ;(markNotificationRead as Mock).mockResolvedValue({ success: true, data: undefined })
+      render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_like',
+            payload: { watch_id: 'w-42', watch_model: 'Submariner' },
+          })}
+        />,
+      )
+      const link = screen.getByRole('link')
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(mockPush).toHaveBeenCalledWith('/watch/w-42')
+    })
+  })
+
+  describe('watch_like type — grouped (actorCount > 1)', () => {
+    it('renders "+ N others liked your {model}" grouped copy', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_like',
+            payload: { watch_id: 'w-1', watch_model: 'Submariner' },
+            actorCount: 3,
+          })}
+        />,
+      )
+      const text = getNotifCopyText(container)
+      expect(text).toContain('+ 2 others liked your')
+      expect(text).toContain('Submariner')
+    })
+  })
+
+  describe('wear_like type — single actor', () => {
+    it('renders "liked your {model} wear" copy', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_like',
+            payload: { wear_event_id: 'we-1', watch_model: 'Speedmaster' },
+          })}
+        />,
+      )
+      const text = getNotifCopyText(container)
+      expect(text).toContain('liked your')
+      expect(text).toContain('Speedmaster wear')
+    })
+
+    it('renders no comment-preview <p> for wear_like row', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_like',
+            payload: { wear_event_id: 'we-1', watch_model: 'Speedmaster' },
+          })}
+        />,
+      )
+      const preview = container.querySelector('.line-clamp-2')
+      expect(preview).toBeNull()
+    })
+
+    it('click navigates to /wear/{wear_event_id} via router.push', async () => {
+      mockPush.mockClear()
+      ;(markNotificationRead as Mock).mockResolvedValue({ success: true, data: undefined })
+      render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_like',
+            payload: { wear_event_id: 'we-99', watch_model: 'Speedmaster' },
+          })}
+        />,
+      )
+      const link = screen.getByRole('link')
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(mockPush).toHaveBeenCalledWith('/wear/we-99')
+    })
+  })
+
+  describe('wear_like type — grouped (actorCount > 1)', () => {
+    it('renders "+ N others liked your {model} wear" grouped copy', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_like',
+            payload: { wear_event_id: 'we-1', watch_model: 'Speedmaster' },
+            actorCount: 3,
+          })}
+        />,
+      )
+      const text = getNotifCopyText(container)
+      expect(text).toContain('+ 2 others liked your')
+      expect(text).toContain('Speedmaster wear')
+    })
+  })
+
+  describe('watch_comment type', () => {
+    it('renders "commented on your {model}" copy', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_comment',
+            payload: {
+              watch_id: 'w-1',
+              watch_model: 'Datejust',
+              comment_id: 'c-1',
+              comment_preview: 'Great piece!',
+            },
+          })}
+        />,
+      )
+      const text = getNotifCopyText(container)
+      expect(text).toContain('commented on your')
+      expect(text).toContain('Datejust')
+    })
+
+    it('renders comment_preview in muted clamped <p>', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_comment',
+            payload: {
+              watch_id: 'w-1',
+              watch_model: 'Datejust',
+              comment_id: 'c-1',
+              comment_preview: 'Great piece!',
+            },
+          })}
+        />,
+      )
+      const preview = container.querySelector('p.line-clamp-2')
+      expect(preview).not.toBeNull()
+      expect(preview?.textContent).toBe('Great piece!')
+      expect(preview?.className).toContain('text-xs')
+      expect(preview?.className).toContain('text-muted-foreground')
+    })
+
+    it('click navigates to /watch/{watch_id} via router.push', async () => {
+      mockPush.mockClear()
+      ;(markNotificationRead as Mock).mockResolvedValue({ success: true, data: undefined })
+      render(
+        <NotificationRow
+          row={makeRow({
+            type: 'watch_comment',
+            payload: {
+              watch_id: 'w-55',
+              watch_model: 'Datejust',
+              comment_id: 'c-1',
+              comment_preview: 'Great piece!',
+            },
+          })}
+        />,
+      )
+      const link = screen.getByRole('link')
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(mockPush).toHaveBeenCalledWith('/watch/w-55')
+    })
+  })
+
+  describe('wear_comment type', () => {
+    it('renders "commented on your {model} wear" copy', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_comment',
+            payload: {
+              wear_event_id: 'we-1',
+              watch_model: 'Aquanaut',
+              comment_id: 'c-2',
+              comment_preview: 'Beautiful wear!',
+            },
+          })}
+        />,
+      )
+      const text = getNotifCopyText(container)
+      expect(text).toContain('commented on your')
+      expect(text).toContain('Aquanaut wear')
+    })
+
+    it('renders comment_preview in muted clamped <p>', () => {
+      const { container } = render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_comment',
+            payload: {
+              wear_event_id: 'we-1',
+              watch_model: 'Aquanaut',
+              comment_id: 'c-2',
+              comment_preview: 'Beautiful wear!',
+            },
+          })}
+        />,
+      )
+      const preview = container.querySelector('p.line-clamp-2')
+      expect(preview).not.toBeNull()
+      expect(preview?.textContent).toBe('Beautiful wear!')
+    })
+
+    it('click navigates to /wear/{wear_event_id} via router.push', async () => {
+      mockPush.mockClear()
+      ;(markNotificationRead as Mock).mockResolvedValue({ success: true, data: undefined })
+      render(
+        <NotificationRow
+          row={makeRow({
+            type: 'wear_comment',
+            payload: {
+              wear_event_id: 'we-77',
+              watch_model: 'Aquanaut',
+              comment_id: 'c-2',
+              comment_preview: 'Beautiful wear!',
+            },
+          })}
+        />,
+      )
+      const link = screen.getByRole('link')
+      await act(async () => {
+        fireEvent.click(link)
+      })
+      expect(mockPush).toHaveBeenCalledWith('/wear/we-77')
+    })
+  })
 })
