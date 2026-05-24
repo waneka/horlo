@@ -321,7 +321,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 **Wave 1**
-- [ ] 57.1-01-PLAN.md — Shared leaf polish: CommentCompose inline Post button (SC-2) + CommentItem inline edit/delete controls & inline delete confirm (SC-3 + D-04)
+- [x] 57.1-01-PLAN.md — Shared leaf polish: CommentCompose inline Post button (SC-2) + CommentItem inline edit/delete controls & inline delete confirm (SC-3 + D-04)
 - [ ] 57.1-02-PLAN.md — Optimistic count + drawer chrome: WearCommentHost 640px center + safe-area bottom (SC-1/SC-4), CommentList onCountChange branches + router.refresh() (SC-5/CMNT-08/D-01/D-03), WearCard local count state
 
 **Wave 2** *(blocked on Wave 1 — shares CommentList.tsx with 57.1-02)*
@@ -350,7 +350,7 @@ Plans:
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete    | 2026-05-24 |
-| 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 0/TBD | Not started | - |
+| 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 1/3 | In Progress|  |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up
