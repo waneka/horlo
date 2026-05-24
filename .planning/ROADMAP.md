@@ -162,7 +162,7 @@ See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5
 - [x] **Phase 55: Server Actions + Notification Dedup** — mutation entry points with Zod validation and notification fan-out (completed 2026-05-22)
 - [x] **Phase 56: Like UI** — LikeButton component wired into watch and wear detail pages (completed 2026-05-23)
 - [x] **Phase 57: Comment Thread UI + Feed Extension + Grid Counts** — comment compose/list/edit/delete plus feed activities and profile grid counts (completed 2026-05-24)
-- [ ] **Phase 57.1: Comment UI Polish + Own-Watch Suppression** (INSERTED) — wears-lane drawer max-width + inline post/edit-delete + optimistic count badge + suppress compose on own watches; from Phase 57 prod UAT
+- [x] **Phase 57.1: Comment UI Polish + Own-Watch Suppression** (INSERTED) — wears-lane drawer max-width + inline post/edit-delete + optimistic count badge + suppress compose on own watches; from Phase 57 prod UAT (completed 2026-05-24)
 - [ ] **Phase 58: Notification UI + Settings Opt-Out** — bell/inbox rendering for new types plus notifyOnLike/notifyOnComment toggles
 
 ### 📋 v7.0 Watch Photos (Planted)
@@ -325,7 +325,7 @@ Plans:
 - [x] 57.1-02-PLAN.md — Optimistic count + drawer chrome: WearCommentHost 640px center + safe-area bottom (SC-1/SC-4), CommentList onCountChange branches + router.refresh() (SC-5/CMNT-08/D-01/D-03), WearCard local count state
 
 **Wave 2** *(blocked on Wave 1 — shares CommentList.tsx with 57.1-02)*
-- [ ] 57.1-03-PLAN.md — Own-watch compose suppression: CommentList suppressCompose→null slot (SC-6/D-02), CommentThread pass-through, /watch/[id] canCommentDisplay + suppressCompose={isOwner} (CMNT-01/CMNT-09/GATE-03)
+- [x] 57.1-03-PLAN.md — Own-watch compose suppression: CommentList suppressCompose→null slot (SC-6/D-02), CommentThread pass-through, /watch/[id] canCommentDisplay + suppressCompose={isOwner} (CMNT-01/CMNT-09/GATE-03)
 **UI hint**: yes
 **Source**: Phase 57 prod UAT 2026-05-24. Out of scope → SEED-015 (inline grid like/comment), SEED-016 (`/watch/[id]` redesign).
 
@@ -350,7 +350,7 @@ Plans:
 | 56. Like UI | 3/3 | Complete   | 2026-05-23 |
 | 56a. Wear View Unification | 9/9 | Complete    | 2026-05-23 |
 | 57. Comment Thread UI + Feed Extension + Grid Counts | 6/6 | Complete    | 2026-05-24 |
-| 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 2/3 | In Progress|  |
+| 57.1. Comment UI Polish + Own-Watch Suppression (INSERTED) | 3/3 | Complete   | 2026-05-24 |
 | 58. Notification UI + Settings Opt-Out | 0/TBD | Not started | - |
 
 ## Next Up

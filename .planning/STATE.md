@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
-status: executing
-stopped_at: "Phase 57.1 Plan 02 complete — ready for Plan 03 (SC-6 own-watch suppression)"
-last_updated: "2026-05-24T17:01:14.371Z"
+status: verifying
+stopped_at: "Phase 57.1 Plan 03 complete — SC-6 own-watch compose suppression shipped; phase 57.1 complete, ready for Phase 58 (Notification UI)"
+last_updated: "2026-05-24T17:07:25.052Z"
 last_activity: 2026-05-24
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 34
-  completed_plans: 33
-  percent: 97
+  completed_plans: 34
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
 
 Phase: 57.1 (comment-ui-polish-own-watch-suppression) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-24
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 <!-- NOTE: Phase 57 COMPLETE + pushed to prod (2026-05-24). Phase 57.1 inserted (decimal gap-closure) from Phase 57 prod-UAT: comment-UI polish + own-watch compose suppression. v6.0 now has 8 phases (53/54/55/56/56a/57 done = 6; 57.1 + 58 not started). NOTE: gsd-sdk phase.complete AND state.add-roadmap-evolution both keep corrupting this progress block (next_phase=999.1, completed_phases>actual, percent>100) — see memory project_phase_complete_999_1_misset; hand-corrected. Real next = 57.1, then 58 (Notification UI). -->
 
@@ -76,6 +76,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 - **55-05: NOTIF-12 INSERT-only enforced at action layer.** Only `addCommentAction` calls `logNotification`; `editCommentAction` and `deleteCommentAction` never fire notifications.
 - **57.1-02: SC-5/D-03 — WearCard local commentCount state with onCountChange callback chain.** Optimistic count is purely local (WearCard useState); propagated via optional onCountChange callback through WearCommentHost to CommentList. No context or store needed. Math.max(0) guard prevents negative badge.
 - **57.1-02: D-01 — router.refresh() (next/navigation) on CommentList post success.** Fires after setComposeKey on all surfaces; harmless on wears (local state survives RSC merge); provides /watch/[id] count badge update without manual refresh. NOT router from next/cache (server-only).
+- **57.1-03: SC-6 — suppressCompose prop chain (page → CommentThread → CommentList).** Display-only gate: `canCommentDisplay = isOwner ? false : canComment` + `suppressCompose={isOwner}`. CommentList renders null compose slot (neither CommentCompose nor CommentGateLocked, D-02). CMNT-09 count badge preserved: count read keeps raw `canComment` (RESEARCH correction supersedes UI-SPEC). DAL/GATE-04 unchanged. WearCommentHost never passes suppressCompose.
 
 ### v6.0 Phase Structure
 
@@ -107,6 +108,7 @@ Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline
 | Phase 57 P06 | 15m | 2 tasks | 5 files |
 | Phase 57.1-comment-ui-polish-own-watch-suppression P01 | 5m | 2 tasks | 2 files |
 | Phase 57.1-comment-ui-polish-own-watch-suppression P02 | 7m | 3 tasks | 3 files |
+| Phase 57.1 P03 | 10m | 3 tasks | 3 files |
 
 ### Deferred Items
 
