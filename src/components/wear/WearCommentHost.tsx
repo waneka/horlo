@@ -90,8 +90,9 @@ export function WearCommentHost({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="bg-background max-h-[60vh] overflow-y-auto z-50">
           {/* SC-1 + SC-4 (Phase 57.1): inner wrapper centers content at 640px on desktop;
-              pb-[calc(1.5rem+env(safe-area-inset-bottom))] clears the iPhone home indicator. */}
-          <div className="mx-auto w-full max-w-[640px] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+              px-4 keeps content off the screen edges on mobile (57.1 UAT Test 2 fix — SheetContent
+              has no side padding); pb-[calc(1.5rem+env(safe-area-inset-bottom))] clears the iPhone home indicator. */}
+          <div className="mx-auto w-full max-w-[640px] px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <SheetHeader>
               <SheetTitle>Comments</SheetTitle>
             </SheetHeader>
