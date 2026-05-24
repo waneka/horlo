@@ -15,7 +15,7 @@ import 'server-only'
 // subquery is purposely non-functional. All comment access MUST go through
 // this DAL. See Phase 53 D-07 and Phase 54 D-02 for full rationale.
 
-import { and, asc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import type { InferSelectModel } from 'drizzle-orm'
 
 import { db } from '@/db'
@@ -130,7 +130,8 @@ export async function createComment(input: {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns comments for the target in chronological order (oldest first, CMNT-03).
+ * Returns comments for the target in reverse-chronological order
+ * (newest first — CMNT-03 superseded by operator decision 2026-05-22, ROADMAP SC1).
  * Returns [] for a gated (non-mutual) viewer on a wishlist watch — no content
  * and no count is leaked (D-06). The Phase 57 UI derives gate state from
  * canViewerCommentOnTarget separately, not from the list shape.
@@ -147,13 +148,13 @@ export async function getCommentsForTarget(
       .select()
       .from(comments)
       .where(eq(comments.watchId, target.id))
-      .orderBy(asc(comments.createdAt))
+      .orderBy(desc(comments.createdAt))
   } else {
     return db
       .select()
       .from(comments)
       .where(eq(comments.wearEventId, target.id))
-      .orderBy(asc(comments.createdAt))
+      .orderBy(desc(comments.createdAt))
   }
 }
 

@@ -20,12 +20,12 @@ Requirements for this milestone (v6.0). Each maps to a roadmap phase.
 
 - [x] **CMNT-01**: A user can post a comment on an individual watch (subject to the wishlist gate, GATE-01).
 - [x] **CMNT-02**: A user can post a comment on a wear post.
-- [x] **CMNT-03**: Comments render as a flat, **oldest-first** (chronological) list showing the author avatar, linked username, body, and relative timestamp; the compose box sits **below** the list (conversation convention).
+- [x] **CMNT-03**: Comments render as a flat, **newest-first** list showing the author avatar, linked username, body, and relative timestamp; the compose box sits **above** the list (operator decision 2026-05-22, ROADMAP SC1 — supersedes the original oldest-first/compose-below wording).
 - [x] **CMNT-04**: A comment is limited to 500 characters, enforced at the input, the Server Action (Zod `.strict()`), and the database (CHECK); empty/whitespace-only comments are rejected.
 - [ ] **CMNT-05**: The comment box shows a live character counter as the user nears the 500-char limit.
 - [x] **CMNT-06**: A comment author can edit their own comment in place; an edited comment shows an "[edited]" indicator.
 - [x] **CMNT-07**: A comment author can delete their own comment via an inline confirm; non-authors cannot edit or delete.
-- [ ] **CMNT-08**: A new comment appears optimistically at the bottom of the list (pending state) and reconciles on success / rolls back on failure.
+- [ ] **CMNT-08**: A new comment appears optimistically at the **top** of the list (pending state) and reconciles on success / rolls back on failure (newest-first, ROADMAP SC4 — supersedes the original bottom wording).
 - [x] **CMNT-09**: The comment count shows on watch detail and wear detail.
 
 ### Wishlist Comment Gate (GATE)
