@@ -1,10 +1,11 @@
 ---
 phase: 61
 slug: photo-upload-carousel-ui
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova / neutral / cssVariables
 created: 2026-05-25
+reviewed_at: 2026-05-25
 ---
 
 # Phase 61 — UI Design Contract
@@ -44,7 +45,7 @@ All spacing uses multiples of 4. Existing project uses Tailwind 4 utility classe
 
 Exceptions:
 - Filmstrip thumbnails: 64px × 64px (`w-16 h-16`) — deliberately non-standard to fit ≤10 thumbs in a horizontal strip
-- Touch targets for all interactive controls: minimum 44px (`min-h-[44px]`) — matching existing WatchDetail pattern (e.g., line 170 and line 198 in WatchDetail.tsx)
+- Touch targets for all interactive controls: minimum 44px (`min-h-[44px]`) — WCAG 2.5.5 minimum, accessibility affordance, not a layout spacing token — matching existing WatchDetail pattern (e.g., line 170 and line 198 in WatchDetail.tsx)
 - Carousel arrow buttons: 36px × 36px (`size-9`) minimum, elevated to 44px touch target via padding on mobile
 - Delete × badge on thumbnail: 20px × 20px (`size-5`) — centered over thumbnail corner; hit target expanded with padding to 32px
 
@@ -52,20 +53,18 @@ Exceptions:
 
 ## Typography
 
-Inherits project-wide Geist Sans. All sizes below are Tailwind 4 class equivalents (14px = text-sm, 16px = text-base, 18px = text-lg, 30px = text-3xl).
+Inherits project-wide Geist Sans. All sizes below are Tailwind 4 class equivalents (14px = text-sm, 16px = text-base, 18px = text-lg, 30px = text-3xl). Exactly 2 font weights are declared for this phase.
 
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
-| Body | 14px (text-sm) | 400 (normal) | 1.5 | Filmstrip state labels, upload progress counts, cap message, error copy |
-| Label | 14px (text-sm) | 500 (medium) | 1.4 | "Edit photos" toggle label, "Cover" badge text, position indicator |
-| Heading | 18px (text-lg) | 600 (semibold) | 1.2 | Add-watch photo step heading ("Add your photos") |
-| Display | — | — | — | Not used in this phase |
+| Body | 14px (text-sm) | 400 (normal) | 1.5 | Filmstrip state labels, upload progress counts, cap message, error copy, "Edit photos" toggle label, carousel position indicator |
+| Heading | 18px (text-lg) | 600 (semibold) | 1.2 | Add-watch photo step heading ("Add your photos"), "Cover" badge text (emphasis label) |
 
 **Rules:**
-- "Cover" badge: `text-xs font-medium` (12px / 500) — small enough to not obscure thumbnail
-- Carousel position indicator ("2 / 7"): `text-sm` (14px / 400) — muted-foreground color
-- Per-file upload progress text: `text-xs` (12px / 400) — appears beneath each queued thumbnail in upload state
-- "Skip for now": `text-sm` (14px / 400) — muted-foreground, no underline — visually secondary to the primary CTA
+- "Cover" badge: `text-xs font-semibold` (12px / 600) — small emphasis label; semibold so it reads clearly over the semi-transparent background without being heavy
+- Carousel position indicator ("2 / 7"): `text-sm font-normal` (14px / 400) — muted-foreground color
+- Per-file upload progress text: `text-xs font-normal` (12px / 400) — appears beneath each queued thumbnail in upload state
+- "Skip for now": `text-sm font-normal` (14px / 400) — muted-foreground, no underline — visually secondary to the primary CTA
 
 ---
 
@@ -93,6 +92,12 @@ All color values reference the existing shadcn CSS variable tokens from `src/app
 
 **Cap-reached state:**
 - +Add tile when at cap: `opacity-50 cursor-not-allowed` — same muted background, reduced opacity, no hover effect
+
+---
+
+## Visual Priority
+
+The carousel is the primary visual anchor of the WatchDetail screen. Visual priority cascade: carousel → filmstrip → upload/edit action row. All other WatchDetail content sits below this hierarchy.
 
 ---
 
@@ -136,7 +141,7 @@ Every distinct visual state that the executor must implement:
 
 | State | Visual Contract |
 |-------|-----------------|
-| **View mode (default, all users)** | Horizontal scrollable strip of 64×64px thumbnails. Tap/click a thumbnail → `emblaApi.scrollTo(index)`. First thumbnail always has "Cover" badge (`bg-background/80` text overlay, `text-xs font-medium`). No × badges, no drag handles, no +Add tile. |
+| **View mode (default, all users)** | Horizontal scrollable strip of 64×64px thumbnails. Tap/click a thumbnail → `emblaApi.scrollTo(index)`. First thumbnail always has "Cover" badge (`bg-background/80` text overlay, `text-xs font-semibold`). No × badges, no drag handles, no +Add tile. |
 | **Edit mode (owner only, toggle ON)** | Each thumbnail adds: delete × badge (top-right, `bg-destructive`, 20×20px), drag handle hint (cursor changes to `grab`). +Add tile appended at end (dashed border, `bg-muted`, Camera icon centered). Embla `draggable: false` (no carousel swipe conflict). Cover badge persists on position [0] and moves with drag. |
 | **Drag active** | Source thumbnail: `opacity-30`. Drop indicator: vertical gap-line between target positions (left/right). DragOverlay renders a full-opacity clone at pointer. `touchAction: 'manipulation'` on each `SortablePhotoThumb`. |
 | **At cap (10 photos)** | Edit mode: +Add tile shows `opacity-50 cursor-not-allowed`. View mode: no +Add tile visible (tile is edit-mode-only). Cap message appears below filmstrip: "10 photos — at the limit." (`text-sm text-muted-foreground`) |
@@ -268,7 +273,7 @@ All copy below is locked unless marked "(auto-decided)".
 | Add-watch step subheading | "Show how it looks in person." |
 | Dropzone body copy | "Drop photos here or tap to choose" |
 | "Edit photos" toggle label | "Edit photos" |
-| "Done" toggle label (editing → view) | "Done" |
+| "Done editing" toggle label (editing → view) | "Done editing" |
 | Cover badge | "Cover" |
 | Position indicator format | "{n} / {total}" (e.g., "2 / 7") |
 | Cap message — filmstrip | "10 photos — at the limit." |
