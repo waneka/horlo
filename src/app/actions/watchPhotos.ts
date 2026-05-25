@@ -73,7 +73,9 @@ export async function reorderWatchPhotosAction(
     revalidatePath('/w/[ref]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
-    console.error('[reorderWatchPhotosAction] unexpected error:', err)
+    // Expected errors — check BEFORE the unexpected-error log so they are not
+    // incorrectly surfaced as infrastructure failures (mirrors Phase 60 CR-01
+    // precedent for deleteWatchPhoto).
     if (err instanceof OwnerMismatchError) {
       return { success: false, error: 'Some photos do not belong to you.' }
     }
@@ -83,6 +85,8 @@ export async function reorderWatchPhotosAction(
         error: 'Photos changed in another tab. Refresh and try again.',
       }
     }
+    // Only truly unexpected errors reach this branch.
+    console.error('[reorderWatchPhotosAction] unexpected error:', err)
     return { success: false, error: "Couldn't save new order." }
   }
 }
