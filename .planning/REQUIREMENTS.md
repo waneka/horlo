@@ -29,11 +29,11 @@
 > Replace the single `imageUrl` with a real multi-photo model. In-place ALTER (`watches_catalog` is NOT wipeable). Reuse the v3.0 `wear-photos` upload pipeline.
 
 - [x] **PHOTO-01**: A watch can hold multiple photos (replacing the single image field)
-- [ ] **PHOTO-02**: A user can upload one or more photos to a watch they own
+- [x] **PHOTO-02**: A user can upload one or more photos to a watch they own
 - [ ] **PHOTO-03**: A watch's photos display in a carousel showing one photo at a time, navigable by arrows and swipe
 - [x] **PHOTO-04**: The first/cover photo serves as the watch's card thumbnail across grids and rails
-- [ ] **PHOTO-05**: A user can reorder a watch's photos by drag-and-drop; reordering sets the cover/thumbnail
-- [ ] **PHOTO-06**: A user can delete an individual photo from a watch they own
+- [x] **PHOTO-05**: A user can reorder a watch's photos by drag-and-drop; reordering sets the cover/thumbnail
+- [x] **PHOTO-06**: A user can delete an individual photo from a watch they own
 - [x] **PHOTO-07**: A watch enforces a cap of ~10 photos; the upload affordance is blocked at the cap with clear messaging
 - [x] **PHOTO-08**: Uploaded photos pass through the EXIF-strip / ≤1080px JPEG re-encode pipeline before storage
 - [ ] **PHOTO-09**: The add-watch flow strongly encourages photo upload via a prominent (not buried) affordance
@@ -115,10 +115,10 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | PHOTO-04 | Phase 60 | Complete |
 | PHOTO-07 | Phase 60 | Complete |
 | PHOTO-08 | Phase 60 | Complete |
-| PHOTO-02 | Phase 61 | Pending |
+| PHOTO-02 | Phase 61 | Complete |
 | PHOTO-03 | Phase 61 | Pending |
-| PHOTO-05 | Phase 61 | Pending |
-| PHOTO-06 | Phase 61 | Pending |
+| PHOTO-05 | Phase 61 | Complete |
+| PHOTO-06 | Phase 61 | Complete |
 | PHOTO-09 | Phase 61 | Pending |
 | WPIC-01 | Phase 62 | Pending |
 | WPIC-02 | Phase 62 | Pending |

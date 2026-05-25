@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 61 context gathered
-last_updated: "2026-05-25T20:34:18.540Z"
-last_activity: 2026-05-25 -- Phase 61 planning complete
+stopped_at: Phase 61 Plan 01 complete
+last_updated: "2026-05-25T20:44:00Z"
+last_activity: 2026-05-25 -- Phase 61 Plan 01 executed
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 11
-  completed_plans: 7
-  percent: 64
+  completed_plans: 8
+  percent: 66
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 61 — photo-upload-+-carousel-ui (next; Phase 60 complete)
+**Current focus:** Phase 61 — Photo Upload + Carousel UI
 
 ## Current Position
 
-Phase: 61
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-25 -- Phase 61 planning complete
+Phase: 61 (Photo Upload + Carousel UI) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 61 (Plan 01 complete)
+Last activity: 2026-05-25 -- Phase 61 Plan 01 executed
 
 Progress: [███░░░░░░░] 33% (2/6 phases — 59, 60 complete)
 
@@ -42,6 +42,8 @@ Progress: [███░░░░░░░] 33% (2/6 phases — 59, 60 complete)
 
 ### Key Decisions
 
+- **vi.hoisted() required for vitest mock error classes** — vi.mock factories are hoisted before top-level let/const initialization; error class stubs must live inside vi.hoisted() (Phase 61 Plan 01 lesson).
+- **getWatchPhotosForWatch has no userId param** — ownership resolved by RSC before calling; pure read by watchId; signing happens at page level per PATTERNS.md.
 - **Variant C is a hard cutover** (operator decision 2026-05-25) — legacy `/watch/[id]` + `/catalog/[catalogId]` routes are REMOVED (no redirect); un-migrated links fail loudly; CI guard is the completeness guarantee (ROUTE-03).
 - **`watches_catalog` is NOT wipeable** — in-place ALTER only for photo schema; data migrations keyed by (brand, model, reference), not id (ids diverge local/prod).
 - **`workflow.use_worktrees = false` is permanent** — this project is build-gated + DB-touching; `.env.local` unavailable in worktrees.
@@ -66,6 +68,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 60 COMPLETE. watch_photos schema + authoritative Supabase migration (backfill→lossless DO $$ assert→DROP watches.image_url→RLS→watch-photos bucket); watch-photos storage helper + SC4 EXIF test; cover-resolving DAL (correlated subquery across all 3 read paths) + cap(10)/reorder/delete + full image_url blast-radius repoint + purgeWatchPhotos; prod migration applied via `supabase db push --linked` (operator-run + verified). Post-merge gate: build exit 0, suite green (1 pre-existing CommentGateLocked font-medium failure, unrelated to Phase 60). Verification: passed.
-Stopped at: Phase 61 context gathered
-Next action: Phase 61 — photo-upload-+-carousel-ui (discuss or plan)
+Last activity: 2026-05-25 — Phase 61 Plan 01 COMPLETE. getWatchPhotosForWatch DAL read + three photo server actions (addWatchPhotoAction, deleteWatchPhotoAction, reorderWatchPhotosAction) with zod .strict(), instanceof error discrimination, revalidatePath('/w/[ref]','page'); Wave 0 test scaffolds (4 files, 38 tests green); build exit 0.
+Stopped at: Phase 61 Plan 01 complete
+Next action: Phase 61 Plan 02 — carousel + filmstrip UI
