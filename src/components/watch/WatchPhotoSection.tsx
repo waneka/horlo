@@ -207,37 +207,64 @@ export function WatchPhotoSection({
   // ---------------------------------------------------------------------------
   // Per-photo delete: immediate optimistic + undo toast (lighter than Dialog)
   // UI-SPEC §Delete State: no Dialog confirm, 5-second undo window.
+  //
+  // CR-01 fix: add useEffect cleanup to clear the pending timer on unmount so a
+  // navigating-away user cannot trigger a background delete on a stale watchId.
+  //
+  // WR-02 fix: move the server action call inside startTransition alongside the
+  // optimistic update so useOptimistic auto-reverts the hidden state on failure.
+  // Without this, setDeletedIds fires in a separate transition from the actual
+  // server call, so React cannot auto-revert the optimistic state on failure and
+  // the photo remains permanently hidden even though the delete failed.
+  //
+  // Undo: clear the timer ref and null it so a late undo cannot fire
+  // clearTimeout on an already-fired ID (which is a no-op, not a guard).
   // ---------------------------------------------------------------------------
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function handleDelete(photoId: string) {
-    // Optimistic: hide immediately
-    startTransition(async () => {
-      setDeletedIds(photoId)
-    })
+  // CR-01: clear any pending delete timer on unmount to prevent background mutations.
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+    }
+  }, [])
 
-    // Undo toast with 5-second window
+  function handleDelete(photoId: string) {
+    // Show the undo toast immediately (5-second window).
     toast('Photo deleted', {
       action: {
         label: 'Undo',
         onClick: () => {
-          if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
-          // Re-render by re-triggering the optimistic state (revert)
-          // The transition was already committed; we need to refresh to restore
-          // In practice: call router.refresh() or trigger revalidation
-          // For now, the optimistic remove will auto-revert when the page reloads
-          window.location.reload()
+          // CR-01: null the ref after clearing so a late undo click cannot
+          // clearTimeout on an already-fired timer ID (which is a silent no-op).
+          if (undoTimerRef.current) {
+            clearTimeout(undoTimerRef.current)
+            undoTimerRef.current = null
+          }
+          // The optimistic state auto-reverts because the startTransition below
+          // was never settled (server action never called). A full reload is no
+          // longer needed — useOptimistic reverts when the transition is abandoned.
+          // window.location.reload() removed: unnecessary and disruptive.
         },
       },
       duration: 5000,
     })
 
-    // Fire the server action after the undo window
-    undoTimerRef.current = setTimeout(async () => {
-      const result = await deleteWatchPhotoAction({ watchId, photoId })
-      if (!result.success) {
-        toast.error("Couldn't delete photo.")
-      }
+    // WR-02: wrap BOTH the optimistic update and the server call in a single
+    // startTransition so useOptimistic auto-reverts the hidden state if the
+    // delete action fails (no revalidatePath on the error path → auto-revert).
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null
+      startTransition(async () => {
+        setDeletedIds(photoId) // optimistic hide
+        const result = await deleteWatchPhotoAction({ watchId, photoId })
+        if (!result.success) {
+          // useOptimistic auto-reverts the optimistic state when the transition
+          // settles without a server-side revalidatePath (the error path does not
+          // call revalidatePath, so the photo reappears automatically).
+          toast.error("Couldn't delete photo.")
+        }
+      })
     }, 5000)
   }
 
