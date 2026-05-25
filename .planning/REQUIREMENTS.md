@@ -35,7 +35,7 @@
 - [ ] **PHOTO-05**: A user can reorder a watch's photos by drag-and-drop; reordering sets the cover/thumbnail
 - [ ] **PHOTO-06**: A user can delete an individual photo from a watch they own
 - [ ] **PHOTO-07**: A watch enforces a cap of ~10 photos; the upload affordance is blocked at the cap with clear messaging
-- [ ] **PHOTO-08**: Uploaded photos pass through the EXIF-strip / ≤1080px JPEG re-encode pipeline before storage
+- [x] **PHOTO-08**: Uploaded photos pass through the EXIF-strip / ≤1080px JPEG re-encode pipeline before storage
 - [ ] **PHOTO-09**: The add-watch flow strongly encourages photo upload via a prominent (not buried) affordance
 
 ### Public Wear Pics → Watch Detail — `WPIC`
@@ -114,7 +114,7 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | PHOTO-01 | Phase 60 | Complete |
 | PHOTO-04 | Phase 60 | Pending |
 | PHOTO-07 | Phase 60 | Pending |
-| PHOTO-08 | Phase 60 | Pending |
+| PHOTO-08 | Phase 60 | Complete |
 | PHOTO-02 | Phase 61 | Pending |
 | PHOTO-03 | Phase 61 | Pending |
 | PHOTO-05 | Phase 61 | Pending |

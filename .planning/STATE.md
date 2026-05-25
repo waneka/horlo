@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 60 Plan 01 complete
-last_updated: "2026-05-25T16:46:22Z"
+stopped_at: Phase 60 Plan 02 complete
+last_updated: "2026-05-25T16:52:10.972Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
-  percent: 57
+  completed_plans: 5
+  percent: 71
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 60 (multi-photo-schema-dal) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-25
 
-Progress: [██████░░░░] 57%
+Progress: [███████░░░] 71%
 
 ## Performance Metrics
 
@@ -61,10 +61,10 @@ None.
 
 ### Blockers/Concerns
 
-None. Phase 60 Plan 01 complete: watch_photos table created, watches.image_url backfilled then dropped, RLS + bucket created, Wave 0 test stub written, local DB applied.
+None. Phase 60 Plan 02 complete: watch-photos storage helper (buildWatchPhotoPath + uploadWatchPhoto) created; SC4 EXIF/≤1080px pipeline verification test green; 10/10 unit tests passing.
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 60 Plan 01 COMPLETE. watch_photos schema + migration + Wave 0 test stub landed. Local DB applied (backfill-first order). Plans 02-04 remain.
-Stopped at: Phase 60 Plan 01 complete
-Next action: Phase 60 Plan 02 (src/lib/types.ts + storage helper + account.ts purgeWatchPhotos)
+Last activity: 2026-05-25 — Phase 60 Plan 02 COMPLETE. watch-photos storage helper (buildWatchPhotoPath + uploadWatchPhoto) created. SC4 EXIF/≤1080px pipeline verification test green (10/10 tests passing). Plans 03-04 remain.
+Stopped at: Phase 60 Plan 02 complete
+Next action: Phase 60 Plan 03 (src/lib/types.ts WatchPhoto type + DAL: getWatchPhotosByWatch, addWatchPhoto, removeWatchPhoto, MAX_PHOTOS_PER_WATCH)
