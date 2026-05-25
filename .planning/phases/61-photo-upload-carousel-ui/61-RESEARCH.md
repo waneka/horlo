@@ -693,7 +693,9 @@ function handleDragEnd(event: DragEndEvent) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED during planning)
+
+> RESOLVED: Q1 → Plan 61-04 adds `signCoverUrls` across home/profile/search RSCs (SC3 forces cross-grid cover in scope). Q2 → Plan 61-03 builds a lean `WatchPhotoStep` (dropzone + progress, not the full filmstrip). Q3 → `/w/[ref]` and grid RSCs are dynamic (`getCurrentUser()`, no ISR `revalidate`), so the 60-min signed-URL TTL is safe.
 
 1. **Grid/rail cover photo URLs unsigned**
    - What we know: `Watch.imageUrl` for owner photos is a raw storagePath. The `/w/[ref]` page RSC will sign URLs for the carousel. But profile grid cards, home rails, and other surfaces also render `Watch.imageUrl` via `getSafeImageUrl()`.
