@@ -204,7 +204,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 - [x] 59-03-PLAN.md — Re-point 26 link literals + delete 3 legacy pages + prove build-gate (Wave 3)
 
 ### Phase 60: Multi-Photo Schema + DAL
-**Goal**: The database can store multiple ordered photos per watch and the DAL exposes clean CRUD + ordering operations; the `watches_catalog` cover-photo backfill is applied in place without wiping existing data
+**Goal**: The database can store multiple ordered photos per watch and the DAL exposes clean CRUD + ordering operations; `watches.image_url` is losslessly backfilled into `watch_photos` then dropped (per phase-60 discussion D-10, `watches_catalog` is NOT touched)
 **Depends on**: Phase 59
 **Requirements**: PHOTO-01, PHOTO-04, PHOTO-07, PHOTO-08
 **Success Criteria** (what must be TRUE):
@@ -212,8 +212,12 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   2. The first/lowest-order photo is used as the watch's cover thumbnail across grids and rails (observable at the data layer before any UI lands)
   3. The DAL enforces a per-watch cap of ~10 photos and rejects inserts beyond it
   4. The photo upload pipeline strips EXIF and re-encodes to ≤1080px JPEG before storage (verifiable via file metadata on uploaded test images)
-  5. The in-place migration runs cleanly on local and prod without wiping existing `watches_catalog` LLM/factual/photo investment
-**Plans**: TBD
+  5. The in-place migration runs cleanly on local and prod without wiping existing `watches_catalog` LLM/factual/photo investment (D-11: satisfied trivially — catalog untouched; the real lossless assertion is the `watches.image_url` backfill→drop)
+**Plans**: 4 plans (3 waves)
+- [ ] 60-01-PLAN.md — watch_photos schema + authoritative Supabase migration (backfill→drop) + bucket/RLS + Wave 0 test stub + local push (Wave 1)
+- [ ] 60-02-PLAN.md — watch-photos storage helper + SC4 EXIF/≤1080px JPEG verification test (Wave 1)
+- [ ] 60-03-PLAN.md — DAL cover resolution (3 paths) + cap/reorder/delete + repoint all image_url readers + storage purge hook (Wave 2)
+- [ ] 60-04-PLAN.md — [BLOCKING] prod migration push (supabase db push --linked) + prod verification (Wave 3, operator-run)
 
 ### Phase 61: Photo Upload + Carousel UI
 **Goal**: A watch owner can upload, view, reorder, and delete photos from the watch detail page; the add-watch flow prominently surfaces photo upload as a first-class step
