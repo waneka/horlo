@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: ready_to_plan
-stopped_at: Phase 60 complete
-last_updated: "2026-05-25T17:01:41.056Z"
+status: planning
+stopped_at: Phase 61 context gathered
+last_updated: "2026-05-25T19:48:32.426Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 7
   completed_plans: 7
-  percent: 33
+  percent: 100
 ---
 
 # Project State
@@ -67,5 +67,5 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 ## Session Continuity
 
 Last activity: 2026-05-25 — Phase 60 COMPLETE. watch_photos schema + authoritative Supabase migration (backfill→lossless DO $$ assert→DROP watches.image_url→RLS→watch-photos bucket); watch-photos storage helper + SC4 EXIF test; cover-resolving DAL (correlated subquery across all 3 read paths) + cap(10)/reorder/delete + full image_url blast-radius repoint + purgeWatchPhotos; prod migration applied via `supabase db push --linked` (operator-run + verified). Post-merge gate: build exit 0, suite green (1 pre-existing CommentGateLocked font-medium failure, unrelated to Phase 60). Verification: passed.
-Stopped at: Phase 60 complete
+Stopped at: Phase 61 context gathered
 Next action: Phase 61 — photo-upload-+-carousel-ui (discuss or plan)
