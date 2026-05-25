@@ -1,7 +1,8 @@
 ---
 phase: 58-notification-ui-settings-opt-out
 verified: 2026-05-24T00:00:00Z
-status: human_needed
+status: passed
+human_verified: 2026-05-24 — all 3 prod HUMAN-UAT items passed (render+deep-links, like-grouping, opt-out round-trip) via /gsd-verify-work 58
 score: 3/3 must-haves verified
 overrides_applied: 0
 human_verification:
