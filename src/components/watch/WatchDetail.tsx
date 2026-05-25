@@ -24,6 +24,7 @@ import { LikeButton } from '@/components/shared/LikeButton'
 import { editWatch, removeWatch } from '@/app/actions/watches'
 import { markAsWorn } from '@/app/actions/wearEvents'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
+import { WatchPhotoSection } from '@/components/watch/WatchPhotoSection'
 import { MOVEMENT_LABELS } from '@/lib/constants'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
@@ -58,6 +59,18 @@ interface WatchDetailProps {
    * is display-only (no tap behavior; thread is already visible). Optional for backward compat.
    */
   commentCount?: number
+  /**
+   * Phase 61 PHOTO-03: signed photo URLs fetched and signed by the RSC.
+   * Optional for backward compat. When provided, replaces the single <Image>
+   * block with WatchPhotoSection (carousel + filmstrip + upload controls).
+   */
+  signedPhotos?: Array<{ id: string; signedUrl: string | null; sortOrder: number }>
+  /**
+   * Phase 61 PHOTO-02: viewer's userId for client-direct photo upload.
+   * Required when signedPhotos is provided and viewerCanEdit is true.
+   * Passed from the RSC (already auth-resolved; never taken from client).
+   */
+  userId?: string
 }
 
 function formatDate(dateStr?: string): string {
@@ -79,7 +92,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount, signedPhotos, userId }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -125,22 +138,35 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         {/* Left column: image + title + actions */}
         <div className="space-y-6">
-          {/* Image */}
-          <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-muted">
-            {safeUrl ? (
-              <Image
-                src={safeUrl}
-                alt={`${watch.brand} ${watch.model}`}
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <WatchIcon className="h-16 w-16 text-muted-foreground/40" />
-              </div>
-            )}
-          </div>
+          {/* Photo section: carousel + filmstrip when signedPhotos provided (Phase 61)
+              Falls back to single-image display for any caller that hasn't yet
+              threaded signedPhotos (backward compat — optional prop). */}
+          {signedPhotos !== undefined ? (
+            <WatchPhotoSection
+              photos={signedPhotos}
+              watchId={watch.id}
+              catalogFallbackUrl={getSafeImageUrl(watch.imageUrl) ?? null}
+              brandModel={`${watch.brand} ${watch.model}`}
+              viewerCanEdit={viewerCanEdit}
+              userId={userId}
+            />
+          ) : (
+            <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-muted">
+              {safeUrl ? (
+                <Image
+                  src={safeUrl}
+                  alt={`${watch.brand} ${watch.model}`}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <WatchIcon className="h-16 w-16 text-muted-foreground/40" />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Title & Status */}
           <div>

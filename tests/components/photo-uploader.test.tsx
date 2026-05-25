@@ -19,38 +19,45 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
+// vi.hoisted() required — mock factories are hoisted before top-level let/const init
+// (KEY DECISION from Phase 61 Plan 01)
+const mocks = vi.hoisted(() => ({
+  stripAndResize: vi.fn(async (blob: Blob) => ({ blob, width: 800, height: 600 })),
+  uploadWatchPhoto: vi.fn(async () => ({ path: 'user-id/photo-id.jpg' })),
+  buildWatchPhotoPath: vi.fn((_userId: string, photoId: string) => `user-id/${photoId}.jpg`),
+  addWatchPhotoAction: vi.fn(async () => ({ success: true, data: { id: 'new-id' } })),
+  reorderWatchPhotosAction: vi.fn(async () => ({ success: true, data: undefined })),
+  deleteWatchPhotoAction: vi.fn(async () => ({ success: true, data: undefined })),
+  toastFn: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastWarning: vi.fn(),
+}))
+
 // Mock stripAndResize before importing the component
 vi.mock('@/lib/exif/strip', () => ({
-  stripAndResize: vi.fn(async (blob: Blob) => ({
-    blob,
-    width: 800,
-    height: 600,
-  })),
+  stripAndResize: mocks.stripAndResize,
 }))
 
 // Mock the storage helper
 vi.mock('@/lib/storage/watchPhotos', () => ({
-  uploadWatchPhoto: vi.fn(async (_userId: string, _photoId: string, _blob: Blob) => ({
-    path: 'user-id/photo-id.jpg',
-  })),
-  buildWatchPhotoPath: vi.fn((_userId: string, photoId: string) => `user-id/${photoId}.jpg`),
+  uploadWatchPhoto: mocks.uploadWatchPhoto,
+  buildWatchPhotoPath: mocks.buildWatchPhotoPath,
 }))
 
 // Mock addWatchPhotoAction
 vi.mock('@/app/actions/watchPhotos', () => ({
-  addWatchPhotoAction: vi.fn(async () => ({ success: true, data: { id: 'new-id' } })),
-  reorderWatchPhotosAction: vi.fn(async () => ({ success: true, data: undefined })),
-  deleteWatchPhotoAction: vi.fn(async () => ({ success: true, data: undefined })),
+  addWatchPhotoAction: mocks.addWatchPhotoAction,
+  reorderWatchPhotosAction: mocks.reorderWatchPhotosAction,
+  deleteWatchPhotoAction: mocks.deleteWatchPhotoAction,
 }))
 
 // Mock sonner toast
-const mockToastWarning = vi.fn()
-const mockToastError = vi.fn()
 vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: mockToastError,
-    warning: mockToastWarning,
+  toast: Object.assign(mocks.toastFn, {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
+    warning: mocks.toastWarning,
   }),
 }))
 
@@ -108,6 +115,16 @@ function makeSuccessBuffer() {
   return ab
 }
 
+// jsdom doesn't implement Blob.prototype.arrayBuffer — polyfill it.
+// Mirrors CatalogPhotoUploader.test.tsx pattern.
+function ensureArrayBufferPolyfill() {
+  if (typeof Blob.prototype.arrayBuffer !== 'function') {
+    Blob.prototype.arrayBuffer = function arrayBuffer(this: Blob) {
+      return new Response(this).arrayBuffer()
+    }
+  }
+}
+
 // Import AFTER mocks
 import { PhotoDropzone } from '@/components/watch/PhotoDropzone'
 
@@ -123,8 +140,9 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
   beforeEach(() => {
     workerInstances = []
     nextWorkerBehavior = null
-    installWorkerMock()
     vi.clearAllMocks()
+    ensureArrayBufferPolyfill()
+    installWorkerMock()
   })
 
   afterEach(() => {
@@ -146,7 +164,6 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
   })
 
   it('PHOTO-02: batch within remaining slots → all files accepted', async () => {
-    const { addWatchPhotoAction } = await import('@/app/actions/watchPhotos')
     const onPhotosAdded = vi.fn()
 
     render(
@@ -170,11 +187,11 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
 
     await waitFor(() => {
       // addWatchPhotoAction should be called twice
-      expect(addWatchPhotoAction).toHaveBeenCalledTimes(2)
+      expect(mocks.addWatchPhotoAction).toHaveBeenCalledTimes(2)
     })
 
     // No overflow warning
-    expect(mockToastWarning).not.toHaveBeenCalled()
+    expect(mocks.toastWarning).not.toHaveBeenCalled()
   })
 
   it('PHOTO-02: batch exceeds cap → accepted up to remaining, rejected files surface toast', async () => {
@@ -198,9 +215,9 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
 
     // Warning toast should fire immediately
     await waitFor(() => {
-      expect(mockToastWarning).toHaveBeenCalled()
+      expect(mocks.toastWarning).toHaveBeenCalled()
     })
-    const call = mockToastWarning.mock.calls[0][0] as string
+    const call = mocks.toastWarning.mock.calls[0][0] as string
     expect(call).toContain('skipped')
     expect(call).toContain('10-photo limit')
   })
@@ -231,19 +248,16 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
     })
 
     await waitFor(() => {
-      expect(mockToastWarning).toHaveBeenCalled()
+      expect(mocks.toastWarning).toHaveBeenCalled()
     })
 
-    const msg = mockToastWarning.mock.calls[0][0] as string
+    const msg = mocks.toastWarning.mock.calls[0][0] as string
     // Should say "Added 2 photos. 3 skipped — you've reached the 10-photo limit."
     expect(msg).toMatch(/Added 2 photo/)
     expect(msg).toMatch(/3 skipped/)
   })
 
   it('PHOTO-02: JPEG file triggers stripAndResize pipeline', async () => {
-    const { stripAndResize } = await import('@/lib/exif/strip')
-    const { addWatchPhotoAction } = await import('@/app/actions/watchPhotos')
-
     render(
       <PhotoDropzone
         watchId="watch-123"
@@ -262,8 +276,8 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
     })
 
     await waitFor(() => {
-      expect(stripAndResize).toHaveBeenCalled()
-      expect(addWatchPhotoAction).toHaveBeenCalled()
+      expect(mocks.stripAndResize).toHaveBeenCalled()
+      expect(mocks.addWatchPhotoAction).toHaveBeenCalled()
     })
   })
 
@@ -272,8 +286,6 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
       kind: 'success',
       reply: { buffer: makeSuccessBuffer(), type: 'image/jpeg' },
     }
-
-    const { stripAndResize } = await import('@/lib/exif/strip')
 
     render(
       <PhotoDropzone
@@ -296,7 +308,7 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
       // A worker should have been created for HEIC conversion
       expect(workerInstances.length).toBeGreaterThan(0)
       // stripAndResize should also have been called
-      expect(stripAndResize).toHaveBeenCalled()
+      expect(mocks.stripAndResize).toHaveBeenCalled()
     })
   })
 
@@ -325,8 +337,6 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
   })
 
   it('PHOTO-02: desktop drop zone onDrop passes files to upload pipeline', async () => {
-    const { addWatchPhotoAction } = await import('@/app/actions/watchPhotos')
-
     render(
       <PhotoDropzone
         watchId="watch-123"
@@ -348,7 +358,7 @@ describe('PhotoDropzone / upload pipeline (PHOTO-02)', () => {
     })
 
     await waitFor(() => {
-      expect(addWatchPhotoAction).toHaveBeenCalled()
+      expect(mocks.addWatchPhotoAction).toHaveBeenCalled()
     })
   })
 

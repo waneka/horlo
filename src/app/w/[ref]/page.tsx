@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
 import { getCurrentUser } from '@/lib/auth'
-import { getWatchByIdForViewer, getWatchesByUser, getWatchById, findViewerWatchByCatalogId } from '@/data/watches'
+import { getWatchByIdForViewer, getWatchesByUser, getWatchById, findViewerWatchByCatalogId, getWatchPhotosForWatch } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
 import { getCatalogById } from '@/data/catalog'
 import { getMostRecentWearDate } from '@/data/wearEvents'
@@ -26,6 +26,7 @@ import { CommentThreadSkeleton } from '@/components/comment/CommentThreadSkeleto
 import { getSameFamilyForCatalog, getLineageForReference } from '@/data/hierarchy'
 import { getCollectorsForCatalog } from '@/data/discovery'
 import { Button } from '@/components/ui/button'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { Watch, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
@@ -138,6 +139,23 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
     const sameFamily = watch.catalogId ? await getSameFamilyForCatalog(watch.catalogId) : []
     const lineage = watch.catalogId ? await getLineageForReference(watch.catalogId) : []
 
+    // Phase 61 PHOTO-03: fetch owner photos + sign storage paths at page level (Pitfall 1).
+    // Signing happens ONLY in the RSC, never in the DAL (admin-client-free DAL rule).
+    // Analog: wears/[username]/page.tsx lines 130-139 (wear-photos bucket, same TTL).
+    const rawPhotos = isOwner ? await getWatchPhotosForWatch(watch.id) : []
+    let signedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
+    if (rawPhotos.length > 0) {
+      const supabase = await createSupabaseServerClient()
+      signedPhotos = await Promise.all(
+        rawPhotos.map(async (p) => {
+          const { data } = await supabase.storage
+            .from('watch-photos')
+            .createSignedUrl(p.storagePath, 60 * 60)  // 60-min TTL (T-61-07)
+          return { id: p.id, signedUrl: data?.signedUrl ?? null, sortOrder: p.sortOrder }
+        }),
+      )
+    }
+
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
         <WatchDetail
@@ -150,6 +168,8 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
           viewerId={user.id}
           initialLikeState={{ liked: likeState.viewerHasLiked, count: likeState.count }}
           commentCount={commentCount}
+          signedPhotos={signedPhotos}
+          userId={isOwner ? user.id : undefined}
         />
 
         {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
@@ -298,6 +318,21 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
     // isOwner = true on the D-06 branch (viewerCanEdit={true})
     const isOwner = true
 
+    // Phase 61 PHOTO-03: same signed-URL pattern as Branch 1 (owner always true here).
+    const ownedRawPhotos = await getWatchPhotosForWatch(ownedWatch.id)
+    let ownedSignedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
+    if (ownedRawPhotos.length > 0) {
+      const supabase = await createSupabaseServerClient()
+      ownedSignedPhotos = await Promise.all(
+        ownedRawPhotos.map(async (p) => {
+          const { data } = await supabase.storage
+            .from('watch-photos')
+            .createSignedUrl(p.storagePath, 60 * 60)  // 60-min TTL (T-61-07)
+          return { id: p.id, signedUrl: data?.signedUrl ?? null, sortOrder: p.sortOrder }
+        }),
+      )
+    }
+
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
         {/* D-06: Full owned view rendered in place — same tree as Branch 1 same-user.
@@ -312,6 +347,8 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
           viewerId={user.id}
           initialLikeState={{ liked: likeState.viewerHasLiked, count: likeState.count }}
           commentCount={commentCount}
+          signedPhotos={ownedSignedPhotos}
+          userId={user.id}
         />
 
         {collection.length === 0 &&

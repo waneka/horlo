@@ -18,11 +18,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 
-// Mock server actions
-vi.mock('@/app/actions/watchPhotos', () => ({
+// vi.hoisted() required for vi.mock factories — these run before top-level initialisation
+// (KEY DECISION from Phase 61 Plan 01: vi.mock factories are hoisted before let/const init;
+// error class stubs must live inside vi.hoisted())
+const mocks = vi.hoisted(() => ({
   reorderWatchPhotosAction: vi.fn(async () => ({ success: true, data: undefined })),
   deleteWatchPhotoAction: vi.fn(async () => ({ success: true, data: undefined })),
   addWatchPhotoAction: vi.fn(async () => ({ success: true, data: { id: 'new-photo-id' } })),
+  toast: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toastWarning: vi.fn(),
+}))
+
+// Mock server actions
+vi.mock('@/app/actions/watchPhotos', () => ({
+  reorderWatchPhotosAction: mocks.reorderWatchPhotosAction,
+  deleteWatchPhotoAction: mocks.deleteWatchPhotoAction,
+  addWatchPhotoAction: mocks.addWatchPhotoAction,
 }))
 
 // Mock embla-carousel-react — jsdom can't do real carousel geometry
@@ -127,12 +140,11 @@ vi.mock('next/image', () => ({
 }))
 
 // Mock sonner toast
-const mockToast = vi.fn()
 vi.mock('sonner', () => ({
-  toast: Object.assign(mockToast, {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
+  toast: Object.assign(mocks.toast, {
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
+    warning: mocks.toastWarning,
   }),
 }))
 
@@ -152,6 +164,9 @@ const defaultProps = {
   viewerCanEdit: false,
   userId: undefined,
 }
+
+// Alias for use in test bodies
+const mockToast = mocks.toast
 
 beforeEach(() => {
   vi.clearAllMocks()
