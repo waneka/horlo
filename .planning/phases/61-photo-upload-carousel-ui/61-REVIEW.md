@@ -26,6 +26,18 @@ findings:
   info: 2
   total: 9
 status: issues_found
+resolution:
+  fixed:
+    - CR-01  # commit 1285c3c: useEffect cleanup + startTransition for delete flow
+    - CR-02  # commit 543e023: storagePath folder-scope check (IDOR)
+    - WR-02  # commit 1285c3c: useOptimistic auto-revert on delete failure
+    - WR-03  # commit 5176f6e: thread userId from RSC, remove client-side getUser
+    - WR-04  # commit 194d0f1: localUploadCount for accurate cap math
+    - IN-02  # commit 8bcee46: move console.error after instanceof checks
+  deferred:
+    - WR-01  # intentional: non-owner signing via viewer session fails safe (placeholder fallback); public-photo surfacing is Phase 62 scope
+    - IN-01  # intentional: pre-existing dead code unrelated to Phase 61; deferred as separate cleanup
+  resolved_at: 2026-05-25
 ---
 
 # Phase 61: Code Review Report
