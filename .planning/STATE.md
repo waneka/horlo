@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 59 Plan 01 complete — ready for Plan 02
-last_updated: "2026-05-25T06:43:00.000Z"
+stopped_at: Phase 59 Plan 02 complete — ready for Plan 03
+last_updated: "2026-05-25T06:51:27.157Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 59 (unified-route-variant-c) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-25
 
-Progress: [███░░░░░░░] 33%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [███░░░░░░░] 33%
 - **Phase ordering is locked**: 59 (route merge) → 60 (photo schema/DAL) → 61 (photo UI) → 62 (wear pics surfacing) → 63 (grid engagement, depends on 59 only) → 64 (IA redesign, depends on 61+62+63).
 - **`unstable_instant = false` on `/u/[username]/[tab]` is PERMANENT** — do not re-enable (Phase 52 lesson).
 - **Phase 64 must preserve Phase 51/52 Cache Components structure** — CommentThread stays an uncached Suspense sibling.
+- **OtherOwnersRoster + CatalogPageActions on unified route are cross-user only** — gated on `!isOwner` per spike §4.D; Phase 64 IA redesign resolves definitively.
 
 ### Pending Todos
 
@@ -56,10 +57,10 @@ None.
 
 ### Blockers/Concerns
 
-None blocking. Plan 01 complete. CI guard is RED (expected — 26 legacy literals remain; Plan 03 re-points them). Route merge (~36 files / ~26 link literals) is the highest-complexity step; CI guard (ROUTE-03) is the safety net.
+None blocking. Plans 01 + 02 complete. CI guard is RED (expected — 26 legacy literals remain; Plan 03 re-points them). Route merge (~36 files / ~26 link literals) is the highest-complexity step; CI guard (ROUTE-03) is the safety net. New route /w/[ref] exists and is ready to receive migrated links.
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 59 Plan 01 complete (DAL extraction, CI guard, integration test scaffold).
-Stopped at: Phase 59 Plan 01 complete — ready for Plan 02
-Next action: Execute Phase 59 Plan 02 (unified /w/[ref] page + /w/[ref]/edit page)
+Last activity: 2026-05-25 — Phase 59 Plan 02 complete (unified /w/[ref] page + /w/[ref]/edit page).
+Stopped at: Phase 59 Plan 02 complete — ready for Plan 03
+Next action: Execute Phase 59 Plan 03 (link migration: 26 literals across 21 files + legacy page deletion)

@@ -22,7 +22,7 @@
 - [x] **ROUTE-03**: A static guard test fails the build if any internal href or link literal still targets a legacy `/watch/[…]` or `/catalog/[…]` watch path — enforcing ROUTE-04 completeness in CI rather than by manual click-through
 - [x] **ROUTE-04**: Every internal link to a watch (grid cards, search rows, discovery rails, add-watch deep-links, computed notification deep-links) points at `/w/[ref]`
 - [x] **ROUTE-05**: The unified route preserves the two-layer privacy gate and per-viewer framing (owner vs cross-user) with no regression
-- [ ] **ROUTE-06**: Owner-only write surfaces (edit, delete, mark-worn) remain available only to the owner on the unified route
+- [x] **ROUTE-06**: Owner-only write surfaces (edit, delete, mark-worn) remain available only to the owner on the unified route
 
 ### Multi-Photo Model + Carousel — `PHOTO`
 
@@ -110,7 +110,7 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | ROUTE-03 | Phase 59 | Complete |
 | ROUTE-04 | Phase 59 | Complete |
 | ROUTE-05 | Phase 59 | Complete |
-| ROUTE-06 | Phase 59 | Pending |
+| ROUTE-06 | Phase 59 | Complete |
 | PHOTO-01 | Phase 60 | Pending |
 | PHOTO-04 | Phase 60 | Pending |
 | PHOTO-07 | Phase 60 | Pending |

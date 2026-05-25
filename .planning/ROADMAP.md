@@ -200,7 +200,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   5. Owner-only actions (edit, delete, mark-worn) remain available only to the authenticated owner on the unified route
 **Plans**: 3 plans (3 waves)
 - [x] 59-01-PLAN.md — DAL extraction (findViewerWatchByCatalogId) + CI guard + integration scaffold + prebuild hook (Wave 1)
-- [ ] 59-02-PLAN.md — Unified /w/[ref] page + /w/[ref]/edit route (Wave 2)
+- [x] 59-02-PLAN.md — Unified /w/[ref] page + /w/[ref]/edit route (Wave 2)
 - [ ] 59-03-PLAN.md — Re-point 26 link literals + delete 3 legacy pages + prove build-gate (Wave 3)
 
 ### Phase 60: Multi-Photo Schema + DAL
@@ -270,7 +270,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 59. Unified Route (Variant C) | 1/3 | In Progress|  |
+| 59. Unified Route (Variant C) | 2/3 | In Progress|  |
 | 60. Multi-Photo Schema + DAL | 0/TBD | Not started | - |
 | 61. Photo Upload + Carousel UI | 0/TBD | Not started | - |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
