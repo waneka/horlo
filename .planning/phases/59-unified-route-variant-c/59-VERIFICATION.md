@@ -1,7 +1,9 @@
 ---
 phase: 59-unified-route-variant-c
 verified: 2026-05-25T00:45:00Z
-status: human_needed
+status: passed
+human_verification_approved: 2026-05-25T15:52:16Z
+human_verification_note: "Operator approved all 3 prod-UAT items on the live deploy (horlo-14qlrmk4c, ● Ready)"
 score: 6/6 must-haves verified (all roadmap success criteria)
 overrides_applied: 0
 re_verification: false
@@ -21,7 +23,7 @@ human_verification:
 
 **Phase Goal:** Every watch is reachable at a single canonical `/w/[ref]` URL; the two legacy detail routes (`/watch/[id]`, `/catalog/[catalogId]`) are removed (hard 404, no redirect); the edit form moves to `/w/[ref]/edit`; every internal link to a watch is re-pointed to `/w/[ref]`; and a build-failing CI guard catches any surviving legacy detail-path link literal.
 **Verified:** 2026-05-25T00:45:00Z
-**Status:** human_needed
+**Status:** passed (operator approved all 3 prod-UAT items 2026-05-25T15:52:16Z on the live deploy)
 **Re-verification:** No — initial verification
 
 ---
