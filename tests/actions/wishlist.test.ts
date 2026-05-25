@@ -289,30 +289,20 @@ describe('addToWishlistFromWearEvent Server Action', () => {
     errSpy.mockRestore()
   })
 
-  it('Test 9 (bonus): G-5 self-bypass — self wear event (actorId == viewerUserId) is allowed regardless of visibility', async () => {
+  it('Test 9 (bonus): D-09 own-wear guard — self wear event (actorId == viewerUserId) is blocked', async () => {
+    // Phase 60 D-09: own-wear adds are blocked server-side regardless of visibility.
+    // The UI hides the button for isSelf, but the server closes the direct-POST bypass.
+    // Returns uniform 'Wear event not found' (Letterboxd-style 404 — no existence leak).
     ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'v@h.test' })
-    // Even visibility='private' + profilePublic=false must succeed when viewer is the actor.
-    // isSelf short-circuits the canSee logic (src/app/actions/wishlist.ts:84,104).
     mockJoinRows = [publicWearJoinRow({
       actorId: viewerUserId,
       visibility: 'private',
       profilePublic: false,
     })]
-    ;(watchDAL.createWatch as Mock).mockResolvedValueOnce({
-      id: newWatchId,
-      brand: 'Rolex',
-      model: 'Submariner',
-      status: 'wishlist',
-      movement: 'auto',
-      complications: [],
-      styleTags: [],
-      designTraits: [],
-      roleTags: [],
-      imageUrl: null,
-    })
     const result = await addToWishlistFromWearEvent({ wearEventId })
-    expect(result.success).toBe(true)
-    // G-5 self-bypass must NOT issue a follows query (selectCallCount stays at 1).
+    expect(result).toEqual({ success: false, error: 'Wear event not found' })
+    expect(watchDAL.createWatch).not.toHaveBeenCalled()
+    // D-09 self-check must NOT issue a follows query (selectCallCount stays at 1).
     expect(selectCallCount).toBe(1)
   })
 

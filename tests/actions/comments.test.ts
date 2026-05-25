@@ -49,7 +49,7 @@ vi.mock('@/db', () => ({
   },
 }))
 vi.mock('@/db/schema', () => ({ watches: {}, wearEvents: {}, comments: {} }))
-vi.mock('drizzle-orm', () => ({ eq: vi.fn() }))
+vi.mock('drizzle-orm', () => ({ eq: vi.fn(), sql: vi.fn() }))
 
 import { addCommentAction, editCommentAction, deleteCommentAction } from '@/app/actions/comments'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'

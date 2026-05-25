@@ -22,6 +22,10 @@ function makeWatchChain() {
       calls.push({ op: 'watch.innerJoin', args })
       return chain
     },
+    leftJoin: (...args: unknown[]) => {
+      calls.push({ op: 'watch.leftJoin', args })
+      return chain
+    },
     where: (...args: unknown[]) => {
       calls.push({ op: 'watch.where', args })
       return chain

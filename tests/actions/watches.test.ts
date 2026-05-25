@@ -45,6 +45,14 @@ vi.mock('@/lib/storage/catalogSourcePhotos', () => ({
   getCatalogSourcePhotoSignedUrl: vi.fn().mockResolvedValue(null),
   uploadCatalogSourcePhoto: vi.fn().mockResolvedValue({ path: 'user/pending/abc.jpg' }),
 }))
+// Phase 60: removeWatch now calls createSupabaseServerClient + purgeWatchPhotos before deleteWatch.
+// Mock both so tests don't require a live Supabase request context.
+vi.mock('@/lib/supabase/server', () => ({
+  createSupabaseServerClient: vi.fn().mockResolvedValue({}),
+}))
+vi.mock('@/app/actions/account', () => ({
+  purgeWatchPhotos: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { addWatch, editWatch, removeWatch } from '@/app/actions/watches'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
