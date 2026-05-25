@@ -9,6 +9,8 @@ import * as watchDAL from '@/data/watches'
 import * as catalogDAL from '@/data/catalog'
 import { logActivity } from '@/data/activities'
 import { getCurrentUser } from '@/lib/auth'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { purgeWatchPhotos } from '@/app/actions/account'
 import { logNotification } from '@/lib/notifications/logger'
 import { findOverlapRecipients } from '@/data/notifications'
 import { getProfileById } from '@/data/profiles'
@@ -469,6 +471,12 @@ export async function removeWatch(watchId: string): Promise<ActionResult<void>> 
   try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
 
   try {
+    // Phase 60 T-60-ORPHAN: purge watch-photos storage objects BEFORE deleteWatch.
+    // DB-first: purgeWatchPhotos queries watch_photos storagePaths then removes from storage.
+    // CASCADE handles the watch_photos DB rows when deleteWatch fires.
+    const supabase = await createSupabaseServerClient()
+    await purgeWatchPhotos(supabase, watchId)
+
     await watchDAL.deleteWatch(user.id, watchId)
     revalidatePath('/')
 

@@ -240,7 +240,8 @@ export async function searchCollections({
         w.user_id,
         w.brand,
         w.model,
-        w.image_url,
+        -- Phase 60: watches.image_url column dropped; resolve cover via watch_photos correlated subquery
+        (SELECT wp.storage_path FROM watch_photos wp WHERE wp.watch_id = w.id ORDER BY wp.sort_order ASC LIMIT 1) AS image_url,
         CASE
           WHEN w.brand ILIKE ${pattern} OR w.model ILIKE ${pattern}
           THEN 'name'

@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { db } from '@/db'
-import { watches, wearEvents, users } from '@/db/schema'
+import { watches, wearEvents, users, watchPhotos } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { getProfileById } from '@/data/profiles'
 import type { ActionResult } from '@/lib/actionTypes'
@@ -51,6 +51,29 @@ async function purgeWearPhotos(
 }
 
 /**
+ * Phase 60 (T-60-ORPHAN) — Purge storage objects for a specific watch's photos.
+ *
+ * DB-first approach: query watch_photos for storagePath values, then remove from storage.
+ * Early-returns when no photos exist. Runs BEFORE deleteWatch (orphan prevention).
+ *
+ * @param supabase - session-scoped server client (caller supplies)
+ * @param watchId - the watch whose photos should be purged
+ */
+export async function purgeWatchPhotos(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  watchId: string,
+): Promise<void> {
+  const photos = await db
+    .select({ storagePath: watchPhotos.storagePath })
+    .from(watchPhotos)
+    .where(eq(watchPhotos.watchId, watchId))
+  if (photos.length === 0) return
+  const paths = photos.map((p) => p.storagePath)
+  const { error } = await supabase.storage.from('watch-photos').remove(paths)
+  if (error) throw error
+}
+
+/**
  * Wipe the caller's watch collection and all associated wear events + storage.
  *
  * D-06: Returns a clean ActionResult so the WipeCollectionModal (plan 41-03)
@@ -59,6 +82,7 @@ async function purgeWearPhotos(
  *
  * What is deleted:
  *   - All objects under wear-photos/{userId}/
+ *   - All objects under watch-photos/{userId}/ (Phase 60)
  *   - All wear_events rows for the caller
  *   - All watches rows for the caller
  *
@@ -80,6 +104,22 @@ export async function wipeCollection(): Promise<ActionResult<void>> {
     // 1. Storage purge FIRST — success criterion 2 / RESEARCH Pitfall 2
     const supabase = await createSupabaseServerClient()
     await purgeWearPhotos(supabase, user.id)
+
+    // Phase 60: purge watch-photos/{userId}/ alongside wear-photos
+    // Uses same paginated list+remove loop over the watch-photos bucket
+    const PAGE_SIZE = 1000
+    while (true) {
+      const { data: files, error: listErr } = await supabase.storage
+        .from('watch-photos')
+        .list(user.id, { limit: PAGE_SIZE })
+      if (listErr) throw listErr
+      if (!files || files.length === 0) break
+      const paths = files.map((f) => `${user.id}/${f.name}`)
+      const { error: removeErr } = await supabase.storage
+        .from('watch-photos')
+        .remove(paths)
+      if (removeErr) throw removeErr
+    }
 
     // 2. DB deletes — wear_events before watches (explicit; cascades also cover it)
     await db.delete(wearEvents).where(eq(wearEvents.userId, user.id))

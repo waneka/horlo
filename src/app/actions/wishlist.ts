@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { wearEvents, watches, profileSettings, follows } from '@/db/schema'
@@ -70,7 +70,14 @@ export async function addToWishlistFromWearEvent(
       actorId: wearEvents.userId,
       brand: watches.brand,
       model: watches.model,
-      imageUrl: watches.imageUrl,
+      // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+      imageUrl: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
       movementType: watches.movementType,
       profilePublic: profileSettings.profilePublic,
       visibility: wearEvents.visibility,

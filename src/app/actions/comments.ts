@@ -2,7 +2,7 @@
 
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { getCurrentUser } from '@/lib/auth'
 import { logNotification } from '@/lib/notifications/logger'
@@ -79,7 +79,14 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
           userId: watches.userId,
           brand: watches.brand,
           model: watches.model,
-          imageUrl: watches.imageUrl,   // for feed thumbnail (FEED-06 logActivity metadata)
+          // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+          imageUrl: sql<string | null>`(
+            SELECT wp.storage_path
+            FROM watch_photos wp
+            WHERE wp.watch_id = ${watches.id}
+            ORDER BY wp.sort_order ASC
+            LIMIT 1
+          )`,
           status: watches.status,       // for D-12 gate in feed (watchStatus field)
         })
         .from(watches)
@@ -104,7 +111,18 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
       if (!wearRow) return { success: false, error: 'Not found' }
 
       const [watchRow] = await db
-        .select({ brand: watches.brand, model: watches.model, imageUrl: watches.imageUrl })
+        .select({
+          brand: watches.brand,
+          model: watches.model,
+          // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+          imageUrl: sql<string | null>`(
+            SELECT wp.storage_path
+            FROM watch_photos wp
+            WHERE wp.watch_id = ${watches.id}
+            ORDER BY wp.sort_order ASC
+            LIMIT 1
+          )`,
+        })
         .from(watches)
         .where(eq(watches.id, wearRow.watchId))
         .limit(1)

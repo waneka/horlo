@@ -264,7 +264,14 @@ export async function getWearEventByIdForViewer(
       avatarUrl: profiles.avatarUrl,
       brand: watches.brand,
       model: watches.model,
-      watchImageUrl: watches.imageUrl,
+      // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+      watchImageUrl: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
     })
     .from(wearEvents)
     .innerJoin(profileSettings, eq(profileSettings.userId, wearEvents.userId))
@@ -341,7 +348,14 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
       profilePublic: profileSettings.profilePublic,
       brand: watches.brand,
       model: watches.model,
-      imageUrl: watches.imageUrl,
+      // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+      imageUrl: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
     })
     .from(wearEvents)
     .innerJoin(profiles, eq(profiles.id, wearEvents.userId))
@@ -463,7 +477,14 @@ export async function getActiveWearsForUser(
         avatarUrl: profiles.avatarUrl,
         brand: watches.brand,
         model: watches.model,
-        watchImageUrl: watches.imageUrl,
+        // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+        watchImageUrl: sql<string | null>`(
+          SELECT wp.storage_path
+          FROM watch_photos wp
+          WHERE wp.watch_id = ${watches.id}
+          ORDER BY wp.sort_order ASC
+          LIMIT 1
+        )`,
       })
       .from(wearEvents)
       .innerJoin(profiles, eq(profiles.id, wearEvents.userId))
@@ -515,7 +536,14 @@ export async function getActiveWearsForUser(
       avatarUrl: profiles.avatarUrl,
       brand: watches.brand,
       model: watches.model,
-      watchImageUrl: watches.imageUrl,
+      // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
+      watchImageUrl: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
     })
     .from(wearEvents)
     .innerJoin(profileSettings, eq(profileSettings.userId, wearEvents.userId))
