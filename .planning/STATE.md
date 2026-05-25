@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
-status: complete
-stopped_at: v6.0 all 8 phases prod-verified (57 + 58 HUMAN-UAT passed this session; 57.1 reconciled) — ready for /gsd-complete-milestone (optional /gsd-audit-milestone first)
-last_updated: "2026-05-25T01:30:00.000Z"
-last_activity: 2026-05-25 -- Phase 57 prod-verified via /gsd-verify-work 57 (5/5 HUMAN-UAT passed); 57 + 57.1 VERIFICATION → passed. ALL v6.0 verification debt cleared.
+status: Awaiting next milestone
+stopped_at: Phase 58 UI-SPEC approved
+last_updated: "2026-05-25T02:45:44.529Z"
+last_activity: 2026-05-25 — Milestone v6.0 completed and archived
 progress:
-  total_phases: 8
-  completed_phases: 8
+  total_phases: 9
+  completed_phases: 9
   total_plans: 37
   completed_plans: 37
   percent: 100
@@ -18,23 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-22 — v6.0 milestone started)
+See: .planning/PROJECT.md (updated 2026-05-24 — v6.0 Social Interaction shipped)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Milestone v6.0 Social Interaction — all 8 phases complete (build done); prod HUMAN-UAT verification pending before milestone wrap-up
+**Current focus:** v6.0 Social Interaction shipped + archived (2026-05-24, tag `v6.0`). No milestone active — next is `/gsd-new-milestone` (planted: v7.0 Watch Photos, SEED-013).
 
 ## Current Position
 
-Phase: 58 (last phase of v6.0 — complete)
+Phase: Milestone v6.0 complete
 Plan: —
-Status: Milestone v6.0 phases complete (prod verification pending)
-Last activity: 2026-05-24
-
-Progress: [██████████] 100% (8/8 v6.0 phases)
-
-<!-- NOTE: Phase 58 COMPLETE (2026-05-24): Notification UI + Settings Opt-Out — 3/3 plans, build green (next build exit 0), 3/3 must-haves structurally verified, code review clean (0 critical; WR-01/WR-02 fixed). PROD-VERIFIED 2026-05-24 via /gsd-verify-work 58 — all 3 HUMAN-UAT items PASSED (4-type render + deep-links, live like-grouping, opt-out round-trip); 58-VERIFICATION status → passed. v6.0 has 8 phases (53/54/55/56/56a/57/57.1/58) — ALL DONE; pushed to prod (2063b1c). gsd-sdk phase.complete corrupted this block again (next_phase=999.1 archived, completed_phases=10>8, percent=111>100) — see memory project_phase_complete_999_1_misset; hand-corrected to 8/8 / 100% / milestone complete. ALL v6.0 PROD VERIFICATION CLEARED 2026-05-25: Phase 57 HUMAN-UAT 5/5 passed (/gsd-verify-work 57), Phase 58 3/3 passed, 57.1 5/5 (reconciled); 57/57.1/58 VERIFICATION all → passed; 56/56A done earlier. Real next = /gsd-complete-milestone v6.0 (no v6.0-MILESTONE-AUDIT.md yet — optional /gsd-audit-milestone first). -->
-
-Out of scope from Phase 57 UAT (captured as seeds): SEED-015 (inline like/comment from profile grid), SEED-016 (`/watch/[id]` redesign).
+Status: Awaiting next milestone
+Last activity: 2026-05-25 — Milestone v6.0 completed and archived
 
 ## Performance Metrics
 
@@ -130,14 +124,7 @@ Items acknowledged and deferred at v5.1 milestone close (2026-05-19):
 
 ### Blockers/Concerns
 
-None blocking.
-
-Open pre-flights for Phase 53 discuss/spec:
-
-- **Data model choice** — per-target tables (SUMMARY recommendation) vs. polymorphic; must be decided before schema migration is authored.
-- **`follows` SELECT RLS policy** — check Phase 7-9 migrations; if absent, add policy or use SECDEF helper (triggers REVOKE/GRANT requirement).
-- **`ALTER TYPE ... ADD VALUE` outside transaction block** — four `watch_like`, `wear_like`, `watch_comment`, `wear_comment` values; must be standalone statements in the migration file.
-- **Wishlist → owned grandfather policy** — existing comments from non-mutual-followers when a watch moves to wishlist; simplest: grandfather (keep rows, gate only new writes). Document before writing `getCommentsForTarget`.
+None blocking. v6.0 shipped — the Phase 53 pre-flight questions (data-model choice → per-target like tables; `follows` RLS; non-transactional enum `ADD VALUE`; wishlist-comment grandfather policy) were all resolved during v6.0 execution. Next milestone not yet scoped.
 
 ### Quick Tasks Completed
 
@@ -154,7 +141,9 @@ None.
 
 ## Deferred Items
 
-Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
+**Re-acknowledged at v6.0 milestone close (2026-05-24):** the pre-close artifact audit found 24 open items, all carried-forward and non-blocking — 1 false-positive debug index (`knowledge-base`, the resolved-sessions index), 10 stale quick-task slugs (no `.planning/quick/` dirs present), and 13 backlog seeds. None are v6.0 work; they are the same buckets acknowledged at the v5.1/v5.2 closes (enumerated below). SEED-012 (v6.0 Social Interaction) is now **shipped**.
+
+Items acknowledged and deferred at v5.2 milestone close on 2026-05-20 (SEED-012 status updated to shipped at v6.0 close):
 
 | Category | Item | Status | Notes |
 |----------|------|--------|-------|
@@ -178,17 +167,15 @@ Items acknowledged and deferred at v5.2 milestone close on 2026-05-20:
 | seed | SEED-005-v6-market-value | dormant | Future milestone (after v8.0) |
 | seed | SEED-007-market-pricing-api-spike | dormant | Future spike |
 | seed | SEED-010-v5.3-add-watch-redesign | dormant | Future v8 milestone |
-| seed | SEED-012-v6.0-social-interaction | active | This milestone |
+| seed | SEED-012-v6.0-social-interaction | ✅ shipped | Shipped as v6.0 (2026-05-24) |
 | seed | SEED-013-v7.0-watch-photos | dormant | Future v7.0 milestone |
 
 ## Session Continuity
 
-Last activity: 2026-05-24 — Phase 57.1 complete (comment-UI polish + own-watch suppression); 3/3 plans, build green, 6/6 structural must-haves verified; 5 human items pending prod verification (57.1-HUMAN-UAT.md)
-Stopped at: Phase 58 UI-SPEC approved
-Next action: Push origin main → verify the 5 Phase 57.1 human items on the Vercel prod deploy; then `/gsd-discuss-phase 58` (or `/gsd-plan-phase 58`) to begin Phase 58
+Last activity: 2026-05-24 — v6.0 Social Interaction milestone closed and archived (ROADMAP + REQUIREMENTS + audit → `milestones/`; PROJECT.md evolved; MILESTONES.md + RETROSPECTIVE.md updated; tag `v6.0`).
+Stopped at: Milestone v6.0 complete — no milestone active.
+Next action: `/clear` then `/gsd-new-milestone` to scope the next milestone (planted: v7.0 Watch Photos, SEED-013).
 
 ## Operator Next Steps
 
-- Verify Phase 57.1 on prod: push origin main, then confirm the 5 human items in `.planning/phases/57.1-comment-ui-polish-own-watch-suppression/57.1-HUMAN-UAT.md` (drawer centering, iPhone safe-area, optimistic badge, /watch count refresh, own-watch no-compose). Run `/gsd-verify-work 57.1` to record results.
-- Then run `/gsd-discuss-phase 58` for Phase 58 (Notification UI + Settings Opt-Out — NOTIF-15, NOTIF-16), then `/gsd-plan-phase 58`.
-- Pre-existing cleanup (out of 57.1 scope): `CommentGateLocked.tsx:79` uses `font-medium` (introduced in Phase 57 WR-05) — fails `tests/no-raw-palette.test.ts`.
+- Start the next milestone with /gsd-new-milestone

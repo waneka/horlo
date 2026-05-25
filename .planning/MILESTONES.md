@@ -1,5 +1,33 @@
 # Milestones
 
+## v6.0 Social Interaction (Shipped: 2026-05-24)
+
+**Phases completed:** 8 phases (53, 54, 55, 56, 56A, 57, 57.1, 58), 37 plans
+**Timeline:** 3 days (2026-05-22 → 2026-05-24), 257 commits (58 feat, 27 test, 26 fix)
+**Code:** 51 `src/` files changed, +4,436 / −484 LOC
+**Source:** SEED-012 — a scoped, tasteful likes-and-comments layer on individual watches and wears; social warmth atop the Rdio-style discovery, explicitly *not* "Instagram for watches."
+**Audit:** ✅ `passed` (`/gsd-audit-milestone`, 2026-05-24) — 34/34 requirements satisfied across a 3-source cross-reference, 7/7 cross-phase integration flows wired, 0 critical blockers. First v6.x close run through a formal audit.
+
+**Requirements shipped (34/34 satisfied):**
+
+- **LIKE-01..05** — like/unlike individual watches (any status) + wear posts with optimistic state, count hidden at zero, and a UNIQUE-constraint idempotency backstop (Phases 53, 56).
+- **CMNT-01..09** — flat newest-first comments on watches + wears with compose-above, 500-char limit enforced at input/Zod/DB CHECK, live counter, in-place edit ("[edited]") + inline-confirm delete, optimistic-at-top reconcile, and count badges (Phases 57, 57.1).
+- **GATE-01..05** — wishlist comments restricted to mutual followers (likes stay open — the intended asymmetry); "Follow to comment" locked-state CTA with no content leak; owner always exempt; bidirectional `isMutualFollow` check (Phases 53, 54, 57).
+- **NOTIF-11..16** — owner notified on others' likes/comments (never self), like-grouping ("X and N others"), rapid-churn dedup via partial UNIQUE indexes, independent `notifyOnLike`/`notifyOnComment` Settings opt-out, and bell/inbox rendering with deep-links (Phases 55, 58).
+- **FEED-06/07** — comments (not likes) surface in the home Network Activity feed, gated so a comment on a mutual-follow-gated wishlist watch is never leaked to ineligible viewers (Phase 57).
+- **SEC-01..06** — two-layer privacy (RLS `TO authenticated` + DAL gate) on every interaction; gate enforced in both layers (DAL-direct integration test); Server Actions re-verify auth + authorship (no IDOR, Zod `.strict()`); per-viewer cache scoping; FK cascade removes interactions when a watch/wear is deleted (Phases 53, 54, 55).
+- **DISP-01** — profile collection/wishlist grid cards show a batched "♥ N · 💬 M" line per watch (constant ≤5 queries, no N+1) (Phase 57).
+
+**Also delivered (UX/architecture, no formal req-ID):** Phase 56A unified the two disconnected wear-viewing experiences into routed `/wears/[username]` (full-screen stories lane) + `/wear/[id]` (permalink) sharing one `WearCard`/`LikeButton`/`WearCommentHost`, deleting the legacy `WywtOverlay`/`WywtSlide` client modal.
+
+**Verification:** All 5 UI phases passed on-prod human UAT (horlo.app). Per-phase VERIFICATION scores: 53 5/5, 54 5/5, 55 5/5, 56 9/9, 56A 16/16, 57 13/13, 57.1 6/6, 58 3/3.
+
+**Known tech debt at close (non-blocking):** Nyquist VALIDATION docs for phases 54–58 left at `draft` (the described tests exist and pass — doc-reconciliation only; run `/gsd-validate-phase N` to reconcile); ~6 cosmetic doc/impl mismatches (stale JSDoc/comments, benign null-compose race, DragOverlay ghost-card missing count props); pre-existing `wornPublic` test-fixture `tsc` noise across 9 files (Phase 12 column-drop fallout, runtime unaffected).
+
+**Known deferred items at close:** 24 open artifact-audit items acknowledged as deferred (see STATE.md `## Deferred Items`) — 1 false-positive debug-index, 10 stale quick-task slugs, 13 backlog seeds. None are v6.0 work.
+
+---
+
 ## v5.2 Polish + Taxonomy (Shipped: 2026-05-20)
 
 **Phases completed:** 5 phases (48, 49, 49.1, 50, 50.1), 21 plans, 34 tasks
