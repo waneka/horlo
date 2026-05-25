@@ -530,3 +530,169 @@ export async function bulkReorderWishlist(
     throw new OwnerMismatchError(orderedIds.length, updated.length)
   }
 }
+
+// ---- Phase 60: Photo cap + CRUD -----------------------------------------------
+
+/**
+ * Phase 60 D-12 — maximum number of owner-uploaded photos per watch.
+ * Canonical location is this DAL enforcement site. Counts watch_photos rows ONLY
+ * (does not include wear pics — see D-14 and Phase 62).
+ */
+export const MAX_PHOTOS_PER_WATCH = 10
+
+/**
+ * Phase 60 D-13 — thrown when addWatchPhoto would exceed MAX_PHOTOS_PER_WATCH.
+ * The cap is intentionally soft (no DB CHECK) so it can be tuned via code
+ * without a migration. DAL is the sole write path — this error is the gate.
+ */
+export class PhotoCapExceededError extends Error {
+  constructor(public cap: number) {
+    super(`Photo cap reached: a watch may have at most ${cap} photos`)
+    this.name = 'PhotoCapExceededError'
+  }
+}
+
+/**
+ * Phase 60 (PHOTO-07) — Insert a new photo for an owned watch.
+ *
+ * Three-step guard (T-60-XTENANT / T-60-CAP):
+ *   1. Ownership check — `watches.id = watchId AND watches.user_id = userId`; throws on miss.
+ *   2. Cap check — `count(*) >= MAX_PHOTOS_PER_WATCH`; throws PhotoCapExceededError (D-13).
+ *      Counts watch_photos rows ONLY (D-14; wear pics are not counted).
+ *   3. Next sort_order = coalesce(max(sortOrder), -1)::int + 1 (starts at 0 for first photo).
+ *   4. Insert + return.
+ *
+ * Returns the inserted row. Caller stores the storagePath after a successful upload.
+ */
+export async function addWatchPhoto(
+  userId: string,
+  watchId: string,
+  storagePath: string,
+): Promise<typeof watchPhotos.$inferSelect> {
+  // 1. Ownership check
+  const owned = await db
+    .select({ id: watches.id })
+    .from(watches)
+    .where(and(eq(watches.id, watchId), eq(watches.userId, userId)))
+    .limit(1)
+  if (!owned[0]) {
+    throw new Error(`Watch not found or access denied: watchId=${watchId}, userId=${userId}`)
+  }
+
+  // 2. Cap check (counts watch_photos rows only — D-14)
+  const countRows = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(watchPhotos)
+    .where(eq(watchPhotos.watchId, watchId))
+  const current = countRows[0]?.c ?? 0
+  if (current >= MAX_PHOTOS_PER_WATCH) {
+    throw new PhotoCapExceededError(MAX_PHOTOS_PER_WATCH)
+  }
+
+  // 3. Next sort_order
+  const maxRows = await db
+    .select({ maxSort: sql<number>`coalesce(max(${watchPhotos.sortOrder}), -1)::int` })
+    .from(watchPhotos)
+    .where(eq(watchPhotos.watchId, watchId))
+  const nextSort = (maxRows[0]?.maxSort ?? -1) + 1
+
+  // 4. Insert
+  const inserted = await db
+    .insert(watchPhotos)
+    .values({ watchId, storagePath, sortOrder: nextSort })
+    .returning()
+  return inserted[0]
+}
+
+/**
+ * Phase 60 (D-03, T-60-REORDER) — Rewrite sort_order for all photos on a watch
+ * in a single round-trip via UPDATE … CASE WHEN.
+ *
+ * Defense-in-depth (mirrors bulkReorderWishlist):
+ *   1. Ownership check via watches table (T-60-XTENANT).
+ *   2. Set-completeness check: count of watch_photos must equal orderedIds.length.
+ *      Rejects partial-set submissions (SetMismatchError) that would leave stale
+ *      sort_order values colliding with the 0..N-1 range.
+ *   3. CASE WHEN bulk update; OwnerMismatchError if updated.length !== orderedIds.length.
+ */
+export async function bulkReorderPhotos(
+  userId: string,
+  watchId: string,
+  orderedIds: string[],
+): Promise<void> {
+  if (orderedIds.length === 0) return
+
+  // 1. Ownership check
+  const owned = await db
+    .select({ id: watches.id })
+    .from(watches)
+    .where(and(eq(watches.id, watchId), eq(watches.userId, userId)))
+    .limit(1)
+  if (!owned[0]) {
+    throw new Error(`Watch not found or access denied: watchId=${watchId}, userId=${userId}`)
+  }
+
+  // 2. Set-completeness check
+  const totalRows = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(watchPhotos)
+    .where(eq(watchPhotos.watchId, watchId))
+  const total = totalRows[0]?.c ?? 0
+  if (total !== orderedIds.length) {
+    throw new SetMismatchError(total, orderedIds.length)
+  }
+
+  // 3. CASE WHEN bulk update
+  const chunks: SQL[] = [sql`(case`]
+  orderedIds.forEach((id, idx) => {
+    chunks.push(sql`when ${watchPhotos.id} = ${id} then ${idx}::int4`)
+  })
+  chunks.push(sql`end)`)
+  const caseExpr = sql.join(chunks, sql.raw(' '))
+
+  const updated = await db
+    .update(watchPhotos)
+    .set({ sortOrder: caseExpr })
+    .where(
+      and(
+        eq(watchPhotos.watchId, watchId),
+        inArray(watchPhotos.id, orderedIds),
+      ),
+    )
+    .returning({ id: watchPhotos.id })
+
+  if (updated.length !== orderedIds.length) {
+    throw new OwnerMismatchError(orderedIds.length, updated.length)
+  }
+}
+
+/**
+ * Phase 60 (T-60-XTENANT) — Delete a single photo row for an owned watch.
+ *
+ * Ownership check is via the watches table (not watchPhotos) so the
+ * cross-tenant guard is on `watches.user_id = userId`.
+ * Throws if the photo does not exist or the watch is not owned by userId.
+ */
+export async function deleteWatchPhoto(
+  userId: string,
+  watchId: string,
+  photoId: string,
+): Promise<void> {
+  // Ownership check
+  const owned = await db
+    .select({ id: watches.id })
+    .from(watches)
+    .where(and(eq(watches.id, watchId), eq(watches.userId, userId)))
+    .limit(1)
+  if (!owned[0]) {
+    throw new Error(`Watch not found or access denied: watchId=${watchId}, userId=${userId}`)
+  }
+
+  const deleted = await db
+    .delete(watchPhotos)
+    .where(and(eq(watchPhotos.id, photoId), eq(watchPhotos.watchId, watchId)))
+    .returning()
+  if (!deleted[0]) {
+    throw new Error(`Photo not found: photoId=${photoId}, watchId=${watchId}`)
+  }
+}
