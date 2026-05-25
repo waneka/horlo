@@ -235,6 +235,34 @@ export async function getWatchByIdForViewer(
 }
 
 /**
+ * ARCH-02 detection — does the viewer already own a row in `watches` with this
+ * catalogId? If yes, return the row (we need its id to build the owned-view).
+ * If no, return null.
+ *
+ * T-20-06-01: query is scoped by BOTH userId AND catalogId — the viewer can
+ * never read another user's watches.id even if catalogIds collide across users.
+ */
+export async function findViewerWatchByCatalogId(
+  userId: string,
+  catalogId: string,
+): Promise<{ id: string } | null> {
+  const rows = await db
+    .select({
+      id: watches.id,
+    })
+    .from(watches)
+    .where(and(
+      eq(watches.userId, userId),
+      eq(watches.catalogId, catalogId),
+      eq(watches.status, 'owned'),  // BUG-01 fix: only 'owned' rows are "truly owned"
+    ))
+    .limit(1)
+  if (rows.length === 0) return null
+  const row = rows[0]
+  return { id: row.id }
+}
+
+/**
  * Insert a new watch for the given user. Returns the created Watch domain object.
  *
  * Phase 38 D-06: catalogId is now a required second positional argument (IDIOM A).
