@@ -1,3 +1,10 @@
+// @vitest-environment node
+//
+// This guard walks the filesystem (readdirSync/statSync) and reads source files.
+// It MUST run in the node environment — under the config default (jsdom), vite
+// externalizes node:fs "for browser compatibility" and readdirSync becomes
+// undefined. That difference is environment-dependent: it passed locally but
+// failed Vercel's build (prebuild hook) with "readdirSync is not a function".
 /**
  * Phase 59 — Legacy watch-detail route guard.
  *
