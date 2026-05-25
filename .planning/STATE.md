@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: executing
-stopped_at: Phase 59 Plan 02 complete — ready for Plan 03
-last_updated: "2026-05-25T06:51:27.157Z"
+status: verifying
+stopped_at: Phase 59 Plan 03 complete — Phase 59 (unified-route-variant-c) COMPLETE
+last_updated: "2026-05-25T08:10:00.000Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 Phase: 59 (unified-route-variant-c) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-25
 
-Progress: [███████░░░] 67%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -50,6 +50,8 @@ Progress: [███████░░░] 67%
 - **`unstable_instant = false` on `/u/[username]/[tab]` is PERMANENT** — do not re-enable (Phase 52 lesson).
 - **Phase 64 must preserve Phase 51/52 Cache Components structure** — CommentThread stays an uncached Suspense sibling.
 - **OtherOwnersRoster + CatalogPageActions on unified route are cross-user only** — gated on `!isOwner` per spike §4.D; Phase 64 IA redesign resolves definitively.
+- **Build-gate proven (ROUTE-03/D-11)** — `npm run build` exits 1 with any `/watch/${` literal; exits 0 clean. Vercel will block deploys with missed link migrations.
+- **Tests for deleted legacy pages removed** — `tests/app/catalog-page.test.ts` and `tests/app/watch-page-verdict.test.ts` deleted (imported the now-deleted pages); unified route integration coverage in `tests/integration/phase59-unified-route.test.ts` from Plan 01.
 
 ### Pending Todos
 
@@ -57,10 +59,10 @@ None.
 
 ### Blockers/Concerns
 
-None blocking. Plans 01 + 02 complete. CI guard is RED (expected — 26 legacy literals remain; Plan 03 re-points them). Route merge (~36 files / ~26 link literals) is the highest-complexity step; CI guard (ROUTE-03) is the safety net. New route /w/[ref] exists and is ready to receive migrated links.
+None. Phase 59 complete: all 26 literals migrated, 3 legacy pages deleted, CI guard GREEN (347/347), build exits 0. ROUTE-02/03/04/05/06 all satisfied.
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 59 Plan 02 complete (unified /w/[ref] page + /w/[ref]/edit page).
-Stopped at: Phase 59 Plan 02 complete — ready for Plan 03
-Next action: Execute Phase 59 Plan 03 (link migration: 26 literals across 21 files + legacy page deletion)
+Last activity: 2026-05-25 — Phase 59 Plan 03 complete (26 literals migrated, 3 legacy pages deleted, build-gate proven).
+Stopped at: Phase 59 complete — ready for verification (prod deploy + manual UAT of /w/[ref] routing)
+Next action: /gsd-verify-work for Phase 59 UAT on prod, then Phase 60 (photo schema/DAL)
