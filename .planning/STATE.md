@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 60 Plan 02 complete
-last_updated: "2026-05-25T16:52:10.972Z"
+stopped_at: Phase 60 Plan 03 complete
+last_updated: "2026-05-25T17:01:41.056Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 60 (multi-photo-schema-dal) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-25
 
-Progress: [███████░░░] 71%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -53,7 +53,8 @@ Progress: [███████░░░] 71%
 - **Build-gate proven (ROUTE-03/D-11)** — `npm run build` exits 1 with any `/watch/${` literal; exits 0 clean. Vercel will block deploys with missed link migrations.
 - **Tests for deleted legacy pages removed** — `tests/app/catalog-page.test.ts` and `tests/app/watch-page-verdict.test.ts` deleted (imported the now-deleted pages); unified route integration coverage in `tests/integration/phase59-unified-route.test.ts` from Plan 01.
 - **watch_photos Supabase migration is authoritative** — backfill + lossless assert + DROP COLUMN + RLS + bucket live in `20260525000000_phase60_watch_photos.sql`; Drizzle migration `0013_phase60_watch_photos.sql` is local-sync only; prod push is Plan 04.
-- **src/data/watches.ts temporarily broken on row.imageUrl** — expected within the wave; Plan 03 fixes mappers + DAL.
+- **src/data/watches.ts temporarily broken on row.imageUrl** — RESOLVED in Plan 03 (mappers repointed; cover subquery across all 3 read paths).
+- **Cover subquery returns raw storagePath** — Phase 61 signs URLs; DAL stays admin-client-free (D-04/D-06 Open Q1 decision).
 
 ### Pending Todos
 
@@ -61,10 +62,10 @@ None.
 
 ### Blockers/Concerns
 
-None. Phase 60 Plan 02 complete: watch-photos storage helper (buildWatchPhotoPath + uploadWatchPhoto) created; SC4 EXIF/≤1080px pipeline verification test green; 10/10 unit tests passing.
+None. Phase 60 Plans 01-03 complete. Plan 04 (prod migration) remains.
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 60 Plan 02 COMPLETE. watch-photos storage helper (buildWatchPhotoPath + uploadWatchPhoto) created. SC4 EXIF/≤1080px pipeline verification test green (10/10 tests passing). Plans 03-04 remain.
-Stopped at: Phase 60 Plan 02 complete
-Next action: Phase 60 Plan 03 (src/lib/types.ts WatchPhoto type + DAL: getWatchPhotosByWatch, addWatchPhoto, removeWatchPhoto, MAX_PHOTOS_PER_WATCH)
+Last activity: 2026-05-25 — Phase 60 Plan 03 COMPLETE. Cover-resolving DAL (correlated watch_photos subquery across all 3 read paths) + addWatchPhoto (cap+ownership) + bulkReorderPhotos + deleteWatchPhoto + purgeWatchPhotos + full image_url blast-radius repoint. 7/7 integration tests passing (SC1/SC2/SC3/cross-tenant). tsc --noEmit clean in src/.
+Stopped at: Phase 60 Plan 03 complete
+Next action: Phase 60 Plan 04 (prod Supabase migration push)
