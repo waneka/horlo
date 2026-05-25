@@ -85,6 +85,20 @@
       "when": 1778632000000,
       "tag": "0011_phase38_catalog_id_notnull",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1779727316000,
+      "tag": "0012_phase49_1_drop_primary_archetype",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779727400000,
+      "tag": "0013_phase60_watch_photos",
+      "breakpoints": true
     }
   ]
 }
