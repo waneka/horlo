@@ -1,34 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.0
-milestone_name: Social Interaction
-status: Awaiting next milestone
-stopped_at: Phase 58 UI-SPEC approved
-last_updated: "2026-05-25T02:45:44.529Z"
-last_activity: 2026-05-25 — Milestone v6.0 completed and archived
+milestone: v7.0
+milestone_name: Watch Photos & Detail Redesign
+status: planning
+last_updated: "2026-05-25T04:57:39.809Z"
+last_activity: 2026-05-25
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 37
-  completed_plans: 37
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-24 — v6.0 Social Interaction shipped)
+See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 Watch Photos & Detail Redesign started)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v6.0 Social Interaction shipped + archived (2026-05-24, tag `v6.0`). No milestone active — next is `/gsd-new-milestone` (planted: v7.0 Watch Photos, SEED-013).
+**Current focus:** v7.0 Watch Photos & Detail Redesign — defining requirements. Scope: unified `/w/[ref]` route (Variant C, first) → multi-photo carousel → public-wear-pic surfacing → add-watch photo encouragement → inline grid engagement (SEED-015) → `/w/[ref]` IA redesign (SEED-016). Folds SEED-013/015/016.
 
 ## Current Position
 
-Phase: Milestone v6.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-05-25 — Milestone v6.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-05-25 — Milestone v7.0 started
 
 ## Performance Metrics
 
