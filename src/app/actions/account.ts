@@ -192,6 +192,24 @@ export async function deleteAccount(): Promise<ActionResult<void>> {
     const supabase = await createSupabaseServerClient()
     await purgeWearPhotos(supabase, user.id)
 
+    // CR-01 (Phase 60): purge watch-photos/{userId}/ alongside wear-photos —
+    // mirrors wipeCollection. watch_photos DB rows cascade-delete via
+    // db.delete(users), but the storage objects must be purged explicitly,
+    // and BEFORE the auth delete (step 3) revokes this session's storage access.
+    const WATCH_PHOTOS_PAGE_SIZE = 1000
+    while (true) {
+      const { data: files, error: listErr } = await supabase.storage
+        .from('watch-photos')
+        .list(user.id, { limit: WATCH_PHOTOS_PAGE_SIZE })
+      if (listErr) throw listErr
+      if (!files || files.length === 0) break
+      const paths = files.map((f) => `${user.id}/${f.name}`)
+      const { error: removeErr } = await supabase.storage
+        .from('watch-photos')
+        .remove(paths)
+      if (removeErr) throw removeErr
+    }
+
     // 2. Delete public.users row — cascades to all 9 child tables:
     //    watches, wear_events, user_preferences, profiles, profile_settings,
     //    follows, activities, notifications (user_id + actor_id).
