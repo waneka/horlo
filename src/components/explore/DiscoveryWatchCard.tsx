@@ -11,9 +11,9 @@ interface DiscoveryWatchCardWatch {
 /**
  * DiscoveryWatchCard — shared card body for Trending + Gaining Traction (D-13).
  *
- * Phase 20 D-10: wrapped in <Link href="/catalog/[catalogId]"> per the new
- * catalog detail route. The watch.id field is `watches_catalog.id` (NOT a
- * per-user watches.id) — the route looks up by catalog UUID.
+ * Phase 59 D-03: wrapped in <Link href="/w/[ref]"> (discovery surface emits
+ * catalogId). The watch.id field is `watches_catalog.id` (NOT a per-user
+ * watches.id) — the unified route resolves catalog UUID via try-then-fallback.
  *
  * Width: w-44 mobile / w-52 desktop — fits 5+ cards on a desktop scroll strip
  * per 18-UI-SPEC.md § Component Inventory.

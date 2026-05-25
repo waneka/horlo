@@ -43,7 +43,7 @@ interface WatchDetailProps {
    */
   viewerCanEdit?: boolean
   /**
-   * Phase 20 D-03/D-04: precomputed VerdictBundle from /watch/[id]/page.tsx.
+   * Phase 20 D-03/D-04: precomputed VerdictBundle from /w/[ref]/page.tsx.
    * `null` means D-07 fired (viewer collection is empty) — render no card slot.
    * `undefined` means a defensive default for any non-Plan-04 caller; treat as null.
    */
@@ -471,7 +471,7 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
         </Card>
       )}
 
-      {/* Phase 20 FIT-01/D-04: pure-render card; computation happens in /watch/[id]/page.tsx (D-03 Server Component compute) */}
+      {/* Phase 20 FIT-01/D-04: pure-render card; computation happens in /w/[ref]/page.tsx (D-03 Server Component compute) */}
       {verdict && <CollectionFitCard verdict={verdict} />}
 
       {/* Notes */}

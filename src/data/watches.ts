@@ -256,6 +256,10 @@ export async function findViewerWatchByCatalogId(
       eq(watches.catalogId, catalogId),
       eq(watches.status, 'owned'),  // BUG-01 fix: only 'owned' rows are "truly owned"
     ))
+    // D-05: a collector may own duplicate copies of one reference (two owned rows,
+    // same catalogId). ORDER BY makes the picked copy deterministic (most-recently
+    // acquired) instead of an arbitrary .limit(1) row.
+    .orderBy(desc(watches.createdAt))
     .limit(1)
   if (rows.length === 0) return null
   const row = rows[0]
