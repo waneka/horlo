@@ -1,5 +1,18 @@
 export type WatchStatus = 'owned' | 'wishlist' | 'sold' | 'grail'
 
+/**
+ * Phase 60 D-01: Domain type for a single watch photo.
+ * storagePath is the RAW Storage path (Phase 61 signs URLs).
+ * sortOrder determines cover: the photo with the lowest sortOrder is the cover.
+ */
+export interface WatchPhoto {
+  id: string
+  watchId: string
+  storagePath: string
+  sortOrder: number
+  createdAt: string // ISO string
+}
+
 export type MovementType = 'auto' | 'manual' | 'quartz' | 'spring_drive'
 
 // Phase 35 D-09: factual era classification — independent of era_signal (Phase 19.1).

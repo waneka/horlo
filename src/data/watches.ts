@@ -2,7 +2,7 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { watches, profileSettings, watchesCatalog } from '@/db/schema'
+import { watches, profileSettings, watchesCatalog, watchPhotos } from '@/db/schema'
 import { eq, and, or, asc, desc, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Watch, EraSignal } from '@/lib/types'
 
@@ -42,7 +42,8 @@ function mapRowToWatch(row: WatchRow): Watch {
     notes: row.notes ?? undefined,
     notesPublic: row.notesPublic ?? true,
     notesUpdatedAt: row.notesUpdatedAt?.toISOString() ?? undefined,
-    imageUrl: row.imageUrl ?? undefined,
+    // imageUrl is NOT mapped here — the column was dropped in Phase 60 Plan 01.
+    // Cover is resolved per-query as a correlated subquery and overridden after spread.
     // Phase 17 catalog FK — preserve null to let callers distinguish "not linked" from "not fetched"
     catalogId: row.catalogId ?? null,
     // Phase 27 — sort_order for wishlist drag-reorder (D-01).
@@ -90,7 +91,8 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   // notesPublic is mappable from the domain layer (set when toggling per-note visibility).
   // notesUpdatedAt is NOT mapped here — Server Actions set it explicitly when notes change.
   if ('notesPublic' in data && data.notesPublic !== undefined) row.notesPublic = data.notesPublic
-  if ('imageUrl' in data) row.imageUrl = data.imageUrl ?? null
+  // imageUrl is NOT mapped here — the column was dropped in Phase 60 Plan 01.
+  // Cover is computed from watch_photos at read time; it is not a writable column.
 
   // Phase 27 — sort_order is mappable from the domain layer so server
   // actions can pass `{ sortOrder: maxSort + 1 }` for D-03/D-04 bumps.
@@ -140,14 +142,30 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
         confidence: watchesCatalog.confidence,
         extractedFromPhoto: watchesCatalog.extractedFromPhoto,
       },
+      // Phase 60 D-04: catalog imageUrl for fallback chain (D-05).
+      catalogImageUrl: watchesCatalog.imageUrl,
+      // Phase 60 D-04/D-05: cover subquery — lowest sort_order watch_photos row.
+      // Returns the RAW storagePath (Phase 61 signs URLs; keep DAL admin-client-free).
+      // Cover wins over catalog when both present (D-06).
+      coverStoragePath: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
     })
     .from(watches)
     .leftJoin(watchesCatalog, eq(watchesCatalog.id, watches.catalogId))
     .where(eq(watches.userId, userId))
     .orderBy(asc(watches.sortOrder), desc(watches.createdAt))
 
-  return rows.map(({ watch, taste }) => ({
+  return rows.map(({ watch, taste, coverStoragePath, catalogImageUrl }) => ({
     ...mapRowToWatch(watch),
+    // Phase 60 D-04/D-05/D-06: cover->catalog->undefined fallback chain.
+    // coverStoragePath is the lowest-sort_order watch_photos row storage_path (raw path).
+    // catalogImageUrl is the catalog imageUrl (fallback when no watch_photos exist).
+    imageUrl: coverStoragePath ?? (catalogImageUrl ?? undefined),
     // Numeric columns surface as strings via postgres-js — coerce at the boundary.
     // RESEARCH Pitfall 2: if forgotten, cosine3D produces NaN and all scores collapse.
     // LEFT JOIN miss: taste itself is null when no catalog row matched.
@@ -170,11 +188,28 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
  * Not-found is an expected outcome, not a thrown error (D-08).
  */
 export async function getWatchById(userId: string, watchId: string): Promise<Watch | null> {
+  // Phase 60 D-04/D-05: add catalog leftJoin (previously absent) for the cover->catalog fallback.
   const rows = await db
-    .select()
+    .select({
+      watch: watches,
+      catalogImageUrl: watchesCatalog.imageUrl,
+      coverStoragePath: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
+    })
     .from(watches)
+    .leftJoin(watchesCatalog, eq(watchesCatalog.id, watches.catalogId))
     .where(and(eq(watches.userId, userId), eq(watches.id, watchId)))
-  return rows[0] ? mapRowToWatch(rows[0]) : null
+  if (!rows[0]) return null
+  const { watch, coverStoragePath, catalogImageUrl } = rows[0]
+  return {
+    ...mapRowToWatch(watch),
+    imageUrl: coverStoragePath ?? (catalogImageUrl ?? undefined),
+  }
 }
 
 /**
@@ -200,9 +235,20 @@ export async function getWatchByIdForViewer(
       profilePublic: profileSettings.profilePublic,
       collectionPublic: profileSettings.collectionPublic,
       wishlistPublic: profileSettings.wishlistPublic,
+      // Phase 60 D-04/D-05: catalog imageUrl for cover->catalog->undefined fallback.
+      catalogImageUrl: watchesCatalog.imageUrl,
+      // Phase 60 D-04: cover subquery — lowest sort_order watch_photos row.
+      coverStoragePath: sql<string | null>`(
+        SELECT wp.storage_path
+        FROM watch_photos wp
+        WHERE wp.watch_id = ${watches.id}
+        ORDER BY wp.sort_order ASC
+        LIMIT 1
+      )`,
     })
     .from(watches)
     .innerJoin(profileSettings, eq(profileSettings.userId, watches.userId))
+    .leftJoin(watchesCatalog, eq(watchesCatalog.id, watches.catalogId))
     .where(
       and(
         eq(watches.id, watchId),
@@ -225,7 +271,11 @@ export async function getWatchByIdForViewer(
   const row = rows[0]
   if (!row) return null
   return {
-    watch: mapRowToWatch(row.watch),
+    watch: {
+      ...mapRowToWatch(row.watch),
+      // Phase 60 D-04/D-05/D-06: cover->catalog->undefined fallback chain.
+      imageUrl: row.coverStoragePath ?? (row.catalogImageUrl ?? undefined),
+    },
     isOwner: row.watch.userId === viewerId,
     // Phase 57 Plan 05: expose ownerUserId for GATE-03 signal resolution + CommentThread.
     // userId is stripped from the Watch domain type (DB-internal field); surfaced here
