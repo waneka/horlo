@@ -214,7 +214,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   4. The photo upload pipeline strips EXIF and re-encodes to ≤1080px JPEG before storage (verifiable via file metadata on uploaded test images)
   5. The in-place migration runs cleanly on local and prod without wiping existing `watches_catalog` LLM/factual/photo investment (D-11: satisfied trivially — catalog untouched; the real lossless assertion is the `watches.image_url` backfill→drop)
 **Plans**: 4 plans (3 waves)
-- [ ] 60-01-PLAN.md — watch_photos schema + authoritative Supabase migration (backfill→drop) + bucket/RLS + Wave 0 test stub + local push (Wave 1)
+- [x] 60-01-PLAN.md — watch_photos schema + authoritative Supabase migration (backfill→drop) + bucket/RLS + Wave 0 test stub + local push (Wave 1)
 - [ ] 60-02-PLAN.md — watch-photos storage helper + SC4 EXIF/≤1080px JPEG verification test (Wave 1)
 - [ ] 60-03-PLAN.md — DAL cover resolution (3 paths) + cap/reorder/delete + repoint all image_url readers + storage purge hook (Wave 2)
 - [ ] 60-04-PLAN.md — [BLOCKING] prod migration push (supabase db push --linked) + prod verification (Wave 3, operator-run)
@@ -275,7 +275,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
-| 60. Multi-Photo Schema + DAL | 0/TBD | Not started | - |
+| 60. Multi-Photo Schema + DAL | 1/4 | In Progress|  |
 | 61. Photo Upload + Carousel UI | 0/TBD | Not started | - |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
 | 63. Inline Grid Engagement | 0/TBD | Not started | - |

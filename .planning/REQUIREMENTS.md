@@ -28,7 +28,7 @@
 
 > Replace the single `imageUrl` with a real multi-photo model. In-place ALTER (`watches_catalog` is NOT wipeable). Reuse the v3.0 `wear-photos` upload pipeline.
 
-- [ ] **PHOTO-01**: A watch can hold multiple photos (replacing the single image field)
+- [x] **PHOTO-01**: A watch can hold multiple photos (replacing the single image field)
 - [ ] **PHOTO-02**: A user can upload one or more photos to a watch they own
 - [ ] **PHOTO-03**: A watch's photos display in a carousel showing one photo at a time, navigable by arrows and swipe
 - [ ] **PHOTO-04**: The first/cover photo serves as the watch's card thumbnail across grids and rails
@@ -111,7 +111,7 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | ROUTE-04 | Phase 59 | Complete |
 | ROUTE-05 | Phase 59 | Complete |
 | ROUTE-06 | Phase 59 | Complete |
-| PHOTO-01 | Phase 60 | Pending |
+| PHOTO-01 | Phase 60 | Complete |
 | PHOTO-04 | Phase 60 | Pending |
 | PHOTO-07 | Phase 60 | Pending |
 | PHOTO-08 | Phase 60 | Pending |

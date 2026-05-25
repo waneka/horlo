@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 60 context gathered
-last_updated: "2026-05-25T16:38:09.275Z"
-last_activity: 2026-05-25 -- Phase 60 planning complete
+stopped_at: Phase 60 Plan 01 complete
+last_updated: "2026-05-25T16:46:22Z"
+last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 7
-  completed_plans: 3
-  percent: 43
+  completed_plans: 4
+  percent: 57
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 59 — unified-route-variant-c
+**Current focus:** Phase 60 — multi-photo-schema-dal
 
 ## Current Position
 
-Phase: 60
-Plan: Not started
+Phase: 60 (multi-photo-schema-dal) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-25 -- Phase 60 planning complete
+Last activity: 2026-05-25
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -52,6 +52,8 @@ Progress: [██████████] 100%
 - **OtherOwnersRoster + CatalogPageActions on unified route are cross-user only** — gated on `!isOwner` per spike §4.D; Phase 64 IA redesign resolves definitively.
 - **Build-gate proven (ROUTE-03/D-11)** — `npm run build` exits 1 with any `/watch/${` literal; exits 0 clean. Vercel will block deploys with missed link migrations.
 - **Tests for deleted legacy pages removed** — `tests/app/catalog-page.test.ts` and `tests/app/watch-page-verdict.test.ts` deleted (imported the now-deleted pages); unified route integration coverage in `tests/integration/phase59-unified-route.test.ts` from Plan 01.
+- **watch_photos Supabase migration is authoritative** — backfill + lossless assert + DROP COLUMN + RLS + bucket live in `20260525000000_phase60_watch_photos.sql`; Drizzle migration `0013_phase60_watch_photos.sql` is local-sync only; prod push is Plan 04.
+- **src/data/watches.ts temporarily broken on row.imageUrl** — expected within the wave; Plan 03 fixes mappers + DAL.
 
 ### Pending Todos
 
@@ -59,10 +61,10 @@ None.
 
 ### Blockers/Concerns
 
-None. Phase 59 complete: all 26 literals migrated, 3 legacy pages deleted, CI guard GREEN (347/347), build exits 0. ROUTE-02/03/04/05/06 all satisfied.
+None. Phase 60 Plan 01 complete: watch_photos table created, watches.image_url backfilled then dropped, RLS + bucket created, Wave 0 test stub written, local DB applied.
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 59 COMPLETE + verified. Deployed to prod (horlo-14qlrmk4c ● Ready); operator approved all 3 prod-UAT items; verification status passed. (One failed deploy first: the CI guard needed `// @vitest-environment node` — jsdom externalized node:fs on Vercel; fixed in bb82d9a.)
-Stopped at: Phase 60 context gathered
-Next action: Phase 60 (multi-photo schema + DAL) — /gsd-discuss-phase 60
+Last activity: 2026-05-25 — Phase 60 Plan 01 COMPLETE. watch_photos schema + migration + Wave 0 test stub landed. Local DB applied (backfill-first order). Plans 02-04 remain.
+Stopped at: Phase 60 Plan 01 complete
+Next action: Phase 60 Plan 02 (src/lib/types.ts + storage helper + account.ts purgeWatchPhotos)
