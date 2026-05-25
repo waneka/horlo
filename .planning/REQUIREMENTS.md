@@ -103,21 +103,44 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation (each requirement maps to exactly one phase).
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01..06 | TBD | Pending |
-| PHOTO-01..09 | TBD | Pending |
-| WPIC-01..06 | TBD | Pending |
-| GRID-01..05 | TBD | Pending |
-| PAGE-01..04 | TBD | Pending |
+| ROUTE-01 | Phase 59 | Pending |
+| ROUTE-02 | Phase 59 | Pending |
+| ROUTE-03 | Phase 59 | Pending |
+| ROUTE-04 | Phase 59 | Pending |
+| ROUTE-05 | Phase 59 | Pending |
+| ROUTE-06 | Phase 59 | Pending |
+| PHOTO-01 | Phase 60 | Pending |
+| PHOTO-04 | Phase 60 | Pending |
+| PHOTO-07 | Phase 60 | Pending |
+| PHOTO-08 | Phase 60 | Pending |
+| PHOTO-02 | Phase 61 | Pending |
+| PHOTO-03 | Phase 61 | Pending |
+| PHOTO-05 | Phase 61 | Pending |
+| PHOTO-06 | Phase 61 | Pending |
+| PHOTO-09 | Phase 61 | Pending |
+| WPIC-01 | Phase 62 | Pending |
+| WPIC-02 | Phase 62 | Pending |
+| WPIC-03 | Phase 62 | Pending |
+| WPIC-04 | Phase 62 | Pending |
+| WPIC-05 | Phase 62 | Pending |
+| WPIC-06 | Phase 62 | Pending |
+| GRID-01 | Phase 63 | Pending |
+| GRID-02 | Phase 63 | Pending |
+| GRID-03 | Phase 63 | Pending |
+| GRID-04 | Phase 63 | Pending |
+| GRID-05 | Phase 63 | Pending |
+| PAGE-01 | Phase 64 | Pending |
+| PAGE-02 | Phase 64 | Pending |
+| PAGE-03 | Phase 64 | Pending |
+| PAGE-04 | Phase 64 | Pending |
 
 **Coverage:**
 - v7.0 requirements: 30 total (ROUTE 6, PHOTO 9, WPIC 6, GRID 5, PAGE 4)
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 30 ⚠️
+- Mapped to phases: 30/30 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-25*
-*Last updated: 2026-05-25 after initial definition*
+*Last updated: 2026-05-25 — traceability table populated after roadmap creation*

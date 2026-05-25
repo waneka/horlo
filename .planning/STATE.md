@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: planning
-last_updated: "2026-05-25T04:57:39.809Z"
+last_updated: "2026-05-25T00:00:00.000Z"
 last_activity: 2026-05-25
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,164 +17,48 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 Watch Photos & Detail Redesign started)
+See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v7.0 Watch Photos & Detail Redesign — defining requirements. Scope: unified `/w/[ref]` route (Variant C, first) → multi-photo carousel → public-wear-pic surfacing → add-watch photo encouragement → inline grid engagement (SEED-015) → `/w/[ref]` IA redesign (SEED-016). Folds SEED-013/015/016.
+**Current focus:** v7.0 Watch Photos & Detail Redesign — Phase 59 (Unified Route, Variant C) is next.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (Phase 59 ready to plan)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-25 — Milestone v7.0 started
+Status: Ready to plan Phase 59
+Last activity: 2026-05-25 — v7.0 roadmap created (6 phases, 30/30 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-- v5.2: 5 phases (48-50 + 49.1 + 50.1), 21 plans, 34 tasks over 2 days
-- 6/6 v5.2 requirements shipped
-- Phase 52 (post-v5.2 hotfix): 9 plans, recurrence-4/5 React #419 eliminated
+- v6.0: 8 phases (53-58 + 56A + 57.1), 37 plans, 3 days
+- 34/34 v6.0 requirements shipped
 - Blockers encountered: 0
 
 ## Accumulated Context
 
-### Roadmap Evolution
-
-- Phase 49.1 inserted after Phase 49: Remove genre surface — implements Phase 49 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (TAX-02) (URGENT)
-- Phase 50.1 inserted after Phase 50: URL canonicalization — implements Phase 50 spike Ship-Now: YES verdict per ROADMAP SC#4 escape hatch (Variant B; ARCH-02) (URGENT)
-- Phase 52 added: Option D — Cache Components canonical pattern fix for /u/[username]/[tab] (recurrence-4 React #419) — supersedes Phase 51 layout-fix; sourced from `.planning/audits/cache-components-2026-05-21-followup.md`
-- v6.0 roadmap created 2026-05-22: 6 phases (53-58), 34 requirements mapped 34/34
-- Phase 57.1 inserted after Phase 57: Comment UI Polish + Own-Watch Suppression — Phase 57 prod-UAT polish + own-watch compose suppression (URGENT)
-
 ### Key Decisions
 
-Full v5.1 decision log lives in PROJECT.md `## Key Decisions → v5.1`. Headline decisions:
-
-- **In-app admin CMS** chosen over a third-party CMS — `/admin/*` routes reuse the existing auth + Server Action stack.
-- **`assertOwner()` in every CMS Server Action**, not just the layout guard — Server Actions are HTTP-callable.
-- **Two-layer RLS** for published CMS content — `USING (status = 'published')` + explicit DAL `WHERE`.
-- **`revalidateTag('explore:hero', 'max')`** in all four Hero write paths — `revalidatePath` does not invalidate tag scopes.
-- **Wave 0 test scaffolds for Phase 49.1 use `as unknown as CatalogTasteAttributes`** to express the post-removal shape — `CatalogTasteAttributes.primaryArchetype` is still required in `src/lib/types.ts:224` today, so the cast lets Wave 0 tests assert the post-49.1 contract without forcing a parallel type edit. Plan 05 removes the cast.
-- **Phase 49.1 Plan 06 — D-39b-04 lockstep expanded to 4 sites (not 3).** The plan's `<interfaces>` enumerated 3 `CatalogTasteAttributes` projection sites (types.ts + catalog/[catalogId]/page.tsx + watches.ts LEFT JOIN). At execution we discovered `src/lib/verdict/composer.ts:107` builds a 4th projection (`candidateCatalogTaste`). Treated as Rule 3 (blocking) deviation and bundled into the Task 1 atomic commit. Pitfall 3 lockstep preserved by 4-site (not 3-site) atomic change.
-- **Phase 49.1 Plan 06 — PRIMARY_ARCHETYPE_SET deleted, PRIMARY_ARCHETYPES kept.** Once the archetype block in `validateAndCleanTaste` was removed, `PRIMARY_ARCHETYPE_SET` had zero remaining consumers and was deleted. `PRIMARY_ARCHETYPES` const + `PrimaryArchetype` type re-export both retained per D-EXPLORE-02 (consumed by `/explore` CollectorArchetypes rail's SQL ANY() filter).
-- **Phase 49.1 Plan 07 — drizzle-kit push deferred to main repo.** Claude Code worktrees do not include `.env.local`, so `DATABASE_URL` is unavailable inside the worktree and `drizzle-kit push` cannot connect to local Postgres. Schema.ts edit + 0012 SQL file are the source-of-truth artifacts; user runs `npx drizzle-kit push` in the main repo post-merge. `drizzle-kit check` already passes without the journal entry, confirming structural consistency. Manual edit of `drizzle/meta/_journal.json` rejected (T-49.1-16: drizzle-kit owns the file).
-- **Phase 49.1 Plan 07 — bare `ALTER TABLE ... DROP COLUMN IF EXISTS` (no `DO $$` guard).** The 0011 analog wraps the statement in a `DO $$` block to guard a NOT NULL constraint check, which does not apply to a column drop. `IF EXISTS` alone provides full idempotency for the drop operation; the implicitly-dropped `watches_catalog_primary_archetype_check` CHECK constraint requires no explicit `DROP CONSTRAINT`.
-- **`unstable_instant = false` on `/u/[username]/[tab]` is PERMANENT (Phase 52).** `prefetch:'runtime'` fires an aborting secondary prerender (React #419); `prefetch:'static'` fails at build time on a two-dynamic-param route. Do NOT re-enable. Real fix is structural: sync layout + Suspense + ProfileChrome + inner ProfileTabContent.
-- **v6.0 data model choice deferred to Phase 53 discuss/spec.** SUMMARY.md recommends per-target tables (separate `watch_likes`, `wear_likes`) over polymorphic; final decision is made during Phase 53 planning, not locked in the roadmap.
-- **v6.0 comment order is newest-first (operator decision 2026-05-22).** Overrides SUMMARY.md oldest-first suggestion. Compose box sits above the list.
-- **v6.0 character limit is 500 (operator decision via REQUIREMENTS.md).** Consistent across Zod, DB CHECK, and `<Textarea maxLength>`.
-- **Likes do NOT generate feed activities (operator decision).** Likes surface only in bell notifications; only comments generate Network Activity feed entries (FEED-06).
-- **55-05: D-09 gate-catch — inner try/catch for createComment catches CommentGateError before generic handler.** Returns `code:'gate'` discriminant; Phase 57 branches to GATE-03 locked-state CTA without string-matching.
-- **55-05: deleteCommentAction returns `{ id: parsed.data.commentId }` — DAL deleteComment returns void.** Avoids an extra DB read to re-fetch the comment row before deletion.
-- **55-05: NOTIF-12 INSERT-only enforced at action layer.** Only `addCommentAction` calls `logNotification`; `editCommentAction` and `deleteCommentAction` never fire notifications.
-- **57.1-02: SC-5/D-03 — WearCard local commentCount state with onCountChange callback chain.** Optimistic count is purely local (WearCard useState); propagated via optional onCountChange callback through WearCommentHost to CommentList. No context or store needed. Math.max(0) guard prevents negative badge.
-- **57.1-02: D-01 — router.refresh() (next/navigation) on CommentList post success.** Fires after setComposeKey on all surfaces; harmless on wears (local state survives RSC merge); provides /watch/[id] count badge update without manual refresh. NOT router from next/cache (server-only).
-- **57.1-03: SC-6 — suppressCompose prop chain (page → CommentThread → CommentList).** Display-only gate: `canCommentDisplay = isOwner ? false : canComment` + `suppressCompose={isOwner}`. CommentList renders null compose slot (neither CommentCompose nor CommentGateLocked, D-02). CMNT-09 count badge preserved: count read keeps raw `canComment` (RESEARCH correction supersedes UI-SPEC). DAL/GATE-04 unchanged. WearCommentHost never passes suppressCompose.
-- **58-02: B-8 guard replaced with KNOWN_TYPES allowlist of 6 values (D-08).** Genuinely-unknown future types still return null. Type-prefixed collapse key (`type|targetId|UTC-day`) prevents `watch_like` merging with `watch_overlap` groups sharing the same `watch_id`.
-- **58-02: comment_preview rendered as plain-text JSX children (T-58-03).** No `dangerouslySetInnerHTML` — React auto-escapes. `wear` suffix appended as a separate `<span>` after the model span to preserve model bolding.
-
-### v6.0 Phase Structure
-
-| Phase | Goal | Requirements |
-|-------|------|--------------|
-| 53 | Interaction tables, constraints, RLS, enum extension | SEC-01, SEC-04, SEC-06, LIKE-05, GATE-02 |
-| 54 | DAL with mutual-follow gate and two-layer enforcement | GATE-01, GATE-04, GATE-05, SEC-02 |
-| 55 | Server Actions with Zod validation, dedup, notification fan-out | SEC-03, SEC-05, NOTIF-11, NOTIF-12, NOTIF-13, NOTIF-14 |
-| 56 | LikeButton UI on watch and wear detail pages | LIKE-01, LIKE-02, LIKE-03, LIKE-04 |
-| 57 | Comment compose/list/edit/delete, gate UI, feed extension, grid counts | CMNT-01..09, GATE-03, FEED-06, FEED-07, DISP-01 |
-| 58 | Bell/inbox for new notification types, Settings opt-out toggles | NOTIF-15, NOTIF-16 |
-| Phase 53-schema-rls-enum-extension P01 | 6 | 3 tasks | 5 files |
-| Phase 53-schema-rls-enum-extension P02 | 127 | 2 tasks | 0 files |
-| Phase 54 P01 | 156 | 2 tasks | 2 files |
-| Phase 54 P02 | 144 | 2 tasks | 2 files |
-| Phase 54 P03 | 287 | 2 tasks | 1 files |
-| Phase 55-server-actions-notification-dedup P01 | 4 | 3 tasks | 3 files |
-| Phase 55 P03 | 256 | 2 tasks | 3 files |
-| Phase 55-server-actions-notification-dedup P05 | 12 | 2 tasks | 1 files |
-| Phase 56-like-ui P01 | 258 | 3 tasks | 3 files |
-| Phase 56-like-ui P02 | 156s | 2 tasks | 2 files |
-| Phase 56A-wear-view-unification P01 | 5m | 2 tasks | 5 files |
-| Phase 56A P02 | 7m | 3 tasks | 4 files |
-| Phase 56A-wear-view-unification P07 | ~8m | 2 tasks | 1 files |
-| Phase 57 P01 | 11m | 2 tasks | 5 files |
-| Phase 57 P02 | ~25m | 3 tasks | 7 files |
-| Phase 57-comment-thread-ui-feed-extension-grid-counts P03 | 8m | 1 tasks | 1 files |
-| Phase 57-comment-thread-ui-feed-extension-grid-counts P05 | 35m | 3 tasks | 8 files |
-| Phase 57 P06 | 15m | 2 tasks | 5 files |
-| Phase 57.1-comment-ui-polish-own-watch-suppression P01 | 5m | 2 tasks | 2 files |
-| Phase 57.1-comment-ui-polish-own-watch-suppression P02 | 7m | 3 tasks | 3 files |
-| Phase 57.1 P03 | 10m | 3 tasks | 3 files |
-| Phase 58 P03 | 73 | 2 tasks | 2 files |
-
-### Deferred Items
-
-Items acknowledged and deferred at v5.1 milestone close (2026-05-19):
-
-| Category | Item | Status |
-|----------|------|--------|
-| audit (cosmetic) | 10 completed quick tasks flagged for missing SUMMARY frontmatter status | non-blocking — tasks complete & committed |
-| audit (parser) | 3 resolved HUMAN-UAT files (43/45/46); 45 counts 6 numbered tests as "open" | non-blocking — files are `resolved` |
-| audit (backlog) | 9 seeds (SEED-001..010) — future-milestone backlog | expected to persist |
-| audit (misid) | `.planning/debug/knowledge-base.md` flagged as a debug session | non-blocking — reference doc, not a session |
-| carryover | DEBT-12 — prod `drizzle.__drizzle_migrations` journal repair | ✅ resolved 2026-05-21 — ran `scripts/repair-drizzle-journal.ts --apply` against prod (11 rows inserted, table now 12, `drizzle-kit migrate` no-op) |
-| carryover | Phase 39c UAT Issue 2 — stale `removeWatch` rail/projection state | small fix phase or debug session when ready |
-| carryover | 31 v3.0 + Phase 35/41 human-verification UAT items | operator-approved deferral |
-| carryover | Smaller: `LayoutProps` TS error, `useWatchSearchVerdictCache` signOut leak, Phase 999.1 directory archival, WatchForm unused imports, SMTP-06 staging sender split, WristOverlaySvg geometry redesign | tracked in PROJECT.md `## Requirements → Active` |
-
-### Blockers/Concerns
-
-None blocking. v6.0 shipped — the Phase 53 pre-flight questions (data-model choice → per-target like tables; `follows` RLS; non-transactional enum `ADD VALUE`; wishlist-comment grandfather policy) were all resolved during v6.0 execution. Next milestone not yet scoped.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260519-08p | Fix Next.js Image aspect-ratio console warnings on watch images | 2026-05-19 | 5524004 | [260519-08p-fix-next-js-image-aspect-ratio-console-w](./quick/260519-08p-fix-next-js-image-aspect-ratio-console-w/) |
-| 260519-d69 | Fix 4 collection-path UI issues in PathCard desktop layout | 2026-05-19 | 432d5a7 | [260519-d69-fix-4-collection-path-ui-issues-in-pathc](./quick/260519-d69-fix-4-collection-path-ui-issues-in-pathc/) |
-| 260519-g4v | FU-02 fix /explore/brands A–Z letter-anchor smooth scroll | 2026-05-19 | 8c7543e | [260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch](./quick/260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch/) |
-| 260519-ga9 | FU-01 expose brand/era/genre/archetype facets in /search filters menu | 2026-05-19 | 9a6276d | [260519-ga9-fu-01-expose-brand-era-genre-archetype-f](./quick/260519-ga9-fu-01-expose-brand-era-genre-archetype-f/) |
+- **Variant C is a hard cutover** (operator decision 2026-05-25) — legacy `/watch/[id]` + `/catalog/[catalogId]` routes are REMOVED (no redirect); un-migrated links fail loudly; CI guard is the completeness guarantee (ROUTE-03).
+- **`watches_catalog` is NOT wipeable** — in-place ALTER only for photo schema; data migrations keyed by (brand, model, reference), not id (ids diverge local/prod).
+- **`workflow.use_worktrees = false` is permanent** — this project is build-gated + DB-touching; `.env.local` unavailable in worktrees.
+- **DB migrations**: `drizzle-kit push` LOCAL ONLY; prod uses `supabase db push --linked`.
+- **Phase ordering is locked**: 59 (route merge) → 60 (photo schema/DAL) → 61 (photo UI) → 62 (wear pics surfacing) → 63 (grid engagement, depends on 59 only) → 64 (IA redesign, depends on 61+62+63).
+- **`unstable_instant = false` on `/u/[username]/[tab]` is PERMANENT** — do not re-enable (Phase 52 lesson).
+- **Phase 64 must preserve Phase 51/52 Cache Components structure** — CommentThread stays an uncached Suspense sibling.
 
 ### Pending Todos
 
 None.
 
-## Deferred Items
+### Blockers/Concerns
 
-**Re-acknowledged at v6.0 milestone close (2026-05-24):** the pre-close artifact audit found 24 open items, all carried-forward and non-blocking — 1 false-positive debug index (`knowledge-base`, the resolved-sessions index), 10 stale quick-task slugs (no `.planning/quick/` dirs present), and 13 backlog seeds. None are v6.0 work; they are the same buckets acknowledged at the v5.1/v5.2 closes (enumerated below). SEED-012 (v6.0 Social Interaction) is now **shipped**.
-
-Items acknowledged and deferred at v5.2 milestone close on 2026-05-20 (SEED-012 status updated to shipped at v6.0 close):
-
-| Category | Item | Status | Notes |
-|----------|------|--------|-------|
-| debug | knowledge-base | resolved-index | False positive — `.planning/debug/knowledge-base.md` is the resolved-sessions index, not an open session |
-| verification | Phase 49.1 | ✅ resolved 2026-05-21 | D-DEBT-02 cleared via `/gsd-audit-uat`: Gate 1 prod push verified applied+synced (`supabase migration list --linked`); Gates 3/4 code-verified; Gate 5 operator-confirmed `/explore/genres` → 404 |
-| uat | Phase 48 | ✅ resolved 2026-05-21 | D-DEBT-03 dark-mode `/search` chip legibility operator-confirmed in real browser (5 chip groups post-49.1, not 7) |
-| quick_task | 260413-qp3-price-prominence-and-filter-collapse | stale-slug | Stale quick-task reference; no `.planning/quick-tasks/` directory present |
-| quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | stale-slug | Stale quick-task reference |
-| quick_task | 260421-srx-wrap-follower-following-counts-in-link-o | stale-slug | Stale quick-task reference |
-| quick_task | 260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl | stale-slug | Stale quick-task reference |
-| quick_task | 260513-hvu-hotfix-search-watches-tab-returns-empty- | stale-slug | Stale quick-task reference |
-| quick_task | 260513-m31-fix-otherownersroster-count-label-always | stale-slug | Stale quick-task reference |
-| quick_task | 260519-08p-fix-next-js-image-aspect-ratio-console-w | stale-slug | Stale quick-task reference |
-| quick_task | 260519-d69-fix-4-collection-path-ui-issues-in-pathc | stale-slug | Stale quick-task reference |
-| quick_task | 260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch | stale-slug | Stale quick-task reference |
-| quick_task | 260519-ga9-fu-01-expose-brand-era-genre-archetype-f | stale-slug | Stale quick-task reference |
-| seed | SEED-001-catalog-hierarchy-and-attributes | dormant | Future milestone (planned v6+) |
-| seed | SEED-002-hybrid-recommender | dormant | Future milestone (planned v6+) |
-| seed | SEED-003-onboarding-cold-start-flow | dormant | Future milestone |
-| seed | SEED-004-v5-discovery-north-star | dormant | Future milestone |
-| seed | SEED-005-v6-market-value | dormant | Future milestone (after v8.0) |
-| seed | SEED-007-market-pricing-api-spike | dormant | Future spike |
-| seed | SEED-010-v5.3-add-watch-redesign | dormant | Future v8 milestone |
-| seed | SEED-012-v6.0-social-interaction | ✅ shipped | Shipped as v6.0 (2026-05-24) |
-| seed | SEED-013-v7.0-watch-photos | dormant | Future v7.0 milestone |
+None blocking. Route merge (~36 files / ~55 link literals) is the highest-complexity phase; CI guard (ROUTE-03) is the safety net.
 
 ## Session Continuity
 
-Last activity: 2026-05-24 — v6.0 Social Interaction milestone closed and archived (ROADMAP + REQUIREMENTS + audit → `milestones/`; PROJECT.md evolved; MILESTONES.md + RETROSPECTIVE.md updated; tag `v6.0`).
-Stopped at: Milestone v6.0 complete — no milestone active.
-Next action: `/clear` then `/gsd-new-milestone` to scope the next milestone (planted: v7.0 Watch Photos, SEED-013).
-
-## Operator Next Steps
-
-- Start the next milestone with /gsd-new-milestone
+Last activity: 2026-05-25 — v7.0 roadmap created (Phases 59-64, 30/30 requirements).
+Stopped at: Roadmap created — ready to plan Phase 59.
+Next action: `/gsd-plan-phase 59`

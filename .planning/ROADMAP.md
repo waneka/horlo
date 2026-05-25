@@ -11,7 +11,7 @@
 - ✅ **v5.1 Explore Page Redesign** — Phases 43-47 (shipped 2026-05-19) — [archive](milestones/v5.1-ROADMAP.md)
 - ✅ **v5.2 Polish + Taxonomy** — Phases 48-50 + 49.1 + 50.1 (shipped 2026-05-20) — [archive](milestones/v5.2-ROADMAP.md)
 - ✅ **v6.0 Social Interaction** — Phases 53-58 + 56A + 57.1 (shipped 2026-05-24) — [archive](milestones/v6.0-ROADMAP.md)
-- 📋 **v7.0 Watch Photos** — planted (SEED-013)
+- 🚧 **v7.0 Watch Photos & Detail Redesign** — Phases 59-64 (in progress)
 - 📋 **v8.0 Add-Watch Redesign** — planted (SEED-010)
 - 💤 **Catalog Expansion** — unscheduled; catalog strategy under review (SEED-009)
 - 💤 **Market Value** — future, after v8.0 (SEED-005; needs the SEED-007 pricing spike first)
@@ -173,46 +173,105 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 
 </details>
 
-### 📋 v7.0 Watch Photos (Planted)
+### 🚧 v7.0 Watch Photos & Detail Redesign (Phases 59-64)
 
-Not yet roadmapped — seeded as SEED-013. Multi-photo carousel per watch (replacing the single `imageUrl`); public wear pics surface on watch detail; wear pics persist in the Wears tab (Home rail stays ephemeral); add-watch flow encourages photos with a per-person cap. **Reconsider Variant C (unified `/w/[ref]` route)** at this milestone — `src/app/catalog/[catalogId]/page.tsx:228-234` carries a `TODO: revisit for Variant C in v7.0` comment planted by Phase 50.1 (ARCH-02) so the carousel implementation phase inherits an explicit decision point.
+**Milestone Goal:** Give every watch real, owned photography on a redesigned detail page — built once on a unified `/w/[ref]` route.
 
-### 📋 v8.0 Add-Watch Redesign (Planted)
+**Sources:** SEED-013 (multi-photo + carousel + wear-pic surfacing), SEED-015 (inline grid engagement), SEED-016 (`/w/[ref]` detail redesign), Phase 50 architecture spike (Variant C verdict).
 
-Not yet roadmapped — seeded as SEED-010. Search-first add-watch flow. The catalog-depth dependency is under review now that Catalog Expansion is unscheduled.
+- [ ] **Phase 59: Unified Route (Variant C)** — Merge `/catalog/[catalogId]` + `/watch/[id]` into `/w/[ref]`; remove legacy routes; add CI link-audit guard
+- [ ] **Phase 60: Multi-Photo Schema + DAL** — In-place ALTER on `watches_catalog`; per-user watch photo tables; backfill migration; DAL for CRUD + ordering
+- [ ] **Phase 61: Photo Upload + Carousel UI** — Upload pipeline (EXIF-strip / ≤1080px JPEG); carousel; drag-reorder; delete; add-watch encouragement
+- [ ] **Phase 62: Public Wear Pics on Watch Detail** — Surface public wear photos on watch page; per-pic hide control; v6.0 likes/comments layer on surfaced pics
+- [ ] **Phase 63: Inline Grid Engagement** — Like + inline comment composer from profile grid cards; GATE-03 enforcement; optimistic counts
+- [ ] **Phase 64: Detail Page IA Redesign** — Intentional information hierarchy on `/w/[ref]`; deliberate comment placement; Cache Components structure preserved
 
-### 💤 Catalog Expansion (Unscheduled)
+## Phase Details
 
-Seeded as SEED-009 — catalog breadth expansion past the ~100-row bootstrap. Unscheduled: the catalog-growth strategy is being rethought (decision 2026-05-19). v5.2 enriched the existing axis (retired the genre/archetype layer) without adding breadth.
+### Phase 59: Unified Route (Variant C)
+**Goal**: Every watch is reachable at a single canonical `/w/[ref]` URL; legacy routes are removed and a CI guard prevents any un-migrated internal link from surviving undetected
+**Depends on**: Phase 58 (v6.0 complete)
+**Requirements**: ROUTE-01, ROUTE-02, ROUTE-03, ROUTE-04, ROUTE-05, ROUTE-06
+**Success Criteria** (what must be TRUE):
+  1. Visiting `/w/[ref]` resolves correctly whether the ref is a per-user watch id or a catalog id, and shows the appropriate owner vs cross-user framing
+  2. Visiting `/watch/[id]` or `/catalog/[catalogId]` returns a 404 (no redirect), so any un-migrated link fails loudly
+  3. The CI build fails if any internal href or link literal still targets a legacy `/watch/[…]` or `/catalog/[…]` watch path
+  4. All internal surfaces — grid cards, search rows, discovery rails, add-watch deep-links, computed notification deep-links — point at `/w/[ref]`
+  5. Owner-only actions (edit, delete, mark-worn) remain available only to the authenticated owner on the unified route
+**Plans**: TBD
 
-### 💤 Market Value (Future)
+### Phase 60: Multi-Photo Schema + DAL
+**Goal**: The database can store multiple ordered photos per watch and the DAL exposes clean CRUD + ordering operations; the `watches_catalog` cover-photo backfill is applied in place without wiping existing data
+**Depends on**: Phase 59
+**Requirements**: PHOTO-01, PHOTO-04, PHOTO-07, PHOTO-08
+**Success Criteria** (what must be TRUE):
+  1. A watch in the DB can hold multiple photo rows with explicit ordering; the single-image field is superseded
+  2. The first/lowest-order photo is used as the watch's cover thumbnail across grids and rails (observable at the data layer before any UI lands)
+  3. The DAL enforces a per-watch cap of ~10 photos and rejects inserts beyond it
+  4. The photo upload pipeline strips EXIF and re-encodes to ≤1080px JPEG before storage (verifiable via file metadata on uploaded test images)
+  5. The in-place migration runs cleanly on local and prod without wiping existing `watches_catalog` LLM/factual/photo investment
+**Plans**: TBD
 
-Seeded as SEED-005 — Watch Charts integration + total-value insights. Sits after v8.0; needs the SEED-007 market-pricing API spike first. (No longer numbered v6.0 — that slot is now Social Interaction.)
+### Phase 61: Photo Upload + Carousel UI
+**Goal**: A watch owner can upload, view, reorder, and delete photos from the watch detail page; the add-watch flow prominently surfaces photo upload as a first-class step
+**Depends on**: Phase 60
+**Requirements**: PHOTO-02, PHOTO-03, PHOTO-05, PHOTO-06, PHOTO-09
+**Success Criteria** (what must be TRUE):
+  1. An owner can upload one or more photos to a watch they own and see them appear on the detail page
+  2. Photos display in a one-at-a-time carousel with arrow and swipe navigation
+  3. An owner can drag-reorder photos; dragging a photo to the first position makes it the card thumbnail across grids
+  4. An owner can delete an individual photo; the cap affordance is visibly blocked with clear messaging when the ~10-photo limit is reached
+  5. The add-watch flow presents a prominent (not buried) photo upload affordance that is not easily skipped
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 62: Public Wear Pics on Watch Detail
+**Goal**: Public wear photos automatically appear on the watch's detail page, the owner can hide individual surfaced pics, and all surfaced pics carry the full v6.0 social interaction layer
+**Depends on**: Phase 61
+**Requirements**: WPIC-01, WPIC-02, WPIC-03, WPIC-04, WPIC-05, WPIC-06
+**Success Criteria** (what must be TRUE):
+  1. A wear photo with "public" visibility automatically appears in the wear-pics section of its watch's detail page without any additional owner action
+  2. The owner can hide a specific public wear pic from the detail page via a per-pic control; the pic remains in the Wears tab
+  3. Non-public (followers-only or private) wear photos never appear on the watch detail page, regardless of who is viewing
+  4. The Home wear rail's 24/48h ephemeral behavior is unchanged — surfacing on watch detail does not alter rail display
+  5. Surfaced public wear pics have working like and comment interactions via the v6.0 layer
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 63: Inline Grid Engagement
+**Goal**: A viewer can like a watch and post a short comment directly from a profile collection or wishlist grid card without opening the detail page; count badges update optimistically and the GATE-03 wishlist comment gate is enforced per card
+**Depends on**: Phase 59
+**Requirements**: GRID-01, GRID-02, GRID-03, GRID-04, GRID-05
+**Success Criteria** (what must be TRUE):
+  1. A viewer can like a watch from a profile grid card in one tap with optimistic state update
+  2. A viewer can open a lightweight inline composer on a grid card and submit a comment without navigating to the detail page
+  3. The card's like and comment counts update optimistically after an inline like or comment action
+  4. The inline composer is compose-only — the full comment thread is only accessible by opening the detail page
+  5. Grid cards for wishlist watches where the viewer does not have mutual-follow status do not expose the inline comment composer
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 64: Detail Page IA Redesign
+**Goal**: The `/w/[ref]` page presents an intentional information hierarchy — carousel, verdict, like, comments, rails, footer — rather than append-order stacking; comments have a deliberate, reachable position; the Phase 51/52 Cache Components structure is fully preserved
+**Depends on**: Phase 61, Phase 62, Phase 63
+**Requirements**: PAGE-01, PAGE-02, PAGE-03, PAGE-04
+**Success Criteria** (what must be TRUE):
+  1. The watch detail page presents carousel, verdict, like, comments, rails, and footer in a deliberate visual hierarchy rather than chronological-append order
+  2. Comments appear at a reachable scroll position — not buried below all rails and metadata
+  3. The photo carousel functions as the primary visual element at the top of the page
+  4. CommentThread remains an uncached Suspense sibling and the `unstable_instant = false` lock on related routes is not disturbed; Cache Component rules are intact
+**Plans**: TBD
+**UI hint**: yes
 
 ## Progress
 
-All shipped milestones are archived under `.planning/milestones/`; per-phase detail lives in each milestone's archived ROADMAP.
-
-| Milestone | Phases | Status | Shipped |
-|-----------|--------|--------|---------|
-| v1.0 MVP | 1-5 | ✅ Complete | 2026-04-19 |
-| v2.0 Taste Network Foundation | 6-10 | ✅ Complete | 2026-04-22 |
-| v3.0 Production Nav & Daily Wear Loop | 11-16 + 999.1 | ✅ Complete | 2026-04-27 |
-| v4.0 Discovery & Polish | 17-26 + 19.1 + 20.1 | ✅ Complete | 2026-05-03 |
-| v4.1 Polish & Patch | 27-31 | ✅ Complete | 2026-05-05 |
-| v5.0 Discovery North Star | 32-42 | ✅ Complete | 2026-05-16 |
-| v5.1 Explore Page Redesign | 43-47 | ✅ Complete | 2026-05-19 |
-| v5.2 Polish + Taxonomy | 48-50 + 49.1 + 50.1 | ✅ Complete | 2026-05-20 |
-| _Post-v5.2 hotfix_ | 51, 52 | ✅ Complete | 2026-05-21 |
-| v6.0 Social Interaction | 53-58 + 56A + 57.1 | ✅ Complete | 2026-05-24 |
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 59. Unified Route (Variant C) | 0/TBD | Not started | - |
+| 60. Multi-Photo Schema + DAL | 0/TBD | Not started | - |
+| 61. Photo Upload + Carousel UI | 0/TBD | Not started | - |
+| 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
+| 63. Inline Grid Engagement | 0/TBD | Not started | - |
+| 64. Detail Page IA Redesign | 0/TBD | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/phases/51-*` / `52-*` and PROJECT.md Current State._
-
-## Next Up
-
-v6.0 Social Interaction shipped 2026-05-24 (8 phases, 37 plans, 34/34 requirements). No milestone is active.
-
-**Start the next milestone:** `/clear` then `/gsd-new-milestone`.
-
-Planted trajectory: **v7.0 Watch Photos** (SEED-013) → **v8.0 Add-Watch Redesign** (SEED-010). **Catalog Expansion** (SEED-009) unscheduled; **Market Value** (SEED-005) deferred to a future milestone (needs the SEED-007 pricing spike first).
-
