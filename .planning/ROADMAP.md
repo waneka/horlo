@@ -270,7 +270,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 59. Unified Route (Variant C) | 3/3 | Complete   | 2026-05-25 |
+| 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
 | 60. Multi-Photo Schema + DAL | 0/TBD | Not started | - |
 | 61. Photo Upload + Carousel UI | 0/TBD | Not started | - |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
