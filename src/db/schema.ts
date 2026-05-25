@@ -133,7 +133,6 @@ export const watches = pgTable(
     notes: text('notes'),
     notesPublic: boolean('notes_public').notNull().default(true),
     notesUpdatedAt: timestamp('notes_updated_at', { withTimezone: true }),
-    imageUrl: text('image_url'),
 
     // ----- Phase 37 D-01..D-08: collector provenance fields (all nullable; CAT-18) -----
     serial: text('serial'),
@@ -328,6 +327,25 @@ export const watchLikes = pgTable(
     unique('watch_likes_unique_pair').on(table.userId, table.watchId),
     index('watch_likes_watch_id_idx').on(table.watchId),
     index('watch_likes_user_id_idx').on(table.userId),
+  ],
+)
+
+// ----- Phase 60 D-01..D-03: watch_photos table (PHOTO-01) -----
+// Column shapes only. ENABLE ROW LEVEL SECURITY, all RLS policies, bucket
+// creation, and the backfill + DROP sequence live in
+// supabase/migrations/20260525000000_phase60_watch_photos.sql.
+// Drizzle 0.45.2 cannot express RLS in the pg-core DSL — raw SQL is authoritative.
+export const watchPhotos = pgTable(
+  'watch_photos',
+  {
+    id:          uuid('id').defaultRandom().primaryKey(),
+    watchId:     uuid('watch_id').notNull().references(() => watches.id, { onDelete: 'cascade' }),
+    storagePath: text('storage_path').notNull(),
+    sortOrder:   integer('sort_order').notNull().default(0),
+    createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('watch_photos_watch_id_sort_idx').on(table.watchId, table.sortOrder),
   ],
 )
 
