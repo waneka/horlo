@@ -78,7 +78,11 @@ const userId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 const watchId = '11111111-2222-4333-8444-555555555555'
 const photoId = '22222222-3333-4444-8555-666666666666'
 const photo2Id = '33333333-4444-4555-8666-777777777777'
-const storagePath = 'user-folder/watch-123/photo.jpg'
+// storagePath MUST start with userId to pass the CR-02 folder-scope check.
+// Format: `{userId}/{photoId}.jpg` — produced by buildWatchPhotoPath in
+// src/lib/storage/watchPhotos.ts and enforced by addWatchPhotoAction.
+const storagePath = `${userId}/${photoId}.jpg`
+const victimUserId = 'ffffffff-eeee-4ddd-8ccc-bbbbbbbbbbbb'
 
 const mockUser = { id: userId, email: 'test@horlo.app' }
 
@@ -292,6 +296,43 @@ describe('addWatchPhotoAction (PHOTO-02)', () => {
     // First arg to addWatchPhoto must be the session user id, not any client value
     const [calledUserId] = (watchDAL.addWatchPhoto as Mock).mock.calls[0]
     expect(calledUserId).toBe(userId)
+  })
+
+  // CR-02: cross-tenant storagePath injection must be rejected before DAL call.
+  it('(CR-02-a) storagePath scoped to another user — rejected; no DAL call', async () => {
+    authAs()
+
+    const crossUserPath = `${victimUserId}/${photoId}.jpg`
+    const result = await addWatchPhotoAction({ watchId, storagePath: crossUserPath })
+
+    expect(result).toEqual({ success: false, error: 'Invalid request' })
+    expect(watchDAL.addWatchPhoto).not.toHaveBeenCalled()
+  })
+
+  it('(CR-02-b) storagePath containing ".." — rejected by zod refine; no DAL call', async () => {
+    authAs()
+
+    const traversalPath = `${userId}/../${victimUserId}/photo.jpg`
+    const result = await addWatchPhotoAction({ watchId, storagePath: traversalPath })
+
+    expect(result).toEqual({ success: false, error: 'Invalid request' })
+    expect(watchDAL.addWatchPhoto).not.toHaveBeenCalled()
+  })
+
+  it('(CR-02-c) valid storagePath scoped to caller — accepted', async () => {
+    authAs()
+    ;(watchDAL.addWatchPhoto as Mock).mockResolvedValueOnce({
+      id: photoId,
+      watchId,
+      storagePath,
+      sortOrder: 0,
+      createdAt: new Date(),
+    })
+
+    const result = await addWatchPhotoAction({ watchId, storagePath })
+
+    expect(result).toEqual({ success: true, data: { id: photoId } })
+    expect(watchDAL.addWatchPhoto).toHaveBeenCalledWith(userId, watchId, storagePath)
   })
 })
 

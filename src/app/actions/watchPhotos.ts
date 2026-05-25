@@ -29,12 +29,18 @@ const reorderSchema = z
 // addWatchPhotoAction: storagePath is the path already uploaded by the client;
 // the action only records the DB row. PhotoCapExceededError from DAL is the
 // authoritative server-side cap backstop (T-61-04).
+// Path format: `{userId}/{photoId}.jpg` — enforced by Storage RLS and validated
+// server-side (CR-02: reject paths not scoped to caller's folder or containing `..`).
 const addSchema = z
   .object({
     watchId: z.string().uuid(),
     storagePath: z.string().min(1),
   })
   .strict()
+  .refine((d) => !d.storagePath.includes('..'), {
+    message: 'Invalid storage path',
+    path: ['storagePath'],
+  })
 
 // deleteWatchPhotoAction: both watchId and photoId are uuids.
 const deleteSchema = z
@@ -111,6 +117,14 @@ export async function addWatchPhotoAction(
 
   const parsed = addSchema.safeParse(data)
   if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  // CR-02: Verify the storagePath is scoped to the authenticated user's folder.
+  // Expected format from uploadWatchPhoto (src/lib/storage/watchPhotos.ts): `{userId}/{photoId}.jpg`.
+  // Reject any path not starting with `{user.id}/` to prevent cross-tenant injection
+  // where an attacker records another user's storage object on their own watch row.
+  if (!parsed.data.storagePath.startsWith(`${user.id}/`)) {
     return { success: false, error: 'Invalid request' }
   }
 
