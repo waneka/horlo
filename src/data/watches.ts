@@ -696,3 +696,27 @@ export async function deleteWatchPhoto(
     throw new Error(`Photo not found: photoId=${photoId}, watchId=${watchId}`)
   }
 }
+
+/**
+ * Phase 61 Plan 01 (PHOTO-02/03/05/06) — Return all photos for a watch ordered
+ * by sortOrder ascending.
+ *
+ * No userId param — ownership framing is resolved by the RSC that already
+ * confirmed the viewer has access to this watch. This is a pure read by watchId
+ * used to populate the carousel and filmstrip. The RSC signs the URLs before
+ * passing signedPhotos to WatchDetail/WatchPhotoSection.
+ */
+export async function getWatchPhotosForWatch(
+  watchId: string,
+): Promise<{ id: string; storagePath: string; sortOrder: number }[]> {
+  const rows = await db
+    .select({
+      id: watchPhotos.id,
+      storagePath: watchPhotos.storagePath,
+      sortOrder: watchPhotos.sortOrder,
+    })
+    .from(watchPhotos)
+    .where(eq(watchPhotos.watchId, watchId))
+    .orderBy(asc(watchPhotos.sortOrder))
+  return rows
+}
