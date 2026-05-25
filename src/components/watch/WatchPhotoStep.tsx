@@ -20,10 +20,9 @@
 // D-16: "Skip for now" NEVER blocks saving. onDone/onSkip both route to
 // destination immediately. No confirm-on-skip dialog.
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PhotoDropzone } from './PhotoDropzone'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -38,6 +37,12 @@ interface UploadedPhoto {
 export interface WatchPhotoStepProps {
   /** The just-created watch row's id (used by PhotoDropzone → addWatchPhotoAction). */
   watchId: string
+  /**
+   * Viewer's user id — threaded from the RSC (/watch/new/page.tsx via AddWatchFlow).
+   * WR-03 fix: no longer resolved client-side via useEffect/getUser() to avoid the
+   * disabled-placeholder flash and the session-expiry edge case.
+   */
+  userId: string
   /** Called when the user presses "Continue" (≥1 upload) or has no uploads and
    *  presses the primary CTA after choosing photos. */
   onDone: () => void
@@ -49,26 +54,8 @@ export interface WatchPhotoStepProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function WatchPhotoStep({ watchId, onDone, onSkip }: WatchPhotoStepProps) {
+export function WatchPhotoStep({ watchId, userId, onDone, onSkip }: WatchPhotoStepProps) {
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([])
-  const [userId, setUserId] = useState<string | null>(null)
-
-  // Resolve userId via the browser Supabase client (same pattern as
-  // CatalogPhotoUploader → WatchForm.handleSubmit). PhotoDropzone requires userId.
-  // Wrapped in useEffect to avoid act() warnings in tests — the state update
-  // fires after mount, properly wrapped by React's concurrent rendering.
-  useEffect(() => {
-    let cancelled = false
-    async function resolve() {
-      const supabase = createSupabaseBrowserClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!cancelled && user) {
-        setUserId(user.id)
-      }
-    }
-    void resolve()
-    return () => { cancelled = true }
-  }, [])
 
   // Called by PhotoDropzone when one or more files have completed the upload pipeline.
   function handlePhotosAdded(newIds: string[]) {
@@ -92,21 +79,15 @@ export function WatchPhotoStep({ watchId, onDone, onSkip }: WatchPhotoStepProps)
       {/* PhotoDropzone — reuses full upload pipeline from Plan 02:
           HEIC→convertHeic, lazy stripAndResize, uploadWatchPhoto, addWatchPhotoAction.
           Sequential processing avoids sort_order race (RESEARCH Pitfall 4).
-          Cap of 10 enforced client-side + DAL backstop (T-61-13). */}
-      {userId ? (
-        <PhotoDropzone
-          watchId={watchId}
-          userId={userId}
-          currentPhotoCount={uploadedCount}
-          onPhotosAdded={handlePhotosAdded}
-        />
-      ) : (
-        // While userId resolves (typically < 50ms), show a placeholder dropzone.
-        // This prevents a flash of empty content.
-        <div className="border-dashed border-2 rounded-lg p-4 text-center min-h-[64px] bg-muted opacity-50 cursor-not-allowed flex items-center justify-center">
-          <p className="text-sm text-muted-foreground">Drop photos here or tap to choose</p>
-        </div>
-      )}
+          Cap of 10 enforced client-side + DAL backstop (T-61-13).
+          WR-03: userId is now a prop (threaded from RSC), so the dropzone is
+          always enabled on mount — no placeholder flash. */}
+      <PhotoDropzone
+        watchId={watchId}
+        userId={userId}
+        currentPhotoCount={uploadedCount}
+        onPhotosAdded={handlePhotosAdded}
+      />
 
       {/* Per-file progress grid — 3-column thumbnails for uploaded photos.
           UI-SPEC: "Processing…" pending label, silent on success (thumbnail fills in).

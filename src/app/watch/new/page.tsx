@@ -116,6 +116,7 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         initialStatus={initialStatus}
         initialReturnTo={initialReturnTo}
         viewerUsername={viewerUsername}
+        viewerUserId={user.id}
       />
     </div>
   )

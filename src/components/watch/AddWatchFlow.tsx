@@ -76,6 +76,12 @@ interface AddWatchFlowProps {
    *  destination + the D-06 /u/me/... canonicalization. Null is a soft alarm
    *  — flow falls back to no-toast + '/' default. */
   viewerUsername: string | null
+  /**
+   * WR-03 fix: viewer's user id resolved server-side at /watch/new via
+   * getCurrentUser(). Threaded into WatchPhotoStep so the PhotoDropzone is
+   * immediately enabled without a client-side getUser() round-trip.
+   */
+  viewerUserId: string
 }
 
 const RAIL_MAX = 5
@@ -89,6 +95,7 @@ export function AddWatchFlow({
   initialStatus,
   initialReturnTo,
   viewerUsername,
+  viewerUserId,
 }: AddWatchFlowProps) {
   const router = useRouter()
   // Phase 28 D-12 — initialReturnTo + viewerUsername are validated server-side
@@ -621,6 +628,7 @@ export function AddWatchFlow({
       {state.kind === 'photos-pending' && (
         <WatchPhotoStep
           watchId={state.watchId}
+          userId={viewerUserId}
           onDone={() => {
             setUrl('')
             setRail([])
