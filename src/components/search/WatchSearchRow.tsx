@@ -28,7 +28,7 @@ export function WatchSearchRow({
   return (
     <div className="group relative flex items-center gap-2 min-h-16 md:min-h-20 bg-card pl-4 pr-2 py-3 rounded-md transition-colors hover:bg-muted/40">
       <Link
-        href={`/catalog/${result.catalogId}`}
+        href={`/w/${result.catalogId}`}
         className="flex flex-1 items-center gap-4 min-w-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="relative size-10 md:size-12 rounded-full bg-muted ring-2 ring-card overflow-hidden flex items-center justify-center shrink-0">

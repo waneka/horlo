@@ -88,7 +88,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
           {list.items.map((item) => (
             <div key={item.id} className="flex flex-col md:flex-row gap-4 py-6">
               {/* Watch image — UI-SPEC CSS Chain: w-full md:w-40 aspect-square + overflow-hidden + w-full h-full object-cover */}
-              <Link href={`/catalog/${item.catalogId}`} className="shrink-0">
+              <Link href={`/w/${item.catalogId}`} className="shrink-0">
                 <div className="w-full md:w-40 aspect-square rounded-md bg-muted overflow-hidden">
                   {item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -107,7 +107,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
 
               {/* Commentary prose */}
               <div className="flex-1 min-w-0">
-                <Link href={`/catalog/${item.catalogId}`} className="group">
+                <Link href={`/w/${item.catalogId}`} className="group">
                   <p className="text-sm font-semibold text-foreground group-hover:underline">
                     {item.brand}
                   </p>

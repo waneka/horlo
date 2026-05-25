@@ -27,7 +27,7 @@ export function DiscoveryWatchCard({
 }) {
   return (
     <Link
-      href={`/catalog/${watch.id}`}
+      href={`/w/${watch.id}`}
       className="block w-44 md:w-52 space-y-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`${watch.brand} ${watch.model} — view details`}
     >

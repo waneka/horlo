@@ -94,7 +94,7 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
             </div>
             {/* Right column: watch brand+model link + rationale */}
             <div className="flex-1 pb-2">
-              <Link href={`/catalog/${node.catalogId}`}>
+              <Link href={`/w/${node.catalogId}`}>
                 <p className="text-sm font-semibold text-foreground">
                   {node.brand} {node.model}
                 </p>
@@ -131,7 +131,7 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
                 {/* Hover CTA overlay — bottom-anchored, desktop-only, pure CSS (no JS state) */}
                 <div className="absolute inset-x-0 bottom-0 flex items-end p-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                   <Button
-                    render={<Link href={`/catalog/${node.catalogId}`} />}
+                    render={<Link href={`/w/${node.catalogId}`} />}
                     variant="secondary"
                     size="sm"
                     className="w-full min-h-[44px]"
@@ -140,7 +140,7 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
                   </Button>
                 </div>
               </div>
-              <Link href={`/catalog/${node.catalogId}`}>
+              <Link href={`/w/${node.catalogId}`}>
                 <p className="text-sm font-semibold text-foreground truncate">
                   {node.brand} {node.model}
                 </p>
