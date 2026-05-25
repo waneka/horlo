@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { ProfileShellResolver } from '../profile-shell-resolver'
+import { signCoverUrls } from '@/lib/storage/signCoverUrls'
 import { ProfileTabContentSkeleton } from '../profile-shell-skeleton'
 import {
   getMostRecentWearDates,
@@ -182,7 +183,12 @@ export async function ProfileTabContent({
   // updates, follows, wear events).
   const resolved = await ProfileShellResolver({ username })
   if (!resolved.profile) notFound()
-  const { profile, settings, watches: ownerWatches, wearEvents: ownerWearEvents } = resolved
+  const { profile, settings, wearEvents: ownerWearEvents } = resolved
+  // Phase 61 Plan 04: sign owner-photo cover paths for profile grid/rail thumbnails.
+  // Signing uses the viewer's session — succeeds for the owner's own files; returns null
+  // for another user's files (storage RLS scopes SELECT to the file's owner folder).
+  // Either way, getSafeImageUrl in card components handles null gracefully (placeholder).
+  const ownerWatches = await signCoverUrls(resolved.watches)
   const isOwner = viewerId === profile.id
   const displayName = profile.displayName ?? null
   const ownerDisplayLabel = profile.displayName ?? `@${profile.username}`

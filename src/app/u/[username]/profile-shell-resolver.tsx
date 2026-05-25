@@ -8,6 +8,7 @@ import {
 import { getWatchesByUser } from '@/data/watches'
 import { getAllWearEventsByUser } from '@/data/wearEvents'
 import { computeTasteTags } from '@/lib/tasteTags'
+import { signCoverUrls } from '@/lib/storage/signCoverUrls'
 
 /**
  * ProfileShellResolver — owner-scoped cached aggregator for the profile shell (D-39c-03).
@@ -54,4 +55,22 @@ export async function ProfileShellResolver({ username }: { username: string }) {
   const tasteTags = computeTasteTags({ watches, totalWearEvents: wearEvents.length, collectionAgeDays })
 
   return { profile, settings, counts, watches, wearEvents, tasteTags } as const
+}
+
+/**
+ * resolveProfileShellSigned — thin wrapper that calls the cached ProfileShellResolver
+ * and then signs any raw owner-photo cover paths in the returned watch list.
+ *
+ * The signing step must live OUTSIDE the 'use cache' scope because it calls
+ * createSupabaseServerClient() which reads cookies() — unavailable in cached scope.
+ * Callers that need pre-signed cover URLs for grid rendering should use this wrapper.
+ *
+ * Signing uses the viewer's session — succeeds for files in the viewer's own folder;
+ * returns null for another user's files (storage RLS scopes SELECT to the file owner).
+ */
+export async function resolveProfileShellSigned({ username }: { username: string }) {
+  const resolved = await ProfileShellResolver({ username })
+  if (!resolved.profile) return resolved
+  const watches = await signCoverUrls(resolved.watches)
+  return { ...resolved, watches }
 }

@@ -2,6 +2,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getWatchesByUser } from '@/data/watches'
 import { getWearRailForViewer } from '@/data/wearEvents'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { signCoverUrls } from '@/lib/storage/signCoverUrls'
 import { WywtRail } from '@/components/home/WywtRail'
 import { CollectorsLikeYou } from '@/components/home/CollectorsLikeYou'
 import { NetworkActivityFeed } from '@/components/home/NetworkActivityFeed'
@@ -27,10 +28,13 @@ export default async function Home() {
   const user = await getCurrentUser()
   // `let` on railData (rather than destructuring directly) — we replace its
   // tiles below with signed-URL versions of any photo paths.
-  const [watches, railDataRaw] = await Promise.all([
+  const [watchesRaw, railDataRaw] = await Promise.all([
     getWatchesByUser(user.id),
     getWearRailForViewer(user.id),
   ])
+  // Phase 61 Plan 04: sign owner-photo cover paths so grid/rail card thumbnails render.
+  // The viewer IS the owner on the home page — their session can sign their own files.
+  const watches = await signCoverUrls(watchesRaw)
   let railData = railDataRaw
 
   // Phase 15 UAT: mint signed URLs for any tile that has a wrist-shot photo.
