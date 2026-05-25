@@ -198,7 +198,10 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   3. The CI build fails if any internal href or link literal still targets a legacy `/watch/[…]` or `/catalog/[…]` watch path
   4. All internal surfaces — grid cards, search rows, discovery rails, add-watch deep-links, computed notification deep-links — point at `/w/[ref]`
   5. Owner-only actions (edit, delete, mark-worn) remain available only to the authenticated owner on the unified route
-**Plans**: TBD
+**Plans**: 3 plans (3 waves)
+- [ ] 59-01-PLAN.md — DAL extraction (findViewerWatchByCatalogId) + CI guard + integration scaffold + prebuild hook (Wave 1)
+- [ ] 59-02-PLAN.md — Unified /w/[ref] page + /w/[ref]/edit route (Wave 2)
+- [ ] 59-03-PLAN.md — Re-point 26 link literals + delete 3 legacy pages + prove build-gate (Wave 3)
 
 ### Phase 60: Multi-Photo Schema + DAL
 **Goal**: The database can store multiple ordered photos per watch and the DAL exposes clean CRUD + ordering operations; the `watches_catalog` cover-photo backfill is applied in place without wiping existing data
@@ -267,7 +270,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 59. Unified Route (Variant C) | 0/TBD | Not started | - |
+| 59. Unified Route (Variant C) | 0/3 | Planned | - |
 | 60. Multi-Photo Schema + DAL | 0/TBD | Not started | - |
 | 61. Photo Upload + Carousel UI | 0/TBD | Not started | - |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
