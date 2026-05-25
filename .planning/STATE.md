@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 61 Plan 01 complete
-last_updated: "2026-05-25T20:44:00Z"
-last_activity: 2026-05-25 -- Phase 61 Plan 01 executed
+stopped_at: Phase 61 Plan 02 complete
+last_updated: "2026-05-25T20:58:00Z"
+last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 11
-  completed_plans: 8
-  percent: 66
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 61 (Photo Upload + Carousel UI) — EXECUTING
-Plan: 2 of 4
-Status: Executing Phase 61 (Plan 01 complete)
-Last activity: 2026-05-25 -- Phase 61 Plan 01 executed
+Plan: 3 of 4
+Status: Ready to execute
+Last activity: 2026-05-25
 
-Progress: [███░░░░░░░] 33% (2/6 phases — 59, 60 complete)
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -57,6 +57,8 @@ Progress: [███░░░░░░░] 33% (2/6 phases — 59, 60 complete)
 - **watch_photos Supabase migration is authoritative** — backfill + lossless assert + DROP COLUMN + RLS + bucket live in `20260525000000_phase60_watch_photos.sql`; Drizzle migration `0013_phase60_watch_photos.sql` is local-sync only; prod push is Plan 04.
 - **src/data/watches.ts temporarily broken on row.imageUrl** — RESOLVED in Plan 03 (mappers repointed; cover subquery across all 3 read paths).
 - **Cover subquery returns raw storagePath** — Phase 61 signs URLs; DAL stays admin-client-free (D-04/D-06 Open Q1 decision).
+- **embla v8 uses watchDrag (not draggable) in reInit()** — PLAN referenced `draggable` but embla v8 renames to `watchDrag`; auto-fixed in Phase 61 Plan 02 (functionally identical).
+- **signedPhotos is optional in WatchDetailProps** — backward compat; RSC always passes it; old image block in `else` branch for non-Phase-61 callers.
 
 ### Pending Todos
 
@@ -68,6 +70,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 61 Plan 01 COMPLETE. getWatchPhotosForWatch DAL read + three photo server actions (addWatchPhotoAction, deleteWatchPhotoAction, reorderWatchPhotosAction) with zod .strict(), instanceof error discrimination, revalidatePath('/w/[ref]','page'); Wave 0 test scaffolds (4 files, 38 tests green); build exit 0.
-Stopped at: Phase 61 Plan 01 complete
-Next action: Phase 61 Plan 02 — carousel + filmstrip UI
+Last activity: 2026-05-25 — Phase 61 Plan 02 COMPLETE. WatchPhotoSection (embla carousel + always-on filmstrip + dnd-kit reorder + upload), SortablePhotoThumb (touchAction:manipulation, GripVertical-only listeners), PhotoDropzone (multi-file, sequential, cap enforcement); RSC signed-URL fetch on both owner branches; WatchDetail wired; 24 tests green; build exit 0.
+Stopped at: Phase 61 Plan 02 complete
+Next action: Phase 61 Plan 03 — AddWatchFlow photos-pending step + WatchPhotoStep
