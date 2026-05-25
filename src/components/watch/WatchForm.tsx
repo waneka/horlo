@@ -60,6 +60,14 @@ interface WatchFormProps {
    *  + suppress comparison. Null is a soft alarm — toast still renders body
    *  but no action slot. */
   viewerUsername?: string | null
+  /** Phase 61 Plan 03 (PHOTO-09 / D-15): when present, called with the new
+   *  watch's id and computed destination INSTEAD of router.push(dest) on a
+   *  successful create-mode commit. The parent (AddWatchFlow) intercepts the
+   *  watchId to insert the photos-pending step before final navigation.
+   *  Without this prop, the existing router.push(dest) behavior is unchanged
+   *  (backward compatible with all other callers). Edit-mode commits are
+   *  unaffected. */
+  onWatchCreated?: (watchId: string, destination: string) => void
 }
 
 type FormData = Omit<Watch, 'id'>
@@ -100,7 +108,7 @@ const initialFormData: FormData = {
   purchaseDate: undefined,
 }
 
-export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, viewerUsername }: WatchFormProps) {
+export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, viewerUsername, onWatchCreated }: WatchFormProps) {
   const router = useRouter()
   // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17). Hook
   // owns the transition; consumers MUST NOT keep their own (FG-8). The hook's
@@ -254,6 +262,15 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
         // across the navigation, so the user sees the locked UI-SPEC body
         // (per the successMessage branch above) after landing on `dest`.
         const dest = returnTo ?? defaultDestinationForStatus(finalStatus, viewerUsername ?? null)
+        // Phase 61 Plan 03 (PHOTO-09 / D-15): if onWatchCreated is present,
+        // hand off the new watchId + destination to the parent (AddWatchFlow)
+        // INSTEAD of router.push. AddWatchFlow will show the photos-pending
+        // step and navigate on Done/Skip. Without this prop, existing behavior
+        // is unchanged (backward compatible with all other WatchForm callers).
+        if (onWatchCreated && result.data && 'id' in result.data) {
+          onWatchCreated(result.data.id, dest)
+          return result
+        }
         router.push(dest)
       } else if (result.success) {
         // Edit-mode commit — Phase 28 D-13/D-14 NOT in scope. Preserve existing redirect.

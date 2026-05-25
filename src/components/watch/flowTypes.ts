@@ -27,6 +27,12 @@ export type FlowState =
   // server-emitted (or client-derived) error category that drives the
   // <ExtractErrorCard> render branch in AddWatchFlow.
   | { kind: 'extraction-failed'; partial: ExtractedWatchData | null; reason: string; category: ExtractErrorCategory }
+  // Phase 61 Plan 03 (PHOTO-09 / D-15/D-16): after addWatch succeeds in the
+  // form-prefill or manual-entry paths, the flow transitions here instead of
+  // navigating directly. watchId is the just-created watch row's id (needed
+  // for addWatchPhotoAction). destination is where to router.push() after
+  // Done or Skip (preserves the same nav target as the old direct push).
+  | { kind: 'photos-pending'; watchId: string; destination: string }
 
 /**
  * D-14: in-session "Recently evaluated" chip rail. Capped at 5 entries

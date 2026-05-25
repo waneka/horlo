@@ -9,6 +9,7 @@ import { VerdictStep } from './VerdictStep'
 import { WishlistRationalePanel } from './WishlistRationalePanel'
 import { RecentlyEvaluatedRail } from './RecentlyEvaluatedRail'
 import { WatchForm } from './WatchForm'
+import { WatchPhotoStep } from './WatchPhotoStep'
 import { ExtractErrorCard, type ExtractErrorCategory } from './ExtractErrorCard'
 import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
 import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
@@ -173,6 +174,9 @@ export function AddWatchFlow({
       // Skip case 1: nothing user-accumulated to reset.
       if (s.kind === 'idle' && urlRef.current === '' && railRef.current.length === 0) return
       // Real Activity-hide / unmount: user has accumulated state. Reset.
+      // Phase 61 Plan 03: photos-pending is also transient user state — reset it.
+      // RESEARCH Pitfall 6: Activity preserves React state across back-nav; a
+      // returning user must not land back on the photos step for a stale watchId.
       setState({ kind: 'idle' })
       setUrl('')
       setRail([])
@@ -444,6 +448,13 @@ export function AddWatchFlow({
     })
   }
 
+  // -- Phase 61 Plan 03 (PHOTO-09 / D-15): intercept WatchForm's create-success
+  // path to insert the photos step before navigation. WatchForm calls this
+  // instead of router.push when onWatchCreated is present.
+  const handleWatchCreated = (watchId: string, dest: string) => {
+    setState({ kind: 'photos-pending', watchId, destination: dest })
+  }
+
   // -- Manual entry (D-03) — kept as-is for PasteSection's "or enter manually"
   // link (in-flow transition; user can change their mind without leaving the
   // page). The post-failure in-flow manual transition is gone in Phase 25
@@ -565,6 +576,7 @@ export function AddWatchFlow({
           watch={extractedToPartialWatch(state.extracted, 'owned')}
           returnTo={initialReturnTo}
           viewerUsername={viewerUsername}
+          onWatchCreated={handleWatchCreated}
         />
       )}
 
@@ -597,8 +609,31 @@ export function AddWatchFlow({
             }
             returnTo={initialReturnTo}
             viewerUsername={viewerUsername}
+            onWatchCreated={handleWatchCreated}
           />
         </div>
+      )}
+
+      {/* Photos-pending (Phase 61 Plan 03 PHOTO-09 / D-15/D-16):
+          Rendered after a watch row is created, before final navigation.
+          Lets the user add photos; skippable with friction ("Skip for now").
+          Both Done and Skip routes to state.destination without blocking. */}
+      {state.kind === 'photos-pending' && (
+        <WatchPhotoStep
+          watchId={state.watchId}
+          onDone={() => {
+            setUrl('')
+            setRail([])
+            setState({ kind: 'idle' })
+            router.push(state.destination)
+          }}
+          onSkip={() => {
+            setUrl('')
+            setRail([])
+            setState({ kind: 'idle' })
+            router.push(state.destination)
+          }}
+        />
       )}
 
       {/* Extraction-failed (Phase 25 Plan 04 — UX-05 / D-14):
@@ -617,11 +652,12 @@ export function AddWatchFlow({
       )}
 
       {/* Rail visible in idle / extracting / verdict-ready / extraction-failed
-          (UI-SPEC §Section Visibility per State); hidden in form-prefill / manual-entry. */}
+          (UI-SPEC §Section Visibility per State); hidden in form-prefill / manual-entry / photos-pending. */}
       {state.kind !== 'form-prefill' &&
         state.kind !== 'manual-entry' &&
         state.kind !== 'wishlist-rationale-open' &&
-        state.kind !== 'submitting-wishlist' && (
+        state.kind !== 'submitting-wishlist' &&
+        state.kind !== 'photos-pending' && (
           <RecentlyEvaluatedRail entries={rail} onSelect={handleRailSelect} />
         )}
     </div>
