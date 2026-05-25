@@ -28,7 +28,7 @@ See `.planning/MILESTONES.md` and `.planning/milestones/v5.2-ROADMAP.md` for ful
 
 ## Current Milestone: v7.0 Watch Photos & Detail Redesign
 
-**Now building:** Phase 59 (Unified Route) ✅ complete 2026-05-25 — structural verification 6/6; 3 prod-only UAT items pending (non-owner write-surface gating, mobile render, legacy soft-nav 404) in `59-HUMAN-UAT.md`. Next: Phase 60 (multi-photo schema + DAL).
+**Now building:** Phase 60 (Multi-Photo Schema + DAL) ✅ complete 2026-05-25 — verification passed 10/10 must-haves; `watch_photos` table + lossless `watches.image_url` backfill→drop + cover-resolving DAL (cap 10, reorder, delete, full reader repoint) + `watch-photos` storage helper/bucket + SC4 EXIF test; prod migration applied via `supabase db push --linked` (operator-run + verified). Next: Phase 61 (photo upload + carousel UI). (Phase 59 Unified Route ✅ 2026-05-25 — 3 prod-only UAT items pending in `59-HUMAN-UAT.md`.)
 
 **Goal:** Give every watch real, owned photography on a redesigned detail page — built once on a unified `/w/[ref]` route.
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: ready_to_plan
-stopped_at: Phase 60 Plan 03 complete
+stopped_at: Phase 60 complete
 last_updated: "2026-05-25T17:01:41.056Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 33
 ---
 
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 60 — multi-photo-schema-dal
+**Current focus:** Phase 61 — photo-upload-+-carousel-ui (next; Phase 60 complete)
 
 ## Current Position
 
@@ -30,7 +30,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-05-25
 
-Progress: [█████████░] 86%
+Progress: [███░░░░░░░] 33% (2/6 phases — 59, 60 complete)
 
 ## Performance Metrics
 
@@ -62,10 +62,10 @@ None.
 
 ### Blockers/Concerns
 
-None. Phase 60 Plans 01-03 complete. Plan 04 (prod migration) remains.
+None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves), prod migration applied + verified.
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 60 Plan 03 COMPLETE. Cover-resolving DAL (correlated watch_photos subquery across all 3 read paths) + addWatchPhoto (cap+ownership) + bulkReorderPhotos + deleteWatchPhoto + purgeWatchPhotos + full image_url blast-radius repoint. 7/7 integration tests passing (SC1/SC2/SC3/cross-tenant). tsc --noEmit clean in src/.
-Stopped at: Phase 60 Plan 03 complete
-Next action: Phase 60 Plan 04 (prod Supabase migration push)
+Last activity: 2026-05-25 — Phase 60 COMPLETE. watch_photos schema + authoritative Supabase migration (backfill→lossless DO $$ assert→DROP watches.image_url→RLS→watch-photos bucket); watch-photos storage helper + SC4 EXIF test; cover-resolving DAL (correlated subquery across all 3 read paths) + cap(10)/reorder/delete + full image_url blast-radius repoint + purgeWatchPhotos; prod migration applied via `supabase db push --linked` (operator-run + verified). Post-merge gate: build exit 0, suite green (1 pre-existing CommentGateLocked font-medium failure, unrelated to Phase 60). Verification: passed.
+Stopped at: Phase 60 complete
+Next action: Phase 61 — photo-upload-+-carousel-ui (discuss or plan)
