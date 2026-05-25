@@ -223,7 +223,7 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
                   Mark as Worn
                 </Button>
               )}
-              <Link href={`/watch/${watch.id}/edit`}>
+              <Link href={`/w/${watch.id}/edit`}>
                 <Button variant="outline">Edit</Button>
               </Link>
               <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

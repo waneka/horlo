@@ -50,7 +50,7 @@ export function NotesEmptyOwnerActions({
         watches={ownedWatches}
         onWatchSelected={(watchId) => {
           setPickerOpen(false)
-          router.push(`/watch/${watchId}/edit#notes`)
+          router.push(`/w/${watchId}/edit#notes`)
         }}
       />
     </>

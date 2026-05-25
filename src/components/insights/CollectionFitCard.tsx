@@ -68,7 +68,7 @@ export function CollectionFitCard({ verdict }: CollectionFitCardProps) {
               {verdict.mostSimilar.map(({ watch, score }) => (
                 <li key={watch.id}>
                   <Link
-                    href={`/watch/${watch.id}`}
+                    href={`/w/${watch.id}`}
                     className="block hover:bg-accent rounded-md p-1"
                   >
                     <span className="flex items-center justify-between">

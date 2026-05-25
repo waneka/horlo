@@ -52,7 +52,7 @@ export function ActivityRow({ row }: { row: RawFeedRow }) {
           {VERBS[row.type]}{' '}
           {row.watchId ? (
             <Link
-              href={`/watch/${row.watchId}`}
+              href={`/w/${row.watchId}`}
               aria-label={`${watchName} detail`}
               className="relative z-10 hover:underline focus-visible:underline focus-visible:outline-none"
             >

@@ -108,7 +108,7 @@ export function WearPhotoOverlays({
       >
         <div className="flex flex-col p-3 pointer-events-auto">
           <Link
-            href={`/watch/${watchId}`}
+            href={`/w/${watchId}`}
             className={cn('text-sm hover:opacity-80', textClass)}
             onClick={(e) => e.stopPropagation()}
           >

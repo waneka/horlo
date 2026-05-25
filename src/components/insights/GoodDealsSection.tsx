@@ -45,7 +45,7 @@ export function GoodDealsSection({ watches }: GoodDealsSectionProps) {
             {deals.map((w) => (
               <li key={w.id}>
                 <Link
-                  href={`/watch/${w.id}`}
+                  href={`/w/${w.id}`}
                   className="flex items-center gap-3 rounded-md p-2 hover:bg-accent"
                 >
                   <div className="flex-1 min-w-0">

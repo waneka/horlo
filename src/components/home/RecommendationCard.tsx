@@ -19,7 +19,7 @@ import type { Recommendation } from '@/lib/discoveryTypes'
 export function RecommendationCard({ rec }: { rec: Recommendation }) {
   return (
     <Link
-      href={`/watch/${rec.representativeWatchId}`}
+      href={`/w/${rec.representativeWatchId}`}
       aria-label={`${rec.brand} ${rec.model}`}
       className="shrink-0 snap-start w-40 md:w-44 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >

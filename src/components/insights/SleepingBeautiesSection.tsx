@@ -41,7 +41,7 @@ export function SleepingBeautiesSection({ watches }: SleepingBeautiesSectionProp
             {sleeping.map(({ watch, days }) => (
               <li key={watch.id}>
                 <Link
-                  href={`/watch/${watch.id}`}
+                  href={`/w/${watch.id}`}
                   className="flex items-center justify-between rounded-md p-2 hover:bg-accent"
                 >
                   <span className="truncate font-semibold">

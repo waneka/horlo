@@ -59,7 +59,7 @@ export function NoteRow({ watch, isOwner }: NoteRowProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <Link
-            href={`/watch/${watch.id}`}
+            href={`/w/${watch.id}`}
             className="text-sm font-semibold hover:underline"
           >
             {watch.brand} {watch.model}
@@ -93,7 +93,7 @@ export function NoteRow({ watch, isOwner }: NoteRowProps) {
               />
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  render={<Link href={`/watch/${watch.id}/edit`} />}
+                  render={<Link href={`/w/${watch.id}/edit`} />}
                 >
                   Edit Note
                 </DropdownMenuItem>

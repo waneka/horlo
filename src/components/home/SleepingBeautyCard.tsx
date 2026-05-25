@@ -30,7 +30,7 @@ export function SleepingBeautyCard({
 
   return (
     <Link
-      href={`/watch/${watch.id}`}
+      href={`/w/${watch.id}`}
       aria-label={`View ${watch.brand} ${watch.model}`}
       className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >

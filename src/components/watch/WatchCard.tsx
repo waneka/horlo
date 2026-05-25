@@ -32,7 +32,7 @@ export function WatchCard({ watch, collection, preferences }: WatchCardProps) {
   const isDeal = isWishlistLike && (watch.isFlaggedDeal === true || autoDeal)
 
   return (
-    <Link href={`/watch/${watch.id}`}>
+    <Link href={`/w/${watch.id}`}>
       <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
         <div className="relative aspect-[4/5] bg-muted">
           {safeUrl ? (

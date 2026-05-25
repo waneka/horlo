@@ -59,7 +59,7 @@ function WornList({ rows }: { rows: Array<{ watch: Watch; count: number }> }) {
         return (
           <li key={watch.id}>
             <Link
-              href={`/watch/${watch.id}`}
+              href={`/w/${watch.id}`}
               className="flex items-center gap-3 rounded-md p-1 hover:bg-accent"
             >
               <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">

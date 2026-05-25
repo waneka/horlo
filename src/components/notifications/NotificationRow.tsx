@@ -139,7 +139,7 @@ function resolveHref(row: NotificationRowData): string {
   // D-07: watch_like / watch_comment → /watch/{watch_id}
   if (row.type === 'watch_like' || row.type === 'watch_comment') {
     const watchId = (row.payload as { watch_id?: string })?.watch_id ?? ''
-    return `/watch/${watchId}`
+    return `/w/${watchId}`
   }
   // D-07: wear_like / wear_comment → /wear/{wear_event_id}
   if (row.type === 'wear_like' || row.type === 'wear_comment') {

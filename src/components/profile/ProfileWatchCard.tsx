@@ -60,7 +60,7 @@ export function ProfileWatchCard({
         : null
 
   return (
-    <Link href={`/watch/${watch.id}`}>
+    <Link href={`/w/${watch.id}`}>
       {/* h-full flex flex-col on Card — NOT height:auto — is the equal-height key */}
       <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg h-full flex flex-col">
         {/* Brand + model ABOVE image (D-04) */}
