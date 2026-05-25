@@ -124,6 +124,25 @@ export function WatchPhotoSection({
   const [, startTransition] = useTransition()
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  // WR-04: track photos added in the current session so the PhotoDropzone's
+  // currentPhotoCount stays accurate between uploads without waiting for RSC
+  // revalidation. visibleIds.length only reflects photos already in photosById
+  // (RSC-rendered prop) — newly uploaded photos appear in photosById only after
+  // the next revalidatePath flush. localUploadCount bridges that gap client-side.
+  const [localUploadCount, setLocalUploadCount] = useState(0)
+
+  // WR-04: reset localUploadCount when the RSC re-renders with fresh photos (i.e.,
+  // when revalidatePath has flushed and the `photos` prop reflects the new rows).
+  // After this point, visibleIds.length already accounts for the newly added photos,
+  // so the local counter can be reset to avoid double-counting.
+  const photosLengthRef = useRef(photos.length)
+  useEffect(() => {
+    if (photos.length !== photosLengthRef.current) {
+      photosLengthRef.current = photos.length
+      setLocalUploadCount(0)
+    }
+  }, [photos.length])
+
   // ---------------------------------------------------------------------------
   // Embla sync — update state on slide change and reInit
   // ---------------------------------------------------------------------------
@@ -435,9 +454,12 @@ export function WatchPhotoSection({
                       <PhotoDropzone
                         watchId={watchId}
                         userId={userId ?? ''}
-                        currentPhotoCount={visibleIds.length}
-                        onPhotosAdded={() => {
-                          // Page revalidates via addWatchPhotoAction's revalidatePath
+                        currentPhotoCount={visibleIds.length + localUploadCount}
+                        onPhotosAdded={(newIds) => {
+                          // WR-04: increment localUploadCount by the number of newly
+                          // added photos so the cap math stays accurate before RSC
+                          // revalidation reflects the new rows in photosById.
+                          setLocalUploadCount((c) => c + newIds.length)
                         }}
                       />
                     </div>
