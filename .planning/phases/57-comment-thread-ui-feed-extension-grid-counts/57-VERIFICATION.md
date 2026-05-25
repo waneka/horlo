@@ -1,7 +1,8 @@
 ---
 phase: 57-comment-thread-ui-feed-extension-grid-counts
 verified: 2026-05-24T00:00:00Z
-status: human_needed
+status: passed
+human_verified: 2026-05-25 — all 5 prod HUMAN-UAT items passed (GATE-03 locked CTA, CMNT-05 counter, wears-lane sheet legibility, DISP-01 grid counts+gate, feed 'commented' row) via /gsd-verify-work 57
 score: 12/13 must-haves verified
 overrides_applied: 0
 human_verification:

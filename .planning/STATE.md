@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Social Interaction
 status: complete
-stopped_at: Phase 58 complete + prod-verified (3/3 HUMAN-UAT passed) — milestone v6.0 phases all done; only 57.1 prod HUMAN-UAT (5 items) remains
-last_updated: "2026-05-24T20:36:30.000Z"
-last_activity: 2026-05-24 -- Phase 58 prod-verified via /gsd-verify-work 58 (3/3 HUMAN-UAT passed: render+deep-links, like-grouping, opt-out round-trip); VERIFICATION status → passed
+stopped_at: v6.0 all 8 phases prod-verified (57 + 58 HUMAN-UAT passed this session; 57.1 reconciled) — ready for /gsd-complete-milestone (optional /gsd-audit-milestone first)
+last_updated: "2026-05-25T01:30:00.000Z"
+last_activity: 2026-05-25 -- Phase 57 prod-verified via /gsd-verify-work 57 (5/5 HUMAN-UAT passed); 57 + 57.1 VERIFICATION → passed. ALL v6.0 verification debt cleared.
 progress:
   total_phases: 8
   completed_phases: 8
@@ -32,7 +32,7 @@ Last activity: 2026-05-24
 
 Progress: [██████████] 100% (8/8 v6.0 phases)
 
-<!-- NOTE: Phase 58 COMPLETE (2026-05-24): Notification UI + Settings Opt-Out — 3/3 plans, build green (next build exit 0), 3/3 must-haves structurally verified, code review clean (0 critical; WR-01/WR-02 fixed). PROD-VERIFIED 2026-05-24 via /gsd-verify-work 58 — all 3 HUMAN-UAT items PASSED (4-type render + deep-links, live like-grouping, opt-out round-trip); 58-VERIFICATION status → passed. v6.0 has 8 phases (53/54/55/56/56a/57/57.1/58) — ALL DONE; pushed to prod (2063b1c). gsd-sdk phase.complete corrupted this block again (next_phase=999.1 archived, completed_phases=10>8, percent=111>100) — see memory project_phase_complete_999_1_misset; hand-corrected to 8/8 / 100% / milestone complete. REMAINING PROD VERIFICATION: only 57.1 (5 items) HUMAN-UAT on Vercel. Real next = verify 57.1 items → /gsd-complete-milestone v6.0. -->
+<!-- NOTE: Phase 58 COMPLETE (2026-05-24): Notification UI + Settings Opt-Out — 3/3 plans, build green (next build exit 0), 3/3 must-haves structurally verified, code review clean (0 critical; WR-01/WR-02 fixed). PROD-VERIFIED 2026-05-24 via /gsd-verify-work 58 — all 3 HUMAN-UAT items PASSED (4-type render + deep-links, live like-grouping, opt-out round-trip); 58-VERIFICATION status → passed. v6.0 has 8 phases (53/54/55/56/56a/57/57.1/58) — ALL DONE; pushed to prod (2063b1c). gsd-sdk phase.complete corrupted this block again (next_phase=999.1 archived, completed_phases=10>8, percent=111>100) — see memory project_phase_complete_999_1_misset; hand-corrected to 8/8 / 100% / milestone complete. ALL v6.0 PROD VERIFICATION CLEARED 2026-05-25: Phase 57 HUMAN-UAT 5/5 passed (/gsd-verify-work 57), Phase 58 3/3 passed, 57.1 5/5 (reconciled); 57/57.1/58 VERIFICATION all → passed; 56/56A done earlier. Real next = /gsd-complete-milestone v6.0 (no v6.0-MILESTONE-AUDIT.md yet — optional /gsd-audit-milestone first). -->
 
 Out of scope from Phase 57 UAT (captured as seeds): SEED-015 (inline like/comment from profile grid), SEED-016 (`/watch/[id]` redesign).
 
