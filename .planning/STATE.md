@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: executing
-stopped_at: Phase 61 Plan 03 complete
-last_updated: "2026-05-25T21:10:00Z"
+status: verifying
+stopped_at: Phase 61 Plan 04 complete
+last_updated: "2026-05-25T21:18:07.666Z"
 last_activity: 2026-05-25
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
-  percent: 91
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 Phase: 61 (Photo Upload + Carousel UI) — EXECUTING
 Plan: 4 of 4
-Status: Plan 03 complete — ready for Plan 04
+Status: Phase complete — ready for verification
 Last activity: 2026-05-25
 
-Progress: [█████████░] 91%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 91%
 - **signedPhotos is optional in WatchDetailProps** — backward compat; RSC always passes it; old image block in `else` branch for non-Phase-61 callers.
 - **WatchPhotoStep imports PhotoDropzone** — reuses Plan 02 upload pipeline instead of inlining (avoids ~100 lines of duplication; plan explicitly permitted this).
 - **onWatchCreated callback intercepts WatchForm create-success** — optional prop fires with (watchId, dest) instead of router.push; all other WatchForm callers are backward compatible.
+- **signCoverUrls must be called outside 'use cache' scope** — createSupabaseServerClient reads cookies() which is unavailable in cached context; resolveProfileShellSigned wrapper added outside cached scope in profile-shell-resolver.tsx (Phase 61 Plan 04).
 
 ### Pending Todos
 
@@ -72,6 +73,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 61 Plan 03 COMPLETE. photos-pending FlowState variant; WatchForm onWatchCreated callback; AddWatchFlow photos-pending render branch + cleanup extension; WatchPhotoStep (lean add-flow step, reuses PhotoDropzone, Skip for now plain button); 7 tests green; build exit 0. Checkpoint auto-approved (chain mode).
-Stopped at: Phase 61 Plan 03 complete
-Next action: Phase 61 Plan 04 — (next plan)
+Last activity: 2026-05-25 — Phase 61 Plan 04 COMPLETE. signCoverUrls batch helper (server-only, 7 tests, de-dupe, build exit 0); wired into home, profile-tab, profile-shell-resolver, and search RSCs. resolveProfileShellSigned wrapper added outside 'use cache' scope.
+Stopped at: Phase 61 Plan 04 complete — Phase 61 COMPLETE (all 4 plans)
+Next action: Phase 61 verification — deploy to prod and verify owner-photo card thumbnails appear across grids

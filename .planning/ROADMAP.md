@@ -181,7 +181,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 
 - [x] **Phase 59: Unified Route (Variant C)** — Merge `/catalog/[catalogId]` + `/watch/[id]` into `/w/[ref]`; remove legacy routes; add CI link-audit guard (completed 2026-05-25)
 - [x] **Phase 60: Multi-Photo Schema + DAL** — In-place ALTER on `watches_catalog`; per-user watch photo tables; backfill migration; DAL for CRUD + ordering (completed 2026-05-25)
-- [ ] **Phase 61: Photo Upload + Carousel UI** — Upload pipeline (EXIF-strip / ≤1080px JPEG); carousel; drag-reorder; delete; add-watch encouragement
+- [x] **Phase 61: Photo Upload + Carousel UI** — Upload pipeline (EXIF-strip / ≤1080px JPEG); carousel; drag-reorder; delete; add-watch encouragement (completed 2026-05-25)
 - [ ] **Phase 62: Public Wear Pics on Watch Detail** — Surface public wear photos on watch page; per-pic hide control; v6.0 likes/comments layer on surfaced pics
 - [ ] **Phase 63: Inline Grid Engagement** — Like + inline comment composer from profile grid cards; GATE-03 enforcement; optimistic counts
 - [ ] **Phase 64: Detail Page IA Redesign** — Intentional information hierarchy on `/w/[ref]`; deliberate comment placement; Cache Components structure preserved
@@ -233,7 +233,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 - [x] 61-01-PLAN.md — getWatchPhotosForWatch DAL + 3 photo server actions + Wave 0 test scaffolds (Wave 1)
 - [x] 61-02-PLAN.md — RSC signed-photo fetch + carousel/filmstrip/upload UI + WatchDetail wiring (Wave 2)
 - [x] 61-03-PLAN.md — add-watch "Add your photos" step (FlowState + WatchForm onWatchCreated + WatchPhotoStep) (Wave 2)
-- [ ] 61-04-PLAN.md — sign owner-photo covers across home/profile/search RSCs so reorder cover shows on grids (Wave 3)
+- [x] 61-04-PLAN.md — sign owner-photo covers across home/profile/search RSCs so reorder cover shows on grids (Wave 3)
 **UI hint**: yes
 
 ### Phase 62: Public Wear Pics on Watch Detail
@@ -280,7 +280,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 |-------|----------------|--------|-----------|
 | 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
 | 60. Multi-Photo Schema + DAL | 4/4 | Complete    | 2026-05-25 |
-| 61. Photo Upload + Carousel UI | 3/4 | In Progress|  |
+| 61. Photo Upload + Carousel UI | 4/4 | Complete   | 2026-05-25 |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
 | 63. Inline Grid Engagement | 0/TBD | Not started | - |
 | 64. Detail Page IA Redesign | 0/TBD | Not started | - |
