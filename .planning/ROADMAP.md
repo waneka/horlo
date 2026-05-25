@@ -180,7 +180,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 **Sources:** SEED-013 (multi-photo + carousel + wear-pic surfacing), SEED-015 (inline grid engagement), SEED-016 (`/w/[ref]` detail redesign), Phase 50 architecture spike (Variant C verdict).
 
 - [x] **Phase 59: Unified Route (Variant C)** — Merge `/catalog/[catalogId]` + `/watch/[id]` into `/w/[ref]`; remove legacy routes; add CI link-audit guard (completed 2026-05-25)
-- [ ] **Phase 60: Multi-Photo Schema + DAL** — In-place ALTER on `watches_catalog`; per-user watch photo tables; backfill migration; DAL for CRUD + ordering
+- [x] **Phase 60: Multi-Photo Schema + DAL** — In-place ALTER on `watches_catalog`; per-user watch photo tables; backfill migration; DAL for CRUD + ordering (completed 2026-05-25)
 - [ ] **Phase 61: Photo Upload + Carousel UI** — Upload pipeline (EXIF-strip / ≤1080px JPEG); carousel; drag-reorder; delete; add-watch encouragement
 - [ ] **Phase 62: Public Wear Pics on Watch Detail** — Surface public wear photos on watch page; per-pic hide control; v6.0 likes/comments layer on surfaced pics
 - [ ] **Phase 63: Inline Grid Engagement** — Like + inline comment composer from profile grid cards; GATE-03 enforcement; optimistic counts
@@ -217,7 +217,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 - [x] 60-01-PLAN.md — watch_photos schema + authoritative Supabase migration (backfill→drop) + bucket/RLS + Wave 0 test stub + local push (Wave 1)
 - [x] 60-02-PLAN.md — watch-photos storage helper + SC4 EXIF/≤1080px JPEG verification test (Wave 1)
 - [x] 60-03-PLAN.md — DAL cover resolution (3 paths) + cap/reorder/delete + repoint all image_url readers + storage purge hook (Wave 2)
-- [ ] 60-04-PLAN.md — [BLOCKING] prod migration push (supabase db push --linked) + prod verification (Wave 3, operator-run)
+- [x] 60-04-PLAN.md — [BLOCKING] prod migration push (supabase db push --linked) + prod verification (Wave 3, operator-run)
 
 ### Phase 61: Photo Upload + Carousel UI
 **Goal**: A watch owner can upload, view, reorder, and delete photos from the watch detail page; the add-watch flow prominently surfaces photo upload as a first-class step
@@ -275,7 +275,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
-| 60. Multi-Photo Schema + DAL | 3/4 | In Progress|  |
+| 60. Multi-Photo Schema + DAL | 4/4 | Complete   | 2026-05-25 |
 | 61. Photo Upload + Carousel UI | 0/TBD | Not started | - |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
 | 63. Inline Grid Engagement | 0/TBD | Not started | - |
