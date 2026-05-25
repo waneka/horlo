@@ -17,11 +17,11 @@
 >
 > **Hard cutover, not redirect (operator decision 2026-05-25).** Legacy routes are removed rather than redirected, so any un-migrated internal link fails loudly instead of being silently papered over. This is safe: notification deep-links are computed from IDs at render time (`NotificationRow.resolveHref`), not stored, so no URL data needs migrating; `/wear/[id]` is unaffected by the merge. The only breakage is external bookmarks to old URLs — accepted for a personal auth-gated app. The completeness guarantee lives in CI (ROUTE-03), not in manual click-through across the ~55 link literals / ~36 files.
 
-- [ ] **ROUTE-01**: A watch is viewable at a single canonical `/w/[ref]` route that resolves either a per-user watch id or a catalog id server-side
-- [ ] **ROUTE-02**: The legacy `/watch/[id]` and `/catalog/[catalogId]` routes are removed (no redirect) — visiting them 404s, so any un-migrated internal link surfaces immediately rather than silently working
-- [ ] **ROUTE-03**: A static guard test fails the build if any internal href or link literal still targets a legacy `/watch/[…]` or `/catalog/[…]` watch path — enforcing ROUTE-04 completeness in CI rather than by manual click-through
-- [ ] **ROUTE-04**: Every internal link to a watch (grid cards, search rows, discovery rails, add-watch deep-links, computed notification deep-links) points at `/w/[ref]`
-- [ ] **ROUTE-05**: The unified route preserves the two-layer privacy gate and per-viewer framing (owner vs cross-user) with no regression
+- [x] **ROUTE-01**: A watch is viewable at a single canonical `/w/[ref]` route that resolves either a per-user watch id or a catalog id server-side
+- [x] **ROUTE-02**: The legacy `/watch/[id]` and `/catalog/[catalogId]` routes are removed (no redirect) — visiting them 404s, so any un-migrated internal link surfaces immediately rather than silently working
+- [x] **ROUTE-03**: A static guard test fails the build if any internal href or link literal still targets a legacy `/watch/[…]` or `/catalog/[…]` watch path — enforcing ROUTE-04 completeness in CI rather than by manual click-through
+- [x] **ROUTE-04**: Every internal link to a watch (grid cards, search rows, discovery rails, add-watch deep-links, computed notification deep-links) points at `/w/[ref]`
+- [x] **ROUTE-05**: The unified route preserves the two-layer privacy gate and per-viewer framing (owner vs cross-user) with no regression
 - [ ] **ROUTE-06**: Owner-only write surfaces (edit, delete, mark-worn) remain available only to the owner on the unified route
 
 ### Multi-Photo Model + Carousel — `PHOTO`
@@ -105,11 +105,11 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ROUTE-01 | Phase 59 | Pending |
-| ROUTE-02 | Phase 59 | Pending |
-| ROUTE-03 | Phase 59 | Pending |
-| ROUTE-04 | Phase 59 | Pending |
-| ROUTE-05 | Phase 59 | Pending |
+| ROUTE-01 | Phase 59 | Complete |
+| ROUTE-02 | Phase 59 | Complete |
+| ROUTE-03 | Phase 59 | Complete |
+| ROUTE-04 | Phase 59 | Complete |
+| ROUTE-05 | Phase 59 | Complete |
 | ROUTE-06 | Phase 59 | Pending |
 | PHOTO-01 | Phase 60 | Pending |
 | PHOTO-04 | Phase 60 | Pending |
