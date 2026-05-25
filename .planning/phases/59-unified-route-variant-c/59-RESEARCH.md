@@ -737,7 +737,7 @@ describe('ROUTE-03: no internal links to legacy watch-detail paths', () => {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does WatchDetail.tsx need any prop changes for the catalog-branch owned case?**
    - What we know: `WatchDetail` receives `watch: Watch`, `viewerCanEdit`, `verdict`, `initialLikeState`, `commentCount`, `viewerId`, etc.
