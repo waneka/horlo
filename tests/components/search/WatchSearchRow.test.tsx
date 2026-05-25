@@ -88,12 +88,12 @@ describe('WatchSearchRow (FIT-04, SRCH-09, SRCH-15, D-05)', () => {
     expect(evaluateLinks.length).toBe(0)
   })
 
-  it('Test 5 — wraps brand+model in <Link> to /catalog/[catalogId] (gap-5 follow-up — primary action is detail-page nav)', () => {
+  it('Test 5 — wraps brand+model in <Link> to /w/[catalogId] (primary action is detail-page nav)', () => {
     const { container } = render(<WatchSearchRow result={baseResult} q="Sub" />)
     const p = screen.getByText(/Rolex/, { selector: 'p' })
     const anchor = p.closest('a')
     expect(anchor).not.toBeNull()
-    expect(anchor?.getAttribute('href')).toBe('/catalog/cat-uuid-123')
+    expect(anchor?.getAttribute('href')).toBe('/w/cat-uuid-123')
     // No legacy /evaluate hrefs anywhere
     expect(container.querySelector('a[href*="/evaluate"]')).toBeNull()
   })

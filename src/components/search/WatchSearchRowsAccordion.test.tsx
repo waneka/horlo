@@ -191,7 +191,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
     expect(cls).toMatch(/data-\[open\]|not-data-\[open\]/)
   })
 
-  it('row body navigates to /catalog/[catalogId] (split affordance — link is separate from chevron trigger)', () => {
+  it('row body navigates to /w/[catalogId] (split affordance — link is separate from chevron trigger)', () => {
     const { container } = render(
       <WatchSearchRowsAccordion
         results={[fixtureRow]}
@@ -200,7 +200,7 @@ describe('WatchSearchRowsAccordion CTAs (ADD-06 + Pitfall 2)', () => {
         viewerUsername={null}
       />,
     )
-    const link = container.querySelector('a[href="/catalog/cat-row-uuid"]')
+    const link = container.querySelector('a[href="/w/cat-row-uuid"]')
     expect(link).not.toBeNull()
   })
 })

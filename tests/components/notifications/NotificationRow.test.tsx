@@ -335,7 +335,7 @@ describe('NotificationRow', () => {
       await act(async () => {
         fireEvent.click(link)
       })
-      expect(mockPush).toHaveBeenCalledWith('/watch/w-42')
+      expect(mockPush).toHaveBeenCalledWith('/w/w-42')
     })
   })
 
@@ -481,7 +481,7 @@ describe('NotificationRow', () => {
       await act(async () => {
         fireEvent.click(link)
       })
-      expect(mockPush).toHaveBeenCalledWith('/watch/w-55')
+      expect(mockPush).toHaveBeenCalledWith('/w/w-55')
     })
   })
 

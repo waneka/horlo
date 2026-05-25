@@ -61,19 +61,19 @@ describe('ActivityRow — links (F-03)', () => {
     expect(profileLinks.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('Test 6 — watch name is wrapped in a separate <Link> to /watch/{watchId}', () => {
+  it('Test 6 — watch name is wrapped in a separate <Link> to /w/{watchId}', () => {
     const { container } = render(
       <ActivityRow row={makeRow({ watchId: 'watch-123' })} />,
     )
-    const watchLink = container.querySelector('a[href="/watch/watch-123"]')
+    const watchLink = container.querySelector('a[href="/w/watch-123"]')
     expect(watchLink).toBeTruthy()
     expect(watchLink?.textContent).toMatch(/Rolex\s+Submariner/)
   })
 
   it('Test 7 — watchId null (post-delete fallback): watch-name text renders but is NOT wrapped in a <Link>', () => {
     const { container } = render(<ActivityRow row={makeRow({ watchId: null })} />)
-    // No `/watch/...` href in the DOM.
-    const watchLinks = container.querySelectorAll('a[href^="/watch/"]')
+    // No `/w/...` href in the DOM.
+    const watchLinks = container.querySelectorAll('a[href^="/w/"]')
     expect(watchLinks.length).toBe(0)
     // But the watch name text is still present.
     expect(document.body.textContent).toMatch(/Rolex\s+Submariner/)

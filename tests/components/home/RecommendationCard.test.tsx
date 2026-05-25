@@ -56,7 +56,7 @@ describe('RecommendationCard', () => {
     expect(screen.getByText('Omega')).toBeTruthy()
     expect(screen.getByText('Speedmaster')).toBeTruthy()
     expect(screen.getByText('Fans of Omega love this')).toBeTruthy()
-    const link = container.querySelector('a[href="/watch/w-rec-1"]')
+    const link = container.querySelector('a[href="/w/w-rec-1"]')
     expect(link).toBeTruthy()
   })
 
@@ -80,7 +80,7 @@ describe('RecommendationCard', () => {
 
   it('Test 4 — card uses w-40 md:w-44 and aspect-[4/5]', () => {
     const { container } = render(<RecommendationCard rec={makeRec()} />)
-    const link = container.querySelector('a[href="/watch/w-rec-1"]')
+    const link = container.querySelector('a[href="/w/w-rec-1"]')
     expect(link?.className ?? '').toMatch(/w-40/)
     expect(link?.className ?? '').toMatch(/md:w-44/)
     const imgBox = container.querySelector('.aspect-\\[4\\/5\\]')
@@ -89,7 +89,7 @@ describe('RecommendationCard', () => {
 
   it('Test 5 — aria-label is "{brand} {model}"', () => {
     const { container } = render(<RecommendationCard rec={makeRec()} />)
-    const link = container.querySelector('a[href="/watch/w-rec-1"]')
+    const link = container.querySelector('a[href="/w/w-rec-1"]')
     expect(link?.getAttribute('aria-label')).toBe('Omega Speedmaster')
   })
 })

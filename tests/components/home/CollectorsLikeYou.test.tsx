@@ -90,7 +90,7 @@ describe('CollectorsLikeYou', () => {
     const { container } = await renderAsync(
       CollectorsLikeYou({ viewerId: 'viewer-1' }),
     )
-    expect(container.querySelectorAll('a[href^="/watch/w-"]').length).toBe(3)
+    expect(container.querySelectorAll('a[href^="/w/w-"]').length).toBe(3)
   })
 
   it('Test 3 — section heading exactly "From collectors like you"', async () => {
