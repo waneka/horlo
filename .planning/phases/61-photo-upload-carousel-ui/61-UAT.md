@@ -3,7 +3,9 @@ status: complete
 phase: 61-photo-upload-carousel-ui
 source: [61-01-SUMMARY.md, 61-02-SUMMARY.md, 61-03-SUMMARY.md, 61-04-SUMMARY.md]
 started: 2026-05-25T22:30:00Z
-updated: 2026-05-25T22:55:00Z
+updated: 2026-05-26T08:10:00Z
+gaps_resolved_by: [61-05, 61-06, 98e7289]
+gaps_resolution_note: "All 9 gaps closed during in-phase gap closure 2026-05-26. Gap #1 (#419 blocker) fixed earlier in 98e7289 + P61-BUG-01 static guard added in 61-06. Gaps #2-#8 fixed in 61-05. Gap #9 fixed in 61-06 (toast-suppression on onWatchCreated). Device-behavior + gap #9 require PROD re-verification on next deploy."
 ---
 
 ## Current Test
@@ -68,7 +70,7 @@ skipped: 0
 ## Gaps
 
 - truth: "Profile pages and watch detail pages load when navigating from profile tabs (collection / wishlist / notes / stats) and from search"
-  status: failed
+  status: resolved
   reason: "User reported: 404s on ALL profile pages AND all watch detail pages when routing from profile collection/wishlist/notes/stats and from search. React minified error #419 in the console. This regression was absent in the previous version — re-introduced during Phase 61. DIAGNOSTIC (test 2): the 404 occurs on client-side (soft) navigation from EVERY source, but a hard browser refresh (full SSR document load) loads the page fine — i.e. the broken client transition aborts the render (#419) on soft-nav while full SSR succeeds. This is the Router Cache / Cache Components soft-navigation signature."
   severity: blocker
   test: cross-cutting
@@ -77,7 +79,7 @@ skipped: 0
   missing: []
 
 - truth: "The edit-mode upload drop zone renders its full affordance text legibly"
-  status: failed
+  status: resolved
   reason: "User reported: in edit mode the 'Drop photos here or tap to choose' slot is too small; the text does not fit — only the camera icon and the word 'Drop' are visible."
   severity: cosmetic
   test: 1
@@ -85,7 +87,7 @@ skipped: 0
   missing: []
 
 - truth: "On mobile, the filmstrip drag handle is large enough to reliably grab for reorder"
-  status: failed
+  status: resolved
   reason: "User reported: on mobile the drag handle within the thumbnail is small and hard to use; it takes a few tries to enter drag mode."
   severity: minor
   test: 4
@@ -93,7 +95,7 @@ skipped: 0
   missing: []
 
 - truth: "The carousel position indicator is horizontally centered on the photo (desktop)"
-  status: failed
+  status: resolved
   reason: "User reported: on desktop the position indicator is not centered — it sits too far right, ~2/3 of the photo width."
   severity: cosmetic
   test: 2
@@ -101,7 +103,7 @@ skipped: 0
   missing: []
 
 - truth: "The 'Cover' badge visibility matches the desired behavior"
-  status: failed
+  status: resolved
   reason: "User wants the 'Cover' badge to show ONLY in edit mode. NOTE: current always-visible behavior is per locked decision D-07 (CONTEXT.md: 'the first filmstrip thumbnail always carries a small Cover badge … persistent'). This is a DECISION CHANGE, not a regression — D-07 should be updated to 'edit-mode only' and the badge gated on editMode in WatchPhotoSection/SortablePhotoThumb."
   severity: minor
   test: 2
@@ -110,7 +112,7 @@ skipped: 0
   missing: []
 
 - truth: "Tapping × hides the photo immediately (optimistic), with the undo toast offering restore"
-  status: failed
+  status: resolved
   reason: "User reported: the photo does NOT disappear immediately on × — the toast fires immediately but the photo only hides when the toast closes (~5s). Likely a side effect of the CR-01/WR-02 fix, which moved the optimistic setDeletedIds INTO the 5s setTimeout (alongside the server call) to get useOptimistic auto-revert. Fix: hide immediately on click, keep undo restore, and still revert on server-delete failure."
   severity: minor
   test: 5
@@ -118,7 +120,7 @@ skipped: 0
   missing: []
 
 - truth: "The × delete badge has legible contrast"
-  status: failed
+  status: resolved
   reason: "User reported: the × button is dark red (bg-destructive) with a black icon/font — hard to read. Should use a white/destructive-foreground icon color."
   severity: cosmetic
   test: 5
@@ -126,7 +128,7 @@ skipped: 0
   missing: []
 
 - truth: "The filmstrip stays within its column and does not collapse adjacent layout at higher photo counts"
-  status: failed
+  status: resolved
   reason: "User reported: on desktop, photos added past ~6 cause the filmstrip to overflow and collapse the content in the right rail next to it. The single-row overflow-x-auto filmstrip is expanding instead of scrolling internally (flexbox min-width:auto gotcha — container needs min-w-0 / max-w-full so overflow-x-auto scrolls within the column). User suggested wrap-to-second-line after 5, or a constrained horizontal scroll (noted scroll feels clunky with drag-and-drop)."
   severity: minor
   test: 6
@@ -134,7 +136,7 @@ skipped: 0
   missing: []
 
 - truth: "After creating a watch in the add-watch flow, a prominent 'Add your photos' step appears before navigation (PHOTO-09 / SC5)"
-  status: failed
+  status: resolved
   reason: "User reported: the 'Add your photos' step NEVER appears. On the extract → fit-verdict → 'Add to collection' → save path, the form saves ('Saving...') then router.push redirects straight back to the origin, bypassing the photos step entirely. The onWatchCreated interception is not taking effect on this path — it falls through to the default navigation."
   severity: major
   test: 8
