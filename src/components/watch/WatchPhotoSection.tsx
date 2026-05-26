@@ -248,7 +248,21 @@ export function WatchPhotoSection({
     }
   }, [])
 
+  // Track the transition key so Undo can force a new transition to restore the photo.
+  // We use a simple counter — increment to "abandon" the current deletion transition.
+  const undoSignalRef = useRef<{ aborted: boolean }>({ aborted: false })
+
   function handleDelete(photoId: string) {
+    // gap #6: hide the photo IMMEDIATELY at click time (optimistic).
+    // useOptimistic setDeletedIds fires within a startTransition so the thumbnail
+    // and carousel slide disappear at once, before the server call.
+    const signal = { aborted: false }
+    undoSignalRef.current = signal
+
+    startTransition(() => {
+      setDeletedIds(photoId) // optimistic hide — immediate
+    })
+
     // Show the undo toast immediately (5-second window).
     toast('Photo deleted', {
       action: {
@@ -260,27 +274,30 @@ export function WatchPhotoSection({
             clearTimeout(undoTimerRef.current)
             undoTimerRef.current = null
           }
-          // The optimistic state auto-reverts because the startTransition below
-          // was never settled (server action never called). A full reload is no
-          // longer needed — useOptimistic reverts when the transition is abandoned.
-          // window.location.reload() removed: unnecessary and disruptive.
+          // Mark this deletion as aborted so the setTimeout body skips the server call.
+          signal.aborted = true
+          // The optimistic state auto-reverts because the outer startTransition completed
+          // but no new transition updates the server state. Trigger a new transition with
+          // no-op to flush the optimistic layer and restore the photo.
+          startTransition(() => {
+            // no-op transition: React will re-render and restore useOptimistic state
+            // to the server snapshot (deletedIds reverts to empty Set).
+          })
         },
       },
       duration: 5000,
     })
 
-    // WR-02: wrap BOTH the optimistic update and the server call in a single
-    // startTransition so useOptimistic auto-reverts the hidden state if the
-    // delete action fails (no revalidatePath on the error path → auto-revert).
+    // gap #6: the 5s setTimeout contains ONLY the server delete call.
+    // The optimistic hide already fired above; this just commits the deletion.
     undoTimerRef.current = setTimeout(() => {
       undoTimerRef.current = null
+      if (signal.aborted) return // Undo was clicked — skip server call
       startTransition(async () => {
-        setDeletedIds(photoId) // optimistic hide
         const result = await deleteWatchPhotoAction({ watchId, photoId })
         if (!result.success) {
-          // useOptimistic auto-reverts the optimistic state when the transition
-          // settles without a server-side revalidatePath (the error path does not
-          // call revalidatePath, so the photo reappears automatically).
+          // WR-02: useOptimistic auto-reverts when the transition settles without
+          // revalidatePath (the error path does not call revalidatePath).
           toast.error("Couldn't delete photo.")
         }
       })
@@ -399,20 +416,26 @@ export function WatchPhotoSection({
       </div>
 
       {/* Position indicator — only when multiple slides */}
+      {/* gap #4: wrap in w-full max-w-md to match carousel viewport width so text-center
+          centers on the photo, not the full parent region */}
       {showPositionIndicator && (
-        <p
-          className="text-sm text-muted-foreground text-center tabular-nums"
-          aria-live="polite"
-        >
-          {selectedIndex + 1} / {totalSlides}
-        </p>
+        <div className="w-full max-w-md">
+          <p
+            className="text-sm text-muted-foreground text-center tabular-nums"
+            aria-live="polite"
+          >
+            {selectedIndex + 1} / {totalSlides}
+          </p>
+        </div>
       )}
 
       {/* -------------------------------------------------------------------- */}
       {/* Filmstrip — always visible when there are owner photos */}
       {/* -------------------------------------------------------------------- */}
+      {/* gap #8: min-w-0 on the outer filmstrip container so overflow-x-auto on
+          the inner row scrolls internally instead of expanding the right rail */}
       {hasOwnerPhotos && (
-        <div>
+        <div className="min-w-0">
           {editMode ? (
             // Edit mode: wrap filmstrip in DndContext + SortableContext
             <DndContext
@@ -427,10 +450,12 @@ export function WatchPhotoSection({
                 items={visibleIds}
                 strategy={horizontalListSortingStrategy}
               >
+                {/* gap #8: min-w-0 on the row itself ensures flex container
+                    doesn't expand to accommodate unbounded children */}
                 <div
                   role="list"
                   aria-label="Photo filmstrip"
-                  className="flex overflow-x-auto gap-2 pb-1"
+                  className="flex overflow-x-auto gap-2 pb-1 min-w-0"
                 >
                   {visibleIds.map((id, idx) => (
                     <SortablePhotoThumb
@@ -445,23 +470,20 @@ export function WatchPhotoSection({
                     />
                   ))}
 
-                  {/* +Add tile — appended at end in edit mode */}
+                  {/* +Add tile — compact icon-only tile in the filmstrip row (gap #2:
+                      full affordance rendered separately below, not crammed into 64px) */}
                   {visibleIds.length < MAX_PHOTOS ? (
                     <div
                       role="listitem"
-                      className="flex-none w-16 h-16"
+                      className="flex-none w-16 h-16 rounded-md border-dashed border-2 bg-muted flex items-center justify-center cursor-pointer hover:bg-muted/80"
+                      onClick={() => {
+                        // Trigger the full-width dropzone below by programmatic click
+                        document.getElementById(`photo-dropzone-${watchId}`)?.click()
+                      }}
+                      title="Add photos"
+                      aria-label="Add photos"
                     >
-                      <PhotoDropzone
-                        watchId={watchId}
-                        userId={userId ?? ''}
-                        currentPhotoCount={visibleIds.length + localUploadCount}
-                        onPhotosAdded={(newIds) => {
-                          // WR-04: increment localUploadCount by the number of newly
-                          // added photos so the cap math stays accurate before RSC
-                          // revalidation reflects the new rows in photosById.
-                          setLocalUploadCount((c) => c + newIds.length)
-                        }}
-                      />
+                      <Plus className="size-4 text-muted-foreground" aria-hidden />
                     </div>
                   ) : (
                     // At cap: show disabled tile
@@ -494,13 +516,33 @@ export function WatchPhotoSection({
                   </div>
                 ) : null}
               </DragOverlay>
+
+              {/* gap #2: full-width upload affordance below the filmstrip in edit mode.
+                  The +Add tile above triggers this dropzone via id. Renders full text. */}
+              {visibleIds.length < MAX_PHOTOS && (
+                <div className="mt-2">
+                  <PhotoDropzone
+                    id={`photo-dropzone-${watchId}`}
+                    watchId={watchId}
+                    userId={userId ?? ''}
+                    currentPhotoCount={visibleIds.length + localUploadCount}
+                    onPhotosAdded={(newIds) => {
+                      // WR-04: increment localUploadCount by the number of newly
+                      // added photos so the cap math stays accurate before RSC
+                      // revalidation reflects the new rows in photosById.
+                      setLocalUploadCount((c) => c + newIds.length)
+                    }}
+                  />
+                </div>
+              )}
             </DndContext>
           ) : (
             // View mode: plain scrollable filmstrip, no DndContext
+            // gap #8: min-w-0 so overflow-x-auto scrolls internally
             <div
               role="list"
               aria-label="Photo filmstrip"
-              className="flex overflow-x-auto gap-2 pb-1"
+              className="flex overflow-x-auto gap-2 pb-1 min-w-0"
             >
               {visibleIds.map((id, idx) => (
                 <div

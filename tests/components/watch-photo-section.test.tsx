@@ -284,8 +284,7 @@ describe('WatchPhotoSection (PHOTO-03, PHOTO-05, PHOTO-06)', () => {
     expect(screen.queryByRole('button', { name: /Delete photo/i })).toBeNull()
   })
 
-  it('PHOTO-06: clicking delete × calls deleteWatchPhotoAction', async () => {
-    const { deleteWatchPhotoAction } = await import('@/app/actions/watchPhotos')
+  it('PHOTO-06: clicking delete × shows toast immediately (gap #6 — optimistic hide)', async () => {
     render(<WatchPhotoSection {...defaultProps} viewerCanEdit={true} />)
     fireEvent.pointerDown(screen.getByText('Edit photos'))
 
@@ -294,9 +293,10 @@ describe('WatchPhotoSection (PHOTO-03, PHOTO-05, PHOTO-06)', () => {
       fireEvent.click(deleteButtons[0])
     })
 
-    // After the undo timeout would fire... for test purposes check optimistic remove
-    // and that a toast was called
+    // Toast fires immediately on click (gap #6: optimistic hide before setTimeout)
     expect(mockToast).toHaveBeenCalled()
+    // deleteWatchPhotoAction is NOT called immediately — only after 5s timeout
+    expect(mocks.deleteWatchPhotoAction).not.toHaveBeenCalled()
   })
 
   it('PHOTO-06: no +Add tile when viewerCanEdit is false', () => {

@@ -73,6 +73,8 @@ export interface PhotoDropzoneProps {
   onPhotosAdded: (newIds: string[]) => void
   /** Disable all interaction (e.g., while a parent transition is in flight) */
   disabled?: boolean
+  /** id for the root element (used by the filmstrip +Add tile to trigger the picker) */
+  id?: string
 }
 
 export function PhotoDropzone({
@@ -81,6 +83,7 @@ export function PhotoDropzone({
   currentPhotoCount,
   onPhotosAdded,
   disabled = false,
+  id,
 }: PhotoDropzoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -227,7 +230,9 @@ export function PhotoDropzone({
       />
 
       {/* Desktop drop zone + programmatic trigger */}
+      {/* gap #2: id prop allows the filmstrip +Add tile to trigger this picker */}
       <div
+        id={id}
         role="button"
         tabIndex={0}
         aria-label="Upload photos — drop files here or press Enter to browse"
