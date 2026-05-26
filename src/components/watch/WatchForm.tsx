@@ -278,7 +278,13 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
       }
       return result
     }, mode === 'create'
-      ? buildSuccessOpts(finalStatus, returnTo ?? null, viewerUsername ?? null, successMessage)
+      // Phase 61 Plan 06 (gap #9): when onWatchCreated is present, the parent
+      // (AddWatchFlow) owns navigation via the photos-pending step. Suppress the
+      // success toast entirely so no "View" action button can navigate away from
+      // the photos step while it is rendering. When onWatchCreated is absent,
+      // use the standard buildSuccessOpts toast (backward compatible with all
+      // other WatchForm callers).
+      ? (onWatchCreated ? {} : buildSuccessOpts(finalStatus, returnTo ?? null, viewerUsername ?? null, successMessage))
       : { successMessage }
     )
   }
