@@ -330,14 +330,11 @@ export async function ProfileTabContent({
   // `watches` comes from the cached resolver (shared with the layout);
   // `wearDates` is a small per-tab fetch that stays uncached.
   if (tab === 'collection' || tab === 'wishlist' || tab === 'notes') {
-    // Phase 61 debug fix (P61-BUG-01): resolve all 'use cache' calls BEFORE calling
-    // signCoverUrls. signCoverUrls calls createSupabaseServerClient() -> cookies(),
-    // which is a dynamic API. Placing a dynamic API access between two 'use cache'
-    // entries in the same async function body corrupts the PPR prerender boundary and
-    // causes React #419 on soft navigation (hard refresh works because full SSR
-    // re-evaluates without the cached RSC boundary conflict).
-    // Sequence: (1) ProfileShellResolver ['use cache'] (2) getBatchedWatchCountsCached
-    // ['use cache'] (3) signCoverUrls [dynamic/cookies] — dynamic always LAST.
+    // Phase 61 structural fix (phase61-404-react-419-soft-nav debug):
+    // signCoverUrls now uses the admin client (service role) instead of
+    // createSupabaseServerClient (cookies). This removes the cookies()
+    // dynamic-API dependency from the PPR prerender path — see
+    // src/lib/storage/signCoverUrls.ts for the full rationale.
     const rawWatches = resolved.watches
     const wearDates = await getMostRecentWearDates(
       profile.id,
@@ -364,7 +361,6 @@ export async function ProfileTabContent({
       : new Map<string, { likeCount: number; commentCount: number }>()
     const counts: Record<string, { likeCount: number; commentCount: number }> =
       Object.fromEntries(countsMap)
-    // Dynamic API (cookies via signCoverUrls) runs AFTER all 'use cache' calls.
     const watches = await signCoverUrls(rawWatches)
     const ownedWatches = watches.filter((w) => w.status === 'owned')
 
@@ -415,7 +411,7 @@ export async function ProfileTabContent({
     // viewer-gated and uncached; `watches` comes from the cached resolver
     // shared with the layout.
     const events = await getWearEventsForViewer(viewerId, profile.id)
-    // Phase 61 debug fix (P61-BUG-01): dynamic API (cookies) runs after all 'use cache' calls.
+    // signCoverUrls uses admin client — no cookies() dependency. See signCoverUrls.ts.
     const watches = await signCoverUrls(resolved.watches)
     const watchMap = Object.fromEntries(
       watches.map((w) => [
@@ -465,7 +461,7 @@ export async function ProfileTabContent({
   // (shared with the layout) — owner stats are cache hits within the 300s
   // window. Non-owner views need the viewer-gated `getWearEventsForViewer`
   // call (privacy-safe filtering by per-row visibility) and stay uncached.
-  // Phase 61 debug fix (P61-BUG-01): dynamic API (cookies) runs after all 'use cache' calls.
+  // signCoverUrls uses admin client — no cookies() dependency. See signCoverUrls.ts.
   const watches = await signCoverUrls(resolved.watches)
   const ownedAll = watches.filter((w) => w.status === 'owned')
   const events = isOwner

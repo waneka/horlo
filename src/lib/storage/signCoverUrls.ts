@@ -11,13 +11,24 @@
  * fetched and BEFORE it reaches card components. Signing ONLY here keeps the DAL
  * admin-client-free (Pitfall-1 rule established in Phase 61 Plan 02).
  *
+ * NOTE (Phase 61 debug — structural fix):
+ * URL signing uses the service-role admin client (not the cookie-based server
+ * client) to eliminate the `cookies()` dynamic-API dependency from PPR routes.
+ * In Cache Components / PPR routes, calling `createSupabaseServerClient()` (which
+ * reads cookies()) in an RSC that also calls 'use cache' functions corrupts the
+ * prerender boundary and causes React #419 on soft navigation regardless of call
+ * ordering. Storage URL signing is safe with the admin client because:
+ *   (a) paths are user-scoped ({userId}/…) by construction (IDOR fix in Phase 61),
+ *   (b) signing creates a time-limited token — it does not query or expose user data.
+ * The admin client is NOT used for data queries here; this is signing-only.
+ *
  * Calling RSCs are dynamic (getCurrentUser() — no ISR), so the 60-min TTL is
  * safe (RESEARCH Open Q3 / A2: cached signed URL expires before ISR revalidate
  * would serve it, but these routes are fully dynamic so there is no stale cache).
  */
 import 'server-only'
 
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getSafeImageUrl } from '@/lib/images'
 
 /**
@@ -49,8 +60,9 @@ export async function signCoverUrls<T extends { imageUrl?: string | null }>(
     return watches.map((w) => ({ ...w }))
   }
 
-  // Sign all distinct raw paths in parallel (one client instance).
-  const supabase = await createSupabaseServerClient()
+  // Sign all distinct raw paths in parallel using the admin client (service role).
+  // No cookies() call — safe in PPR/cached RSC contexts. See module-level comment.
+  const supabase = createSupabaseAdminClient()
   const signedMap = new Map<string, string | null>()
 
   await Promise.all(

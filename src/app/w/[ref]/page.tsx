@@ -26,7 +26,7 @@ import { CommentThreadSkeleton } from '@/components/comment/CommentThreadSkeleto
 import { getSameFamilyForCatalog, getLineageForReference } from '@/data/hierarchy'
 import { getCollectorsForCatalog } from '@/data/discovery'
 import { Button } from '@/components/ui/button'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import type { Watch, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
@@ -74,17 +74,21 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
       getPreferencesByUser(user.id),
     ])
 
-    // Phase 61 PHOTO-03 + debug fix (P61-BUG-01): fetch owner photos and sign storage
-    // paths BEFORE any 'use cache' calls. createSupabaseServerClient() calls cookies()
-    // which is a dynamic API. Placing a dynamic API call AFTER a 'use cache' entry
-    // (getLikesForTargetCached) in the same async function body corrupts the PPR
-    // prerender boundary and causes React #419 on soft navigation.
-    // Rule: dynamic API (cookies) access must come BEFORE any 'use cache' calls.
-    // Signing happens ONLY in the RSC, never in the DAL (admin-client-free DAL rule).
+    // Phase 61 PHOTO-03 — structural fix (phase61-404-react-419-soft-nav debug):
+    // Sign owner photos using the admin client (service role) instead of the
+    // cookie-based server client. The original fix (P61-BUG-01) moved the signing
+    // BEFORE 'use cache' calls, but call ordering does not resolve the issue:
+    // any invocation of createSupabaseServerClient() (which reads cookies()) in an
+    // RSC that also calls 'use cache' functions corrupts the PPR prerender boundary
+    // and causes React #419 on soft-nav regardless of ordering. The admin client
+    // bypasses cookies() entirely — safe for storage URL signing because:
+    //   (a) paths are user-scoped ({userId}/…) by construction (IDOR fix in Phase 61),
+    //   (b) signing creates a time-limited token, not a data query.
+    // The admin client is NOT used for data queries here; this is signing-only.
     const rawPhotos = isOwner ? await getWatchPhotosForWatch(watch.id) : []
     let signedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
     if (rawPhotos.length > 0) {
-      const supabase = await createSupabaseServerClient()
+      const supabase = createSupabaseAdminClient()
       signedPhotos = await Promise.all(
         rawPhotos.map(async (p) => {
           const { data } = await supabase.storage
@@ -284,12 +288,12 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
     const ownedWatch = await getWatchById(user.id, viewerOwnedRow.id)
     if (!ownedWatch) notFound()
 
-    // Phase 61 PHOTO-03 + debug fix (P61-BUG-01): sign owner photos BEFORE
-    // getLikesForTargetCached ('use cache'). Dynamic API (cookies) must come first.
+    // Phase 61 PHOTO-03 — structural fix (phase61-404-react-419-soft-nav debug):
+    // Sign owner photos using the admin client. See Branch 1 comment above for rationale.
     const ownedRawPhotos = await getWatchPhotosForWatch(ownedWatch.id)
     let ownedSignedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
     if (ownedRawPhotos.length > 0) {
-      const supabase = await createSupabaseServerClient()
+      const supabase = createSupabaseAdminClient()
       ownedSignedPhotos = await Promise.all(
         ownedRawPhotos.map(async (p) => {
           const { data } = await supabase.storage

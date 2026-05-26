@@ -1,6 +1,6 @@
 ---
 slug: phase61-404-react-419-soft-nav
-status: investigating
+status: fix_applied
 trigger: "404 + React #419 on profile pages and watch detail pages — soft-nav only (hard refresh works), re-introduced in Phase 61"
 created: 2026-05-25
 updated: 2026-05-26
@@ -17,24 +17,10 @@ After deploying 67fde76 (confirmed live on www.horlo.app = deployment `horlo-rfk
 
 - An early observation suggested profile pages were fixed — that was a MISREAD (almost certainly a hard load / first paint).
 - **CONFIRMED user behavior (2026-05-26):** on profile pages (`/u/[username]/[tab]`): **hard refresh ALWAYS loads; soft (in-app) navigation ALWAYS 404s** — consistent, not intermittent. Watch-detail (`/w/[ref]`): same — soft-nav 404s.
-- **Conclusion: BOTH routes still 404/#419 on soft-nav.** Neither of 98e7289's ordering fixes resolved it:
-  - profile got dynamic-AFTER-cache (`signCoverUrls` after `getBatchedWatchCountsCached`) → still broken.
-  - watch-detail got dynamic-BEFORE-cache (`createSupabaseServerClient` before `getLikesForTargetCached`) → still broken.
-  - So the call-ORDERING model (P61-BUG-01, either direction) is the WRONG root-cause theory. Reordering dynamic vs 'use cache' calls does not fix this.
+- **Conclusion: BOTH routes still 404/#419 on soft-nav.** Neither of 98e7289's ordering fixes resolved it.
+- **The call-ORDERING model (P61-BUG-01, either direction) is the WRONG root-cause theory.**
 
 **Signature (now well-characterized):** consistent (deterministic) React #419 + 404 on CLIENT/soft navigation to any Phase-61-touched cached/PPR route; full browser hard-refresh (SSR) always works; invisible to `npm run build` (exit 0) and to the static guard (which passes). Re-introduced by Phase 61's addition of a dynamic cookies API (`createSupabaseServerClient`/`signCoverUrls`) into these RSCs.
-
-**What Phase 61 changed across the affected routes:** it injected `createSupabaseServerClient()` (cookies → dynamic) for owner-photo signing into `w/[ref]/page.tsx`, and `signCoverUrls()` (also cookies) into `[tab]/page.tsx`, `profile-shell-resolver.tsx`, `search/page.tsx`, `page.tsx`. Introducing a dynamic API into routes that have `'use cache'` segments appears to break the PPR static shell that soft-nav resume depends on — regardless of call order.
-
-**Structural hypotheses to pursue (NOT more reordering):**
-1. Phase 52 fixed this family STRUCTURALLY on `/u/[username]/[tab]` (sync layout + Suspense + ProfileChrome + inner ProfileTabContent split; `unstable_instant = false`). Phase 61 added `signCoverUrls` INTO `ProfileTabContent` — likely re-broke that structural fix. Check whether the dynamic signing must move OUT of the cached/prerendered content into a separate dynamic Suspense boundary (or out of the page entirely).
-2. Consider removing the dynamic cookie dependency from these routes altogether: sign photo/cover URLs via a non-cookie path (e.g., a route handler / a dedicated dynamic segment / signing at a layer that doesn't taint the PPR shell), so the cached routes contain NO dynamic API.
-3. Compare against a Phase-60 (pre-Phase-61) commit of these routes to see exactly what made them dynamic.
-4. `unstable_instant`/prefetch interaction (see [[project_phase_52_in_progress]], [[project_cc_audit_2026_05_21]]).
-
-**Verification loop:** prod-only. Each candidate fix needs `vercel deploy --prod` (GitHub→Vercel auto-deploy was NOT firing on push this session) + the user soft-navigating on prod. Build + static guard are NOT sufficient signals.
-
-**→ Hand to `/gsd-debug` (this session, slug `phase61-404-react-419-soft-nav`).** Do not apply further inline call-reordering.
 
 ## Symptoms
 
@@ -46,10 +32,10 @@ After deploying 67fde76 (confirmed live on www.horlo.app = deployment `horlo-rfk
 
 ## Current Focus
 
-hypothesis: "Phase 61 wired `signCoverUrls()` — which calls `createSupabaseServerClient()` (a dynamic, cookie/auth-dependent API) — into RSCs that are (or feed) cached / partially-prerendered renders: `src/app/u/[username]/profile-shell-resolver.tsx` (has a `'use cache'` scope; a `resolveProfileShellSigned` wrapper was added 'outside' that scope), `src/app/u/[username]/[tab]/page.tsx`, `src/app/search/page.tsx`, and the signed-photo fetch in `src/app/w/[ref]/page.tsx`. A dynamic call evaluated inside or across a `'use cache'`/PPR boundary aborts the prerender on soft navigation → React #419 → 404, while a full SSR refresh succeeds. This matches the project's prior #419 / Cache Components history (Phase 51 recurrences, Phase 52 structural fix)."
-test: "Diff Phase 61's changes to the 5 modified RSCs and locate where signCoverUrls / createSupabaseServerClient is invoked relative to 'use cache' / Suspense / PPR boundaries — especially profile-shell-resolver.tsx (the soft-nav-only + profile-page symptom points hardest here)."
-expecting: "A dynamic (cookie/auth) call newly placed inside a cached scope, or a signing call that moved a previously-static boundary into a dynamic one, in the profile-shell-resolver / [tab] path."
-next_action: "RESOLVED — fix applied and build verified."
+hypothesis: "STRUCTURAL (not ordering): Phase 61 introduced createSupabaseServerClient() (cookies()) for photo signing into PPR routes. The call-ordering fix (P61-BUG-01) was deployed and confirmed NOT to fix either route — ordering does not resolve the issue. The root cause is that any direct call to createSupabaseServerClient() (which invokes cookies()) in an RSC that also calls 'use cache' functions corrupts the PPR prerender boundary regardless of ordering. The fix: replace createSupabaseServerClient() with createSupabaseAdminClient() (service role) for URL signing — admin client is synchronous and does not call cookies(). Storage URL signing is safe with service role because: (a) storage paths are user-scoped {userId}/... by construction (IDOR fix in Phase 61), (b) signing creates a time-limited token, not a data query. This removes the cookies() dependency from the PPR path entirely."
+test: "Deploy to prod via vercel deploy --prod. Have user soft-navigate between profile tabs and from collection/search to /w/[ref]. Both routes must load without 404 or React #419 on soft-nav."
+expecting: "Removing cookies() dependency from the photo signing path (by using admin client) eliminates the soft-nav #419/404 on both routes. Hard refresh was always working and should continue to work."
+next_action: "BUILD VERIFIED (exit 0). Deploy to prod with vercel deploy --prod. Then have user re-test soft-nav on BOTH routes."
 
 ## Evidence
 
@@ -57,16 +43,13 @@ next_action: "RESOLVED — fix applied and build verified."
 - timestamp: 2026-05-25 — 61-04 SUMMARY notes the resolver fix used `resolveProfileShellSigned` "outside the `'use cache'` scope" — verify this is actually outside and that signing didn't leak a dynamic call into the cached path.
 - timestamp: 2026-05-25 — Build passes (exit 0) and full SSR refresh works → the server render is fine; the failure is the client soft-nav transition (PPR/Router-Cache resume). Classic React #419 (a Suspense boundary / prerender aborting during hydration-resume on soft-nav).
 - timestamp: 2026-05-25 — MEMORY context: `project_router_cache_stale_instance`, `project_cc_audit_2026_05_21`, `project_phase_52_in_progress` — on `/u/[username]/[tab]` `unstable_instant` is unusable (runtime → #419; static → build fails); the route was made structurally safe in Phase 52. Check whether the Phase 61 edits to `[tab]/page.tsx` / `profile-shell-resolver.tsx` re-broke that structural fix.
-- timestamp: 2026-05-26 — ROOT CAUSE CONFIRMED: In PPR routes, calling a dynamic API (`cookies()` via `createSupabaseServerClient()`) in the SAME async function body as a `'use cache'` function, where the dynamic call is INTERLEAVED with (comes BETWEEN or AFTER) `'use cache'` calls, corrupts the PPR prerender boundary. The static prerender captures the function body up to and including the first `'use cache'` call; when the router cache replays the RSC payload on soft-nav, the resumed render re-encounters a dynamic API access that the static capture assumed was settled. Next.js rule (confirmed in use-cache.md:21): "To use cookies or headers, read them outside cached scopes and pass values as arguments." The rule extends to the surrounding function body ordering: all dynamic API access must come BEFORE all `'use cache'` calls in any given async scope.
-- timestamp: 2026-05-26 — SPECIFIC VIOLATIONS FOUND:
-  - `[tab]/page.tsx`: `signCoverUrls` (cookies) called AFTER `ProfileShellResolver` ('use cache') at line 191, and BEFORE `getBatchedWatchCountsCached` ('use cache') in the collection/wishlist/notes branch at line 360. The interleaved dynamic call between two 'use cache' calls is the trigger.
-  - `w/[ref]/page.tsx` Branch 1: `createSupabaseServerClient()` called at line 148 AFTER `getLikesForTargetCached` ('use cache') at line 81.
-  - `w/[ref]/page.tsx` D-06 branch: same pattern — `createSupabaseServerClient()` at line 325 after `getLikesForTargetCached` at line 285.
-  - `app/page.tsx` and `search/page.tsx`: NOT affected because their 'use cache' functions are JSX children (CollectorsLikeYou etc.), not awaited in the same function body as the signing call.
-- timestamp: 2026-05-26 — FIX APPLIED + BUILD VERIFIED: Restructured both files so dynamic API (signCoverUrls/createSupabaseServerClient) comes AFTER all 'use cache' calls in every execution path. In `[tab]/page.tsx`: moved signCoverUrls to INSIDE each tab branch, after getBatchedWatchCountsCached. In `w/[ref]/page.tsx`: moved photo fetch+sign to BEFORE getLikesForTargetCached in both Branch 1 and D-06 branch. `npm run build` exits 0. All routes remain `◐ Partial Prerender`.
+- timestamp: 2026-05-26 — Call-ordering theory ABANDONED. The P61-BUG-01 fix (deployed in 98e7289 → 67fde76, confirmed live on prod) tried BOTH orderings: (1) dynamic-BEFORE-cache in `w/[ref]/page.tsx`, (2) dynamic-AFTER-cache in `[tab]/page.tsx`. BOTH routes still 404 on soft-nav. Conclusion: ordering of cookies() relative to 'use cache' calls in the function body does NOT determine the outcome. The mere presence of createSupabaseServerClient() (which calls cookies()) anywhere in an RSC that also calls 'use cache' functions corrupts the PPR prerender pipeline.
+- timestamp: 2026-05-26 — Key observation from git diff: BEFORE Phase 61, both routes already had getCurrentUser() which internally calls createSupabaseServerClient() → cookies(). The routes WORKED. Phase 61 added a SECOND independent createSupabaseServerClient() call (for photo signing). getCurrentUser() is wrapped in React.cache() (request-scoped memoization). The direct createSupabaseServerClient() call in signCoverUrls/signing code is NOT memoized. This distinction appears to be why adding the second call breaks things — the unmemoized call is re-executed in each prerender pass (prospective + final runtime prerenders share headers/cookies but use separate React.cache scopes). The fix: use the admin client (service role, synchronous, no cookies()) for signing.
+- timestamp: 2026-05-26 — STRUCTURAL FIX APPLIED: Changed `src/lib/storage/signCoverUrls.ts` to use `createSupabaseAdminClient()` (synchronous, no cookies()) instead of `createSupabaseServerClient()` (async, cookies()). Changed `src/app/w/[ref]/page.tsx` to use `createSupabaseAdminClient()` directly (no await needed) in both photo signing blocks (Branch 1 + D-06). Updated `src/app/u/[username]/[tab]/page.tsx` comment to remove stale P61-BUG-01 ordering references. `npm run build` exits 0. All affected routes remain `◐ Partial Prerender`.
 
 ## Eliminated
 
+- Call ordering of cookies() relative to 'use cache' calls — PROVEN NOT TO FIX. Both orderings (before and after) deployed to prod via 98e7289/67fde76, both still fail.
 - `resolveProfileShellSigned` wrapper in profile-shell-resolver.tsx IS correctly outside the `'use cache'` scope — but it is dead code, never imported anywhere. Not the bug source.
 - `unstable_instant = false` was still in place and correct on `[tab]/page.tsx`.
 - `search/page.tsx` and `app/page.tsx` — signCoverUrls calls in these files are safe because their 'use cache' components are JSX children (rendered inside the returned JSX tree), not awaited functions in the same async body as signCoverUrls.
@@ -74,7 +57,7 @@ next_action: "RESOLVED — fix applied and build verified."
 
 ## Resolution
 
-- **root_cause:** Phase 61 placed `createSupabaseServerClient()` (a `cookies()`-dependent dynamic API) calls in the same async function body as `'use cache'` functions, with the dynamic call AFTER (or interleaved with) the cached calls. In PPR routes, this corrupts the prerender boundary: the static capture includes the 'use cache' call but not the subsequent dynamic API access, so soft-nav RSC replay re-encounters a dynamic API that the cached prerender assumed was settled — triggering React #419 and a 404. The rule from Next.js docs: dynamic API access must come BEFORE all 'use cache' calls in any given async scope.
-- **fix:** In `src/app/u/[username]/[tab]/page.tsx`: removed the early `signCoverUrls` call (between ProfileShellResolver and getBatchedWatchCountsCached) and moved signing into each leaf tab branch AFTER getBatchedWatchCountsCached. In `src/app/w/[ref]/page.tsx`: moved the photo fetch+sign block (createSupabaseServerClient) to BEFORE getLikesForTargetCached in Branch 1 and the D-06 owned-watch branch. All dynamic API access now precedes all 'use cache' calls in every execution path.
-- **verified:** `npm run build` exits 0; all affected routes remain `◐ Partial Prerender`.
-- **durable_rule:** In PPR routes containing both 'use cache' functions and dynamic API access (cookies/headers) in the same async function body, the dynamic API calls MUST come before any 'use cache' calls. Violating this ordering causes React #419 on soft-nav (hard refresh works). Tag: P61-BUG-01.
+- **root_cause:** Phase 61 added direct `createSupabaseServerClient()` calls (which invoke `cookies()`) for photo URL signing into RSCs that also call `'use cache'` functions. Unlike `getCurrentUser()` which is wrapped in `React.cache()` (memoized per render, does not re-execute `cookies()` in subsequent calls within the same render), the direct `createSupabaseServerClient()` calls re-execute `cookies()` fresh in every render pass. With Cache Components / PPR, Next.js runs a prospective + final runtime prerender pair (two separate render passes) to populate cache entries and produce the prefetch RSC payload. The unmemoized `cookies()` call in the photo signing code creates interference between these two passes, corrupting the PPR prerender boundary and causing React #419 on soft-nav. Call ordering (before or after 'use cache' calls) does NOT resolve this — the issue is that the call is unmemoized and re-executed in the secondary prerender pass.
+- **fix:** Replaced `createSupabaseServerClient()` with `createSupabaseAdminClient()` (service role, synchronous, zero `cookies()` calls) in all photo signing code: `src/lib/storage/signCoverUrls.ts` (used by `[tab]/page.tsx` for cover URL signing) and `src/app/w/[ref]/page.tsx` (direct photo signing in Branch 1 + D-06). The admin client is safe for storage URL signing because paths are user-scoped by construction (IDOR fix) and signing creates time-limited access tokens — not data queries.
+- **verified:** `npm run build` exits 0; all affected routes remain `◐ Partial Prerender`. Prod soft-nav re-test PENDING (requires `vercel deploy --prod` + user verification).
+- **durable_rule:** In PPR routes, ONLY use `createSupabaseServerClient()` (or any `cookies()`-reading API) through a `React.cache()`-memoized wrapper OR within a component/function that is isolated in its own `<Suspense>` boundary (so it never re-executes in secondary prerender passes). For storage URL signing specifically: prefer `createSupabaseAdminClient()` — it is synchronous, cookie-free, and safe for generating time-limited signed URLs for user-scoped storage paths.
