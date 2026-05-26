@@ -60,7 +60,8 @@ blocked: 2
 - Live production deploy (`www.horlo.app` / `horlo-git-main` alias) was created 2h ago and is at most commit **98e7289**.
 - The `git push origin main` of **d5457ed** (today's gap-closure work: 61-05 cosmetic fixes, 61-06 gap #9 toast fix + #419 guard) did **NOT** trigger a Vercel deployment — no build queued/running after the push.
 - Therefore the user tested a deploy WITHOUT any of today's gap-closure changes. Tests 1–3 (swipe, drag-reorder, OS picker) validate ONLY the already-deployed base Phase-61 features (61-01..04). The gap #5 edit-mode-only Cover badge and cosmetic gaps #2/#3/#4/#7/#8 were NOT on the tested build and need re-test after d5457ed deploys.
-- **Action required:** deploy d5457ed (auto-deploy did not fire — investigate Git→Vercel integration or trigger `vercel --prod`), then re-run the 6 items.
+- **RESOLVED 2026-05-26:** auto-deploy did not fire after `git push`; triggered manually via `vercel deploy --prod`. Production (`www.horlo.app`) now serves **67fde76** (HEAD — all gap-closure code + 98e7289 #419 fix + UAT docs). Re-test now valid. (Open follow-up: why the GitHub→Vercel auto-deploy didn't fire on push.)
+- **Expectation on re-test:** cosmetic gaps #2/#3/#4/#5/#7/#8 are now live and testable. Gap #9 will STILL fail (deployed fix targeted the wrong mechanism — the /watch/add entry path needs a new fix). The #419/404 is now the decisive test: this build definitely contains the ordering fix, so if 404 persists → genuine recurrence → /gsd-debug.
 
 ## Gaps
 
