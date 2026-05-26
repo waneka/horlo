@@ -94,12 +94,24 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
   ])
   const viewerUsername = viewerProfile?.username ?? null
 
-  // FORM-04 — per-request nonce as React key on AddWatchFlow. Forces remount
-  // on every entry to /watch/new (CONTEXT D-12, D-13). Safe to call here
-  // because the page is already dynamic via the await searchParams above
-  // (Request-time API). DO NOT add 'use cache' to this file; the nonce must
-  // be per-request, not per-build (RESEARCH Pitfall 2).
-  const flowKey = crypto.randomUUID()
+  // Phase 61 debug (gap #9 root-cause fix): the former FORM-04
+  // `key={crypto.randomUUID()}` nonce on <AddWatchFlow> is REMOVED.
+  //
+  // addWatch() calls revalidatePath('/') + revalidatePath('/u/[username]') on
+  // success. A successful Server Action auto-refreshes the route it was invoked
+  // from, so /watch/new's Server Component RE-RAN after every create — minting a
+  // NEW per-render UUID and changing the key. A changed key unmounts/remounts
+  // the client <AddWatchFlow>, destroying its in-flight `photos-pending` state
+  // before the user could ever see the "Add your photos" step (PHOTO-09 / gap #9),
+  // and resetting the flow to its empty initial state while staying on /watch/new.
+  // (This is why the toast-suppression fix in 61-06 didn't help — the bug is the
+  // remount, not the toast.)
+  //
+  // Removing the key lets React PRESERVE AddWatchFlow's client state across the
+  // post-action RSC refresh, so photos-pending survives. FORM-04's reset-on-entry
+  // goal is still met by AddWatchFlow's Activity-hide useLayoutEffect cleanup,
+  // which already resets local state (including photos-pending) on navigate-away —
+  // covering both back-nav and fresh forward entry.
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -107,7 +119,6 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         Add a watch — or just evaluate one
       </h1>
       <AddWatchFlow
-        key={flowKey}
         collectionRevision={collection.length}
         initialCatalogId={catalogId}
         initialIntent={initialIntent}
