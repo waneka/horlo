@@ -38,7 +38,7 @@ Delivers (PHOTO-02/03/05/06/09):
 - **D-06:** Reorder uses **optimistic update** (mirror `reorderWishlist`'s `useOptimistic`/transition), with a **toast on save** ("Order updated"). On failure, revert + error toast.
 
 ### Cover Feedback (PHOTO-04 surfacing, PHOTO-05)
-- **D-07:** The **first filmstrip thumbnail always carries a small "Cover" badge.** The badge moves with the first position as you drag — the cover rule is self-evident and persistent, no transient explainer needed. (Cover itself is computed at read by the Phase 60 DAL: lowest `sort_order`; D-04/D-05 of Phase 60.)
+- **D-07:** *(REVISED 2026-05-25 per UAT, confirmed in commit 38b8e1c — supersedes original "always/persistent" wording.)* The **"Cover" badge on the first filmstrip thumbnail shows ONLY in Edit mode** (not in the clean view). The badge moves with the first position as you drag. The badge must be gated on `editMode` in `WatchPhotoSection`/`SortablePhotoThumb`. (Cover itself is computed at read by the Phase 60 DAL: lowest `sort_order`; D-04/D-05 of Phase 60.)
 - **D-08:** No separate "Make cover" button — drag-to-first IS the cover-setting gesture (kept minimal; option to add an explicit action was declined).
 
 ### Carousel Contents (PHOTO-03)
@@ -128,7 +128,7 @@ Delivers (PHOTO-02/03/05/06/09):
 ## Specific Ideas
 
 - **Filmstrip-as-hub** is the deliberate spine of the design: it's the navigation for everyone AND the owner's add/delete/reorder surface (via an Edit toggle) — instead of a separate manage modal. Viewing stays as clean as a visitor's, editing is one toggle away.
-- **Drag-to-first IS make-cover**, with a persistent moving "Cover" badge — the rule teaches itself; no separate cover button, no transient-only explanation.
+- **Drag-to-first IS make-cover**, with a moving "Cover" badge shown only in Edit mode (D-07 revised 2026-05-25) — the rule teaches itself; no separate cover button, no transient-only explanation.
 - **Catalog image as fallback slide** (no "stock" label) — the page is never empty, but the owner's own uploads cleanly take over once present.
 - **Add-watch photo step is a real step, friction-to-skip** — "Add photos" primary, small "Skip for now" secondary; never blocks save. SC5's "prominent, not easily skipped" satisfied without trapping batch-adders.
 
