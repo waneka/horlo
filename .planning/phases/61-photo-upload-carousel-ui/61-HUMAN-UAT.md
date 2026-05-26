@@ -45,7 +45,10 @@ reason: "User reported the #419/404 soft-nav bug (gap #1) is STILL occurring on 
 
 ### 6. Gap #9 live flow — "Add your photos" step appears (extract → Add to Collection → save)
 expected: Open the add-watch flow FROM a watch detail page (so a real `returnTo` is set), paste a URL, get the fit verdict, click "Add to Collection," and submit the auto-filled form. The prominent "Add your photos" step (WatchPhotoStep) renders BEFORE any navigation — no auto-redirect back to origin, no premature toast "View" navigation.
-result: issue
+result: pass
+verified_on: 719fef9 (prod www.horlo.app, 2026-05-26)
+verified_note: "User: 'the photos step shows up now, redirect works too.' Add to Collection from profile collection → /watch/new → save → 'Add your photos' step renders → Done/Skip redirects to collection. Fix was removing the key={flowKey} remount (commit 6ffd2db). Test 4 ('Skip for now' prominence) now UNBLOCKED — pending explicit visual confirmation on a future pass."
+prior_result: issue
 reported: "i'm still not seeing the add your photos step when adding a watch"
 severity: major
 repro_precise: "Entry = clicked 'Add to collection' from the PROFILE COLLECTION page (NOT from a watch detail page, NOT URL extraction). After save: brief 'Saving...' → the watch form CLEARED/reset → user STAYED on /watch/add. No photos step appeared AND no redirect to collection occurred (user expected to land back on their collection)."
@@ -93,7 +96,8 @@ blocked: 2
   missing: []
 
 - truth: "After creating a watch in the add-watch flow, a prominent 'Add your photos' step (WatchPhotoStep) appears before navigation (PHOTO-09 / SC5)"
-  status: fix_applied
+  status: resolved
+  resolved_on: "719fef9 (prod, 2026-05-26) — user confirmed: 'the photos step shows up now, redirect works too.' Fix commit 6ffd2db (remove key={flowKey} remount). Secondary post-save-nav bug resolved too (nav now flows through the photos step). Test 4 unblocked."
   reason: "User reported on prod (re-test after first fix): 'i'm still not seeing the add your photos step when adding a watch'. The 61-06 fix (commit 8aa57c4 — suppress success toast when onWatchCreated present) did NOT resolve it. PRECISE REPRO obtained: entry = 'Add to collection' from the PROFILE COLLECTION page; after save the form clears and the user STAYS on /watch/add (no photos step, no redirect to collection). There is NO auto-redirect — contradicting the original toast-nav-race hypothesis."
   severity: major
   test: 6
