@@ -50,7 +50,7 @@ import {
 } from '@dnd-kit/sortable'
 import useEmblaCarousel from 'embla-carousel-react'
 import Image from 'next/image'
-import { Watch as WatchIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Watch as WatchIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -470,31 +470,12 @@ export function WatchPhotoSection({
                     />
                   ))}
 
-                  {/* +Add tile — compact icon-only tile in the filmstrip row (gap #2:
-                      full affordance rendered separately below, not crammed into 64px) */}
-                  {visibleIds.length < MAX_PHOTOS ? (
-                    <div
-                      role="listitem"
-                      className="flex-none w-16 h-16 rounded-md border-dashed border-2 bg-muted flex items-center justify-center cursor-pointer hover:bg-muted/80"
-                      onClick={() => {
-                        // Trigger the full-width dropzone below by programmatic click
-                        document.getElementById(`photo-dropzone-${watchId}`)?.click()
-                      }}
-                      title="Add photos"
-                      aria-label="Add photos"
-                    >
-                      <Plus className="size-4 text-muted-foreground" aria-hidden />
-                    </div>
-                  ) : (
-                    // At cap: show disabled tile
-                    <div
-                      role="listitem"
-                      className="flex-none w-16 h-16 rounded-md border-dashed border-2 bg-muted flex items-center justify-center opacity-50 cursor-not-allowed"
-                      title="10 photos — at the limit."
-                    >
-                      <Plus className="size-4 text-muted-foreground" aria-hidden />
-                    </div>
-                  )}
+                  {/* UAT enhancement (test 1, 2026-05-26): the redundant in-filmstrip
+                      +Add [+] tile was REMOVED. Now that the Edit-mode dropzone below
+                      renders its full affordance text legibly (gap-closure from 61-05),
+                      the dropzone is the single add control. At-cap feedback is the
+                      "10 photos — at the limit." message below; the dropzone self-hides
+                      at the cap (visibleIds.length < MAX_PHOTOS guard). */}
                 </div>
               </SortableContext>
 
