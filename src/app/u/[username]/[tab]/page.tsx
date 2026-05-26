@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
@@ -139,11 +140,25 @@ const VALID_TABS = [
 ] as const
 type Tab = (typeof VALID_TABS)[number]
 
-export default function ProfileTabPage({
+export default async function ProfileTabPage({
   params,
 }: {
   params: Promise<{ username: string; tab: string }>
 }) {
+  // Phase 61 debug (phase61-404-react-419-soft-nav) — opt OUT of the PPR static
+  // shell. The Phase 52 sync-outer/Suspense/async-inner structure (below) made
+  // the route's shape canonical, but the prerendered Suspense FALLBACK
+  // (ProfileTabContentSkeleton) is still a static shell that the router serves +
+  // RESUMES on tab-to-tab soft-nav — and that resume is what aborts → React #419
+  // + 404 (recurrence ~8; symptom flips between this route and /w/[ref] by
+  // cache-fill timing). `await connection()` excludes everything below (incl. the
+  // fallback) from prerendering → no static shell → soft-nav renders at request
+  // time like the always-working hard refresh. The inner <Suspense> still streams
+  // the skeleton; 'use cache' DATA (ProfileShellResolver, getBatchedWatchCountsCached)
+  // still caches. Ref: next docs connection.md + 08-caching.md "Opting out of the
+  // static shell". (unstable_instant = false above is retained — validator opt-out,
+  // no runtime effect.)
+  await connection()
   return (
     <Suspense fallback={<ProfileTabContentSkeleton />}>
       <ProfileTabContent paramsPromise={params} />

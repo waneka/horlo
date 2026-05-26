@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
@@ -73,7 +74,20 @@ export const unstable_instant = false
  * fixed /u/[username]/[tab] (already had this structure) but NOT /w/[ref],
  * which lacked it.
  */
-export default function UnifiedWatchPage({ params }: UnifiedWatchPageProps) {
+export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps) {
+  // Phase 61 debug (phase61-404-react-419-soft-nav) — opt OUT of the PPR static
+  // shell. `await connection()` excludes EVERYTHING below (including the Suspense
+  // fallback) from prerendering, so this route has NO prerendered static shell to
+  // serve+resume on client (soft) navigation. Soft-nav therefore renders at
+  // request time exactly like the always-working hard refresh — eliminating the
+  // partial-prerender RESUME that aborts → React #419 + 404. The inner <Suspense>
+  // still streams WatchPageSkeleton during the request-time render (caching.md:
+  // "React renders the fallback first, then streams in the resolved content").
+  // 'use cache' DATA segments (getLikesForTargetCached, getCatalogById) still
+  // cache — only the page ASSEMBLY is forced dynamic. Ref: next docs
+  // 03-api-reference/04-functions/connection.md + 01-getting-started/08-caching.md
+  // "Opting out of the static shell".
+  await connection()
   return (
     <Suspense fallback={<WatchPageSkeleton />}>
       <UnifiedWatchContent params={params} />

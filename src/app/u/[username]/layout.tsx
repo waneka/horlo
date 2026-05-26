@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { connection } from 'next/server'
 import { ProfileChrome } from './profile-chrome'
 import { ProfileShellSkeleton } from './profile-shell-skeleton'
 
@@ -54,10 +55,21 @@ import { ProfileShellSkeleton } from './profile-shell-skeleton'
 // See .planning/debug/resolved/profile-page-404-top-nav.md (recurrence
 // 1–4 narrative), Phase 51 51-CONTEXT.md (annotated with the D-52-11
 // reversal by Plan 52-08), and Phase 52 52-RESEARCH.md Pattern 1.
-export default function ProfileLayout({
+export default async function ProfileLayout({
   children,
   params,
 }: LayoutProps<'/u/[username]'>) {
+  // Phase 61 debug (phase61-404-react-419-soft-nav) — opt OUT of the PPR static
+  // shell at the profile-subtree layout. `await connection()` excludes the chrome
+  // Suspense fallback (ProfileShellSkeleton) from prerendering so there is no
+  // prerendered static shell to serve+resume on soft-nav INTO a profile — the
+  // resume is what aborts → React #419 + 404. Pairs with the same opt-out on
+  // [tab]/page.tsx so the whole /u/[username] subtree renders at request time
+  // like the always-working hard refresh. The <Suspense> below still streams the
+  // chrome skeleton; ProfileChrome's 'use cache' resolver still caches DATA. This
+  // is ADDITIVE to the Phase 52 D-52-16 structure below (which is preserved).
+  // Ref: next docs connection.md + 08-caching.md "Opting out of the static shell".
+  await connection()
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 lg:px-8 lg:py-12">
       <Suspense fallback={<ProfileShellSkeleton />}>
