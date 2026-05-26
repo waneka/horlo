@@ -65,14 +65,15 @@ blocked: 2
 
 ## Gaps
 
-- truth: "Profile pages and watch detail pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
+- truth: "Watch detail pages (/w/[ref]) load on client-side (soft) navigation without React #419 / 404 (gap #1, watch-detail half)"
   status: failed
-  reason: "User reported on prod: 'the 404 bug is not fixed'. HOWEVER the live deploy is 2h old (≤ commit 98e7289) and today's push has not deployed — so it is UNCONFIRMED whether the user tested a build that even contains the 98e7289 ordering fix. TWO possibilities: (a) the 98e7289 fix is genuinely insufficient on prod (consistent with this project's chronic prod-only #419 family — Phase 51 recurrences 1-5, Phase 52 structural fix); or (b) the live deploy predates/omits the fix and a correct deploy resolves it. MUST confirm the fix is actually deployed before concluding."
+  reason: "CONFIRMED on the deployed-with-98e7289 build (67fde76, www.horlo.app 2026-05-26): PROFILE pages (/u/[username]/[tab]) now load fine — the [tab]/page.tsx reordering in 98e7289 RESOLVED the profile half. But /w/[ref] watch detail pages STILL 404/#419 on soft-nav. So 98e7289's fix to w/[ref]/page.tsx (it reordered only Branch 1 + the D-06 owned-watch branch) is INCOMPLETE — another path in that file still interleaves a dynamic API (createSupabaseServerClient/cookies) after a 'use cache' call. This is a genuine recurrence (#6 of the #419 family) NARROWED to a single file."
   severity: blocker
   test: 5
-  recurrence: "potential #6 of the #419 family"
-  next_action: "Deploy d5457ed (contains 98e7289 fix), confirm the deployed commit, re-test soft-nav to profile/watch-detail. If 404 persists on a CONFIRMED post-98e7289 deploy → escalate to /gsd-debug for a structural fix (band-aid ordering fix did not hold). Prior debug session: .planning/debug/resolved/phase61-404-react-419-soft-nav.md"
-  artifacts: [src/app/u/[username]/[tab]/page.tsx, src/app/w/[ref]/page.tsx, src/app/u/[username]/profile-shell-resolver.tsx]
+  recurrence: 6
+  scope: "ISOLATED to src/app/w/[ref]/page.tsx — profile route confirmed fixed"
+  next_action: "Find the remaining dynamic-after-'use cache' branch in w/[ref]/page.tsx (non-owner / catalog / wishlist / other branches the 98e7289 fix + the static guard did NOT cover). NOTE the static guard (tests/static/ppr-dynamic-before-use-cache.test.ts) PASSES yet prod fails — the guard only checked Branch 1 + D-06, so it has a coverage hole. Likely needs /gsd-debug (prod-only, deploy-test loop). Prior debug session: .planning/debug/resolved/phase61-404-react-419-soft-nav.md"
+  artifacts: [src/app/w/[ref]/page.tsx]
   missing: []
 
 - truth: "After creating a watch in the add-watch flow, a prominent 'Add your photos' step (WatchPhotoStep) appears before navigation (PHOTO-09 / SC5)"
