@@ -11,27 +11,30 @@ reopened: 2026-05-26
 
 # Debug: Phase 61 404 + React #419 (soft-nav only)
 
-## ⚠ REOPENED 2026-05-26 — fix was PARTIAL (profile fixed, /w/[ref] still broken)
+## ⚠ REOPENED 2026-05-26 — 98e7289 did NOT fix EITHER route (both still 404 on soft-nav)
 
-After deploying 67fde76 (confirmed live on www.horlo.app, contains the full 98e7289 fix), prod re-test by the user:
+After deploying 67fde76 (confirmed live on www.horlo.app = deployment `horlo-rfkbt86o1`, contains the full 98e7289 fix to BOTH routes), prod re-test by the user. **Initial read was WRONG and is corrected here:**
 
-- **PROFILE pages (`/u/[username]/[tab]`): FIXED.** The `[tab]/page.tsx` change resolved the profile half.
-- **WATCH DETAIL (`/w/[ref]`): STILL 404 + #419 on soft-nav.** The `w/[ref]/page.tsx` change did NOT resolve it.
+- An early observation suggested profile pages were fixed — that was a MISREAD (almost certainly a hard load / first paint).
+- **CONFIRMED user behavior (2026-05-26):** on profile pages (`/u/[username]/[tab]`): **hard refresh ALWAYS loads; soft (in-app) navigation ALWAYS 404s** — consistent, not intermittent. Watch-detail (`/w/[ref]`): same — soft-nav 404s.
+- **Conclusion: BOTH routes still 404/#419 on soft-nav.** Neither of 98e7289's ordering fixes resolved it:
+  - profile got dynamic-AFTER-cache (`signCoverUrls` after `getBatchedWatchCountsCached`) → still broken.
+  - watch-detail got dynamic-BEFORE-cache (`createSupabaseServerClient` before `getLikesForTargetCached`) → still broken.
+  - So the call-ORDERING model (P61-BUG-01, either direction) is the WRONG root-cause theory. Reordering dynamic vs 'use cache' calls does not fix this.
 
-**Critical contradiction in the prior fix's own logic — the strongest lead:**
-- The profile fix moved the dynamic call (`signCoverUrls`/cookies) to come **AFTER** the `'use cache'` call (`getBatchedWatchCountsCached`) — "dynamic last." → WORKS.
-- The watch-detail fix moved the dynamic call (`createSupabaseServerClient`) to come **BEFORE** the `'use cache'` call (`getLikesForTargetCached`) — "dynamic first." → STILL BROKEN.
-- These are OPPOSITE strategies; only "dynamic last" worked. The stated rule ("dynamic before all 'use cache'") is therefore NOT the correct/complete model for `/w/[ref]`.
+**Signature (now well-characterized):** consistent (deterministic) React #419 + 404 on CLIENT/soft navigation to any Phase-61-touched cached/PPR route; full browser hard-refresh (SSR) always works; invisible to `npm run build` (exit 0) and to the static guard (which passes). Re-introduced by Phase 61's addition of a dynamic cookies API (`createSupabaseServerClient`/`signCoverUrls`) into these RSCs.
 
-**Code state confirmed (67fde76):** In `src/app/w/[ref]/page.tsx`, BOTH the owner branches (Branch 1 @ line 84-104; D-06 owned @ line 289-308) already place `createSupabaseServerClient()` (conditional on `rawPhotos.length > 0`) BEFORE `getLikesForTargetCached`. `getCurrentUser()` (cookies, unconditional) is at line 61, also before. So the "dynamic-before-cache" rule is already satisfied in every owner path — yet it still breaks. The photo-signing-ordering hypothesis does NOT explain the remaining failure.
+**What Phase 61 changed across the affected routes:** it injected `createSupabaseServerClient()` (cookies → dynamic) for owner-photo signing into `w/[ref]/page.tsx`, and `signCoverUrls()` (also cookies) into `[tab]/page.tsx`, `profile-shell-resolver.tsx`, `search/page.tsx`, `page.tsx`. Introducing a dynamic API into routes that have `'use cache'` segments appears to break the PPR static shell that soft-nav resume depends on — regardless of call order.
 
-**Hypotheses to pursue next (do NOT apply another blind ordering tweak):**
-1. Mirror the WORKING profile pattern: try moving `/w/[ref]` photo-signing to come AFTER `getLikesForTargetCached` (dynamic-last), matching what fixed the profile route. Deploy + prod-test.
-2. The real trigger may be a Suspense/cache interaction (the `<Suspense><CommentThread/></Suspense>` boundary streaming after the cached `getLikesForTargetCached`), not raw call ordering.
-3. The static guard `tests/static/ppr-dynamic-before-use-cache.test.ts` PASSES yet prod fails — it only encodes the (now-suspect) "before" rule for Branch 1 + D-06. The guard's premise may be wrong; revisit after root cause is confirmed.
-4. This is recurrence #6 of the project's #419 family — prior resolution was structural (Phase 52). A structural fix (not call reordering) is the likely real answer. Requires deploy→prod-soft-nav-test loop (bug is invisible to local build + static guard).
+**Structural hypotheses to pursue (NOT more reordering):**
+1. Phase 52 fixed this family STRUCTURALLY on `/u/[username]/[tab]` (sync layout + Suspense + ProfileChrome + inner ProfileTabContent split; `unstable_instant = false`). Phase 61 added `signCoverUrls` INTO `ProfileTabContent` — likely re-broke that structural fix. Check whether the dynamic signing must move OUT of the cached/prerendered content into a separate dynamic Suspense boundary (or out of the page entirely).
+2. Consider removing the dynamic cookie dependency from these routes altogether: sign photo/cover URLs via a non-cookie path (e.g., a route handler / a dedicated dynamic segment / signing at a layer that doesn't taint the PPR shell), so the cached routes contain NO dynamic API.
+3. Compare against a Phase-60 (pre-Phase-61) commit of these routes to see exactly what made them dynamic.
+4. `unstable_instant`/prefetch interaction (see [[project_phase_52_in_progress]], [[project_cc_audit_2026_05_21]]).
 
-**Tooling note:** GitHub→Vercel auto-deploy did NOT fire on `git push` this session; deploys were triggered manually via `vercel deploy --prod`. Each test cycle here requires a manual deploy + the user soft-navigating on prod.
+**Verification loop:** prod-only. Each candidate fix needs `vercel deploy --prod` (GitHub→Vercel auto-deploy was NOT firing on push this session) + the user soft-navigating on prod. Build + static guard are NOT sufficient signals.
+
+**→ Hand to `/gsd-debug` (this session, slug `phase61-404-react-419-soft-nav`).** Do not apply further inline call-reordering.
 
 ## Symptoms
 

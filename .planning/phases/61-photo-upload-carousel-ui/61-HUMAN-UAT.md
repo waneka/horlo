@@ -65,15 +65,15 @@ blocked: 2
 
 ## Gaps
 
-- truth: "Watch detail pages (/w/[ref]) load on client-side (soft) navigation without React #419 / 404 (gap #1, watch-detail half)"
+- truth: "Profile (/u/[username]/[tab]) AND watch detail (/w/[ref]) pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
   status: failed
-  reason: "CONFIRMED on the deployed-with-98e7289 build (67fde76, www.horlo.app 2026-05-26): PROFILE pages (/u/[username]/[tab]) now load fine — the [tab]/page.tsx reordering in 98e7289 RESOLVED the profile half. But /w/[ref] watch detail pages STILL 404/#419 on soft-nav. So 98e7289's fix to w/[ref]/page.tsx (it reordered only Branch 1 + the D-06 owned-watch branch) is INCOMPLETE — another path in that file still interleaves a dynamic API (createSupabaseServerClient/cookies) after a 'use cache' call. This is a genuine recurrence (#6 of the #419 family) NARROWED to a single file."
+  reason: "CONFIRMED on the deployed-with-98e7289 build (67fde76 = horlo-rfkbt86o1, www.horlo.app, 2026-05-26): user-verified BOTH routes 404/#419 on soft (in-app) navigation; hard browser refresh ALWAYS loads them. Consistent (not intermittent). An interim 'profile is fixed' read was a MISREAD (hard load). So NEITHER of 98e7289's ordering fixes resolved it — profile got dynamic-AFTER-cache, watch-detail got dynamic-BEFORE-cache, both still broken. The call-ORDERING theory (P61-BUG-01) is the WRONG root cause. This is recurrence #6 of the #419 family; Phase 61 injected a dynamic cookies API (signCoverUrls/createSupabaseServerClient) into cached/PPR RSCs and broke the soft-nav static shell regardless of order. Needs a STRUCTURAL fix (cf. Phase 52), not reordering."
   severity: blocker
   test: 5
   recurrence: 6
-  scope: "ISOLATED to src/app/w/[ref]/page.tsx — profile route confirmed fixed"
-  next_action: "Find the remaining dynamic-after-'use cache' branch in w/[ref]/page.tsx (non-owner / catalog / wishlist / other branches the 98e7289 fix + the static guard did NOT cover). NOTE the static guard (tests/static/ppr-dynamic-before-use-cache.test.ts) PASSES yet prod fails — the guard only checked Branch 1 + D-06, so it has a coverage hole. Likely needs /gsd-debug (prod-only, deploy-test loop). Prior debug session: .planning/debug/resolved/phase61-404-react-419-soft-nav.md"
-  artifacts: [src/app/w/[ref]/page.tsx]
+  scope: "BOTH /u/[username]/[tab] AND /w/[ref] (all Phase-61-touched cached routes); also profile-shell-resolver/search/home are at risk"
+  next_action: "Hand to /gsd-debug (session phase61-404-react-419-soft-nav, reopened, status investigating). Structural approach: move the cookie-dependent signing OUT of the cached page bodies (separate dynamic Suspense boundary / route handler / non-cookie signing path). Do NOT reorder calls again. Verification is PROD-ONLY (build + static guard pass while the bug is live)."
+  artifacts: [src/app/w/[ref]/page.tsx, src/app/u/[username]/[tab]/page.tsx, src/app/u/[username]/profile-shell-resolver.tsx, src/lib/storage/signCoverUrls.ts]
   missing: []
 
 - truth: "After creating a watch in the add-watch flow, a prominent 'Add your photos' step (WatchPhotoStep) appears before navigation (PHOTO-09 / SC5)"
