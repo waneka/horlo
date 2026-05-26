@@ -26,6 +26,7 @@ import { CommentThreadSkeleton } from '@/components/comment/CommentThreadSkeleto
 import { getSameFamilyForCatalog, getLineageForReference } from '@/data/hierarchy'
 import { getCollectorsForCatalog } from '@/data/discovery'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import type { Watch, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
@@ -33,6 +34,13 @@ import type { VerdictBundle } from '@/lib/verdict/types'
 interface UnifiedWatchPageProps {
   params: Promise<{ ref: string }>
 }
+
+// Phase 61 debug (phase61-404-react-419-soft-nav) — structural fix.
+// `unstable_instant` is a build/dev VALIDATOR, not a runtime feature (see the
+// rationale block on src/app/u/[username]/[tab]/page.tsx). We opt OUT of
+// validation here and rely on the structural pattern below; the opt-out does
+// NOT disable Cache Components / PPR for the route.
+export const unstable_instant = false
 
 /**
  * Phase 59 D-01 — Unified watch-detail route (Variant C hard cutover).
@@ -47,8 +55,48 @@ interface UnifiedWatchPageProps {
  * B1 invariant: RSC siblings (CommentThread, rails, OtherOwnersRoster,
  * CatalogPageActions, CollectionFitCard, ReferenceIdentityCard) compose AROUND
  * the 'use client' WatchDetail island — never imported into it.
+ *
+ * Phase 61 debug (phase61-404-react-419-soft-nav) — STRUCTURAL #419 fix
+ * (D-52-16 "outer-sync / inner-async / <Suspense>"). The default export is a
+ * SYNC component that wraps all runtime-API / dynamic work (await params,
+ * getCurrentUser → cookies, DAL reads, photo signing) in a LOCAL <Suspense>
+ * boundary. Without this, the async page body had no boundary visible to
+ * client (soft) navigations — the only ancestor boundary was the root
+ * layout's <Suspense>, which sits ABOVE the shared layout entry point and is
+ * invisible to soft-nav into /w/[ref]. The dynamic body therefore aborted the
+ * prerender on soft-nav → React #419 + 404 (hard refresh works because the
+ * full document render uses the root boundary). Moving the work behind a local
+ * boundary gives the page segment a static shell (WatchPageSkeleton) and
+ * streams the dynamic content. Ref: node_modules/next/dist/docs/01-app/
+ * 02-guides/instant-navigation.md "Fixing a page that blocks"; mirrors the
+ * Phase 52 profile-route fix. Removing the signing cookies (admin-client)
+ * fixed /u/[username]/[tab] (already had this structure) but NOT /w/[ref],
+ * which lacked it.
  */
-export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps) {
+export default function UnifiedWatchPage({ params }: UnifiedWatchPageProps) {
+  return (
+    <Suspense fallback={<WatchPageSkeleton />}>
+      <UnifiedWatchContent params={params} />
+    </Suspense>
+  )
+}
+
+// Static shell for the route segment — pure JSX, no dynamic API access, so it
+// can be prerendered as the instant shell for soft navigations into /w/[ref].
+function WatchPageSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8" aria-hidden>
+      <Skeleton className="aspect-square w-full max-w-md mx-auto rounded-lg" />
+      <div className="space-y-3">
+        <Skeleton className="h-7 w-2/3" />
+        <Skeleton className="h-4 w-1/3" />
+      </div>
+      <Skeleton className="h-40 w-full rounded-lg" />
+    </div>
+  )
+}
+
+async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
   const { ref } = await params
 
   // Defense-in-depth: validate UUID format before any DB query so malformed
