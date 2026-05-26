@@ -9,7 +9,7 @@ note: "Regenerated after 61-05/61-06 gap closure re-verification. Supersedes the
 
 ## Current Test
 
-[awaiting human testing on prod — push origin main → Vercel, then verify on device]
+[PAUSED — 3 pass, 1 issue (gap #9), 2 blocked (gap #9 + #419/404). Blocked on deploy: today's fixes (d5457ed) are not live; the #419/404 must be confirmed against a deployed-with-98e7289 build before concluding. See Deploy State.]
 
 ## Tests
 
@@ -27,24 +27,61 @@ result: [pending]
 
 ### 4. "Skip for now" visual prominence / friction
 expected: In the add-watch photos step, "Skip for now" is clearly the secondary, lower-contrast option vs the primary "Add photos"/"Continue" button; friction is sufficient but never blocks saving.
-result: [pending]
+result: blocked
+blocked_by: gap-9-step-never-appears
+reason: "Cannot assess 'Skip for now' prominence — the 'Add your photos' step never renders (see test 6). Re-test after gap #9 is fixed."
 
 ### 5. Router-Cache stale-instance reset on /w/[ref] revisit
 expected: Navigate away from `/w/[ref]` and back; Edit mode resets to off, the carousel is usable, and the filmstrip shows no stale drag state (onPointerDown reset, MEMORY `project_router_cache_stale_instance`).
-result: [pending]
+result: blocked
+blocked_by: react-419-404-soft-nav
+reason: "User reported the #419/404 soft-nav bug (gap #1) is STILL occurring on prod, so navigating to/from /w/[ref] cannot be exercised. Cannot test stale-instance reset until the 404 blocker is confirmed resolved on the live deploy. NOTE: pending confirmation that the user is testing the post-98e7289 deploy (d5457ed) and not the prior deployment (4f9e6b1, predates the fix)."
 
 ### 6. Gap #9 live flow — "Add your photos" step appears (extract → Add to Collection → save)
 expected: Open the add-watch flow FROM a watch detail page (so a real `returnTo` is set), paste a URL, get the fit verdict, click "Add to Collection," and submit the auto-filled form. The prominent "Add your photos" step (WatchPhotoStep) renders BEFORE any navigation — no auto-redirect back to origin, no premature toast "View" navigation.
-result: [pending]
-why_critical: "This is the live path the original UAT reported broken. The 61-06 fix suppresses the success-toast nav race when onWatchCreated is present; the mechanism is sound but the new component test uses returnTo:null, so this exact returnTo-set path needs one prod smoke test to close the uncertainty."
+result: issue
+reported: "i'm still not seeing the add your photos step when adding a watch"
+severity: major
+repro_precise: "Entry = clicked 'Add to collection' from the PROFILE COLLECTION page (NOT from a watch detail page, NOT URL extraction). After save: brief 'Saving...' → the watch form CLEARED/reset → user STAYED on /watch/add. No photos step appeared AND no redirect to collection occurred (user expected to land back on their collection)."
+note: "RECURRENCE — gap #9 fix (61-06 toast suppression, commit 8aa57c4) did NOT resolve it. The precise repro contradicts the original toast-nav-race hypothesis: there is NO redirect (it stays on /watch/add with a blank form), so the problem is that this path never transitions to photos-pending NOR navigates. Strongly suggests the /watch/add route (reached via 'Add to collection' on the profile collection page) renders a WatchForm that is NOT inside AddWatchFlow's onWatchCreated wiring — so 61-03's photos-pending machine is never engaged, and the form just resets on success."
+why_critical: "Core PHOTO-09 deliverable. Failed prod verification twice. Also a SECONDARY bug surfaced: post-save navigation is broken on this path (stays on /watch/add instead of returning to collection)."
 
 ## Summary
 
 total: 6
-passed: 0
-issues: 0
-pending: 6
+passed: 3
+issues: 1
+pending: 0
 skipped: 0
-blocked: 0
+blocked: 2
+
+## Deploy State (CRITICAL — affects validity of all results above)
+
+- Live production deploy (`www.horlo.app` / `horlo-git-main` alias) was created 2h ago and is at most commit **98e7289**.
+- The `git push origin main` of **d5457ed** (today's gap-closure work: 61-05 cosmetic fixes, 61-06 gap #9 toast fix + #419 guard) did **NOT** trigger a Vercel deployment — no build queued/running after the push.
+- Therefore the user tested a deploy WITHOUT any of today's gap-closure changes. Tests 1–3 (swipe, drag-reorder, OS picker) validate ONLY the already-deployed base Phase-61 features (61-01..04). The gap #5 edit-mode-only Cover badge and cosmetic gaps #2/#3/#4/#7/#8 were NOT on the tested build and need re-test after d5457ed deploys.
+- **Action required:** deploy d5457ed (auto-deploy did not fire — investigate Git→Vercel integration or trigger `vercel --prod`), then re-run the 6 items.
 
 ## Gaps
+
+- truth: "Profile pages and watch detail pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
+  status: failed
+  reason: "User reported on prod: 'the 404 bug is not fixed'. HOWEVER the live deploy is 2h old (≤ commit 98e7289) and today's push has not deployed — so it is UNCONFIRMED whether the user tested a build that even contains the 98e7289 ordering fix. TWO possibilities: (a) the 98e7289 fix is genuinely insufficient on prod (consistent with this project's chronic prod-only #419 family — Phase 51 recurrences 1-5, Phase 52 structural fix); or (b) the live deploy predates/omits the fix and a correct deploy resolves it. MUST confirm the fix is actually deployed before concluding."
+  severity: blocker
+  test: 5
+  recurrence: "potential #6 of the #419 family"
+  next_action: "Deploy d5457ed (contains 98e7289 fix), confirm the deployed commit, re-test soft-nav to profile/watch-detail. If 404 persists on a CONFIRMED post-98e7289 deploy → escalate to /gsd-debug for a structural fix (band-aid ordering fix did not hold). Prior debug session: .planning/debug/resolved/phase61-404-react-419-soft-nav.md"
+  artifacts: [src/app/u/[username]/[tab]/page.tsx, src/app/w/[ref]/page.tsx, src/app/u/[username]/profile-shell-resolver.tsx]
+  missing: []
+
+- truth: "After creating a watch in the add-watch flow, a prominent 'Add your photos' step (WatchPhotoStep) appears before navigation (PHOTO-09 / SC5)"
+  status: failed
+  reason: "User reported on prod (re-test after first fix): 'i'm still not seeing the add your photos step when adding a watch'. The 61-06 fix (commit 8aa57c4 — suppress success toast when onWatchCreated present) did NOT resolve it. PRECISE REPRO obtained: entry = 'Add to collection' from the PROFILE COLLECTION page; after save the form clears and the user STAYS on /watch/add (no photos step, no redirect to collection). There is NO auto-redirect — contradicting the original toast-nav-race hypothesis."
+  severity: major
+  test: 6
+  recurrence: 2
+  prior_fix: "8aa57c4 (toast suppression) — insufficient; targeted the wrong mechanism"
+  hypothesis: "PRIMARY: the /watch/add route reached via 'Add to collection' on the profile collection page renders a WatchForm that is NOT wrapped by AddWatchFlow's onWatchCreated wiring (or AddWatchFlow does not engage photos-pending for the manual/non-extract path). 61-03 wired onWatchCreated onto the two in-flow WatchForm instances (form-prefill + manual-entry) INSIDE AddWatchFlow, but the live page that the profile 'Add to collection' CTA navigates to may use a bare WatchForm/page-level create that bypasses the flow entirely. SECONDARY BUG (same path): post-save navigation is broken — on success the form resets and stays on /watch/add instead of routing back to the collection. FIRST: identify exactly what component/route /watch/add renders and how the profile 'Add to collection' button reaches it; confirm whether AddWatchFlow is even mounted there."
+  secondary_truth: "After saving a watch from the /watch/add flow, the user is navigated back to their collection (not stranded on a blank /watch/add form)"
+  artifacts: [src/app/watch/add, src/components/watch/AddWatchFlow.tsx, src/components/watch/WatchForm.tsx, src/components/watch/flowTypes.ts, src/components/watch/WatchPhotoStep.tsx]
+  missing: []
