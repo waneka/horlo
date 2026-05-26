@@ -254,10 +254,20 @@ describe('WatchPhotoSection (PHOTO-03, PHOTO-05, PHOTO-06)', () => {
     expect(screen.getByTestId('dnd-context')).toBeInTheDocument()
   })
 
-  it('PHOTO-05: Cover badge appears on first filmstrip thumbnail in edit mode', () => {
+  it('PHOTO-05: Cover badge appears on first filmstrip thumbnail in edit mode (D-07 revised — edit-mode only)', () => {
     render(<WatchPhotoSection {...defaultProps} viewerCanEdit={true} />)
+    // In view mode: no Cover badge (D-07 revised 2026-05-25)
+    expect(screen.queryByText('Cover')).toBeNull()
+    // Enter edit mode
     fireEvent.pointerDown(screen.getByText('Edit photos'))
+    // Cover badge should now be visible
     expect(screen.getByText('Cover')).toBeInTheDocument()
+  })
+
+  it('PHOTO-05: Cover badge NOT visible in view mode (D-07 revised)', () => {
+    render(<WatchPhotoSection {...defaultProps} viewerCanEdit={true} />)
+    // Confirm no Cover badge in view mode
+    expect(screen.queryByText('Cover')).toBeNull()
   })
 
   // PHOTO-06 - per-photo delete

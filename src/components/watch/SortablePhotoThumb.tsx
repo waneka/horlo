@@ -117,8 +117,8 @@ export function SortablePhotoThumb({
           <div className="w-full h-full bg-muted flex items-center justify-center" />
         )}
 
-        {/* Cover badge — always visible on position [0] */}
-        {isCover && (
+        {/* Cover badge — edit-mode only (D-07 revised 2026-05-25, commit 38b8e1c) */}
+        {isCover && editMode && (
           <span
             className="absolute top-0 left-0 text-xs font-semibold bg-background/80 text-foreground px-1 py-0.5"
             aria-label="Cover photo"
@@ -131,6 +131,7 @@ export function SortablePhotoThumb({
         {editMode && (
           <>
             {/* Delete × badge — onClick ONLY (no drag listeners) */}
+            {/* gap #7: text-white ensures legible glyph over bg-destructive (--destructive-foreground undefined) */}
             <button
               type="button"
               onClick={(e) => {
@@ -138,15 +139,16 @@ export function SortablePhotoThumb({
                 onDelete()
               }}
               aria-label={`Delete photo ${index + 1}`}
-              className="absolute top-1 right-1 size-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs leading-none p-0 hover:bg-destructive/80"
+              className="absolute top-1 right-1 size-5 bg-destructive text-white rounded-full flex items-center justify-center text-xs leading-none p-0 hover:bg-destructive/80"
             >
               ×
             </button>
 
             {/* Drag handle — THIS gets {...listeners} spread (Pitfall 3) */}
+            {/* gap #3: p-2 enlarges the touch hit area to ~44px around the GripVertical icon */}
             <div
               {...listeners}
-              className="absolute bottom-1 left-1 cursor-grab active:cursor-grabbing touch-manipulation"
+              className="absolute bottom-0 left-0 p-2 cursor-grab active:cursor-grabbing touch-manipulation"
               aria-hidden="true"
             >
               <GripVertical className="size-3 text-white/70" />

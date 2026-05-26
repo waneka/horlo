@@ -515,7 +515,7 @@ export function WatchPhotoSection({
                       emblaApi?.scrollTo(idx)
                     }
                   }}
-                  aria-label={`Photo ${idx + 1}${visibleIds[0] === id ? ', Cover' : ''}`}
+                  aria-label={`Photo ${idx + 1}`}
                 >
                   {photosById[id].signedUrl ? (
                     <Image
@@ -528,16 +528,7 @@ export function WatchPhotoSection({
                   ) : (
                     <div className="w-full h-full bg-muted" />
                   )}
-
-                  {/* Cover badge — always on index [0] in view mode */}
-                  {visibleIds[0] === id && (
-                    <span
-                      className="absolute top-0 left-0 text-xs font-semibold bg-background/80 text-foreground px-1 py-0.5"
-                      aria-label="Cover photo"
-                    >
-                      Cover
-                    </span>
-                  )}
+                  {/* D-07 revised 2026-05-25: no Cover badge in view mode */}
                 </div>
               ))}
             </div>
