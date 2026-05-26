@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 61 Plan 05 complete — gap closure (gaps #2-#8) done
-last_updated: "2026-05-26T14:47:52.875Z"
+stopped_at: "Phase 61 Plan 06 complete — gap #9 fix + P61-BUG-01 static guard"
+last_updated: "2026-05-26T15:03:16Z"
 last_activity: 2026-05-26
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 61 (photo-upload-carousel-ui) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-05-26
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -65,6 +65,8 @@ Progress: [█████████░] 92%
 - **D-07 Cover badge edit-mode only** — `isCover && editMode` gate in SortablePhotoThumb; no Cover span in WatchPhotoSection view-mode filmstrip (Plan 05 UAT-confirmed revision).
 - **Immediate optimistic delete uses aborted-signal pattern** — `signal.aborted = true` + no-op transition flushes `useOptimistic` on Undo; `setDeletedIds` fires at click time, `deleteWatchPhotoAction` only after 5s timeout (Plan 05 gap #6).
 - **PhotoDropzone id prop** — allows filmstrip +Add tile to trigger full-width dropzone below filmstrip via `document.getElementById` click (Plan 05 gap #2).
+- **WatchForm onWatchCreated suppresses success toast** — when onWatchCreated is present on create-mode commit, pass {} opts to run() so no Sonner toast action-button can navigate away from the photos-pending step; WatchPhotoStep onDone/onSkip own all navigation (Plan 06 gap #9 fix).
+- **P61-BUG-01 static guard** — tests/static/ppr-dynamic-before-use-cache.test.ts with @vitest-environment node encodes the durable ordering rule for the two fixed PPR routes; prevents silent recurrence of the React #419 soft-nav regression (Plan 06 gap #1 guard).
 
 ### Pending Todos
 
@@ -76,6 +78,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-26 — Phase 61 Plan 05 COMPLETE. 7 UAT gaps closed (gaps #2-#8): Cover badge edit-mode-only, × glyph contrast, drag-handle hit area, indicator centering, immediate optimistic delete, filmstrip overflow, full-width dropzone. Build exit 0, 16 tests pass.
-Stopped at: Phase 61 Plan 05 complete — gap closure (gaps #2-#8) done
-Next action: Phase 61 Plan 06 — add-watch photos step + #419 guard
+Last activity: 2026-05-26 — Phase 61 Plan 06 COMPLETE. Gap #9 fixed (success toast suppressed when onWatchCreated intercepts commit; 10 tests pass). P61-BUG-01 static guard added (3 tests pass). Build exit 0.
+Stopped at: Phase 61 Plan 06 complete — gap #9 fix + P61-BUG-01 static guard
+Next action: Phase 61 COMPLETE — deploy to prod for user verification of gap #9 (photos step on extract→collection path)
