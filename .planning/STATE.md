@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: verifying
-stopped_at: Phase 61 Plan 04 complete
-last_updated: "2026-05-25T21:18:07.666Z"
-last_activity: 2026-05-25
+status: executing
+stopped_at: Phase 61 Plan 05 complete — gap closure (gaps #2-#8) done
+last_updated: "2026-05-26T14:47:52.875Z"
+last_activity: 2026-05-26
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  completed_phases: 2
+  total_plans: 13
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 61 — Photo Upload + Carousel UI
+**Current focus:** Phase 61 — photo-upload-carousel-ui
 
 ## Current Position
 
-Phase: 61 (Photo Upload + Carousel UI) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-05-25
+Phase: 61 (photo-upload-carousel-ui) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-05-26
 
-Progress: [██████████] 100%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -62,6 +62,9 @@ Progress: [██████████] 100%
 - **WatchPhotoStep imports PhotoDropzone** — reuses Plan 02 upload pipeline instead of inlining (avoids ~100 lines of duplication; plan explicitly permitted this).
 - **onWatchCreated callback intercepts WatchForm create-success** — optional prop fires with (watchId, dest) instead of router.push; all other WatchForm callers are backward compatible.
 - **signCoverUrls must be called outside 'use cache' scope** — createSupabaseServerClient reads cookies() which is unavailable in cached context; resolveProfileShellSigned wrapper added outside cached scope in profile-shell-resolver.tsx (Phase 61 Plan 04).
+- **D-07 Cover badge edit-mode only** — `isCover && editMode` gate in SortablePhotoThumb; no Cover span in WatchPhotoSection view-mode filmstrip (Plan 05 UAT-confirmed revision).
+- **Immediate optimistic delete uses aborted-signal pattern** — `signal.aborted = true` + no-op transition flushes `useOptimistic` on Undo; `setDeletedIds` fires at click time, `deleteWatchPhotoAction` only after 5s timeout (Plan 05 gap #6).
+- **PhotoDropzone id prop** — allows filmstrip +Add tile to trigger full-width dropzone below filmstrip via `document.getElementById` click (Plan 05 gap #2).
 
 ### Pending Todos
 
@@ -73,6 +76,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-25 — Phase 61 Plan 04 COMPLETE. signCoverUrls batch helper (server-only, 7 tests, de-dupe, build exit 0); wired into home, profile-tab, profile-shell-resolver, and search RSCs. resolveProfileShellSigned wrapper added outside 'use cache' scope.
-Stopped at: Phase 61 Plan 04 complete — Phase 61 COMPLETE (all 4 plans)
-Next action: Phase 61 verification — deploy to prod and verify owner-photo card thumbnails appear across grids
+Last activity: 2026-05-26 — Phase 61 Plan 05 COMPLETE. 7 UAT gaps closed (gaps #2-#8): Cover badge edit-mode-only, × glyph contrast, drag-handle hit area, indicator centering, immediate optimistic delete, filmstrip overflow, full-width dropzone. Build exit 0, 16 tests pass.
+Stopped at: Phase 61 Plan 05 complete — gap closure (gaps #2-#8) done
+Next action: Phase 61 Plan 06 — add-watch photos step + #419 guard

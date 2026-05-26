@@ -234,7 +234,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 - [x] 61-02-PLAN.md — RSC signed-photo fetch + carousel/filmstrip/upload UI + WatchDetail wiring (Wave 2)
 - [x] 61-03-PLAN.md — add-watch "Add your photos" step (FlowState + WatchForm onWatchCreated + WatchPhotoStep) (Wave 2)
 - [x] 61-04-PLAN.md — sign owner-photo covers across home/profile/search RSCs so reorder cover shows on grids (Wave 3)
-- [ ] 61-05-PLAN.md — gap closure: carousel/filmstrip/dropzone polish (gaps #2–#8; D-07 edit-mode-only Cover badge) (Wave 1)
+- [x] 61-05-PLAN.md — gap closure: carousel/filmstrip/dropzone polish (gaps #2–#8; D-07 edit-mode-only Cover badge) (Wave 1)
 - [ ] 61-06-PLAN.md — gap closure: add-watch photos-step fix (gap #9 / PHOTO-09) + P61-BUG-01 #419 regression guard (gap #1) (Wave 1)
 **UI hint**: yes
 
@@ -282,7 +282,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 |-------|----------------|--------|-----------|
 | 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
 | 60. Multi-Photo Schema + DAL | 4/4 | Complete    | 2026-05-25 |
-| 61. Photo Upload + Carousel UI | 4/4 | Complete   | 2026-05-25 |
+| 61. Photo Upload + Carousel UI | 5/6 | In Progress|  |
 | 62. Public Wear Pics on Watch Detail | 0/TBD | Not started | - |
 | 63. Inline Grid Engagement | 0/TBD | Not started | - |
 | 64. Detail Page IA Redesign | 0/TBD | Not started | - |
