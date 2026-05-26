@@ -9,17 +9,24 @@ note: "Regenerated after 61-05/61-06 gap closure re-verification. Supersedes the
 
 ## Current Test
 
-[PAUSED — 3 pass, 1 issue (gap #9), 2 blocked (gap #9 + #419/404). Blocked on deploy: today's fixes (d5457ed) are not live; the #419/404 must be confirmed against a deployed-with-98e7289 build before concluding. See Deploy State.]
+number: 3
+name: OS photo picker (camera-or-library) on mobile
+awaiting: user response
+note: "Tests 1 & 2 re-verified PASS on deploy f9c7a4b. ⚠ /w/[ref] #419/404 REGRESSED after edge cache filled (still broken; profile durably fixed) — debug session phase61-404 reopened to investigating. Test 5 (stale-instance reset on /w/[ref] revisit) stays BLOCKED by the live /w/[ref] 404. Test 3 testable via hard-load of a detail page or the add-watch dropzone."
 
 ## Tests
 
 ### 1. iOS carousel swipe navigation
 expected: On prod iPhone, open `/w/[ref]` for a watch with 2+ owner photos and swipe left/right between photos. Tap "Edit photos" and confirm swipe is disabled while Edit mode is active (filmstrip drag takes priority; `reInit({ watchDrag: !editMode })`).
-result: [pending]
+result: pass
+verified_on: 8a49a19 (prod www.horlo.app, 2026-05-26)
+note: "Swipe nav + edit-mode swipe-disable + full-legibility drop zone all confirmed. ENHANCEMENT raised: with the drop zone now fully legible in Edit mode, the separate '+Add' [+] tile at the end of the filmstrip is redundant — remove it (drop zone becomes the single add affordance). Logged in Gaps."
 
 ### 2. Touch drag-reorder on filmstrip (iOS) + enlarged handle
 expected: In Edit mode, long-press-drag a thumbnail (handle now has `p-2` enlarged hit area — confirm it grabs reliably). The "Cover" badge moves to the new first thumbnail (and shows ONLY in Edit mode per revised D-07); an "Order updated" toast fires; after navigating to a grid the card thumbnail reflects the new cover.
-result: [pending]
+result: pass
+verified_on: f9c7a4b (prod www.horlo.app, 2026-05-26)
+note: "Enlarged handle grab, drag-reorder cover move + 'Order updated' toast, edit-mode-only Cover badge (revised D-07), and grid thumbnail update all confirmed."
 
 ### 3. OS photo picker (camera-or-library) on mobile
 expected: Tapping +Add on the detail page (or the full-width dropzone in the add-watch step) opens the OS picker offering BOTH camera and library (no forced `capture`).
@@ -64,6 +71,15 @@ blocked: 2
 - **Expectation on re-test:** cosmetic gaps #2/#3/#4/#5/#7/#8 are now live and testable. Gap #9 will STILL fail (deployed fix targeted the wrong mechanism — the /watch/add entry path needs a new fix). The #419/404 is now the decisive test: this build definitely contains the ordering fix, so if 404 persists → genuine recurrence → /gsd-debug.
 
 ## Gaps
+
+- truth: "In Edit mode, the photo add affordance is not duplicated — a single, full-legibility drop zone is the only add control (no redundant filmstrip '+Add' tile)"
+  status: enhancement
+  reason: "User (test 1, 2026-05-26): now that the Edit-mode drop zone renders in full legibility (gap closure from 61-05), the additional [+] '+Add' card at the end of the thumbnail filmstrip is redundant. Remove the filmstrip +Add tile; keep the drop zone as the single add affordance."
+  severity: cosmetic
+  test: 1
+  artifacts: [src/components/watch/WatchPhotoSection.tsx, src/components/watch/SortablePhotoThumb.tsx]
+  missing: []
+  decision_change: "Edit-mode add UI: drop zone only; remove the filmstrip [+] tile."
 
 - truth: "Profile (/u/[username]/[tab]) AND watch detail (/w/[ref]) pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
   status: failed
