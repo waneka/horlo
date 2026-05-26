@@ -74,6 +74,27 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
       getPreferencesByUser(user.id),
     ])
 
+    // Phase 61 PHOTO-03 + debug fix (P61-BUG-01): fetch owner photos and sign storage
+    // paths BEFORE any 'use cache' calls. createSupabaseServerClient() calls cookies()
+    // which is a dynamic API. Placing a dynamic API call AFTER a 'use cache' entry
+    // (getLikesForTargetCached) in the same async function body corrupts the PPR
+    // prerender boundary and causes React #419 on soft navigation.
+    // Rule: dynamic API (cookies) access must come BEFORE any 'use cache' calls.
+    // Signing happens ONLY in the RSC, never in the DAL (admin-client-free DAL rule).
+    const rawPhotos = isOwner ? await getWatchPhotosForWatch(watch.id) : []
+    let signedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
+    if (rawPhotos.length > 0) {
+      const supabase = await createSupabaseServerClient()
+      signedPhotos = await Promise.all(
+        rawPhotos.map(async (p) => {
+          const { data } = await supabase.storage
+            .from('watch-photos')
+            .createSignedUrl(p.storagePath, 60 * 60)  // 60-min TTL (T-61-07)
+          return { id: p.id, signedUrl: data?.signedUrl ?? null, sortOrder: p.sortOrder }
+        }),
+      )
+    }
+
     // Phase 56 D-03: hydrate like state server-side via cached aggregate read.
     // user.id is always a string on this auth-only route (getCurrentUser throws for anon).
     const target = { type: 'watch' as const, id: ref }
@@ -138,23 +159,6 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
     // Both rails render as Server-Component siblings of <WatchDetail/> (B1 invariant).
     const sameFamily = watch.catalogId ? await getSameFamilyForCatalog(watch.catalogId) : []
     const lineage = watch.catalogId ? await getLineageForReference(watch.catalogId) : []
-
-    // Phase 61 PHOTO-03: fetch owner photos + sign storage paths at page level (Pitfall 1).
-    // Signing happens ONLY in the RSC, never in the DAL (admin-client-free DAL rule).
-    // Analog: wears/[username]/page.tsx lines 130-139 (wear-photos bucket, same TTL).
-    const rawPhotos = isOwner ? await getWatchPhotosForWatch(watch.id) : []
-    let signedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
-    if (rawPhotos.length > 0) {
-      const supabase = await createSupabaseServerClient()
-      signedPhotos = await Promise.all(
-        rawPhotos.map(async (p) => {
-          const { data } = await supabase.storage
-            .from('watch-photos')
-            .createSignedUrl(p.storagePath, 60 * 60)  // 60-min TTL (T-61-07)
-          return { id: p.id, signedUrl: data?.signedUrl ?? null, sortOrder: p.sortOrder }
-        }),
-      )
-    }
 
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
@@ -280,6 +284,22 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
     const ownedWatch = await getWatchById(user.id, viewerOwnedRow.id)
     if (!ownedWatch) notFound()
 
+    // Phase 61 PHOTO-03 + debug fix (P61-BUG-01): sign owner photos BEFORE
+    // getLikesForTargetCached ('use cache'). Dynamic API (cookies) must come first.
+    const ownedRawPhotos = await getWatchPhotosForWatch(ownedWatch.id)
+    let ownedSignedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
+    if (ownedRawPhotos.length > 0) {
+      const supabase = await createSupabaseServerClient()
+      ownedSignedPhotos = await Promise.all(
+        ownedRawPhotos.map(async (p) => {
+          const { data } = await supabase.storage
+            .from('watch-photos')
+            .createSignedUrl(p.storagePath, 60 * 60)  // 60-min TTL (T-61-07)
+          return { id: p.id, signedUrl: data?.signedUrl ?? null, sortOrder: p.sortOrder }
+        }),
+      )
+    }
+
     // Fetch all per-user data using the watches.id (not the catalogId ref).
     const ownedTarget = { type: 'watch' as const, id: viewerOwnedRow.id }
     const [likeState, canComment] = await Promise.all([
@@ -317,21 +337,6 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
 
     // isOwner = true on the D-06 branch (viewerCanEdit={true})
     const isOwner = true
-
-    // Phase 61 PHOTO-03: same signed-URL pattern as Branch 1 (owner always true here).
-    const ownedRawPhotos = await getWatchPhotosForWatch(ownedWatch.id)
-    let ownedSignedPhotos: Array<{ id: string; signedUrl: string | null; sortOrder: number }> = []
-    if (ownedRawPhotos.length > 0) {
-      const supabase = await createSupabaseServerClient()
-      ownedSignedPhotos = await Promise.all(
-        ownedRawPhotos.map(async (p) => {
-          const { data } = await supabase.storage
-            .from('watch-photos')
-            .createSignedUrl(p.storagePath, 60 * 60)  // 60-min TTL (T-61-07)
-          return { id: p.id, signedUrl: data?.signedUrl ?? null, sortOrder: p.sortOrder }
-        }),
-      )
-    }
 
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">

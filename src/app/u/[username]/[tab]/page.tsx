@@ -184,11 +184,6 @@ export async function ProfileTabContent({
   const resolved = await ProfileShellResolver({ username })
   if (!resolved.profile) notFound()
   const { profile, settings, wearEvents: ownerWearEvents } = resolved
-  // Phase 61 Plan 04: sign owner-photo cover paths for profile grid/rail thumbnails.
-  // Signing uses the viewer's session — succeeds for the owner's own files; returns null
-  // for another user's files (storage RLS scopes SELECT to the file's owner folder).
-  // Either way, getSafeImageUrl in card components handles null gracefully (placeholder).
-  const ownerWatches = await signCoverUrls(resolved.watches)
   const isOwner = viewerId === profile.id
   const displayName = profile.displayName ?? null
   const ownerDisplayLabel = profile.displayName ?? `@${profile.username}`
@@ -335,17 +330,25 @@ export async function ProfileTabContent({
   // `watches` comes from the cached resolver (shared with the layout);
   // `wearDates` is a small per-tab fetch that stays uncached.
   if (tab === 'collection' || tab === 'wishlist' || tab === 'notes') {
-    const watches = ownerWatches
+    // Phase 61 debug fix (P61-BUG-01): resolve all 'use cache' calls BEFORE calling
+    // signCoverUrls. signCoverUrls calls createSupabaseServerClient() -> cookies(),
+    // which is a dynamic API. Placing a dynamic API access between two 'use cache'
+    // entries in the same async function body corrupts the PPR prerender boundary and
+    // causes React #419 on soft navigation (hard refresh works because full SSR
+    // re-evaluates without the cached RSC boundary conflict).
+    // Sequence: (1) ProfileShellResolver ['use cache'] (2) getBatchedWatchCountsCached
+    // ['use cache'] (3) signCoverUrls [dynamic/cookies] — dynamic always LAST.
+    const rawWatches = resolved.watches
     const wearDates = await getMostRecentWearDates(
       profile.id,
-      watches.map((w) => w.id),
+      rawWatches.map((w) => w.id),
     )
     // Phase 25 D-08: collectionCount drives Notes empty-state branching
     // (>0 → picker; 0 → "Add a watch first" CTA). Same array we already
     // loaded — no extra DB round-trip. T-25-05-03: server-derived; non-owner
     // never reaches the count-dependent branch (D-10 short-circuits first).
-    const ownedWatches = watches.filter((w) => w.status === 'owned')
-    const collectionCount = ownedWatches.length
+    const rawOwnedWatches = rawWatches.filter((w) => w.status === 'owned')
+    const collectionCount = rawOwnedWatches.length
 
     // DISP-01: batched like + comment counts resolved ONCE per grid render.
     // viewerId is always non-null on /u/* (Phase 51 Branch B auth gate).
@@ -355,12 +358,15 @@ export async function ProfileTabContent({
     // ProfileTabContent must NOT be marked 'use cache' (Cache Components
     // landmine; D-52-16 / T-57-16). The Map is converted to a plain Record
     // before crossing the server→client boundary (Maps don't serialize).
-    const watchIds = watches.map((w) => w.id)
+    const watchIds = rawWatches.map((w) => w.id)
     const countsMap = viewerId !== null
       ? await getBatchedWatchCountsCached(viewerId, watchIds, profile.username)
       : new Map<string, { likeCount: number; commentCount: number }>()
     const counts: Record<string, { likeCount: number; commentCount: number }> =
       Object.fromEntries(countsMap)
+    // Dynamic API (cookies via signCoverUrls) runs AFTER all 'use cache' calls.
+    const watches = await signCoverUrls(rawWatches)
+    const ownedWatches = watches.filter((w) => w.status === 'owned')
 
     if (tab === 'collection') {
       return (
@@ -409,7 +415,8 @@ export async function ProfileTabContent({
     // viewer-gated and uncached; `watches` comes from the cached resolver
     // shared with the layout.
     const events = await getWearEventsForViewer(viewerId, profile.id)
-    const watches = ownerWatches
+    // Phase 61 debug fix (P61-BUG-01): dynamic API (cookies) runs after all 'use cache' calls.
+    const watches = await signCoverUrls(resolved.watches)
     const watchMap = Object.fromEntries(
       watches.map((w) => [
         w.id,
@@ -458,7 +465,8 @@ export async function ProfileTabContent({
   // (shared with the layout) — owner stats are cache hits within the 300s
   // window. Non-owner views need the viewer-gated `getWearEventsForViewer`
   // call (privacy-safe filtering by per-row visibility) and stay uncached.
-  const watches = ownerWatches
+  // Phase 61 debug fix (P61-BUG-01): dynamic API (cookies) runs after all 'use cache' calls.
+  const watches = await signCoverUrls(resolved.watches)
   const ownedAll = watches.filter((w) => w.status === 'owned')
   const events = isOwner
     ? ownerWearEvents
