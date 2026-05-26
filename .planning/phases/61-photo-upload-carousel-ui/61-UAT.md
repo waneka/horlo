@@ -105,8 +105,8 @@ skipped: 0
   reason: "User wants the 'Cover' badge to show ONLY in edit mode. NOTE: current always-visible behavior is per locked decision D-07 (CONTEXT.md: 'the first filmstrip thumbnail always carries a small Cover badge … persistent'). This is a DECISION CHANGE, not a regression — D-07 should be updated to 'edit-mode only' and the badge gated on editMode in WatchPhotoSection/SortablePhotoThumb."
   severity: minor
   test: 2
-  decision_change: "D-07 (Cover badge persistent → edit-mode only)"
-  artifacts: []
+  decision_change: "D-07 (Cover badge persistent → edit-mode only) — CONFIRMED by user 2026-05-25; update CONTEXT.md D-07 and gate the badge on editMode in WatchPhotoSection/SortablePhotoThumb during gap closure."
+  artifacts: [src/components/watch/SortablePhotoThumb.tsx, src/components/watch/WatchPhotoSection.tsx]
   missing: []
 
 - truth: "Tapping × hides the photo immediately (optimistic), with the undo toast offering restore"
