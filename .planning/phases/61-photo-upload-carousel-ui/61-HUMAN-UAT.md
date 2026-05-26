@@ -9,10 +9,7 @@ note: "Regenerated after 61-05/61-06 gap closure re-verification. Supersedes the
 
 ## Current Test
 
-number: 3
-name: OS photo picker (camera-or-library) on mobile
-awaiting: user response
-note: "Tests 1 & 2 re-verified PASS on deploy f9c7a4b. ⚠ /w/[ref] #419/404 REGRESSED after edge cache filled (still broken; profile durably fixed) — debug session phase61-404 reopened to investigating. Test 5 (stale-instance reset on /w/[ref] revisit) stays BLOCKED by the live /w/[ref] 404. Test 3 testable via hard-load of a detail page or the add-watch dropzone."
+[walkthrough complete for this pass — 3 pass (t1/t2/t3), 1 issue (t6/gap#9), 2 blocked (t4 by gap#9, t5 by live /w/[ref] 404). Two outstanding code issues: gap #9 (/watch/new photos-step + post-save nav) and /w/[ref] #419 (debug session reopened). Re-run after both fixes land to clear t4 + t5.]
 
 ## Tests
 
@@ -30,7 +27,9 @@ note: "Enlarged handle grab, drag-reorder cover move + 'Order updated' toast, ed
 
 ### 3. OS photo picker (camera-or-library) on mobile
 expected: Tapping +Add on the detail page (or the full-width dropzone in the add-watch step) opens the OS picker offering BOTH camera and library (no forced `capture`).
-result: [pending]
+result: pass
+verified_on: f9c7a4b (prod www.horlo.app, 2026-05-26)
+note: "OS picker offers both camera and library — no forced capture."
 
 ### 4. "Skip for now" visual prominence / friction
 expected: In the add-watch photos step, "Skip for now" is clearly the secondary, lower-contrast option vs the primary "Add photos"/"Continue" button; friction is sufficient but never blocks saving.
@@ -50,7 +49,8 @@ result: issue
 reported: "i'm still not seeing the add your photos step when adding a watch"
 severity: major
 repro_precise: "Entry = clicked 'Add to collection' from the PROFILE COLLECTION page (NOT from a watch detail page, NOT URL extraction). After save: brief 'Saving...' → the watch form CLEARED/reset → user STAYED on /watch/add. No photos step appeared AND no redirect to collection occurred (user expected to land back on their collection)."
-note: "RECURRENCE — gap #9 fix (61-06 toast suppression, commit 8aa57c4) did NOT resolve it. The precise repro contradicts the original toast-nav-race hypothesis: there is NO redirect (it stays on /watch/add with a blank form), so the problem is that this path never transitions to photos-pending NOR navigates. Strongly suggests the /watch/add route (reached via 'Add to collection' on the profile collection page) renders a WatchForm that is NOT inside AddWatchFlow's onWatchCreated wiring — so 61-03's photos-pending machine is never engaged, and the form just resets on success."
+note: "RECURRENCE — gap #9 fix (61-06 toast suppression, commit 8aa57c4) did NOT resolve it. The precise repro contradicts the original toast-nav-race hypothesis: there is NO redirect (it stays on /watch/new with a blank form), so the problem is that this path never transitions to photos-pending NOR navigates. Strongly suggests the /watch/new route (reached via 'Add to collection' on the profile collection page) renders a WatchForm that is NOT inside AddWatchFlow's onWatchCreated wiring — so 61-03's photos-pending machine is never engaged, and the form just resets on success."
+reconfirmed: "2026-05-26 on deploy f9c7a4b — STILL BROKEN (expected; no gap-#9 fix in this deploy). Entry: 'Add to collection' CTA from the profile COLLECTION page. After save: EMPTY FORM on /watch/new (form reset, stayed on /watch/new, no photos step, no redirect to collection). ROUTE CORRECTION: actual route is /watch/new (not /watch/add as earlier docs stated) — search artifacts accordingly."
 why_critical: "Core PHOTO-09 deliverable. Failed prod verification twice. Also a SECONDARY bug surfaced: post-save navigation is broken on this path (stays on /watch/add instead of returning to collection)."
 
 ## Summary
