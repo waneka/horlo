@@ -249,7 +249,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   4. The Home wear rail's 24/48h ephemeral behavior is unchanged — surfacing on watch detail does not alter rail display
   5. Surfaced public wear pics have working like and comment interactions via the v6.0 layer
 **Plans**: 4 plans (3 waves)
-- [ ] 62-01-PLAN.md — schema hidden_from_detail column + local push + prod migration + Wave 0 test scaffolds (Wave 1)
+- [x] 62-01-PLAN.md — schema hidden_from_detail column + local push + prod migration + Wave 0 test scaffolds (Wave 1)
 - [ ] 62-02-PLAN.md — getPublicWearPicsForWatch union DAL + hide/unhide DAL + server actions (Wave 2)
 - [ ] 62-03-PLAN.md — Wears tab actual-photo repoint (sign wear-photos + WornTimeline/WornCalendar prefer event.photoUrl) (Wave 2)
 - [ ] 62-04-PLAN.md — carousel wear-pic union + Worn badge + inline like/comment sheet + Edit-mode eye/hide (Wave 3)
@@ -287,7 +287,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 | 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
 | 60. Multi-Photo Schema + DAL | 4/4 | Complete    | 2026-05-25 |
 | 61. Photo Upload + Carousel UI | 6/6 | Complete   | 2026-05-26 |
-| 62. Public Wear Pics on Watch Detail | 0/4 | Not started | - |
+| 62. Public Wear Pics on Watch Detail | 1/4 | In Progress|  |
 | 63. Inline Grid Engagement | 0/TBD | Not started | - |
 | 64. Detail Page IA Redesign | 0/TBD | Not started | - |
 

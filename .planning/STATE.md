@@ -4,14 +4,14 @@ milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
 stopped_at: Phase 62 UI-SPEC approved
-last_updated: "2026-05-27T07:57:38.753Z"
-last_activity: 2026-05-27 -- Phase 62 planning complete
+last_updated: "2026-05-27T14:06:47.339Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 17
-  completed_plans: 13
-  percent: 76
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 61 — photo-upload-carousel-ui
+**Current focus:** Phase 62 — public-wear-pics-on-watch-detail
 
 ## Current Position
 
-Phase: 61 (photo-upload-carousel-ui) — EXECUTING
-Plan: 3 of 6
-Status: Ready to execute
-Last activity: 2026-05-27 -- Phase 62 planning complete
+Phase: 62 (public-wear-pics-on-watch-detail) — EXECUTING
+Plan: 2 of 4
+Status: Executing Phase 62 (Plan 01 complete)
+Last activity: 2026-05-27 -- Plan 01 complete (hidden_from_detail schema + local push + Wave 0 test scaffolds)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -78,6 +78,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-26 — Phase 61 Plan 06 COMPLETE. Gap #9 fixed (success toast suppressed when onWatchCreated intercepts commit; 10 tests pass). P61-BUG-01 static guard added (3 tests pass). Build exit 0.
-Stopped at: Phase 62 UI-SPEC approved
-Next action: Phase 61 COMPLETE — deploy to prod for user verification of gap #9 (photos step on extract→collection path)
+Last activity: 2026-05-27 — Phase 62 Plan 01 COMPLETE. hidden_from_detail boolean column added to wear_events (schema + local push + prod migration file). Four Wave 0 test scaffolds created; wearRail guardrail passes GREEN.
+Stopped at: Phase 62 Plan 01 complete
+Next action: Execute Phase 62 Plan 02 (DAL union — getPublicWearPicsForWatch)
