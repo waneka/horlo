@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: executing
-stopped_at: Phase 62 Plan 03 complete
-last_updated: "2026-05-27T14:22:00.000Z"
+status: verifying
+stopped_at: Phase 62 Plan 04 complete — prod UAT deferred to HUMAN-UAT
+last_updated: "2026-05-27T14:34:00.000Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 ## Current Position
 
-Phase: 62 (public-wear-pics-on-watch-detail) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 62 (public-wear-pics-on-watch-detail) — COMPLETE (code); prod UAT HUMAN-NEEDED
+Plan: 4 of 4 (all plans complete)
+Status: Phase code-complete — awaiting prod UAT (HUMAN-UAT)
 Last activity: 2026-05-27
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -69,6 +69,9 @@ Progress: [█████████░] 94%
 - **P61-BUG-01 static guard** — tests/static/ppr-dynamic-before-use-cache.test.ts with @vitest-environment node encodes the durable ordering rule for the two fixed PPR routes; prevents silent recurrence of the React #419 soft-nav regression (Plan 06 gap #1 guard).
 - **hideWearPic/unhideWearPic use dual-layer ownership** — server action re-checks via watchDAL.getWatchById; DAL adds a second layer via sql`` subquery WHERE watch_id IN (SELECT id FROM watches WHERE user_id = ?); defense in depth for T-62-04 IDOR threat.
 - **WearEventLite.photoUrl propagates through WornTabContent** — added photoUrl to WornTabContent's local WearEventLite (the intermediary type) so TypeScript enforces the chain from page.tsx RSC through to WornTimeline and WornCalendar.
+- **Option A pre-fetch for wear-pic social state** — all wear-pic like/comment state fetched per-pic in the page RSC via Promise.all; avoids client waterfall; consistent with CommentThread pattern (Phase 62 Plan 04).
+- **SignedWearPic kept distinct from SignedPhoto** — union would collapse discriminant needed for badge/social-row conditional rendering in WatchPhotoSection (Phase 62 Plan 04).
+- **eye/hide toggle uses onPointerDown** — consistent with Phase 61 editMode toggle; avoids Router Cache stale-instance issue (Phase 62 Plan 04).
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 62 Plan 03 COMPLETE. WornTimeline + WornCalendar prefer event.photoUrl over watch cover (D-16/WPIC-03); WPIC-03 unit tests 4/4 GREEN. Wear-photo paths signed via admin client in Wears tab RSC; photoUrl threaded through WornTabContent. Build exits 0.
-Stopped at: Phase 62 Plan 03 complete
-Next action: Execute Phase 62 Plan 04
+Last activity: 2026-05-27 — Phase 62 Plan 04 COMPLETE (code). /w/[ref] carousel unions owner uploads + public wear pics (newest-worn first) with UTC-pinned Worn badge, inline like/comment row, WearCommentHost bottom sheet, and owner eye/hide Edit-mode toggle. Admin-client signing of wear-photos bucket (fail-safe). 54/54 unit tests green; build exits 0. Prod UAT (6 checks: carousel union, badge, like/comment sheet, hide toggle, non-owner visibility, Home rail) deferred to HUMAN-UAT.
+Stopped at: Phase 62 Plan 04 complete — prod UAT HUMAN-NEEDED
+Next action: Deploy to prod + human UAT for Phase 62; Phase 63 can proceed independently
