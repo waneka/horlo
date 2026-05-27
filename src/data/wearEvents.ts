@@ -2,7 +2,7 @@ import 'server-only'
 
 import { db } from '@/db'
 import { wearEvents, profileSettings, follows, profiles, watches } from '@/db/schema'
-import { eq, and, desc, inArray, gte, or, sql, asc } from 'drizzle-orm'
+import { eq, and, desc, inArray, gte, or, sql, asc, isNotNull } from 'drizzle-orm'
 import type { WywtTile, WywtRailData } from '@/lib/wywtTypes'
 import type { WearVisibility } from '@/lib/wearVisibility'
 
@@ -562,15 +562,14 @@ export async function getActiveWearsForUser(
 
 // ---------------------------------------------------------------------------
 // Phase 62 — WPIC-01 / WPIC-05
-// Returns public, non-hidden wear pics for a watch detail carousel.
-// WHERE: watchId + visibility='public' + hiddenFromDetail=false
+// Returns public, non-hidden, photo-bearing wear events for a watch detail carousel.
+// WHERE: watchId + visibility='public' + hiddenFromDetail=false + photoUrl IS NOT NULL
 // Ordered: wornDate DESC (newest worn first, D-02).
-// NOTE: This is a stub for Wave 0 test collection. Full implementation in Plan 02.
 // DO NOT call or import getWearRailForViewer — this is a separate DAL function (D-17).
 // ---------------------------------------------------------------------------
 export async function getPublicWearPicsForWatch(
   watchId: string,
-): Promise<{ id: string; wornDate: string; photoUrl: string | null; hiddenFromDetail: boolean }[]> {
+): Promise<{ id: string; wornDate: string; photoUrl: string; hiddenFromDetail: boolean }[]> {
   const rows = await db
     .select({
       id: wearEvents.id,
@@ -584,10 +583,11 @@ export async function getPublicWearPicsForWatch(
         eq(wearEvents.watchId, watchId),
         eq(wearEvents.visibility, 'public'),
         eq(wearEvents.hiddenFromDetail, false),
+        isNotNull(wearEvents.photoUrl),  // only emit rows that have a photo (CR-01)
       ),
     )
     .orderBy(desc(wearEvents.wornDate))
-  return rows
+  return rows as { id: string; wornDate: string; photoUrl: string; hiddenFromDetail: boolean }[]
 }
 
 // ---------------------------------------------------------------------------
