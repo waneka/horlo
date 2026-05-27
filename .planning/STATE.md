@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: executing
+status: verifying
 stopped_at: Phase 64 UI-SPEC approved
-last_updated: "2026-05-27T23:11:03.745Z"
-last_activity: 2026-05-27 -- Phase 64 planning complete
+last_updated: "2026-05-27T23:20:42.245Z"
+last_activity: 2026-05-27
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 ## Current Position
 
-Phase: 63 (Inline Grid Engagement) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Next phase: 63 (Inline Grid Engagement) — next incomplete in ROADMAP
-Last activity: 2026-05-27 -- Phase 64 planning complete
+Phase: 64 (Detail Page IA Redesign) — EXECUTING
+Plan: 1 of 4
+Status: Plan 01 complete — executing Plan 02
+Next phase: 64 (Detail Page IA Redesign) — in progress
+Last activity: 2026-05-27
 
-Progress: [██████████] 100%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
@@ -79,6 +79,8 @@ Progress: [██████████] 100%
 - **canComment reuses existing allowedSet** — `getBatchedWatchCounts` already computes `allowedSet` for Q5 comment-count gate; `canComment = allowedSet.has(id)` adds zero new queries (Phase 63 Plan 01).
 - **D-12 gap closed in both engagement actions** — `revalidateTag('viewer:{user.id}:counts','max')` added inside `if(ownerProfile?.username)` block in `toggleLikeAction` and `addCommentAction`; matches `getBatchedWatchCountsCached` cacheTag scope (Phase 63 Plan 01).
 - **text-destructive used for liked Heart chip** — no-raw-palette test forbids `text-red-\d`; `text-destructive` is the design token matching LikeButton; plan specified `text-red-400` but test enforcement required the token (Phase 63 Plan 03 Rule 1 auto-fix).
+- **MAX_LOOKAHEAD = 70 in ppr-guard** — Branch 1 of /w/[ref]/page.tsx has 59-line gap between createSupabaseAdminClient and getLikesForTargetCached; 50 was too tight (Phase 64 Plan 01 auto-fix).
+- **Privacy guard uses exact-line-match for directive detection** — CRITICAL prose comment in CommentThread.tsx lines 1-3 contains 'use client'/'use cache' as text; regex match would false-positive; trim() === directive form is the correct check (Phase 64 Plan 01 auto-fix).
 
 ### Pending Todos
 
@@ -90,6 +92,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 63 Plan 03 COMPLETE. viewerId + liked/canComment threaded from page.tsx RSC through CollectionTabContent + WishlistTabContent into ProfileWatchCard. Overlay ♥/💬 pill chips with scrim (bg-black/55), 44px touch targets, optimistic like (silent rollback on failure), WatchCommentSheet wiring, and canComment gate added to non-owner grid cards. Owner static count line unchanged. Auto-fix: text-destructive used instead of text-red-400 (no-raw-palette test). Commits: e977e25 + 3dd1c84. Build exits 0.
-Stopped at: Phase 64 UI-SPEC approved
-Next action: Phase verification / deploy to prod
+Last activity: 2026-05-27 — Phase 64 Plan 01 COMPLETE. Extracted SpecsSublabel to shared RSC-compatible component; anchored CommentThread with id=comments; authored comment-thread-no-client.test.ts (PAGE-03 privacy guard, GREEN) and watch-detail-ia-order.test.ts (IA child-order guard, RED-by-design); repaired ppr-dynamic-before-use-cache.test.ts (createSupabaseServerClient → createSupabaseAdminClient, MAX_LOOKAHEAD 50→70). Build exits 0. Commits: f292101 + ab77205.
+Stopped at: Phase 64 Plan 01 complete
+Next action: Execute Phase 64 Plan 02 (WatchDetailHero island)

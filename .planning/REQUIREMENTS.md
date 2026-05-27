@@ -63,10 +63,10 @@
 
 > An intentional information hierarchy for the unified `/w/[ref]` page, absorbing the carousel + verdict + like + comments + rails rather than appending at the bottom.
 
-- [ ] **PAGE-01**: The watch detail page presents an intentional information hierarchy (carousel, verdict, like, comments, rails, footer), not stacked append-order
-- [ ] **PAGE-02**: Comments occupy a deliberate, reachable position — not buried at the bottom of the page
-- [ ] **PAGE-03**: The redesign preserves the Phase 51/52 Cache Components structure (CommentThread stays an uncached Suspense sibling; `unstable_instant`/cache rules intact)
-- [ ] **PAGE-04**: The redesign integrates the photo carousel as a primary visual element of the page
+- [x] **PAGE-01**: The watch detail page presents an intentional information hierarchy (carousel, verdict, like, comments, rails, footer), not stacked append-order
+- [x] **PAGE-02**: Comments occupy a deliberate, reachable position — not buried at the bottom of the page
+- [x] **PAGE-03**: The redesign preserves the Phase 51/52 Cache Components structure (CommentThread stays an uncached Suspense sibling; `unstable_instant`/cache rules intact)
+- [x] **PAGE-04**: The redesign integrates the photo carousel as a primary visual element of the page
 
 ---
 
@@ -131,10 +131,10 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | GRID-03 | Phase 63 | Complete |
 | GRID-04 | Phase 63 | Complete |
 | GRID-05 | Phase 63 | Complete |
-| PAGE-01 | Phase 64 | Pending |
-| PAGE-02 | Phase 64 | Pending |
-| PAGE-03 | Phase 64 | Pending |
-| PAGE-04 | Phase 64 | Pending |
+| PAGE-01 | Phase 64 | Complete |
+| PAGE-02 | Phase 64 | Complete |
+| PAGE-03 | Phase 64 | Complete |
+| PAGE-04 | Phase 64 | Complete |
 
 **Coverage:**
 - v7.0 requirements: 30 total (ROUTE 6, PHOTO 9, WPIC 6, GRID 5, PAGE 4)
