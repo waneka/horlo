@@ -115,6 +115,7 @@ export function ProfileWatchCard({
   }
 
   return (
+    <>
     <Link href={`/w/${watch.id}`}>
       {/* h-full flex flex-col on Card — NOT height:auto — is the equal-height key */}
       <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg h-full flex flex-col">
@@ -201,14 +202,6 @@ export function ProfileWatchCard({
                   </button>
                 )}
               </div>
-              {/* Compose-only bottom sheet (D-06/GRID-04) — opened by 💬 chip click */}
-              <WatchCommentSheet
-                open={sheetOpen}
-                onOpenChange={setSheetOpen}
-                watch={watch}
-                viewerId={viewerId ?? null}
-                onSuccess={handleCommentSuccess}
-              />
             </>
           )}
         </div>
@@ -257,5 +250,18 @@ export function ProfileWatchCard({
         </CardContent>
       </Card>
     </Link>
+    {/* Compose-only bottom sheet (D-06/GRID-04) — rendered OUTSIDE the <Link> so the portaled
+        sheet's clicks (Post / overlay / close) don't React-bubble through the React tree into
+        the Link's onClick and navigate to /w/[ref]. State/handlers stay in this component. */}
+    {!isOwner && (
+      <WatchCommentSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        watch={watch}
+        viewerId={viewerId ?? null}
+        onSuccess={handleCommentSuccess}
+      />
+    )}
+    </>
   )
 }

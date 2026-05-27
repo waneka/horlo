@@ -3,26 +3,31 @@ status: partial
 phase: 63-inline-grid-engagement
 source: [63-VERIFICATION.md]
 started: 2026-05-27T20:28:29Z
-updated: 2026-05-27T21:24:28Z
+updated: 2026-05-27T21:35:09Z
 ---
 
 ## Current Test
 
-[awaiting human testing — push origin main → Vercel, then test on prod against a second account's profile]
+number: 4
+name: Post comment via sheet
+expected: |
+  Type a comment and submit; the sheet closes, the card's 💬 count bumps +1, and a 'Comment posted' toast fires.
+awaiting: user response
 
 ## Tests
 
 ### 1. Like chip — optimistic flip + no navigation
 expected: Tap ♥ on another user's grid card; heart fills immediately and the count bumps, with NO navigation to /w/[ref].
-result: [pending]
+result: pass
+note: verified on prod after R1 chip restyle
 
 ### 2. Unlike — silent rollback
 expected: Tap the filled ♥ again; heart unfills and the count decrements. Idempotent re-like never raises a user-facing error toast.
-result: [pending]
+result: pass
 
 ### 3. Comment chip opens sheet without navigating
 expected: Tap 💬 on a card where you have mutual-follow (or a non-wishlist/wear target); the bottom sheet slides up showing the watch identity (thumbnail + brand/model), with NO navigation to /w/[ref].
-result: [pending]
+result: pass
 
 ### 4. Post comment via sheet
 expected: Type a comment and submit; the sheet closes, the card's 💬 count bumps +1, and a 'Comment posted' toast fires. (On failure: typed text is retained and a failure toast appears.)
@@ -47,9 +52,9 @@ result: [pending]
 ## Summary
 
 total: 8
-passed: 0
+passed: 3
 issues: 0
-pending: 8
+pending: 5
 skipped: 0
 blocked: 0
 
@@ -67,3 +72,19 @@ note: deliberate touch-target reduction below the prior 44px (WCAG 2.5.5) per us
 status: resolved (build exit 0, redeployed for re-verification)
 
 ## Gaps
+
+### G1 — Posting/closing the comment sheet navigates to /w/[ref] (major) — RESOLVED, redeployed
+test: 4
+reported: "on submit, i was immediately routed to the watch detail page - bug. same thing actually happens if i close the comment drawer without leaving one."
+root_cause: |
+  WatchCommentSheet was rendered as a JSX child of the card-wide <Link>. base-ui's Sheet portals
+  its content to document.body (escaping the Link's DOM subtree), BUT React re-dispatches events
+  through the REACT tree, not the DOM tree — so clicks on the portaled sheet's Post button / backdrop
+  / close X bubbled up the React tree into the <Link>'s onClick and triggered navigation. The chip-open
+  path was unaffected because the chip handler calls preventDefault()+stopPropagation(); the sheet's
+  internal controls have no such guard.
+fix: |
+  Moved <WatchCommentSheet> OUTSIDE the <Link> (rendered as a sibling, wrapped the return in a fragment,
+  gated on !isOwner). The sheet is no longer a React descendant of the Link, so its portaled clicks no
+  longer bubble into Link navigation. (D-02 explicitly permitted restructuring the link boundary.)
+status: resolved (build exit 0, redeployed for re-verification)
