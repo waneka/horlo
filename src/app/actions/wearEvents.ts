@@ -281,7 +281,16 @@ export async function getWornTodayIdsForUserAction(
 // Phase 62 — WPIC-02 (D-11)
 // hideWearPicAction / unhideWearPicAction — owner hide/unhide toggle for a
 // wear pic on the watch detail carousel.
-// NOTE: These are stubs for Wave 0 test collection. Full implementation in Plan 03.
+//
+// Security (T-62-04 / T-62-05):
+// - getCurrentUser() in try/catch → unauthenticated callers rejected early
+// - .strict() Zod schema rejects extra keys (mass-assignment guard, T-62-05)
+// - watchDAL.getWatchById(user.id, watchId) ownership re-check before write
+// - DAL hideWearPic/unhideWearPic further scopes the UPDATE via ownership
+//   subquery at the DB layer (defense in depth, T-62-04)
+//
+// D-11 constraint: visibility is NEVER written here. "Hide from detail" is a
+// separate persistent state that does not affect the rail or worn tab.
 // ---------------------------------------------------------------------------
 
 const hideWearPicSchema = z
@@ -293,7 +302,7 @@ const hideWearPicSchema = z
 
 export async function hideWearPicAction(
   data: unknown,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ActionResult<void>> {
   let user
   try {
     user = await getCurrentUser()
@@ -306,20 +315,26 @@ export async function hideWearPicAction(
     return { success: false, error: 'Invalid request' }
   }
 
-  // CR-01 / IDOR defense: scope watch lookup to caller (plan D-11)
+  // CR-01 / IDOR defense: scope watch lookup to caller's watches.
+  // Returns the uniform 'Watch not found' on miss so existence is not leaked.
   const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
   if (!watch) {
     return { success: false, error: 'Watch not found' }
   }
 
-  await wearEventDAL.setWearPicHidden(parsed.data.wearEventId, true)
-  revalidatePath('/w/[ref]', 'page')
-  return { success: true }
+  try {
+    await wearEventDAL.hideWearPic(user.id, parsed.data.watchId, parsed.data.wearEventId)
+    revalidatePath('/w/[ref]', 'page')
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[hideWearPicAction] unexpected error:', err)
+    return { success: false, error: "Couldn't update. Try again." }
+  }
 }
 
 export async function unhideWearPicAction(
   data: unknown,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ActionResult<void>> {
   let user
   try {
     user = await getCurrentUser()
@@ -332,13 +347,18 @@ export async function unhideWearPicAction(
     return { success: false, error: 'Invalid request' }
   }
 
-  // CR-01 / IDOR defense: scope watch lookup to caller (plan D-11)
+  // CR-01 / IDOR defense: scope watch lookup to caller's watches.
   const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
   if (!watch) {
     return { success: false, error: 'Watch not found' }
   }
 
-  await wearEventDAL.setWearPicHidden(parsed.data.wearEventId, false)
-  revalidatePath('/w/[ref]', 'page')
-  return { success: true }
+  try {
+    await wearEventDAL.unhideWearPic(user.id, parsed.data.watchId, parsed.data.wearEventId)
+    revalidatePath('/w/[ref]', 'page')
+    return { success: true, data: undefined }
+  } catch (err) {
+    console.error('[unhideWearPicAction] unexpected error:', err)
+    return { success: false, error: "Couldn't update. Try again." }
+  }
 }
