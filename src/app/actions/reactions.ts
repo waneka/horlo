@@ -105,6 +105,10 @@ export async function toggleLikeAction(
     const ownerProfile = await getProfileById(ownerId)
     if (ownerProfile?.username) {
       revalidateTag(`profile:${ownerProfile.username}`, 'max')
+      // D-12: bust viewer's own batched counts cache (liked + canComment fields).
+      // viewer:reactions tag (updateTag below) covers LikeButton on the detail page;
+      // viewer:counts tag covers getBatchedWatchCountsCached on the profile grid.
+      revalidateTag(`viewer:${user.id}:counts`, 'max')
     }
 
     // 3. RYO — actor sees own liked state immediately (Server-Action-only updateTag, D-07 SEC-05)

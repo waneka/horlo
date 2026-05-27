@@ -192,4 +192,19 @@ describe('toggleLikeAction Server Action', () => {
     // RYO tag — actor sees own liked state immediately (Server-Action-only updateTag)
     expect(updateTag).toHaveBeenCalledWith(`viewer:${viewerUserId}:reactions`)
   })
+
+  // D-12: on successful like, revalidateTag('viewer:{userId}:counts', 'max') is called
+  it('D-12: on successful like calls revalidateTag(viewer:{userId}:counts, max)', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'viewer@example.com' })
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'viewer', displayName: 'Viewer User' })
+    ;(reactionsDAL.getLikesForTarget as Mock).mockResolvedValueOnce({ count: 0, viewerHasLiked: false })
+    ;(reactionsDAL.createLike as Mock).mockResolvedValueOnce(undefined)
+    setupDbSelectChain([{ userId: watchOwnerId, brand: 'Rolex', model: 'Sub' }])
+    ;(getProfileById as Mock).mockResolvedValueOnce({ username: 'owner', displayName: 'Owner' }) // owner profile for revalidateTag
+
+    await toggleLikeAction({ type: 'watch', id: watchId })
+
+    // D-12: viewer's batched counts tag must be busted so liked+canComment re-hydrates correctly
+    expect(revalidateTag).toHaveBeenCalledWith(`viewer:${viewerUserId}:counts`, 'max')
+  })
 })

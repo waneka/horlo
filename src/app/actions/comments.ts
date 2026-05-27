@@ -161,6 +161,10 @@ export async function addCommentAction(data: unknown): Promise<ActionResult<Comm
     const ownerProfile = await getProfileById(ownerId)
     if (ownerProfile?.username) {
       revalidateTag(`profile:${ownerProfile.username}`, 'max')
+      // D-12: bust viewer's own batched counts cache so commentCount + canComment
+      // re-hydrates fresh on navigate-away/back (profile:username covers all viewers
+      // broadly; viewer:counts covers this viewer's per-card liked+canComment fields).
+      revalidateTag(`viewer:${user.id}:counts`, 'max')
     }
 
     // Notification — NOTIF-12: fire ONLY on non-self INSERT (never on edit/delete).

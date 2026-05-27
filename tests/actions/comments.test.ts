@@ -179,6 +179,21 @@ describe('addCommentAction Server Action', () => {
     )
     expect(hasCommentsTag).toBe(false)
   })
+
+  // D-12: on successful addComment, revalidateTag('viewer:{userId}:counts', 'max') is called
+  it('D-12: on successful addComment calls revalidateTag(viewer:{userId}:counts, max)', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValueOnce({ id: viewerUserId, email: 'viewer@example.com' })
+    setupDbSelectChain([{ userId: watchOwnerId, brand: 'Rolex', model: 'Sub', imageUrl: null, status: 'owned' }])
+    ;(getProfileById as Mock)
+      .mockResolvedValueOnce({ username: 'viewer', displayName: 'Viewer' })   // actor
+      .mockResolvedValueOnce({ username: 'owner', displayName: 'Owner' })     // owner
+    ;(commentsDAL.createComment as Mock).mockResolvedValueOnce(mockComment)
+
+    await addCommentAction({ type: 'watch', id: watchId, body: 'Nice!' })
+
+    // D-12: viewer's batched counts tag must be busted so liked+canComment re-hydrates correctly
+    expect(revalidateTag).toHaveBeenCalledWith(`viewer:${viewerUserId}:counts`, 'max')
+  })
 })
 
 describe('editCommentAction Server Action', () => {
