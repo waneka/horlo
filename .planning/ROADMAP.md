@@ -248,11 +248,12 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   3. Non-public (followers-only or private) wear photos never appear on the watch detail page, regardless of who is viewing
   4. The Home wear rail's 24/48h ephemeral behavior is unchanged — surfacing on watch detail does not alter rail display
   5. Surfaced public wear pics have working like and comment interactions via the v6.0 layer
-**Plans**: 4 plans (3 waves)
+**Plans**: 5 plans (3 waves + gap closure)
 - [x] 62-01-PLAN.md — schema hidden_from_detail column + local push + prod migration + Wave 0 test scaffolds (Wave 1)
 - [x] 62-02-PLAN.md — getPublicWearPicsForWatch union DAL + hide/unhide DAL + server actions (Wave 2)
 - [x] 62-03-PLAN.md — Wears tab actual-photo repoint (sign wear-photos + WornTimeline/WornCalendar prefer event.photoUrl) (Wave 2)
 - [x] 62-04-PLAN.md — carousel wear-pic union + Worn badge + inline like/comment sheet + Edit-mode eye/hide (Wave 3)
+- [ ] 62-05-PLAN.md — gap closure (UAT Test 4 / WPIC-06): relocate wear-pic like/comment to bottom-right on-photo overlay
 **UI hint**: yes
 
 ### Phase 63: Inline Grid Engagement
