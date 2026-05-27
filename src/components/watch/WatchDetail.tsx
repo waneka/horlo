@@ -76,7 +76,12 @@ interface WatchDetailProps {
 function formatDate(dateStr?: string): string {
   if (!dateStr) return 'Never'
   const date = new Date(dateStr)
+  // timeZone: 'UTC' is REQUIRED for hydration safety (React #418). Wear/acquisition
+  // dates are stored date-only (parsed as UTC midnight); formatting without a fixed
+  // timeZone uses the runtime's zone, so the server (UTC) and a browser in a
+  // negative-offset zone render different calendar days → hydration mismatch.
   return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -207,7 +212,10 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
               <span className="text-muted-foreground">Last worn:</span>
               {lastWornDate ? (
                 <span>
-                  {new Date(lastWornDate).toLocaleDateString()}
+                  {/* formatDate (timeZone:'UTC') — NOT a bare toLocaleDateString(),
+                      which caused React #418 hydration mismatch (server UTC vs
+                      browser-local calendar day) on watches with a logged wear. */}
+                  {formatDate(lastWornDate)}
                   <span className="text-muted-foreground">
                     {' '}
                     ({daysSince(lastWornDate)} days ago)

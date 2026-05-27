@@ -112,6 +112,15 @@ blocked: 2
   artifacts: [src/components/watch/WatchPhotoSection.tsx]
   missing: []
 
+- truth: "Watch detail page hydrates without React #418 (server/client text match) on watches with a logged wear date"
+  status: fix_applied
+  reason: "User (round 2): React #418 hydration mismatch on watch 721b8b81 (persisted on hard refresh; image renders via the catalog fallback and that watch has 0 watch_photos rows — so #418 is NOT photo-related)."
+  severity: minor
+  root_cause: "WatchDetail.tsx:210 rendered the Last-worn date with a BARE `new Date(lastWornDate).toLocaleDateString()` (no locale, no timeZone). Wear dates are date-only (parsed UTC midnight); a browser in a negative-offset zone formats a different calendar day than the server (UTC) → consistent hydration mismatch. Renders only for owned/grail watches with a logged wear → rare. formatDate() (line 79) had the same latent timeZone omission."
+  fix: "Added timeZone:'UTC' to formatDate() and routed the Last-worn date through it (not the bare toLocaleDateString). Deterministic server/client. Build exits 0; pending prod re-test on 721b8b81. Residual minor risk: the '(N days ago)' via daysSince() is now-relative and could intermittently mismatch at a midnight boundary — not the consistent cause; left as-is."
+  artifacts: [src/components/watch/WatchDetail.tsx]
+  missing: []
+
 - truth: "Profile (/u/[username]/[tab]) AND watch detail (/w/[ref]) pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
   status: resolved
   resolved_on: "5ea4291 (prod, 2026-05-26) — user-approved after cache fill ('looks great, approving the 404 fix'). Fix: `await connection()` above the page/layout Suspense opts these routes out of the PPR static shell (+ admin-client signing). See debug/resolved/phase61-404-react-419-soft-nav.md. Was a SHARED, cache-timing cause — not per-route."
