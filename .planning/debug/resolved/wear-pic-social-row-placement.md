@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Phase 62 UAT Test 4 — like/comment icons on wear-pic slides not discoverable; user wants them overlaid bottom-right on the photo"
 created: 2026-05-27T00:00:00Z
-updated: 2026-05-27T00:00:00Z
+updated: 2026-05-27T16:54:10Z
 goal: find_root_cause_only
 ---
 

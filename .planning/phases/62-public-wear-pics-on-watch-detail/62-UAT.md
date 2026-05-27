@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 62-public-wear-pics-on-watch-detail
 source: [62-01-SUMMARY.md, 62-02-SUMMARY.md, 62-03-SUMMARY.md, 62-04-SUMMARY.md]
 started: 2026-05-27T15:21:29Z
-updated: 2026-05-27T15:31:00Z
+updated: 2026-05-27T16:54:10Z
 ---
 
 ## Current Test
@@ -26,9 +26,9 @@ result: pass
 
 ### 4. Like toggle + comment bottom sheet (WPIC-06)
 expected: On a wear-pic slide, tapping Like toggles optimistically; tapping the comment count opens that pic's thread in a bottom sheet; posting a comment + dismissing (swipe/scrim) returns to the carousel with the count in sync.
-result: issue
-reported: "functional pass - i didn't notice the like/comment icons at first, i think they should be placed overlaid on the photo in the bottom right corner. it's not obvious they even apply to the wear pic you're seeing"
-severity: cosmetic
+result: pass
+resolved_by: 62-05 (WPIC-06 on-photo overlay relocation)
+resolution: "Controls moved from the standalone below-carousel row into a per-slide bottom-right on-photo overlay (badge stays bottom-left). Prod re-check approved 2026-05-27: overlay is discoverable, reads as belonging to the wear pic, functional parity (optimistic like + comment sheet) preserved, no #418/#419."
 
 ### 5. Owner eye/hide toggle in Edit mode (WPIC-02 / D-08/D-09/D-10)
 expected: As owner, "Edit photos" → tap the eye on a wear-pic thumbnail → it greys / shows "Hidden"; reload → the pic is absent from the carousel but still present in the Wears tab and (within 48h) the Home rail; tapping the eye again restores it ("Shown on this page" toast).
@@ -45,8 +45,8 @@ result: pass
 ## Summary
 
 total: 7
-passed: 6
-issues: 1
+passed: 7
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -54,7 +54,8 @@ blocked: 0
 ## Gaps
 
 - truth: "Like + comment controls on a wear-pic slide are discoverable and visually associated with the wear pic being viewed"
-  status: failed
+  status: resolved
+  resolved_by: 62-05 (prod re-check approved 2026-05-27 — on-photo bottom-right overlay)
   reason: "User reported: functional pass - i didn't notice the like/comment icons at first, i think they should be placed overlaid on the photo in the bottom right corner. it's not obvious they even apply to the wear pic you're seeing"
   severity: cosmetic
   test: 4
