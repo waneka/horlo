@@ -1,13 +1,17 @@
 'use client'
 
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Watch as WatchIcon, Heart, MessageCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { getSafeImageUrl } from '@/lib/images'
 import { daysSince, SLEEPING_BEAUTY_DAYS } from '@/lib/wear'
+import { toggleLikeAction } from '@/app/actions/reactions'
+import { WatchCommentSheet } from '@/components/watch/WatchCommentSheet'
 import type { Watch } from '@/lib/types'
 
 interface ProfileWatchCardProps {
@@ -67,6 +71,49 @@ export function ProfileWatchCard({
         ? `Market: $${watch.marketPrice.toLocaleString()}`
         : null
 
+  // Non-owner engagement state — seeded from RSC-resolved props (D-11).
+  // Mirrors LikeButton optimistic pattern: useState + useTransition, no useOptimistic.
+  // Cache-tag bust (viewer:{userId}:counts) handles re-hydration on navigate-back (D-12).
+  const [likedState, setLikedState] = useState(liked ?? false)
+  const [likeCountState, setLikeCountState] = useState(likeCount ?? 0)
+  const [likePending, startLikeTransition] = useTransition()
+  const [commentCountState, setCommentCountState] = useState(commentCount ?? 0)
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  function handleLikeClick(e: React.MouseEvent) {
+    e.preventDefault() // D-02: stop <Link> navigation
+    e.stopPropagation()
+    const nextLiked = !likedState
+    const nextCount = nextLiked ? likeCountState + 1 : likeCountState - 1
+    setLikedState(nextLiked)
+    setLikeCountState(nextCount)
+    startLikeTransition(async () => {
+      const result = await toggleLikeAction({ type: 'watch', id: watch.id })
+      if (!result.success) {
+        // Silent rollback — no toast (D-05, idempotent re-like must not error)
+        setLikedState(likedState)
+        setLikeCountState(likeCountState)
+        console.error('[ProfileWatchCard] like failed:', result.error)
+        return
+      }
+      // Reconcile to server-confirmed values (mirrors LikeButton D-05)
+      setLikedState(result.data.liked)
+      setLikeCountState(result.data.count)
+    })
+  }
+
+  function handleCommentClick(e: React.MouseEvent) {
+    e.preventDefault() // D-02: stop <Link> navigation
+    e.stopPropagation()
+    setSheetOpen(true)
+  }
+
+  function handleCommentSuccess() {
+    setCommentCountState((n) => n + 1) // optimistic count bump (D-07)
+    setSheetOpen(false)
+    toast('Comment posted') // D-07
+  }
+
   return (
     <Link href={`/w/${watch.id}`}>
       {/* h-full flex flex-col on Card — NOT height:auto — is the equal-height key */}
@@ -103,6 +150,60 @@ export function ProfileWatchCard({
             >
               {isWornToday ? 'Worn today' : 'Not worn recently'}
             </span>
+          )}
+          {/* Non-owner engagement chips — D-03: gated on !isOwner; D-01: bottom-2 left-2 */}
+          {!isOwner && (
+            <>
+              {/* Scrim: full-width bottom strip behind chips; pointer-events-none so
+                  image taps pass through and the wrapping <Link> still navigates (D-02) */}
+              <div className="absolute inset-x-0 bottom-0 h-12 bg-black/55 pointer-events-none" />
+              {/* Chip row — z-10 so chips are above scrim and receive pointer events */}
+              <div className="absolute bottom-2 left-2 z-10 flex gap-2">
+                {/* ♥ Like chip — always visible for non-owner (D-04); optimistic flip (LikeButton pattern) */}
+                <button
+                  type="button"
+                  aria-pressed={likedState}
+                  aria-busy={likePending}
+                  aria-label={likedState ? 'Unlike' : 'Like'}
+                  disabled={likePending}
+                  onClick={handleLikeClick}
+                  className={cn(
+                    'rounded-full bg-black/30 px-2 py-1 flex items-center gap-1',
+                    'text-white text-xs tabular-nums min-h-[44px] min-w-[44px]',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    likePending && 'opacity-50 cursor-wait',
+                  )}
+                >
+                  <Heart
+                    className={cn('size-4', likedState ? 'text-destructive' : 'text-white/90')}
+                    fill={likedState ? 'currentColor' : 'none'}
+                  />
+                  {(likedState || likeCountState > 0) && (
+                    <span>{likeCountState}</span>
+                  )}
+                </button>
+                {/* 💬 Comment chip — only when canComment (D-09 gate; hidden for gated foreign-wishlist viewers) */}
+                {canComment && (
+                  <button
+                    type="button"
+                    aria-label="Add a comment"
+                    onClick={handleCommentClick}
+                    className="rounded-full bg-black/30 px-2 py-1 flex items-center gap-1 text-white text-xs tabular-nums min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <MessageCircle className="size-4 text-white/90" />
+                    {commentCountState > 0 && <span>{commentCountState}</span>}
+                  </button>
+                )}
+              </div>
+              {/* Compose-only bottom sheet (D-06/GRID-04) — opened by 💬 chip click */}
+              <WatchCommentSheet
+                open={sheetOpen}
+                onOpenChange={setSheetOpen}
+                watch={watch}
+                viewerId={viewerId ?? null}
+                onSuccess={handleCommentSuccess}
+              />
+            </>
           )}
         </div>
         {/* Text block — flex-1 absorbs height; content top-aligned (equal-height mechanism) */}
