@@ -266,7 +266,10 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   3. The card's like and comment counts update optimistically after an inline like or comment action
   4. The inline composer is compose-only — the full comment thread is only accessible by opening the detail page
   5. Grid cards for wishlist watches where the viewer does not have mutual-follow status do not expose the inline comment composer
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
+- [ ] 63-01-PLAN.md — Extend WatchCounts (liked/canComment) + Q6 viewer-liked query + close D-12 cache-tag gap in both actions + test cases (Wave 1)
+- [ ] 63-02-PLAN.md — New compose-only WatchCommentSheet (Sheet + watch identity + CommentCompose; no thread) (Wave 1)
+- [ ] 63-03-PLAN.md — Thread viewerId/liked/canComment through page+tab contents + overlay ♥/💬 chips on ProfileWatchCard (non-owner, gated 💬, chip-tap≠navigate) (Wave 2)
 **UI hint**: yes
 
 ### Phase 64: Detail Page IA Redesign
