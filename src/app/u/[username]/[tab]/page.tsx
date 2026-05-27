@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { ProfileShellResolver } from '../profile-shell-resolver'
 import { signCoverUrls } from '@/lib/storage/signCoverUrls'
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { ProfileTabContentSkeleton } from '../profile-shell-skeleton'
 import {
   getMostRecentWearDates,
@@ -439,6 +440,30 @@ export async function ProfileTabContent({
         },
       ]),
     )
+    // Phase 62 D-16/D-19: sign raw wear-photo storage paths via admin client.
+    // Admin client only — never cookie client in a route touching 'use cache'
+    // (MEMORY project_ppr_dynamic_before_use_cache). Fail-safe to null on error.
+    const supabaseAdmin = createSupabaseAdminClient()
+    const distinctWearPhotoPaths = [
+      ...new Set(
+        events
+          .filter((e) => e.photoUrl != null)
+          .map((e) => e.photoUrl as string),
+      ),
+    ]
+    const wearPhotoSignedMap = new Map<string, string | null>()
+    await Promise.all(
+      distinctWearPhotoPaths.map(async (path) => {
+        try {
+          const { data } = await supabaseAdmin.storage
+            .from('wear-photos')
+            .createSignedUrl(path, 3600)
+          wearPhotoSignedMap.set(path, data?.signedUrl ?? null)
+        } catch {
+          wearPhotoSignedMap.set(path, null)
+        }
+      }),
+    )
     return (
       <WornTabContent
         events={events.map((e) => ({
@@ -446,6 +471,9 @@ export async function ProfileTabContent({
           watchId: e.watchId,
           wornDate: e.wornDate,
           note: e.note ?? null,
+          photoUrl: e.photoUrl
+            ? (wearPhotoSignedMap.get(e.photoUrl) ?? null)
+            : null,
         }))}
         watchMap={watchMap}
         isOwner={isOwner}
