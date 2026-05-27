@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 62 UI-SPEC approved
-last_updated: "2026-05-27T14:06:47.339Z"
+stopped_at: Phase 62 Plan 02 complete
+last_updated: "2026-05-27T14:14:10.160Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 17
-  completed_plans: 14
-  percent: 82
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 62 (public-wear-pics-on-watch-detail) — EXECUTING
-Plan: 2 of 4
-Status: Executing Phase 62 (Plan 01 complete)
-Last activity: 2026-05-27 -- Plan 01 complete (hidden_from_detail schema + local push + Wave 0 test scaffolds)
+Plan: 3 of 4
+Status: Ready to execute
+Last activity: 2026-05-27
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [████████░░] 82%
 - **PhotoDropzone id prop** — allows filmstrip +Add tile to trigger full-width dropzone below filmstrip via `document.getElementById` click (Plan 05 gap #2).
 - **WatchForm onWatchCreated suppresses success toast** — when onWatchCreated is present on create-mode commit, pass {} opts to run() so no Sonner toast action-button can navigate away from the photos-pending step; WatchPhotoStep onDone/onSkip own all navigation (Plan 06 gap #9 fix).
 - **P61-BUG-01 static guard** — tests/static/ppr-dynamic-before-use-cache.test.ts with @vitest-environment node encodes the durable ordering rule for the two fixed PPR routes; prevents silent recurrence of the React #419 soft-nav regression (Plan 06 gap #1 guard).
+- **hideWearPic/unhideWearPic use dual-layer ownership** — server action re-checks via watchDAL.getWatchById; DAL adds a second layer via sql`` subquery WHERE watch_id IN (SELECT id FROM watches WHERE user_id = ?); defense in depth for T-62-04 IDOR threat.
 
 ### Pending Todos
 
@@ -78,6 +79,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 62 Plan 01 COMPLETE. hidden_from_detail boolean column added to wear_events (schema + local push + prod migration file). Four Wave 0 test scaffolds created; wearRail guardrail passes GREEN.
-Stopped at: Phase 62 Plan 01 complete
-Next action: Execute Phase 62 Plan 02 (DAL union — getPublicWearPicsForWatch)
+Last activity: 2026-05-27 — Phase 62 Plan 02 COMPLETE. hideWearPic/unhideWearPic DAL with ownership subquery + hideWearPicAction/unhideWearPicAction server actions wired to real DAL. All 16 unit tests GREEN (WPIC-01/02/05); wearRail D-17 guardrail GREEN. Build exits 0.
+Stopped at: Phase 62 Plan 02 complete
+Next action: Execute Phase 62 Plan 03
