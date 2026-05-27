@@ -50,8 +50,16 @@ export function WatchCommentSheet({
     startTransition(async () => {
       const result = await addCommentAction({ type: 'watch', id: watch.id, body })
       if (!result.success) {
-        // D-08: keep typed text — do NOT increment composeKey; fire failure toast
-        toast.error('Failed to post comment. Please try again.')
+        // D-08: keep typed text — do NOT increment composeKey; fire failure toast.
+        // WR-03: branch on the action's structural discriminant. A 'gate'
+        // rejection is permanent (the follow relationship changed since the
+        // chip was shown), so retrying will never succeed — surface a clear,
+        // non-retry message instead of the generic "try again".
+        toast.error(
+          result.code === 'gate'
+            ? 'You can no longer comment on this watch.'
+            : 'Failed to post comment. Please try again.',
+        )
         console.error('[WatchCommentSheet] action failed:', result.error)
         return
       }
