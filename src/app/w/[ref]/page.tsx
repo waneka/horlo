@@ -16,7 +16,8 @@ import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
-import { WatchDetail } from '@/components/watch/WatchDetail'
+import { WatchDetailHero } from '@/components/watch/WatchDetailHero'
+import { WatchDetailTrailing } from '@/components/watch/WatchDetailTrailing'
 import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
 import { SameFamilyRail } from '@/components/insights/SameFamilyRail'
 import { LineageRail } from '@/components/insights/LineageRail'
@@ -304,10 +305,13 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
 
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
-        <WatchDetail
+        {/* Phase 64 D-02/D-09: WatchDetailHero replaces monolithic WatchDetail island.
+            Hero owns: 2-col grid (carousel left, verdict+title+like+actions right).
+            Empty-verdict states (ReferenceIdentityCard / caption) are now handled
+            inside WatchDetailHero — no duplicate siblings needed here. */}
+        <WatchDetailHero
           watch={watch}
           collection={collection}
-          preferences={preferences}
           lastWornDate={lastWornDate}
           viewerCanEdit={isOwner}
           verdict={verdict}
@@ -325,39 +329,9 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           viewerIsFollowingForWears={viewerIsFollowing}
         />
 
-        {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
-            fallback caption. Server-Component sibling of <WatchDetail/> (B1 fix —
-            RSC cannot be imported into the 'use client' WatchDetail island;
-            compose at the server tree level instead). D-39b-03 confidence gate
-            mirrored explicitly in the caller; ReferenceIdentityCard also gates
-            internally as defense-in-depth. */}
-        {collection.length === 0 &&
-          watch.catalogTaste &&
-          watch.catalogTaste.confidence !== null &&
-          watch.catalogTaste.confidence >= 0.5 && (
-            <ReferenceIdentityCard taste={watch.catalogTaste} />
-          )}
-        {collection.length === 0 &&
-          (!watch.catalogTaste ||
-            watch.catalogTaste.confidence === null ||
-            watch.catalogTaste.confidence < 0.5) && (
-            <p className="text-sm text-muted-foreground">
-              Add a few watches to see how this one fits your collection.
-            </p>
-          )}
-
-        {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails. Server-
-            Component siblings of <WatchDetail/> per the B1 sibling-composition
-            pattern (WatchDetail is 'use client' and CANNOT import RSCs). Render
-            unconditionally on viewer state; each rail self-hides via internal
-            rows.length === 0 guard (D-39b-07). */}
-        <SameFamilyRail rows={sameFamily} />
-        <LineageRail rows={lineage} />
-
-        {/* Phase 57 Plan 05 CMNT-01: CommentThread RSC sibling — uncached, in Suspense.
-            Rendered at the server tree level (NOT imported inside the 'use client' WatchDetail
-            island — B1 invariant). CommentThread fetches its own comment list internally.
-            viewerIsFollowing resolved server-side (GATE-03 / D-03 plan constraint). */}
+        {/* Phase 64 D-06: CommentThread MOVED UP — position 2, directly below the hero.
+            RSC sibling — uncached, in Suspense. NEVER imported into the client island.
+            DOM order = visual order (D-07: no CSS flex-reverse). */}
         <Suspense fallback={<CommentThreadSkeleton />}>
           <CommentThread
             viewerId={user.id}
@@ -370,6 +344,18 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
             suppressCompose={isOwner}
           />
         </Suspense>
+
+        {/* Phase 64 D-07: WatchDetailTrailing RSC sibling — spec cards AFTER comments. */}
+        <WatchDetailTrailing
+          watch={watch}
+          collection={collection}
+          preferences={preferences}
+          lastWornDate={lastWornDate}
+        />
+
+        {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails below spec cards. */}
+        <SameFamilyRail rows={sameFamily} />
+        <LineageRail rows={lineage} />
 
         {/* Phase 39b NSV-06 — Fresh-account 3-CTA block (Add to Wishlist /
             Add to Collection / Skip). Edit links use /w/ prefix (Phase 59 D-01).
@@ -551,11 +537,12 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
         {/* D-06: Full owned view rendered in place — same tree as Branch 1 same-user.
-            target.id is viewerOwnedRow.id (watches.id), NOT ref (catalogId). */}
-        <WatchDetail
+            target.id is viewerOwnedRow.id (watches.id), NOT ref (catalogId).
+            Phase 64 D-02/D-09: WatchDetailHero replaces monolithic WatchDetail island.
+            Empty-verdict states handled inside the hero — no duplicate siblings. */}
+        <WatchDetailHero
           watch={ownedWatch}
           collection={collection}
-          preferences={preferences}
           lastWornDate={lastWornDate}
           viewerCanEdit={isOwner}
           verdict={verdict}
@@ -573,28 +560,9 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           viewerIsFollowingForWears={false}
         />
 
-        {collection.length === 0 &&
-          ownedWatch.catalogTaste &&
-          ownedWatch.catalogTaste.confidence !== null &&
-          ownedWatch.catalogTaste.confidence >= 0.5 && (
-            <ReferenceIdentityCard taste={ownedWatch.catalogTaste} />
-          )}
-        {collection.length === 0 &&
-          (!ownedWatch.catalogTaste ||
-            ownedWatch.catalogTaste.confidence === null ||
-            ownedWatch.catalogTaste.confidence < 0.5) && (
-            <p className="text-sm text-muted-foreground">
-              Add a few watches to see how this one fits your collection.
-            </p>
-          )}
-
-        {/* RSC siblings — B1 invariant */}
-        <SameFamilyRail rows={ownedSameFamily} />
-        <LineageRail rows={ownedLineage} />
-
-        {/* OtherOwnersRoster and CatalogPageActions are cross-user-only (D-15/spike §4.D).
-            Phase 64 IA redesign will resolve this definitively. */}
-
+        {/* Phase 64 D-06: CommentThread MOVED UP — position 2, directly below the hero.
+            OtherOwnersRoster and CatalogPageActions are cross-user-only (D-15/spike §4.D)
+            — correctly absent on this owner branch. Phase 64 IA redesign resolves this. */}
         <Suspense fallback={<CommentThreadSkeleton />}>
           <CommentThread
             viewerId={user.id}
@@ -607,6 +575,18 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
             suppressCompose={true}
           />
         </Suspense>
+
+        {/* Phase 64 D-07: WatchDetailTrailing RSC sibling — spec cards AFTER comments. */}
+        <WatchDetailTrailing
+          watch={ownedWatch}
+          collection={collection}
+          preferences={preferences}
+          lastWornDate={lastWornDate}
+        />
+
+        {/* Rails below spec cards — B1 invariant */}
+        <SameFamilyRail rows={ownedSameFamily} />
+        <LineageRail rows={ownedLineage} />
 
         {collection.length === 0 && (
           <div className="flex flex-wrap gap-2">
