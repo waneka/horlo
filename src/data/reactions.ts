@@ -176,16 +176,19 @@ export interface WatchCounts {
  *     only visible when the viewer and the owner are mutual-follows. Otherwise
  *     commentCount is 0 (T-57-02 information-disclosure mitigation).
  *
- * Query budget:
+ * Query budget (constant 6 queries — no N+1, T-57-08):
  *   Q1 — watch rows (id, userId, status) via inArray
- *   Q2 — viewer→owners follows (only when foreign wishlist watches exist)
- *   Q3 — owners→viewer follows (only when foreign wishlist watches exist)
+ *   Q2 — viewer→owners follows (always runs)
+ *   Q3 — owners→viewer follows (always runs)
  *   Q4 — like counts grouped by watchId (all watchIds)
  *   Q5 — comment counts grouped by watchId (only allowedWatchIds)
  *   Q6 — viewer's liked set via inArray(watchLikes.watchId, watchIds) (Phase 63 D-11)
  *
- * When there are no foreign wishlist watches (all owned by viewer OR all
- * non-wishlist), Q2 and Q3 are skipped → ≤4 queries total (T-57-08).
+ * WR-02: Q2 and Q3 ALWAYS run (constant 6-query budget) — they are NOT
+ * conditionally skipped. When there are no foreign wishlist watches,
+ * `wishlistOwnerIds` is empty and `inArray([])` evaluates to `false` with no
+ * extra round-trip, so the budget stays constant without short-circuiting the
+ * calls. (See the inline comment at the Q2/Q3 site.)
  *
  * IMPORTANT: Auth must be resolved outside this function. Do NOT call
  * isMutualFollow in a loop (N+1). Use the two inArray follows queries +
