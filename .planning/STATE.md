@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: verifying
-stopped_at: Phase 64 UI-SPEC approved
-last_updated: "2026-05-27T23:20:42.245Z"
+status: executing
+stopped_at: Phase 64 Plan 02 complete
+last_updated: "2026-05-27T23:27:06.415Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 64 (Detail Page IA Redesign) — EXECUTING
-Plan: 1 of 4
-Status: Plan 01 complete — executing Plan 02
+Plan: 3 of 4
+Status: Plan 02 complete — executing Plan 03
 Next phase: 64 (Detail Page IA Redesign) — in progress
 Last activity: 2026-05-27
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Progress: [███░░░░░░░] 25%
 
 ### Key Decisions
 
+- **WatchDetailHero JSDoc prose must avoid "import.*CommentThread" word sequence** — the PAGE-03 static guard (`expect(content).not.toMatch(/import.*CommentThread/)`) is a full-content scan; prose in JSDoc matching the regex is a false-positive; reword to "CommentThread is NOT referenced in this file" (Phase 64 Plan 02).
 - **vi.hoisted() required for vitest mock error classes** — vi.mock factories are hoisted before top-level let/const initialization; error class stubs must live inside vi.hoisted() (Phase 61 Plan 01 lesson).
 - **getWatchPhotosForWatch has no userId param** — ownership resolved by RSC before calling; pure read by watchId; signing happens at page level per PATTERNS.md.
 - **Variant C is a hard cutover** (operator decision 2026-05-25) — legacy `/watch/[id]` + `/catalog/[catalogId]` routes are REMOVED (no redirect); un-migrated links fail loudly; CI guard is the completeness guarantee (ROUTE-03).
@@ -92,6 +93,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 64 Plan 01 COMPLETE. Extracted SpecsSublabel to shared RSC-compatible component; anchored CommentThread with id=comments; authored comment-thread-no-client.test.ts (PAGE-03 privacy guard, GREEN) and watch-detail-ia-order.test.ts (IA child-order guard, RED-by-design); repaired ppr-dynamic-before-use-cache.test.ts (createSupabaseServerClient → createSupabaseAdminClient, MAX_LOOKAHEAD 50→70). Build exits 0. Commits: f292101 + ab77205.
-Stopped at: Phase 64 Plan 01 complete
-Next action: Execute Phase 64 Plan 02 (WatchDetailHero island)
+Last activity: 2026-05-27 — Phase 64 Plan 02 COMPLETE. Created WatchDetailHero 'use client' island with 2-col grid (lg:grid-cols-[3fr_2fr]): WatchPhotoSection left, title/SpecsSublabel/CollectionFitCard verdict/LikeButton+jump-anchor/owner-actions right. B1 invariant holds (no CommentThread import). PAGE-03 + PAGE-04 static assertions GREEN. Build exits 0. Commit: 0868e12.
+Stopped at: Phase 64 Plan 02 complete
+Next action: Execute Phase 64 Plan 03 (WatchDetailTrailing RSC)
