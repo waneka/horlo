@@ -566,26 +566,28 @@ export function WatchDetailTrailing({ watch, collection, preferences, lastWornDa
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All four discretion items were resolved in `64-UI-SPEC.md` and are implemented in the Phase 64 plans (verified by gsd-plan-checker). Resolutions inlined below.
 
 1. **Verdict in hero when `verdict === null` (D-10 — planner discretion)**
    - What we know: `verdict` is `null` when `collection.length === 0`. The hero right column would be empty in this case.
    - What's unclear: Does `ReferenceIdentityCard` go inside the hero right column (replacing the verdict) or stays as a sibling below the hero? Does the 3-CTA block (`Add to Wishlist / Collection / Skip`) stay near the bottom or move into the hero?
-   - Recommendation: `ReferenceIdentityCard` in the hero right column when verdict is null and confidence >= 0.5; the "Add a few watches" caption in the hero right column when both are absent; 3-CTA block stays near the bottom (it's an action footer, not hero content).
+   - RESOLVED: `ReferenceIdentityCard` in the hero right column when verdict is null and confidence >= 0.5; the "Add a few watches to see how this one fits your collection." caption in the hero right column when both are absent; the 3-CTA block stays near the page bottom (it's an action footer, not hero content). Locked in UI-SPEC; implemented in Plan 64-02.
 
 2. **Gap-fill in hero vs trailing (D-11 — planner discretion)**
    - What we know: Gap-fill callout is currently in the island below the spec cards (line 517-544).
    - What's unclear: D-11 says lean is "pair with verdict in hero." If gap-fill goes in the hero, it needs to be part of `WatchDetailHero` props (verdict + gapFill computed).
-   - Recommendation: Keep gap-fill in `WatchDetailTrailing` (below comments, above notes). It is reference material like the spec cards, not a primary verdict-level insight.
+   - RESOLVED: Keep gap-fill in `WatchDetailTrailing` (below comments, above notes). It is reference material like the spec cards, not a primary verdict-level insight. Locked in UI-SPEC; implemented in Plan 64-03.
 
 3. **Owner actions placement (D-15 — planner discretion)**
    - What we know: Currently in the hero island (Mark Worn, Edit, Delete dialog). D-15 leaves it to planner: hero vs dedicated bottom footer.
-   - Recommendation: Keep in hero. They are contextual to the hero content and the owner-edit workflow. A bottom footer would require an additional client island or extending the trailing RSC to client.
+   - RESOLVED: Keep owner actions in the hero right column. They are contextual to the hero content and the owner-edit workflow; a bottom footer would require an additional client island or extending the trailing RSC to client. Locked in UI-SPEC; implemented in Plan 64-02 (gated by `viewerCanEdit`).
 
 4. **Desktop 2-col hero grid class**
    - What we know: Current `WatchDetail.tsx:173` uses `grid gap-8 lg:grid-cols-[2fr_1fr]` for photo+spec-rail. New hero needs a different ratio for photo+verdict.
    - What's unclear: D-01 says "carousel left, verdict + like + title right" — the ratio should favor the carousel (photo) more than the current 2fr/1fr. Common choices: `lg:grid-cols-[3fr_2fr]` or `lg:grid-cols-[60%_40%]`.
-   - Recommendation: `lg:grid-cols-[3fr_2fr]` — gives the carousel more real estate without making the verdict column too narrow.
+   - RESOLVED: `grid gap-8 lg:grid-cols-[3fr_2fr]` — gives the carousel more real estate without making the verdict column too narrow; collapses to single column below `lg` by CSS-grid default. Locked in UI-SPEC; implemented in Plan 64-02.
 
 ---
 
