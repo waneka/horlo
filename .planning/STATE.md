@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: executing
-stopped_at: Phase 63 Plan 02 complete
-last_updated: "2026-05-27T19:59:00.340Z"
+status: verifying
+stopped_at: Phase 63 Plan 03 complete — all 3 plans done, ready for phase verification
+last_updated: "2026-05-27T20:30:00.000Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 20
-  percent: 95
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 Phase: 63 (Inline Grid Engagement) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Next phase: 63 (Inline Grid Engagement) — next incomplete in ROADMAP
 Last activity: 2026-05-27
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [██████████] 95%
 - **Q6 single inArray query for viewer liked set** — `inArray(watchLikes.watchId, watchIds) + eq(watchLikes.userId, viewerId)` is a single batched query; `viewerLikedSet = new Set(rows.map(r => r.watchId))`; no N+1 (Phase 63 Plan 01).
 - **canComment reuses existing allowedSet** — `getBatchedWatchCounts` already computes `allowedSet` for Q5 comment-count gate; `canComment = allowedSet.has(id)` adds zero new queries (Phase 63 Plan 01).
 - **D-12 gap closed in both engagement actions** — `revalidateTag('viewer:{user.id}:counts','max')` added inside `if(ownerProfile?.username)` block in `toggleLikeAction` and `addCommentAction`; matches `getBatchedWatchCountsCached` cacheTag scope (Phase 63 Plan 01).
+- **text-destructive used for liked Heart chip** — no-raw-palette test forbids `text-red-\d`; `text-destructive` is the design token matching LikeButton; plan specified `text-red-400` but test enforcement required the token (Phase 63 Plan 03 Rule 1 auto-fix).
 
 ### Pending Todos
 
@@ -89,6 +90,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 63 Plan 02 COMPLETE. WatchCommentSheet compose-only bottom sheet created; GRID-04 boundary enforced (no CommentList/CommentThread); watch-target addCommentAction wired; composeKey re-mount clear-on-success only (D-08); success delegates to parent onSuccess() (D-07); build exits 0. Commit: da8c97d.
-Stopped at: Phase 63 Plan 02 complete
-Next action: Execute 63-03-PLAN.md
+Last activity: 2026-05-27 — Phase 63 Plan 03 COMPLETE. viewerId + liked/canComment threaded from page.tsx RSC through CollectionTabContent + WishlistTabContent into ProfileWatchCard. Overlay ♥/💬 pill chips with scrim (bg-black/55), 44px touch targets, optimistic like (silent rollback on failure), WatchCommentSheet wiring, and canComment gate added to non-owner grid cards. Owner static count line unchanged. Auto-fix: text-destructive used instead of text-red-400 (no-raw-palette test). Commits: e977e25 + 3dd1c84. Build exits 0.
+Stopped at: Phase 63 Plan 03 complete — all 3 plans done, ready for phase verification
+Next action: Phase verification / deploy to prod
