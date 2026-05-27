@@ -223,22 +223,27 @@ export function ProfileWatchCard({
           {showWishlistMeta && watch.notes && (
             <p className="line-clamp-2 text-xs text-muted-foreground">Notes: {watch.notes}</p>
           )}
-          {/* D-09 / DISP-01: like + comment count line. Whole line removed when both zero. */}
-          {((likeCount ?? 0) > 0 || (commentCount ?? 0) > 0) && (
+          {/* D-09 / DISP-01: like + comment count line. Whole line removed when both zero.
+              WR-01: driven from the SAME optimistic state the non-owner chips use
+              (likeCountState/commentCountState) — NOT the raw likeCount/commentCount
+              props — so a non-owner who likes/comments never sees this static line
+              disagree with the overlay chip. Owners are seeded from the same props,
+              so the owner path (D-03) is unchanged. */}
+          {(likeCountState > 0 || commentCountState > 0) && (
             <p className="text-xs text-muted-foreground tabular-nums flex items-center gap-1">
-              {(likeCount ?? 0) > 0 && (
+              {likeCountState > 0 && (
                 <>
                   <Heart className="size-3" aria-hidden />
-                  {likeCount}
+                  {likeCountState}
                 </>
               )}
-              {(likeCount ?? 0) > 0 && (commentCount ?? 0) > 0 && (
+              {likeCountState > 0 && commentCountState > 0 && (
                 <span className="mx-1">·</span>
               )}
-              {(commentCount ?? 0) > 0 && (
+              {commentCountState > 0 && (
                 <>
                   <MessageCircle className="size-3" aria-hidden />
-                  {commentCount}
+                  {commentCountState}
                 </>
               )}
             </p>
