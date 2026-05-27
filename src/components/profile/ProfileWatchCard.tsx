@@ -151,15 +151,15 @@ export function ProfileWatchCard({
               {isWornToday ? 'Worn today' : 'Not worn recently'}
             </span>
           )}
-          {/* Non-owner engagement chips — D-03: gated on !isOwner; D-01: bottom-2 left-2 */}
+          {/* Non-owner engagement chips — D-03: gated on !isOwner.
+              UAT-revised D-01: bottom-RIGHT circular chips, no scrim band; each chip carries its
+              own solid dark circle for photo-independent legibility. */}
           {!isOwner && (
             <>
-              {/* Scrim: full-width bottom strip behind chips; pointer-events-none so
-                  image taps pass through and the wrapping <Link> still navigates (D-02) */}
-              <div className="absolute inset-x-0 bottom-0 h-12 bg-black/55 pointer-events-none" />
-              {/* Chip row — z-10 so chips are above scrim and receive pointer events */}
-              <div className="absolute bottom-2 left-2 z-10 flex gap-2">
-                {/* ♥ Like chip — always visible for non-owner (D-04); optimistic flip (LikeButton pattern) */}
+              {/* Chip row — bottom-right; z-10 so chips sit above the image and receive taps (D-02). */}
+              <div className="absolute bottom-2 right-2 z-10 flex gap-1.5">
+                {/* ♥ Like chip — always visible for non-owner (D-04); optimistic flip (LikeButton pattern).
+                    Centered icon in a circle when no count; expands to a pill when a count shows. */}
                 <button
                   type="button"
                   aria-pressed={likedState}
@@ -168,14 +168,15 @@ export function ProfileWatchCard({
                   disabled={likePending}
                   onClick={handleLikeClick}
                   className={cn(
-                    'rounded-full bg-black/30 px-2 py-1 flex items-center gap-1',
-                    'text-white text-xs tabular-nums min-h-[44px] min-w-[44px]',
+                    'inline-flex h-8 items-center justify-center rounded-full bg-black/55',
+                    'text-white text-xs tabular-nums',
+                    likedState || likeCountState > 0 ? 'gap-1 px-2.5' : 'w-8',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     likePending && 'opacity-50 cursor-wait',
                   )}
                 >
                   <Heart
-                    className={cn('size-4', likedState ? 'text-destructive' : 'text-white/90')}
+                    className={cn('size-3.5', likedState ? 'text-destructive' : 'text-white/90')}
                     fill={likedState ? 'currentColor' : 'none'}
                   />
                   {(likedState || likeCountState > 0) && (
@@ -188,9 +189,14 @@ export function ProfileWatchCard({
                     type="button"
                     aria-label="Add a comment"
                     onClick={handleCommentClick}
-                    className="rounded-full bg-black/30 px-2 py-1 flex items-center gap-1 text-white text-xs tabular-nums min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className={cn(
+                      'inline-flex h-8 items-center justify-center rounded-full bg-black/55',
+                      'text-white text-xs tabular-nums',
+                      commentCountState > 0 ? 'gap-1 px-2.5' : 'w-8',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    )}
                   >
-                    <MessageCircle className="size-4 text-white/90" />
+                    <MessageCircle className="size-3.5 text-white/90" />
                     {commentCountState > 0 && <span>{commentCountState}</span>}
                   </button>
                 )}

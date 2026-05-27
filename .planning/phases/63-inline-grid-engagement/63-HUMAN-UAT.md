@@ -3,7 +3,7 @@ status: partial
 phase: 63-inline-grid-engagement
 source: [63-VERIFICATION.md]
 started: 2026-05-27T20:28:29Z
-updated: 2026-05-27T20:28:29Z
+updated: 2026-05-27T21:24:28Z
 ---
 
 ## Current Test
@@ -52,5 +52,18 @@ issues: 0
 pending: 8
 skipped: 0
 blocked: 0
+
+## Design Revisions (from prod UAT)
+
+### R1 — Chip visual treatment (cosmetic; revises D-01) — RESOLVED, redeployed
+reported: "visually it looks bad. remove the grey band at the bottom of the images, the grey circles are enough for legibility. center the heart/chat icons in the circle when there's no count. move them to the bottom right corner of the image. make them smaller, maybe 20% or so"
+changes:
+  - Removed the full-width `bg-black/55` scrim band at the bottom of the image
+  - Each chip now carries its own solid `bg-black/55` circle (photo-independent legibility)
+  - No-count state renders a centered icon in a circle (`w-8`); count state expands to a pill (`px-2.5`)
+  - Moved chips from bottom-left → bottom-right (`bottom-2 right-2`)
+  - Shrunk: chip 44px → 32px (`h-8`), icon 16px → 14px (`size-3.5`)
+note: deliberate touch-target reduction below the prior 44px (WCAG 2.5.5) per user request; acceptable for personal app
+status: resolved (build exit 0, redeployed for re-verification)
 
 ## Gaps
