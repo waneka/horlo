@@ -592,17 +592,50 @@ export async function getPublicWearPicsForWatch(
 
 // ---------------------------------------------------------------------------
 // Phase 62 — WPIC-02 (D-11)
-// Sets hidden_from_detail on a single wear event row.
+// Sets hidden_from_detail=true/false on a single wear event row.
 // Called by hideWearPicAction / unhideWearPicAction in src/app/actions/wearEvents.ts.
-// NOTE: Stub for Wave 0 test collection. Full implementation (with ownership
-// double-check at the DB layer) in Plan 03.
+//
+// Ownership is enforced at the DB layer via a correlated subquery so that
+// even if the caller bypasses the server action ownership re-check, a
+// cross-user update cannot succeed (defense in depth, T-62-04).
+//
+// The subquery gates the UPDATE on:
+//   wearEvents.id = wearEventId
+//   AND wearEvents.watch_id = watchId
+//   AND wearEvents.watch_id IN (SELECT id FROM watches WHERE user_id = userId)
+//
+// Note: visibility is NEVER written (D-11 constraint a / T-62-07).
 // ---------------------------------------------------------------------------
-export async function setWearPicHidden(
+export async function hideWearPic(
+  userId: string,
+  watchId: string,
   wearEventId: string,
-  hidden: boolean,
 ): Promise<void> {
   await db
     .update(wearEvents)
-    .set({ hiddenFromDetail: hidden })
-    .where(eq(wearEvents.id, wearEventId))
+    .set({ hiddenFromDetail: true })
+    .where(
+      and(
+        eq(wearEvents.id, wearEventId),
+        eq(wearEvents.watchId, watchId),
+        sql`${wearEvents.watchId} IN (SELECT id FROM watches WHERE user_id = ${userId})`,
+      ),
+    )
+}
+
+export async function unhideWearPic(
+  userId: string,
+  watchId: string,
+  wearEventId: string,
+): Promise<void> {
+  await db
+    .update(wearEvents)
+    .set({ hiddenFromDetail: false })
+    .where(
+      and(
+        eq(wearEvents.id, wearEventId),
+        eq(wearEvents.watchId, watchId),
+        sql`${wearEvents.watchId} IN (SELECT id FROM watches WHERE user_id = ${userId})`,
+      ),
+    )
 }
