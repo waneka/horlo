@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: verifying
-stopped_at: Phase 62 Plan 05 complete — WPIC-06 on-photo overlay code done; prod re-check (UAT Test 4) HUMAN-NEEDED
-last_updated: "2026-05-27T16:30:00.000Z"
+status: ready
+stopped_at: Phase 62 COMPLETE — verification passed (6/6); prod UAT Test 4 approved; CR-01 gap-review regression fixed (714e2ba). Next: plan Phase 63.
+last_updated: "2026-05-27T17:00:00.000Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 6
@@ -21,16 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 62 — public-wear-pics-on-watch-detail
+**Current focus:** Phase 63 — inline-grid-engagement (next; depends on Phase 59 only)
 
 ## Current Position
 
-Phase: 62 (public-wear-pics-on-watch-detail) — COMPLETE (code); prod UAT Test 4 re-check HUMAN-NEEDED
-Plan: 5 of 5 (gap-closure plan; all plans complete)
-Status: Phase complete — awaiting prod visual re-check (WPIC-06 on-photo overlay)
+Phase: 62 (public-wear-pics-on-watch-detail) — COMPLETE & VERIFIED (6/6); prod UAT Test 4 approved 2026-05-27
+Plan: 5 of 5 complete (gap-closure 62-05 + CR-01/WR-01/WR-02 review fix 714e2ba)
+Status: Phase 62 done — ready to plan Phase 63 (Inline Grid Engagement)
+Next phase: 63 (Inline Grid Engagement) — next incomplete in ROADMAP
 Last activity: 2026-05-27
 
-Progress: [██████████] 100%
+Progress: 4/6 phases complete [███████···] 67%
 
 ## Performance Metrics
 
@@ -85,6 +86,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 62 Plan 05 COMPLETE (code). WPIC-06 UAT Test 4 gap closed: social controls relocated from standalone below-carousel row to per-slide bottom-right on-photo overlay inside wear-pic slide map. JSX-position-only change (WatchPhotoSection.tsx). Build exits 0; 56/56 unit tests green. Commit: 5e6f136.
-Stopped at: Phase 62 Plan 05 complete — WPIC-06 on-photo overlay code done; prod re-check (UAT Test 4) HUMAN-NEEDED
-Next action: Push to prod (push origin main → Vercel), wait for cache to fill, then manually re-check UAT Test 4 (on-photo overlay discoverability, badge no-collision, functional parity, no #418/#419)
+Last activity: 2026-05-27 — Phase 62 COMPLETE & VERIFIED (6/6). WPIC-06 UAT Test 4 gap closed (62-05): social controls relocated to per-slide bottom-right on-photo overlay (5e6f136). User approved prod re-check. Gap-closure code review found CR-01 (per-slide comment button opened the sheet for activeWearPic, not the clicked wp → wrong-pic on keyboard/AT/partial-drag); fixed in 714e2ba by binding the sheet to the clicked slide (sheetWearEventId/sheetWearPic) + gating off-screen overlays (pointer-events-none/aria-hidden/tabIndex). Build exits 0; 56/56 unit tests green; verification passed. 62-UAT.md=resolved (7/7), 62-HUMAN-UAT.md=complete (6/6), debug session resolved.
+Stopped at: Phase 62 done — ready to plan Phase 63.
+Next action: /gsd-discuss-phase 63 (or /gsd-plan-phase 63). NOTE: CR-01 fix (714e2ba) must reach prod — push origin main if not already deployed.
