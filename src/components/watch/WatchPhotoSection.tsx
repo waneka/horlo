@@ -217,8 +217,14 @@ export function WatchPhotoSection({
     () => Object.fromEntries(wearPicsProp.map((p) => [p.wearEventId, p.commentCount])),
   )
 
-  // Comment sheet state — one sheet serves the active wear-pic slide.
+  // Comment sheet state — one sheet serves the wear-pic whose button was clicked.
   const [commentSheetOpen, setCommentSheetOpen] = useState(false)
+  // CR-01/WR-02: the sheet's target wear event, set explicitly by the clicked
+  // slide's comment button — NOT derived from selectedIndex (the carousel
+  // position). A non-active slide's button (keyboard/AT focus, partial drag)
+  // must open the sheet for ITS OWN wear pic, not whichever slide embla
+  // currently considers selected.
+  const [sheetWearEventId, setSheetWearEventId] = useState<string | null>(null)
 
   // WR-04: reset localUploadCount when the RSC re-renders with fresh photos (i.e.,
   // when revalidatePath has flushed and the `photos` prop reflects the new rows).
@@ -419,6 +425,13 @@ export function WatchPhotoSection({
   const isWearPicSlide = selectedIndex >= ownerSlideCount && wearPicSlideCount > 0
   const activeWearPic = isWearPicSlide ? visibleWearPics[selectedIndex - ownerSlideCount] : null
 
+  // CR-01/WR-02: the comment sheet renders against the wear pic whose button was
+  // clicked (sheetWearEventId), independent of which slide embla considers active.
+  // Falls back to activeWearPic when no button has been clicked yet (or its target
+  // was removed) so the host guard still behaves sensibly.
+  const sheetWearPic =
+    visibleWearPics.find((p) => p.wearEventId === sheetWearEventId) ?? activeWearPic
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -480,7 +493,14 @@ export function WatchPhotoSection({
             {/* Phase 62 Plan 04 WPIC-01: wear-pic slides appended after owner photos.
                 Each slide carries a "Worn · [date]" badge (D-07 / React #418).
                 Badge is absolute-positioned bottom-left; no badge on owner/catalog slides. */}
-            {visibleWearPics.map((wp, idx) => (
+            {visibleWearPics.map((wp, idx) => {
+              // WR-01: only the active wear slide's overlay should be interactive
+              // and in the tab/AT order. Inactive slides are merely clipped by the
+              // embla viewport's overflow-hidden — without this gate their
+              // like/comment controls remain focusable off-screen and a comment
+              // button can be activated for a slide that is not the active one.
+              const isActiveWearSlide = selectedIndex - ownerSlideCount === idx
+              return (
               <div key={wp.wearEventId} className="flex-none w-full h-full relative">
                 {wp.signedUrl ? (
                   <Image
@@ -510,7 +530,15 @@ export function WatchPhotoSection({
                     onClick on both controls — NOT onPointerDown (fresh-per-interaction,
                     not a one-shot stale-instance toggle; per MEMORY project_router_cache_stale_instance). */}
                 <div
-                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-full px-1"
+                  className={cn(
+                    'absolute bottom-2 right-2 flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-full px-1',
+                    // WR-01: take non-active overlays out of the interactive path so
+                    // off-screen slides can't be clicked/dragged into the wrong sheet.
+                    !isActiveWearSlide && 'pointer-events-none',
+                  )}
+                  // WR-01: hide off-screen overlays from assistive tech so the AT user
+                  // doesn't traverse like/comment controls for slides they can't see.
+                  aria-hidden={!isActiveWearSlide}
                   role="group"
                   aria-label="Wear photo interactions"
                 >
@@ -527,7 +555,17 @@ export function WatchPhotoSection({
                         ? `View ${wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount} comment${(wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount) === 1 ? '' : 's'}`
                         : 'Add a comment'
                     }
-                    onClick={() => setCommentSheetOpen(true)}
+                    // WR-01: remove the off-screen slides' comment button from tab order.
+                    tabIndex={isActiveWearSlide ? undefined : -1}
+                    // CR-01/WR-02: set the sheet's target to THIS slide's wear event
+                    // before opening — the label and the action now derive from the
+                    // same wp, so they cannot drift onto activeWearPic's wrong thread.
+                    // onClick (NOT onPointerDown) — fresh-per-interaction, per MEMORY
+                    // project_router_cache_stale_instance.
+                    onClick={() => {
+                      setSheetWearEventId(wp.wearEventId)
+                      setCommentSheetOpen(true)
+                    }}
                     className="inline-flex items-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
@@ -539,7 +577,8 @@ export function WatchPhotoSection({
                   </button>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -593,13 +632,13 @@ export function WatchPhotoSection({
       {/* Phase 62 Plan 04 WPIC-06: Wear-pic comment bottom sheet.
           WearCommentHost client component — no 'use cache' anywhere in this path (T-62-16).
           initialComments pre-fetched by page RSC (Option A); onCountChange keeps badge in sync. */}
-      {activeWearPic && (
+      {sheetWearPic && (
         <WearCommentHost
           variant="bottom-sheet"
-          wearEventId={activeWearPic.wearEventId}
+          wearEventId={sheetWearPic.wearEventId}
           open={commentSheetOpen}
           onOpenChange={setCommentSheetOpen}
-          initialComments={activeWearPic.initialComments}
+          initialComments={sheetWearPic.initialComments}
           canComment={canCommentOnWears}
           ownerFollowsViewer={ownerFollowsViewerForWears}
           viewerIsFollowing={viewerIsFollowingForWears}
@@ -610,7 +649,7 @@ export function WatchPhotoSection({
           onCountChange={(delta) => {
             setWearPicCommentCounts((prev) => ({
               ...prev,
-              [activeWearPic.wearEventId]: (prev[activeWearPic.wearEventId] ?? activeWearPic.commentCount) + delta,
+              [sheetWearPic.wearEventId]: (prev[sheetWearPic.wearEventId] ?? sheetWearPic.commentCount) + delta,
             }))
           }}
         />
