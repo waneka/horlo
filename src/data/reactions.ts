@@ -158,6 +158,8 @@ export async function getLikesForTargetCached(
 export interface WatchCounts {
   likeCount: number
   commentCount: number
+  liked: boolean       // NEW — viewer has liked this watch (seeded by Q6)
+  canComment: boolean  // NEW — viewer is allowed to comment (= allowedSet membership)
 }
 
 // ---------------------------------------------------------------------------
@@ -165,8 +167,8 @@ export interface WatchCounts {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a Map<watchId, {likeCount, commentCount}> for every watchId in the
- * input list using a CONSTANT number of DB queries (≤5, no N+1).
+ * Returns a Map<watchId, {likeCount, commentCount, liked, canComment}> for every
+ * watchId in the input list using a CONSTANT number of DB queries (≤6, no N+1).
  *
  * Gate logic (D-10 / GATE-02):
  *   - Likes are open to all viewers (GATE-02).
@@ -180,9 +182,10 @@ export interface WatchCounts {
  *   Q3 — owners→viewer follows (only when foreign wishlist watches exist)
  *   Q4 — like counts grouped by watchId (all watchIds)
  *   Q5 — comment counts grouped by watchId (only allowedWatchIds)
+ *   Q6 — viewer's liked set via inArray(watchLikes.watchId, watchIds) (Phase 63 D-11)
  *
  * When there are no foreign wishlist watches (all owned by viewer OR all
- * non-wishlist), Q2 and Q3 are skipped → ≤3 queries total (T-57-08).
+ * non-wishlist), Q2 and Q3 are skipped → ≤4 queries total (T-57-08).
  *
  * IMPORTANT: Auth must be resolved outside this function. Do NOT call
  * isMutualFollow in a loop (N+1). Use the two inArray follows queries +
@@ -281,13 +284,24 @@ export async function getBatchedWatchCounts(
     }
   }
 
+  // Q6: viewer's liked set — which watchIds has the viewer already liked?
+  // Single inArray query — NOT a per-watch loop (Anti-Pattern: N+1 for liked, RESEARCH Pitfall 6)
+  const viewerLikedRows = await db
+    .select({ watchId: watchLikes.watchId })
+    .from(watchLikes)
+    .where(and(eq(watchLikes.userId, viewerId), inArray(watchLikes.watchId, watchIds)))
+  const viewerLikedSet = new Set(viewerLikedRows.map((r) => r.watchId))
+
   // Build the result Map: every input watchId must have an entry (default 0).
   // commentCount is 0 by default for gated watches (D-10 enforcement).
+  // liked: from Q6 viewer liked set; canComment: from existing allowedSet (zero new queries).
   const result = new Map<string, WatchCounts>()
   for (const id of watchIds) {
     result.set(id, {
       likeCount: likeCountMap.get(id) ?? 0,
       commentCount: commentCountMap.get(id) ?? 0,
+      liked: viewerLikedSet.has(id),      // NEW — from Q6
+      canComment: allowedSet.has(id),     // NEW — allowedSet already computed above
     })
   }
 

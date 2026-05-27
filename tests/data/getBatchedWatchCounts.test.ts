@@ -121,7 +121,7 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
   it('DISP-01: returns commentCount:0 for a gated wishlist watch (non-mutual viewer)', async () => {
     const watchIds = [wishlistWatchId]
 
-    // Mock queue (per RESEARCH Pattern 5: ≤5 queries):
+    // Mock queue (per RESEARCH Pattern 5: ≤6 queries after Q6 addition):
     // 1. Watch rows query: returns [{ id: wishlistWatchId, userId: ownerId, status: 'wishlist' }]
     mockResultQueue.push([{ id: wishlistWatchId, userId: ownerId, status: 'wishlist' }])
     // 2. viewer→owners follows: returns [] (viewer does NOT follow owner)
@@ -133,6 +133,8 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
     // 5. comment counts batch: returns [{ watchId: wishlistWatchId, count: 5 }]
     //    but the gate logic must zero it out for non-mutual
     mockResultQueue.push([{ watchId: wishlistWatchId, count: 5 }])
+    // 6. Q6 NEW — viewer's watch_likes (empty = viewer has not liked)
+    mockResultQueue.push([])
 
     const result = await getBatchedWatchCounts(viewerId, watchIds)
 
@@ -158,6 +160,8 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
     mockResultQueue.push([{ watchId: watchId1, count: 2 }])
     // 5. Comment counts
     mockResultQueue.push([{ watchId: watchId1, count: 4 }])
+    // 6. Q6 NEW — viewer's watch_likes (empty = viewer has not liked)
+    mockResultQueue.push([])
 
     const result = await getBatchedWatchCounts(viewerId, watchIds)
 
@@ -178,6 +182,8 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
     mockResultQueue.push([])
     mockResultQueue.push([{ watchId: wishlistWatchId, count: 1 }])
     mockResultQueue.push([{ watchId: wishlistWatchId, count: 7 }])
+    // 6. Q6 NEW — viewer's watch_likes (empty)
+    mockResultQueue.push([])
 
     const result = await getBatchedWatchCounts(viewerId, watchIds)
 
@@ -189,12 +195,12 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
   // DISP-01 N+1: issues a constant number of DB queries regardless of watchIds.length
   // Per RESEARCH Pattern 5: ≤5 queries total (watches, viewer→owners, owners→viewer,
   // like counts, comment counts). NOT one query per watch.
-  it('DISP-01: NO N+1 — issues ≤5 queries for a 50-watch batch (not proportional to length)', async () => {
+  it('DISP-01: NO N+1 — issues ≤6 queries for a 50-watch batch (not proportional to length)', async () => {
     const fiftyWatchIds = Array.from({ length: 50 }, (_, i) =>
       `${String(i).padStart(8, '0')}-0000-4000-8000-000000000000`
     )
 
-    // Queue enough results for ≤5 db.select() calls.
+    // Queue enough results for ≤6 db.select() calls (Q1–Q5 existing + Q6 viewer liked set).
     // Each returns an empty array for simplicity (we only count calls, not result shape).
     for (let i = 0; i < 10; i++) {
       mockResultQueue.push([])
@@ -205,7 +211,7 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
     // Count db.select() invocations
     const selectCalls = calls.filter((c) => c.op === 'select')
     // ASSERT: constant query count — NOT 50 (one per watch)
-    expect(selectCalls.length).toBeLessThanOrEqual(5)
+    expect(selectCalls.length).toBeLessThanOrEqual(6)
     // Sanity: it must have issued at least 1 query
     expect(selectCalls.length).toBeGreaterThanOrEqual(1)
   })
@@ -214,6 +220,7 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
   it('DISP-01: returns a Map<string, WatchCounts>', async () => {
     const watchIds = [watchId1, watchId2]
 
+    // 10 slots covers Q1–Q6 for 2 watches plus extras
     for (let i = 0; i < 10; i++) {
       mockResultQueue.push([])
     }
@@ -254,6 +261,8 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
       { watchId: watchId1, count: 3 },
       { watchId: wishlistWatchId, count: 8 },
     ])
+    // 6. Q6 NEW — viewer's watch_likes (empty = viewer has not liked any)
+    mockResultQueue.push([])
 
     const result = await getBatchedWatchCounts(viewerId, watchIds)
 
@@ -265,5 +274,51 @@ describe('getBatchedWatchCounts — DISP-01 / D-10 leak guard (Wave 0 RED)', () 
     const wishlistCounts = result.get(wishlistWatchId)
     expect(wishlistCounts?.commentCount).toBe(0)
     expect(wishlistCounts?.likeCount).toBe(5) // likes still open
+  })
+
+  // D-11: liked:true when Q6 returns viewer liked row
+  it('D-11: returns liked:true when Q6 returns viewer liked row', async () => {
+    const watchIds = [watchId1]
+
+    mockResultQueue.push([{ id: watchId1, userId: ownerId, status: 'owned' }]) // Q1
+    mockResultQueue.push([])                                                     // Q2
+    mockResultQueue.push([])                                                     // Q3
+    mockResultQueue.push([{ watchId: watchId1, count: 2 }])                    // Q4
+    mockResultQueue.push([{ watchId: watchId1, count: 0 }])                    // Q5
+    mockResultQueue.push([{ watchId: watchId1 }])                               // Q6 — viewer liked this watch
+
+    const result = await getBatchedWatchCounts(viewerId, watchIds)
+    expect(result.get(watchId1)?.liked).toBe(true)
+    expect(result.get(watchId1)?.canComment).toBe(true)  // non-wishlist = allowed
+  })
+
+  // D-11: liked:false when viewer has not liked the watch
+  it('D-11: returns liked:false when viewer has not liked the watch', async () => {
+    const watchIds = [watchId1]
+
+    mockResultQueue.push([{ id: watchId1, userId: ownerId, status: 'owned' }]) // Q1
+    mockResultQueue.push([])                                                     // Q2
+    mockResultQueue.push([])                                                     // Q3
+    mockResultQueue.push([])                                                     // Q4 no likes
+    mockResultQueue.push([])                                                     // Q5 no comments
+    mockResultQueue.push([])                                                     // Q6 viewer not liked
+
+    const result = await getBatchedWatchCounts(viewerId, watchIds)
+    expect(result.get(watchId1)?.liked).toBe(false)
+  })
+
+  // D-11/GRID-05: canComment:false for gated wishlist watch (non-mutual viewer)
+  it('D-11/GRID-05: returns canComment:false for gated wishlist watch (non-mutual viewer)', async () => {
+    const watchIds = [wishlistWatchId]
+
+    mockResultQueue.push([{ id: wishlistWatchId, userId: otherOwnerId, status: 'wishlist' }]) // Q1
+    mockResultQueue.push([])                                                                    // Q2 viewer does not follow owner
+    mockResultQueue.push([])                                                                    // Q3 owner does not follow viewer
+    mockResultQueue.push([])                                                                    // Q4
+    mockResultQueue.push([])                                                                    // Q5
+    mockResultQueue.push([])                                                                    // Q6
+
+    const result = await getBatchedWatchCounts(viewerId, watchIds)
+    expect(result.get(wishlistWatchId)?.canComment).toBe(false)
   })
 })
