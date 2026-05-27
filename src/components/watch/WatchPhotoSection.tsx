@@ -503,6 +503,41 @@ export function WatchPhotoSection({
                     day: 'numeric',
                   })}
                 </span>
+                {/* Phase 62 Plan 05 WPIC-06: per-slide bottom-right social overlay.
+                    Anchored bottom-RIGHT; badge stays bottom-LEFT — no collision.
+                    Scrim matches badge/arrow token chain (bg-background/80 backdrop-blur-sm)
+                    so bare icons stay legible over light AND dark photos.
+                    onClick on both controls — NOT onPointerDown (fresh-per-interaction,
+                    not a one-shot stale-instance toggle; per MEMORY project_router_cache_stale_instance). */}
+                <div
+                  className="absolute bottom-2 right-2 flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-full px-1"
+                  role="group"
+                  aria-label="Wear photo interactions"
+                >
+                  <LikeButton
+                    viewerId={viewerId}
+                    target={{ type: 'wear', id: wp.wearEventId }}
+                    initialLiked={wp.initialLikeState.liked}
+                    initialCount={wp.initialLikeState.count}
+                  />
+                  <button
+                    type="button"
+                    aria-label={
+                      (wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount) > 0
+                        ? `View ${wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount} comment${(wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount) === 1 ? '' : 's'}`
+                        : 'Add a comment'
+                    }
+                    onClick={() => setCommentSheetOpen(true)}
+                    className="inline-flex items-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
+                    {(wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount) > 0 && (
+                      <span className="text-sm tabular-nums text-muted-foreground">
+                        {wearPicCommentCounts[wp.wearEventId] ?? wp.commentCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -552,44 +587,6 @@ export function WatchPhotoSection({
           >
             {selectedIndex + 1} / {totalSlides}
           </p>
-        </div>
-      )}
-
-      {/* -------------------------------------------------------------------- */}
-      {/* Phase 62 Plan 04 WPIC-06: Inline social row — like + comment count.  */}
-      {/* Renders ONLY on active wear-pic slides (CSS Chain Assertion 4: use    */}
-      {/* conditional render, NOT visibility:hidden, so no gap on owner slides). */}
-      {/* -------------------------------------------------------------------- */}
-      {isWearPicSlide && activeWearPic && (
-        <div
-          role="group"
-          aria-label="Wear photo interactions"
-          className="flex items-center gap-2 w-full max-w-md"
-        >
-          <LikeButton
-            viewerId={viewerId}
-            target={{ type: 'wear', id: activeWearPic.wearEventId }}
-            initialLiked={activeWearPic.initialLikeState.liked}
-            initialCount={activeWearPic.initialLikeState.count}
-          />
-          {/* Comment count button — opens the comment bottom sheet */}
-          <button
-            type="button"
-            aria-label={
-              (wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount) > 0
-                ? `View ${wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount} comment${(wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount) === 1 ? '' : 's'}`
-                : 'Add a comment'
-            }
-            onClick={() => setCommentSheetOpen(true)}
-            className="inline-flex items-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
-            {(wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount) > 0 && (
-              <span className="text-sm tabular-nums text-muted-foreground">
-                {wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount}
-              </span>
-            )}
-          </button>
         </div>
       )}
 
