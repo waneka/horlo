@@ -374,8 +374,8 @@ export async function ProfileTabContent({
     const watchIds = rawWatches.map((w) => w.id)
     const countsMap = viewerId !== null
       ? await getBatchedWatchCountsCached(viewerId, watchIds, profile.username)
-      : new Map<string, { likeCount: number; commentCount: number }>()
-    const counts: Record<string, { likeCount: number; commentCount: number }> =
+      : new Map<string, { likeCount: number; commentCount: number; liked: boolean; canComment: boolean }>()
+    const counts: Record<string, { likeCount: number; commentCount: number; liked: boolean; canComment: boolean }> =
       Object.fromEntries(countsMap)
     const watches = await signCoverUrls(rawWatches)
     const ownedWatches = watches.filter((w) => w.status === 'owned')
@@ -388,6 +388,7 @@ export async function ProfileTabContent({
           isOwner={isOwner}
           hasUrlExtract={hasUrlExtract}
           counts={counts}
+          viewerId={viewerId}
         />
       )
     }
@@ -401,6 +402,7 @@ export async function ProfileTabContent({
           isOwner={isOwner}
           username={profile.username}
           counts={counts}
+          viewerId={viewerId}
         />
       )
     }

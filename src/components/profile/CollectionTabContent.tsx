@@ -27,7 +27,9 @@ interface CollectionTabContentProps {
   hasUrlExtract: boolean
   /** DISP-01: batched like + comment counts resolved once per grid in ProfileTabContent.
    *  Key: watchId. Values passed per card to ProfileWatchCard. */
-  counts?: Record<string, { likeCount: number; commentCount: number }>
+  counts?: Record<string, { likeCount: number; commentCount: number; liked: boolean; canComment: boolean }>
+  /** D-03/D-04: viewer's own id for chip gate + anon-bounce; threaded from page.tsx RSC. */
+  viewerId?: string | null
 }
 
 export function CollectionTabContent({
@@ -36,6 +38,7 @@ export function CollectionTabContent({
   isOwner,
   hasUrlExtract,
   counts,
+  viewerId,
 }: CollectionTabContentProps) {
   const pathname = usePathname() ?? ''
   // Phase 28 D-08 — capture entry pathname so the Add-Watch flow can
@@ -187,8 +190,12 @@ export function CollectionTabContent({
             key={watch.id}
             watch={watch}
             lastWornDate={wearDates[watch.id] ?? null}
+            isOwner={isOwner}
+            viewerId={viewerId}
             likeCount={counts?.[watch.id]?.likeCount}
             commentCount={counts?.[watch.id]?.commentCount}
+            liked={counts?.[watch.id]?.liked}
+            canComment={counts?.[watch.id]?.canComment}
           />
         ))}
         {/* AddWatchCard removed from grid end — button above the grid owns the CTA (D-06, PLSH-05) */}

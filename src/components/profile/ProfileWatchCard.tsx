@@ -16,6 +16,10 @@ interface ProfileWatchCardProps {
   showWishlistMeta?: boolean // when true, show targetPrice + notes preview (Wishlist tab)
   likeCount?: number // from batched query (DISP-01); hidden at zero
   commentCount?: number // 0 for gated viewers (D-10 enforcement is in the query)
+  isOwner?: boolean // D-03: when true, show static count line; no overlay chips
+  viewerId?: string | null // D-04: seeded liked state; anon-bounce on chip click
+  liked?: boolean // D-11: initial liked state from getBatchedWatchCounts
+  canComment?: boolean // D-09/D-11: gate flag; false hides 💬 chip
 }
 
 export function ProfileWatchCard({
@@ -24,6 +28,10 @@ export function ProfileWatchCard({
   showWishlistMeta = false,
   likeCount,
   commentCount,
+  isOwner,
+  viewerId,
+  liked,
+  canComment,
 }: ProfileWatchCardProps) {
   const safeUrl = getSafeImageUrl(watch.imageUrl)
   const days = daysSince(lastWornDate ?? undefined)
