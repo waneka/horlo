@@ -726,17 +726,22 @@ export function WatchPhotoSection({
                           aria-label={isHidden ? 'Show on this page' : 'Hide from this page'}
                           onPointerDown={(e) => {
                             e.stopPropagation()
-                            // Optimistic flip before server action resolves
+                            // WR-03: capture both states from the render closure
+                            // BEFORE startTransition so the async body reverts to
+                            // the same snapshot it applied — not a stale closure that
+                            // could drift if a second tap fires before this one resolves.
+                            const currentHidden = isHidden
+                            const newHidden = !isHidden
                             startTransition(async () => {
-                              applyOptimisticHide({ wearEventId: wp.wearEventId, hidden: !isHidden })
-                              const action = isHidden ? unhideWearPicAction : hideWearPicAction
+                              applyOptimisticHide({ wearEventId: wp.wearEventId, hidden: newHidden })
+                              const action = currentHidden ? unhideWearPicAction : hideWearPicAction
                               const result = await action({ wearEventId: wp.wearEventId, watchId })
                               if (!result.success) {
-                                // Revert on failure
-                                applyOptimisticHide({ wearEventId: wp.wearEventId, hidden: isHidden })
+                                // Revert to the captured pre-tap state
+                                applyOptimisticHide({ wearEventId: wp.wearEventId, hidden: currentHidden })
                                 toast.error("Couldn't update. Try again.")
                               } else {
-                                toast.success(isHidden ? 'Shown on this page' : 'Hidden from this page')
+                                toast.success(currentHidden ? 'Shown on this page' : 'Hidden from this page')
                               }
                             })
                           }}
