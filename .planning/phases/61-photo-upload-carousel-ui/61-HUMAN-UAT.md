@@ -39,9 +39,10 @@ reason: "Cannot assess 'Skip for now' prominence — the 'Add your photos' step 
 
 ### 5. Router-Cache stale-instance reset on /w/[ref] revisit
 expected: Navigate away from `/w/[ref]` and back; Edit mode resets to off, the carousel is usable, and the filmstrip shows no stale drag state (onPointerDown reset, MEMORY `project_router_cache_stale_instance`).
-result: blocked
-blocked_by: react-419-404-soft-nav
-reason: "User reported the #419/404 soft-nav bug (gap #1) is STILL occurring on prod, so navigating to/from /w/[ref] cannot be exercised. Cannot test stale-instance reset until the 404 blocker is confirmed resolved on the live deploy. NOTE: pending confirmation that the user is testing the post-98e7289 deploy (d5457ed) and not the prior deployment (4f9e6b1, predates the fix)."
+result: unblocked
+prior_result: blocked
+prior_blocked_by: react-419-404-soft-nav
+reason: "UNBLOCKED 2026-05-26 — gap #1 (#419/404 soft-nav) RESOLVED on deploy 5ea4291 (user-approved). /w/[ref] soft-nav now works, so stale-instance reset is testable again. Pending explicit confirmation: navigate away from /w/[ref] in Edit mode and back → Edit mode off, carousel usable, no stale drag state (onPointerDown reset, MEMORY project_router_cache_stale_instance)."
 
 ### 6. Gap #9 live flow — "Add your photos" step appears (extract → Add to Collection → save)
 expected: Open the add-watch flow FROM a watch detail page (so a real `returnTo` is set), paste a URL, get the fit verdict, click "Add to Collection," and submit the auto-filled form. The prominent "Add your photos" step (WatchPhotoStep) renders BEFORE any navigation — no auto-redirect back to origin, no premature toast "View" navigation.
@@ -85,7 +86,8 @@ blocked: 2
   decision_change: "Edit-mode add UI: drop zone only; remove the filmstrip [+] tile."
 
 - truth: "Profile (/u/[username]/[tab]) AND watch detail (/w/[ref]) pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
-  status: failed
+  status: resolved
+  resolved_on: "5ea4291 (prod, 2026-05-26) — user-approved after cache fill ('looks great, approving the 404 fix'). Fix: `await connection()` above the page/layout Suspense opts these routes out of the PPR static shell (+ admin-client signing). See debug/resolved/phase61-404-react-419-soft-nav.md. Was a SHARED, cache-timing cause — not per-route."
   reason: "CONFIRMED on the deployed-with-98e7289 build (67fde76 = horlo-rfkbt86o1, www.horlo.app, 2026-05-26): user-verified BOTH routes 404/#419 on soft (in-app) navigation; hard browser refresh ALWAYS loads them. Consistent (not intermittent). An interim 'profile is fixed' read was a MISREAD (hard load). So NEITHER of 98e7289's ordering fixes resolved it — profile got dynamic-AFTER-cache, watch-detail got dynamic-BEFORE-cache, both still broken. The call-ORDERING theory (P61-BUG-01) is the WRONG root cause. This is recurrence #6 of the #419 family; Phase 61 injected a dynamic cookies API (signCoverUrls/createSupabaseServerClient) into cached/PPR RSCs and broke the soft-nav static shell regardless of order. Needs a STRUCTURAL fix (cf. Phase 52), not reordering."
   severity: blocker
   test: 5
