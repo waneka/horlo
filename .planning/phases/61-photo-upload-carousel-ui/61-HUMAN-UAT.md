@@ -94,7 +94,8 @@ blocked: 2
   missing: []
 
 - truth: "On the watch detail page, a watch whose cover is a raw storage path (catalog/enriched photo) renders the photo, not the WatchIcon placeholder"
-  status: fix_applied
+  status: resolved
+  resolved_on: "afa854e (display) + 20260526120000 migration (prod data, applied via supabase db push) — user confirmed the image renders. The 31 URL-backfilled watch_photos rows were deleted on prod."
   reason: "User (round 2): watches with 'url based' photos (previously in the catalog) render everywhere EXCEPT the detail page, which shows the backup watch icon. New URL-extraction watches render fine. ROOT CAUSE: detail page passed the UNSIGNED watch → catalogFallbackUrl=getSafeImageUrl(rawStoragePath)=null → placeholder; grids signed it via signCoverUrls. URL covers (https) were unaffected (getSafeImageUrl passes them through), which is why URL-extracted watches looked fine."
   severity: major
   first_fix_INSUFFICIENT: "src/app/w/[ref]/page.tsx signs the cover via signCoverUrls([watch]) (commit 82c570e). Kept (correct for genuine storage-path covers) but did NOT fix this case — the watch has an owner photo so catalogFallbackUrl is never used."
@@ -113,7 +114,8 @@ blocked: 2
   missing: []
 
 - truth: "Watch detail page hydrates without React #418 (server/client text match) on watches with a logged wear date"
-  status: fix_applied
+  status: resolved
+  resolved_on: "2ea0d00+02459c1 (prod) — user confirmed 2026-05-26: '721b8b81 is clean now, no more #418.' WatchDetail Last-worn date + the two worn-view date renders all formatted UTC/fixed-locale."
   reason: "User (round 2): React #418 hydration mismatch on watch 721b8b81 (persisted on hard refresh; image renders via the catalog fallback and that watch has 0 watch_photos rows — so #418 is NOT photo-related)."
   severity: minor
   root_cause: "WatchDetail.tsx:210 rendered the Last-worn date with a BARE `new Date(lastWornDate).toLocaleDateString()` (no locale, no timeZone). Wear dates are date-only (parsed UTC midnight); a browser in a negative-offset zone formats a different calendar day than the server (UTC) → consistent hydration mismatch. Renders only for owned/grail watches with a logged wear → rare. formatDate() (line 79) had the same latent timeZone omission."
