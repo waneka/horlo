@@ -34,6 +34,7 @@ import type { Watch, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 import type { SignedWearPic } from '@/components/watch/WatchPhotoSection'
 import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
+import { SpecsSublabel } from '@/components/watch/SpecsSublabel'
 
 interface UnifiedWatchPageProps {
   params: Promise<{ ref: string }>
@@ -749,20 +750,3 @@ function buildActionsSpec(catalogEntry: Awaited<ReturnType<typeof getCatalogById
   }
 }
 
-function SpecsSublabel({
-  movement,
-  caseSizeMm,
-  dialColor,
-}: {
-  movement: string | null
-  caseSizeMm: number | null
-  dialColor: string | null
-}) {
-  const parts = [
-    movement,
-    caseSizeMm ? `${caseSizeMm}mm` : null,
-    dialColor,
-  ].filter((p): p is string => Boolean(p))
-  if (parts.length === 0) return null
-  return <p className="text-sm text-muted-foreground">{parts.join(' • ')}</p>
-}
