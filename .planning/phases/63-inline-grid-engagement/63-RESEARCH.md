@@ -533,17 +533,17 @@ updateTag(`viewer:${user.id}:reactions`)                         // viewer liked
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `ProfileWatchCard` receive `viewerId` directly or a derived `isEngageable` flag + `liked`/`canComment` counts?**
    - What we know: `isOwner` is computed in `page.tsx` from `viewerId === profile.id`; `liked`/`canComment` are per-card from the counts map.
    - What's unclear: Whether the chip needs `viewerId` for the anon-bounce path (like `LikeButton`'s `if (viewerId === null) router.push('/login?...')`). On `/u/*`, viewers are always authenticated (Phase 51 Branch B auth gate), so `viewerId` is always non-null.
-   - Recommendation: Thread `viewerId` into the card anyway for parity with `LikeButton`'s interface. If the auth gate ever changes, the chip already handles the anon path.
+   - **RESOLVED:** Thread `viewerId` into the card for parity with `LikeButton`'s interface. If the auth gate ever changes, the chip already handles the anon path. Implemented in 63-03 (prop-threading task).
 
 2. **Should the wishlist gate display the 💬 chip count for gated viewers?**
    - What we know: For gated viewers on a foreign wishlist watch, `canComment: false` AND `commentCount: 0` (the gate in Q5 already returns 0 for gated watches). So there is nothing to display.
    - What's unclear: No ambiguity — D-09 says hide chip entirely. The 0 count confirms there is nothing teasing unreachable content.
-   - Recommendation: Confirmed per D-09: hide chip entirely for gated viewers. No tease state.
+   - **RESOLVED:** Per D-09, hide the 💬 chip entirely for gated viewers (no tease state). Implemented in 63-03 (`canComment &&` gate on the chip).
 
 ---
 
