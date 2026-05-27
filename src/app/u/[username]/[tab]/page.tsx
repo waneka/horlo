@@ -454,6 +454,15 @@ export async function ProfileTabContent({
     const wearPhotoSignedMap = new Map<string, string | null>()
     await Promise.all(
       distinctWearPhotoPaths.map(async (path) => {
+        // WR-01: path-prefix defense-in-depth — only sign paths that start
+        // with `${profile.id}/`. getWearEventsForViewer scopes to this user,
+        // but a future DAL change or data-integrity defect could return a
+        // cross-user path; the admin client would silently sign it without
+        // this guard. Mirrors the same check in w/[ref]/page.tsx for watch-photos.
+        if (!path.startsWith(`${profile.id}/`)) {
+          wearPhotoSignedMap.set(path, null)
+          return
+        }
         try {
           const { data } = await supabaseAdmin.storage
             .from('wear-photos')
