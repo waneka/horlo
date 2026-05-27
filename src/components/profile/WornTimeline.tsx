@@ -22,8 +22,13 @@ interface WornTimelineProps {
 }
 
 function formatDateHeading(yyyyMmDd: string): string {
-  const d = new Date(yyyyMmDd + 'T00:00:00')
-  return d.toLocaleDateString(undefined, {
+  // Parse + format in UTC with a fixed locale for hydration safety (React #418):
+  // bare `T00:00:00` parses as LOCAL time and `undefined` locale uses the runtime's
+  // locale/zone, so server (UTC) and a browser in another zone/locale would render
+  // different weekday/month text → hydration mismatch.
+  const d = new Date(yyyyMmDd + 'T00:00:00Z')
+  return d.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
     weekday: 'long',
     month: 'long',
     day: 'numeric',

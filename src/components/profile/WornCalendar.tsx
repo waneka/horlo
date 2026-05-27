@@ -128,11 +128,11 @@ export function WornCalendar({
     () => getCalendarGrid(cursor.year, cursor.month),
     [cursor],
   )
+  // UTC construct + fixed locale/zone for hydration safety (React #418): a local
+  // `new Date(y, m, 1)` + `undefined` locale renders differently across server/client.
   const monthLabel = new Date(
-    cursor.year,
-    cursor.month,
-    1,
-  ).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    Date.UTC(cursor.year, cursor.month, 1),
+  ).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' })
 
   function gotoMonth(delta: number) {
     setCursor((c) => {
