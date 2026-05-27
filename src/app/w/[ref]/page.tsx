@@ -102,14 +102,25 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
 
 // Static shell for the route segment — pure JSX, no dynamic API access, so it
 // can be prerendered as the instant shell for soft navigations into /w/[ref].
+// Phase 64: updated to mirror the new IA (hero grid → comment skeleton → spec-card skeleton).
+// MUST remain: no dynamic API (cookies/headers/params), no hooks, no 'use client'.
 function WatchPageSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8" aria-hidden>
-      <Skeleton className="aspect-square w-full max-w-md mx-auto rounded-lg" />
-      <div className="space-y-3">
-        <Skeleton className="h-7 w-2/3" />
-        <Skeleton className="h-4 w-1/3" />
+      {/* Hero grid — mirrors WatchDetailHero lg:grid-cols-[3fr_2fr] */}
+      <div className="grid gap-8 lg:grid-cols-[3fr_2fr]">
+        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+        <div className="space-y-4">
+          <Skeleton className="h-7 w-3/4" />
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-40 w-full rounded-lg" />
+          <Skeleton className="h-9 w-24" />
+        </div>
       </div>
+      {/* Comment section skeleton */}
+      <Skeleton className="h-32 w-full rounded-lg" />
+      {/* Spec cards skeleton */}
       <Skeleton className="h-40 w-full rounded-lg" />
     </div>
   )
@@ -635,7 +646,9 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+    // Phase 64 D-14: space-y-8 for visual parity with Branches 1 & 2.
+    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
+      {/* Catalog hero shell — RSC inline (no client island; no like button in Branch 3). */}
       <div className="flex items-start gap-4">
         {catalogEntry.imageUrl && (
           <div className="size-24 rounded-md bg-muted overflow-hidden flex-shrink-0">
@@ -682,19 +695,14 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           </p>
         )}
 
-      {/* Phase 39b NSV-18 — Other-Owners Roster. Cross-user only (!isOwner — D-15/spike §4.D).
-          Phase 64 IA redesign will resolve the OtherOwnersRoster/CatalogPageActions visibility
-          definitively. Self-hides when collectors.length === 0 (D-39b-07). */}
-      {!isOwner && (
-        <OtherOwnersRoster collectors={roster.collectors} totalCount={roster.totalCount} />
-      )}
+      {/* Phase 64 D-13: OtherOwnersRoster MOVED UP — social proof near the verdict.
+          Cross-user only (isOwner=false on this branch — D-15/spike §4.D).
+          Self-hides when collectors.length === 0 (D-39b-07). */}
+      <OtherOwnersRoster collectors={roster.collectors} totalCount={roster.totalCount} />
 
-      {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails. RSC siblings (B1 invariant). */}
-      <SameFamilyRail rows={sameFamily} />
-      <LineageRail rows={lineage} />
-
-      {/* Phase 20.1 D-05 — CatalogPageActions. Cross-user only (!isOwner — D-15/spike §4.D). */}
-      {!isOwner && actionsSpec && (
+      {/* Phase 64 D-13: CatalogPageActions MOVED UP — add-to-collection CTA near the verdict.
+          Cross-user only (isOwner=false on this branch). No longer last. */}
+      {actionsSpec && (
         <CatalogPageActions
           catalogId={ref}
           spec={actionsSpec}
@@ -702,6 +710,10 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           viewerUsername={viewerUsername}
         />
       )}
+
+      {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails below social proof. */}
+      <SameFamilyRail rows={sameFamily} />
+      <LineageRail rows={lineage} />
     </div>
   )
 }
