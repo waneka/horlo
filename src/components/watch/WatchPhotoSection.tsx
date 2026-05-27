@@ -46,7 +46,7 @@ import {
 import {
   arrayMove,
   SortableContext,
-  horizontalListSortingStrategy,
+  rectSortingStrategy,
 } from '@dnd-kit/sortable'
 import useEmblaCarousel from 'embla-carousel-react'
 import Image from 'next/image'
@@ -430,11 +430,10 @@ export function WatchPhotoSection({
       )}
 
       {/* -------------------------------------------------------------------- */}
-      {/* Filmstrip — always visible when there are owner photos */}
+      {/* Filmstrip — shown when there are owner photos OR in edit mode (so a */}
+      {/* photo-less watch can still reach the dropzone). Issue #3 (2026-05-26). */}
       {/* -------------------------------------------------------------------- */}
-      {/* gap #8: min-w-0 on the outer filmstrip container so overflow-x-auto on
-          the inner row scrolls internally instead of expanding the right rail */}
-      {hasOwnerPhotos && (
+      {(hasOwnerPhotos || editMode) && (
         <div className="min-w-0">
           {editMode ? (
             // Edit mode: wrap filmstrip in DndContext + SortableContext
@@ -448,14 +447,16 @@ export function WatchPhotoSection({
             >
               <SortableContext
                 items={visibleIds}
-                strategy={horizontalListSortingStrategy}
+                strategy={rectSortingStrategy}
               >
-                {/* gap #8: min-w-0 on the row itself ensures flex container
-                    doesn't expand to accommodate unbounded children */}
+                {/* Issue #1 (2026-05-26): WRAP after ~5 thumbs instead of a single
+                    overflow-x-auto row (the horizontal scroll caused overflow/spacing
+                    issues on mobile + desktop). flex-wrap + max-w-sm fits ~5 per row
+                    and wraps to new rows; rectSortingStrategy handles the 2D layout. */}
                 <div
                   role="list"
                   aria-label="Photo filmstrip"
-                  className="flex overflow-x-auto gap-2 pb-1 min-w-0"
+                  className="flex flex-wrap gap-2 pb-1 max-w-sm"
                 >
                   {visibleIds.map((id, idx) => (
                     <SortablePhotoThumb
@@ -518,12 +519,13 @@ export function WatchPhotoSection({
               )}
             </DndContext>
           ) : (
-            // View mode: plain scrollable filmstrip, no DndContext
-            // gap #8: min-w-0 so overflow-x-auto scrolls internally
+            // View mode: plain wrapping filmstrip, no DndContext.
+            // Issue #1 (2026-05-26): flex-wrap + max-w-sm wraps after ~5 thumbs
+            // instead of a single overflow-x-auto row.
             <div
               role="list"
               aria-label="Photo filmstrip"
-              className="flex overflow-x-auto gap-2 pb-1 min-w-0"
+              className="flex flex-wrap gap-2 pb-1 max-w-sm"
             >
               {visibleIds.map((id, idx) => (
                 <div
@@ -567,8 +569,14 @@ export function WatchPhotoSection({
       )}
 
       {/* -------------------------------------------------------------------- */}
-      {/* Edit toggle + upload affordance row — owner only (D-03) */}
+      {/* Edit toggle row — owner only (D-03) */}
       {/* -------------------------------------------------------------------- */}
+      {/* Issue #3 (2026-05-26): the dropzone must ONLY appear in edit mode. The
+          former empty-state dropzone (rendered when !editMode && !hasOwnerPhotos)
+          showed on page load and hid in edit mode — backwards. It's removed; the
+          edit-mode dropzone above is now the single add affordance for every watch
+          (photo-less watches reach it via this toggle, which the filmstrip section
+          now renders in edit mode regardless of hasOwnerPhotos). */}
       {viewerCanEdit && (
         <div className="flex items-center justify-between gap-2">
           <Button
@@ -582,20 +590,8 @@ export function WatchPhotoSection({
             // responsive even on revisit without a page reload).
             onPointerDown={() => setEditMode((prev) => !prev)}
           >
-            {editMode ? 'Done editing' : 'Edit photos'}
+            {editMode ? 'Done editing' : hasOwnerPhotos ? 'Edit photos' : 'Add photos'}
           </Button>
-
-          {/* +Add affordance when no owner photos yet (empty state, not edit mode) */}
-          {!editMode && !hasOwnerPhotos && userId && (
-            <PhotoDropzone
-              watchId={watchId}
-              userId={userId}
-              currentPhotoCount={0}
-              onPhotosAdded={() => {
-                // Revalidation handled by addWatchPhotoAction
-              }}
-            />
-          )}
         </div>
       )}
     </div>

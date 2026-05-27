@@ -85,6 +85,30 @@ blocked: 2
   missing: []
   decision_change: "Edit-mode add UI: drop zone only; remove the filmstrip [+] tile."
 
+- truth: "The thumbnail filmstrip wraps (≈5 per row) instead of a single horizontal-scroll row that overflows"
+  status: fix_applied
+  reason: "User (round 2, 2026-05-26): the filmstrip needs to wrap after ~5 pics; the single overflow-x-auto row caused big overflow/spacing issues on mobile AND desktop."
+  severity: minor
+  fix: "WatchPhotoSection: both filmstrips (view + edit) changed from `flex overflow-x-auto ... min-w-0` to `flex flex-wrap gap-2 max-w-sm` (max-w-sm ≈ 384px fits exactly 5×64px thumbs/row, wraps after). Edit-mode dnd switched from horizontalListSortingStrategy → rectSortingStrategy (correct for a wrapped/2D layout)."
+  artifacts: [src/components/watch/WatchPhotoSection.tsx]
+  missing: []
+
+- truth: "On the watch detail page, a watch whose cover is a raw storage path (catalog/enriched photo) renders the photo, not the WatchIcon placeholder"
+  status: fix_applied
+  reason: "User (round 2): watches with 'url based' photos (previously in the catalog) render everywhere EXCEPT the detail page, which shows the backup watch icon. New URL-extraction watches render fine. ROOT CAUSE: detail page passed the UNSIGNED watch → catalogFallbackUrl=getSafeImageUrl(rawStoragePath)=null → placeholder; grids signed it via signCoverUrls. URL covers (https) were unaffected (getSafeImageUrl passes them through), which is why URL-extracted watches looked fine."
+  severity: major
+  fix: "src/app/w/[ref]/page.tsx: sign the cover via signCoverUrls([watch]) in both Branch 1 and the D-06 owned branch before passing to WatchDetail (same helper grids use). Raw storage-path covers become signed https URLs; https URLs pass through unchanged."
+  artifacts: [src/app/w/[ref]/page.tsx, src/lib/storage/signCoverUrls.ts]
+  missing: []
+
+- truth: "The 'Drop photos here or tap to choose' dropzone renders ONLY in edit mode (never on page load)"
+  status: fix_applied
+  reason: "User (round 2): the dropzone should only show in edit mode. Worked for watches WITH a hosted photo, but for watches with only a url-based cover (or no photo) it was BACKWARDS — showed on page load and hid in edit mode."
+  severity: major
+  fix: "WatchPhotoSection: removed the empty-state dropzone (`{!editMode && !hasOwnerPhotos && userId && <PhotoDropzone/>}`) that rendered on page load; gated the filmstrip+dropzone section on `(hasOwnerPhotos || editMode)` so the edit-mode dropzone is reachable for photo-less watches. Toggle button reads 'Add photos' when the watch has no owner photos, 'Edit photos' otherwise."
+  artifacts: [src/components/watch/WatchPhotoSection.tsx]
+  missing: []
+
 - truth: "Profile (/u/[username]/[tab]) AND watch detail (/w/[ref]) pages load on client-side (soft) navigation without React #419 / 404 (gap #1)"
   status: resolved
   resolved_on: "5ea4291 (prod, 2026-05-26) — user-approved after cache fill ('looks great, approving the 404 fix'). Fix: `await connection()` above the page/layout Suspense opts these routes out of the PPR static shell (+ admin-client signing). See debug/resolved/phase61-404-react-419-soft-nav.md. Was a SHARED, cache-timing cause — not per-route."

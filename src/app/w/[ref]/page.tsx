@@ -29,6 +29,7 @@ import { getCollectorsForCatalog } from '@/data/discovery'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { signCoverUrls } from '@/lib/storage/signCoverUrls'
 import type { Watch, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
@@ -129,7 +130,14 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
   const perUserResult = await getWatchByIdForViewer(user.id, ref)
 
   if (perUserResult) {
-    const { watch, isOwner, ownerUserId } = perUserResult
+    const { watch: rawWatch, isOwner, ownerUserId } = perUserResult
+    // Issue #2 (2026-05-26): sign the cover `imageUrl` — same as grids do via
+    // signCoverUrls — so a catalog watch whose imageUrl is a RAW storage path
+    // renders on the detail page instead of the WatchIcon placeholder. The detail
+    // page previously passed the UNSIGNED watch, so getSafeImageUrl(rawPath) → null
+    // → placeholder (while grids signed it and rendered fine). signCoverUrls passes
+    // https URLs through unchanged, so URL-extracted watches are unaffected.
+    const [watch] = await signCoverUrls([rawWatch])
 
     const [collection, preferences] = await Promise.all([
       getWatchesByUser(user.id),
@@ -347,8 +355,12 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
   // If the viewer already owns a watch matching this catalogId, load the full
   // Watch and render the same-user owned view IN PLACE (no redirect — D-08).
   if (viewerOwnedRow) {
-    const ownedWatch = await getWatchById(user.id, viewerOwnedRow.id)
-    if (!ownedWatch) notFound()
+    const ownedWatchRaw = await getWatchById(user.id, viewerOwnedRow.id)
+    if (!ownedWatchRaw) notFound()
+    // Issue #2 (2026-05-26): sign the cover imageUrl (raw storage path → signed
+    // URL) so the D-06 owned view renders the catalog/cover photo on the detail
+    // page instead of the placeholder. See Branch 1 comment for rationale.
+    const [ownedWatch] = await signCoverUrls([ownedWatchRaw])
 
     // Phase 61 PHOTO-03 — structural fix (phase61-404-react-419-soft-nav debug):
     // Sign owner photos using the admin client. See Branch 1 comment above for rationale.
