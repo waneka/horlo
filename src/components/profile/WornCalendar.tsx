@@ -18,6 +18,7 @@ interface WearEventLite {
   watchId: string
   wornDate: string // YYYY-MM-DD
   note: string | null // Phase 39b — parent (WornTabContent) passes from getAllWearEventsByUser
+  photoUrl: string | null
 }
 
 interface WornCalendarProps {
@@ -199,7 +200,13 @@ export function WornCalendar({
           const firstWatch = dayEvents[0]
             ? watchMap[dayEvents[0].watchId]
             : null
-          const safe = firstWatch ? getSafeImageUrl(firstWatch.imageUrl) : null
+          // Phase 62: prefer the first event's wear photo; fall back to watch cover (D-16 / WPIC-03)
+          const firstEventWearPhotoSafe = dayEvents[0]?.photoUrl
+            ? getSafeImageUrl(dayEvents[0].photoUrl)
+            : null
+          const safe =
+            firstEventWearPhotoSafe ??
+            (firstWatch ? getSafeImageUrl(firstWatch.imageUrl) : null)
           const extra = dayEvents.length > 1 ? dayEvents.length - 1 : 0
           const isSelected = selectedDate === key
           return (
@@ -259,7 +266,9 @@ export function WornCalendar({
             <ul className="space-y-3">
               {selectedEvents.map((event) => {
                 const watch = watchMap[event.watchId]
-                const safe = watch ? getSafeImageUrl(watch.imageUrl) : null
+                // Phase 62: prefer event's own wear photo; fall back to watch cover (D-16 / WPIC-03)
+                const wearPhotoSafe = event.photoUrl ? getSafeImageUrl(event.photoUrl) : null
+                const safe = wearPhotoSafe ?? (watch ? getSafeImageUrl(watch.imageUrl) : null)
                 return (
                   <li key={event.id} className="flex items-start gap-3">
                     <div className="relative size-12 shrink-0 overflow-hidden rounded bg-muted">

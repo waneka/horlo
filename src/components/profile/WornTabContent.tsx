@@ -28,6 +28,7 @@ interface WearEventLite {
   watchId: string
   wornDate: string
   note: string | null
+  photoUrl: string | null
 }
 
 interface WornTabContentProps {

@@ -14,6 +14,7 @@ interface WearEventLite {
   watchId: string
   wornDate: string
   note: string | null
+  photoUrl: string | null
 }
 
 interface WornTimelineProps {
@@ -62,7 +63,9 @@ export function WornTimeline({ events, watchMap }: WornTimelineProps) {
           <ul className="flex flex-col gap-2">
             {dayEvents.map((e) => {
               const watch = watchMap[e.watchId]
-              const safe = watch ? getSafeImageUrl(watch.imageUrl) : null
+              // Phase 62: prefer event's own wear photo; fall back to watch cover (D-16 / WPIC-03)
+              const wearPhotoSafe = e.photoUrl ? getSafeImageUrl(e.photoUrl) : null
+              const safe = wearPhotoSafe ?? (watch ? getSafeImageUrl(watch.imageUrl) : null)
               return (
                 <li
                   key={e.id}
