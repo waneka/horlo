@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: verifying
-stopped_at: Phase 62 Plan 04 complete — prod UAT deferred to HUMAN-UAT
-last_updated: "2026-05-27T14:34:00.000Z"
+stopped_at: Phase 62 Plan 05 complete — WPIC-06 on-photo overlay code done; prod re-check (UAT Test 4) HUMAN-NEEDED
+last_updated: "2026-05-27T16:30:00.000Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 ## Current Position
 
-Phase: 62 (public-wear-pics-on-watch-detail) — COMPLETE (code); prod UAT HUMAN-NEEDED
-Plan: 4 of 4 (all plans complete)
-Status: Phase code-complete — awaiting prod UAT (HUMAN-UAT)
+Phase: 62 (public-wear-pics-on-watch-detail) — COMPLETE (code); prod UAT Test 4 re-check HUMAN-NEEDED
+Plan: 5 of 5 (gap-closure plan; all plans complete)
+Status: Phase complete — awaiting prod visual re-check (WPIC-06 on-photo overlay)
 Last activity: 2026-05-27
 
 Progress: [██████████] 100%
@@ -72,6 +72,8 @@ Progress: [██████████] 100%
 - **Option A pre-fetch for wear-pic social state** — all wear-pic like/comment state fetched per-pic in the page RSC via Promise.all; avoids client waterfall; consistent with CommentThread pattern (Phase 62 Plan 04).
 - **SignedWearPic kept distinct from SignedPhoto** — union would collapse discriminant needed for badge/social-row conditional rendering in WatchPhotoSection (Phase 62 Plan 04).
 - **eye/hide toggle uses onPointerDown** — consistent with Phase 61 editMode toggle; avoids Router Cache stale-instance issue (Phase 62 Plan 04).
+- **Per-slide wear-pic social overlay uses wp loop var** — each slide's LikeButton target and comment count use `wp.wearEventId` (not `activeWearPic`) so every slide is independently interactive; JSX-position-only relocation closes WPIC-06 UAT Test 4 cosmetic gap (Phase 62 Plan 05).
+- **Social comment button keeps onClick** — fresh-per-interaction controls are not subject to the Router-Cache stale-instance onPointerDown mitigation; that mitigation applies only to one-shot editMode / eye-hide toggles (Phase 62 Plan 05).
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 62 Plan 04 COMPLETE (code). /w/[ref] carousel unions owner uploads + public wear pics (newest-worn first) with UTC-pinned Worn badge, inline like/comment row, WearCommentHost bottom sheet, and owner eye/hide Edit-mode toggle. Admin-client signing of wear-photos bucket (fail-safe). 54/54 unit tests green; build exits 0. Prod UAT (6 checks: carousel union, badge, like/comment sheet, hide toggle, non-owner visibility, Home rail) deferred to HUMAN-UAT.
-Stopped at: Phase 62 Plan 04 complete — prod UAT HUMAN-NEEDED
-Next action: Deploy to prod + human UAT for Phase 62; Phase 63 can proceed independently
+Last activity: 2026-05-27 — Phase 62 Plan 05 COMPLETE (code). WPIC-06 UAT Test 4 gap closed: social controls relocated from standalone below-carousel row to per-slide bottom-right on-photo overlay inside wear-pic slide map. JSX-position-only change (WatchPhotoSection.tsx). Build exits 0; 56/56 unit tests green. Commit: 5e6f136.
+Stopped at: Phase 62 Plan 05 complete — WPIC-06 on-photo overlay code done; prod re-check (UAT Test 4) HUMAN-NEEDED
+Next action: Push to prod (push origin main → Vercel), wait for cache to fill, then manually re-check UAT Test 4 (on-photo overlay discoverability, badge no-collision, functional parity, no #418/#419)

@@ -253,7 +253,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 - [x] 62-02-PLAN.md — getPublicWearPicsForWatch union DAL + hide/unhide DAL + server actions (Wave 2)
 - [x] 62-03-PLAN.md — Wears tab actual-photo repoint (sign wear-photos + WornTimeline/WornCalendar prefer event.photoUrl) (Wave 2)
 - [x] 62-04-PLAN.md — carousel wear-pic union + Worn badge + inline like/comment sheet + Edit-mode eye/hide (Wave 3)
-- [ ] 62-05-PLAN.md — gap closure (UAT Test 4 / WPIC-06): relocate wear-pic like/comment to bottom-right on-photo overlay
+- [x] 62-05-PLAN.md — gap closure (UAT Test 4 / WPIC-06): relocate wear-pic like/comment to bottom-right on-photo overlay
 **UI hint**: yes
 
 ### Phase 63: Inline Grid Engagement
@@ -288,7 +288,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 | 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
 | 60. Multi-Photo Schema + DAL | 4/4 | Complete    | 2026-05-25 |
 | 61. Photo Upload + Carousel UI | 6/6 | Complete   | 2026-05-26 |
-| 62. Public Wear Pics on Watch Detail | 4/4 | Complete   | 2026-05-27 |
+| 62. Public Wear Pics on Watch Detail | 5/5 | Complete   | 2026-05-27 |
 | 63. Inline Grid Engagement | 0/TBD | Not started | - |
 | 64. Detail Page IA Redesign | 0/TBD | Not started | - |
 
