@@ -50,18 +50,37 @@ import {
 } from '@dnd-kit/sortable'
 import useEmblaCarousel from 'embla-carousel-react'
 import Image from 'next/image'
-import { Watch as WatchIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Watch as WatchIcon, ChevronLeft, ChevronRight, Eye, EyeOff, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SortablePhotoThumb } from './SortablePhotoThumb'
 import { PhotoDropzone } from './PhotoDropzone'
 import { reorderWatchPhotosAction, deleteWatchPhotoAction } from '@/app/actions/watchPhotos'
+import { hideWearPicAction, unhideWearPicAction } from '@/app/actions/wearEvents'
+import { LikeButton } from '@/components/shared/LikeButton'
+import { WearCommentHost } from '@/components/wear/WearCommentHost'
+import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
 export interface SignedPhoto {
   id: string
   signedUrl: string | null
   sortOrder: number
+}
+
+/**
+ * Phase 62 Plan 04: Public wear pic slide — DISTINCT from SignedPhoto.
+ * Carries wear-target social data (like/comment) + hide state for Edit mode.
+ * Do NOT union with SignedPhoto — kept separate for type-narrowing.
+ */
+export interface SignedWearPic {
+  wearEventId: string
+  signedUrl: string | null
+  wornDate: string        // ISO date 'YYYY-MM-DD' — format with UTC pin per D-07
+  hiddenFromDetail: boolean  // needed to render greyed/Hidden state in Edit mode
+  initialLikeState: { liked: boolean; count: number }
+  commentCount: number
+  initialComments: CommentWithAuthor[]  // pre-fetched by page RSC (Option A)
 }
 
 export interface WatchPhotoSectionProps {
@@ -72,6 +91,15 @@ export interface WatchPhotoSectionProps {
   viewerCanEdit?: boolean
   /** userId needed for client-direct upload (PhotoDropzone). Server passes down from RSC. */
   userId?: string
+  /** Phase 62 Plan 04 WPIC-01: public wear pics (signed, with social data). Optional. */
+  wearPics?: SignedWearPic[]
+  /** Phase 62 Plan 04 WPIC-06: viewer identity for LikeButton + WearCommentHost. */
+  viewerId?: string | null
+  /** Phase 62 Plan 04 WPIC-06: owner identity for WearCommentHost. */
+  ownerUserId?: string
+  ownerUsername?: string
+  /** Phase 62 Plan 04 WPIC-06: viewer's CommentAuthor for optimistic comment inserts. */
+  viewerAuthor?: CommentAuthor | null
 }
 
 const MAX_PHOTOS = 10
@@ -83,6 +111,11 @@ export function WatchPhotoSection({
   brandModel,
   viewerCanEdit = false,
   userId,
+  wearPics: wearPicsProp = [],
+  viewerId = null,
+  ownerUserId = '',
+  ownerUsername = '',
+  viewerAuthor = null,
 }: WatchPhotoSectionProps) {
   // Resilience (issue #2 root cause, 2026-05-26): drop any photo whose signed URL
   // came back null — e.g. a watch_photos row with a malformed storage_path (a full
@@ -139,6 +172,33 @@ export function WatchPhotoSection({
   // (RSC-rendered prop) — newly uploaded photos appear in photosById only after
   // the next revalidatePath flush. localUploadCount bridges that gap client-side.
   const [localUploadCount, setLocalUploadCount] = useState(0)
+
+  // ---------------------------------------------------------------------------
+  // Phase 62 Plan 04: wear-pic optimistic hide state + comment sheet state
+  // ---------------------------------------------------------------------------
+
+  // Optimistic wear-pic hide: mirrors the deletedIds pattern above but for
+  // hiddenFromDetail. Each entry is { wearEventId, hidden }. On toggle, flip
+  // locally before the server action resolves; revert + toast.error on failure.
+  const [optimisticWearPics, applyOptimisticHide] = useOptimistic<
+    SignedWearPic[],
+    { wearEventId: string; hidden: boolean }
+  >(
+    wearPicsProp,
+    (prev, update) =>
+      prev.map((p) =>
+        p.wearEventId === update.wearEventId ? { ...p, hiddenFromDetail: update.hidden } : p,
+      ),
+  )
+
+  // Per-wear-pic comment counts — mutable client-side via onCountChange callback
+  // (Pitfall 7: keeps social row badge in sync after user posts without page reload).
+  const [wearPicCommentCounts, setWearPicCommentCounts] = useState<Record<string, number>>(
+    () => Object.fromEntries(wearPicsProp.map((p) => [p.wearEventId, p.commentCount])),
+  )
+
+  // Comment sheet state — one sheet serves the active wear-pic slide.
+  const [commentSheetOpen, setCommentSheetOpen] = useState(false)
 
   // WR-04: reset localUploadCount when the RSC re-renders with fresh photos (i.e.,
   // when revalidatePath has flushed and the `photos` prop reflects the new rows).
@@ -321,15 +381,23 @@ export function WatchPhotoSection({
   )
   const hasOwnerPhotos = visibleIds.length > 0
 
-  // Determine slides: owner photos OR catalog fallback OR empty
-  const totalSlides = hasOwnerPhotos
-    ? visibleIds.length
-    : catalogFallbackUrl
-    ? 1
-    : 0
+  // Phase 62 Plan 04: merged slide count — owner photos first, wear pics appended
+  // newest-worn first (already ordered by the DAL). CSS Chain Assertion 5: position
+  // indicator MUST count the merged total, not just owner photo count.
+  const visibleWearPics = optimisticWearPics  // hide/show is toggled only in Edit mode filmstrip; carousel always shows all public pics from RSC
+  const hasWearPics = visibleWearPics.length > 0
+
+  // Determine slides: owner photos (+ wear pics) OR catalog fallback (+ wear pics) OR empty
+  const ownerSlideCount = hasOwnerPhotos ? visibleIds.length : catalogFallbackUrl ? 1 : 0
+  const wearPicSlideCount = visibleWearPics.length
+  const totalSlides = ownerSlideCount + wearPicSlideCount
 
   const showArrows = totalSlides > 1
   const showPositionIndicator = totalSlides > 1
+
+  // Determine if selectedIndex points at a wear-pic slide vs owner/catalog slide.
+  const isWearPicSlide = selectedIndex >= ownerSlideCount && wearPicSlideCount > 0
+  const activeWearPic = isWearPicSlide ? visibleWearPics[selectedIndex - ownerSlideCount] : null
 
   // ---------------------------------------------------------------------------
   // Render
@@ -388,6 +456,35 @@ export function WatchPhotoSection({
                 </span>
               </div>
             )}
+
+            {/* Phase 62 Plan 04 WPIC-01: wear-pic slides appended after owner photos.
+                Each slide carries a "Worn · [date]" badge (D-07 / React #418).
+                Badge is absolute-positioned bottom-left; no badge on owner/catalog slides. */}
+            {visibleWearPics.map((wp, idx) => (
+              <div key={wp.wearEventId} className="flex-none w-full h-full relative">
+                {wp.signedUrl ? (
+                  <Image
+                    src={wp.signedUrl}
+                    alt={`Wear photo ${idx + 1}`}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <WatchIcon className="h-16 w-16 text-muted-foreground/40" aria-hidden />
+                  </div>
+                )}
+                {/* Worn · [date] badge — MANDATORY UTC pin (D-07 / React #418 / T-62-15) */}
+                <span className="absolute bottom-2 left-2 text-xs font-semibold bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded">
+                  Worn · {new Date(wp.wornDate + 'T00:00:00Z').toLocaleDateString('en-US', {
+                    timeZone: 'UTC',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -439,10 +536,75 @@ export function WatchPhotoSection({
       )}
 
       {/* -------------------------------------------------------------------- */}
-      {/* Filmstrip — shown when there are owner photos OR in edit mode (so a */}
-      {/* photo-less watch can still reach the dropzone). Issue #3 (2026-05-26). */}
+      {/* Phase 62 Plan 04 WPIC-06: Inline social row — like + comment count.  */}
+      {/* Renders ONLY on active wear-pic slides (CSS Chain Assertion 4: use    */}
+      {/* conditional render, NOT visibility:hidden, so no gap on owner slides). */}
       {/* -------------------------------------------------------------------- */}
-      {(hasOwnerPhotos || editMode) && (
+      {isWearPicSlide && activeWearPic && (
+        <div
+          role="group"
+          aria-label="Wear photo interactions"
+          className="flex items-center gap-2 w-full max-w-md"
+        >
+          <LikeButton
+            viewerId={viewerId}
+            target={{ type: 'wear', id: activeWearPic.wearEventId }}
+            initialLiked={activeWearPic.initialLikeState.liked}
+            initialCount={activeWearPic.initialLikeState.count}
+          />
+          {/* Comment count button — opens the comment bottom sheet */}
+          <button
+            type="button"
+            aria-label={
+              (wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount) > 0
+                ? `View ${wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount} comment${(wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount) === 1 ? '' : 's'}`
+                : 'Add a comment'
+            }
+            onClick={() => setCommentSheetOpen(true)}
+            className="inline-flex items-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <MessageCircle className="size-5 text-muted-foreground" aria-hidden />
+            {(wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount) > 0 && (
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {wearPicCommentCounts[activeWearPic.wearEventId] ?? activeWearPic.commentCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Phase 62 Plan 04 WPIC-06: Wear-pic comment bottom sheet.
+          WearCommentHost client component — no 'use cache' anywhere in this path (T-62-16).
+          initialComments pre-fetched by page RSC (Option A); onCountChange keeps badge in sync. */}
+      {activeWearPic && (
+        <WearCommentHost
+          variant="bottom-sheet"
+          wearEventId={activeWearPic.wearEventId}
+          open={commentSheetOpen}
+          onOpenChange={setCommentSheetOpen}
+          initialComments={activeWearPic.initialComments}
+          canComment={true}
+          ownerFollowsViewer={false}
+          viewerIsFollowing={false}
+          ownerUserId={ownerUserId}
+          ownerUsername={ownerUsername}
+          viewerId={viewerId}
+          viewerAuthor={viewerAuthor}
+          onCountChange={(delta) => {
+            setWearPicCommentCounts((prev) => ({
+              ...prev,
+              [activeWearPic.wearEventId]: (prev[activeWearPic.wearEventId] ?? activeWearPic.commentCount) + delta,
+            }))
+          }}
+        />
+      )}
+
+      {/* -------------------------------------------------------------------- */}
+      {/* Filmstrip — shown when there are owner photos OR wear pics OR in edit */}
+      {/* mode (so a photo-less watch can still reach the dropzone).            */}
+      {/* Issue #3 (2026-05-26). Phase 62: also shown when there are wear pics. */}
+      {/* -------------------------------------------------------------------- */}
+      {(hasOwnerPhotos || hasWearPics || editMode) && (
         <div className="min-w-0">
           {editMode ? (
             // Edit mode: wrap filmstrip in DndContext + SortableContext
@@ -488,6 +650,89 @@ export function WatchPhotoSection({
                       at the cap (visibleIds.length < MAX_PHOTOS guard). */}
                 </div>
               </SortableContext>
+
+              {/* Phase 62 Plan 04 WPIC-02: wear-pic edit-mode thumbnails.
+                  Parallel non-sortable wrapper (NOT SortablePhotoThumb — wear pics
+                  cannot be reordered or deleted, only hidden/shown). D-08/D-10. */}
+              {optimisticWearPics.length > 0 && (
+                <div
+                  role="list"
+                  aria-label="Wear photo filmstrip"
+                  className="flex flex-wrap gap-2 pb-1 max-w-sm mt-1"
+                >
+                  {optimisticWearPics.map((wp, idx) => {
+                    const isHidden = wp.hiddenFromDetail
+                    const slideIdx = ownerSlideCount + idx
+                    return (
+                      <div
+                        key={wp.wearEventId}
+                        role="listitem"
+                        className="relative flex-none w-16 h-16 rounded-md overflow-hidden bg-muted cursor-pointer"
+                        onClick={() => emblaApi?.scrollTo(slideIdx)}
+                        aria-label={
+                          isHidden
+                            ? 'Photo, hidden from this page. Tap to show.'
+                            : `Wear photo ${idx + 1}`
+                        }
+                      >
+                        {/* CSS Chain Assertion 3: opacity-50 on IMAGE only, not container,
+                            so the bg-muted base shows through and the "Hidden" label stays
+                            fully opaque. */}
+                        {wp.signedUrl ? (
+                          <Image
+                            src={wp.signedUrl}
+                            alt={`Wear photo ${idx + 1}`}
+                            fill
+                            sizes="64px"
+                            className={cn('object-cover', isHidden && 'opacity-50')}
+                          />
+                        ) : (
+                          <div className={cn('w-full h-full bg-muted', isHidden && 'opacity-50')} />
+                        )}
+
+                        {/* Hidden label strip (full-width, bottom of thumb) */}
+                        {isHidden && (
+                          <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] font-semibold text-foreground bg-background/70 py-0.5">
+                            Hidden
+                          </span>
+                        )}
+
+                        {/* Eye/EyeOff toggle — onPointerDown (NOT onClick) per
+                            MEMORY project_router_cache_stale_instance: Next 16
+                            restores the same stale client component instance. */}
+                        <button
+                          type="button"
+                          aria-pressed={isHidden}
+                          aria-label={isHidden ? 'Show on this page' : 'Hide from this page'}
+                          onPointerDown={(e) => {
+                            e.stopPropagation()
+                            // Optimistic flip before server action resolves
+                            startTransition(async () => {
+                              applyOptimisticHide({ wearEventId: wp.wearEventId, hidden: !isHidden })
+                              const action = isHidden ? unhideWearPicAction : hideWearPicAction
+                              const result = await action({ wearEventId: wp.wearEventId, watchId })
+                              if (!result.success) {
+                                // Revert on failure
+                                applyOptimisticHide({ wearEventId: wp.wearEventId, hidden: isHidden })
+                                toast.error("Couldn't update. Try again.")
+                              } else {
+                                toast.success(isHidden ? 'Shown on this page' : 'Hidden from this page')
+                              }
+                            })
+                          }}
+                          className="absolute top-1 right-1 size-6 bg-background/80 rounded-full flex items-center justify-center"
+                        >
+                          {isHidden ? (
+                            <Eye className="size-4" aria-hidden />
+                          ) : (
+                            <EyeOff className="size-4" aria-hidden />
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
 
               {/* DragOverlay renders clone at pointer during drag */}
               <DragOverlay>
@@ -565,6 +810,41 @@ export function WatchPhotoSection({
                   {/* D-07 revised 2026-05-25: no Cover badge in view mode */}
                 </div>
               ))}
+
+              {/* Phase 62 Plan 04 D-03: wear-pic filmstrip thumbs (view mode) —
+                  tap-to-jump; offset by ownerSlideCount so they jump to the correct
+                  merged carousel index. No badge on thumb (too small at 64px). */}
+              {visibleWearPics.map((wp, idx) => {
+                const slideIdx = ownerSlideCount + idx
+                return (
+                  <div
+                    key={wp.wearEventId}
+                    role="listitem"
+                    tabIndex={0}
+                    className="relative flex-none w-16 h-16 rounded-md overflow-hidden bg-muted cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+                    onClick={() => emblaApi?.scrollTo(slideIdx)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        emblaApi?.scrollTo(slideIdx)
+                      }
+                    }}
+                    aria-label={`Wear photo ${idx + 1}`}
+                  >
+                    {wp.signedUrl ? (
+                      <Image
+                        src={wp.signedUrl}
+                        alt={`Wear photo ${idx + 1}`}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted" />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
 
