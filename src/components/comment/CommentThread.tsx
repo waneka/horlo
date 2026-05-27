@@ -63,7 +63,7 @@ export async function CommentThread({
     : null
 
   return (
-    <section className="mt-6">
+    <section id="comments" className="mt-6">
       <h2 className="text-sm font-semibold mb-4">Comments</h2>
       <CommentList
         initialComments={initialComments}

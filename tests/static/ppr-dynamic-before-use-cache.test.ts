@@ -124,33 +124,37 @@ describe('P61-BUG-01: [tab]/page.tsx — dynamic API (signCoverUrls) after \'use
 // P61-BUG-01 assertion for src/app/w/[ref]/page.tsx
 //
 // Both Branch 1 (perUserResult) and the D-06 owned branch (viewerOwnedRow)
-// contain a createSupabaseServerClient() call (photo signing) that MUST come
+// contain a createSupabaseAdminClient() call (photo signing) that MUST come
 // BEFORE getLikesForTargetCached (a 'use cache' helper).
 //
-// OLD violation (Branch 1): createSupabaseServerClient at ~148, AFTER
-//   getLikesForTargetCached at ~81. Same pattern in D-06 branch.
-// FIXED: createSupabaseServerClient at ~87 (Branch 1) and ~292 (D-06),
-//   each appearing in the ~20 lines BEFORE their getLikesForTargetCached call.
+// Note: the route uses createSupabaseAdminClient (service role, cookie-free)
+// for all photo signing — NOT createSupabaseServerClient. The admin client
+// bypasses cookies() entirely, which is required to avoid React #419 in PPR
+// routes (T-64-02: Pitfall 8 fix — vacuous guard repaired 2026-05-27).
+//
+// FIXED: createSupabaseAdminClient at ~163 (Branch 1) and ~444 (D-06),
+//   each appearing in the lines BEFORE their getLikesForTargetCached call.
 //
 // Guard: for each active-code getLikesForTargetCached( call, the most recent
-//   active-code createSupabaseServerClient( call before it must be within
-//   MAX_LOOKAHEAD lines. This catches the case where createSupabaseServerClient
+//   active-code createSupabaseAdminClient( call before it must be within
+//   MAX_LOOKAHEAD lines. This catches the case where createSupabaseAdminClient
 //   is moved to AFTER getLikesForTargetCached.
 //
-// MAX_LOOKAHEAD = 50 lines is generous enough to accommodate comment blocks
-//   and a few blank lines between the two calls within a branch, while being
-//   tight enough to reject the old violation (where createSupabaseServerClient
-//   was ~67 lines AFTER getLikesForTargetCached in Branch 1).
+// MAX_LOOKAHEAD = 70 lines is generous enough to accommodate comment blocks
+//   and multi-step async chains within a branch (e.g. Branch 1 in /w/[ref]/page.tsx
+//   has ~59 lines between the admin client call at ~185 and the getLikesForTargetCached
+//   call at ~244), while being tight enough to reject a violation where the admin
+//   client call is far after the cached helper.
 // ---------------------------------------------------------------------------
-const MAX_LOOKAHEAD = 50
+const MAX_LOOKAHEAD = 70
 
-describe('P61-BUG-01: w/[ref]/page.tsx — createSupabaseServerClient before getLikesForTargetCached', () => {
+describe('P61-BUG-01: w/[ref]/page.tsx — createSupabaseAdminClient before getLikesForTargetCached', () => {
   const content = readFileSync(REF_PAGE, 'utf8')
   const lines = content.split('\n')
 
-  it('each getLikesForTargetCached( call is preceded by createSupabaseServerClient( within MAX_LOOKAHEAD lines', () => {
+  it('each getLikesForTargetCached( call is preceded by createSupabaseAdminClient( within MAX_LOOKAHEAD lines', () => {
     const cachedCallLines = activeLineNumbers(lines, /getLikesForTargetCached\(/)
-    const dynamicCallLines = activeLineNumbers(lines, /createSupabaseServerClient\(/)
+    const dynamicCallLines = activeLineNumbers(lines, /createSupabaseAdminClient\(/)
 
     // There should be at least one getLikesForTargetCached active call
     expect(
@@ -159,22 +163,22 @@ describe('P61-BUG-01: w/[ref]/page.tsx — createSupabaseServerClient before get
     ).toBeGreaterThan(0)
 
     // For each getLikesForTargetCached call, verify that the most recent
-    // createSupabaseServerClient call before it is within MAX_LOOKAHEAD lines.
+    // createSupabaseAdminClient call before it is within MAX_LOOKAHEAD lines.
     for (const cachedLine of cachedCallLines) {
-      // Find the last createSupabaseServerClient call that comes before cachedLine
+      // Find the last createSupabaseAdminClient call that comes before cachedLine
       const precedingDynamicLine = dynamicCallLines
         .filter((ln) => ln < cachedLine)
         .at(-1)  // most recent
 
       expect(
         precedingDynamicLine,
-        `[${REF_PAGE}] getLikesForTargetCached( at line ${cachedLine}: no preceding createSupabaseServerClient( found — P61-BUG-01 violation (dynamic API must appear before the 'use cache' helper in each branch)`,
+        `[${REF_PAGE}] getLikesForTargetCached( at line ${cachedLine}: no preceding createSupabaseAdminClient( found — P61-BUG-01 violation (admin client must appear before the 'use cache' helper in each branch)`,
       ).toBeDefined()
 
       const distance = cachedLine - precedingDynamicLine!
       expect(
         distance,
-        `[${REF_PAGE}] getLikesForTargetCached( at line ${cachedLine}: nearest preceding createSupabaseServerClient( is at line ${precedingDynamicLine!} (distance ${distance} lines). Expected ≤ ${MAX_LOOKAHEAD} lines — if they are now far apart, the dynamic call may have been moved after the 'use cache' helper (P61-BUG-01)`,
+        `[${REF_PAGE}] getLikesForTargetCached( at line ${cachedLine}: nearest preceding createSupabaseAdminClient( is at line ${precedingDynamicLine!} (distance ${distance} lines). Expected ≤ ${MAX_LOOKAHEAD} lines — if they are now far apart, the admin client call may have been moved after the 'use cache' helper (P61-BUG-01)`,
       ).toBeLessThanOrEqual(MAX_LOOKAHEAD)
     }
   })
