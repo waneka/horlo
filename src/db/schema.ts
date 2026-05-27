@@ -302,6 +302,10 @@ export const wearEvents = pgTable(
     // Phase 11 additions (WYWT-09):
     photoUrl: text('photo_url'),
     visibility: wearVisibilityEnum('visibility').notNull().default('public'),
+    // Phase 62 D-11: owner can hide a specific wear pic from the watch detail carousel.
+    // This is NOT a visibility change — 'hide from detail' is a separate persistent state
+    // on wear_events that does not affect the rail or profile worn tab.
+    hiddenFromDetail: boolean('hidden_from_detail').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

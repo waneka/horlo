@@ -559,3 +559,50 @@ export async function getActiveWearsForUser(
     )
     .orderBy(asc(wearEvents.wornDate), asc(wearEvents.createdAt)) // oldest-first (D-05)
 }
+
+// ---------------------------------------------------------------------------
+// Phase 62 — WPIC-01 / WPIC-05
+// Returns public, non-hidden wear pics for a watch detail carousel.
+// WHERE: watchId + visibility='public' + hiddenFromDetail=false
+// Ordered: wornDate DESC (newest worn first, D-02).
+// NOTE: This is a stub for Wave 0 test collection. Full implementation in Plan 02.
+// DO NOT call or import getWearRailForViewer — this is a separate DAL function (D-17).
+// ---------------------------------------------------------------------------
+export async function getPublicWearPicsForWatch(
+  watchId: string,
+): Promise<{ id: string; wornDate: string; photoUrl: string | null; hiddenFromDetail: boolean }[]> {
+  const rows = await db
+    .select({
+      id: wearEvents.id,
+      wornDate: wearEvents.wornDate,
+      photoUrl: wearEvents.photoUrl,
+      hiddenFromDetail: wearEvents.hiddenFromDetail,
+    })
+    .from(wearEvents)
+    .where(
+      and(
+        eq(wearEvents.watchId, watchId),
+        eq(wearEvents.visibility, 'public'),
+        eq(wearEvents.hiddenFromDetail, false),
+      ),
+    )
+    .orderBy(desc(wearEvents.wornDate))
+  return rows
+}
+
+// ---------------------------------------------------------------------------
+// Phase 62 — WPIC-02 (D-11)
+// Sets hidden_from_detail on a single wear event row.
+// Called by hideWearPicAction / unhideWearPicAction in src/app/actions/wearEvents.ts.
+// NOTE: Stub for Wave 0 test collection. Full implementation (with ownership
+// double-check at the DB layer) in Plan 03.
+// ---------------------------------------------------------------------------
+export async function setWearPicHidden(
+  wearEventId: string,
+  hidden: boolean,
+): Promise<void> {
+  await db
+    .update(wearEvents)
+    .set({ hiddenFromDetail: hidden })
+    .where(eq(wearEvents.id, wearEventId))
+}

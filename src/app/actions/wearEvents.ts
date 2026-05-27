@@ -276,3 +276,69 @@ export async function getWornTodayIdsForUserAction(
   const set = await wearEventDAL.getWornTodayIdsForUser(user.id, parsed.data.today)
   return [...set]
 }
+
+// ---------------------------------------------------------------------------
+// Phase 62 — WPIC-02 (D-11)
+// hideWearPicAction / unhideWearPicAction — owner hide/unhide toggle for a
+// wear pic on the watch detail carousel.
+// NOTE: These are stubs for Wave 0 test collection. Full implementation in Plan 03.
+// ---------------------------------------------------------------------------
+
+const hideWearPicSchema = z
+  .object({
+    wearEventId: z.string().uuid(),
+    watchId: z.string().uuid(),
+  })
+  .strict()
+
+export async function hideWearPicAction(
+  data: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = hideWearPicSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  // CR-01 / IDOR defense: scope watch lookup to caller (plan D-11)
+  const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
+  if (!watch) {
+    return { success: false, error: 'Watch not found' }
+  }
+
+  await wearEventDAL.setWearPicHidden(parsed.data.wearEventId, true)
+  revalidatePath('/w/[ref]', 'page')
+  return { success: true }
+}
+
+export async function unhideWearPicAction(
+  data: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = hideWearPicSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  // CR-01 / IDOR defense: scope watch lookup to caller (plan D-11)
+  const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
+  if (!watch) {
+    return { success: false, error: 'Watch not found' }
+  }
+
+  await wearEventDAL.setWearPicHidden(parsed.data.wearEventId, false)
+  revalidatePath('/w/[ref]', 'page')
+  return { success: true }
+}
