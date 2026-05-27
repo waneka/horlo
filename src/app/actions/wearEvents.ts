@@ -324,6 +324,11 @@ export async function hideWearPicAction(
 
   try {
     await wearEventDAL.hideWearPic(user.id, parsed.data.watchId, parsed.data.wearEventId)
+    // WR-02 (false positive): revalidatePath('/w/[ref]', 'page') IS the correct
+    // Next 16 form for invalidating all pages of a dynamic route — the second
+    // argument 'page' combined with a dynamic segment pattern is explicitly
+    // documented in node_modules/next/dist/docs/01-app/03-api-reference/04-functions/
+    // revalidatePath.md §"Revalidating a Page path". This is NOT a no-op.
     revalidatePath('/w/[ref]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
@@ -355,6 +360,8 @@ export async function unhideWearPicAction(
 
   try {
     await wearEventDAL.unhideWearPic(user.id, parsed.data.watchId, parsed.data.wearEventId)
+    // WR-02 (false positive): see hideWearPicAction comment above — 'page' scope
+    // with a dynamic segment pattern is the documented form in Next 16.
     revalidatePath('/w/[ref]', 'page')
     return { success: true, data: undefined }
   } catch (err) {
