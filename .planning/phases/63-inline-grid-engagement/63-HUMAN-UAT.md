@@ -1,18 +1,16 @@
 ---
-status: partial
+status: complete
 phase: 63-inline-grid-engagement
 source: [63-VERIFICATION.md]
 started: 2026-05-27T20:28:29Z
 updated: 2026-05-27T21:35:09Z
+reviewed_decisions:
+  - "Open-collection comments (GATE-01): viewer noticed a non-follower can comment on a stranger's COLLECTION. Confirmed this is the designed v6.0 gate (collections open; only wishlists need mutual-follow), not a Phase 63 bug. Delete is author-scoped (own comments only — verified, no IDOR). Decision: KEEP AS DESIGNED (2026-05-27). Tightening would be a new v6.0-gate-model decision beyond Phase 63."
 ---
 
 ## Current Test
 
-number: 4
-name: Post comment via sheet
-expected: |
-  Type a comment and submit; the sheet closes, the card's 💬 count bumps +1, and a 'Comment posted' toast fires.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -31,32 +29,34 @@ result: pass
 
 ### 4. Post comment via sheet
 expected: Type a comment and submit; the sheet closes, the card's 💬 count bumps +1, and a 'Comment posted' toast fires. (On failure: typed text is retained and a failure toast appears.)
-result: [pending]
+result: pass
+note: re-verified after G1 fix — submit and close-without-comment both stay on grid (no nav)
 
 ### 5. Card body navigation preserved
 expected: Tap the image or text region above/around the chips (not on a chip); the card navigates to /w/[ref] as before.
-result: [pending]
+result: pass
 
 ### 6. Owner view — no chips
 expected: On your OWN profile grid, no ♥/💬 chips and no scrim appear — only the existing static count line. (Owner experience unchanged; no drag-reorder conflict on the wishlist.)
-result: [pending]
+result: pass
 
 ### 7. Gated viewer — comment gate enforced per card
 expected: As a NON-mutual viewer on another user's WISHLIST grid, the ♥ chip shows but the 💬 chip is hidden entirely (no locked/teaser affordance). Non-wishlist and wear targets stay open.
-result: [pending]
+result: pass
 
 ### 8. Navigate-back shows fresh state (D-12 cache-tag bust)
 expected: Like a watch, navigate away and back (soft nav); the server-fresh liked state and counts are shown (the viewer:{userId}:counts tag busts so re-hydration is fresh). Verify after the cache has warmed (a cold first read can be a false negative).
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 8
-passed: 3
+passed: 8
 issues: 0
-pending: 5
+pending: 0
 skipped: 0
 blocked: 0
+notes: 1 issue (G1) + 2 design revisions (R1) found and resolved inline during UAT; re-verified
 
 ## Design Revisions (from prod UAT)
 
