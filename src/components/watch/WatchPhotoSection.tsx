@@ -100,6 +100,23 @@ export interface WatchPhotoSectionProps {
   ownerUsername?: string
   /** Phase 62 Plan 04 WPIC-06: viewer's CommentAuthor for optimistic comment inserts. */
   viewerAuthor?: CommentAuthor | null
+  /**
+   * CR-02 / IN-02: RSC-resolved comment gate for wear-pic comments.
+   * Mirrors canCommentDisplay semantics from w/[ref]/page.tsx: false for the
+   * owner (suppress compose), true only when the viewer passes the GATE-01
+   * follower check. Defaults to false for safety.
+   */
+  canCommentOnWears?: boolean
+  /**
+   * CR-02 / IN-02: owner→viewer follow direction for CommentGateLocked copy.
+   * Resolved by the RSC (mirrors the same signal used for the watch thread).
+   */
+  ownerFollowsViewerForWears?: boolean
+  /**
+   * CR-02 / IN-02: viewer→owner follow direction for CommentGateLocked copy.
+   * Resolved by the RSC (mirrors the same signal used for the watch thread).
+   */
+  viewerIsFollowingForWears?: boolean
 }
 
 const MAX_PHOTOS = 10
@@ -116,6 +133,9 @@ export function WatchPhotoSection({
   ownerUserId = '',
   ownerUsername = '',
   viewerAuthor = null,
+  canCommentOnWears = false,
+  ownerFollowsViewerForWears = false,
+  viewerIsFollowingForWears = false,
 }: WatchPhotoSectionProps) {
   // Resilience (issue #2 root cause, 2026-05-26): drop any photo whose signed URL
   // came back null — e.g. a watch_photos row with a malformed storage_path (a full
@@ -583,9 +603,9 @@ export function WatchPhotoSection({
           open={commentSheetOpen}
           onOpenChange={setCommentSheetOpen}
           initialComments={activeWearPic.initialComments}
-          canComment={true}
-          ownerFollowsViewer={false}
-          viewerIsFollowing={false}
+          canComment={canCommentOnWears}
+          ownerFollowsViewer={ownerFollowsViewerForWears}
+          viewerIsFollowing={viewerIsFollowingForWears}
           ownerUserId={ownerUserId}
           ownerUsername={ownerUsername}
           viewerId={viewerId}

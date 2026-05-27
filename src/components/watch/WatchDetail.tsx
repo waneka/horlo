@@ -91,6 +91,16 @@ interface WatchDetailProps {
    * optimistic comment inserts. Resolved by the RSC via getProfilesByIds.
    */
   viewerAuthor?: CommentAuthor | null
+  /**
+   * CR-02 / IN-02: RSC-resolved comment gate for wear-pic comments.
+   * Mirrors canCommentDisplay: false for the owner and for viewers who fail the
+   * GATE-01 follower check. Passed to WatchPhotoSection → WearCommentHost.
+   */
+  canCommentOnWears?: boolean
+  /** CR-02 / IN-02: owner→viewer follow direction for CommentGateLocked. */
+  ownerFollowsViewerForWears?: boolean
+  /** CR-02 / IN-02: viewer→owner follow direction for CommentGateLocked. */
+  viewerIsFollowingForWears?: boolean
 }
 
 function formatDate(dateStr?: string): string {
@@ -117,7 +127,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount, signedPhotos, userId, wearPics, ownerUserId, ownerUsername, viewerAuthor }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount, signedPhotos, userId, wearPics, ownerUserId, ownerUsername, viewerAuthor, canCommentOnWears, ownerFollowsViewerForWears, viewerIsFollowingForWears }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -179,6 +189,9 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
               ownerUserId={ownerUserId ?? ''}
               ownerUsername={ownerUsername ?? ''}
               viewerAuthor={viewerAuthor ?? null}
+              canCommentOnWears={canCommentOnWears}
+              ownerFollowsViewerForWears={ownerFollowsViewerForWears}
+              viewerIsFollowingForWears={viewerIsFollowingForWears}
             />
           ) : (
             <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-muted">

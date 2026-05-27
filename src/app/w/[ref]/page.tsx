@@ -319,6 +319,9 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           ownerUserId={ownerUserId}
           ownerUsername={ownerProfile?.username ?? ''}
           viewerAuthor={viewerAuthorForWears}
+          canCommentOnWears={!isOwner && canComment}
+          ownerFollowsViewerForWears={ownerFollowsViewer}
+          viewerIsFollowingForWears={viewerIsFollowing}
         />
 
         {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
@@ -564,6 +567,9 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           ownerUserId={user.id}
           ownerUsername={ownerProfile?.username ?? ''}
           viewerAuthor={ownedViewerAuthorForWears}
+          canCommentOnWears={false}
+          ownerFollowsViewerForWears={false}
+          viewerIsFollowingForWears={false}
         />
 
         {collection.length === 0 &&
