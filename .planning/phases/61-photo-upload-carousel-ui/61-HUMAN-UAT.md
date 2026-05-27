@@ -1,15 +1,15 @@
 ---
-status: partial
+status: complete
 phase: 61-photo-upload-carousel-ui
 source: [61-VERIFICATION.md]
 started: 2026-05-26T08:15:00Z
-updated: 2026-05-26T08:15:00Z
-note: "Regenerated after 61-05/61-06 gap closure re-verification. Supersedes the 2026-05-25 stub. All 9 UAT gaps structurally closed; these 6 items need prod device/flow confirmation on next deploy (push origin main → Vercel)."
+updated: 2026-05-26T23:59:00Z
+note: "COMPLETE 2026-05-26 — all 6 device/flow items pass on prod, plus a round-2 batch (filmstrip wrap, dropzone edit-only, catalog photo, React #418) all resolved. Prerequisite blockers resolved en route: gap #9 (AddWatchFlow remount), gap #1 #419 (PPR static-shell opt-out via connection()). Phase 61 user-verified."
 ---
 
 ## Current Test
 
-[walkthrough complete for this pass — 3 pass (t1/t2/t3), 1 issue (t6/gap#9), 2 blocked (t4 by gap#9, t5 by live /w/[ref] 404). Two outstanding code issues: gap #9 (/watch/new photos-step + post-save nav) and /w/[ref] #419 (debug session reopened). Re-run after both fixes land to clear t4 + t5.]
+[COMPLETE — all 6 pass on prod (t1/t2/t3 carousel+upload UI; t4 Skip-for-now prominence; t5 stale-instance reset; t6/gap#9 add-photos step). Round-2 issues (#1 filmstrip wrap, #2 catalog photo, #3 dropzone edit-only, #418 hydration) all resolved. #419 family resolved (debug session archived).]
 
 ## Tests
 
@@ -33,16 +33,16 @@ note: "OS picker offers both camera and library — no forced capture."
 
 ### 4. "Skip for now" visual prominence / friction
 expected: In the add-watch photos step, "Skip for now" is clearly the secondary, lower-contrast option vs the primary "Add photos"/"Continue" button; friction is sufficient but never blocks saving.
-result: blocked
-blocked_by: gap-9-step-never-appears
-reason: "Cannot assess 'Skip for now' prominence — the 'Add your photos' step never renders (see test 6). Re-test after gap #9 is fixed."
+result: pass
+verified_on: prod 2026-05-26 (after gap #9 fix)
+reason: "Unblocked once the 'Add your photos' step rendered (gap #9 fix). User confirmed 'Skip for now' prominence/friction is correct."
 
 ### 5. Router-Cache stale-instance reset on /w/[ref] revisit
 expected: Navigate away from `/w/[ref]` and back; Edit mode resets to off, the carousel is usable, and the filmstrip shows no stale drag state (onPointerDown reset, MEMORY `project_router_cache_stale_instance`).
-result: unblocked
-prior_result: blocked
+result: pass
+verified_on: prod 2026-05-26 (after #419 fix 5ea4291)
 prior_blocked_by: react-419-404-soft-nav
-reason: "UNBLOCKED 2026-05-26 — gap #1 (#419/404 soft-nav) RESOLVED on deploy 5ea4291 (user-approved). /w/[ref] soft-nav now works, so stale-instance reset is testable again. Pending explicit confirmation: navigate away from /w/[ref] in Edit mode and back → Edit mode off, carousel usable, no stale drag state (onPointerDown reset, MEMORY project_router_cache_stale_instance)."
+reason: "Unblocked once #419/404 soft-nav was resolved. User confirmed: navigating away from /w/[ref] in Edit mode and back resets Edit mode off with no stale drag state (onPointerDown reset, MEMORY project_router_cache_stale_instance)."
 
 ### 6. Gap #9 live flow — "Add your photos" step appears (extract → Add to Collection → save)
 expected: Open the add-watch flow FROM a watch detail page (so a real `returnTo` is set), paste a URL, get the fit verdict, click "Add to Collection," and submit the auto-filled form. The prominent "Add your photos" step (WatchPhotoStep) renders BEFORE any navigation — no auto-redirect back to origin, no premature toast "View" navigation.
@@ -60,11 +60,11 @@ why_critical: "Core PHOTO-09 deliverable. Failed prod verification twice. Also a
 ## Summary
 
 total: 6
-passed: 3
-issues: 1
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
-blocked: 2
+blocked: 0
 
 ## Deploy State (CRITICAL — affects validity of all results above)
 
