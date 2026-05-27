@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: executing
-stopped_at: Phase 64 Plan 03 complete
-last_updated: "2026-05-27T23:32:18.939Z"
+status: verifying
+stopped_at: Phase 64 Plan 04 complete (4/4 plans); prod visual verification PENDING
+last_updated: "2026-05-27T23:44:50.428Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -25,13 +25,13 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 ## Current Position
 
-Phase: 64 (Detail Page IA Redesign) — EXECUTING
-Plan: 4 of 4
-Status: Plan 03 complete — executing Plan 04
-Next phase: 64 (Detail Page IA Redesign) — in progress
+Phase: 64 (Detail Page IA Redesign) — STRUCTURALLY COMPLETE
+Plan: 4 of 4 (all complete)
+Status: Plan 04 complete — prod human-verify PENDING (push → Vercel → verify after cache fills)
+Next phase: Phase 64 prod verification, then next milestone planning
 Last activity: 2026-05-27
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -83,6 +83,9 @@ Progress: [████████░░] 75%
 - **MAX_LOOKAHEAD = 70 in ppr-guard** — Branch 1 of /w/[ref]/page.tsx has 59-line gap between createSupabaseAdminClient and getLikesForTargetCached; 50 was too tight (Phase 64 Plan 01 auto-fix).
 - **Privacy guard uses exact-line-match for directive detection** — CRITICAL prose comment in CommentThread.tsx lines 1-3 contains 'use client'/'use cache' as text; regex match would false-positive; trim() === directive form is the correct check (Phase 64 Plan 01 auto-fix).
 - **WatchDetailTrailing comment reworded to avoid grep false-positive** — initial header comment `// NO 'use client'` contained the literal string `'use client'`; the plan's RSC assertion `! grep -q "use client"` matched the prose; reworded to `// Pure RSC — no client directive` to let the grep pass while preserving intent (Phase 64 Plan 03).
+- **Branch 2-D06 omits OtherOwnersRoster + CatalogPageActions** — cross-user-only components; Phase-64 TODO at ~595 resolved by absence; not a gap (Phase 64 Plan 04).
+- **Branch 3 container upgraded to space-y-8 (D-14 parity)** — OtherOwnersRoster + CatalogPageActions surfaced high near verdict (D-13 resolved); Phase-64 TODO comments removed (Phase 64 Plan 04).
+- **Task 3 prod human-verify auto-approved in chain mode** — actual prod check (push → Vercel, wait for cache fill, verify desktop 2-col, mobile collapse, jump scroll, soft-nav #419, catalog branch, owner gates) is PENDING / human_needed (Phase 64 Plan 04).
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 64 Plan 03 COMPLETE. Created WatchDetailTrailing pure RSC: four spec cards (Specifications, Pricing, Classification, Tracking) + gap-fill callout + Notes extracted from WatchDetail.tsx. No 'use client', no hooks, no event handlers. computeGapFill called directly in RSC (verified RSC-safe). formatDate uses timeZone UTC (#418). Build exits 0. Commit: 42395c5.
-Stopped at: Phase 64 Plan 03 complete
-Next action: Execute Phase 64 Plan 04 (page.tsx wiring — WatchDetailHero + CommentThread + WatchDetailTrailing)
+Last activity: 2026-05-27 — Phase 64 Plan 04 COMPLETE. Re-ordered all three /w/[ref] page.tsx branches to canonical IA (hero → comments → trailing → rails → footer). Updated WatchPageSkeleton to mirror new layout (hero grid + comment skeleton + spec-cards skeleton). watch-detail-ia-order.test.ts GREEN. All 14 static test files / 425 tests GREEN. Build exits 0. Commits: 51712cf (branches 1+2-D06), c90eaa2 (branch 3 + skeleton). Task 3 prod human-verify auto-approved in chain mode — PENDING on prod.
+Stopped at: Phase 64 Plan 04 complete — prod visual verification PENDING
+Next action: Push origin main → verify on prod (Vercel; wait for cache to fill); then /gsd-complete-milestone or next planning
