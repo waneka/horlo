@@ -97,8 +97,11 @@ blocked: 2
   status: fix_applied
   reason: "User (round 2): watches with 'url based' photos (previously in the catalog) render everywhere EXCEPT the detail page, which shows the backup watch icon. New URL-extraction watches render fine. ROOT CAUSE: detail page passed the UNSIGNED watch → catalogFallbackUrl=getSafeImageUrl(rawStoragePath)=null → placeholder; grids signed it via signCoverUrls. URL covers (https) were unaffected (getSafeImageUrl passes them through), which is why URL-extracted watches looked fine."
   severity: major
-  fix: "src/app/w/[ref]/page.tsx: sign the cover via signCoverUrls([watch]) in both Branch 1 and the D-06 owned branch before passing to WatchDetail (same helper grids use). Raw storage-path covers become signed https URLs; https URLs pass through unchanged."
-  artifacts: [src/app/w/[ref]/page.tsx, src/lib/storage/signCoverUrls.ts]
+  first_fix_INSUFFICIENT: "src/app/w/[ref]/page.tsx signs the cover via signCoverUrls([watch]) (commit 82c570e). Kept (correct for genuine storage-path covers) but did NOT fix this case — the watch has an owner photo so catalogFallbackUrl is never used."
+  actual_root_cause: "DB query (prod) revealed: this watch has owner_photo_count=1, and that watch_photos row's storage_path is a FULL URL ('https://api.ecom.longines.com/.../hero.png'), not a {userId}/ storage path. createSignedUrl(url) against the watch-photos bucket fails → signedPhotos[0].signedUrl = null → carousel renders the WatchIcon for the broken owner-photo slide (catalogFallbackUrl never reached because hasOwnerPhotos was true). Bad row created 2026-05-25 (early-Phase-61 artifact, before the IDOR {userId}/ guard); current upload path can't create it. The Longines URL the user 'copied from the grid' is the CATALOG image shown in search/catalog views, masking the broken collection/detail render."
+  actual_fix: "WatchPhotoSection: filter out photos whose signedUrl is null (const photos = photosProp.filter(p => p.signedUrl !== null)). A photo that can't be signed can't render anyway; dropping it makes hasOwnerPhotos go false → the carousel falls back to the catalog image. Robust for any future missing/broken storage object too. Commit TBD."
+  data_cleanup_recommended: "DELETE FROM watch_photos WHERE storage_path LIKE 'http%'; (removes the orphan URL rows; after cleanup the watch has 0 owner photos and shows the catalog image cleanly even without the resilience fix). Scope check first: SELECT count(*) FILTER (WHERE storage_path LIKE 'http%') FROM watch_photos;"
+  artifacts: [src/components/watch/WatchPhotoSection.tsx, src/app/w/[ref]/page.tsx, src/lib/storage/signCoverUrls.ts]
   missing: []
 
 - truth: "The 'Drop photos here or tap to choose' dropzone renders ONLY in edit mode (never on page load)"

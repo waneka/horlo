@@ -77,13 +77,22 @@ export interface WatchPhotoSectionProps {
 const MAX_PHOTOS = 10
 
 export function WatchPhotoSection({
-  photos,
+  photos: photosProp,
   watchId,
   catalogFallbackUrl,
   brandModel,
   viewerCanEdit = false,
   userId,
 }: WatchPhotoSectionProps) {
+  // Resilience (issue #2 root cause, 2026-05-26): drop any photo whose signed URL
+  // came back null — e.g. a watch_photos row with a malformed storage_path (a full
+  // URL instead of a `{userId}/…` path) or a missing/deleted storage object. Such
+  // photos can't render anyway; filtering them lets `hasOwnerPhotos` go false so the
+  // carousel falls back to the catalog image instead of showing a blank watch-icon.
+  const photos = useMemo(
+    () => photosProp.filter((p) => p.signedUrl !== null),
+    [photosProp],
+  )
   // ---------------------------------------------------------------------------
   // Embla carousel setup
   // ---------------------------------------------------------------------------
