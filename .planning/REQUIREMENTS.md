@@ -42,11 +42,11 @@
 
 > Public-visibility wear photos auto-surface on the watch (public = consent), with an owner per-pic hide control. Wear pics persist in the Wears tab; the Home rail stays ephemeral.
 
-- [ ] **WPIC-01**: A wear photo set to "public" visibility automatically surfaces on its watch's detail page
+- [x] **WPIC-01**: A wear photo set to "public" visibility automatically surfaces on its watch's detail page
 - [x] **WPIC-02**: The owner can hide a specific surfaced wear pic from the watch detail page (per-pic control)
-- [ ] **WPIC-03**: Wear photos persist in the owner's Wears tab, showing the actual wear photo rather than the generic catalog image
+- [x] **WPIC-03**: Wear photos persist in the owner's Wears tab, showing the actual wear photo rather than the generic catalog image
 - [x] **WPIC-04**: The Home wear rail stays ephemeral (wears appear only within the 24/48h window) — detail surfacing does not change rail behavior
-- [ ] **WPIC-05**: A non-public (followers-only / private) wear pic never surfaces on watch detail
+- [x] **WPIC-05**: A non-public (followers-only / private) wear pic never surfaces on watch detail
 - [ ] **WPIC-06**: Surfaced public wear pics carry the v6.0 likes/comments interaction layer
 
 ### Inline Grid Engagement (SEED-015) — `GRID`
@@ -120,11 +120,11 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | PHOTO-05 | Phase 61 | Complete |
 | PHOTO-06 | Phase 61 | Complete |
 | PHOTO-09 | Phase 61 | Complete |
-| WPIC-01 | Phase 62 | Pending |
+| WPIC-01 | Phase 62 | Complete |
 | WPIC-02 | Phase 62 | Complete |
-| WPIC-03 | Phase 62 | Pending |
+| WPIC-03 | Phase 62 | Complete |
 | WPIC-04 | Phase 62 | Complete |
-| WPIC-05 | Phase 62 | Pending |
+| WPIC-05 | Phase 62 | Complete |
 | WPIC-06 | Phase 62 | Pending |
 | GRID-01 | Phase 63 | Pending |
 | GRID-02 | Phase 63 | Pending |

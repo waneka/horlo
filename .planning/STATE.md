@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 62 Plan 02 complete
-last_updated: "2026-05-27T14:14:10.160Z"
+stopped_at: Phase 62 Plan 03 complete
+last_updated: "2026-05-27T14:22:00.000Z"
 last_activity: 2026-05-27
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 62 (public-wear-pics-on-watch-detail) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-27
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 88%
 - **WatchForm onWatchCreated suppresses success toast** — when onWatchCreated is present on create-mode commit, pass {} opts to run() so no Sonner toast action-button can navigate away from the photos-pending step; WatchPhotoStep onDone/onSkip own all navigation (Plan 06 gap #9 fix).
 - **P61-BUG-01 static guard** — tests/static/ppr-dynamic-before-use-cache.test.ts with @vitest-environment node encodes the durable ordering rule for the two fixed PPR routes; prevents silent recurrence of the React #419 soft-nav regression (Plan 06 gap #1 guard).
 - **hideWearPic/unhideWearPic use dual-layer ownership** — server action re-checks via watchDAL.getWatchById; DAL adds a second layer via sql`` subquery WHERE watch_id IN (SELECT id FROM watches WHERE user_id = ?); defense in depth for T-62-04 IDOR threat.
+- **WearEventLite.photoUrl propagates through WornTabContent** — added photoUrl to WornTabContent's local WearEventLite (the intermediary type) so TypeScript enforces the chain from page.tsx RSC through to WornTimeline and WornCalendar.
 
 ### Pending Todos
 
@@ -79,6 +80,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 62 Plan 02 COMPLETE. hideWearPic/unhideWearPic DAL with ownership subquery + hideWearPicAction/unhideWearPicAction server actions wired to real DAL. All 16 unit tests GREEN (WPIC-01/02/05); wearRail D-17 guardrail GREEN. Build exits 0.
-Stopped at: Phase 62 Plan 02 complete
-Next action: Execute Phase 62 Plan 03
+Last activity: 2026-05-27 — Phase 62 Plan 03 COMPLETE. WornTimeline + WornCalendar prefer event.photoUrl over watch cover (D-16/WPIC-03); WPIC-03 unit tests 4/4 GREEN. Wear-photo paths signed via admin client in Wears tab RSC; photoUrl threaded through WornTabContent. Build exits 0.
+Stopped at: Phase 62 Plan 03 complete
+Next action: Execute Phase 62 Plan 04
