@@ -182,4 +182,17 @@ describe('P61-BUG-01: w/[ref]/page.tsx — createSupabaseAdminClient before getL
       ).toBeLessThanOrEqual(MAX_LOOKAHEAD)
     }
   })
+
+  // WR-02 (Phase 64 code review): the original P61-BUG-01 was a cookie-reading
+  // createSupabaseServerClient() call landing after a 'use cache' helper. The
+  // admin-client-ordering check above is necessary but not sufficient — it would
+  // still pass if a future refactor re-introduced a createSupabaseServerClient()
+  // call. Assert the cookie client is absent from active code in this route.
+  it('does not call createSupabaseServerClient( in active code (cookie client must not appear after a use-cache helper)', () => {
+    const serverClientLines = activeLineNumbers(lines, /createSupabaseServerClient\(/)
+    expect(
+      serverClientLines.length,
+      `[${REF_PAGE}] createSupabaseServerClient( found in active code at line(s) ${serverClientLines.join(', ')} — the cookie-reading client must not be used in this route (P61-BUG-01); sign storage URLs via createSupabaseAdminClient instead`,
+    ).toBe(0)
+  })
 })

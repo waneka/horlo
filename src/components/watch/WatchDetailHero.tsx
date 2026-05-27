@@ -107,7 +107,7 @@ export function WatchDetailHero({
   watch,
   collection,
   lastWornDate,
-  viewerCanEdit = true,
+  viewerCanEdit = false,
   verdict = null,
   viewerId,
   initialLikeState,

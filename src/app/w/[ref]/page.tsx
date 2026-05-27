@@ -370,8 +370,11 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
 
         {/* Phase 39b NSV-06 — Fresh-account 3-CTA block (Add to Wishlist /
             Add to Collection / Skip). Edit links use /w/ prefix (Phase 59 D-01).
-            Owner-populated viewer sees no CTAs (D-39b-04 / UI-SPEC). */}
-        {collection.length === 0 && (
+            Owner-populated viewer sees no CTAs (D-39b-04 / UI-SPEC).
+            CR-01: gate on isOwner — the edit links target watch.id (the owner's
+            watches.id), so a non-owner viewer would hit the owner-scoped edit
+            route → 404. Only the owner sees the onboarding CTAs. */}
+        {isOwner && collection.length === 0 && (
           <div className="flex flex-wrap gap-2">
             <Link href={`/w/${watch.id}/edit?status=wishlist`}>
               <Button variant="outline">Add to Wishlist</Button>
