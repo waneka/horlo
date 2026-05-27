@@ -7,9 +7,9 @@ import { getCurrentUser } from '@/lib/auth'
 import { getWatchByIdForViewer, getWatchesByUser, getWatchById, findViewerWatchByCatalogId, getWatchPhotosForWatch } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
 import { getCatalogById } from '@/data/catalog'
-import { getMostRecentWearDate } from '@/data/wearEvents'
+import { getMostRecentWearDate, getPublicWearPicsForWatch } from '@/data/wearEvents'
 import { getLikesForTargetCached } from '@/data/reactions'
-import { getProfileById } from '@/data/profiles'
+import { getProfileById, getProfilesByIds } from '@/data/profiles'
 import { canViewerCommentOnTarget, getCommentsForTarget } from '@/data/comments'
 import { isFollowing } from '@/data/follows'
 import { computeVerdictBundle } from '@/lib/verdict/composer'
@@ -32,6 +32,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { signCoverUrls } from '@/lib/storage/signCoverUrls'
 import type { Watch, CrystalType, CatalogTasteAttributes } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
+import type { SignedWearPic } from '@/components/watch/WatchPhotoSection'
+import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
 interface UnifiedWatchPageProps {
   params: Promise<{ ref: string }>
@@ -169,6 +171,71 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
       )
     }
 
+    // Phase 62 Plan 04 — fetch public wear pics and sign their URLs.
+    // Runs for ALL viewers (D-06: all wear pics on a watch's detail page are the
+    // watch owner's — no per-viewer filter). getPublicWearPicsForWatch filters
+    // visibility='public' AND NOT hidden_from_detail server-side (T-62-13).
+    const rawWearPics = await getPublicWearPicsForWatch(watch.id)
+    let signedWearPics: SignedWearPic[] = []
+    let viewerAuthorForWears: CommentAuthor | null = null
+    if (rawWearPics.length > 0) {
+      // Reuse one admin client instance for both watch-photos and wear-photos signing
+      // (T-62-12: admin client only; never cookie client in PPR routes).
+      const supabaseAdmin = createSupabaseAdminClient()
+      // Pre-fetch like + comment state per wear pic (Option A — RESEARCH §Open Q1).
+      // Promise.all over <10 pics keeps latency acceptable.
+      const wearPicSocialData = await Promise.all(
+        rawWearPics.map(async (p) => {
+          const wearTarget = { type: 'wear' as const, id: p.id }
+          const [likeState, rawComments] = await Promise.all([
+            getLikesForTargetCached(user.id, wearTarget),
+            getCommentsForTarget(user.id, wearTarget),
+          ])
+          return { pic: p, likeState, rawComments }
+        }),
+      )
+      // Batch-enrich comment authors (mirrors wears/[username]/page.tsx pattern).
+      const allAuthorIds = [
+        ...new Set([
+          ...wearPicSocialData.flatMap((d) => d.rawComments.map((c) => c.authorId)),
+          user.id,
+        ]),
+      ]
+      const profileMap = await getProfilesByIds(allAuthorIds)
+      const fallbackAuthor: CommentAuthor = { username: 'unknown', displayName: null, avatarUrl: null }
+      viewerAuthorForWears = profileMap.get(user.id) ?? null
+
+      signedWearPics = await Promise.all(
+        wearPicSocialData.map(async ({ pic, likeState, rawComments }) => {
+          // Sign wear-photo URL via admin client; fail safe to null (D-19 / T-62-12).
+          let signedUrl: string | null = null
+          if (pic.photoUrl) {
+            try {
+              const { data } = await supabaseAdmin.storage
+                .from('wear-photos')
+                .createSignedUrl(pic.photoUrl, 60 * 60)
+              signedUrl = data?.signedUrl ?? null
+            } catch {
+              signedUrl = null
+            }
+          }
+          const initialComments: CommentWithAuthor[] = rawComments.map((c) => ({
+            ...c,
+            author: profileMap.get(c.authorId) ?? fallbackAuthor,
+          }))
+          return {
+            wearEventId: pic.id,
+            signedUrl,
+            wornDate: pic.wornDate,
+            hiddenFromDetail: pic.hiddenFromDetail,
+            initialLikeState: { liked: likeState.viewerHasLiked, count: likeState.count },
+            commentCount: initialComments.length,
+            initialComments,
+          }
+        }),
+      )
+    }
+
     // Phase 56 D-03: hydrate like state server-side via cached aggregate read.
     // user.id is always a string on this auth-only route (getCurrentUser throws for anon).
     const target = { type: 'watch' as const, id: ref }
@@ -248,6 +315,10 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           commentCount={commentCount}
           signedPhotos={signedPhotos}
           userId={isOwner ? user.id : undefined}
+          wearPics={signedWearPics}
+          ownerUserId={ownerUserId}
+          ownerUsername={ownerProfile?.username ?? ''}
+          viewerAuthor={viewerAuthorForWears}
         />
 
         {/* Phase 39b NSV-06 — Fresh-account viewer: ReferenceIdentityCard OR
@@ -416,6 +487,63 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
     // isOwner = true on the D-06 branch (viewerCanEdit={true})
     const isOwner = true
 
+    // Phase 62 Plan 04 — fetch public wear pics for D-06 owned branch.
+    // Same pattern as Branch 1; admin client only (T-62-12).
+    const ownedRawWearPics = await getPublicWearPicsForWatch(ownedWatch.id)
+    let ownedSignedWearPics: SignedWearPic[] = []
+    let ownedViewerAuthorForWears: CommentAuthor | null = null
+    if (ownedRawWearPics.length > 0) {
+      const supabaseAdminD06 = createSupabaseAdminClient()
+      const ownedWearPicSocialData = await Promise.all(
+        ownedRawWearPics.map(async (p) => {
+          const wearTarget = { type: 'wear' as const, id: p.id }
+          const [likeStateWear, rawComments] = await Promise.all([
+            getLikesForTargetCached(user.id, wearTarget),
+            getCommentsForTarget(user.id, wearTarget),
+          ])
+          return { pic: p, likeState: likeStateWear, rawComments }
+        }),
+      )
+      const ownedAllAuthorIds = [
+        ...new Set([
+          ...ownedWearPicSocialData.flatMap((d) => d.rawComments.map((c) => c.authorId)),
+          user.id,
+        ]),
+      ]
+      const ownedProfileMap = await getProfilesByIds(ownedAllAuthorIds)
+      const ownedFallbackAuthor: CommentAuthor = { username: 'unknown', displayName: null, avatarUrl: null }
+      ownedViewerAuthorForWears = ownedProfileMap.get(user.id) ?? null
+
+      ownedSignedWearPics = await Promise.all(
+        ownedWearPicSocialData.map(async ({ pic, likeState: likeStateWear, rawComments }) => {
+          let signedUrl: string | null = null
+          if (pic.photoUrl) {
+            try {
+              const { data } = await supabaseAdminD06.storage
+                .from('wear-photos')
+                .createSignedUrl(pic.photoUrl, 60 * 60)
+              signedUrl = data?.signedUrl ?? null
+            } catch {
+              signedUrl = null
+            }
+          }
+          const initialComments: CommentWithAuthor[] = rawComments.map((c) => ({
+            ...c,
+            author: ownedProfileMap.get(c.authorId) ?? ownedFallbackAuthor,
+          }))
+          return {
+            wearEventId: pic.id,
+            signedUrl,
+            wornDate: pic.wornDate,
+            hiddenFromDetail: pic.hiddenFromDetail,
+            initialLikeState: { liked: likeStateWear.viewerHasLiked, count: likeStateWear.count },
+            commentCount: initialComments.length,
+            initialComments,
+          }
+        }),
+      )
+    }
+
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
         {/* D-06: Full owned view rendered in place — same tree as Branch 1 same-user.
@@ -432,6 +560,10 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           commentCount={commentCount}
           signedPhotos={ownedSignedPhotos}
           userId={user.id}
+          wearPics={ownedSignedWearPics}
+          ownerUserId={user.id}
+          ownerUsername={ownerProfile?.username ?? ''}
+          viewerAuthor={ownedViewerAuthorForWears}
         />
 
         {collection.length === 0 &&

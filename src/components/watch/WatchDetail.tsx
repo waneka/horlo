@@ -25,6 +25,8 @@ import { editWatch, removeWatch } from '@/app/actions/watches'
 import { markAsWorn } from '@/app/actions/wearEvents'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import { WatchPhotoSection } from '@/components/watch/WatchPhotoSection'
+import type { SignedWearPic } from '@/components/watch/WatchPhotoSection'
+import type { CommentAuthor } from '@/components/comment/types'
 import { MOVEMENT_LABELS } from '@/lib/constants'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
@@ -71,6 +73,24 @@ interface WatchDetailProps {
    * Passed from the RSC (already auth-resolved; never taken from client).
    */
   userId?: string
+  /**
+   * Phase 62 Plan 04 WPIC-01: public wear pics fetched+signed by the RSC.
+   * Optional for backward compat. When provided, threaded to WatchPhotoSection
+   * for merged carousel display (owner photos first, wear pics newest-worn first).
+   */
+  wearPics?: SignedWearPic[]
+  /**
+   * Phase 62 Plan 04 WPIC-06: owner identity for WearCommentHost social layer.
+   * Resolved by the RSC from getWatchByIdForViewer / getProfileById.
+   */
+  ownerUserId?: string
+  /** Owner's username for WearCommentHost (display + permissions). */
+  ownerUsername?: string
+  /**
+   * Phase 62 Plan 04 WPIC-06: viewer's CommentAuthor shape for WearCommentHost
+   * optimistic comment inserts. Resolved by the RSC via getProfilesByIds.
+   */
+  viewerAuthor?: CommentAuthor | null
 }
 
 function formatDate(dateStr?: string): string {
@@ -97,7 +117,7 @@ function formatCurrency(amount?: number): string {
   }).format(amount)
 }
 
-export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount, signedPhotos, userId }: WatchDetailProps) {
+export function WatchDetail({ watch, collection, preferences, lastWornDate, viewerCanEdit = true, verdict = null, viewerId, initialLikeState, commentCount, signedPhotos, userId, wearPics, ownerUserId, ownerUsername, viewerAuthor }: WatchDetailProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -154,6 +174,11 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
               brandModel={`${watch.brand} ${watch.model}`}
               viewerCanEdit={viewerCanEdit}
               userId={userId}
+              wearPics={wearPics}
+              viewerId={viewerId ?? null}
+              ownerUserId={ownerUserId ?? ''}
+              ownerUsername={ownerUsername ?? ''}
+              viewerAuthor={viewerAuthor ?? null}
             />
           ) : (
             <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-muted">
