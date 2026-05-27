@@ -267,7 +267,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
   4. The inline composer is compose-only — the full comment thread is only accessible by opening the detail page
   5. Grid cards for wishlist watches where the viewer does not have mutual-follow status do not expose the inline comment composer
 **Plans**: 3 plans (2 waves)
-- [ ] 63-01-PLAN.md — Extend WatchCounts (liked/canComment) + Q6 viewer-liked query + close D-12 cache-tag gap in both actions + test cases (Wave 1)
+- [x] 63-01-PLAN.md — Extend WatchCounts (liked/canComment) + Q6 viewer-liked query + close D-12 cache-tag gap in both actions + test cases (Wave 1)
 - [ ] 63-02-PLAN.md — New compose-only WatchCommentSheet (Sheet + watch identity + CommentCompose; no thread) (Wave 1)
 - [ ] 63-03-PLAN.md — Thread viewerId/liked/canComment through page+tab contents + overlay ♥/💬 chips on ProfileWatchCard (non-owner, gated 💬, chip-tap≠navigate) (Wave 2)
 **UI hint**: yes
@@ -292,7 +292,7 @@ See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6
 | 60. Multi-Photo Schema + DAL | 4/4 | Complete    | 2026-05-25 |
 | 61. Photo Upload + Carousel UI | 6/6 | Complete   | 2026-05-26 |
 | 62. Public Wear Pics on Watch Detail | 5/5 | Complete   | 2026-05-27 |
-| 63. Inline Grid Engagement | 0/TBD | Not started | - |
+| 63. Inline Grid Engagement | 1/3 | In Progress|  |
 | 64. Detail Page IA Redesign | 0/TBD | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/phases/51-*` / `52-*` and PROJECT.md Current State._

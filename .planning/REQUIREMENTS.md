@@ -53,11 +53,11 @@
 
 > Like + lightweight inline comment composer directly from profile collection/wishlist grid cards. Full thread still clicks through.
 
-- [ ] **GRID-01**: A viewer can like a watch directly from a profile collection/wishlist grid card (one tap, optimistic)
+- [x] **GRID-01**: A viewer can like a watch directly from a profile collection/wishlist grid card (one tap, optimistic)
 - [ ] **GRID-02**: A viewer can post a comment from a grid card via a lightweight inline composer without opening detail
-- [ ] **GRID-03**: A grid card's `♥ N · 💬 M` counts update optimistically after an inline like or comment
+- [x] **GRID-03**: A grid card's `♥ N · 💬 M` counts update optimistically after an inline like or comment
 - [ ] **GRID-04**: Viewing the full comment thread still requires opening the detail page (inline is compose-only)
-- [ ] **GRID-05**: The GATE-03 wishlist mutual-follow comment gate is enforced per card; gated cards do not expose the inline composer
+- [x] **GRID-05**: The GATE-03 wishlist mutual-follow comment gate is enforced per card; gated cards do not expose the inline composer
 
 ### Detail Page IA Redesign (SEED-016) — `PAGE`
 
@@ -126,11 +126,11 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | WPIC-04 | Phase 62 | Complete |
 | WPIC-05 | Phase 62 | Complete |
 | WPIC-06 | Phase 62 | Complete |
-| GRID-01 | Phase 63 | Pending |
+| GRID-01 | Phase 63 | Complete |
 | GRID-02 | Phase 63 | Pending |
-| GRID-03 | Phase 63 | Pending |
+| GRID-03 | Phase 63 | Complete |
 | GRID-04 | Phase 63 | Pending |
-| GRID-05 | Phase 63 | Pending |
+| GRID-05 | Phase 63 | Complete |
 | PAGE-01 | Phase 64 | Pending |
 | PAGE-02 | Phase 64 | Pending |
 | PAGE-03 | Phase 64 | Pending |

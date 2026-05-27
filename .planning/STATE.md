@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 63 UI-SPEC approved
-last_updated: "2026-05-27T19:45:44.747Z"
-last_activity: 2026-05-27 -- Phase 63 planning complete
+stopped_at: Phase 63 Plan 01 complete
+last_updated: "2026-05-27T19:54:44.494Z"
+last_activity: 2026-05-27 -- Phase 63 Plan 01 executed (data layer: WatchCounts extension + D-12 cache fix)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 18
-  percent: 86
+  completed_plans: 19
+  percent: 90
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 63 — inline-grid-engagement (next; depends on Phase 59 only)
+**Current focus:** Phase 63 — Inline Grid Engagement
 
 ## Current Position
 
-Phase: 62 (public-wear-pics-on-watch-detail) — COMPLETE & VERIFIED (6/6); prod UAT Test 4 approved 2026-05-27
-Plan: 5 of 5 complete (gap-closure 62-05 + CR-01/WR-01/WR-02 review fix 714e2ba)
+Phase: 63 (Inline Grid Engagement) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
 Next phase: 63 (Inline Grid Engagement) — next incomplete in ROADMAP
-Last activity: 2026-05-27 -- Phase 63 planning complete
+Last activity: 2026-05-27
 
-Progress: 4/6 phases complete [███████···] 67%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -75,6 +75,9 @@ Progress: 4/6 phases complete [███████···] 67%
 - **eye/hide toggle uses onPointerDown** — consistent with Phase 61 editMode toggle; avoids Router Cache stale-instance issue (Phase 62 Plan 04).
 - **Per-slide wear-pic social overlay uses wp loop var** — each slide's LikeButton target and comment count use `wp.wearEventId` (not `activeWearPic`) so every slide is independently interactive; JSX-position-only relocation closes WPIC-06 UAT Test 4 cosmetic gap (Phase 62 Plan 05).
 - **Social comment button keeps onClick** — fresh-per-interaction controls are not subject to the Router-Cache stale-instance onPointerDown mitigation; that mitigation applies only to one-shot editMode / eye-hide toggles (Phase 62 Plan 05).
+- **Q6 single inArray query for viewer liked set** — `inArray(watchLikes.watchId, watchIds) + eq(watchLikes.userId, viewerId)` is a single batched query; `viewerLikedSet = new Set(rows.map(r => r.watchId))`; no N+1 (Phase 63 Plan 01).
+- **canComment reuses existing allowedSet** — `getBatchedWatchCounts` already computes `allowedSet` for Q5 comment-count gate; `canComment = allowedSet.has(id)` adds zero new queries (Phase 63 Plan 01).
+- **D-12 gap closed in both engagement actions** — `revalidateTag('viewer:{user.id}:counts','max')` added inside `if(ownerProfile?.username)` block in `toggleLikeAction` and `addCommentAction`; matches `getBatchedWatchCountsCached` cacheTag scope (Phase 63 Plan 01).
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 62 COMPLETE & VERIFIED (6/6). WPIC-06 UAT Test 4 gap closed (62-05): social controls relocated to per-slide bottom-right on-photo overlay (5e6f136). User approved prod re-check. Gap-closure code review found CR-01 (per-slide comment button opened the sheet for activeWearPic, not the clicked wp → wrong-pic on keyboard/AT/partial-drag); fixed in 714e2ba by binding the sheet to the clicked slide (sheetWearEventId/sheetWearPic) + gating off-screen overlays (pointer-events-none/aria-hidden/tabIndex). Build exits 0; 56/56 unit tests green; verification passed. 62-UAT.md=resolved (7/7), 62-HUMAN-UAT.md=complete (6/6), debug session resolved.
-Stopped at: Phase 63 UI-SPEC approved
-Next action: /gsd-discuss-phase 63 (or /gsd-plan-phase 63). NOTE: CR-01 fix (714e2ba) must reach prod — push origin main if not already deployed.
+Last activity: 2026-05-27 — Phase 63 Plan 01 COMPLETE. WatchCounts extended with liked+canComment; Q6 single inArray query for viewer liked set; D-12 cache-tag gap closed in toggleLikeAction and addCommentAction. 30/30 tests pass; build exits 0. Commits: 2245942 (Task 1), 204a7ad (Task 2).
+Stopped at: Phase 63 Plan 01 complete
+Next action: Execute 63-02-PLAN.md
