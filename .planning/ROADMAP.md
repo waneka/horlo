@@ -42,4 +42,4 @@
 | 62. Public Wear Pics on Watch Detail | 5/5 | Complete   | 2026-05-27 |
 | 63. Inline Grid Engagement | 3/3 | Complete   | 2026-05-27 |
 | 64. Detail Page IA Redesign | 5/5 | Complete    | 2026-05-28 |
-| 65. Follow-Scoped Owners Module | 3/3 | Complete   | 2026-05-28 |
+| 65. Follow-Scoped Owners Module | 3/3 | Complete    | 2026-05-28 |

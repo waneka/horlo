@@ -2,8 +2,8 @@
 phase: 65-follow-scoped-owners-module
 verified: 2026-05-28T17:30:00Z
 re_verified: 2026-05-28T17:35:00Z
-status: code_complete_pending_human_verify
-score: 5/5 must-haves verified + 2 gaps resolved post-verify (in fix commit 748a2aaf)
+status: passed
+score: 5/5 must-haves verified + 2 gaps resolved post-verify (commit 748a2aaf) + prod UAT 9 pass / 1 skip / 0 issues (2026-05-28)
 overrides_applied: 0
 re_verification:
   previous_status: gaps_found
