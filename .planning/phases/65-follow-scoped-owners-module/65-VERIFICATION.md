@@ -1,16 +1,21 @@
 ---
 phase: 65-follow-scoped-owners-module
 verified: 2026-05-28T17:30:00Z
-status: gaps_found
-score: 5/5 must-haves verified (1 phase-introduced regression flagged + 1 minor tracking gap)
+re_verified: 2026-05-28T17:35:00Z
+status: code_complete_pending_human_verify
+score: 5/5 must-haves verified + 2 gaps resolved post-verify (in fix commit 748a2aaf)
 overrides_applied: 0
 re_verification:
-  previous_status: none
-  previous_score: n/a
-  gaps_closed: []
+  previous_status: gaps_found
+  previous_score: 5/5 must-haves verified (1 phase-introduced regression flagged + 1 minor tracking gap)
+  gaps_closed:
+    - "Gap #1 (BLOCKER candidate) — font-medium raw-palette regression on FollowedOwnersModule.tsx lines 76 + 97. RESOLVED in commit 748a2aaf via swap to font-semibold (closest non-forbidden weight; preserves UI-SPEC's header > displayName + chip-username > displayName hierarchy intent — one notch heavier than spec'd weight 500). npm run test now reports 4028 pass / 1 fail; the remaining failure is the documented pre-existing CommentGateLocked.tsx baseline per memory `project_baseline_not_green_build_is_gate`. Build remains green."
+    - "Gap #2 (WARNING) — deferred-items.md tracking-hygiene gap. RESOLVED in commit 748a2aaf. File now documents both (a) the font-medium resolution and (b) the Plan 65-03 Task 4 prod human-verify checklist as the sole outstanding gate before phase-complete."
   gaps_remaining: []
   regressions: []
-gaps:
+remaining_work:
+  - "Plan 65-03 Task 4 (checkpoint:human-verify) — push origin/main → wait 2-3 min for Vercel PPR cache fill → walk the 10-step prod checklist in 65-03-PLAN.md §how-to-verify (B1/B2/B3 desktop placement; mobile single-column collapse; '+N more' caption; soft-nav PPR safety; owner self-exclusion; privacy gate) → type 'approved'. Then run /gsd-verify-work 65 to close phase."
+original_gaps:
   - truth: "Project test baseline preserved (no new test regressions introduced by this phase)"
     status: failed
     reason: "Phase 65 Plan 02 introduced a NEW raw-palette test failure that did not exist on HEAD before this phase. The pre-existing baseline per the durable memory `project_baseline_not_green_build_is_gate` lists ONE pre-existing failure: `CommentGateLocked.tsx font-medium`. After Phase 65, there are TWO: CommentGateLocked.tsx AND `src/components/insights/FollowedOwnersModule.tsx`. The new file uses `font-medium` on lines 76 and 97. `git log --all -- src/components/insights/FollowedOwnersModule.tsx` shows the file was first committed in Phase 65 Plan 02 (commit 0e23bc74) — so the regression IS attributable to this phase. The deferred-items.md classification claiming it was 'pre-existing on HEAD before Plan 65-03 began' is technically true (Plan 03 inherited it from Plan 02) but misleading at the phase level — the FILE itself did not exist on HEAD before Phase 65 started."
