@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
-status: verifying
-stopped_at: Phase 64 Plan 04 complete (4/4 plans); prod visual verification PENDING
-last_updated: "2026-05-27T23:44:50.428Z"
-last_activity: 2026-05-27
+status: ready_to_plan
+stopped_at: Phase 64 complete (5/5 plans, UAT 8/8 prod-verified) — ready to plan Phase 65
+last_updated: "2026-05-28T15:00:00.000Z"
+last_activity: 2026-05-28 -- Phase 64 prod-verified, marked complete
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 4
+  total_plans: 5
   completed_plans: 4
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 63 — Inline Grid Engagement
+**Current focus:** Phase 65 — follow-scoped-owners-module
 
 ## Current Position
 
-Phase: 64 (Detail Page IA Redesign) — STRUCTURALLY COMPLETE
-Plan: 4 of 4 (all complete)
-Status: Plan 04 complete — prod human-verify PENDING (push → Vercel → verify after cache fills)
-Next phase: Phase 64 prod verification, then next milestone planning
-Last activity: 2026-05-27
+Phase: 65
+Plan: Not started
+Status: Ready to plan
+Next phase: Phase 65 — follow-scoped-owners-module
+Last activity: 2026-05-28
 
 Progress: [██████████] 100%
 

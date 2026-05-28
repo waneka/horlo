@@ -1,10 +1,12 @@
 ---
 phase: 64-detail-page-ia-redesign
-verified: 2026-05-27T17:10:00Z
-status: human_needed
+verified: 2026-05-28T15:00:00Z
+status: passed
 score: 4/4 must-haves verified
 overrides_applied: 0
-re_verification: false
+re_verification: true
+human_uat: ".planning/phases/64-detail-page-ia-redesign/64-HUMAN-UAT.md (8/8 pass, prod-approved 2026-05-28). Both UAT gaps closed: desktop track-blowout (commit 16c3700) + mobile title hoist (commit f4b04ed)."
+human_verification_resolved: 2026-05-28
 human_verification:
   - test: "DESKTOP (>= 1024px) — open a populated per-user watch at /w/[ref]"
     expected: "Hero is a 2-column grid: carousel left, verdict + title + like right; CollectionFitCard verdict reads near the top; comments appear directly below the hero, ABOVE the full spec cards and rails"

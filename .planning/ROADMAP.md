@@ -12,7 +12,7 @@
 - [x] 64-02-PLAN.md — WatchDetailHero client island: 2-col hero, elevated verdict, carousel-forward, jump anchor, owner gates (Wave 2)
 - [x] 64-03-PLAN.md — WatchDetailTrailing RSC: four spec cards + gap-fill + notes, #418-safe dates (Wave 2)
 - [x] 64-04-PLAN.md — Re-order all 3 page.tsx branches + update skeleton + prod human-verify checkpoint (Wave 3)
-- [ ] 64-05-PLAN.md — Gap closure: mobile-only brand+model hoist above the carousel (lg:hidden / hidden lg:block JSX dup; NOT CSS order-) + WatchPageSkeleton mirror + static guard extension (Wave 4)
+- [x] 64-05-PLAN.md — Gap closure: mobile-only brand+model hoist above the carousel (lg:hidden / hidden lg:block JSX dup; NOT CSS order-) + WatchPageSkeleton mirror + static guard extension (Wave 4)
 **UI hint**: yes
 
 ### Phase 65: Follow-Scoped Owners Module
@@ -38,5 +38,5 @@
 | 61. Photo Upload + Carousel UI | 6/6 | Complete   | 2026-05-26 |
 | 62. Public Wear Pics on Watch Detail | 5/5 | Complete   | 2026-05-27 |
 | 63. Inline Grid Engagement | 3/3 | Complete   | 2026-05-27 |
-| 64. Detail Page IA Redesign | 4/4 | Complete   | 2026-05-27 |
+| 64. Detail Page IA Redesign | 5/5 | Complete    | 2026-05-28 |
 | 65. Follow-Scoped Owners Module | 0/TBD | Not started | - |
