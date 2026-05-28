@@ -74,3 +74,10 @@ blocked: 0
   test: 1
   artifacts: [src/components/watch/WatchPhotoSection.tsx:448]
   missing: ["carousel must fill its hero column (remove/raise max-w-md, or make it a prop so the hero passes a fill variant)"]
+
+- truth: "Cross-user viewers do not see misleading owner-only ownership indicators"
+  status: resolved
+  reason: "User reported: 'I see [owned chip] when looking at another user's collection watches.' WatchDetailHero.tsx:212 rendered watch.status (owned/wishlist/grail) unconditionally — but that's the OWNER's relationship to THEIR record. For a cross-user viewer it implied they owned the piece."
+  severity: major
+  test: incidental (found during Test 1 re-verify)
+  fix: "Gated the status badge on `viewerCanEdit` so it's owner-only. Build exit 0; 427 static guards GREEN. Server Actions remain the authoritative ownership check; this is purely a UX correctness fix."

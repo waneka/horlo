@@ -207,11 +207,16 @@ export function WatchDetailHero({
 
       {/* Right column: title → SpecsSublabel → verdict → like+jump → owner actions */}
       <div className="space-y-6 min-w-0">
-        {/* Title & Status */}
+        {/* Title & Status. The status badge ('owned' / 'wishlist' / 'grail')
+            describes the OWNER's relationship to THEIR watch record, so it's
+            owner-only — showing it to a cross-user viewer would imply they own
+            the piece. UAT 2026-05-27. */}
         <div>
-          <Badge className="mb-2" variant="outline">
-            {watch.status}
-          </Badge>
+          {viewerCanEdit && (
+            <Badge className="mb-2" variant="outline">
+              {watch.status}
+            </Badge>
+          )}
           <h1 className="font-serif text-3xl sm:text-4xl text-foreground">
             {watch.brand}
           </h1>
