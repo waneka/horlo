@@ -5,7 +5,11 @@
 
 import type { CatalogTasteAttributes } from '@/lib/types'
 
-export type EnrichmentSource = 'manual' | 'url-extract' | 'backfill'
+// Phase 66 (EXTR-04 / D-03): added 'structured-input' for the structured-INPUT
+// LLM extraction path (user-supplied {brand, model, reference?, year?}). Additive
+// extension — all existing callers using 'manual' / 'url-extract' / 'backfill'
+// remain valid. No exhaustive switch consumers, no signature ripple.
+export type EnrichmentSource = 'manual' | 'url-extract' | 'backfill' | 'structured-input'
 export type EnrichmentMode = 'text' | 'vision'
 
 export interface EnrichmentSpecInput {

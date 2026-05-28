@@ -130,7 +130,21 @@ function extractReadableText(html: string): string {
   return `Title: ${title}\n\n${cleanText}`
 }
 
-function validateAndCleanData(data: Record<string, unknown>): ExtractedWatchData {
+/**
+ * Validates and normalizes a raw LLM-emitted record into a typed `ExtractedWatchData`.
+ *
+ * Enum-checks every field against the project's canonical constants
+ * (`MOVEMENT_TYPES`, `COMPLICATIONS`, `STRAP_TYPES`, `CRYSTAL_TYPES`,
+ * `DIAL_COLORS`, `STYLE_TAGS`, `DESIGN_TRAITS`) and applies numeric range
+ * bounds. Unknown values are dropped silently.
+ *
+ * Phase 66 (EXTR-04): exported to share enum-aware ExtractedWatchData
+ * validation with `src/lib/extractors/llm-structured.ts` — the strict
+ * tool-use extractor's `toolUse.input` is typed `unknown` per the
+ * Anthropic SDK and MUST be run through this validator before being
+ * returned as `ExtractedWatchData`.
+ */
+export function validateAndCleanData(data: Record<string, unknown>): ExtractedWatchData {
   const cleaned: ExtractedWatchData = {}
 
   if (typeof data.brand === 'string' && data.brand.length > 0) {
