@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { cache } from 'react'
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { follows, profiles, profileSettings, watches } from '@/db/schema'
@@ -202,6 +202,153 @@ async function mergeListEntries(
       },
     ]
   })
+}
+
+// ---------------------------------------------------------------------------
+// Phase 65: Follow-scoped catalog roster (FOLL-02, FOLL-04)
+// ---------------------------------------------------------------------------
+
+/**
+ * Follow-scoped catalog roster row — projected fields rendered by the new
+ * FollowedOwnersModule chip stack on /w/{ref}. Shape mirrors CatalogCollector
+ * (D-02 + D-11) but is a distinct exported symbol so the two surfaces (broad
+ * roster vs follow-scoped) can evolve independently. NOT imported from
+ * src/data/discovery.ts.
+ */
+export interface FollowedOwner {
+  userId: string
+  username: string
+  displayName: string | null
+  avatarUrl: string | null
+}
+
+/**
+ * Phase 65 FOLL-02 + FOLL-04 — "From your circle" catalog roster.
+ *
+ * Returns the top-N public collectors who own/wishlist/grail this catalog ref
+ * AND whom the viewer follows (one-way `viewer -> owner` direction), ordered
+ * by `watches.created_at DESC` (D-08 — recency of THEIR ownership is the
+ * "who in my circle just got one" signal, NOT `follows.created_at`).
+ *
+ * Dedicated sibling of getCollectorsForCatalog (D-06) — kept separate so the
+ * broad-roster call path is regression-safe; tests own the follow-direction
+ * concern. NOT a flag on getCollectorsForCatalog.
+ *
+ * Threat surface (load-bearing — service-role pooler bypasses RLS, so the
+ * DAL WHERE is the privacy gate):
+ *   - D-05 layer 1: eq(profileSettings.profilePublic, true)
+ *   - D-05 layer 2 (LOAD-BEARING): eq(profileSettings.collectionPublic, true)
+ *     A follow does NOT override either gate — a private-collection user the
+ *     viewer follows still does NOT appear. Identical contract to
+ *     getCollectorsForCatalog (T-39b-01 layer 1+2).
+ *   - D-05a: sql`${profiles.id} != ${viewerId}` — viewer self-exclusion.
+ *     Kept explicit for symmetry with the broad roster even though follower !=
+ *     followee by definition.
+ *   - D-05b: inArray(watches.status, ['owned','wishlist','grail']) — excludes
+ *     'sold' so the chip-count matches "owns this" semantics.
+ *   - D-07 / FOLL-02 / Pitfall 1: innerJoin(follows, and(eq(followerId,
+ *     viewerId), eq(followingId, profiles.id))) — viewer-as-follower ->
+ *     owner-as-followee. NOT mutual; NOT reversed. Test 8 in
+ *     tests/data/getFollowedOwnersForCatalog.test.ts seeds (viewer -> alice)
+ *     WITHOUT the reverse and asserts alice appears (would fail if the join
+ *     were reversed or mutual-only).
+ *
+ * Pitfalls:
+ *   - Pitfall 3 — A single user can have multiple rows per catalog (e.g.
+ *     owned + wishlist). The SQL overfetches at LIMIT 50 then a JS-side
+ *     Set-based dedup keeps the first occurrence per userId before slicing
+ *     to top-N. The SQL ORDER BY guarantees the kept row is the most-recent.
+ *   - Pitfall 4 — totalCount cannot be derived from rows.length (which is
+ *     dedup'd AND limited). A second query uses count(DISTINCT profiles.id)
+ *     against the IDENTICAL WHERE clause + IDENTICAL follows INNER JOIN so
+ *     both privacy layers, the status filter, AND the follow-direction gate
+ *     apply consistently. The follows join must appear in BOTH queries
+ *     (privacy consistency mandate).
+ *
+ * D-01a (null catalogId): catalogId is strict (`string`); call sites guard
+ * with the ternary pattern from src/app/w/[ref]/page.tsx (see
+ * `getCollectorsForCatalog` integration sites).
+ *
+ * Integration tests at tests/data/getFollowedOwnersForCatalog.test.ts prove
+ * all 4 privacy edges + sort + dedup + follow-direction (Tests 1-8 per D-12).
+ */
+export async function getFollowedOwnersForCatalog(catalogId: string, viewerId: string, opts: { limit?: number } = {}): Promise<{ owners: FollowedOwner[]; totalCount: number }> {
+  const limit = opts.limit ?? 5
+
+  const rows = await db
+    .select({
+      userId: profiles.id,
+      username: profiles.username,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+      addedAt: watches.createdAt,
+    })
+    .from(watches)
+    .innerJoin(profiles, eq(profiles.id, watches.userId))
+    .innerJoin(profileSettings, eq(profileSettings.userId, profiles.id))
+    // D-07 / FOLL-02 / Pitfall 1 — viewer-as-follower -> owner-as-followee.
+    // NOT mutual; NOT reversed. Tests 7+8 lock this direction.
+    .innerJoin(
+      follows,
+      and(
+        eq(follows.followerId, viewerId),
+        eq(follows.followingId, profiles.id),
+      ),
+    )
+    .where(
+      and(
+        eq(watches.catalogId, catalogId),
+        eq(profileSettings.profilePublic, true),    // D-05 layer 1
+        eq(profileSettings.collectionPublic, true), // D-05 layer 2 (LOAD-BEARING)
+        sql`${profiles.id} != ${viewerId}`,         // D-05a self-exclusion
+        inArray(watches.status, ['owned', 'wishlist', 'grail']), // D-05b
+      ),
+    )
+    .orderBy(desc(watches.createdAt), asc(profiles.username))
+    .limit(50) // Pitfall 3 — overfetch for JS-side dedup
+
+  // Pitfall 4 — separate count(DISTINCT) query for totalCount label. Identical
+  // WHERE clause + IDENTICAL follows INNER JOIN so privacy layers, status
+  // filter, AND follow-direction all apply consistently.
+  const totalRows = await db
+    .select({ count: sql<number>`count(DISTINCT ${profiles.id})::int` })
+    .from(watches)
+    .innerJoin(profiles, eq(profiles.id, watches.userId))
+    .innerJoin(profileSettings, eq(profileSettings.userId, profiles.id))
+    .innerJoin(
+      follows,
+      and(
+        eq(follows.followerId, viewerId),
+        eq(follows.followingId, profiles.id),
+      ),
+    )
+    .where(
+      and(
+        eq(watches.catalogId, catalogId),
+        eq(profileSettings.profilePublic, true),    // D-05 layer 1
+        eq(profileSettings.collectionPublic, true), // D-05 layer 2 (LOAD-BEARING)
+        sql`${profiles.id} != ${viewerId}`,         // D-05a self-exclusion
+        inArray(watches.status, ['owned', 'wishlist', 'grail']), // D-05b
+      ),
+    )
+  const totalCount = totalRows[0]?.count ?? 0
+
+  // Pitfall 3 — JS dedup: keep first occurrence per userId (already
+  // ORDER BY created_at DESC), then slice to top-N.
+  const seen = new Set<string>()
+  const owners: FollowedOwner[] = []
+  for (const r of rows) {
+    if (seen.has(r.userId)) continue
+    seen.add(r.userId)
+    owners.push({
+      userId: r.userId,
+      username: r.username,
+      displayName: r.displayName,
+      avatarUrl: r.avatarUrl,
+    })
+    if (owners.length >= limit) break
+  }
+  return { owners, totalCount }
 }
 
 // ---------------------------------------------------------------------------
