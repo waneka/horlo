@@ -29,6 +29,8 @@ import { daysSince } from '@/lib/wear'
 import type { Watch } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 import { SpecsSublabel } from '@/components/watch/SpecsSublabel'
+import { FollowedOwnersModule } from '@/components/insights/FollowedOwnersModule'
+import type { FollowedOwner } from '@/data/follows'
 
 // timeZone: 'UTC' is REQUIRED for hydration safety (React #418). Wear/acquisition
 // dates are stored date-only (parsed as UTC midnight); formatting without a fixed
@@ -99,6 +101,17 @@ interface WatchDetailHeroProps {
   ownerFollowsViewerForWears?: boolean
   /** Viewer→owner follow direction for CommentGateLocked. */
   viewerIsFollowingForWears?: boolean
+  /**
+   * Phase 65 FOLL-01..04. Pre-resolved by page.tsx via
+   * getFollowedOwnersForCatalog (or [] when watch.catalogId is null on
+   * Branch 1). Hide-if-empty is enforced inside FollowedOwnersModule.
+   */
+  followedOwners?: FollowedOwner[]
+  /**
+   * Phase 65 FOLL-04. count(DISTINCT) total from the DAL for the
+   * "+N more" caption.
+   */
+  followedOwnersTotal?: number
 }
 
 export function WatchDetailHero({
@@ -119,6 +132,8 @@ export function WatchDetailHero({
   canCommentOnWears,
   ownerFollowsViewerForWears,
   viewerIsFollowingForWears,
+  followedOwners,
+  followedOwnersTotal,
 }: WatchDetailHeroProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -296,6 +311,15 @@ export function WatchDetailHero({
             )}
           </div>
         )}
+
+        {/* Phase 65 FOLL-01..04 — "From your circle". Hide-if-empty is inside
+            the component (returns null on owners.length === 0). Sibling-
+            composition: the DAL is server-side and pre-resolved by page.tsx;
+            this client island only consumes the data via props (B1 invariant). */}
+        <FollowedOwnersModule
+          owners={followedOwners ?? []}
+          totalCount={followedOwnersTotal ?? 0}
+        />
 
         {/* Last worn line (owned/grail only, owner only — non-owners do not see owner's wear state) */}
         {viewerCanEdit && (watch.status === 'owned' || watch.status === 'grail') && (
