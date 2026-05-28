@@ -72,9 +72,9 @@
 
 > A small social-proof module on `/w/[ref]`: when one or more collectors the viewer **follows** also own this watch (matched by `catalogId`), surface them as a compact, linkable list in the hero right column. One-way "people you follow" direction (taste-discovery framing), not "people who follow you" and not mutual-only. Hide-if-empty. New requirement surfaced during the Phase 64 UAT pass (2026-05-27) — captured as a follow-up phase rather than expanded into Phase 64's recompose-only scope.
 
-- [ ] **FOLL-01**: On `/w/[ref]`, when ≥1 user the viewer follows owns this watch (same `catalogId`), a compact "people you follow who own this" module renders in the hero right column below the existing minimal info; the module is entirely absent from the DOM (hide-if-empty) when zero matches
+- [x] **FOLL-01**: On `/w/[ref]`, when ≥1 user the viewer follows owns this watch (same `catalogId`), a compact "people you follow who own this" module renders in the hero right column below the existing minimal info; the module is entirely absent from the DOM (hide-if-empty) when zero matches
 - [x] **FOLL-02**: The follow direction is one-way "viewer → owner" (people the viewer follows) — not "people who follow the viewer" and not mutual-only — per the UAT 2026-05-27 product call
-- [ ] **FOLL-03**: Each owner row is a navigable link to that owner's profile or their per-user watch detail page, rendered as an `avatar + @username` chip with an accessible label
+- [x] **FOLL-03**: Each owner row is a navigable link to that owner's profile or their per-user watch detail page, rendered as an `avatar + @username` chip with an accessible label
 - [x] **FOLL-04**: The query respects existing profile-visibility / privacy rules — only profiles visible to the viewer appear; data is fetched in a single efficient query (no N+1) and does not block the hero render path
 
 ---
@@ -144,9 +144,9 @@ Explicitly excluded for v7.0. Documented to prevent scope creep.
 | PAGE-02 | Phase 64 | Complete |
 | PAGE-03 | Phase 64 | Complete |
 | PAGE-04 | Phase 64 | Complete |
-| FOLL-01 | Phase 65 | Pending |
+| FOLL-01 | Phase 65 | Complete |
 | FOLL-02 | Phase 65 | Complete |
-| FOLL-03 | Phase 65 | Pending |
+| FOLL-03 | Phase 65 | Complete |
 | FOLL-04 | Phase 65 | Complete |
 
 **Coverage:**

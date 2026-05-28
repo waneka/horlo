@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: executing
-stopped_at: Phase 65 Plan 01 complete — DAL + tests
-last_updated: "2026-05-28T17:02:12.712Z"
+stopped_at: Phase 65 Plan 02 complete — FollowedOwnersModule RSC + tests + static guard
+last_updated: "2026-05-28T17:09:50.640Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
-  percent: 75
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 ## Current Position
 
 Phase: 65 (Follow-Scoped Owners Module) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Next phase: Phase 65 — follow-scoped-owners-module
 Last activity: 2026-05-28
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -86,6 +86,8 @@ Progress: [████████░░] 75%
 - **Branch 2-D06 omits OtherOwnersRoster + CatalogPageActions** — cross-user-only components; Phase-64 TODO at ~595 resolved by absence; not a gap (Phase 64 Plan 04).
 - **Branch 3 container upgraded to space-y-8 (D-14 parity)** — OtherOwnersRoster + CatalogPageActions surfaced high near verdict (D-13 resolved); Phase-64 TODO comments removed (Phase 64 Plan 04).
 - **Task 3 prod human-verify auto-approved in chain mode** — actual prod check (push → Vercel, wait for cache fill, verify desktop 2-col, mobile collapse, jump scroll, soft-nav #419, catalog branch, owner gates) is PENDING / human_needed (Phase 64 Plan 04).
+- **FollowedOwnersModule locked as pure RSC** — `tests/static/followed-owners-module-rsc.test.ts` (// @vitest-environment node) fires CI tripwire if 'use client' or 'use cache' appears in first 5 lines; protects /w/[ref] PPR boundary from silent React #419 soft-nav regression once Plan 03 wires the component into WatchDetailHero (Phase 65 Plan 02).
+- **FollowedOwner is type-only across the client/server boundary** — Plan 02 component imports `import type { FollowedOwner } from '@/data/follows'` and NEVER `getFollowedOwnersForCatalog`; preserves Plan 03's ability to thread the prop through `WatchDetailHero` ('use client' island) without dragging server-only DAL across the boundary (Phase 65 Plan 02 D-11 enforcement).
 
 ### Pending Todos
 
