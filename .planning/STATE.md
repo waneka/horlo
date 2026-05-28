@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Watch Photos & Detail Redesign
 status: milestone_complete
-stopped_at: Phase 65 Plan 01 complete — DAL + tests
-last_updated: "2026-05-28T17:23:44.032Z"
+stopped_at: Phase 65 complete + prod UAT passed (9 pass / 1 skip / 0 issues) — v7.0 milestone ready to close
+last_updated: "2026-05-28T18:00:00.000Z"
 last_activity: 2026-05-28
 progress:
-  total_phases: 2
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 150
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 26
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 65 — Follow-Scoped Owners Module
+**Current focus:** Milestone v7.0 (Watch Photos & Detail Redesign) — all 7 phases complete, ready for `/gsd-complete-milestone`
 
 ## Current Position
 
-Phase: 65
-Plan: Not started
-Status: Milestone complete
-Next phase: Phase 65 — follow-scoped-owners-module
+Phase: 65 (LAST phase of v7.0) — COMPLETE
+Plan: 3 of 3 (all plans landed; SUMMARYs at 65-01/02/03-SUMMARY.md)
+Status: Milestone complete — v7.0 closes here
+Next step: `/gsd-complete-milestone` (archive v7.0 — see `feedback_milestone_close_phase_dir_archival_miss` memory: hand-verify `.planning/milestones/v7.0-*-phases/` is populated BEFORE `/gsd-new-milestone` runs `phases.clear --confirm`)
 Last activity: 2026-05-28
 
 Progress: [██████████] 100%
@@ -99,6 +99,6 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Session Continuity
 
-Last activity: 2026-05-27 — Phase 64 Plan 04 COMPLETE. Re-ordered all three /w/[ref] page.tsx branches to canonical IA (hero → comments → trailing → rails → footer). Updated WatchPageSkeleton to mirror new layout (hero grid + comment skeleton + spec-cards skeleton). watch-detail-ia-order.test.ts GREEN. All 14 static test files / 425 tests GREEN. Build exits 0. Commits: 51712cf (branches 1+2-D06), c90eaa2 (branch 3 + skeleton). Task 3 prod human-verify auto-approved in chain mode — PENDING on prod.
-Stopped at: Phase 65 Plan 01 complete — DAL + tests
-Next action: Push origin main → verify on prod (Vercel; wait for cache to fill); then /gsd-complete-milestone or next planning
+Last activity: 2026-05-28 — Phase 65 (Follow-Scoped Owners Module) COMPLETE end-to-end. 3 plans / 15 commits. DAL `getFollowedOwnersForCatalog` (FOLL-02/04), pure-RSC `FollowedOwnersModule` (FOLL-01/03), `/w/[ref]` 3-branch wiring with B1 sibling-composition guard + parallel-Promise.all guard. Prod UAT 9 pass / 1 skip (overflow caption — no >5-followed catalog in prod data) / 0 issues. Build green. VERIFICATION.md: passed. v7.0 milestone closes here — all 7 phases (59, 60, 61, 62, 63, 64, 65) complete.
+Stopped at: Phase 65 complete + prod UAT passed (9 pass / 1 skip / 0 issues) — v7.0 milestone ready to close
+Next action: `/gsd-complete-milestone` — archive v7.0. ⚠ Per `feedback_milestone_close_phase_dir_archival_miss` memory: VERIFY `.planning/milestones/v7.0-*-phases/` is populated by /gsd-complete-milestone BEFORE running /gsd-new-milestone's `phases.clear --confirm` (the close skill archives top-level docs but historically misses .planning/phases/ dirs).
