@@ -8,13 +8,21 @@ updated: 2026-05-27T00:00:00Z
 
 ## Current Test
 
-[awaiting human testing — push origin main → Vercel, verify AFTER the route cache fills]
+number: 1
+name: Desktop 2-column hero layout (PAGE-01/04)
+expected: |
+  Hero is a 2-column grid: carousel left, verdict + title + like right; CollectionFitCard verdict reads near the top; comments appear directly below the hero, ABOVE the full spec cards and rails.
+awaiting: user response
 
 ## Tests
 
 ### 1. Desktop 2-column hero layout (PAGE-01/04)
 expected: Hero is a 2-column grid: carousel left, verdict + title + like right; CollectionFitCard verdict reads near the top; comments appear directly below the hero, ABOVE the full spec cards and rails.
-result: [pending]
+result: issue
+reported: "balance is way off on the 2 column section - the photos are only taking up maybe 1/6 of the width"
+severity: major
+root_cause: "Grid is correct (lg:grid-cols-[3fr_2fr] = 60/40). WatchPhotoSection carousel viewport hard-caps at `max-w-md` (448px) at WatchPhotoSection.tsx:448, so it cannot fill its 3fr column; on a wide window 448px reads as ~1/6 of the screen and defeats PAGE-04 (carousel as primary visual). UI-SPEC CSS-chain blind spot — checker validated the grid token, not the carousel's internal max-width."
+fix: "Added `fill` prop to WatchPhotoSection (default false = unchanged elsewhere); relaxes the carousel viewport/indicator/filmstrip max-w caps so they fill the container. WatchDetailHero passes `fill`. Kept the locked 60/40 ratio (user choice). Aligned WatchPageSkeleton carousel placeholder to aspect-square to match. Build exit 0; 426 static tests GREEN. PENDING re-verify on prod."
 
 ### 2. Mobile single-column collapse (PAGE-01)
 expected: Hero collapses to single column: carousel on top, then title/verdict/like/actions; order remains hero → comments → spec cards → rails → footer.
@@ -48,9 +56,17 @@ result: [pending]
 
 total: 8
 passed: 0
-issues: 0
-pending: 8
+issues: 1
+pending: 7
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+- truth: "Carousel is the primary visual at ~60% width in the desktop 2-col hero (PAGE-04)"
+  status: failed
+  reason: "User reported: balance way off — photos only ~1/6 width. WatchPhotoSection viewport caps at max-w-md (448px) and cannot fill the 3fr column."
+  severity: major
+  test: 1
+  artifacts: [src/components/watch/WatchPhotoSection.tsx:448]
+  missing: ["carousel must fill its hero column (remove/raise max-w-md, or make it a prop so the hero passes a fill variant)"]

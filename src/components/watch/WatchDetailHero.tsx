@@ -182,6 +182,7 @@ export function WatchDetailHero({
             watchId={watch.id}
             catalogFallbackUrl={getSafeImageUrl(watch.imageUrl) ?? null}
             brandModel={`${watch.brand} ${watch.model}`}
+            fill
             viewerCanEdit={viewerCanEdit}
             userId={userId}
             wearPics={wearPics}

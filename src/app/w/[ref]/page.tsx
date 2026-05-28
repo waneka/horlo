@@ -109,7 +109,7 @@ function WatchPageSkeleton() {
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8" aria-hidden>
       {/* Hero grid — mirrors WatchDetailHero lg:grid-cols-[3fr_2fr] */}
       <div className="grid gap-8 lg:grid-cols-[3fr_2fr]">
-        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+        <Skeleton className="aspect-square w-full rounded-lg" />
         <div className="space-y-4">
           <Skeleton className="h-7 w-3/4" />
           <Skeleton className="h-5 w-1/2" />

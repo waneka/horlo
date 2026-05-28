@@ -89,6 +89,14 @@ export interface WatchPhotoSectionProps {
   catalogFallbackUrl: string | null
   brandModel: string
   viewerCanEdit?: boolean
+  /**
+   * Phase 64 UAT fix (test 1): when true, the carousel viewport, position
+   * indicator, and filmstrip fill their container instead of capping at
+   * max-w-md / max-w-sm. WatchDetailHero sets this so the carousel fills its
+   * 60% (3fr) column — the locked carousel-led IA (PAGE-04). Default false
+   * preserves the original capped layout for any other caller.
+   */
+  fill?: boolean
   /** userId needed for client-direct upload (PhotoDropzone). Server passes down from RSC. */
   userId?: string
   /** Phase 62 Plan 04 WPIC-01: public wear pics (signed, with social data). Optional. */
@@ -127,6 +135,7 @@ export function WatchPhotoSection({
   catalogFallbackUrl,
   brandModel,
   viewerCanEdit = false,
+  fill = false,
   userId,
   wearPics: wearPicsProp = [],
   viewerId = null,
@@ -445,7 +454,7 @@ export function WatchPhotoSection({
       {/* -------------------------------------------------------------------- */}
       {/* Carousel viewport */}
       {/* -------------------------------------------------------------------- */}
-      <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-lg bg-muted">
+      <div className={`relative aspect-square w-full overflow-hidden rounded-lg bg-muted${fill ? '' : ' max-w-md'}`}>
         <div ref={emblaRef} className="h-full overflow-hidden">
           <div className="flex h-full">
             {hasOwnerPhotos ? (
@@ -619,7 +628,7 @@ export function WatchPhotoSection({
       {/* gap #4: wrap in w-full max-w-md to match carousel viewport width so text-center
           centers on the photo, not the full parent region */}
       {showPositionIndicator && (
-        <div className="w-full max-w-md">
+        <div className={`w-full${fill ? '' : ' max-w-md'}`}>
           <p
             className="text-sm text-muted-foreground text-center tabular-nums"
             aria-live="polite"
@@ -683,7 +692,7 @@ export function WatchPhotoSection({
                 <div
                   role="list"
                   aria-label="Photo filmstrip"
-                  className="flex flex-wrap gap-2 pb-1 max-w-sm"
+                  className={`flex flex-wrap gap-2 pb-1${fill ? '' : ' max-w-sm'}`}
                 >
                   {visibleIds.map((id, idx) => (
                     <SortablePhotoThumb
@@ -714,7 +723,7 @@ export function WatchPhotoSection({
                 <div
                   role="list"
                   aria-label="Wear photo filmstrip"
-                  className="flex flex-wrap gap-2 pb-1 max-w-sm mt-1"
+                  className={`flex flex-wrap gap-2 pb-1 mt-1${fill ? '' : ' max-w-sm'}`}
                 >
                   {optimisticWearPics.map((wp, idx) => {
                     const isHidden = wp.hiddenFromDetail
@@ -840,7 +849,7 @@ export function WatchPhotoSection({
             <div
               role="list"
               aria-label="Photo filmstrip"
-              className="flex flex-wrap gap-2 pb-1 max-w-sm"
+              className={`flex flex-wrap gap-2 pb-1${fill ? '' : ' max-w-sm'}`}
             >
               {visibleIds.map((id, idx) => (
                 <div
