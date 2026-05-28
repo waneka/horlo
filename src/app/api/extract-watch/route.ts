@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { fetchAndExtract } from '@/lib/extractors'
+import { extractFromStructuredInput } from '@/lib/extractors/llm-structured'
 import { SsrfError } from '@/lib/ssrf'
 import { UnauthorizedError, getCurrentUser } from '@/lib/auth'
 import * as catalogDAL from '@/data/catalog'
@@ -325,13 +326,123 @@ export async function POST(request: NextRequest) {
 
     // --------------------------------------------------------------------
     // Structured branch — Phase 66 EXTR-01..04, EXTR-08.
-    // Wired by Task 2 (replaces this stub).
+    // Pitfall 3: NEVER calls fetchAndExtract / cheerio — short-circuits to
+    // the LLM-only extractor at @/lib/extractors/llm-structured.
     // --------------------------------------------------------------------
     if (body.mode === 'structured') {
-      return NextResponse.json(
-        { error: 'Not implemented', mode: 'structured' as const },
-        { status: 501 },
+      const extracted = await extractFromStructuredInput({
+        brand: body.brand,
+        model: body.model,
+        reference: body.reference,
+        year: body.year,
+      })
+
+      // Empty-output gate (mirrors URL branch's D-12 post-extract gate).
+      // When both brand AND model come back empty/whitespace, emit the
+      // structured-mode `structured-data-missing` category (D-06 copy
+      // variant + mode-branched response).
+      const brandPopulated = Boolean(extracted.brand?.trim())
+      const modelPopulated = Boolean(extracted.model?.trim())
+      if (!brandPopulated && !modelPopulated) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: CATEGORY_COPY['structured-data-missing']['structured'],
+            category: 'structured-data-missing' as const,
+            mode: 'structured' as const,
+          },
+          { status: CATEGORY_HTTP_STATUS['structured-data-missing'] },
+        )
+      }
+
+      // Catalog upsert (EXTR-08): call upsertCatalogFromUserInput — NOT
+      // upsertCatalogFromExtractedUrl. The narrower 3-field signature is the
+      // Pitfall 5 mitigation: LLM-inferred values MUST NOT overwrite truthful
+      // NULLs at the SQL layer. Spec fields stay NULL for taste enrichment to
+      // fill via UPDATE downstream.
+      let catalogId: string | null = null
+      let catalogIdError: string | null = null
+      try {
+        if (extracted.brand && extracted.model) {
+          catalogId = await catalogDAL.upsertCatalogFromUserInput({
+            brand: extracted.brand,
+            model: extracted.model,
+            reference: extracted.reference ?? null,
+          })
+          if (!catalogId) {
+            catalogIdError = 'catalog upsert returned null id'
+          }
+        } else {
+          catalogIdError = 'brand/model missing from extraction'
+        }
+      } catch (err) {
+        console.error('[extract-watch] catalog upsert failed (non-fatal):', err)
+        catalogIdError = err instanceof Error
+          ? `catalog upsert threw: ${err.message.slice(0, 200)}`
+          : 'catalog upsert threw'
+      }
+
+      // Phase 19.1 D-07 + D-08 parity (D-03): same taste-enrichment chain as
+      // the URL branch, but with `source: 'structured-input'` discriminant so
+      // enrichment telemetry can distinguish entry modes.
+      if (catalogId && extracted.brand && extracted.model) {
+        try {
+          const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
+          const { updateCatalogTaste } = await import('@/data/catalog')
+          const taste = await enrichTasteAttributes({
+            catalogId,
+            source: 'structured-input',
+            spec: {
+              brand: extracted.brand,
+              model: extracted.model,
+              reference: extracted.reference ?? null,
+              movement: extracted.movement ?? null,
+              caseSizeMm: extracted.caseSizeMm ?? null,
+              lugToLugMm: extracted.lugToLugMm ?? null,
+              waterResistanceM: extracted.waterResistanceM ?? null,
+              crystalType: extracted.crystalType ?? null,
+              dialColor: extracted.dialColor ?? null,
+              isChronometer: extracted.isChronometer ?? null,
+              productionYear: null,
+              complications: extracted.complications ?? [],
+            },
+            photoSourcePath: null,
+          })
+          if (taste) {
+            await updateCatalogTaste(catalogId, taste)
+          }
+        } catch (err) {
+          console.error('[extract-watch] taste enrichment failed (non-fatal):', err)
+        }
+      }
+
+      // D-04: revalidateTag('explore', 'max') fires whenever a catalog row is
+      // upserted, regardless of enrichment success. Browse/Archetype counts
+      // stay consistent across both entry modes.
+      if (catalogId) {
+        revalidateTag('explore', 'max')
+      }
+
+      // Success envelope (D-03 / D-06 / Open Question 1+2):
+      // - source: 'llm' — structured branch is LLM-only by construction
+      // - confidence: 'medium' — single-stage LLM has no corroborating source
+      // - fieldsExtracted — keys of the tool_use input that came back populated
+      // - mode: 'structured' — coordination point for Phase 69 <ExtractErrorCard>
+      const fieldsExtracted = Object.keys(extracted).filter(
+        (k) => extracted[k as keyof typeof extracted] !== undefined,
       )
+
+      return NextResponse.json({
+        success: true,
+        catalogId,
+        catalogIdError,
+        data: extracted,
+        source: 'llm' as const,
+        confidence: 'medium' as const,
+        fieldsExtracted,
+        llmUsed: true,
+        mode: 'structured' as const,
+      })
     }
 
     // Unreachable — Zod's discriminated union exhausts both branches.
