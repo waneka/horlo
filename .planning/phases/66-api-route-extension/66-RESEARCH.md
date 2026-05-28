@@ -618,27 +618,31 @@ The first two are code-review concerns; the third is the executable gate.
 
 **Action for planner / discuss-phase:** A3, A4, A5 are model-behavior / forward-compatibility assumptions. A3 in particular should be validated by the human UAT (try lowercased input, see what catalog row gets written). None block plan creation.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `fieldsExtracted` be populated in the structured response?**
    - What we know: URL branch returns `fieldsExtracted: string[]` derived from union of static + LLM keys (`extractors/index.ts:43-48`). Test fixture doesn't assert on this field.
    - What's unclear: Whether downstream consumers (Phase 69 `<ExtractErrorCard>` doesn't use it; Phase 70 `AddWatchFlow` may?) read it.
    - Recommendation: Populate from `Object.keys(data).filter(k => data[k] !== undefined)` for shape parity. Cheap, prevents downstream surprise.
+   - **RESOLVED:** Populate per recommendation. Plan 02 Task 2 Edit 6 includes `fieldsExtracted: Object.keys(data).filter(k => data[k] !== undefined)` in the structured success envelope; cost is one line, downstream-shape parity preserved.
 
 2. **Should `confidence` field be returned by structured branch, and what value?**
    - What we know: URL branch returns `'high'` / `'medium'` / `'low'` based on field count.
    - What's unclear: No equivalent confidence signal for structured-input — the LLM either knew the watch or didn't.
    - Recommendation: Return `'medium'` constant for now. If Phase 69 surfaces this in UI, revisit.
+   - **RESOLVED:** Return constant `'medium'`. Plan 02 Task 2 Edit 6 hard-codes it. Revisit only if Phase 69 UI demonstrates a need for a structured-specific confidence signal.
 
 3. **Should the structured-branch response include the original input (`brand`, `model`, `reference?`, `year?` echo)?**
    - What we know: URL branch returns `data` from extraction (which contains the LLM's echo).
    - What's unclear: When the LLM hallucinates the brand differently from input, should the route trust input or LLM?
    - Recommendation: Trust LLM (it's a tool-use response, schema-validated). If hallucination becomes a UAT issue, change the validator to override LLM's brand/model fields with the user's input — but defer that complexity.
+   - **RESOLVED:** Trust LLM echo (schema-validated through strict tool-use; `validateAndCleanData` already coerces enums against project constants). Plan 01 Task 2 documents this; UAT will validate. If hallucination becomes a defect, a future phase can add an input-override pass without changing the contract.
 
 4. **The `revalidateTag('explore', 'max')` second-arg type signature in Next 16.2.3**
    - What we know: URL branch uses it at `route.ts:230`. `addWatch` action also uses it.
    - What's unclear: AGENTS.md warns Next 16 APIs differ; the type signature may have evolved. Build-gate (`npm run build`) is the truth — if it compiles and runs against the existing URL-branch call, the structured branch's identical call will too.
    - Recommendation: No action — copy the literal call.
+   - **RESOLVED:** Copy literal two-arg form verbatim (`revalidateTag('explore', 'max')`). Plan 02 Task 2 Edit 5 acceptance criterion pins `grep -c "revalidateTag('explore', 'max')"` ≥ 2 (URL branch + structured branch). Build-gate enforces signature compatibility.
 
 ## Environment Availability
 
