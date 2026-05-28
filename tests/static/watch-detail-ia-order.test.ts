@@ -159,3 +159,38 @@ describe('PAGE-01 mobile: brand+model hoisted above the grid on mobile (gap clos
     expect(content).toMatch(/lg:hidden[\s\S]*?viewerCanEdit\s*&&\s*\(\s*<Badge/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Phase 65 additions (Plan 03 integration guards).
+// ---------------------------------------------------------------------------
+
+describe('FOLL-04 (Phase 65): page.tsx invokes getFollowedOwnersForCatalog in active code', () => {
+  const content = readFileSync(PAGE_TSX, 'utf8')
+  const lines = content.split('\n')
+
+  it('getFollowedOwnersForCatalog( appears in active code at least 3 times (one per branch)', () => {
+    const callLines = activeLineNumbers(lines, /getFollowedOwnersForCatalog\(/)
+    expect(
+      callLines.length,
+      `FOLL-01..04 wiring missing — expected >=3 active-code calls (Branch 1 + Branch 2 owned + Branch 2 pure-catalog) but found ${callLines.length}`,
+    ).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('B1 sibling-composition (Phase 65): WatchDetailHero.tsx does not import the DAL function', () => {
+  let content: string
+  try {
+    content = readFileSync(HERO_TSX, 'utf8')
+  } catch {
+    content = ''
+  }
+
+  it('WatchDetailHero.tsx has no import of getFollowedOwnersForCatalog', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    // The import-aware regex catches both `import { getFollowedOwnersForCatalog }` and `import { x, getFollowedOwnersForCatalog }`.
+    // It does NOT match `import type { FollowedOwner }` (the type-only import is allowed per D-11).
+    expect(content).not.toMatch(/import\s*\{[^}]*getFollowedOwnersForCatalog[^}]*\}\s*from/)
+  })
+})
