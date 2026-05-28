@@ -17,6 +17,7 @@ import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
 import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
 import { WatchDetailHero } from '@/components/watch/WatchDetailHero'
+import { WatchDetailContextBlock } from '@/components/watch/WatchDetailContextBlock'
 import { WatchDetailTrailing } from '@/components/watch/WatchDetailTrailing'
 import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
 import { SameFamilyRail } from '@/components/insights/SameFamilyRail'
@@ -340,7 +341,16 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           viewerIsFollowingForWears={viewerIsFollowing}
         />
 
-        {/* Phase 64 D-06: CommentThread MOVED UP — position 2, directly below the hero.
+        {/* UAT 2026-05-27: full-width verdict / empty-state slot, just below the
+            hero. Cross-user → Collection Fit card; empty collection → reference
+            or caption; owned → null (role note lives in the trailing block). */}
+        <WatchDetailContextBlock
+          verdict={verdict}
+          watch={watch}
+          collection={collection}
+        />
+
+        {/* Phase 64 D-06: CommentThread sits directly below the context slot.
             RSC sibling — uncached, in Suspense. NEVER imported into the client island.
             DOM order = visual order (D-07: no CSS flex-reverse). */}
         <Suspense fallback={<CommentThreadSkeleton />}>
@@ -575,9 +585,17 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           viewerIsFollowingForWears={false}
         />
 
-        {/* Phase 64 D-06: CommentThread MOVED UP — position 2, directly below the hero.
+        {/* UAT 2026-05-27: full-width verdict / empty-state slot, just below the
+            hero. Same component as Branch 1; renders null for owned (same-user). */}
+        <WatchDetailContextBlock
+          verdict={verdict}
+          watch={ownedWatch}
+          collection={collection}
+        />
+
+        {/* Phase 64 D-06: CommentThread sits directly below the context slot.
             OtherOwnersRoster and CatalogPageActions are cross-user-only (D-15/spike §4.D)
-            — correctly absent on this owner branch. Phase 64 IA redesign resolves this. */}
+            — correctly absent on this owner branch. */}
         <Suspense fallback={<CommentThreadSkeleton />}>
           <CommentThread
             viewerId={user.id}

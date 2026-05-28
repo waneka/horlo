@@ -22,8 +22,6 @@ import {
 import { LikeButton } from '@/components/shared/LikeButton'
 import { editWatch, removeWatch } from '@/app/actions/watches'
 import { markAsWorn } from '@/app/actions/wearEvents'
-import { CollectionFitCard } from '@/components/insights/CollectionFitCard'
-import { ReferenceIdentityCard } from '@/components/insights/ReferenceIdentityCard'
 import { WatchPhotoSection } from '@/components/watch/WatchPhotoSection'
 import type { SignedWearPic } from '@/components/watch/WatchPhotoSection'
 import type { CommentAuthor } from '@/components/comment/types'
@@ -157,18 +155,6 @@ export function WatchDetailHero({
 
   const safeUrl = getSafeImageUrl(watch.imageUrl)
 
-  // D-10 empty-verdict condition: no verdict, empty collection, catalogTaste with confidence >= 0.5
-  const showReferenceIdentityCard =
-    !verdict &&
-    collection.length === 0 &&
-    watch.catalogTaste !== null &&
-    watch.catalogTaste !== undefined &&
-    watch.catalogTaste.confidence !== null &&
-    watch.catalogTaste.confidence !== undefined &&
-    watch.catalogTaste.confidence >= 0.5
-
-  const showEmptyCaption = !verdict && !showReferenceIdentityCard
-
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       {/* minmax(0,…) + min-w-0 on both columns: without them, grid tracks default to
@@ -241,22 +227,13 @@ export function WatchDetailHero({
           />
         </div>
 
-        {/* D-09 (refined per UAT 2026-05-27): elevate the Collection Fit verdict
-            into the hero ONLY for candidate framing (cross-user — "would this fit
-            MY collection?"). For an owned watch (same-user framing) the buy/skip
-            verdict is moot — the piece itself leads, and only the role-overlap
-            note surfaces lower (WatchDetailTrailing). */}
-        {verdict && verdict.framing === 'cross-user' && <CollectionFitCard verdict={verdict} />}
-
-        {/* D-10: empty verdict states */}
-        {showReferenceIdentityCard && (
-          <ReferenceIdentityCard taste={watch.catalogTaste ?? null} />
-        )}
-        {showEmptyCaption && (
-          <p className="text-sm text-muted-foreground">
-            Add a few watches to see how this one fits your collection.
-          </p>
-        )}
+        {/* D-09/D-10 (refined per UAT 2026-05-27): the verdict + empty-collection
+            states no longer live in this column — squeezing the full Collection
+            Fit card into ~40% read as cramped. The hero right column is now the
+            same minimal template for every viewer (title → spec strip → like+jump
+            → owner actions). The "context card" (verdict / ReferenceIdentityCard
+            / fallback caption) is rendered full-width below the hero by
+            <WatchDetailContextBlock/> in page.tsx, where it can breathe. */}
 
         {/* LikeButton + D-06 jump-to-comments anchor */}
         {viewerId !== undefined && initialLikeState !== undefined && (
