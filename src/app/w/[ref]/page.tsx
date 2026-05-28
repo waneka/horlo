@@ -12,6 +12,8 @@ import { getLikesForTargetCached } from '@/data/reactions'
 import { getProfileById, getProfilesByIds } from '@/data/profiles'
 import { canViewerCommentOnTarget, getCommentsForTarget } from '@/data/comments'
 import { isFollowing } from '@/data/follows'
+import { getFollowedOwnersForCatalog } from '@/data/follows'
+import { FollowedOwnersModule } from '@/components/insights/FollowedOwnersModule'
 import { computeVerdictBundle } from '@/lib/verdict/composer'
 import { computeViewerTasteProfile } from '@/lib/verdict/viewerTasteProfile'
 import { catalogEntryToSimilarityInput } from '@/lib/verdict/shims'
@@ -168,9 +170,17 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
     // https URLs through unchanged, so URL-extracted watches are unaffected.
     const [watch] = await signCoverUrls([rawWatch])
 
-    const [collection, preferences] = await Promise.all([
+    // Phase 65 FOLL-01..04 — pre-fetch follow-scoped owners in the existing
+    // Branch 1 Promise.all (D-09 parallel pre-fetch — no waterfall). D-01a /
+    // Pitfall 6: watch.catalogId is nullable on Branch 1 (URL-extracted watches
+    // never matched a catalog); the ternary mirrors the sameFamily / lineage /
+    // catalog-entry guards below.
+    const [collection, preferences, followedOwners] = await Promise.all([
       getWatchesByUser(user.id),
       getPreferencesByUser(user.id),
+      watch.catalogId
+        ? getFollowedOwnersForCatalog(watch.catalogId, user.id, { limit: 5 })
+        : Promise.resolve({ owners: [], totalCount: 0 }),
     ])
 
     // Phase 61 PHOTO-03 — structural fix (phase61-404-react-419-soft-nav debug):
@@ -352,6 +362,8 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           canCommentOnWears={!isOwner && canComment}
           ownerFollowsViewerForWears={ownerFollowsViewer}
           viewerIsFollowingForWears={viewerIsFollowing}
+          followedOwners={followedOwners.owners}
+          followedOwnersTotal={followedOwners.totalCount}
         />
 
         {/* UAT 2026-05-27: full-width verdict / empty-state slot, just below the
@@ -420,7 +432,7 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
   // Mirrors src/app/catalog/[catalogId]/page.tsx, replacing the redirect at
   // line 112 with in-place owner detection (D-06/D-08).
   // ---------------------------------------------------------------------------
-  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile, roster, sameFamily, lineage] = await Promise.all([
+  const [catalogEntry, collection, preferences, viewerOwnedRow, viewerProfile, roster, followedOwnersForCatalog, sameFamily, lineage] = await Promise.all([
     getCatalogById(ref),
     getWatchesByUser(user.id),
     getPreferencesByUser(user.id),
@@ -429,6 +441,10 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
     // Phase 39b NSV-18 — catalog other-owners roster (two-layer privacy +
     // self-exclusion + sold-status filter inside the DAL).
     getCollectorsForCatalog(ref, user.id, { limit: 5 }),
+    // Phase 65 FOLL-01..04 — follow-scoped roster (D-07 + Pitfall 1 follow
+    // direction = viewer -> owner). Pre-fetched in parallel; no waterfall.
+    // ref IS the catalogId on this branch, so no ternary guard needed.
+    getFollowedOwnersForCatalog(ref, user.id, { limit: 5 }),
     getSameFamilyForCatalog(ref),
     getLineageForReference(ref),
   ])
@@ -511,6 +527,12 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
 
     const ownedSameFamily = ownedWatch.catalogId ? await getSameFamilyForCatalog(ownedWatch.catalogId) : []
     const ownedLineage = ownedWatch.catalogId ? await getLineageForReference(ownedWatch.catalogId) : []
+    // Phase 65 FOLL-01..04 — follow-scoped owners for the D-06 owned sub-branch.
+    // Mirrors the ownedSameFamily / ownedLineage serial-await pattern above.
+    // D-01a / Pitfall 6: ownedWatch.catalogId guard for the URL-extracted-no-catalog case.
+    const ownedFollowedOwners = ownedWatch.catalogId
+      ? await getFollowedOwnersForCatalog(ownedWatch.catalogId, user.id, { limit: 5 })
+      : { owners: [], totalCount: 0 }
 
     // isOwner = true on the D-06 branch (viewerCanEdit={true})
     const isOwner = true
@@ -596,6 +618,8 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           canCommentOnWears={false}
           ownerFollowsViewerForWears={false}
           viewerIsFollowingForWears={false}
+          followedOwners={ownedFollowedOwners.owners}
+          followedOwnersTotal={ownedFollowedOwners.totalCount}
         />
 
         {/* UAT 2026-05-27: full-width verdict / empty-state slot, just below the
@@ -730,6 +754,16 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
             Add a few watches to see how this one fits your collection.
           </p>
         )}
+
+      {/* Phase 65 FOLL-01..04 — "From your circle" follow-scoped roster.
+          Renders BEFORE the broad OtherOwnersRoster (D-03a — both coexist
+          on Branch 3 by design). Hide-if-empty inside the component.
+          This branch has no <WatchDetailHero>, so the module renders
+          directly here as the hero-right-column equivalent. */}
+      <FollowedOwnersModule
+        owners={followedOwnersForCatalog.owners}
+        totalCount={followedOwnersForCatalog.totalCount}
+      />
 
       {/* Phase 64 D-13: OtherOwnersRoster MOVED UP — social proof near the verdict.
           Cross-user only (isOwner=false on this branch — D-15/spike §4.D).
