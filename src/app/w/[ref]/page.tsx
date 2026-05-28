@@ -362,6 +362,7 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           collection={collection}
           preferences={preferences}
           lastWornDate={lastWornDate}
+          verdict={verdict}
         />
 
         {/* Phase 39b NSV-02 + NSV-16 — Same family + Lineage rails below spec cards. */}
@@ -596,6 +597,7 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
           collection={collection}
           preferences={preferences}
           lastWornDate={lastWornDate}
+          verdict={verdict}
         />
 
         {/* Rails below spec cards — B1 invariant */}

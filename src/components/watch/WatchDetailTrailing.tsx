@@ -3,13 +3,14 @@
 // computeGapFill: gapFill.ts imports only types + detectLoyalBrands from similarity,
 // which imports only types — VERIFIED RSC-safe 2026-05-27.
 
-import { Check } from 'lucide-react'
+import { Check, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MOVEMENT_LABELS } from '@/lib/constants'
 import { computeGapFill } from '@/lib/gapFill'
 import { daysSince } from '@/lib/wear'
 import type { Watch, UserPreferences } from '@/lib/types'
+import type { VerdictBundle } from '@/lib/verdict/types'
 
 // Local pure helper — copied verbatim from WatchDetail.tsx:106-119.
 // timeZone: 'UTC' is REQUIRED for hydration safety (React #418). Wear/acquisition
@@ -41,6 +42,14 @@ interface WatchDetailTrailingProps {
   collection: Watch[]
   preferences: UserPreferences
   lastWornDate?: string | null
+  /**
+   * UAT 2026-05-27: the full Collection Fit verdict is no longer shown for OWNED
+   * watches (same-user framing) — the buy/skip question is moot once you own it.
+   * The one useful signal that remains is role-overlap ("competes for wrist
+   * time"), surfaced here as a small note. Cross-user / catalog keep the full
+   * verdict card in the hero. Null/cross-user → no note.
+   */
+  verdict?: VerdictBundle | null
 }
 
 export function WatchDetailTrailing({
@@ -48,7 +57,10 @@ export function WatchDetailTrailing({
   collection,
   preferences,
   lastWornDate,
+  verdict = null,
 }: WatchDetailTrailingProps) {
+  const showOwnedRoleOverlap =
+    verdict?.framing === 'same-user' && verdict.roleOverlap === true
   const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
   const gapFill = isWishlistLike ? computeGapFill(watch, collection, preferences) : null
   const daysSinceWorn = daysSince(lastWornDate ?? undefined)
@@ -274,6 +286,16 @@ export function WatchDetailTrailing({
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Owned-watch role-overlap note (UAT 2026-05-27): the only verdict signal
+          worth keeping for a watch you own — informs rotation / sell-trade. Copy
+          matches CollectionFitCard's role-overlap line. */}
+      {showOwnedRoleOverlap && (
+        <p className="text-sm text-accent flex items-center gap-2">
+          <AlertTriangle className="size-4" aria-hidden />
+          May compete for wrist time with similar watches
+        </p>
       )}
     </div>
   )

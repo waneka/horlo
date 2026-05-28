@@ -241,8 +241,12 @@ export function WatchDetailHero({
           />
         </div>
 
-        {/* D-09: CollectionFitCard elevated into hero */}
-        {verdict && <CollectionFitCard verdict={verdict} />}
+        {/* D-09 (refined per UAT 2026-05-27): elevate the Collection Fit verdict
+            into the hero ONLY for candidate framing (cross-user — "would this fit
+            MY collection?"). For an owned watch (same-user framing) the buy/skip
+            verdict is moot — the piece itself leads, and only the role-overlap
+            note surfaces lower (WatchDetailTrailing). */}
+        {verdict && verdict.framing === 'cross-user' && <CollectionFitCard verdict={verdict} />}
 
         {/* D-10: empty verdict states */}
         {showReferenceIdentityCard && (
