@@ -1,10 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: between
-milestone_name: ""
-status: between_milestones
-stopped_at: v7.0 Watch Photos & Detail Redesign SHIPPED 2026-05-28; awaiting /gsd-new-milestone
-last_updated: "2026-05-28T19:00:00.000Z"
+milestone: v8.0
+milestone_name: Add-Watch Redesign
+status: planning
+last_updated: "2026-05-28T19:33:22.523Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 0
@@ -18,20 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-28 — v7.0 SHIPPED, full milestone-close evolution)
+See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Between milestones — v7.0 (Watch Photos & Detail Redesign) SHIPPED 2026-05-28. Next: `/gsd-new-milestone` for **v8.0 Add-Watch Redesign** (SEED-010, search-first add flow) — the planted next milestone.
+**Current focus:** **v8.0 Add-Watch Redesign** — search-first add flow that reuses the catalog when it can, structured-input LLM extraction when it can't (URL paste demoted to backup), lighter confirm screen with status picker incl. grail replacing `VerdictStep`. `CollectionFitCard` drops from the add flow; no changes to `/w/[ref]`. Catalog expansion (SEED-009) deferred to v9.0; v8.0 ships against the ~100-row catalog as-it-is.
 
 ## Current Position
 
-Phase: — (between milestones)
-Plan: — (between milestones)
-Status: v7.0 SHIPPED + archived (7 phases / 29 plans / 34 reqs); .planning/phases/ empty; ready for /gsd-new-milestone
-Next step: `/gsd-new-milestone` for v8.0 Add-Watch Redesign (SEED-010) or another seed
-Last activity: 2026-05-28
-
-Progress: — (no active milestone)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-28 — Milestone v8.0 started
 
 ## Performance Metrics
 
