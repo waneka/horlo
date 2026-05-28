@@ -61,40 +61,50 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
       data: { brand: 'Omega', model: 'Speedmaster' },
     })
 
-    const res = await POST(mkPost({ url: 'https://example.com/watch' }))
+    const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/watch' }))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.success).toBe(true)
     expect(body.data.brand).toBe('Omega')
     expect(body.data.model).toBe('Speedmaster')
+    // Phase 66 D-06: every response carries `mode` so <ExtractErrorCard> can branch copy.
+    expect(body.mode).toBe('url')
   })
 
   // -------------------------------------------------------------------------
-  // URL validation — manual checks (no Zod; per CONTEXT.md D-02 + RESEARCH.md A5)
+  // URL validation — Zod discriminated body + manual checks (Phase 66 D-07/D-08)
   // -------------------------------------------------------------------------
 
   it('returns 400 { error: "URL is required" } when url is missing', async () => {
-    const res = await POST(mkPost({}))
+    // Phase 66: `{ mode: 'url' }` with empty url hits the Zod min(1) failure
+    // and surfaces the locked 'URL is required' message; response also carries
+    // `mode: 'url'` per D-06.
+    const res = await POST(mkPost({ mode: 'url', url: '' }))
     expect(res.status).toBe(400)
-    expect(await res.json()).toEqual({ error: 'URL is required' })
+    expect(await res.json()).toEqual({ error: 'URL is required', mode: 'url' })
   })
 
-  it('returns 400 { error: "URL is required" } when url is null', async () => {
-    const res = await POST(mkPost({ url: null }))
+  it('returns 400 { error: "Invalid request" } when mode is missing entirely', async () => {
+    // Phase 66 EXTR-01: bare `{}` fails Zod discriminated-union parse before
+    // mode can be read; closure-scoped fallback emits `mode: 'url'`.
+    const res = await POST(mkPost({}))
     expect(res.status).toBe(400)
-    expect(await res.json()).toEqual({ error: 'URL is required' })
+    const body = await res.json()
+    expect(body.mode).toBe('url')
+    // Zod's discriminated-union failure message references the missing discriminant.
+    expect(typeof body.error).toBe('string')
   })
 
   it('returns 400 { error: "Invalid URL format" } for a malformed URL', async () => {
-    const res = await POST(mkPost({ url: 'not-a-url' }))
+    const res = await POST(mkPost({ mode: 'url', url: 'not-a-url' }))
     expect(res.status).toBe(400)
-    expect(await res.json()).toEqual({ error: 'Invalid URL format' })
+    expect(await res.json()).toEqual({ error: 'Invalid URL format', mode: 'url' })
   })
 
   it('returns 400 { error: "Only HTTP/HTTPS URLs are supported" } for non-http(s) protocol', async () => {
-    const res = await POST(mkPost({ url: 'file:///etc/passwd' }))
+    const res = await POST(mkPost({ mode: 'url', url: 'file:///etc/passwd' }))
     expect(res.status).toBe(400)
-    expect(await res.json()).toEqual({ error: 'Only HTTP/HTTPS URLs are supported' })
+    expect(await res.json()).toEqual({ error: 'Only HTTP/HTTPS URLs are supported', mode: 'url' })
   })
 
   // -------------------------------------------------------------------------
@@ -106,11 +116,12 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
   it('returns 400 with generic-network category + locked D-15 copy when fetchAndExtract throws SsrfError', async () => {
     mockFetchAndExtract.mockRejectedValue(new SsrfError('blocked'))
 
-    const res = await POST(mkPost({ url: 'https://192.168.1.1' }))
+    const res = await POST(mkPost({ mode: 'url', url: 'https://192.168.1.1' }))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.success).toBe(false)
     expect(body.category).toBe('generic-network')
+    expect(body.mode).toBe('url')
     expect(body.error).toBe(
       "Couldn't reach that URL. Check the link and try again.",
     )
@@ -127,11 +138,12 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
     })
     vi.mocked(catalogDAL.upsertCatalogFromExtractedUrl).mockResolvedValue(null)
 
-    const res = await POST(mkPost({ url: 'https://example.com/watch' }))
+    const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/watch' }))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.catalogId).toBeNull()
     expect(body.catalogIdError).toContain('null id')
+    expect(body.mode).toBe('url')
   })
 
   // -------------------------------------------------------------------------
@@ -144,7 +156,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
         new Error('Failed to fetch URL: 403 Forbidden'),
       )
 
-      const res = await POST(mkPost({ url: 'https://example.com/blocked' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/blocked' }))
       const body = await res.json()
       expect(res.status).toBe(502)
       expect(body.success).toBe(false)
@@ -161,7 +173,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
         data: { brand: '', model: '' },
       })
 
-      const res = await POST(mkPost({ url: 'https://example.com/watch' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/watch' }))
       const body = await res.json()
       expect(res.status).toBe(422)
       expect(body.success).toBe(false)
@@ -177,7 +189,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
         data: {},
       })
 
-      const res = await POST(mkPost({ url: 'https://example.com/watch' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/watch' }))
       const body = await res.json()
       expect(res.status).toBe(422)
       expect(body.category).toBe('structured-data-missing')
@@ -188,7 +200,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
       abortErr.name = 'AbortError'
       mockFetchAndExtract.mockRejectedValue(abortErr)
 
-      const res = await POST(mkPost({ url: 'https://example.com/slow' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/slow' }))
       const body = await res.json()
       expect(res.status).toBe(504)
       expect(body.category).toBe('LLM-timeout')
@@ -200,7 +212,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
     it('LLM-timeout — caught error whose message contains "timeout" → category=LLM-timeout', async () => {
       mockFetchAndExtract.mockRejectedValue(new Error('Request timed out after 30s'))
 
-      const res = await POST(mkPost({ url: 'https://example.com/slow' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/slow' }))
       const body = await res.json()
       // The word "timed out" doesn't include "timeout" as a substring; sanity-check
       // both branches: message containing literal "timeout" should match.
@@ -211,7 +223,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
     it('LLM-timeout — caught error whose message contains literal "timeout" → category=LLM-timeout', async () => {
       mockFetchAndExtract.mockRejectedValue(new Error('LLM request timeout exceeded'))
 
-      const res = await POST(mkPost({ url: 'https://example.com/slow' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/slow' }))
       const body = await res.json()
       expect(res.status).toBe(504)
       expect(body.category).toBe('LLM-timeout')
@@ -226,7 +238,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
       })
       mockFetchAndExtract.mockRejectedValue(rateLimitErr)
 
-      const res = await POST(mkPost({ url: 'https://example.com/spd' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/spd' }))
       const body = await res.json()
       expect(res.status).toBe(503)
       expect(body.category).toBe('quota-exceeded')
@@ -238,7 +250,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
     it('generic-network — any other thrown error → category=generic-network + locked copy', async () => {
       mockFetchAndExtract.mockRejectedValue(new Error('upstream 500'))
 
-      const res = await POST(mkPost({ url: 'https://example.com/watch' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/watch' }))
       const body = await res.json()
       expect(res.status).toBe(500)
       expect(body.category).toBe('generic-network')
@@ -258,7 +270,7 @@ describe('POST /api/extract-watch — beyond auth gate (TEST-05)', () => {
       )
       mockFetchAndExtract.mockRejectedValue(leaky)
 
-      const res = await POST(mkPost({ url: 'https://example.com/leak' }))
+      const res = await POST(mkPost({ mode: 'url', url: 'https://example.com/leak' }))
       const bodyText = await res.text()
       expect(bodyText).not.toMatch(/anthropic/i)
       expect(bodyText).not.toMatch(/claude/i)
