@@ -1,25 +1,22 @@
 ---
-status: partial
+status: complete
 phase: 64-detail-page-ia-redesign
 source: [64-VERIFICATION.md]
 started: 2026-05-27T00:00:00Z
-updated: 2026-05-27T00:00:00Z
+updated: 2026-05-28T00:00:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Desktop 2-column hero layout (PAGE-01/04)
-expected: |
-  Hero is a 2-column grid: carousel left, verdict + title + like right; CollectionFitCard verdict reads near the top; comments appear directly below the hero, ABOVE the full spec cards and rails.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
 ### 1. Desktop 2-column hero layout (PAGE-01/04)
 expected: Hero is a 2-column grid: carousel left, verdict + title + like right; CollectionFitCard verdict reads near the top; comments appear directly below the hero, ABOVE the full spec cards and rails.
-result: issue
-reported: "balance is way off on the 2 column section - the photos are only taking up maybe 1/6 of the width"
+result: pass
+resolution: "Re-verified on prod 2026-05-28 after grid-track fix (16c3700) + D-09 hero unification (084ec94/bd90f54) + owner badge gate (95385e9)."
+original_report: "balance is way off on the 2 column section - the photos are only taking up maybe 1/6 of the width"
 severity: major
 root_cause: "Grid is correct (lg:grid-cols-[3fr_2fr] = 60/40). WatchPhotoSection carousel viewport hard-caps at `max-w-md` (448px) at WatchPhotoSection.tsx:448, so it cannot fill its 3fr column; on a wide window 448px reads as ~1/6 of the screen and defeats PAGE-04 (carousel as primary visual). UI-SPEC CSS-chain blind spot — checker validated the grid token, not the carousel's internal max-width."
 fix_attempt_1: "Added `fill` prop to WatchPhotoSection (relax max-w-md/max-w-sm caps). Necessary but INSUFFICIENT — user reported no change. The carousel was never hitting max-w-md; it was being squeezed BELOW it."
@@ -30,50 +27,62 @@ design_change_2: "D-09/D-10 SECOND REFINEMENT (user decision, UAT 2026-05-27): c
 
 ### 2. Mobile single-column collapse (PAGE-01)
 expected: Hero collapses to single column: carousel on top, then title/verdict/like/actions; order remains hero → comments → spec cards → rails → footer.
-result: [pending]
+result: issue
+reported: "pass - but i think we need to tweak. the large photo looks great at the top but with the thumbnail filmstrip below, the title actually is pushed below the fold. i'm wondering if it should maybe be above the photo on mobile, just the watch brand and name. that would potentially orphan the other info included in the title (ref, type, size, color)"
+severity: minor
+note: "Structurally passes (single-column collapse + correct stacking order). UX refinement: brand+model below-the-fold on mobile after photo + filmstrip. Recommended fix (Option A): mobile-only hoist brand+model <h1> above the carousel; spec strip (ref/type/size/color) stays below the photo as descriptive metadata. User explicitly chose to plant as a Phase 64 fix gap."
 
 ### 3. Jump-to-comments scroll behavior (PAGE-02)
 expected: Tapping the hero comment count smooth-scrolls (or jumps on reduced-motion) to the #comments section.
-result: [pending]
+result: pass
 
 ### 4. Soft-nav #419 absence (PAGE-03)
 expected: No React #419/404 error on in-app soft navigation to/from a /w/[ref] page; the unstable_instant=false + await connection() fix holds after cache fills (verify AFTER cache warms, not on cold read).
-result: [pending]
+result: pass
 
 ### 5. Catalog branch layout (PAGE-01)
 expected: On a catalog-only /w/[ref] (a ref you don't own): verdict-forward hero; OtherOwnersRoster + CatalogPageActions sit high near the verdict; no comments and no multi-photo carousel.
-result: [pending]
+result: pass
 
 ### 6. Owner vs non-owner actions
 expected: As owner: Mark-as-Worn / Edit / Delete present in the hero. As non-owner viewer: those controls absent (and the empty-collection "Add to Wishlist/Collection" CTAs do not appear — CR-01 fix).
-result: [pending]
+result: pass
 
 ### 7. WatchPageSkeleton visual match (PAGE-01)
 expected: Loading skeleton mirrors the new IA: hero grid (left carousel placeholder, right column), comment skeleton, spec-cards skeleton.
-result: [pending]
+result: pass
 
 ### 8. Overall "intentional hierarchy" feel (PAGE-01)
 expected: Comments are reachable without scrolling past all rails; the carousel and verdict are the primary visuals above the fold on a desktop viewport.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 8
-passed: 0
+passed: 7
 issues: 1
-pending: 7
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
 - truth: "Carousel is the primary visual at ~60% width in the desktop 2-col hero (PAGE-04)"
-  status: failed
-  reason: "User reported: balance way off — photos only ~1/6 width. WatchPhotoSection viewport caps at max-w-md (448px) and cannot fill the 3fr column."
+  status: resolved
+  reason: "User reported: balance way off — photos only ~1/6 width. Root cause: CSS grid track blowout (default minmax(auto, Nfr) was sized by CollectionFitCard min-content)."
   severity: major
   test: 1
-  artifacts: [src/components/watch/WatchPhotoSection.tsx:448]
-  missing: ["carousel must fill its hero column (remove/raise max-w-md, or make it a prop so the hero passes a fill variant)"]
+  fix: "Pin grid to minmax(0,3fr)/minmax(0,2fr) + min-w-0 on both columns (16c3700); subsequently unified hero right column across viewers and moved verdict to full-width WatchDetailContextBlock (084ec94)."
+  verified: "Prod re-verify 2026-05-28 — user typed pass."
+
+- truth: "On mobile, the brand+model identifier is reachable above the fold on a /w/[ref] page"
+  status: failed
+  reason: "User reported: 'photo looks great at top but with the thumbnail filmstrip below, the title is pushed below the fold.' Test 2 structurally passes (single-column collapse + correct stacking order) — gap is a UX refinement scoped into Phase 64 by user choice."
+  severity: minor
+  test: 2
+  recommendation: "Option A — mobile-only: hoist brand+model <h1> above the carousel; keep spec strip (ref/type/size/color) below the photo as descriptive metadata; desktop layout unchanged."
+  artifacts: [{path: "src/components/watch/WatchDetailHero.tsx", issue: "Mobile single-column stack puts <h1> after carousel+filmstrip, pushing identifier below the fold."}]
+  missing: ["Mobile-only title hoist: brand+model above carousel; spec strip stays below carousel; like/jump/actions follow."]
 
 - truth: "Cross-user viewers do not see misleading owner-only ownership indicators"
   status: resolved
