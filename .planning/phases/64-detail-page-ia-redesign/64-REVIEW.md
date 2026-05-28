@@ -140,6 +140,19 @@ Import from the shared module in all three components. This eliminates the dupli
 
 ---
 
+## Post-Review Resolution (Phase 64 chain, 2026-05-27)
+
+Applied inline during the `--chain` execute-phase run, build + static guards re-confirmed green (426 static tests, `npm run build` exit 0):
+
+- **CR-01 — FIXED.** Branch 1 empty-collection 3-CTA block in `page.tsx` now gated on `isOwner && collection.length === 0` (was `collection.length === 0` only). Non-owner viewers no longer see "Add to Wishlist/Collection" links that 404 against the owner-scoped edit route. (Pre-existing Phase 39b bug surfaced by this review; Phase 64 re-touched the block during the reorder.)
+- **WR-01 — FIXED.** `WatchDetailHero` default `viewerCanEdit` changed `true → false` (defensive; all live callers pass it explicitly).
+- **WR-02 — FIXED.** `ppr-dynamic-before-use-cache.test.ts` now also asserts `createSupabaseServerClient(` is absent from active code in the route (verified: the route uses only `createSupabaseAdminClient`). Closes the vacuous-proxy gap.
+- **WR-03 — DEFERRED (advisory).** `formatDate` is triplicated across `WatchDetailHero`/`WatchDetailTrailing`/`WatchDetail` with the `timeZone:'UTC'` guard intact in all three (no live #418 bug). Extraction to `src/lib/formatDate.ts` is a quality refactor for a follow-up.
+- **IN-01 — ACKNOWLEDGED.** `WatchDetail.tsx` (old monolith) is now rendered nowhere in the app but is retained because two pre-existing tests reference it (`tests/no-raw-img.test.ts`, `tests/components/watch/WatchDetail.isChronometer.test.tsx`). Cleanup requires migrating/removing those tests — out of scope.
+- **IN-02 — ACKNOWLEDGED.** Double `getCommentsForTarget` round-trip (count + thread). Performance, out of scope.
+
+---
+
 _Reviewed: 2026-05-27T23:54:35Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
