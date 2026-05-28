@@ -1,244 +1,183 @@
 # Stack Research
 
-**Domain:** v6.0 Social Interaction — likes + comments on individual watches and wear events
-**Researched:** 2026-05-22
-**Confidence:** HIGH — all claims verified against existing codebase, schema, and established patterns
+**Domain:** v8.0 Add-Watch Redesign — search-first add flow
+**Researched:** 2026-05-28
+**Confidence:** HIGH
+
+## Verdict: No New Dependencies Required
+
+Every capability v8.0 needs is covered by the existing stack. The finding below is organized by the six questions asked, then distilled into an explicit dependency decision table.
 
 ---
 
-## Existing Stack (Validated — Do Not Re-Research)
+## Question-by-Question Findings
 
-| Technology | Version | Status |
-|------------|---------|--------|
-| Next.js App Router | 16.2.3 | Locked |
-| React | 19.2.4 | Locked |
-| TypeScript | ^5 strict | Locked |
-| Tailwind CSS 4 | ^4 | Locked |
-| Supabase (Postgres + Auth + RLS) | @supabase/supabase-js ^2.103.0 + @supabase/ssr ^0.10.2 | Locked |
-| Drizzle ORM | ^0.45.2 (postgres-js, prepare:false) | Locked |
-| Zod | ^4.3.6 | Locked — .strict() on every Server Action |
-| Next.js Cache Components (cacheTag / revalidateTag / updateTag) | 16.2.3 built-in | Locked |
-| lucide-react | ^1.8.0 | Locked |
-| sonner | ^2.0.7 | Locked — ThemedToaster already mounted |
+### 1. Search-as-you-type entry: new search library or reuse `pg_trgm` + `searchCatalogWatches`?
 
----
+**Reuse as-is. No new library or index changes needed.**
 
-## v6.0 Stack Analysis by Concern
+`searchCatalogWatches` in `src/data/catalog.ts` already does:
+- `brand_normalized ILIKE %lowerQ%`, `model_normalized ILIKE %lowerQ%`, `reference_normalized ILIKE %refNorm%`
+- Popularity-DESC + alphabetical tie-break
+- Viewer-state hydration (owned/wishlist badge on results)
+- Facet filtering (movement, size, style, brand, era)
+- 2-char minimum + pre-LIMIT 50 candidate cap
 
-### (1) Persistence — likes + comments tables
+The admin `WatchPicker` component (`src/components/admin/WatchPicker.tsx`) already demonstrates exactly the search-as-you-type pattern for catalog search: `useState` debounce (200ms via `setTimeout`), `searchCatalogForPicker` Server Action (which calls `searchCatalogWatches`), positioned dropdown with `listbox`/`option` roles. The v8.0 search entry is a purpose-built version of that component, not a new search stack.
 
-**Verdict: Existing Drizzle + Supabase Postgres + RLS stack is sufficient. No new persistence layer.**
+The catalog is small (~100 rows at launch, growing slowly). `pg_trgm` GIN indexes on `brand` and `model` already exist from Phase 17/19. No Algolia, MeiliSearch, typesense, or client-side fuse.js is warranted — those libraries exist to compensate for databases that can't do fast text search, not Postgres with GIN indexes.
 
-Two new Drizzle table definitions added to `src/db/schema.ts`:
+**The only new piece** is a thin Server Action (or Server Action reuse) callable from within `AddWatchFlow` on the add-watch surface. `searchCatalogForPicker` already exists and could be reused directly, or a new `searchCatalogForAddFlow` action could be added if the return shape needs to differ (e.g., to include catalog thumbnail, user's existing verdict, or watch-detail fields not in `SearchCatalogWatchResult`). That is a phase-design decision, not a stack decision.
 
-- `watch_likes` — `(id uuid PK, watch_id uuid FK → watches ON DELETE CASCADE, user_id uuid FK → users ON DELETE CASCADE, created_at timestamp)` with a UNIQUE pair `(watch_id, user_id)` so every user can like a watch at most once. Partial dedup index handled in raw SQL migration following the `notifications` pattern (Drizzle 0.45.2 cannot express partial indexes in pg-core DSL).
+### 2. No-URL structured-input extraction: same SDK and pattern, `cheerio` dropped for this code path?
 
-- `wear_likes` — same shape but `wear_event_id` FK → `wear_events ON DELETE CASCADE`. A separate table is cleaner than a polymorphic `target_type` column — no NULL-column smell, no cross-target index confusion, RLS policies are independent per surface, and FK cascade behavior is precise per target.
+**Same `@anthropic-ai/sdk` at `^0.88.0`, same `claude-sonnet-4-6`, same strict tool-use or the newer `messages.parse` API. `cheerio` is not needed for this path.**
 
-- `comments` — `(id uuid PK, watch_id uuid nullable FK, wear_event_id uuid nullable FK, author_id uuid FK → users ON DELETE CASCADE, body text NOT NULL, edited_at timestamp nullable, created_at timestamp, updated_at timestamp)`. A single table with two nullable FK columns is the right choice here: the comment body, author, timestamps, and edit mechanics are identical across both targets; separate `watch_comments` and `wear_comments` tables would duplicate every constraint and RLS policy. A CHECK constraint (`(watch_id IS NULL) != (wear_event_id IS NULL)` — exactly one target) lives in the raw SQL migration.
+The no-URL extraction flow receives brand + model + optional reference/year from the user and sends that directly to the LLM as a text prompt, with no HTML to parse. The extractor's `extractReadableText(html)` step and `cheerio` are strictly for the URL-fetch path. The new code path is:
 
-RLS follows the existing two-layer pattern already in use for `notifications`, `follows`, and `wear_events`: USING (read-side) + WITH CHECK (write-side) on Postgres, plus explicit `WHERE userId = currentUserId` in every DAL function. The wishlist-comment mutual-follow gate is enforced at the DAL WHERE layer (a subquery or EXISTS against the `follows` table checking both directions), not as an RLS policy — mutual-follow logic is too dynamic for a clean USING expression.
+```
+user fields (brand, model, ref?, year?) → prompt string → client.messages.create() → validateAndCleanData()
+```
 
-**No new dependencies.**
+The current `extractWithLlm` in `src/lib/extractors/llm.ts` uses a plain `messages.create` call with a freeform JSON prompt and regex-based JSON extraction (`/\{[\s\S]*\}/`). This works but is fragile (WR-06 comment documents exactly this). The no-URL path is a clean opportunity to use the SDK's `messages.parse` + `zodOutputFormat` API, which was available as of SDK 0.72.0 and confirmed present in the installed 0.88.0 (`client.messages.parse` is type `function` in the installed version).
 
----
+However, migrating the existing URL extractor to `messages.parse` is a refactor concern for a separate phase. For v8.0, the recommended approach is to write the no-URL extractor as a second function (e.g., `extractFromQuery`) in the same `llm.ts` file or a new `src/lib/extractors/structured.ts`, using whichever API the phase team prefers. Both approaches are valid:
 
-### (2) Schema additions — notification_type enum extension
+- **Option A (minimal diff):** Copy the prompt + `validateAndCleanData` logic from `extractWithLlm`, drop the HTML/cheerio preamble, adjust the prompt to say "You are filling in specs for a watch described by the user as: brand=X, model=Y, ref=Z, year=W. Fill in what you know." Output is still freeform JSON parsed by the existing regex + `validateAndCleanData`.
+- **Option B (cleaner):** Write a new function using `client.messages.parse` with `zodOutputFormat(ExtractedWatchDataSchema)`. This eliminates the regex fragility and produces typed output directly. Requires adding a Zod schema mirroring `ExtractedWatchData` — Zod 4 is already in `package.json` at `^4.3.6`, latest is 4.4.3 (pin-bump is optional but safe).
 
-**Verdict: Add `'like'` and `'comment'` to the existing `notification_type` pgEnum. Follow the Phase 24 enum-rename procedure.**
+**No prompt-engineering libraries are warranted.** The prompt for the no-URL path is simpler than the URL-extract prompt because there is no HTML noise — the user has already provided structured signal (brand/model). Langchain, llamaindex, and similar prompt-orchestration libraries add hundreds of KB of dependencies and abstract over patterns that are trivial to write directly when calling a single model endpoint.
 
-The `notificationTypeEnum` currently has two values: `'follow'` and `'watch_overlap'`. The Phase 24 CONTEXT.md (and the `project_drizzle_supabase_db_mismatch.md` memory entry) documents the procedure for modifying an enum with dependent partial indexes: query `pg_depend` before writing the migration, use the rename+recreate pattern, and rebuild partial indexes that reference the enum type. The `profileSettings` table needs two new boolean columns: `notifyOnLike` and `notifyOnComment` (both `DEFAULT true`, following the existing `notifyOnFollow` / `notifyOnWatchOverlap` pattern).
+**`cheerio` stays in `package.json`** because the URL-extract path still uses it. It just does not appear in the new code path.
 
-The existing `logNotification` function in `src/lib/notifications/logger.ts` extends cleanly — add new union arms to `LogNotificationInput`, new opt-out checks in the guard block, and new raw-SQL dedup inserts for like dedup (one like per watch/wear per actor is already enforced by the UNIQUE index, so `ON CONFLICT DO NOTHING` is the correct conflict clause). The fire-and-forget caller contract (void call, internal try/catch, pre-resolved actor profile in payload) is unchanged.
+### 3. Lighter confirm screen: existing shadcn primitives sufficient?
 
-**No new dependencies.**
+**Yes. No new UI components needed.**
 
----
+The confirm screen replaces `VerdictStep`'s 3-button lock with a lighter review-and-commit screen. The required primitives are all present:
 
-### (3) Server Actions + Drizzle mutation path
+| UI need | Existing component |
+|---------|-------------------|
+| Status picker (owned / wishlist / grail / sold) | `Select` from `src/components/ui/select.tsx` — already used in `WatchForm` for status |
+| Card container for spec preview | `Card`, `CardContent` — already in `VerdictStep` |
+| Key field edits (brand, model, ref) | `Input`, `Label` — in `WatchForm` |
+| Grail status | `Select` with `WATCH_STATUSES` constant — `grail` is already in the enum, `WatchForm` already renders it |
+| Fit card (CollectionFitCard) | `CollectionFitCard` — already in `VerdictStep`, can be reused |
+| Submit / back buttons | `Button` |
+| Loading states | `Loader2` from `lucide-react` — already used throughout |
 
-**Verdict: Existing Server Actions + Drizzle pattern is fully sufficient. No alternative mutation mechanism needed.**
+`grail` is already in `WATCH_STATUSES` at `src/lib/constants.ts`. The confirm screen's status picker is a `Select` using that same constant — the only new work is surfacing grail at this step rather than hiding it behind `VerdictStep`'s 3-button lock.
 
-The like and comment write paths map cleanly onto the existing pattern:
+No `RadioGroup` import is needed from shadcn; the existing `Select` pattern from `WatchForm` is the established convention for status selection.
 
-- `likeWatch(watchId)` — auth guard → Zod `.strict()` input → Drizzle `db.insert(watchLikes).values(...).onConflictDoNothing()` → `revalidateTag('watch-likes:${watchId}')` + fire-and-forget `logNotification` for the watch owner → return `{ success: true }`.
-- `unlikeWatch(watchId)` — auth guard → Drizzle `db.delete(watchLikes).where(and(eq(watchLikes.watchId, watchId), eq(watchLikes.userId, currentUser.id)))` → `revalidateTag(...)` → return `{ success: true }`.
-- `addComment(watchId | wearEventId, body)` — auth guard → Zod `.strict()` with `body: z.string().min(1).max(1000)` (define a max on the first pass; 1000 chars is a reasonable social comment ceiling) → mutual-follow check for wishlist-watch target (DAL helper, not inline SA logic) → `db.insert(comments).values(...)` → `revalidateTag('comments:${targetKey}')` + `logNotification` → return `{ success: true, comment: { id, body, createdAt } }`.
-- `editComment(commentId, body)` — auth guard → Drizzle update with `WHERE id = commentId AND author_id = currentUser.id` (ownership enforced in SQL, not just application layer) → sets `edited_at = now()` → `revalidateTag(...)`.
-- `deleteComment(commentId)` — same ownership-in-SQL pattern.
+### 4. State machine: add xstate, or keep the useState/discriminated-union pattern?
 
-All existing conventions apply: Zod `.strict()` prevents mass assignment, two-layer privacy (RLS + DAL WHERE), `revalidateTag` or `updateTag` for cache invalidation.
+**Keep the existing pattern. xstate is not warranted.**
 
-**No new dependencies.**
+`AddWatchFlow` already manages a 9-state discriminated union (`FlowState` in `src/components/watch/flowTypes.ts`) using `useState<FlowState>`. The v8.0 redesign adds roughly 2-3 new states to the union:
 
----
+- `searching` (user is typing in the catalog search box)
+- `search-result-selected` (user picked a catalog row; pre-confirm)
+- `confirm` (the new lighter confirm screen, replacing `verdict-ready` + `wishlist-rationale-open` + `form-prefill` merge)
 
-### (4) Cache invalidation — likes and comments with Cache Components
+The existing pattern handles this cleanly. Adding states to a discriminated union is O(1) complexity — add a new `| { kind: 'confirm'; ... }` branch, add a render branch in the JSX, done.
 
-**Verdict: Existing `cacheTag` / `revalidateTag` / `updateTag` pattern is sufficient. Standard tags, no new infrastructure.**
+xstate adds ~60KB minified, a visual-state-machine mental model, and a YAML/JSON config layer that is not used anywhere else in this codebase. The project uses Zustand (not Redux, not Context, not observable streams), and the local flow state has stayed coherent across 9+ phases of development with the existing pattern. There is no debugging deficit, no state-transition ambiguity, and no concurrent-state problem that xstate uniquely solves here.
 
-Cache tags follow the established naming convention:
+**Do not add xstate.**
 
-- `'watch-likes:${watchId}'` — cached like count + viewer-has-liked state for a watch
-- `'wear-likes:${wearEventId}'` — same for wear events
-- `'watch-comments:${watchId}'` — cached comment list for a watch
-- `'wear-comments:${wearEventId}'` — cached comment list for a wear event
-- `'notifications'` + `'viewer:${recipientId}'` — already used; like/comment notification writes call `revalidateTag('viewer:${recipientId}')` on the recipient's notification cache (same as Phase 13 pattern)
+### 5. Version updates that would help v8.0?
 
-Like toggles use `updateTag` (read-your-own-writes, same as `markNotificationRead`) rather than `revalidateTag` — the toggling user sees their own state immediately. Comment adds use `revalidateTag` to fan out to all viewers of that watch/wear.
+| Package | Installed | Latest (npm) | Recommendation |
+|---------|-----------|--------------|---------------|
+| `next` | 16.2.3 | 16.2.6 | **Patch bump** — 3 patch versions; safe, no breaking changes expected |
+| `react` / `react-dom` | 19.2.4 | 19.2.6 | **Patch bump** — safe |
+| `@anthropic-ai/sdk` | 0.88.0 | 0.100.0 | **Minor bump** — 0.90.0 adds claude-opus-4-7 + user_profiles; no breaking API changes in the `messages.create` / `messages.parse` surface used by this project. Bumping unlocks `messages.parse` + `zodOutputFormat` if Option B is chosen for the no-URL extractor. Bumping is low-risk but not required; 0.88.0 already has `messages.parse`. |
+| `zod` | ^4.3.6 | 4.4.3 | Minor-compatible, bump is optional |
+| `drizzle-orm` | ^0.45.2 | 0.45.2 | Already at latest |
+| `drizzle-kit` | ^0.31.10 | 0.31.10 | Already at latest |
 
-The Cache Components (Server Components marked `'use cache'`) for like counts and comment lists are straightforward: `cacheTag(['watch-likes:${watchId}', 'viewer:${viewerId}'])` when the component shows viewer-specific state (has-liked), `cacheTag('watch-likes:${watchId}')` for the count-only variant visible to all.
+**What to actually do for v8.0:** The patch bumps for Next and React are safe and advisable (the project already tracks `^` so they will install on fresh `npm install` if the pinned version is updated). The SDK bump from 0.88.0 to the latest is safe if the team wants `messages.parse` on the new code path; if sticking with Option A (freeform JSON), 0.88.0 is fine.
 
-**No new dependencies.**
+**Do not bump as part of a feature phase plan.** Version bumps belong in a dedicated patch phase or as a pre-flight step before the milestone, not mixed into feature plans, because they can unexpectedly surface type changes.
 
----
+### 6. Rich text / markdown editor for the confirm screen notes field?
 
-### (5) Realtime — should Supabase Realtime be used for live like/comment updates?
+**No. Keep the plain `<Textarea>`.**
 
-**Verdict: No. Supabase Realtime is overkill for v6.0. Optimistic UI + revalidateTag is the correct architecture.**
-
-The decision against Realtime rests on four grounds:
-
-**Usage pattern is not live/collaborative.** Horlo's social layer is scoped and tasteful — not a feed-driven attention machine (explicit guardrail from SEED-012 and PROJECT.md). Users are not co-editing a document or watching a live stream of likes accumulate. The context is: a collector visits a watch detail page, leaves a comment, and expects it to appear immediately — for themselves. Other viewers see updates when they (re)visit or refresh. This is the same UX contract as GitHub issues or Letterboxd reviews, not Discord or Twitter.
-
-**Optimistic UI already covers the primary UX need.** The viewer who likes or comments sees the result immediately via optimistic state (`useOptimistic` + `startTransition`). The server revalidation (via `revalidateTag`) ensures other visitors see accurate counts on their next load. The delta between "I just liked this" and "when the other person sees my like" is not a UX problem at this product stage.
-
-**Realtime adds infrastructure surface that the existing stack deliberately avoids.** Supabase Realtime requires: a WebSocket connection per client tab (maintained via `@supabase/supabase-js` `createClient().channel()`), RLS must be configured for Realtime (separate from table RLS — Realtime uses the `supabase_realtime` role), and you must explicitly enable Realtime publication per table in the Supabase dashboard (`supabase_realtime` publication). None of this infrastructure exists in the codebase today. The Cache Components + Server Action architecture (which aggressively avoids client-side data fetching) is architecturally incompatible with Realtime's WebSocket subscription model — Realtime events arrive in Client Components, but the data lives in cached Server Components. Threading Realtime updates into the Server Component cache invalidation chain would require a dedicated Client Component subscriber that calls `router.refresh()` or fires a revalidation on Realtime events — essentially building a polling mechanism on top of a push mechanism.
-
-**@supabase/supabase-js already includes the Realtime client**, so there is no npm install barrier. But the infrastructure setup cost (Realtime RLS, publication config, client connection lifecycle, reconnection handling, tab/window deduplication) is non-trivial. That cost is only justified when the UX requires live updates — which v6.0 does not, given the explicit "not Instagram" guardrail.
-
-**The right upgrade path:** If a future version requires live comment feeds (v7.0+), Supabase Realtime with `postgres_changes` events on the `comments` table is the natural choice. The table schema and RLS are already in place by then. The upgrade is additive — no existing code is displaced.
-
-**Decision: Do not add Supabase Realtime for v6.0.**
+Notes already exist as a plain textarea in `WatchForm`. The confirm screen is a lighter pass than `WatchForm`, not a heavier one. The project has `react-markdown` + `rehype-sanitize` in `package.json` for rendering markdown in the feed (comments/notes display), but there is no markdown editor input anywhere in the codebase — and there should not be one here. Collector notes are short freeform annotations, not documents. Adding a markdown editor (e.g., `@uiw/react-md-editor`, TipTap, Quill) would introduce hundreds of KB of dependencies, a new UX convention, and a sanitization surface for a field that displays in markdown already via `react-markdown`. The delta is not justified.
 
 ---
 
-### (6) Optimistic mutations — likes and comment submission
+## Recommended Stack (delta from existing)
 
-**Verdict: Existing React 19 `useOptimistic` + `useTransition` pattern is sufficient. No library needed.**
+### New Dependencies
 
-The codebase already has three clean examples of this pattern:
+None. Zero new packages are required.
 
-- `NotificationRow.tsx` — `useOptimistic<Date | null, Date | null>` for per-row read state, with `startTransition(async () => { setOptimisticReadAt(new Date()); await markNotificationRead(...) })`. Snap-back on failure is automatic (React restores server truth when the transition rejects).
-- `PrivacyToggleRow.tsx` — `useOptimistic(initialValue)` for boolean toggle with rollback-on-failure log.
-- `FollowButton.tsx` — `useState` + `useTransition` with explicit rollback (`setIsFollowing(!next)` on error). Deliberately not `useOptimistic` here because compound state (isFollowing + mobileRevealed) required explicit control.
+### Modified Code Surfaces
 
-For a LikeButton, `useOptimistic` is the correct choice (same shape as `PrivacyToggleRow` — single boolean + count delta). The optimistic state holds `{ isLiked: boolean, count: number }` and the reducer flips the boolean and increments/decrements the count. Snap-back on failure is free.
+| File | Change |
+|------|--------|
+| `src/lib/extractors/llm.ts` or new `src/lib/extractors/structured.ts` | Add `extractFromQuery(brand, model, ref?, year?)` — no new imports beyond existing SDK; drops `cheerio` call for this path |
+| `src/app/api/extract-watch/route.ts` | Add a branch for `{ brand, model, ref?, year? }` body shape (no `url`); routes to new `extractFromQuery` instead of `fetchAndExtract` |
+| `src/components/watch/flowTypes.ts` | Add `searching`, `search-result-selected`, and `confirm` state shapes to `FlowState` discriminated union |
+| `src/components/watch/AddWatchFlow.tsx` | Add handlers for new states; demote `PasteSection` to secondary surface |
+| `src/components/watch/` (new files) | `SearchEntryStep.tsx` (catalog search UI), `ConfirmStep.tsx` (lighter confirm replacing VerdictStep) |
 
-For comment submission, `useOptimistic` holds a pending comment (shown with a "posting..." indicator) appended to the list. On success, `revalidateTag` brings the server-authoritative list. On failure, the pending comment is removed automatically. This is identical to how GitHub handles comment submission.
-
-**No new library needed.** `useOptimistic` is built into React 19. The pattern is established in the codebase.
-
----
-
-### (7) Relative time formatting — comment/like timestamps
-
-**Verdict: `timeAgo()` from `src/lib/timeAgo.ts` already exists and covers the required format.**
-
-`timeAgo()` (shipped in Phase 10) produces the exact social-feed format needed for comment timestamps: `now`, `3m`, `2h`, `4d`, `2w`, `Apr 21`. It accepts an optional `now` parameter for deterministic testing. It is already used in `NotificationRow.tsx` and the home feed activity components.
-
-`relativeTime.ts` (shipped in Phase 47) uses `Intl.RelativeTimeFormat` for the curated-list editorial voice ("Today", "3 days ago"). The comments surface uses the terse feed format (`timeAgo`), not the editorial voice. Do not use `relativeTime.ts` for social comment timestamps — keep the two surfaces distinct per the D-01 comment in that file.
-
-**No new library needed** (no `date-fns`, no `dayjs`, no `timeago.js`). `timeAgo(comment.createdAt)` is the correct call.
-
----
-
-### (8) Comment input / textarea handling
-
-**Verdict: Plain `<textarea>` (existing `src/components/ui/textarea.tsx`) is sufficient. No rich-text editor, no markdown input, no mention system.**
-
-Comment body is plain text. v6.0 scope explicitly excludes: threading, @mentions, emoji reactions, markdown rendering, image embeds. The existing `<Textarea>` primitive (already used in `WatchForm`, `ProfileEditForm`, `WywtPostDialog`) is the right component. Wire it with a controlled value, `onKeyDown` for Ctrl+Enter / Cmd+Enter submit, and `maxLength={1000}` matching the Zod schema on the Server Action.
-
-Character count display (e.g., "142/1000") is a nice-to-have, implementable with a `value.length` derived value — no library.
-
-**No new dependencies.**
-
----
-
-### (9) @mentions or user tagging
-
-**Verdict: Out of scope for v6.0. Do not add.**
-
-No mention parsing, no `@` autocomplete, no user lookup in comment input. The scope guardrail ("scoped and tasteful, not Instagram for watches") explicitly keeps the interaction surface minimal. A mention system requires a separate typeahead component, server-side user search on `@` keypress, mention storage (usually stored as rich objects alongside plain text), and notification routing for mentioned users. That is a v8.0+ concern.
-
-**What NOT to add:** `tribute.js`, `quill-mention`, any mention/typeahead library.
-
----
-
-## Summary: New Dependencies for v6.0
-
-**Zero new runtime dependencies.**
-
-All v6.0 social interaction features are implemented entirely with the existing stack:
-
-| Concern | How Handled | New Dep? |
-|---------|-------------|----------|
-| Persistence (likes + comments tables) | Drizzle table definitions + Supabase migrations | None |
-| Mutation (like/unlike/addComment/editComment/deleteComment) | Server Actions + Drizzle + Zod .strict() | None |
-| Cache invalidation | cacheTag / revalidateTag / updateTag (Next.js 16 built-in) | None |
-| Optimistic UI (like toggle, pending comment) | React 19 useOptimistic + useTransition | None |
-| Realtime live updates | Not needed — optimistic UI + revalidateTag sufficient | None |
-| Relative timestamps | src/lib/timeAgo.ts (already exists) | None |
-| Comment textarea | src/components/ui/textarea.tsx (already exists) | None |
-| Notification extension | logNotification + notificationTypeEnum extension | None |
-| Two-layer privacy (RLS + DAL WHERE) | Existing pattern, applied to new tables | None |
-
----
-
-## What NOT to Add
+### What NOT to Add
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| Supabase Realtime / WebSocket subscriptions | Overkill for a non-live, non-feed interaction model; "not Instagram" is an explicit product guardrail; Cache Components architecture is incompatible with client-side Realtime subscriptions without significant bridging work | Optimistic UI (`useOptimistic`) + `revalidateTag` on Server Action completion |
-| date-fns / dayjs / timeago.js | A relative-time formatter already exists at `src/lib/timeAgo.ts` with the exact social-feed format (terse: `3m`, `2h`, `4d`) and deterministic test support | `timeAgo()` from `src/lib/timeAgo.ts` |
-| TipTap / Quill / Lexical (rich-text editor) | Comments are plain text; v6.0 scope has no markdown rendering, @mentions, or media embeds in comments | Plain `<Textarea>` from `src/components/ui/textarea.tsx` |
-| tribute.js / quill-mention / typeahead for @mentions | @mentions are out of scope for v6.0 | Defer to v8.0+ |
-| Polymorphic `reactions` / `target_type` table | NULL-column smell, cross-target index confusion, RLS policies harder to isolate; separate `watch_likes` + `wear_likes` is cleaner | Separate tables per target with independent RLS |
-| SWR / React Query / TanStack Query | Server Actions + Cache Components + revalidateTag handle the mutation → invalidation → refetch cycle; adding a client-side data fetching layer would create two sources of truth | Server Actions + Cache Components |
+| Algolia / MeiliSearch / typesense | Catalog is ~100 rows; Postgres ILIKE + GIN indexes are faster at this scale than an external service | `searchCatalogWatches` (existing) |
+| fuse.js or any client-side fuzzy search | Adds a bundle, moves search logic off-server, loses the viewer-state hydration (owned/wishlist badges) that `searchCatalogWatches` already does | `searchCatalogWatches` via Server Action |
+| xstate | ~60KB bundle; no concurrent-state problem exists; existing `useState<FlowState>` discriminated union has served 9+ phases without issues | Continue `useState<FlowState>` pattern |
+| langchain / llamaindex / any prompt library | Single-endpoint LLM call; no chain, no agent, no retrieval; library adds indirection with no benefit | Direct `@anthropic-ai/sdk` call |
+| react-hook-form or formik | `WatchForm` already manages its own controlled state with `useState`; confirm screen is a lighter surface, not a new full form | Controlled inputs with `useState` as in `WatchForm` |
+| Markdown editor (TipTap, Quill, @uiw/react-md-editor) | Notes field is a short freeform text annotation; no rich-text need; `react-markdown` already handles display | `<Textarea>` as in `WatchForm` |
+| Separate `extractions` table or persistent draft state | The flow is ephemeral client-side state; persisting drafts adds a new DB surface for a minor UX improvement | In-memory `FlowState` as today |
 
----
+## Alternatives Considered
 
-## Schema Additions Summary
+| Area | Recommended | Alternative Considered | Why Not |
+|------|-------------|----------------------|---------|
+| No-URL LLM output parsing | Option A (freeform JSON + existing `validateAndCleanData`) or Option B (`messages.parse` + Zod schema) | External prompt template library (e.g. Instructor.js) | Instructor.js is a thin wrapper over exactly what the SDK now provides natively via `messages.parse`; adds a dependency with no capability gain |
+| Search UI pattern | `WatchPicker`-style debounced Input + listbox | Popover + Command pattern (shadcn cmdk) | cmdk is not in the component library; the `WatchPicker` pattern is already established in the codebase and requires no new package |
+| State machine | `useState<FlowState>` | xstate | See §4 above |
 
-```
-watch_likes     (id, watch_id → watches, user_id → users, created_at)
-                UNIQUE (watch_id, user_id) — one like per user per watch
+## Installation
 
-wear_likes      (id, wear_event_id → wear_events, user_id → users, created_at)
-                UNIQUE (wear_event_id, user_id) — one like per user per wear
+No new packages to install. Optional patch bumps only:
 
-comments        (id, watch_id nullable, wear_event_id nullable, author_id → users,
-                 body text NOT NULL, edited_at nullable, created_at, updated_at)
-                CHECK: exactly one of watch_id / wear_event_id is non-null
-                INDEX: (watch_id, created_at) for comment list reads
-                INDEX: (wear_event_id, created_at) for wear comment list reads
-
-notification_type enum: add 'like', 'comment' values (Phase 24 rename+recreate procedure)
-profile_settings: add notifyOnLike boolean DEFAULT true, notifyOnComment boolean DEFAULT true
+```bash
+# Optional safe patch bumps (not required for v8.0 feature work)
+npm install next@16.2.6 react@19.2.6 react-dom@19.2.6
 ```
 
----
+## Integration Points Summary
 
-## Integration Points for Roadmap
-
-- **logNotification extension** — `src/lib/notifications/logger.ts` adds `'like'` and `'comment'` union arms; the fire-and-forget contract and self-guard are unchanged.
-- **Two-layer privacy on wishlist comments** — the mutual-follow check (`WHERE EXISTS (SELECT 1 FROM follows WHERE follower_id = $viewerId AND following_id = $watchOwnerId) AND EXISTS (... reverse)`) runs in the DAL `WHERE` clause, not RLS. RLS handles the baseline (authenticated read); DAL handles the business rule. This matches how `getWearEventsForViewer` already handles the followers visibility tier.
-- **Cache tag naming** — `'watch-likes:${watchId}'`, `'wear-likes:${wearEventId}'`, `'watch-comments:${watchId}'`, `'wear-comments:${wearEventId}'`. Like toggler uses `updateTag` (RYO); comment add uses `revalidateTag` (fan-out).
-- **LikeButton component** — Client Component, `useOptimistic<{isLiked: boolean, count: number}, boolean>`, `useTransition`, Server Action call inside transition. Same architecture as `FollowButton` but with `useOptimistic` instead of `useState` (compound state is simpler here — count is derived from the liked boolean + initial count).
-- **CommentForm component** — Client Component, controlled `<Textarea>`, Ctrl+Enter / Cmd+Enter submit, `useOptimistic` for pending comment list append, `useTransition` for the Server Action call.
-- **Comment edit/delete** — author-only affordances; ownership enforced in SQL (`WHERE id = $commentId AND author_id = $currentUserId`) not just application logic. `edited_at` timestamp shown alongside comment timestamp if set.
-
----
+| v8.0 capability | Existing hook | Integration note |
+|-----------------|---------------|-----------------|
+| Catalog search entry | `searchCatalogWatches` via Server Action | Reuse or thin-wrap `searchCatalogForPicker`; return type may need thumbnail + verdict fields |
+| No-URL LLM extraction | `extractWithLlm` prompt + `validateAndCleanData` | Extract shared helpers; new `extractFromQuery` function alongside it |
+| Route handler no-URL mode | `POST /api/extract-watch` | Add body-shape branch: `if (body.brand && !body.url)` routes to `extractFromQuery` |
+| Lighter confirm screen | `VerdictStep` (spec preview, CollectionFitCard) + `WatchForm` (field editor, status Select) | New `ConfirmStep` component; compose spec preview from `VerdictStep`, status Select from `WatchForm`, submit via existing `addWatch` Server Action |
+| Grail in confirm | `WATCH_STATUSES` constant, `WatchForm` Select | Already in the constant and the form; just surface it on the new confirm screen instead of hiding behind VerdictStep |
+| FlowState extension | `flowTypes.ts` discriminated union | Add 2-3 new `kind` variants; backward compatible |
+| URL-paste demotion | `PasteSection` | Move to secondary affordance on no-match screen; no delete required |
 
 ## Sources
 
-- Existing codebase — `src/lib/notifications/logger.ts`, `src/db/schema.ts`, `src/components/notifications/NotificationRow.tsx`, `src/components/profile/FollowButton.tsx`, `src/components/settings/PrivacyToggleRow.tsx`, `src/lib/timeAgo.ts`, `src/lib/relativeTime.ts` — read directly (HIGH confidence)
-- `package.json` — confirmed `@supabase/supabase-js ^2.103.0` (includes Realtime client), `drizzle-orm ^0.45.2`, `zod ^4.3.6` (HIGH confidence)
-- `.planning/PROJECT.md` — confirmed v6.0 scope, "not Instagram" guardrail, Cache Components architecture, two-layer privacy pattern (HIGH confidence)
-- `.planning/seeds/SEED-012-v6.0-social-interaction.md` — confirmed locked decisions: likes open, wishlist comments mutual-follow-only, no threads, no moderation (HIGH confidence)
-- `project_drizzle_supabase_db_mismatch.md` memory — confirmed prod-push procedure and enum-modification pattern from Phase 24 (HIGH confidence)
-- React 19 `useOptimistic` docs — built into React 19.2.4 (already installed); no additional package required (HIGH confidence)
+- `src/data/catalog.ts` lines 261–380 — `searchCatalogWatches` implementation (HIGH confidence; read directly)
+- `src/components/admin/WatchPicker.tsx` — established debounced search-as-you-type pattern (HIGH confidence; read directly)
+- `src/lib/extractors/llm.ts` — URL extractor; no-URL path omits `extractReadableText`/`cheerio` entirely (HIGH confidence; read directly)
+- `src/lib/taste/enricher.ts` — `messages.create` + `tool_choice: { type: 'tool' }` strict pattern (HIGH confidence; read directly)
+- `src/components/watch/flowTypes.ts` — existing 9-state `FlowState` discriminated union (HIGH confidence; read directly)
+- `src/components/watch/AddWatchFlow.tsx` — state machine orchestrator (HIGH confidence; read directly)
+- `/anthropics/anthropic-sdk-typescript` via Context7 — `messages.parse` + `zodOutputFormat` available in SDK 0.72.0+; confirmed present in installed 0.88.0 via Node probe (HIGH confidence)
+- `npm show next version` → 16.2.6; `npm show @anthropic-ai/sdk@latest version` → 0.100.0 (HIGH confidence; live npm query)
+- `package.json` — all installed deps and versions (HIGH confidence; read directly)
 
 ---
-*Stack research for: Horlo v6.0 Social Interaction (likes + comments)*
-*Researched: 2026-05-22*
+*Stack research for: v8.0 Add-Watch Redesign (search-first add flow)*
+*Researched: 2026-05-28*

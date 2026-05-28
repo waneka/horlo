@@ -1,823 +1,363 @@
 # Architecture Research
 
-**Domain:** v6.0 Social Interaction — likes + comments on watches and wear events
-**Researched:** 2026-05-22
-**Confidence:** HIGH — decisions derived directly from reading the existing codebase (schema.ts, DAL files, notifications logger, follows action)
-
----
-
-## 1. DATA MODEL DECISION
-
-### Recommendation: Two Polymorphic Tables (reactions + comments)
-
-Use a single `reactions` table and a single `comments` table, each with `(target_type, target_id)` polymorphism. Do NOT use per-target tables.
-
-**Rationale:**
-
-Horlo already uses this pattern implicitly: `activities.type` is a text discriminator and `activities.metadata` is polymorphic jsonb. `notifications.type` is a pgEnum discriminator with polymorphic jsonb payload. The DAL is comfortable with discriminated-type queries; adding a `target_type` column is no more complex.
-
-Per-target tables (e.g. `watch_likes` + `wear_event_likes`) would require:
-- Separate RLS policies for each table (doubles the policy surface)
-- Separate DAL functions for count queries
-- Two nearly-identical Server Actions
-
-The FK-integrity tradeoff is the honest cost of polymorphism. Postgres does not support a true polymorphic FK. The mitigation is a CHECK constraint on `target_type` to lock valid values, and application-layer enforcement in the DAL. Both target tables (`watches`, `wear_events`) are well-established; a comment or reaction pointing at a deleted watch row should cascade-delete. Use soft-orphan filtering at read time with an INNER JOIN on the target table. At MVP scale (<500 watches/user) this is fine.
-
-### Drizzle / SQL Sketch
-
-```typescript
-// src/db/schema.ts additions
-
-export const reactionTargetTypeEnum = pgEnum('reaction_target_type', [
-  'watch',
-  'wear_event',
-] as const)
-
-export const commentTargetTypeEnum = pgEnum('comment_target_type', [
-  'watch',
-  'wear_event',
-] as const)
-
-export const reactions = pgTable(
-  'reactions',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    actorId: uuid('actor_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    targetType: reactionTargetTypeEnum('target_type').notNull(),
-    targetId: uuid('target_id').notNull(), // watches.id or wear_events.id
-    // 'like' is the only reaction type now; column exists for forward-compat
-    reactionType: text('reaction_type', { enum: ['like'] }).notNull().default('like'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    // Dedup: one reaction per (actor, target_type, target_id, reaction_type)
-    unique('reactions_unique').on(
-      table.actorId,
-      table.targetType,
-      table.targetId,
-      table.reactionType,
-    ),
-    index('reactions_target_idx').on(table.targetType, table.targetId),
-    index('reactions_actor_idx').on(table.actorId),
-  ],
-)
-
-export const comments = pgTable(
-  'comments',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    targetType: commentTargetTypeEnum('target_type').notNull(),
-    targetId: uuid('target_id').notNull(), // watches.id or wear_events.id
-    body: text('body').notNull(),
-    // editedAt is NULL until the author edits; surfaces "edited" badge in UI
-    editedAt: timestamp('edited_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index('comments_target_idx').on(table.targetType, table.targetId),
-    index('comments_author_idx').on(table.authorId),
-  ],
-)
-```
-
-**Raw SQL migration additions (live in supabase/migrations — not expressible in Drizzle 0.45.2):**
-
-```sql
--- CHECK constraint locks valid target_type values (defense in depth)
-ALTER TABLE reactions ADD CONSTRAINT reactions_target_type_check
-  CHECK (target_type IN ('watch', 'wear_event'));
-
-ALTER TABLE comments ADD CONSTRAINT comments_target_type_check
-  CHECK (target_type IN ('watch', 'wear_event'));
-
--- CHECK: body must be non-empty, max 2000 chars
-ALTER TABLE comments ADD CONSTRAINT comments_body_length_check
-  CHECK (length(body) BETWEEN 1 AND 2000);
-```
-
----
-
-## 2. RLS DESIGN
-
-### The Asymmetry Problem
-
-Likes: open (any authed user, any watch status, any wear).
-Comments on owned/sold/grail watches + all wears: open (any authed user).
-Comments on **wishlist watches**: mutual-follow only.
-
-The hard part: detecting a watch's status inside the RLS policy. The `watches.status` column lives on the `watches` table. The `comments` table policy must subquery `watches` to discover status. Since the DAL uses a service-role client (bypasses RLS), the RLS on `comments` is the first-layer defense, the DAL WHERE clause is the load-bearing second layer — consistent with the established two-layer pattern.
-
-### RLS Policies
-
-```sql
--- ENABLE ROW LEVEL SECURITY
-ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comments  ENABLE ROW LEVEL SECURITY;
-
--- ============================================================
--- reactions: SELECT — open (any authed user can see likes)
--- ============================================================
-CREATE POLICY reactions_select
-  ON reactions FOR SELECT
-  TO authenticated
-  USING (true);
-
--- reactions: INSERT — authed only; actor_id must equal auth.uid()
-CREATE POLICY reactions_insert
-  ON reactions FOR INSERT
-  TO authenticated
-  WITH CHECK (actor_id = auth.uid());
-
--- reactions: DELETE — actor (liker) deletes own row only
-CREATE POLICY reactions_delete
-  ON reactions FOR DELETE
-  TO authenticated
-  USING (actor_id = auth.uid());
-
--- No UPDATE on reactions — toggle is delete+insert.
-
--- ============================================================
--- comments: SELECT
--- Open for owned/sold/grail watches and wear_event targets.
--- Mutual-follow gate for wishlist watch targets.
--- ============================================================
-CREATE POLICY comments_select
-  ON comments FOR SELECT
-  TO authenticated
-  USING (
-    target_type = 'wear_event'
-    OR
-    (
-      target_type = 'watch'
-      AND EXISTS (
-        SELECT 1 FROM watches w
-        WHERE w.id = comments.target_id
-          AND (
-            w.status IN ('owned', 'sold', 'grail')
-            OR
-            (
-              w.status = 'wishlist'
-              AND (
-                -- viewer is the watch owner
-                w.user_id = auth.uid()
-                OR
-                -- mutual follow: viewer follows owner AND owner follows viewer
-                (
-                  EXISTS (
-                    SELECT 1 FROM follows
-                    WHERE follower_id = auth.uid()
-                      AND following_id = w.user_id
-                  )
-                  AND
-                  EXISTS (
-                    SELECT 1 FROM follows
-                    WHERE follower_id = w.user_id
-                      AND following_id = auth.uid()
-                  )
-                )
-              )
-            )
-          )
-      )
-    )
-  );
-
--- comments: INSERT — same asymmetric gate as SELECT
-CREATE POLICY comments_insert
-  ON comments FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    author_id = auth.uid()  -- mass-assignment guard
-    AND (
-      target_type = 'wear_event'
-      OR
-      (
-        target_type = 'watch'
-        AND EXISTS (
-          SELECT 1 FROM watches w
-          WHERE w.id = comments.target_id
-            AND (
-              w.status IN ('owned', 'sold', 'grail')
-              OR
-              (
-                w.status = 'wishlist'
-                AND (
-                  w.user_id = auth.uid()
-                  OR
-                  (
-                    EXISTS (
-                      SELECT 1 FROM follows
-                      WHERE follower_id = auth.uid()
-                        AND following_id = w.user_id
-                    )
-                    AND
-                    EXISTS (
-                      SELECT 1 FROM follows
-                      WHERE follower_id = w.user_id
-                        AND following_id = auth.uid()
-                    )
-                  )
-                )
-              )
-            )
-        )
-      )
-    )
-  );
-
--- comments: UPDATE — author edits own comment body + sets edited_at
-CREATE POLICY comments_update
-  ON comments FOR UPDATE
-  TO authenticated
-  USING (author_id = auth.uid())
-  WITH CHECK (author_id = auth.uid());
-
--- comments: DELETE — author deletes own comment
-CREATE POLICY comments_delete
-  ON comments FOR DELETE
-  TO authenticated
-  USING (author_id = auth.uid());
-```
-
-**Important implementation note on `follows` reads inside the policy:** The `follows` table's RLS posture must allow authenticated reads for the mutual-follow subquery to work. Verify in the existing migration files (Phase 7–9) that `follows` has a SELECT policy for authenticated. If not, add one or replace the inline subquery with a `SECURITY DEFINER` helper function — but be sure to `REVOKE EXECUTE ON FUNCTION ... FROM anon` explicitly (per the project memory note: `REVOKE FROM PUBLIC` alone does not block anon in Supabase).
-
-### DAL Second Layer (src/data/comments.ts, new file)
-
-```typescript
-import 'server-only'
-import { db } from '@/db'
-import { comments, follows, watches } from '@/db/schema'
-import { and, eq, sql, desc } from 'drizzle-orm'
-
-// Mutual-follow check — two EXISTS in one round trip
-async function areMutualFollows(userA: string, userB: string): Promise<boolean> {
-  const rows = await db.execute(sql`
-    SELECT
-      EXISTS(SELECT 1 FROM follows WHERE follower_id = ${userA}::uuid AND following_id = ${userB}::uuid) AS a_follows_b,
-      EXISTS(SELECT 1 FROM follows WHERE follower_id = ${userB}::uuid AND following_id = ${userA}::uuid) AS b_follows_a
-  `)
-  const r = (rows as Array<{ a_follows_b: boolean; b_follows_a: boolean }>)[0]
-  return Boolean(r?.a_follows_b && r?.b_follows_a)
-}
-
-// getCommentsForTarget — viewer-aware, two-layer
-export async function getCommentsForTarget(
-  viewerId: string,
-  targetType: 'watch' | 'wear_event',
-  targetId: string,
-): Promise<CommentRow[]> {
-  if (targetType === 'wear_event') {
-    // wear comments: open — return all
-    return db.select(/* ... */).from(comments)
-      .where(and(eq(comments.targetType, 'wear_event'), eq(comments.targetId, targetId)))
-      .orderBy(desc(comments.createdAt))
-  }
-
-  // watch target: check status + mutual-follow gate
-  const [watchRow] = await db
-    .select({ userId: watches.userId, status: watches.status })
-    .from(watches).where(eq(watches.id, targetId)).limit(1)
-
-  if (!watchRow) return []
-  const isOwner = watchRow.userId === viewerId
-
-  if (watchRow.status !== 'wishlist' || isOwner) {
-    // owned/sold/grail or owner: open
-    return db.select(/* ... */).from(comments)
-      .where(and(eq(comments.targetType, 'watch'), eq(comments.targetId, targetId)))
-      .orderBy(desc(comments.createdAt))
-  }
-
-  // wishlist watch: mutual-follow gate
-  const mutual = await areMutualFollows(viewerId, watchRow.userId)
-  if (!mutual) return []
-
-  return db.select(/* ... */).from(comments)
-    .where(and(eq(comments.targetType, 'watch'), eq(comments.targetId, targetId)))
-    .orderBy(desc(comments.createdAt))
-}
-
-// createComment — DAL re-derives access before insert (redundant with RLS; load-bearing second layer)
-export async function createComment(
-  authorId: string,
-  targetType: 'watch' | 'wear_event',
-  targetId: string,
-  body: string,
-): Promise<CommentRow> {
-  if (targetType === 'watch') {
-    const [watchRow] = await db
-      .select({ userId: watches.userId, status: watches.status })
-      .from(watches).where(eq(watches.id, targetId)).limit(1)
-    if (!watchRow) throw new Error('Watch not found')
-    const isOwner = watchRow.userId === authorId
-    if (watchRow.status === 'wishlist' && !isOwner) {
-      const mutual = await areMutualFollows(authorId, watchRow.userId)
-      if (!mutual) throw new Error('Access denied: mutual follow required')
-    }
-  }
-  const [row] = await db.insert(comments)
-    .values({ authorId, targetType, targetId, body })
-    .returning()
-  return row
-}
-
-// editComment: WHERE author_id = authorId AND id = commentId (IDOR guard)
-// deleteComment: WHERE author_id = authorId AND id = commentId (IDOR guard)
-```
-
----
-
-## 3. NOTIFICATIONS EXTENSION
-
-### Enum Migration Strategy
-
-**Use `ALTER TYPE ... ADD VALUE`, not recreate.** Phase 24 used a destructive rename+recreate (the `T-24-PARTIDX` footgun) because it was removing values, not adding them. Adding values with `ALTER TYPE ... ADD VALUE IF NOT EXISTS` is safe in Postgres 14+ and does not require dropping indexes bound to the enum.
-
-**Critical:** `ALTER TYPE ... ADD VALUE` cannot run inside a Postgres transaction block. Each ADD VALUE must be its own migration file, or the migration must be written to execute those statements outside a transaction. Test on local first. In Supabase migrations, wrap the block appropriately or use separate files.
-
-```sql
--- One migration per ADD VALUE, or verify supabase migration runner handles non-transactional DDL
-ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'watch_like';
-ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'wear_like';
-ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'watch_comment';
-ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'wear_comment';
-```
-
-**Update schema.ts:**
-```typescript
-export const notificationTypeEnum = pgEnum('notification_type', [
-  'follow',
-  'watch_overlap',
-  'watch_like',
-  'wear_like',
-  'watch_comment',
-  'wear_comment',
-])
-```
-
-**Add opt-out columns to profileSettings:**
-```typescript
-notifyOnLike: boolean('notify_on_like').notNull().default(true),
-notifyOnComment: boolean('notify_on_comment').notNull().default(true),
-```
-
-### Notification Payload Types (src/lib/notifications/types.ts additions)
-
-```typescript
-export interface WatchLikePayload {
-  actor_username: string
-  actor_display_name: string | null
-  watch_id: string
-  watch_brand: string
-  watch_model: string
-}
-
-export interface WearLikePayload {
-  actor_username: string
-  actor_display_name: string | null
-  wear_event_id: string
-  watch_brand: string
-  watch_model: string
-}
-
-export interface WatchCommentPayload {
-  actor_username: string
-  actor_display_name: string | null
-  watch_id: string
-  watch_brand: string
-  watch_model: string
-  comment_id: string
-  comment_preview: string // first 120 chars
-}
-
-export interface WearCommentPayload {
-  actor_username: string
-  actor_display_name: string | null
-  wear_event_id: string
-  watch_brand: string
-  watch_model: string
-  comment_id: string
-  comment_preview: string
-}
-```
-
-### logNotification Extension
-
-The `LogNotificationInput` discriminated union gains four new branches. The logger's internal structure does not change — only the type union widens and the opt-out check gains two new branches:
-
-```typescript
-// New union branches:
-| { type: 'watch_like'; recipientUserId: string; actorUserId: string; payload: WatchLikePayload }
-| { type: 'wear_like'; recipientUserId: string; actorUserId: string; payload: WearLikePayload }
-| { type: 'watch_comment'; recipientUserId: string; actorUserId: string; payload: WatchCommentPayload }
-| { type: 'wear_comment'; recipientUserId: string; actorUserId: string; payload: WearCommentPayload }
-
-// New opt-out branches in logNotification body:
-const notifyOnLike = settings?.notifyOnLike ?? true
-const notifyOnComment = settings?.notifyOnComment ?? true
-if ((input.type === 'watch_like' || input.type === 'wear_like') && !notifyOnLike) return
-if ((input.type === 'watch_comment' || input.type === 'wear_comment') && !notifyOnComment) return
-```
-
-### Dedup Strategy for Likes
-
-Create partial UNIQUE indexes on `notifications` for like types — same pattern as `notifications_watch_overlap_dedup`:
-
-```sql
--- Dedup: one like-notification per (recipient, actor, target)
--- Actor can unlike+re-like; notification fires only on the first like.
-CREATE UNIQUE INDEX notifications_watch_like_dedup
-  ON notifications (user_id, actor_id, (payload->>'watch_id'))
-  WHERE type = 'watch_like';
-
-CREATE UNIQUE INDEX notifications_wear_like_dedup
-  ON notifications (user_id, actor_id, (payload->>'wear_event_id'))
-  WHERE type = 'wear_like';
-```
-
-The `toggleReaction` DAL returns `{ liked: boolean }`. The Server Action calls `logNotification` **only when `liked === true`** (first like). On `liked === false` (unlike/retraction), no notification is sent. If the same actor likes again after unliking, the dedup index produces an ON CONFLICT DO NOTHING — no duplicate notification.
-
-**Comments:** No dedup needed — each new comment is a distinct event. Only fire `logNotification` on INSERT, never on UPDATE (edit).
-
-**Self-guard:** Unchanged — the existing logger `if (recipientUserId === actorUserId) return` covers this. Owners commenting/liking their own content produce no notification.
-
-### Notification Bell Cache Invalidation
-
-Same pattern as `followUser`:
-```typescript
-// After like/comment write where liked === true (or after new comment INSERT):
-revalidateTag(`viewer:${watchOwnerId}`, 'max')
-```
-
----
-
-## 4. COUNT STRATEGY (Anti-N+1)
-
-### Decision: Aggregated On-Read, Batched Per Target List
-
-Do NOT add denormalized `like_count` / `comment_count` columns to `watches` or `wear_events`. The existing `watches_catalog.ownersCount` / `wishlistCount` are refreshed by pg_cron — that model works for a daily batch but is wrong for real-time social counts (a like fires a notification in seconds; a stale count showing 0 for 24 hours is broken UX).
-
-On-read aggregation with batching eliminates the drift problem and is simple at MVP scale (<500 watches/user, expected comment/like counts per watch in the low dozens).
-
-```typescript
-// src/data/reactions.ts
-
-// Batch count query — one round trip for all watches on a page
-export async function getLikeCountsForTargets(
-  targets: Array<{ targetType: 'watch' | 'wear_event'; targetId: string }>
-): Promise<Map<string, number>> {
-  if (targets.length === 0) return new Map()
-  const rows = await db.execute(sql`
-    SELECT target_type, target_id::text, COUNT(*)::int AS like_count
-    FROM reactions
-    WHERE reaction_type = 'like'
-      AND (target_type::text, target_id::text) IN (
-        ${sql.join(
-          targets.map(t => sql`(${t.targetType}, ${t.targetId})`),
-          sql`, `
-        )}
-      )
-    GROUP BY target_type, target_id
-  `)
-  const map = new Map<string, number>()
-  for (const r of rows as Array<{ target_type: string; target_id: string; like_count: number }>) {
-    map.set(`${r.target_type}:${r.target_id}`, r.like_count)
-  }
-  return map
-}
-
-// Viewer's own liked state — which of the current targets has the viewer liked?
-export async function getViewerLikedTargets(
-  viewerId: string,
-  targets: Array<{ targetType: 'watch' | 'wear_event'; targetId: string }>
-): Promise<Set<string>> {
-  if (targets.length === 0 || !viewerId) return new Set()
-  const rows = await db
-    .select({ targetType: reactions.targetType, targetId: reactions.targetId })
-    .from(reactions)
-    .where(
-      and(
-        eq(reactions.actorId, viewerId),
-        eq(reactions.reactionType, 'like'),
-        // inArray on composite is not directly supported by Drizzle DSL;
-        // use raw SQL tuple IN — same pattern as getOverlapRecipients
-        sql`(target_type::text, target_id::text) IN (${sql.join(
-          targets.map(t => sql`(${t.targetType}, ${t.targetId})`),
-          sql`, `
-        )})`,
-      )
-    )
-  return new Set(rows.map(r => `${r.targetType}:${r.targetId}`))
-}
-```
-
-**Comment counts** follow the same pattern:
-```typescript
-export async function getCommentCountsForTargets(
-  targets: Array<{ targetType: 'watch' | 'wear_event'; targetId: string }>
-): Promise<Map<string, number>> {
-  // same GROUP BY pattern as getLikeCountsForTargets, querying comments table
-}
-```
-
-**Usage in a collection-page Server Component:**
-```typescript
-const userWatches = await getWatchesByUser(ownerId)
-const targets = userWatches.map(w => ({ targetType: 'watch' as const, targetId: w.id }))
-
-const [likeCounts, commentCounts, viewerLikedSet] = await Promise.all([
-  getLikeCountsForTargets(targets),
-  getCommentCountsForTargets(targets),
-  viewerId ? getViewerLikedTargets(viewerId, targets) : Promise.resolve(new Set<string>()),
-])
-// 3 queries total regardless of collection size
-```
-
----
-
-## 5. CACHING STRATEGY
-
-### Cache Tags
-
-```
-reactions:{targetType}:{targetId}   — like count for a specific watch/wear
-comments:{targetType}:{targetId}    — comment thread for a specific watch/wear
-viewer:{userId}:reactions           — viewer's own liked state (RYO)
-```
-
-**Collection page (ProfileWatchCard grid):** The profile page is already tagged `profile:{username}` with `cacheLife({revalidate: 300})`. Wire reaction/comment counts into that same cache envelope — adding `revalidateTag('profile:{username}', 'max')` to `toggleLikeAction` and `addCommentAction` is sufficient. This slightly over-invalidates (any like anywhere on the profile refreshes the whole grid) but is simple and correct at MVP scale.
-
-**Per-watch detail page `/watch/[id]`:** High-engagement surface; give counts their own tag so a like on this watch doesn't invalidate all other watches. Use `cacheTag(`reactions:watch:${watchId}`)` on the WatchSocialBar component.
-
-**Wear detail page `/wear/[wearEventId]`:** Same as per-watch. Tag with `reactions:wear_event:${wearEventId}`.
-
-**Comment thread caching: skip caching or scope by viewerId.** The mutual-follow gate makes the comment list viewer-dependent for wishlist watches. A shared cache without viewerId scoping would leak denied comments to viewers who gained mutual-follow status since the last cache fill. Either:
-- Option A: Render CommentThread as a plain uncached Server Component inside Suspense. Simple and safe.
-- Option B: Cache with `cacheTag(`comments:watch:${watchId}`, `viewer:${viewerId}`)`. Doubles the cache entries but is correct.
-
-**Recommendation: Option A.** Comment threads are short (flat, no threads), low-traffic, and not on a hot cache path. Avoid the viewer-scoped cache complexity until scale demands it.
-
-### Optimistic UI for Likes
-
-```typescript
-// src/components/social/LikeButton.tsx — Client Component
-'use client'
-import { useOptimistic, useTransition } from 'react'
-import { toggleLikeAction } from '@/app/actions/reactions'
-
-export function LikeButton({
-  initialCount,
-  initialLiked,
-  targetType,
-  targetId,
-}: {
-  initialCount: number
-  initialLiked: boolean
-  targetType: 'watch' | 'wear_event'
-  targetId: string
-}) {
-  const [optimistic, addOptimistic] = useOptimistic(
-    { count: initialCount, liked: initialLiked },
-    (state) => ({
-      count: state.liked ? state.count - 1 : state.count + 1,
-      liked: !state.liked,
-    }),
-  )
-  const [, startTransition] = useTransition()
-
-  function handleClick() {
-    startTransition(async () => {
-      addOptimistic(undefined)
-      await toggleLikeAction({ targetType, targetId })
-    })
-  }
-
-  return (
-    <button onClick={handleClick} aria-pressed={optimistic.liked}>
-      {optimistic.liked ? 'Unlike' : 'Like'} {optimistic.count}
-    </button>
-  )
-}
-```
-
-Mirror the existing `NotificationRow` pattern (useOptimistic + useTransition). On Server Action error, the optimistic state reverts automatically.
-
-**Server Action cache invalidation pattern:**
-```typescript
-// src/app/actions/reactions.ts
-export async function toggleLikeAction(data: unknown): Promise<ActionResult<{ liked: boolean }>> {
-  const user = await getCurrentUser()
-  const parsed = toggleLikeSchema.safeParse(data) // Zod .strict()
-  // ... validation
-
-  const result = await toggleReactionDAL(user.id, parsed.data.targetType, parsed.data.targetId)
-
-  // RYO: viewer's own liked state
-  updateTag(`viewer:${user.id}:reactions`)
-  // SWR: count visible to all viewers of this target
-  revalidateTag(`reactions:${parsed.data.targetType}:${parsed.data.targetId}`, 'max')
-  // Profile page cache (covers count badge on collection grid)
-  if (ownerUsername) revalidateTag(`profile:${ownerUsername}`, 'max')
-
-  // Notification: only on first like
-  if (result.liked && targetOwnerId !== user.id) {
-    await logNotification({
-      type: parsed.data.targetType === 'watch' ? 'watch_like' : 'wear_like',
-      recipientUserId: targetOwnerId,
-      actorUserId: user.id,
-      payload: { /* pre-resolved actor profile fields */ },
-    })
-    revalidateTag(`viewer:${targetOwnerId}`, 'max') // bell unread dot
-  }
-
-  return { success: true, data: result }
-}
-```
-
----
-
-## 6. RENDERING SURFACES AND BUILD ORDER
-
-### New Components
-
-| Component | Type | Location | Responsibility |
-|-----------|------|----------|----------------|
-| `LikeButton` | Client | `src/components/social/LikeButton.tsx` | Optimistic like toggle + count |
-| `CommentThread` | Server | `src/components/social/CommentThread.tsx` | Flat list of CommentRow items |
-| `CommentForm` | Client | `src/components/social/CommentForm.tsx` | Add new comment; useTransition |
-| `EditCommentForm` | Client | `src/components/social/EditCommentForm.tsx` | Inline edit for author |
-| `WatchSocialBar` | Server | `src/components/social/WatchSocialBar.tsx` | Batch-fetches counts + viewer state; renders LikeButton + comment count |
-| `WearSocialBar` | Server | `src/components/social/WearSocialBar.tsx` | Same for wear targets |
-
-### Modified Components/Pages
-
-| File | Change |
-|------|--------|
-| `src/components/watch/ProfileWatchCard.tsx` | Add `<WatchSocialBar>` below card footer |
-| `src/app/watch/[id]/page.tsx` | Add `<WatchSocialBar>` + `<CommentThread>` + `<CommentForm>` below detail |
-| `src/app/wear/[wearEventId]/page.tsx` | Add `<WearSocialBar>` + `<CommentThread>` + `<CommentForm>` below wear photo |
-| `src/components/layout/NotificationRow.tsx` | Render 4 new notification types (copy + icon) |
-| `src/app/settings/page.tsx` (Notifications section) | Add `notifyOnLike` + `notifyOnComment` toggles |
-
-### Dependency-Ordered Build Sequence
-
-**Phase 53 — Schema + RLS + Enum (no UI yet)**
-- `src/db/schema.ts`: add `reactions`, `comments`, `reactionTargetTypeEnum`, `commentTargetTypeEnum`
-- `src/db/schema.ts`: extend `notificationTypeEnum` with 4 new values
-- `src/db/schema.ts`: add `notifyOnLike`, `notifyOnComment` to `profileSettings`
-- Supabase migration: CREATE TABLE reactions + comments, CHECK constraints, indexes, 7 RLS policies
-- Supabase migration: `ALTER TYPE notification_type ADD VALUE IF NOT EXISTS` x4 (outside transaction)
-- Supabase migration: ADD COLUMN notify_on_like + notify_on_comment to profile_settings
-- Integration test stubs: verify reactions_select allows any authed, comments_select blocks non-mutual on wishlist watch
-
-**Phase 54 — DAL**
-- `src/data/reactions.ts` (new): `toggleReaction`, `getLikeCountsForTargets`, `getViewerLikedTargets`
-- `src/data/comments.ts` (new): `getCommentsForTarget`, `getCommentCountsForTargets`, `createComment`, `editComment`, `deleteComment`; `areMutualFollows` helper
-- `src/lib/notifications/types.ts`: add 4 new payload interfaces
-- `src/lib/notifications/logger.ts`: extend union + opt-out check branches
-- DAL integration tests: wishlist mutual-follow gate, open gate (owned), self-action guard
-
-**Phase 55 — Server Actions**
-- `src/app/actions/reactions.ts` (new): `toggleLikeAction` (Zod .strict, double-auth, revalidateTag, logNotification)
-- `src/app/actions/comments.ts` (new): `addCommentAction`, `editCommentAction`, `deleteCommentAction`
-- Extend profileSettings action for 2 new notify toggles
-- Notification dedup partial UNIQUE indexes for `watch_like` + `wear_like`
-
-**Phase 56 — Like UI**
-- `LikeButton` Client Component (optimistic)
-- `WatchSocialBar` + `WearSocialBar` Server Components (3 parallel queries each)
-- Wire `WatchSocialBar` into `ProfileWatchCard` (collection + wishlist tabs)
-- Wire `WatchSocialBar` into `/watch/[id]` page
-- Wire `WearSocialBar` into `/wear/[wearEventId]` page
-- Add cache tags to tagged components; verify revalidation e2e
-
-**Phase 57 — Comment Thread UI**
-- `CommentThread` Server Component (flat list; edit/delete affordances for author)
-- `CommentForm` Client Component (add new comment; Sonner toast on error)
-- `EditCommentForm` Client Component (inline body edit)
-- Wire into `/watch/[id]` + `/wear/[wearEventId]`
-- Verify wishlist gate: non-mutual viewer sees CommentThread rendered as empty/hidden, not an error
-
-**Phase 58 — Notification UI + Settings**
-- Extend `NotificationRow` for 4 new types (icon + copy per type; mirror existing row shape)
-- Add `notifyOnLike` + `notifyOnComment` toggles to Settings Notifications section
-- UAT: like fires bell dot on recipient, no self-notification, dedup holds on unlike+re-like
-
----
-
-## System Overview
-
-```
-RENDERING SURFACES
-  ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────────┐
-  │ ProfileWatchCard│  │  /watch/[id]      │  │ /wear/[wearEventId]  │
-  │ (grid, owner +  │  │  detail page      │  │ detail page          │
-  │  non-owner)     │  │                  │  │                      │
-  └────────┬────────┘  └────────┬─────────┘  └──────────┬───────────┘
-           │                   │                        │
-  ┌────────▼───────────────────▼────────────────────────▼────────────┐
-  │    WatchSocialBar / WearSocialBar (Server Component)              │
-  │    getLikeCountsForTargets + getViewerLikedTargets (batch)        │
-  │    LikeButton (Client, useOptimistic) | comment count link        │
-  │    CommentThread (Server, uncached) | CommentForm (Client)        │
-  └───────────────────────────────┬───────────────────────────────────┘
-                                  │
-SERVER ACTIONS (Zod .strict + double-auth + revalidateTag)
-  ┌──────────────────┐  ┌─────────────────────────────────────────────┐
-  │ toggleLikeAction │  │ addCommentAction / editCommentAction /       │
-  │ updateTag(RYO)   │  │ deleteCommentAction                          │
-  │ revalidateTag    │  │ revalidateTag(`comments:*`)                  │
-  │ logNotification  │  │ logNotification (on INSERT only)             │
-  └────────┬─────────┘  └────────────────────────┬────────────────────┘
-           │                                     │
-DAL (server-only, service-role Drizzle client)
-  ┌──────────────────┐  ┌─────────────────────────────────────────────┐
-  │ reactions.ts     │  │ comments.ts                                  │
-  │ toggleReaction   │  │ getCommentsForTarget (wishlist gate here)    │
-  │ count batchers   │  │ createComment (gate re-derived pre-insert)   │
-  └────────┬─────────┘  └────────────────────────┬────────────────────┘
-           │                                     │
-POSTGRES / SUPABASE
-  ┌────────────────────────────────────────────────────────────────────┐
-  │ reactions table ─── RLS (open select, actor_id=auth.uid() write)   │
-  │ comments table  ─── RLS (open / mutual-follow gate for wishlist)   │
-  │ notification_type enum + 4 new ADD VALUE entries                   │
-  │ profile_settings + notifyOnLike + notifyOnComment                  │
-  │ Partial UNIQUE indexes: notifications_watch_like_dedup etc.        │
-  └────────────────────────────────────────────────────────────────────┘
-```
-
-## Component Responsibilities
-
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| `reactions` table | Stores likes across watch + wear targets | `users` (actor FK), DAL |
-| `comments` table | Stores flat comment threads | `users` (author FK), `watches` (status for gate), DAL |
-| `src/data/reactions.ts` | Like toggle, count batch, viewer-liked batch | Drizzle db, `reactions` table |
-| `src/data/comments.ts` | Comment CRUD + wishlist access gate | Drizzle db, `comments`, `watches`, `follows` |
-| `src/lib/notifications/logger.ts` | Fire-and-forget notification write | `profileSettings` (opt-out), `notifications` |
-| `LikeButton` | Optimistic like UI | toggleLikeAction (Server Action) |
-| `CommentThread` | Render flat list with author affordances | Server Component; getCommentsForTarget |
-| `WatchSocialBar` | Batch counts + viewer state; renders children | getLikeCountsForTargets, getViewerLikedTargets, getCommentCountsForTargets |
-| Server Actions (reactions/comments) | Mutation + cache tag invalidation | DAL, logNotification, revalidateTag/updateTag |
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Denormalized Like/Comment Counts on Watch Rows
-
-**What people do:** Add `like_count` / `comment_count` columns to `watches`, increment/decrement in a trigger or Server Action.
-
-**Why it's wrong:** Counts drift on partial failures (insert succeeds, decrement fails); triggers add schema-layer complexity; at 500 watches/user the batch-aggregate approach is one query, not 500.
-
-**Do this instead:** Batch GROUP BY aggregate at read time via `getLikeCountsForTargets`, 3 queries total per page.
-
-### Anti-Pattern 2: Caching Comment Threads Without Viewer Scoping
-
-**What people do:** Cache the comment thread Server Component with a tag keyed only on `(targetType, targetId)`, shared across all viewers.
-
-**Why it's wrong:** The wishlist mutual-follow gate is per-viewer. A cached thread filled for viewer A (who has mutual follows with the owner) would serve to viewer B (who doesn't) if the same cache key is used.
-
-**Do this instead:** Either render CommentThread uncached inside Suspense, or scope the cache key with viewerId.
-
-### Anti-Pattern 3: Sending Like Notification on Every Toggle
-
-**What people do:** Fire `logNotification` in the Server Action without checking the toggle direction.
-
-**Why it's wrong:** Unlike (retraction) generates a "you got a like" notification, which is confusing and noisy.
-
-**Do this instead:** Check `result.liked === true` before calling logNotification. The dedup index handles the edge case of rapid unlike+re-like.
-
-### Anti-Pattern 4: ALTER TYPE ... ADD VALUE Inside a Transaction
-
-**What people do:** Write the enum ADD VALUE statements inside the default Supabase migration transaction block.
-
-**Why it's wrong:** Postgres does not allow `ALTER TYPE ... ADD VALUE` inside a transaction block. The migration will fail.
-
-**Do this instead:** Each ADD VALUE needs its own standalone statement outside a transaction, or use a separate migration file that supabase runs non-transactionally. Test on local before pushing to prod.
+**Domain:** Search-first add-watch flow integration — v8.0 Add-Watch Redesign
+**Researched:** 2026-05-28
+**Confidence:** HIGH (primary sources: full codebase read across all relevant files)
 
 ---
 
 ## Integration Points
 
-### External Services
+Four concrete seams where v8.0 touches the existing architecture. Everything else is new.
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Supabase Postgres | Drizzle service-role client (bypasses RLS); RLS is first-layer | Same pattern as all existing tables |
-| Supabase Auth | `auth.uid()` used in RLS policy USING/WITH CHECK clauses | Same as `notifications`, `divestments`, `follows` |
+### Seam 1: `/api/extract-watch` — discriminated request shape
 
-### Internal Boundaries
+**Current:** The route handler reads `body.url` as a required string. Any request without a URL fails at line 97 (`URL is required`).
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `comments` DAL → `follows` table | Direct Drizzle query for mutual-follow check | Verify follows has authenticated SELECT policy |
-| `comments` DAL → `watches` table | Direct Drizzle query for status check | Service-role bypasses watches RLS; correct here |
-| Server Actions → `logNotification` | Awaited (per the followUser pattern) | Must complete before revalidateTag so bell cache is accurate |
-| `LikeButton` → toggleLikeAction | Server Action call inside startTransition | useOptimistic reverts on error automatically |
-| `profileSettings` → opt-out columns | Extended in schema, read in logger | Same read pattern as existing notifyOnFollow |
+**Change needed:** Add a `mode` discriminator to the request body. Keep the existing URL-mode path byte-identical; add a structured-mode branch that bypasses `fetchAndExtract` and calls `extractWithLlm` directly with a synthesized prompt instead of scraped HTML.
+
+**Discriminated shape:**
+```typescript
+type ExtractRequest =
+  | { mode: 'url'; url: string }
+  | { mode: 'structured'; brand: string; model: string; reference?: string; year?: number }
+```
+
+The `mode` field defaults to `'url'` for backward compat (omitted = url mode). This avoids breaking the existing `AddWatchFlow.handleExtract` call site (line 249 in `AddWatchFlow.tsx`) until that code is replaced.
+
+**Structured-mode pipeline:** Skip `fetchAndExtract`. Build a plain-text prompt from the four fields and call `extractWithLlm` directly — but `extractWithLlm(html, structuredContext?)` takes raw HTML + optional JSON-LD. Use a thin wrapper: pass the brand/model/ref/year as the `structuredContext` argument (already an arbitrary string), and pass a minimal HTML stub as `html` (e.g., `<html><body></body></html>`). This keeps `extractWithLlm` unchanged.
+
+**Catalog wiring:** Identical to the URL path. After extraction, call `upsertCatalogFromExtractedUrl` (not `upsertCatalogFromUserInput` — the structured extraction enriches spec columns). Then taste enrichment fire-and-forget. Then `revalidateTag('explore', 'max')`. Response shape is identical: `{ success, catalogId, catalogIdError, data }`.
+
+**Error taxonomy:** Reuse the existing 5-category D-15 copy verbatim. Structured-mode cannot produce `host-403` (no fetch), so that branch maps to `generic-network`. Everything else (`LLM-timeout`, `quota-exceeded`, `structured-data-missing`, `generic-network`) applies as-is.
+
+**Auth gate:** Stays first, unchanged.
+
+**Verdict:** Single route with discriminated body. No sibling route. The existing route file grows by ~60 lines for the structured-mode branch; the error taxonomy, auth gate, and response shape are untouched.
 
 ---
 
-*Architecture research for: Horlo v6.0 Social Interaction (likes + comments)*
-*Researched: 2026-05-22*
+### Seam 2: `addWatch` Server Action — `catalogId` passthrough
+
+**Current behavior (line 127–139 in `watches.ts`):** `addWatch` always calls `upsertCatalogFromUserInput({ brand, model, reference })` to find-or-create a catalog row. When search finds an existing catalog row, this upsert is correct — it will `ON CONFLICT DO NOTHING` and return the existing id. No data integrity issue.
+
+**The actual problem:** When the confirm screen passes a `catalogId` from search, `upsertCatalogFromUserInput` is redundant — it's a round-trip to the DB to find the row we already know. More importantly, `upsertCatalogFromUserInput` only writes the natural key (brand/model/reference) and `source='user_promoted'`. When search matched an existing catalog row that has rich spec data, there is nothing to upsert-enrich. The only wasted cost is one DB round-trip and one taste-enrichment call for a row that already has taste data (first-write-wins semantics in `updateCatalogTaste` will no-op if `confidence IS NOT NULL`).
+
+**Decision: no schema change, no new field on `addWatch`.** The existing `insertWatchSchema` Zod schema does not accept `catalogId` from the client. The Zod `.strict()` equivalent behavior is: `insertWatchSchema.safeParse(data)` — and `catalogId` is not in that schema, so any client-supplied `catalogId` is silently stripped.
+
+**How to pass catalogId through cleanly:** Add `catalogId` as an optional field to `insertWatchSchema` (it already accepts `photoSourcePath` as a special-purpose field using the same pattern). The field bypasses `upsertCatalogFromUserInput` when non-null. In the action body:
+
+```typescript
+if (parsed.data.catalogId) {
+  // Validate it's a real UUID owned by watches_catalog (service-role read)
+  const row = await catalogDAL.getCatalogById(parsed.data.catalogId)
+  catalogIdResult = row?.id ?? null
+} else {
+  catalogIdResult = await catalogDAL.upsertCatalogFromUserInput({ ... })
+}
+```
+
+**Security:** The `getCatalogById` lookup confirms the UUID exists in `watches_catalog`. Because `watches_catalog` has public-read RLS, a forged `catalogId` can only reference a real catalog row — not an arbitrary UUID. The worst outcome is a valid catalog linkage, which is the correct behavior. No IDOR risk.
+
+**Taste enrichment:** When `catalogId` is pre-supplied and the row already has `confidence IS NOT NULL`, the `updateCatalogTaste` first-write-wins guard short-circuits without an LLM call. This is correct and efficient.
+
+**Schema change:** Add `catalogId: z.string().uuid().optional()` to `insertWatchSchema`. No DB migration — `watches.catalog_id` already exists and is populated server-side.
+
+---
+
+### Seam 3: `searchCatalogWatches` — ranking for add-flow use
+
+**Current ranking:** `ORDER BY (ownersCount + 0.5 * wishlistCount) DESC, brandNormalized ASC, modelNormalized ASC` with a 50-candidate cap, 20-result slice.
+
+**Problem for add-flow:** When a user types "omega speedmaster 3570.50", the current ranking surfaces the most-collected Speedmaster first, which may not be the exact reference they typed. An exact reference match should rank above a popular brand/model match.
+
+**Option A: JS post-sort on existing return shape.** `searchCatalogWatches` returns `reference` already. After calling `searchWatchesAction`, sort client-side: exact-reference-match rows first, then brand+model-only rows by popularity. This is ~10 lines and zero DB change.
+
+**Option B: SQL ranking column.** Add a computed `rank` column to the SELECT: `CASE WHEN reference_normalized = :refNorm THEN 3 WHEN brand_normalized = :brandNorm AND model_normalized = :modNorm THEN 2 ELSE 1 END AS matchScore` and `ORDER BY matchScore DESC, popularity DESC`.
+
+**Recommendation: Option A for v8.0.** The add-flow search surface shows at most 5–8 results; post-sort on the JS side is invisible at that scale and requires no DAL change. The existing `searchCatalogWatches` and `searchWatchesAction` are used by the `/search` page — modifying their SQL ranking for the add-flow would require introducing a new query parameter or a separate function, increasing change surface unnecessarily.
+
+**New Server Action needed:** `searchCatalogForAddFlow` wrapping `searchCatalogWatches` with the JS post-sort and a tighter limit (5–8 results vs 20 for the search page). Lives in `src/app/actions/search.ts` alongside `searchWatchesAction`. Does not filter by `viewerState` (the add-flow doesn't need owned/wishlist badges — those are shown post-pick on the confirm screen).
+
+---
+
+### Seam 4: Phase 29 three-layer reset carries forward
+
+The three-layer reset (Layer 1: per-request `crypto.randomUUID()` key on `<AddWatchFlow>` — REMOVED in Phase 61; Layer 2: `useLayoutEffect` cleanup-on-hide; Layer 3: explicit reset before `router.push`) must carry into the new flow.
+
+**Key fact from Phase 61:** The `key` prop nonce was REMOVED in Phase 61 because `addWatch` calls `revalidatePath('/')` → the Server Component re-runs → a new UUID → key changes → `AddWatchFlow` remounts → destroys `photos-pending` state. The current reset relies on Layers 2+3 only.
+
+**Carry-forward:** The new `AddWatchFlow` (or its replacement) must preserve the `useLayoutEffect` cleanup that resets on Activity-hide. The search query string (`searchQuery`) and structured-input draft (`brand`/`model`/`ref`/`year`) must be local state reset in that cleanup — but NOT the module-scope caches (which are intentionally cross-mount persistent).
+
+---
+
+## New Components
+
+| Component | File Path | Role | Replaces |
+|-----------|-----------|------|---------|
+| `SearchEntry` | `src/components/watch/SearchEntry.tsx` | Controlled search input with debounced results list; calls `searchCatalogForAddFlow` Server Action; emits `onPick(catalogId, extracted)` or `onNoMatch(query)` | Part of `PasteSection` |
+| `ConfirmStep` | `src/components/watch/ConfirmStep.tsx` | Compact review card: cover photo (from `catalogId` via existing `getCatalogById`), brand/model/ref display, status picker (all 4 statuses incl. grail), "Edit details" affordance, Save button. Pure presenter — receives `extracted`, `catalogId`, `onConfirm(status)`, `onEditMore()`, `onCancel()` | `VerdictStep` |
+| `StructuredEntryPanel` | `src/components/watch/StructuredEntryPanel.tsx` | Brand + Model (required) + Reference + Year (optional) form for the no-match path; "Have a URL?" optional URL field; Submit fires structured-mode `/api/extract-watch` | New; replaces no-URL dead-end |
+| `useCatalogSearchCache` | `src/components/watch/useCatalogSearchCache.ts` | Module-scope Map keyed by query string → `SearchCatalogWatchResult[]`. Same pattern as `useUrlExtractCache`. No TTL (catalog data is stable within a session). Cleared on new flow entry (keyed on a session token, see Cache Hygiene below) | New |
+| `useStructuredExtractCache` | `src/components/watch/useStructuredExtractCache.ts` | Module-scope Map keyed by `"${brand}|${model}|${reference ?? ''}|${year ?? ''}"` → `ExtractCacheEntry`. Same interface as `useUrlExtractCache`. | New |
+
+**Modified (not replaced):**
+
+| File | Change |
+|------|--------|
+| `src/components/watch/flowTypes.ts` | New `FlowState` kinds: `searching`, `no-match`, `structured-extracting`, `confirm-ready`. Remove `verdict-ready`, `wishlist-rationale-open`, `submitting-wishlist`. Keep `form-prefill`, `manual-entry`, `photos-pending`, `extraction-failed` |
+| `src/components/watch/AddWatchFlow.tsx` | Replace state machine handlers + render branches. Props interface gains no new required fields (same server-resolved props from page.tsx). Internals rewritten |
+| `src/app/api/extract-watch/route.ts` | Add structured-mode branch (~60 lines). URL-mode branch untouched |
+| `src/app/actions/searches.ts` | New `searchCatalogForAddFlow` action |
+| `src/app/actions/watches.ts` | `insertWatchSchema` gains `catalogId?: z.string().uuid()`; `addWatch` gains the catalogId-passthrough branch |
+| `src/app/watch/new/page.tsx` | Minor: remove dead `initialCatalogId`/`initialIntent` props if the deep-link-from-search path is removed; or keep them if the `/search` "Add" CTA still deep-links |
+
+**Removed (after confirm screen ships):**
+
+| File | Reason |
+|------|--------|
+| `src/components/watch/VerdictStep.tsx` | Replaced by `ConfirmStep` |
+| `src/components/watch/VerdictStep.test.tsx` | Delete with component |
+| `src/components/watch/WishlistRationalePanel.tsx` | Status picker on confirm screen replaces the 3-button flow; no separate rationale panel |
+| `src/components/watch/WishlistRationalePanel.test.tsx` | Delete with component |
+| `src/components/watch/PasteSection.tsx` | Replaced by `SearchEntry`; URL paste folds into `StructuredEntryPanel` |
+| `src/components/watch/PasteSection.test.tsx` | Delete with component |
+
+`RecentlyEvaluatedRail` — keep or remove at product discretion. With verdict dropped, the rail's purpose (re-open a previously-evaluated verdict) is gone. It can be repurposed as a "recently searched" chip rail showing the last 5 searches, or removed. Treat as a separate decision.
+
+---
+
+## Data Flow
+
+### Branch A: Search Match
+
+```
+User types query
+    → SearchEntry (debounce 250ms)
+    → searchCatalogForAddFlow Server Action
+    → searchCatalogWatches DAL (pg_trgm ILIKE, ranked)
+    → results displayed; user picks a row
+
+Pick emits (catalogId, extracted from catalog row)
+    → AddWatchFlow transitions to `confirm-ready`
+    → ConfirmStep rendered (cover photo, brand/model/ref, status picker)
+
+User picks status + confirms
+    → AddWatchFlow calls addWatch({ ...extracted, status, catalogId })
+    → addWatch: getCatalogById(catalogId) to validate → skip upsert → createWatch
+    → photos-pending state (Phase 61 WatchPhotoStep unchanged)
+    → router.push(destination)
+```
+
+### Branch B: No Match → Structured Extraction
+
+```
+User types query, zero catalog matches (or explicitly "Can't find it")
+    → AddWatchFlow transitions to `no-match`
+    → StructuredEntryPanel shown (brand, model, ref, year + optional URL)
+
+User fills fields + submits
+    → AddWatchFlow transitions to `structured-extracting`
+    → fetch('/api/extract-watch', { mode: 'structured', brand, model, reference, year })
+    → Route: extractWithLlm(stub-html, brand+model+ref+year as structuredContext)
+    → Route: upsertCatalogFromExtractedUrl (creates or enriches catalog row)
+    → Route returns { catalogId, data }
+    → AddWatchFlow transitions to `confirm-ready`
+    → ConfirmStep rendered with extracted data
+
+User confirms → same path as Branch A from "User picks status + confirms"
+```
+
+### Branch C: URL Paste (folded into no-match screen)
+
+```
+User on StructuredEntryPanel fills in "Have a URL?" field
+    → AddWatchFlow transitions to `extracting` (existing URL-mode path)
+    → fetch('/api/extract-watch', { mode: 'url', url })
+    → Existing URL-mode pipeline (unchanged)
+    → Route returns { catalogId, data }
+    → AddWatchFlow transitions to `confirm-ready`
+    → ConfirmStep rendered
+
+User confirms → same path as Branch A
+```
+
+### Branch D: Manual Entry (Skip search link)
+
+```
+User clicks "Skip search — enter manually"
+    → AddWatchFlow transitions to `manual-entry`
+    → WatchForm without lockedStatus (unchanged from current `manual-entry` branch)
+    → photos-pending on create success (unchanged)
+```
+
+### Status Flow (replaces VerdictStep 3-button lock)
+
+`ConfirmStep` renders a 4-option status picker: Wishlist / Collection / Grail / Sold (all four statuses available from the start — no lock). The selected status is local state inside `ConfirmStep`. On "Save", it emits `onConfirm(status, notes?)`.
+
+`AddWatchFlow` receives `status` and calls `addWatch({ ...extracted, status, catalogId })`. No `lockedStatus` prop needed for this path. `WatchForm` still accepts `lockedStatus` for the form-prefill path (deep-link from `/search?catalogId=X&intent=owned`) — that prop stays unchanged.
+
+"Edit details" on `ConfirmStep` transitions `AddWatchFlow` to `form-prefill` with `lockedStatus` = whatever the user selected on confirm. This preserves the existing `WatchForm` form-prefill path.
+
+---
+
+## Module-Scope Cache Hygiene
+
+**Existing caches (untouched):**
+- `useWatchSearchVerdictCache` — verdict cache, keyed by `collectionRevision`. Still used by the `/search` accordion inline-expand path. Not used in the new add flow (verdict is out of scope for v8.0).
+- `useUrlExtractCache` — URL → extract result. Still used if URL paste fires through the existing `handleExtract` code path.
+
+**New caches:**
+- `useCatalogSearchCache` — query string → search results. Module-scope, no TTL. Catalog data (brand/model/ref) is stable within a session; search results don't change because the user added a watch.
+- `useStructuredExtractCache` — composite key → extract result. Same pattern as `useUrlExtractCache`.
+
+**SignOut leak (existing Active item, line 168 in PROJECT.md):** `useWatchSearchVerdictCache` is not cleared on signOut — the `collectionRevision` from a previous user could coincidentally match the new user's revision after sign-in. The existing two new caches (search results, structured extracts) have the same theoretical exposure.
+
+**Mitigation for new caches (v8.0 scope):** Implement a session-token invalidation key. The server passes `viewerUserId` to `AddWatchFlow` (already present as `viewerUserId` prop). Add a module-scope `lastUserId: string | null`. In each cache hook's `get`/`set` calls, check `if (moduleLastUserId !== currentUserId) { moduleCache.clear(); moduleLastUserId = currentUserId }`. This clears on user switch without clearing on remount. Apply this pattern to both new caches only (the existing signOut leak is a pre-existing issue in Active, not in v8.0 scope).
+
+---
+
+## Suggested Build Order (5–7 phases)
+
+**Phase 1 — API Route Extension**
+- Extend `/api/extract-watch` with structured-mode (`{ mode: 'structured', brand, model, reference?, year? }`)
+- Thin wrapper calling `extractWithLlm` with structured context
+- Same error taxonomy, auth gate, catalog upsert, taste enrichment, `revalidateTag`
+- No UI changes; tested via the existing route test suite + new structured-mode test cases
+- Dependency: none (self-contained)
+
+**Phase 2 — Server Action + DAL extension**
+- `insertWatchSchema` gains `catalogId?: z.string().uuid()`
+- `addWatch` gains catalogId-passthrough branch (`getCatalogById` validate → skip `upsertCatalogFromUserInput`)
+- New `searchCatalogForAddFlow` Server Action in `src/app/actions/search.ts` with JS post-sort
+- No UI changes
+- Dependency: Phase 1 (structured extraction returns a `catalogId` that the passthrough branch accepts)
+
+**Phase 3 — ConfirmStep component**
+- Build `ConfirmStep.tsx` (cover photo, brand/model/ref display, status picker, "Edit details" affordance)
+- Status picker: 4 options (wishlist/owned/grail/sold), no lock
+- "Edit details" → `onEditMore()` callback
+- "Save" → `onConfirm(status)` callback
+- No flow wiring yet; test in isolation
+- Dependency: none (pure presenter)
+
+**Phase 4 — SearchEntry + StructuredEntryPanel components**
+- `SearchEntry.tsx`: debounced input, calls `searchCatalogForAddFlow`, renders result list, emits `onPick` or `onNoMatch`
+- `StructuredEntryPanel.tsx`: brand/model/ref/year fields, optional URL field, submit calls structured-mode or URL-mode extract
+- Module-scope cache hooks: `useCatalogSearchCache`, `useStructuredExtractCache`
+- No flow wiring yet
+- Dependency: Phase 2 (`searchCatalogForAddFlow` action)
+
+**Phase 5 — AddWatchFlow state machine rewrite + flow wiring**
+- New `FlowState` discriminated union in `flowTypes.ts`
+- `AddWatchFlow.tsx` rewritten: new state machine handlers wiring SearchEntry → ConfirmStep → WatchPhotoStep
+- All four branches: search-match, no-match/structured-extract, URL-paste, manual-entry
+- Phase 29 three-layer reset carries forward (useLayoutEffect cleanup reset covers `searchQuery` + draft state)
+- `photos-pending` integration via `onWatchCreated` callback — UNCHANGED
+- Deep-link form-prefill path (`initialCatalogId + initialIntent`) preserved or removed (see below)
+- Dependency: Phases 3 + 4 + 2
+
+**Phase 6 — Dead code cleanup + tests**
+- Delete `VerdictStep.tsx`, `VerdictStep.test.tsx`, `WishlistRationalePanel.tsx`, `WishlistRationalePanel.test.tsx`, `PasteSection.tsx`, `PasteSection.test.tsx`
+- Update `AddWatchFlow.test.tsx` for new state machine
+- Verify `tests/static/` guards (ROUTE-03 CI guard not affected — no `/watch/` or `/catalog/` links introduced)
+- `RecentlyEvaluatedRail` removal or repurpose decision
+- Dependency: Phase 5 complete and prod-verified
+
+---
+
+## Deep-Link Form-Prefill Path (`?catalogId=X&intent=owned`)
+
+The current `/search` Watches tab has an "Add to Collection" CTA that navigates to `/watch/new?catalogId=X&intent=owned`. This uses `initialCatalogId` / `initialIntent` / `initialCatalogPrefill` props on `AddWatchFlow` to jump directly to `form-prefill`.
+
+**Options:**
+1. Keep the deep-link path as-is (jump to `form-prefill` via `WatchForm lockedStatus="owned"`). This means the old `form-prefill` state and `WatchForm lockedStatus` prop survive. Low risk, no search-page changes needed.
+2. Redirect deep-link arrivals to `confirm-ready` instead (uses new ConfirmStep, status pre-set to `owned` but editable). Requires changing `/watch/new/page.tsx` and how `initialCatalogPrefill` is consumed.
+
+**Recommendation: Option 1 for v8.0.** The deep-link path from search is a secondary surface. Keeping `form-prefill` / `lockedStatus` alive for that path means no changes to the `/search` page or `WatchSearchRowsAccordion`. The add-flow redesign ships independently of the search-page deep-link.
+
+---
+
+## Component Boundaries Summary
+
+```
+/watch/new (Server Component)
+    └── AddWatchFlow (Client — state machine)
+        ├── [idle / searching] SearchEntry
+        │       → calls searchCatalogForAddFlow (Server Action)
+        │       → useCatalogSearchCache (module-scope)
+        │       → onPick(catalogId, extracted) → confirm-ready
+        │       → onNoMatch(query) → no-match
+        ├── [no-match] StructuredEntryPanel
+        │       → fetch('/api/extract-watch', { mode: 'structured', ... })
+        │       → useStructuredExtractCache (module-scope)
+        │       → or fetch('/api/extract-watch', { mode: 'url', url })
+        │       → useUrlExtractCache (module-scope, existing)
+        │       → on result → confirm-ready
+        ├── [structured-extracting / extracting] loading state
+        ├── [extraction-failed] ExtractErrorCard (existing, unchanged)
+        ├── [confirm-ready] ConfirmStep
+        │       → onConfirm(status) → calls addWatch Server Action
+        │       → onEditMore() → form-prefill (WatchForm lockedStatus=picked)
+        │       → onCancel() → idle
+        ├── [form-prefill] WatchForm lockedStatus (existing, unchanged)
+        ├── [manual-entry] WatchForm no lock (existing, unchanged)
+        └── [photos-pending] WatchPhotoStep (existing, unchanged)
+```
+
+---
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Verdict in the add flow
+
+**What:** Rendering `CollectionFitCard` or calling `getVerdictForCatalogWatch` during the add flow.
+**Why bad:** Locked operator decision — verdict drops from the add path entirely in v8.0. The verdict lives on `/w/[ref]` (Phase 64). Adding it back in the add flow would re-introduce the cognitive load the redesign is trying to reduce.
+**Instead:** Remove all `useWatchSearchVerdictCache` usage inside `AddWatchFlow`. The cache hook can stay in the codebase for the `/search` accordion path — just don't instantiate it in the new add flow.
+
+### Anti-Pattern 2: Calling `upsertCatalogFromUserInput` when `catalogId` is already known
+
+**What:** The current `addWatch` always calls `upsertCatalogFromUserInput` regardless of whether the caller already resolved a catalog row. When search finds an existing row, this is a wasted round-trip + potential source=`user_promoted` downgrade on an already-enriched row (mitigated by COALESCE semantics in the upsert, but still wasteful).
+**Instead:** Pass `catalogId` through the `insertWatchSchema` and short-circuit to `getCatalogById` validation when it's present.
+
+### Anti-Pattern 3: Separate route `/api/extract-watch-structured`
+
+**What:** Creating a sibling route for the structured-extraction mode.
+**Why bad:** Doubles the auth-gate surface, error-taxonomy surface, and cache-invalidation surface. The 5-category error taxonomy (Phase 25 D-15) is locked copy — any divergence between the two routes is a maintenance burden.
+**Instead:** Single route with discriminated body. The mode field routes internally.
+
+### Anti-Pattern 4: Storing status in module-scope cache
+
+**What:** Adding `status` (wishlist/owned/grail) to `useCatalogSearchCache` or `useStructuredExtractCache`.
+**Why bad:** Status is a per-user decision made at confirm time — it is not a property of the catalog row or the extraction result. Caching it would cause stale status to re-appear on revisit.
+**Instead:** Status lives only in `ConfirmStep` local state and is passed to `addWatch` at commit time.
+
+### Anti-Pattern 5: Calling `searchCatalogWatches` directly from a Client Component
+
+**What:** Importing the DAL function from the client component.
+**Why bad:** `src/data/catalog.ts` has `import 'server-only'` at line 1. Build fails with a `server-only` violation. Also exposes a DB round-trip to the client-side bundle.
+**Instead:** Always call `searchCatalogForAddFlow` Server Action from the client. The Server Action wraps the DAL.
+
+---
+
+## Sources
+
+All findings from direct codebase reads (HIGH confidence — primary source):
+
+- `/Users/tylerwaneka/Documents/horlo/src/components/watch/AddWatchFlow.tsx` — state machine, cache instantiation, handler logic
+- `/Users/tylerwaneka/Documents/horlo/src/components/watch/flowTypes.ts` — `FlowState` discriminated union
+- `/Users/tylerwaneka/Documents/horlo/src/components/watch/useUrlExtractCache.ts` — module-scope cache pattern
+- `/Users/tylerwaneka/Documents/horlo/src/components/search/useWatchSearchVerdictCache.ts` — revision-keyed module-scope cache, signOut leak note
+- `/Users/tylerwaneka/Documents/horlo/src/app/api/extract-watch/route.ts` — auth gate, error taxonomy, catalog upsert, taste enrichment, revalidateTag
+- `/Users/tylerwaneka/Documents/horlo/src/app/actions/watches.ts` — `addWatch` schema, catalogId upsert logic, `insertWatchSchema`
+- `/Users/tylerwaneka/Documents/horlo/src/app/actions/search.ts` — `searchWatchesAction` pattern, `searchCatalogWatches` call site
+- `/Users/tylerwaneka/Documents/horlo/src/data/catalog.ts` — `searchCatalogWatches` SQL, ranking, candidate cap; `upsertCatalogFromUserInput` vs `upsertCatalogFromExtractedUrl` semantics
+- `/Users/tylerwaneka/Documents/horlo/src/lib/extractors/index.ts` — `fetchAndExtract` vs `extractWatchData` vs `extractWithLlm` call hierarchy
+- `/Users/tylerwaneka/Documents/horlo/src/lib/extractors/llm.ts` — `extractWithLlm(html, structuredContext?)` signature
+- `/Users/tylerwaneka/Documents/horlo/src/app/watch/new/page.tsx` — server-resolved props, hydrateCatalogPrefill, Phase 61 key-removal rationale
+- `/Users/tylerwaneka/Documents/horlo/.planning/PROJECT.md` — Active items (signOut cache leak, Phase 29 three-layer reset decisions, Phase 61 photo step), v8.0 kickoff decisions
+- `/Users/tylerwaneka/Documents/horlo/.planning/seeds/SEED-010-v5.3-add-watch-redesign.md` — original redesign motivation and open questions
+
+---
+*Architecture research for: v8.0 Add-Watch Redesign — search-first add flow integration with existing Horlo architecture*
+*Researched: 2026-05-28*
