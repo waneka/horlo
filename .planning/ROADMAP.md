@@ -26,7 +26,7 @@
   4. Only profiles visible to the viewer per existing privacy rules appear; data is fetched in a single efficient query (no N+1) and does not block the hero render path (Suspense-wrap if it cannot resolve synchronously)
   5. Mobile: the module stacks naturally below the hero's right-column content (single-column collapse) — no separate mobile layout required
 **Plans**: 3 plans
-- [ ] 65-01-PLAN.md — DAL: getFollowedOwnersForCatalog (follows-join over the catalog roster shape) + 8 integration tests (FOLL-02 + FOLL-04). Wave 1
+- [x] 65-01-PLAN.md — DAL: getFollowedOwnersForCatalog (follows-join over the catalog roster shape) + 8 integration tests (FOLL-02 + FOLL-04). Wave 1
 - [ ] 65-02-PLAN.md — Component: FollowedOwnersModule.tsx (pure RSC chip stack, hide-if-empty, "and N more" caption) + component tests + static RSC guard (FOLL-01 + FOLL-03). Wave 1
 - [ ] 65-03-PLAN.md — Integration: 3 pre-fetch sites in /w/[ref]/page.tsx (Branch 1 null-catalog-guarded + Branch 2 owned + Branch 2 pure-catalog) + WatchDetailHero props/render + extend static guard + prod human-verify checkpoint. Wave 2
 **UI hint**: yes
@@ -42,4 +42,4 @@
 | 62. Public Wear Pics on Watch Detail | 5/5 | Complete   | 2026-05-27 |
 | 63. Inline Grid Engagement | 3/3 | Complete   | 2026-05-27 |
 | 64. Detail Page IA Redesign | 5/5 | Complete    | 2026-05-28 |
-| 65. Follow-Scoped Owners Module | 0/3 | Planned     | - |
+| 65. Follow-Scoped Owners Module | 1/3 | In Progress|  |
