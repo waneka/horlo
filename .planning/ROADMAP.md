@@ -218,7 +218,9 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   3. Brand and model are required; omitting either returns a 4xx validation error
   4. The structured branch creates any new catalog row via `upsertCatalogFromUserInput` (ON CONFLICT DO NOTHING), not `upsertCatalogFromExtractedUrl` — an integration test asserts this distinction on a known catalog row
   5. An integration test asserts no `cheerio` call fires when `mode === 'structured'`
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 66-01-PLAN.md — Create `src/lib/extractors/llm-structured.ts` (Anthropic strict tool-use) + extend `EnrichmentSource` union + export `validateAndCleanData` + unit tests (EXTR-04)
+- [ ] 66-02-PLAN.md — Extend `route.ts` with Zod discriminated body + structured-branch dispatch + mode-branched D-06 copy + integration tests (EXTR-01, EXTR-02, EXTR-03, EXTR-08)
 
 ### Phase 67: Server Action + DAL Extensions
 **Goal**: The server-side seams that UI components will consume are in place — a new `searchCatalogForAddFlow` Server Action, `addWatch` with optional `catalogId` passthrough, and a `getWatchIdByCatalogId` DAL helper
@@ -284,7 +286,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 66. API Route Extension | 0/? | Not started | - |
+| 66. API Route Extension | 0/2 | Not started | - |
 | 67. Server Action + DAL Extensions | 0/? | Not started | - |
 | 68. ConfirmStep Component | 0/? | Not started | - |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 0/? | Not started | - |
