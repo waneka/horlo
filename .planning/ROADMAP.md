@@ -220,7 +220,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   5. An integration test asserts no `cheerio` call fires when `mode === 'structured'`
 **Plans**: 2 plans
 - [x] 66-01-PLAN.md — Create `src/lib/extractors/llm-structured.ts` (Anthropic strict tool-use) + extend `EnrichmentSource` union + export `validateAndCleanData` + unit tests (EXTR-04)
-- [ ] 66-02-PLAN.md — Extend `route.ts` with Zod discriminated body + structured-branch dispatch + mode-branched D-06 copy + integration tests (EXTR-01, EXTR-02, EXTR-03, EXTR-08)
+- [x] 66-02-PLAN.md — Extend `route.ts` with Zod discriminated body + structured-branch dispatch + mode-branched D-06 copy + integration tests (EXTR-01, EXTR-02, EXTR-03, EXTR-08)
 
 ### Phase 67: Server Action + DAL Extensions
 **Goal**: The server-side seams that UI components will consume are in place — a new `searchCatalogForAddFlow` Server Action, `addWatch` with optional `catalogId` passthrough, and a `getWatchIdByCatalogId` DAL helper
@@ -286,7 +286,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 66. API Route Extension | 1/2 | In Progress|  |
+| 66. API Route Extension | 2/2 | Complete   | 2026-05-28 |
 | 67. Server Action + DAL Extensions | 0/? | Not started | - |
 | 68. ConfirmStep Component | 0/? | Not started | - |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 0/? | Not started | - |

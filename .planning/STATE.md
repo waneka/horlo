@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: executing
-last_updated: "2026-05-28T22:08:26.545Z"
+status: verifying
+last_updated: "2026-05-28T22:23:55.615Z"
 last_activity: 2026-05-28
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 ## Current Position
 
-Phase: 66 (api-route-extension) — EXECUTING
-Plan: 2 of 2
-Status: Plan 01 complete (llm-structured.ts + type scaffolding); ready to execute Plan 02 (route extension)
-Last activity: 2026-05-28 -- Phase 66 Plan 01 completed (EXTR-04 unit-tested)
-Resume file: `.planning/phases/66-api-route-extension/66-02-PLAN.md`
+Phase: 66 (api-route-extension) — READY FOR VERIFICATION
+Plan: 2 of 2 (complete)
+Status: Both plans complete (Plan 01: llm-structured extractor; Plan 02: route extension + integration tests). All 5 EXTR requirements (EXTR-01..04, EXTR-08) implemented. 51/51 cross-suite tests pass; build exits 0.
+Last activity: 2026-05-28 -- Phase 66 Plan 02 completed (route extension shipped)
+Resume file: None — phase ready for /gsd-verify-work
 
 ## Performance Metrics
 
@@ -92,6 +92,12 @@ Resume file: `.planning/phases/66-api-route-extension/66-02-PLAN.md`
 - **Task 3 prod human-verify auto-approved in chain mode** — actual prod check (push → Vercel, wait for cache fill, verify desktop 2-col, mobile collapse, jump scroll, soft-nav #419, catalog branch, owner gates) is PENDING / human_needed (Phase 64 Plan 04).
 - **FollowedOwnersModule locked as pure RSC** — `tests/static/followed-owners-module-rsc.test.ts` (// @vitest-environment node) fires CI tripwire if 'use client' or 'use cache' appears in first 5 lines; protects /w/[ref] PPR boundary from silent React #419 soft-nav regression once Plan 03 wires the component into WatchDetailHero (Phase 65 Plan 02).
 - **FollowedOwner is type-only across the client/server boundary** — Plan 02 component imports `import type { FollowedOwner } from '@/data/follows'` and NEVER `getFollowedOwnersForCatalog`; preserves Plan 03's ability to thread the prop through `WatchDetailHero` ('use client' island) without dragging server-only DAL across the boundary (Phase 65 Plan 02 D-11 enforcement).
+- **Route handler now Zod-discriminated by `mode`** (Phase 66 Plan 02, D-07/D-08) — `POST /api/extract-watch` accepts `{ mode: 'url', url } | { mode: 'structured', brand, model, reference?, year? }`. Schema colocated at top of route.ts; uses Zod v4 `.issues[0]` (not `.errors[0]`); closure-scoped `let mode` defaults to `'url'` so the catch always has a value to emit.
+- **Every JSON response on `/api/extract-watch` carries `mode: 'url' | 'structured'`** (Phase 66 Plan 02, D-06 coordination point) — success AND error envelopes. Phase 69 `<ExtractErrorCard>` reads `body.mode` to pick copy variant; no client-side mode tracking needed. Auth 401 response intentionally omits mode (auth runs before mode is known — universal across both modes).
+- **CATEGORY_COPY value type is now `{ url, structured }` per category** (Phase 66 Plan 02, D-06 unlock) — `structured-data-missing.structured` = "Couldn't find specs for that watch. Try adding a reference number, or enter manually."; `generic-network.structured` = "Something went wrong looking that up. Try again in a moment."; URL-mode strings preserved verbatim from Phase 25 LOCKED D-15.
+- **Structured branch flow** (Phase 66 Plan 02, D-03/D-04) — `extractFromStructuredInput` → empty-output gate → `upsertCatalogFromUserInput` (3 fields, NOT `upsertCatalogFromExtractedUrl` — EXTR-08 / Pitfall 5) → taste-enrichment parity with `source: 'structured-input'` + `photoSourcePath: null` → `revalidateTag('explore', 'max')` → success envelope with `source: 'llm'`, `confidence: 'medium'`, `fieldsExtracted`, `llmUsed: true`, `mode: 'structured'`.
+- **EXTR-02 cheerio short-circuit asserted via `mockFetchAndExtract.not.toHaveBeenCalled()`** (Phase 66 Plan 02, Rule 3 deviation) — `vi.spyOn(cheerio, 'load')` raises `Cannot redefine property: load` in this environment. Route-level assertion is strictly stronger because cheerio is downstream of `fetchAndExtract` for this route. Plan 01's import discipline (`./llm` direct, not the barrel) provides the module-graph defense.
+- **Auth fixture in `tests/api/extract-watch-auth.test.ts` extended** (Phase 66 Plan 02, additive) — three `mkPost({ url: ... })` callers now send `mkPost({ mode: 'url', url: ... })` so the new Zod schema parses them; the `.toEqual({ error: 'Unauthorized' })` strict-equality check on the auth 401 path remains untouched (auth response intentionally omits mode).
 
 ### Pending Todos
 
@@ -139,6 +145,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 **Total deferred:** 28 (2 debug, 3 false-positive UAT/verification, 10 quick-task backlog, 13 seeds).
 **Notes:** Quick-task backlog has rolled past v5.2, v6.0, and now v7.0 closes — most were superseded by later phases. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
 | Phase 66 P01 | 4 | 3 tasks | 4 files |
+| Phase 66 P02 | 10 | 3 tasks | 3 files |
 
 ## Session Continuity
 
