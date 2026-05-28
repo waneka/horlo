@@ -119,51 +119,55 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SRCH-17 | TBD | Pending |
-| SRCH-18 | TBD | Pending |
-| SRCH-19 | TBD | Pending |
-| SRCH-20 | TBD | Pending |
-| SRCH-21 | TBD | Pending |
-| SRCH-22 | TBD | Pending |
-| SRCH-23 | TBD | Pending |
-| SRCH-24 | TBD | Pending |
-| SRCH-25 | TBD | Pending |
-| SRCH-26 | TBD | Pending |
-| EXTR-01 | TBD | Pending |
-| EXTR-02 | TBD | Pending |
-| EXTR-03 | TBD | Pending |
-| EXTR-04 | TBD | Pending |
-| EXTR-05 | TBD | Pending |
-| EXTR-06 | TBD | Pending |
-| EXTR-07 | TBD | Pending |
-| EXTR-08 | TBD | Pending |
-| CONF-01 | TBD | Pending |
-| CONF-02 | TBD | Pending |
-| CONF-03 | TBD | Pending |
-| CONF-04 | TBD | Pending |
-| CONF-05 | TBD | Pending |
-| CONF-06 | TBD | Pending |
-| CONF-07 | TBD | Pending |
-| CONF-08 | TBD | Pending |
-| CONF-09 | TBD | Pending |
-| CONF-10 | TBD | Pending |
-| CONF-11 | TBD | Pending |
-| DUPE-01 | TBD | Pending |
-| DUPE-02 | TBD | Pending |
-| DUPE-03 | TBD | Pending |
-| CLNP-01 | TBD | Pending |
-| CLNP-02 | TBD | Pending |
-| CLNP-03 | TBD | Pending |
-| CLNP-04 | TBD | Pending |
-| CLNP-05 | TBD | Pending |
-| CLNP-06 | TBD | Pending |
-| CLNP-07 | TBD | Pending |
+| SRCH-17 | Phase 69 | Pending |
+| SRCH-18 | Phase 69 | Pending |
+| SRCH-19 | Phase 69 | Pending |
+| SRCH-20 | Phase 69 | Pending |
+| SRCH-21 | Phase 69 | Pending |
+| SRCH-22 | Phase 69 | Pending |
+| SRCH-23 | Phase 69 | Pending |
+| SRCH-24 | Phase 69 | Pending |
+| SRCH-25 | Phase 69 | Pending |
+| SRCH-26 | Phase 69 | Pending |
+| EXTR-01 | Phase 66 | Pending |
+| EXTR-02 | Phase 66 | Pending |
+| EXTR-03 | Phase 66 | Pending |
+| EXTR-04 | Phase 66 | Pending |
+| EXTR-05 | Phase 69 | Pending |
+| EXTR-06 | Phase 69 | Pending |
+| EXTR-07 | Phase 69 | Pending |
+| EXTR-08 | Phase 66 | Pending |
+| CONF-01 | Phase 68 | Pending |
+| CONF-02 | Phase 68 | Pending |
+| CONF-03 | Phase 68 | Pending |
+| CONF-04 | Phase 68 | Pending |
+| CONF-05 | Phase 68 | Pending |
+| CONF-06 | Phase 68 | Pending |
+| CONF-07 | Phase 68 | Pending |
+| CONF-08 | Phase 68 | Pending |
+| CONF-09 | Phase 68 | Pending |
+| CONF-10 | Phase 68 | Pending |
+| CONF-11 | Phase 67 | Pending |
+| DUPE-01 | Phase 70 | Pending |
+| DUPE-02 | Phase 70 | Pending |
+| DUPE-03 | Phase 70 | Pending |
+| CLNP-01 | Phase 71 | Pending |
+| CLNP-02 | Phase 71 | Pending |
+| CLNP-03 | Phase 71 | Pending |
+| CLNP-04 | Phase 71 | Pending |
+| CLNP-05 | Phase 70 | Pending |
+| CLNP-06 | Phase 70 | Pending |
+| CLNP-07 | Phase 69 | Pending |
+
+**Notes on split requirements:**
+- **DUPE-01**: `getWatchIdByCatalogId` DAL helper ships in Phase 67 as a primitive; the owned-result redirect click-handler (user-observable behavior) wires in Phase 70. Traceability maps DUPE-01 to Phase 70 (where the user sees the behavior).
+- **DUPE-03**: Same pattern — Phase 67 delivers the DAL read of the existing watch ID; Phase 70 wires the wishlist-default + "Move to Collection" UPDATE path. Traceability maps DUPE-03 to Phase 70.
 
 **Coverage:**
 - v8.0 requirements: 39 total
-- Mapped to phases: 0 (roadmapper will fill in)
-- Unmapped: 39 ⚠ (will resolve at roadmap step)
+- Mapped to phases: 39 (100%)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-28*
-*Last updated: 2026-05-28 after v8.0 milestone start*
+*Last updated: 2026-05-28 — traceability filled in by roadmapper (Phases 66-71)*
