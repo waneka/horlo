@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 64-detail-page-ia-redesign
 source: [64-VERIFICATION.md]
 started: 2026-05-27T00:00:00Z
-updated: 2026-05-28T00:01:00Z
+updated: 2026-05-28T00:00:00Z
 ---
 
 ## Current Test
@@ -27,10 +27,11 @@ design_change_2: "D-09/D-10 SECOND REFINEMENT (user decision, UAT 2026-05-27): c
 
 ### 2. Mobile single-column collapse (PAGE-01)
 expected: Hero collapses to single column: carousel on top, then title/verdict/like/actions; order remains hero → comments → spec cards → rails → footer.
-result: issue
+result: pass
 reported: "pass - but i think we need to tweak. the large photo looks great at the top but with the thumbnail filmstrip below, the title actually is pushed below the fold. i'm wondering if it should maybe be above the photo on mobile, just the watch brand and name. that would potentially orphan the other info included in the title (ref, type, size, color)"
+resolution: "Fixed in plan 64-05 (commit f4b04ed): mobile-only brand+model hoist above carousel via JSX duplication with lg:hidden. Prod-approved 2026-05-28, all 7 checks pass."
 severity: minor
-note: "Structurally passes (single-column collapse + correct stacking order). UX refinement: brand+model below-the-fold on mobile after photo + filmstrip. Recommended fix (Option A): mobile-only hoist brand+model <h1> above the carousel; spec strip (ref/type/size/color) stays below the photo as descriptive metadata. User explicitly chose to plant as a Phase 64 fix gap."
+note: "Originally a UX refinement gap (structurally passed, brand+model was below fold). Resolved by plan 64-05 mobile hoist."
 
 ### 3. Jump-to-comments scroll behavior (PAGE-02)
 expected: Tapping the hero comment count smooth-scrolls (or jumps on reduced-motion) to the #comments section.
@@ -59,8 +60,8 @@ result: pass
 ## Summary
 
 total: 8
-passed: 7
-issues: 1
+passed: 8
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -76,24 +77,18 @@ blocked: 0
   verified: "Prod re-verify 2026-05-28 — user typed pass."
 
 - truth: "On mobile, the brand+model identifier is reachable above the fold on a /w/[ref] page"
-  status: diagnosed
-  reason: "User reported: 'photo looks great at top but with the thumbnail filmstrip below, the title is pushed below the fold.' Test 2 structurally passes (single-column collapse + correct stacking order) — gap is a UX refinement scoped into Phase 64 by user choice."
+  status: resolved
+  reason: "User reported: 'photo looks great at top but with the thumbnail filmstrip below, the title is pushed below the fold.' Test 2 structurally passes (single-column collapse + correct stacking order) — gap was a UX refinement scoped into Phase 64 by user choice. Fixed in plan 64-05."
   severity: minor
   test: 2
   root_cause: "Mobile stack-order — identifier below visual. WatchDetailHero.tsx:159 declares the hero as a grid with `lg:` modifier ({grid-cols-1 on mobile collapses → DOM child order rules}); photo column renders FIRST (line 167, ~470–580px tall on 390px viewport), title block SECOND (line 209). ~600px of photo content lands above the <h1> on iPhone-class viewports. Not a defect — UI-SPEC D-01 says 'mobile: single column'. Title block is already a clean sub-tree (brand <h1> + model <p> are separable from ref + SpecsSublabel)."
+  fix: "Plan 64-05: mobile-only JSX hoist of brand+model <h1> above the hero grid via lg:hidden / hidden lg:block responsive visibility (NOT CSS order- per D-07); WatchPageSkeleton mirrored; static guard extended; desktop right-column <h1> downgraded to <h2> (one h1 per page)."
+  verified: "Prod approval 2026-05-28 — all 7 UAT checks pass (commit f4b04ed). Debug session: .planning/debug/mobile-title-above-fold.md"
   artifacts:
     - path: "src/components/watch/WatchDetailHero.tsx"
       issue: "Mobile DOM child order puts photo column before title block; brand+model lands below the fold."
     - path: "src/app/w/[ref]/page.tsx"
       issue: "WatchPageSkeleton (lines 108-127) mirrors the same grid; must update in parallel or Test 7 regresses + content-jump on cache-fill."
-  missing:
-    - "Mobile-only title hoist via JSX duplication with responsive visibility (NOT CSS order- per D-07): render brand+model in an lg:hidden block ABOVE the grid, gate the desktop right-column brand+model with hidden lg:block."
-    - "Keep ref line + SpecsSublabel visible at all breakpoints inside the right column (mobile: descriptive metadata below the photo; desktop: unchanged)."
-    - "Mirror the change in WatchPageSkeleton: add lg:hidden brand+model skeleton above the grid, gate the existing right-column brand+model skeleton with hidden lg:block."
-    - "Accessibility decision: keep <h1> in the mobile block (so the page heading is above the fold) and downgrade the desktop right-column <h1> to <h2> or styled <p> — preserves 'one h1 per page' rule."
-    - "Branch 3 (catalog, page.tsx:673+) NEEDS NO CHANGE — its inline hero is already side-by-side at every viewport."
-    - "Verify desktop (≥1024 px) layout is byte-for-byte identical to today: only the mobile-only block renders and it is lg:hidden."
-  debug_session: ".planning/debug/mobile-title-above-fold.md"
 
 - truth: "Cross-user viewers do not see misleading owner-only ownership indicators"
   status: resolved
