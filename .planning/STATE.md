@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: executing
-last_updated: "2026-05-28T22:01:38.351Z"
-last_activity: 2026-05-28 -- Phase 66 planning complete
+last_updated: "2026-05-28T22:08:26.545Z"
+last_activity: 2026-05-28
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** **v8.0 Add-Watch Redesign** — search-first add flow that reuses the catalog when it can, structured-input LLM extraction when it can't (URL paste demoted to backup), lighter confirm screen with status picker incl. grail replacing `VerdictStep`. `CollectionFitCard` drops from the add flow; no changes to `/w/[ref]`. Catalog expansion (SEED-009) deferred to v9.0; v8.0 ships against the ~100-row catalog as-it-is.
+**Current focus:** Phase 66 — api-route-extension
 
 ## Current Position
 
-Phase: 66 (API Route Extension) — context gathered
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-28 -- Phase 66 planning complete
-Resume file: `.planning/phases/66-api-route-extension/66-CONTEXT.md`
+Phase: 66 (api-route-extension) — EXECUTING
+Plan: 2 of 2
+Status: Plan 01 complete (llm-structured.ts + type scaffolding); ready to execute Plan 02 (route extension)
+Last activity: 2026-05-28 -- Phase 66 Plan 01 completed (EXTR-04 unit-tested)
+Resume file: `.planning/phases/66-api-route-extension/66-02-PLAN.md`
 
 ## Performance Metrics
 
@@ -43,6 +43,10 @@ Resume file: `.planning/phases/66-api-route-extension/66-CONTEXT.md`
 
 ### Key Decisions
 
+- **llm-structured.ts is sibling-of-llm.ts and server-only** (Phase 66 Plan 01, D-01) — the new structured-INPUT LLM extractor lives at `src/lib/extractors/llm-structured.ts` next to `llm.ts`; file header explicitly disambiguates structured-INPUT (user identity) from structured-DATA / `./structured.ts` (JSON-LD scraping); module is marked `import 'server-only'` to gate against Client Component import (API-key leak mitigation).
+- **llm-structured.ts throws on missing API key (not return-null)** (Phase 66 Plan 01) — mirrors `llm.ts:54-58`, NOT the silent-null fire-and-forget pattern of `taste/enricher.ts:88-95`. Route's `categorizeExtractionError` catch needs throws to map to `generic-network` HTTP 500.
+- **validateAndCleanData is now public surface of `src/lib/extractors/llm.ts`** (Phase 66 Plan 01) — exported (was module-private) so the structured-input extractor reuses the existing 80-LOC enum-validation function for `toolUse.input` (typed `unknown` per SDK). Single source of truth for enum normalization across both URL and structured paths.
+- **EnrichmentSource union extended with 'structured-input' literal** (Phase 66 Plan 01, D-03) — additive only; all four existing callers (`enricher.test.ts:50`, `route.ts:196`, `backfill-taste.ts:262`, `reenrich-taste.ts:148`) keep using literals that remain valid. No exhaustive switch consumers; zero signature ripple.
 - **WatchDetailHero JSDoc prose must avoid "import.*CommentThread" word sequence** — the PAGE-03 static guard (`expect(content).not.toMatch(/import.*CommentThread/)`) is a full-content scan; prose in JSDoc matching the regex is a false-positive; reword to "CommentThread is NOT referenced in this file" (Phase 64 Plan 02).
 - **vi.hoisted() required for vitest mock error classes** — vi.mock factories are hoisted before top-level let/const initialization; error class stubs must live inside vi.hoisted() (Phase 61 Plan 01 lesson).
 - **getWatchPhotosForWatch has no userId param** — ownership resolved by RSC before calling; pure read by watchId; signing happens at page level per PATTERNS.md.
@@ -134,6 +138,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 
 **Total deferred:** 28 (2 debug, 3 false-positive UAT/verification, 10 quick-task backlog, 13 seeds).
 **Notes:** Quick-task backlog has rolled past v5.2, v6.0, and now v7.0 closes — most were superseded by later phases. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
+| Phase 66 P01 | 4 | 3 tasks | 4 files |
 
 ## Session Continuity
 

@@ -31,7 +31,7 @@ No-URL LLM extraction path for catalog misses.
 - [ ] **EXTR-01**: `/api/extract-watch` accepts a discriminated body `{ mode: 'url', url: string } | { mode: 'structured', brand: string, model: string, reference?: string, year?: number }`; existing URL behavior unchanged
 - [ ] **EXTR-02**: Structured mode short-circuits BEFORE the cheerio HTML stages (Pitfall 3 mitigation) — verified by integration test asserting no `cheerio` call when `mode === 'structured'`
 - [ ] **EXTR-03**: Brand and model are required fields; reference and year are optional inputs; the structured branch returns an `ExtractedWatchData` shape consistent with the URL branch
-- [ ] **EXTR-04**: A new LLM prompt variant ("given watch identity, infer known specs from training knowledge") drives the structured extraction via existing `@anthropic-ai/sdk` + `claude-sonnet-4-6` strict tool-use
+- [x] **EXTR-04**: A new LLM prompt variant ("given watch identity, infer known specs from training knowledge") drives the structured extraction via existing `@anthropic-ai/sdk` + `claude-sonnet-4-6` strict tool-use
 - [ ] **EXTR-05**: A loading state (reuse `VerdictSkeleton` or equivalent) renders during the LLM round-trip; explicit "Find specs" button gates the call (no per-keystroke firing)
 - [ ] **EXTR-06**: An optional photo-upload affordance is surfaced on the structured-input screen via the existing `CatalogPhotoUploader`, feeding Phase 19.1 photo-based taste enrichment when present
 - [ ] **EXTR-07**: The no-match panel includes a "Have a URL for this watch?" secondary affordance that routes the user back through the existing URL-paste extraction path (URL paste demoted, not deleted)
@@ -132,7 +132,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXTR-01 | Phase 66 | Pending |
 | EXTR-02 | Phase 66 | Pending |
 | EXTR-03 | Phase 66 | Pending |
-| EXTR-04 | Phase 66 | Pending |
+| EXTR-04 | Phase 66 | Complete |
 | EXTR-05 | Phase 69 | Pending |
 | EXTR-06 | Phase 69 | Pending |
 | EXTR-07 | Phase 69 | Pending |
