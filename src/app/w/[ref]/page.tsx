@@ -108,12 +108,25 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
 function WatchPageSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8" aria-hidden>
+      {/* Mobile-only brand+model skeleton — mirrors WatchDetailHero lg:hidden header block.
+          Paints above the carousel placeholder on mobile so the loading state matches the
+          new mobile-first DOM order; hidden on desktop (lg+) where the right column carries
+          the brand+model skeleton. No content-jump on cache-fill. */}
+      <div className="lg:hidden space-y-2">
+        <Skeleton className="h-9 w-3/4" />
+        <Skeleton className="h-6 w-1/2" />
+      </div>
       {/* Hero grid — mirrors WatchDetailHero lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] */}
       <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Skeleton className="aspect-square w-full rounded-lg" />
         <div className="space-y-4 min-w-0">
-          <Skeleton className="h-7 w-3/4" />
-          <Skeleton className="h-5 w-1/2" />
+          {/* Desktop-only brand+model placeholders — mirror the hidden lg:block wrapper in
+              WatchDetailHero right column. On mobile, the brand+model paints in the
+              mobile-only header above; on desktop, these render exactly as today. */}
+          <div className="hidden lg:block space-y-2">
+            <Skeleton className="h-7 w-3/4" />
+            <Skeleton className="h-5 w-1/2" />
+          </div>
           <Skeleton className="h-4 w-1/3" />
           <Skeleton className="h-40 w-full rounded-lg" />
           <Skeleton className="h-9 w-24" />

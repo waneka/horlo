@@ -156,14 +156,35 @@ export function WatchDetailHero({
   const safeUrl = getSafeImageUrl(watch.imageUrl)
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      {/* minmax(0,…) + min-w-0 on both columns: without them, grid tracks default to
-          minmax(auto,…) and inflate to their content's min-content width. The right
-          column's CollectionFitCard (compare table + badges) has a large min-content
-          and would starve the carousel track down to ~1/6 (UAT test 1). Pinning the
-          track minimums to 0 + min-w-0 enforces the locked 60/40 ratio; content wraps
-          within its column. */}
-      {/* Left column: WatchPhotoSection carousel or fallback image */}
+    <>
+      {/* Mobile-only header — identifier above the carousel on small viewports (<1024px).
+          D-07: NO CSS order- utilities. JSX duplication with responsive visibility only.
+          The status badge is owner-only (viewerCanEdit gate) at every breakpoint —
+          preserves commit 95385e9. On desktop (lg+) this block is hidden (lg:hidden);
+          the existing right-column title block carries the heading there. */}
+      <div className="lg:hidden mb-6">
+        {viewerCanEdit && (
+          <Badge className="mb-2" variant="outline">
+            {watch.status}
+          </Badge>
+        )}
+        {/* Canonical page heading — lives in the mobile block so the identifier is
+            above the fold on the dominant viewport. The desktop right-column heading
+            is downgraded to h2 to preserve one h1 per page (a11y rule). */}
+        <h1 className="font-serif text-3xl sm:text-4xl text-foreground">
+          {watch.brand}
+        </h1>
+        <p className="text-lg sm:text-xl text-muted-foreground">{watch.model}</p>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* minmax(0,…) + min-w-0 on both columns: without them, grid tracks default to
+            minmax(auto,…) and inflate to their content's min-content width. The right
+            column's CollectionFitCard (compare table + badges) has a large min-content
+            and would starve the carousel track down to ~1/6 (UAT test 1). Pinning the
+            track minimums to 0 + min-w-0 enforces the locked 60/40 ratio; content wraps
+            within its column. */}
+        {/* Left column: WatchPhotoSection carousel or fallback image */}
       <div className="min-w-0">
         {/* Photo section: carousel + filmstrip when signedPhotos provided.
             Falls back to single-image display for any caller that hasn't yet
@@ -207,20 +228,31 @@ export function WatchDetailHero({
 
       {/* Right column: title → SpecsSublabel → verdict → like+jump → owner actions */}
       <div className="space-y-6 min-w-0">
-        {/* Title & Status. The status badge ('owned' / 'wishlist' / 'grail')
-            describes the OWNER's relationship to THEIR watch record, so it's
-            owner-only — showing it to a cross-user viewer would imply they own
-            the piece. UAT 2026-05-27. */}
+        {/* Title & Status — desktop only (lg+). On mobile the brand+model heading
+            lives in the lg:hidden block above the hero grid so it's above the fold.
+            The status badge ('owned' / 'wishlist' / 'grail') describes the OWNER's
+            relationship to THEIR watch record, so it's owner-only at every breakpoint
+            — showing it to a cross-user viewer would imply they own the piece.
+            UAT 2026-05-27 / commit 95385e9. */}
         <div>
-          {viewerCanEdit && (
-            <Badge className="mb-2" variant="outline">
-              {watch.status}
-            </Badge>
-          )}
-          <h1 className="font-serif text-3xl sm:text-4xl text-foreground">
-            {watch.brand}
-          </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground">{watch.model}</p>
+          {/* Desktop heading block: hidden on mobile (brand+model renders in the
+              mobile-only block above the grid; only the ref line + SpecsSublabel
+              appear here on mobile). Downgraded to h2 because the mobile block
+              holds the sole h1 for the page — one h1 per page a11y rule. */}
+          <div className="hidden lg:block">
+            {viewerCanEdit && (
+              <Badge className="mb-2" variant="outline">
+                {watch.status}
+              </Badge>
+            )}
+            <h2 className="font-serif text-3xl sm:text-4xl text-foreground">
+              {watch.brand}
+            </h2>
+            <p className="text-lg sm:text-xl text-muted-foreground">{watch.model}</p>
+          </div>
+          {/* Ref line + SpecsSublabel: visible at every breakpoint inside the right
+              column — descriptive metadata stays below the photo on mobile (intentional
+              per UAT) and beside the photo on desktop (unchanged). */}
           {watch.reference && (
             <p className="text-sm text-muted-foreground mt-1">Ref. {watch.reference}</p>
           )}
@@ -353,5 +385,6 @@ export function WatchDetailHero({
         )}
       </div>
     </div>
+    </>
   )
 }

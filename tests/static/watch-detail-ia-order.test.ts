@@ -105,3 +105,57 @@ describe('PAGE-04: WatchDetailHero includes WatchPhotoSection', () => {
     expect(content).toMatch(/WatchPhotoSection/)
   })
 })
+
+describe('PAGE-01 mobile: brand+model hoisted above the grid on mobile (gap closure 64-05)', () => {
+  let content: string
+  try {
+    content = readFileSync(HERO_TSX, 'utf8')
+  } catch {
+    content = ''
+  }
+  const lines = content.split('\n')
+
+  it('WatchDetailHero.tsx contains an lg:hidden mobile header block', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    expect(content).toMatch(/className="lg:hidden/)
+  })
+
+  it('WatchDetailHero.tsx contains a hidden lg:block wrapper around desktop title', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    expect(content).toMatch(/className="hidden lg:block/)
+  })
+
+  it('WatchDetailHero.tsx renders exactly one <h1>', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    const h1Lines = activeLineNumbers(lines, /<h1[\s>]/)
+    expect(h1Lines.length).toBe(1)
+  })
+
+  it('WatchDetailHero.tsx contains no CSS order utilities (D-07)', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    const orderLines = activeLineNumbers(lines, /\border-(first|last|none|\d)/)
+    expect(orderLines.length).toBe(0)
+  })
+
+  it('WatchDetailHero.tsx mobile block contains both watch.brand and watch.model identifiers', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    expect(content).toMatch(/lg:hidden[\s\S]*?watch\.brand[\s\S]*?watch\.model/)
+  })
+
+  it('WatchDetailHero.tsx mobile block status Badge is owner-only (viewerCanEdit gate preserved)', () => {
+    if (content === '') {
+      expect.fail('WatchDetailHero.tsx not found')
+    }
+    expect(content).toMatch(/lg:hidden[\s\S]*?viewerCanEdit\s*&&\s*\(\s*<Badge/)
+  })
+})
