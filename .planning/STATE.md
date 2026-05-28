@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: verifying
-last_updated: "2026-05-28T22:23:55.615Z"
+status: in_progress
+last_updated: "2026-05-28T22:24:00.000Z"
 last_activity: 2026-05-28
 progress:
-  total_phases: 1
+  total_phases: 6
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
-  percent: 100
+  percent: 17
 ---
 
 # Project State
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 66 — api-route-extension
+**Current focus:** Phase 67 — Server Action + DAL Extensions (next)
 
 ## Current Position
 
-Phase: 66 (api-route-extension) — READY FOR VERIFICATION
-Plan: 2 of 2 (complete)
-Status: Both plans complete (Plan 01: llm-structured extractor; Plan 02: route extension + integration tests). All 5 EXTR requirements (EXTR-01..04, EXTR-08) implemented. 51/51 cross-suite tests pass; build exits 0.
-Last activity: 2026-05-28 -- Phase 66 Plan 02 completed (route extension shipped)
-Resume file: None — phase ready for /gsd-verify-work
+Phase: 67
+Plan: Not started
+Status: Phase 66 complete (status: human_needed — prod UAT bundled); ready for Phase 67 discuss
+Last activity: 2026-05-28
+Resume file: None — next: /gsd-discuss-phase 67
 
 ## Performance Metrics
 

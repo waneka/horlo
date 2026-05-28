@@ -286,7 +286,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 66. API Route Extension | 2/2 | Complete   | 2026-05-28 |
+| 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
 | 67. Server Action + DAL Extensions | 0/? | Not started | - |
 | 68. ConfirmStep Component | 0/? | Not started | - |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 0/? | Not started | - |
