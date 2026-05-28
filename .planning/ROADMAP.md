@@ -1,45 +1,204 @@
-### Phase 64: Detail Page IA Redesign
-**Goal**: The `/w/[ref]` page presents an intentional information hierarchy — carousel, verdict, like, comments, rails, footer — rather than append-order stacking; comments have a deliberate, reachable position; the Phase 51/52 Cache Components structure is fully preserved
-**Depends on**: Phase 61, Phase 62, Phase 63
-**Requirements**: PAGE-01, PAGE-02, PAGE-03, PAGE-04
-**Success Criteria** (what must be TRUE):
-  1. The watch detail page presents carousel, verdict, like, comments, rails, and footer in a deliberate visual hierarchy rather than chronological-append order
-  2. Comments appear at a reachable scroll position — not buried below all rails and metadata
-  3. The photo carousel functions as the primary visual element at the top of the page
-  4. CommentThread remains an uncached Suspense sibling and the `unstable_instant = false` lock on related routes is not disturbed; Cache Component rules are intact
-**Plans**: 5 plans (4 waves) — Plan 05 added 2026-05-28 as a UAT gap closure (Test 2: mobile brand+model below fold)
-- [x] 64-01-PLAN.md — Foundations: extract SpecsSublabel + CommentThread id=comments anchor + two Wave-0 static guards + repair the pre-existing PPR guard pattern (Wave 1)
-- [x] 64-02-PLAN.md — WatchDetailHero client island: 2-col hero, elevated verdict, carousel-forward, jump anchor, owner gates (Wave 2)
-- [x] 64-03-PLAN.md — WatchDetailTrailing RSC: four spec cards + gap-fill + notes, #418-safe dates (Wave 2)
-- [x] 64-04-PLAN.md — Re-order all 3 page.tsx branches + update skeleton + prod human-verify checkpoint (Wave 3)
-- [x] 64-05-PLAN.md — Gap closure: mobile-only brand+model hoist above the carousel (lg:hidden / hidden lg:block JSX dup; NOT CSS order-) + WatchPageSkeleton mirror + static guard extension (Wave 4)
-**UI hint**: yes
+# Roadmap: Horlo
 
-### Phase 65: Follow-Scoped Owners Module
-**Goal**: On `/w/[ref]`, viewers see at-a-glance which collectors **they follow** also own this watch — a compact, hide-if-empty "people you follow who own this" module rendered in the hero right column (under the existing minimal title/spec/like/owner-actions block), with linkable avatar + @username chips routing to each owner's profile / per-user watch detail.
-**Depends on**: Phase 64 (the recomposed hero whose right-column slot it fills)
-**Requirements**: FOLL-01, FOLL-02, FOLL-03, FOLL-04
-**Success Criteria** (what must be TRUE):
-  1. On `/w/[ref]`, when ≥1 user the viewer follows owns this watch (matched by `catalogId`), a compact module renders in the hero right column below the existing minimal info; the module is entirely absent from the DOM (hide-if-empty) when zero matches
-  2. The follow direction is one-way "viewer → owner" (people the viewer follows) — NOT "people who follow the viewer" and NOT mutual-only — per the UAT 2026-05-27 product call (taste-discovery / social-proof framing)
-  3. Each owner chip is a navigable link (`avatar + @username`, with an accessible label) to that owner's profile or their per-user watch detail
-  4. Only profiles visible to the viewer per existing privacy rules appear; data is fetched in a single efficient query (no N+1) and does not block the hero render path (Suspense-wrap if it cannot resolve synchronously)
-  5. Mobile: the module stacks naturally below the hero's right-column content (single-column collapse) — no separate mobile layout required
-**Plans**: 3 plans
-- [x] 65-01-PLAN.md — DAL: getFollowedOwnersForCatalog (follows-join over the catalog roster shape) + 8 integration tests (FOLL-02 + FOLL-04). Wave 1
-- [x] 65-02-PLAN.md — Component: FollowedOwnersModule.tsx (pure RSC chip stack, hide-if-empty, "and N more" caption) + component tests + static RSC guard (FOLL-01 + FOLL-03). Wave 1
-- [x] 65-03-PLAN.md — Integration: 3 pre-fetch sites in /w/[ref]/page.tsx (Branch 1 null-catalog-guarded + Branch 2 owned + Branch 2 pure-catalog) + WatchDetailHero props/render + extend static guard + prod human-verify checkpoint. Wave 2
-**UI hint**: yes
-**Origin**: surfaced during Phase 64 UAT (2026-05-27) — user proposal, captured as a new phase rather than expanding Phase 64's recompose-only scope
+## Milestones
 
-## Progress
+- ✅ **v1.0 MVP** — Phases 1-5 (shipped 2026-04-19) — [archive](milestones/v1.0-ROADMAP.md)
+- ✅ **v2.0 Taste Network Foundation** — Phases 6-10 (shipped 2026-04-22) — [archive](milestones/v2.0-ROADMAP.md)
+- ✅ **v3.0 Production Nav & Daily Wear Loop** — Phases 11-16 + 999.1 (shipped 2026-04-27) — [archive](milestones/v3.0-ROADMAP.md)
+- ✅ **v4.0 Discovery & Polish** — Phases 17-26 + 19.1 + 20.1 (shipped 2026-05-03) — [archive](milestones/v4.0-ROADMAP.md)
+- ✅ **v4.1 Polish & Patch** — Phases 27-31 (shipped 2026-05-05) — [archive](milestones/v4.1-ROADMAP.md)
+- ✅ **v5.0 Discovery North Star** — Phases 32-42 (shipped 2026-05-16) — [archive](milestones/v5.0-ROADMAP.md)
+- ✅ **v5.1 Explore Page Redesign** — Phases 43-47 (shipped 2026-05-19) — [archive](milestones/v5.1-ROADMAP.md)
+- ✅ **v5.2 Polish + Taxonomy** — Phases 48-50 + 49.1 + 50.1 (shipped 2026-05-20) — [archive](milestones/v5.2-ROADMAP.md)
+- ✅ **v6.0 Social Interaction** — Phases 53-58 + 56A + 57.1 (shipped 2026-05-24) — [archive](milestones/v6.0-ROADMAP.md)
+- ✅ **v7.0 Watch Photos & Detail Redesign** — Phases 59-65 (shipped 2026-05-28) — [archive](milestones/v7.0-ROADMAP.md)
+- 📋 **v8.0 Add-Watch Redesign** — planted (SEED-010)
+- 💤 **Catalog Expansion** — unscheduled; catalog strategy under review (SEED-009)
+- 💤 **Market Value** — future, after v8.0 (SEED-005; needs the SEED-007 pricing spike first)
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 59. Unified Route (Variant C) | 3/3 | Complete    | 2026-05-25 |
-| 60. Multi-Photo Schema + DAL | 4/4 | Complete    | 2026-05-25 |
-| 61. Photo Upload + Carousel UI | 6/6 | Complete   | 2026-05-26 |
-| 62. Public Wear Pics on Watch Detail | 5/5 | Complete   | 2026-05-27 |
-| 63. Inline Grid Engagement | 3/3 | Complete   | 2026-05-27 |
-| 64. Detail Page IA Redesign | 5/5 | Complete    | 2026-05-28 |
-| 65. Follow-Scoped Owners Module | 3/3 | Complete    | 2026-05-28 |
+## Phases
+
+<details>
+<summary>✅ v1.0 MVP (Phases 1-5) — SHIPPED 2026-04-19</summary>
+
+- [x] Phase 1: Visual Polish & Security Hardening (6/6 plans)
+- [x] Phase 2: Feature Completeness & Test Foundation (5/5 plans)
+- [x] Phase 3: Data Layer Foundation (3/3 plans)
+- [x] Phase 4: Authentication (6/6 plans)
+- [x] Phase 5: Zustand Cleanup, Similarity Rewire & Prod DB Bootstrap (6/6 plans)
+- [ ] Phase 6: Test Suite Completion — deferred to v1.1 (TEST-04/05/06)
+
+See [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase details.
+
+</details>
+
+<details>
+<summary>✅ v2.0 Taste Network Foundation (Phases 6-10) — SHIPPED 2026-04-22</summary>
+
+- [x] Phase 6: RLS Foundation (1/1 plans)
+- [x] Phase 7: Social Schema & Profile Auto-Creation (3/3 plans)
+- [x] Phase 8: Self Profile & Privacy Controls (4/4 plans)
+- [x] Phase 9: Follow System & Collector Profiles (4/4 plans)
+- [x] Phase 10: Network Home (9/9 plans)
+
+35/35 requirements shipped. Cross-phase integration verified. End-to-end privacy flows audited.
+
+See [v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase details and [v2.0-MILESTONE-AUDIT.md](milestones/v2.0-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
+
+<details>
+<summary>✅ v3.0 Production Nav & Daily Wear Loop (Phases 11-16 + 999.1) — SHIPPED 2026-04-27</summary>
+
+- [x] Phase 11: Schema + Storage Foundation (5/5 plans)
+- [x] Phase 12: Visibility Ripple in DAL (7/7 plans)
+- [x] Phase 13: Notifications Foundation (5/5 plans)
+- [x] Phase 14: Nav Shell + Explore Stub (9/9 plans)
+- [x] Phase 15: WYWT Photo Post Flow (5/5 plans)
+- [x] Phase 16: People Search (5/5 plans)
+- [x] Phase 999.1: Phase 5 Code Review Follow-ups (1/1 plan, inserted)
+
+51/51 requirements shipped at code level. Cross-phase integration verified. Audit status `tech_debt` — 31 deferred human-verification UAT items + ~30 advisory tech-debt items, none blocking.
+
+See [v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) for full phase details and [v3.0-MILESTONE-AUDIT.md](milestones/v3.0-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
+
+<details>
+<summary>✅ v4.0 Discovery & Polish (Phases 17-26 + 19.1 + 20.1) — SHIPPED 2026-05-03</summary>
+
+- [x] Phase 17: Catalog Foundation (6/6 plans)
+- [x] Phase 18: /explore Discovery Surface (5/5 plans)
+- [x] Phase 19: /search Watches + Collections (6/6 plans)
+- [x] Phase 19.1: Catalog Taste Enrichment (6/6 plans, inserted)
+- [x] Phase 20: Collection Fit Surface Polish + Verdict Copy (6/6 plans)
+- [x] Phase 20.1: Add-Watch Flow Rethink + Verdict-as-Step (8/8 plans incl. gap-closure 06/07/08, inserted)
+- [x] Phase 21: Custom SMTP via Resend (2/2 plans)
+- [x] Phase 22: Settings Restructure + Account Section (5/5 plans)
+- [x] Phase 23: Settings Sections + Schema-Field UI (6/6 plans, no phase-level VERIFICATION.md → backfilled in v4.1 Phase 31)
+- [x] Phase 24: Notification Stub Cleanup + Test Fixture/Carryover (8/8 plans, no phase-level VERIFICATION.md → backfilled in v4.1 Phase 31)
+- [x] Phase 25: Profile Nav Prominence + Empty States + Form Polish (6/6 plans, UAT approved on prod)
+- [x] Phase 26: WYWT Auto-Nav (2/2 plans, gap closed inline)
+
+75/75 actionable requirements satisfied + 1 deferred (SMTP-06 staging-prod sender split). Audit status `tech_debt` — 2 phases without phase-level VERIFICATION.md (closed in v4.1), ~33 deferred human UAT items, Nyquist coverage partial. None blocking.
+
+See [v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md) for full phase details and [v4.0-MILESTONE-AUDIT.md](milestones/v4.0-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
+
+<details>
+<summary>✅ v4.1 Polish & Patch (Phases 27-31) — SHIPPED 2026-05-05</summary>
+
+- [x] Phase 27: Watch Card & Collection Render Polish (5/5 plans)
+- [x] Phase 28: Add-Watch Flow & Verdict Copy Polish (5/5 plans)
+- [x] Phase 29: Nav & Profile Chrome Cleanup (6/6 plans + 1 quick task)
+- [x] Phase 30: WYWT Capture Alignment Fix (2/2 plans + 1 post-ship hotfix)
+- [x] Phase 31: v4.0 Verification Backfill (3/3 plans)
+
+12/12 requirements satisfied at code level. Cross-phase integration verified (7/7 seams pass). E2E flows trace cleanly (4/4). Audit status `tech_debt` — 1 NEW finding (DEBT-09: Phase 23-era `notesPublic` / `revalidatePath` regression discovered by Phase 31 audit) deferred to v4.2 / v5.0; Nyquist 4/5 partial. None blocking.
+
+See [v4.1-ROADMAP.md](milestones/v4.1-ROADMAP.md) for full phase details and [v4.1-MILESTONE-AUDIT.md](milestones/v4.1-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
+
+<details>
+<summary>✅ v5.0 Discovery North Star (Phases 32-42) — SHIPPED 2026-05-16</summary>
+
+- [x] Phase 32: DEBT-09 notesPublic Fix (1/1 plans) — completed 2026-05-06
+- [x] Phase 33: Discovery Audit (4/4 plans) — completed 2026-05-08
+- [x] Phase 33b: Discovery North-Star Audit (3/3 plans, inserted) — completed 2026-05-09
+- [x] Phase 34: Layer A — Brand + Family Entities (4/4 plans) — completed 2026-05-09
+- [x] Phase 35: Layer B — Lineage Edges + Structured Movement + Era/Material (7/7 plans) — completed 2026-05-10
+- [x] Phase 36: Layer C — Variant Split + Clean-Slate Wipe + CAT-14 NOT NULL (5/5 plans) — completed 2026-05-11
+- [x] Phase 37: Layer D — Provenance Fields + Divestments Table (5/5 plans) — completed 2026-05-11
+- [x] Phase 38: CAT-13 Engine Rewire (4/4 plans) — completed 2026-05-12
+- [x] Phase 39: Audit-Driven Discovery Polish — Cheap Patches (3/3 plans) — completed 2026-05-12
+- [x] Phase 39b: Audit-Driven Discovery Polish — Heavier UX (5/5 plans) — completed 2026-05-13
+- [x] Phase 39c: Profile Layout Next 16 Conformance (7/7 plans, inserted) — completed 2026-05-14
+- [x] Phase 40: Search & Verdict Polish (7/7 plans) — completed 2026-05-14
+- [x] Phase 41: Account Danger Zone + Branded Auth Emails (4/4 plans, parallel track) — completed 2026-05-16
+- [x] Phase 42: Nyquist Hardening Sweep + UAT Triage (5/5 plans, parallel track) — completed 2026-05-16
+
+16/16 in-scope v5.0 requirements shipped. DEBT-12 (prod drizzle journal repair) carried to v5.x as opportunistic housekeeping. Phase 33b and 39c were inserted phases (north-star audit reframe; Profile Layout Next 16 conformance bugfix). Milestone closed without a formal `/gsd-audit-milestone`; 4 verification gaps (Phases 35/38/40/41) + 2 human-UAT gaps (Phases 35/41) operator-approved at close.
+
+See [v5.0-ROADMAP.md](milestones/v5.0-ROADMAP.md) for full phase details.
+
+</details>
+
+<details>
+<summary>✅ v5.1 Explore Page Redesign (Phases 43-47) — SHIPPED 2026-05-19</summary>
+
+- [x] Phase 43: Polish Pass (7/7 plans) — completed 2026-05-17
+- [x] Phase 44: Catalog Enrichment (4/4 plans) — completed 2026-05-18
+- [x] Phase 45: CMS Data Model + Admin Routes (6/6 plans) — completed 2026-05-18
+- [x] Phase 46: Explore Shell + Browse + Archetypes (6/6 plans) — completed 2026-05-19
+- [x] Phase 47: Curated Lists Rail + Hero + Where Collections Go (4/4 plans) — completed 2026-05-19
+
+32/32 v5.1 requirements shipped. Two operator-raised end-of-milestone follow-ups (FU-01 `/search` facet menu, FU-02 `/explore/brands` smooth scroll) were closed as quick tasks before close. Milestone closed without a formal `/gsd-audit-milestone`; the pre-close artifact audit's 23 open items were all cosmetic flags or expected backlog, acknowledged as non-blocking.
+
+See [v5.1-ROADMAP.md](milestones/v5.1-ROADMAP.md) for full phase details.
+
+</details>
+
+<details>
+<summary>✅ v5.2 Polish + Taxonomy (Phases 48-50 + 49.1 + 50.1) — SHIPPED 2026-05-20</summary>
+
+- [x] Phase 48: User-Facing Bug Fixes (3/3 plans) — completed 2026-05-19
+- [x] Phase 49: Genre vs Style Taxonomy Spike (3/3 plans) — completed 2026-05-19
+- [x] Phase 49.1: Remove Genre Surface (8/8 plans, inserted) — completed 2026-05-20
+- [x] Phase 50: Watch-Detail Architecture Spike (4/4 plans) — completed 2026-05-20
+- [x] Phase 50.1: URL Canonicalization (3/3 plans, inserted) — completed 2026-05-20
+
+6/6 v5.2 requirements shipped (BUG-01, BUG-02, TAX-01, TAX-02, ARCH-01, ARCH-02). Two spike-then-execute chains landed: TAX-01 → TAX-02 (retired genre/archetype taxonomy surface; `style_tags` becomes single SoT for the functional-category axis); ARCH-01 → ARCH-02 (page-layer `redirect()` from `/catalog/[catalogId]` to `/watch/[id]` for owner viewer; Variant C unified `/w/[ref]` deferred to v7.0). Milestone-close audit closed D-DEBT-01 inline (dead `self-via-cross-user` framing surface removed across 6 files); status promoted `tech_debt` → `passed`. Operational gates D-DEBT-02 (5 Phase 49.1 prod/visual gates) + D-DEBT-03 (1 Phase 48 dark-mode UAT) remain as post-deploy verification.
+
+See [v5.2-ROADMAP.md](milestones/v5.2-ROADMAP.md) for full phase details and [v5.2-MILESTONE-AUDIT.md](milestones/v5.2-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
+
+<details>
+<summary>✅ v6.0 Social Interaction (Phases 53-58 + 56A + 57.1) — SHIPPED 2026-05-24</summary>
+
+- [x] Phase 53: Schema + RLS + Enum Extension (3/3 plans) — completed 2026-05-22
+- [x] Phase 54: DAL — Reactions, Comments + Gate Logic (3/3 plans) — completed 2026-05-22
+- [x] Phase 55: Server Actions + Notification Dedup (6/6 plans) — completed 2026-05-22
+- [x] Phase 56: Like UI (3/3 plans) — completed 2026-05-23
+- [x] Phase 56A: Wear View Unification (9/9 plans, inserted) — completed 2026-05-23
+- [x] Phase 57: Comment Thread UI + Feed Extension + Grid Counts (6/6 plans) — completed 2026-05-24
+- [x] Phase 57.1: Comment UI Polish + Own-Watch Suppression (3/3 plans, inserted) — completed 2026-05-24
+- [x] Phase 58: Notification UI + Settings Opt-Out (3/3 plans) — completed 2026-05-24
+
+34/34 v6.0 requirements shipped. Cross-phase integration verified (7/7 E2E flows wired). All 5 UI phases passed on-prod human UAT. Audit status `passed` — zero critical blockers; non-blocking tech debt = Nyquist VALIDATION-doc reconciliation + ~6 cosmetic doc/impl mismatches.
+
+See [v6.0-ROADMAP.md](milestones/v6.0-ROADMAP.md) for full phase details and [v6.0-MILESTONE-AUDIT.md](milestones/v6.0-MILESTONE-AUDIT.md) for the audit report.
+
+</details>
+
+<details>
+<summary>✅ v7.0 Watch Photos & Detail Redesign (Phases 59-65) — SHIPPED 2026-05-28</summary>
+
+- [x] Phase 59: Unified Route (Variant C) (3/3 plans) — completed 2026-05-25
+- [x] Phase 60: Multi-Photo Schema + DAL (4/4 plans) — completed 2026-05-25
+- [x] Phase 61: Photo Upload + Carousel UI (6/6 plans) — completed 2026-05-26
+- [x] Phase 62: Public Wear Pics on Watch Detail (5/5 plans) — completed 2026-05-27
+- [x] Phase 63: Inline Grid Engagement (3/3 plans) — completed 2026-05-27
+- [x] Phase 64: Detail Page IA Redesign (5/5 plans) — completed 2026-05-28
+- [x] Phase 65: Follow-Scoped Owners Module (3/3 plans) — completed 2026-05-28
+
+34/34 v7.0 requirements shipped (ROUTE 6, PHOTO 9, WPIC 6, GRID 5, PAGE 4, FOLL 4). All 7 phases prod-verified via human UAT on horlo.app. Phase 65 final UAT 9 pass / 1 skip / 0 issues. Milestone closed without a formal `/gsd-audit-milestone`; 28 open artifact-audit items acknowledged as deferred (see STATE.md `## Deferred Items`). Phase 65 was a planted follow-on surfaced during the Phase 64 UAT, not an insertion.
+
+Notable: React #419 soft-nav 404 family resolved via `connection()` static-shell opt-out (Phase 61 Plan 06). React #418 date-TZ hydration mismatch resolved via pinned `timeZone: 'UTC' + 'en-US'`. IDOR CR-02 (storage path prefix) fixed.
+
+See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
+
+</details>
+
+### 📋 v8.0 Add-Watch Redesign (Planted — SEED-010)
+
+Search-first add flow. Not yet planned; awaits `/gsd-new-milestone`.
+
+### 💤 Future / Unscheduled
+
+- **Catalog Expansion** (SEED-009) — catalog strategy under review.
+- **Market Value** (SEED-005) — needs the SEED-007 pricing API spike first; future, after v8.0.
+
+_Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

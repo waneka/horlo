@@ -1,5 +1,45 @@
 # Milestones
 
+## v7.0 Watch Photos & Detail Redesign (Shipped: 2026-05-28)
+
+**Phases completed:** 7 phases (59, 60, 61, 62, 63, 64, 65), 29 plans
+**Timeline:** 4 days (2026-05-25 → 2026-05-28), 244 commits since v6.0 close (46 feat, 39 fix, 27 test, 123 docs)
+**Code:** 65 `src/` files changed (+5,057 / −628 LOC); 33 `tests/` files changed (+3,982 / −502 LOC); `src/` at ~55,320 LOC
+**Source:** SEED-013 (multi-photo + carousel + wear-pic surfacing), SEED-015 (inline grid engagement), SEED-016 (`/w/[ref]` detail redesign), and the Phase 50 watch-detail architecture spike (Variant C verdict).
+**Audit:** Closed without a formal `/gsd-audit-milestone`. 34/34 v7.0 requirements checked off in REQUIREMENTS.md traceability table; STATE.md reported `status: milestone_complete`; pre-close artifact audit's 28 open items acknowledged as deferred (see STATE.md `## Deferred Items`).
+
+**Requirements shipped (34/34 satisfied):**
+
+- **ROUTE-01..06** — Variant C hard cutover: every watch lives at canonical `/w/[ref]`; legacy `/watch/[id]` + `/catalog/[catalogId]` removed (no redirect); CI link-audit guard (ROUTE-03) fails the build on any surviving `/watch/${` literal; per-viewer framing (owner vs cross-user) and the two-layer privacy gate preserved (Phase 59).
+- **PHOTO-01..09** — In-place ALTER on `watches_catalog`; `watch_photos` table with per-watch ~10-cap; EXIF-strip + ≤1080px JPEG re-encode pipeline; drag-reorder filmstrip; first-photo cover thread across grids and rails; per-photo delete with undo; prominent (not buried) photo upload affordance in the add-watch flow (Phases 60 + 61).
+- **WPIC-01..06** — Public wear photos auto-surface on watch detail (public = consent); owner per-pic hide control; dual-layer ownership enforcement (server action + DAL sql\`\` subquery); Wears tab shows actual wear photo (not the generic catalog image); Home rail stays ephemeral (24/48h); non-public wear pics never surface; surfaced pics carry the v6.0 likes/comments layer (Phase 62).
+- **GRID-01..05** — One-tap like + lightweight inline comment composer from profile collection/wishlist grid cards; optimistic `♥ N · 💬 M` counts; full thread still clicks through (compose-only inline by design); GATE-03 wishlist mutual-follow gate enforced per card; `text-destructive` token (not raw `text-red-…`) for liked Heart chip (Phase 63).
+- **PAGE-01..04** — `/w/[ref]` recomposed into an intentional information hierarchy (carousel-forward, elevated verdict, deliberate comment placement, four spec cards, gap-fill + notes); mobile-only brand+model hoist above the carousel via JSX dup (not CSS `order-`); Phase 51/52 Cache Components structure intact (CommentThread stays an uncached Suspense sibling; `unstable_instant = false` on related routes not disturbed); MAX_LOOKAHEAD bumped to 70 in the PPR guard for Branch 1 (Phase 64).
+- **FOLL-01..04** — Compact "people you follow who own this" module in the hero right column; hide-if-empty; one-way "viewer → owner" direction (taste-discovery / social-proof framing, not mutual-only and not "people who follow you"); each chip a navigable `avatar + @username` link; single efficient query via follows-join over the catalog roster; respects existing profile visibility (Phase 65).
+
+**Also delivered (bug-fixes / architectural cleanup, no formal req-ID):**
+
+- **React #419 soft-nav 404** on `/w/[ref]` and `/wear/[id]` resolved (Phase 61 Plan 06) via `await connection()` static-shell opt-out above the page/layout Suspense + admin-client cover URL signing. Static guard `tests/static/ppr-dynamic-before-use-cache.test.ts` (`@vitest-environment node`) encodes the durable ordering rule for the two fixed routes.
+- **React #418 date-TZ hydration** mismatch in `WatchDetail` / `WornTimeline` / `WornCalendar` resolved via `toLocaleDateString('en-US', { timeZone: 'UTC' })` (Phase 61 Plan 06).
+- **Catalog-photo placeholder gap** closed inline via migration `20260526120000` (31 prod `watch_photos` rows backfilled from catalog covers).
+- **IDOR CR-02** fixed: storage path must prefix `{userId}/` (Phase 61 Plan 01).
+- **Add-watch flow gap #9** — `WatchForm.onWatchCreated` suppresses Sonner success toast so the action-button cannot navigate away from the photos-pending step (Phase 61 Plan 06).
+- **D-12 cache fix** — `revalidateTag('viewer:{user.id}:counts','max')` added inside `if(ownerProfile?.username)` block in both `toggleLikeAction` and `addCommentAction` (Phase 63 Plan 01).
+
+**Verification:** All 7 phases prod-verified via human UAT on horlo.app. Phase 65 final UAT 9 pass / 1 skip (overflow caption — no >5-followed catalog in prod) / 0 issues. Build green (`npm run build` exit 0); ROUTE-03 CI guard active.
+
+**Known tech debt at close (non-blocking):**
+
+- Phase 61's PPR-ordering static guard is pinned to two routes; broader sweep is **SEED-014 Cache Components canonical sweep** (dormant).
+- Phase 65 overflow caption ("and N more") untested at prod scale (no v7.0 catalog has >5 followed owners); covered by component tests only.
+- Some shipped seeds (SEED-013, SEED-015, SEED-016, plus prior-milestone SEED-004/008/012) remain flagged dormant/active in the seeds index — re-classification deferred to `/gsd-new-milestone` housekeeping.
+
+**Known deferred items at close:** 28 open artifact-audit items acknowledged as deferred (see STATE.md `## Deferred Items`) — 2 debug sessions (1 stale, 1 Phase-64 resolved), 3 false-positive UAT/verification flags, 10 stale quick-task slugs, 13 backlog seeds. None are v7.0 work.
+
+**Phase directories archived to** `.planning/milestones/v7.0-phases/` per the `feedback_milestone_close_phase_dir_archival_miss` memory (hand-verified before `/gsd-new-milestone` runs `phases.clear --confirm`).
+
+---
+
 ## v6.0 Social Interaction (Shipped: 2026-05-24)
 
 **Phases completed:** 8 phases (53, 54, 55, 56, 56A, 57, 57.1, 58), 37 plans

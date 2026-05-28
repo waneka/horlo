@@ -1,43 +1,46 @@
 ---
 gsd_state_version: 1.0
-milestone: v7.0
-milestone_name: Watch Photos & Detail Redesign
-status: milestone_complete
-stopped_at: Phase 65 complete + prod UAT passed (9 pass / 1 skip / 0 issues) — v7.0 milestone ready to close
-last_updated: "2026-05-28T18:00:00.000Z"
+milestone: between
+milestone_name: ""
+status: between_milestones
+stopped_at: v7.0 Watch Photos & Detail Redesign SHIPPED 2026-05-28; awaiting /gsd-new-milestone
+last_updated: "2026-05-28T19:00:00.000Z"
 last_activity: 2026-05-28
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-25 — v7.0 roadmap created)
+See: .planning/PROJECT.md (updated 2026-05-28 — v7.0 SHIPPED, full milestone-close evolution)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Milestone v7.0 (Watch Photos & Detail Redesign) — all 7 phases complete, ready for `/gsd-complete-milestone`
+**Current focus:** Between milestones — v7.0 (Watch Photos & Detail Redesign) SHIPPED 2026-05-28. Next: `/gsd-new-milestone` for **v8.0 Add-Watch Redesign** (SEED-010, search-first add flow) — the planted next milestone.
 
 ## Current Position
 
-Phase: 65 (LAST phase of v7.0) — COMPLETE
-Plan: 3 of 3 (all plans landed; SUMMARYs at 65-01/02/03-SUMMARY.md)
-Status: Milestone complete — v7.0 closes here
-Next step: `/gsd-complete-milestone` (archive v7.0 — see `feedback_milestone_close_phase_dir_archival_miss` memory: hand-verify `.planning/milestones/v7.0-*-phases/` is populated BEFORE `/gsd-new-milestone` runs `phases.clear --confirm`)
+Phase: — (between milestones)
+Plan: — (between milestones)
+Status: v7.0 SHIPPED + archived (7 phases / 29 plans / 34 reqs); .planning/phases/ empty; ready for /gsd-new-milestone
+Next step: `/gsd-new-milestone` for v8.0 Add-Watch Redesign (SEED-010) or another seed
 Last activity: 2026-05-28
 
-Progress: [██████████] 100%
+Progress: — (no active milestone)
 
 ## Performance Metrics
 
-- v6.0: 8 phases (53-58 + 56A + 57.1), 37 plans, 3 days
-- 34/34 v6.0 requirements shipped
+- v7.0: 7 phases (59-65), 29 plans, 4 days, 244 commits
+- 34/34 v7.0 requirements shipped (ROUTE 6, PHOTO 9, WPIC 6, GRID 5, PAGE 4, FOLL 4)
+- src/ +5,057 / −628 LOC across 65 files; tests/ +3,982 / −502 LOC across 33 files
+- Phase 65 prod UAT: 9 pass / 1 skip / 0 issues
 - Blockers encountered: 0
+- v6.0 (prior): 8 phases (53-58 + 56A + 57.1), 37 plans, 3 days; 34/34 reqs shipped
 
 ## Accumulated Context
 
@@ -97,8 +100,46 @@ None.
 
 None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves), prod migration applied + verified.
 
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug_session | knowledge-base | unknown (empty/stale) |
+| debug_session | mobile-title-above-fold | diagnosed (resolved by Phase 64-05) |
+| uat_gap | Phase 59 — 59-HUMAN-UAT.md | passed (false-positive — 0 pending) |
+| uat_gap | Phase 62 — 62-UAT.md | resolved (false-positive — 0 pending) |
+| verification_gap | Phase 61 — 61-VERIFICATION.md | human_needed (false-positive — phase prod-verified 2026-05-26, see project_phase_61_complete memory) |
+| quick_task | 260413-qp3-price-prominence-and-filter-collapse | missing |
+| quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | missing |
+| quick_task | 260421-srx-wrap-follower-following-counts-in-link-o | missing |
+| quick_task | 260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl | missing |
+| quick_task | 260513-hvu-hotfix-search-watches-tab-returns-empty- | missing |
+| quick_task | 260513-m31-fix-otherownersroster-count-label-always | missing |
+| quick_task | 260519-08p-fix-next-js-image-aspect-ratio-console-w | missing |
+| quick_task | 260519-d69-fix-4-collection-path-ui-issues-in-pathc | missing |
+| quick_task | 260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch | missing |
+| quick_task | 260519-ga9-fu-01-expose-brand-era-genre-archetype-f | missing |
+| seed | SEED-001-catalog-hierarchy-and-attributes | dormant |
+| seed | SEED-002-hybrid-recommender | dormant |
+| seed | SEED-003-onboarding-cold-start-flow | dormant |
+| seed | SEED-004-v5-discovery-north-star | dormant (shipped — re-classify) |
+| seed | SEED-005-v6-market-value | dormant (planted for future post-v8) |
+| seed | SEED-007-market-pricing-api-spike | dormant |
+| seed | SEED-008-v5.1-explore-redesign | active (shipped — re-classify) |
+| seed | SEED-010-v5.3-add-watch-redesign | dormant (planted for v8.0) |
+| seed | SEED-012-v6.0-social-interaction | active (shipped — re-classify) |
+| seed | SEED-013-v7.0-watch-photos | dormant (shipped this milestone — re-classify) |
+| seed | SEED-014-cache-components-canonical-sweep | dormant |
+| seed | SEED-015-inline-grid-engagement | dormant (shipped — Phase 63 — re-classify) |
+| seed | SEED-016-watch-detail-redesign | dormant (shipped — Phases 64+65 — re-classify) |
+
+**Total deferred:** 28 (2 debug, 3 false-positive UAT/verification, 10 quick-task backlog, 13 seeds).
+**Notes:** Quick-task backlog has rolled past v5.2, v6.0, and now v7.0 closes — most were superseded by later phases. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
+
 ## Session Continuity
 
-Last activity: 2026-05-28 — Phase 65 (Follow-Scoped Owners Module) COMPLETE end-to-end. 3 plans / 15 commits. DAL `getFollowedOwnersForCatalog` (FOLL-02/04), pure-RSC `FollowedOwnersModule` (FOLL-01/03), `/w/[ref]` 3-branch wiring with B1 sibling-composition guard + parallel-Promise.all guard. Prod UAT 9 pass / 1 skip (overflow caption — no >5-followed catalog in prod data) / 0 issues. Build green. VERIFICATION.md: passed. v7.0 milestone closes here — all 7 phases (59, 60, 61, 62, 63, 64, 65) complete.
-Stopped at: Phase 65 complete + prod UAT passed (9 pass / 1 skip / 0 issues) — v7.0 milestone ready to close
-Next action: `/gsd-complete-milestone` — archive v7.0. ⚠ Per `feedback_milestone_close_phase_dir_archival_miss` memory: VERIFY `.planning/milestones/v7.0-*-phases/` is populated by /gsd-complete-milestone BEFORE running /gsd-new-milestone's `phases.clear --confirm` (the close skill archives top-level docs but historically misses .planning/phases/ dirs).
+Last activity: 2026-05-28 — `/gsd-complete-milestone` v7.0 EXECUTED. Archived `milestones/v7.0-ROADMAP.md` + `milestones/v7.0-REQUIREMENTS.md`; hand-wrote MILESTONES.md v7.0 entry (extractor garbage avoided — 4th milestone running per memory `project_next_clear_operational_debt`); rewrote ROADMAP.md from scratch with proper `# Roadmap` / `## Milestones` / `## Phases` skeleton + v7.0 collapsed `<details>` entry (was found truncated to 44 lines, no headers, missing Phase 65 from Progress table); fully evolved PROJECT.md (Current State now reads v7.0 shipped, v7.0 validated entries appended to Validated list, v7.0 Key Decisions section added, Context LOC bumped to ~55,320, Last updated footer fresh); appended v7.0 milestone section + cross-milestone trends + 6 new top-lessons (#22-#27) to RETROSPECTIVE.md; **git mv'd all 7 v7.0 phase dirs (59-65) to `.planning/milestones/v7.0-phases/` per the recurring `feedback_milestone_close_phase_dir_archival_miss` memory** — `.planning/phases/` is now empty and safe for `/gsd-new-milestone`'s `phases.clear --confirm`; 28 pre-close artifact-audit items acknowledged as deferred (above in this STATE — mostly stale noise: false-positive UAT/verification, prior-milestone quick-task backlog, dormant seeds including 5 that actually shipped).
+Stopped at: v7.0 milestone archived; awaiting safety commit + `git rm REQUIREMENTS.md` + git tag `v7.0`
+Next action: `/gsd-new-milestone` for **v8.0 Add-Watch Redesign** (SEED-010) — the planted next milestone per memory `project_v7_0_watch_photos`. Future-after-that: Catalog Expansion (SEED-009, unscheduled), Market Value (SEED-005, needs SEED-007 pricing spike first).
