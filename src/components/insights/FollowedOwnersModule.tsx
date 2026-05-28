@@ -73,7 +73,7 @@ export function FollowedOwnersModule({
       className="space-y-2"
       aria-label="People you follow who own this"
     >
-      <h3 className="text-sm font-medium text-foreground">From your circle</h3>
+      <h3 className="text-sm font-semibold text-foreground">From your circle</h3>
       <ul className="space-y-2">
         {owners.map((owner) => {
           const name = owner.displayName ?? `@${owner.username}`
@@ -94,7 +94,7 @@ export function FollowedOwnersModule({
                 size={40}
               />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="text-sm font-semibold text-foreground truncate">
                   @{owner.username}
                 </p>
                 {owner.displayName && (
