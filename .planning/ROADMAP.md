@@ -7,11 +7,12 @@
   2. Comments appear at a reachable scroll position — not buried below all rails and metadata
   3. The photo carousel functions as the primary visual element at the top of the page
   4. CommentThread remains an uncached Suspense sibling and the `unstable_instant = false` lock on related routes is not disturbed; Cache Component rules are intact
-**Plans**: 4 plans (3 waves)
+**Plans**: 5 plans (4 waves) — Plan 05 added 2026-05-28 as a UAT gap closure (Test 2: mobile brand+model below fold)
 - [x] 64-01-PLAN.md — Foundations: extract SpecsSublabel + CommentThread id=comments anchor + two Wave-0 static guards + repair the pre-existing PPR guard pattern (Wave 1)
 - [x] 64-02-PLAN.md — WatchDetailHero client island: 2-col hero, elevated verdict, carousel-forward, jump anchor, owner gates (Wave 2)
 - [x] 64-03-PLAN.md — WatchDetailTrailing RSC: four spec cards + gap-fill + notes, #418-safe dates (Wave 2)
 - [x] 64-04-PLAN.md — Re-order all 3 page.tsx branches + update skeleton + prod human-verify checkpoint (Wave 3)
+- [ ] 64-05-PLAN.md — Gap closure: mobile-only brand+model hoist above the carousel (lg:hidden / hidden lg:block JSX dup; NOT CSS order-) + WatchPageSkeleton mirror + static guard extension (Wave 4)
 **UI hint**: yes
 
 ### Phase 65: Follow-Scoped Owners Module
