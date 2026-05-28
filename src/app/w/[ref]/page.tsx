@@ -107,10 +107,10 @@ export default async function UnifiedWatchPage({ params }: UnifiedWatchPageProps
 function WatchPageSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8" aria-hidden>
-      {/* Hero grid — mirrors WatchDetailHero lg:grid-cols-[3fr_2fr] */}
-      <div className="grid gap-8 lg:grid-cols-[3fr_2fr]">
+      {/* Hero grid — mirrors WatchDetailHero lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] */}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Skeleton className="aspect-square w-full rounded-lg" />
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <Skeleton className="h-7 w-3/4" />
           <Skeleton className="h-5 w-1/2" />
           <Skeleton className="h-4 w-1/3" />

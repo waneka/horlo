@@ -170,9 +170,15 @@ export function WatchDetailHero({
   const showEmptyCaption = !verdict && !showReferenceIdentityCard
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[3fr_2fr]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      {/* minmax(0,…) + min-w-0 on both columns: without them, grid tracks default to
+          minmax(auto,…) and inflate to their content's min-content width. The right
+          column's CollectionFitCard (compare table + badges) has a large min-content
+          and would starve the carousel track down to ~1/6 (UAT test 1). Pinning the
+          track minimums to 0 + min-w-0 enforces the locked 60/40 ratio; content wraps
+          within its column. */}
       {/* Left column: WatchPhotoSection carousel or fallback image */}
-      <div>
+      <div className="min-w-0">
         {/* Photo section: carousel + filmstrip when signedPhotos provided.
             Falls back to single-image display for any caller that hasn't yet
             threaded signedPhotos (backward compat — optional prop). */}
@@ -214,7 +220,7 @@ export function WatchDetailHero({
       </div>
 
       {/* Right column: title → SpecsSublabel → verdict → like+jump → owner actions */}
-      <div className="space-y-6">
+      <div className="space-y-6 min-w-0">
         {/* Title & Status */}
         <div>
           <Badge className="mb-2" variant="outline">
