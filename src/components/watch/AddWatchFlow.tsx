@@ -21,7 +21,7 @@ import { defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-import type { FlowState, RailEntry, DupeContext } from './flowTypes'
+import type { FlowState, DupeContext } from './flowTypes'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import type { Watch, MovementType, WatchStatus } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
@@ -32,9 +32,8 @@ import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
  * Owns the FlowState state machine per Plan 04's D-01 union. Mounts the
  * dormant Phase 66/67/68/69 primitives (SearchEntry, ConfirmStep,
  * StructuredEntryPanel via SearchEntry, ExtractErrorCard, WatchPhotoStep)
- * and the new Phase 70 DupeBanner. Hard-cutover: no PasteSection /
- * VerdictStep / WishlistRationalePanel / RecentlyEvaluatedRail /
- * useWatchSearchVerdictCache / verdict imports.
+ * and the new Phase 70 DupeBanner. The legacy verdict-flow surface is deleted;
+ * tests/static/AddWatchFlow.no-verdict-step.test.ts prevents reintroduction.
  *
  * D-NN locked decisions implemented:
  *   D-01 FlowState union from flowTypes.ts (Plan 04)
@@ -49,7 +48,7 @@ import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
  *   D-11 DupeBanner sibling ABOVE ConfirmStep (Phase 68 D-03 contract intact)
  *   D-12 DupeBanner is the primary affordance when mounted
  *   D-13 post-DUPE-03 nav: defaultDestinationForStatus('owned', viewerUsername); no photos step
- *   D-14 extracting-url is INLINE (no PasteSection); {mode:'url',url} body
+ *   D-14 extracting-url is INLINE; {mode:'url',url} body
  *   D-15 "← Back to search" always rendered in extracting-url
  *   D-16 useUrlExtractCache reused identically (Phase 69 D-08)
  *   D-17 photos-pending gated on status === 'owned'
@@ -100,8 +99,6 @@ export function AddWatchFlow({
   const [state, setState] = useState<FlowState>(initialState)
   // `url` is the local input for the extracting-url inline mini-form (D-14).
   const [url, setUrl] = useState('')
-  // `rail` is preserved for Activity-hide cleanup safety; CLNP-04 deferred to Phase 71.
-  const [rail, setRail] = useState<RailEntry[]>([])
 
   // D-16 — Phase 69 D-08 retrofit: viewerUserId threaded for CLNP-07 cross-user reset.
   const urlCache = useUrlExtractCache(viewerUserId)
@@ -127,10 +124,8 @@ export function AddWatchFlow({
   // Module-scope caches are NOT cleared here — Phase 69 CLNP-07 handles cross-user reset via viewerUserId mismatch.
   const stateRef = useRef(state)
   const urlRef = useRef(url)
-  const railRef = useRef(rail)
   stateRef.current = state
   urlRef.current = url
-  railRef.current = rail
   useLayoutEffect(() => {
     return () => {
       const s = stateRef.current
@@ -138,12 +133,11 @@ export function AddWatchFlow({
       if (s.kind === 'form-prefill') return
       // Skip case 3: manual-entry-from-deep-link must survive StrictMode mount/cleanup/mount.
       if (s.kind === 'manual-entry' && s.partial === null && initialManual === true) return
-      // Skip case 1: nothing user-accumulated to reset (search-idle, no URL, no rail).
-      if (s.kind === 'search-idle' && urlRef.current === '' && railRef.current.length === 0) return
+      // Skip case 1: nothing user-accumulated to reset (search-idle, no URL).
+      if (s.kind === 'search-idle' && urlRef.current === '') return
       // Real Activity-hide reset.
       setState({ kind: 'search-idle' })
       setUrl('')
-      setRail([])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -517,7 +511,6 @@ export function AddWatchFlow({
       setState({ kind: 'photos-pending', watchId, destination: dest })
     } else {
       setUrl('')
-      setRail([])
       setState({ kind: 'search-idle' })
       router.push(dest)
     }
@@ -576,7 +569,6 @@ export function AddWatchFlow({
       })
     }
     setUrl('')
-    setRail([])
     setState({ kind: 'search-idle' })
     router.push(dest)
   }, [state, initialReturnTo, viewerUsername, router])
@@ -598,7 +590,6 @@ export function AddWatchFlow({
         setState({ kind: 'photos-pending', watchId, destination: dest })
       } else {
         setUrl('')
-        setRail([])
         setState({ kind: 'search-idle' })
         router.push(dest)
       }
@@ -783,13 +774,11 @@ export function AddWatchFlow({
           userId={viewerUserId}
           onDone={() => {
             setUrl('')
-            setRail([])
             setState({ kind: 'search-idle' })
             router.push(state.destination)
           }}
           onSkip={() => {
             setUrl('')
-            setRail([])
             setState({ kind: 'search-idle' })
             router.push(state.destination)
           }}
