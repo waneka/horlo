@@ -196,7 +196,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 <summary>🏗 v8.0 Add-Watch Redesign (Phases 66-71) — IN PROGRESS</summary>
 
 - [ ] **Phase 66**: API Route Extension — `/api/extract-watch` structured mode
-- [ ] **Phase 67**: Server Action + DAL Extensions — `searchCatalogForAddFlow`, `addWatch` catalogId, DAL helper
+- [x] **Phase 67**: Server Action + DAL Extensions — `searchCatalogForAddFlow`, `addWatch` catalogId, DAL helper
 - [ ] **Phase 68**: ConfirmStep Component — segmented status picker incl. grail, lighter confirm screen
 - [ ] **Phase 69**: SearchEntry + StructuredEntryPanel + Cache Hygiene — typeahead, 4-field form, cache signOut cleanup
 - [ ] **Phase 70**: AddWatchFlow State Machine Rewrite + DUPE Wiring — all four flow branches wired
@@ -290,7 +290,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
-| 67. Server Action + DAL Extensions | 3/3 | Complete   | 2026-05-29 |
+| 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
 | 68. ConfirmStep Component | 0/? | Not started | - |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 0/? | Not started | - |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 0/? | Not started | - |
