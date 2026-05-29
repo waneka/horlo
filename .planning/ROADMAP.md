@@ -298,7 +298,9 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   2. `tests/static/AddWatchFlow.no-verdict-step.test.ts` (with `// @vitest-environment node`) fails CI if any of the three deleted component names reappear as imports in `AddWatchFlow.tsx`
   3. `tests/static/AddWatchFlow.no-collection-fit-card.test.ts` (with `// @vitest-environment node`) fails CI if `CollectionFitCard` is imported by any file in the add-flow component tree
   4. The `FlowState` discriminated union in `flowTypes.ts` contains only active states (`search-idle`, `search-results`, `structured-input`, `extracting-structured`, `confirming`, plus surviving `form-prefill`, `manual-entry`, `photos-pending`); the old `verdict-ready`, `wishlist-rationale-open`, `submitting-wishlist` variants are gone
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 71-01-PLAN.md — Static guards (CLNP-02 + CLNP-03) + prebuild extension to tests/static/
+- [ ] 71-02-PLAN.md — Delete 4 dead component+test pairs (CLNP-01 + CLNP-04) + flowTypes.ts prune (RailEntry/PendingTarget/forward-coord JSDoc) + AddWatchFlow.tsx residue sweep (10 rail/setRail/railRef sites + JSDoc reword)
 
 ## Progress
 
