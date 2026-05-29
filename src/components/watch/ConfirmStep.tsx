@@ -207,6 +207,7 @@ export function ConfirmStep({
               id="confirm-reference"
               value={reference ?? ''}
               onChange={(e) => onReferenceChange(e.target.value)}
+              disabled={pending}
             />
           </div>
 
@@ -219,6 +220,7 @@ export function ConfirmStep({
               onChange={(e) =>
                 onProductionYearChange(e.target.value ? Number(e.target.value) : undefined)
               }
+              disabled={pending}
             />
           </div>
 
@@ -278,6 +280,7 @@ export function ConfirmStep({
             onPriceChange(e.target.value ? Number(e.target.value) : undefined)
           }
           placeholder="$"
+          disabled={pending}
         />
       </div>
 
