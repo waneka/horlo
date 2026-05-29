@@ -1,10 +1,11 @@
 ---
 phase: 69
 slug: searchentry-structuredentrypanel-cache-hygiene
-status: draft
+status: approved
 shadcn_initialized: true
 preset: detected via components.json + globals.css (style: base-nova, baseColor: neutral)
 created: 2026-05-29
+reviewed_at: 2026-05-29
 ---
 
 # Phase 69 — UI Design Contract
