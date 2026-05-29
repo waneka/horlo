@@ -42,6 +42,16 @@ vi.mock('@/app/actions/watches', () => ({
   findViewerWatchByCatalogIdAction: vi.fn().mockResolvedValue({ success: true, data: null }),
 }))
 
+// Phase 70 gap plan 07 — CR-01 photo upload mocks.
+// `uploadCatalogSourcePhoto` is dynamic-imported from handleConfirmPrimary; Vitest's
+// vi.mock intercepts static AND dynamic imports of the same specifier by default.
+vi.mock('@/lib/storage/catalogSourcePhotos', () => ({
+  uploadCatalogSourcePhoto: vi.fn(),
+}))
+vi.mock('@/lib/supabase/client', () => ({
+  createSupabaseBrowserClient: vi.fn(),
+}))
+
 // SearchEntry mock — exposes 5 buttons for the 4 onPick branches + onSubmitStructured + onSwitchToUrl.
 vi.mock('@/components/watch/SearchEntry', () => ({
   SearchEntry: ({
@@ -59,7 +69,11 @@ vi.mock('@/components/watch/SearchEntry', () => ({
       wishlistCount: number
       viewerState: 'owned' | 'wishlist' | null
     }) => void
-    onSubmitStructured: (r: { brand?: string; model?: string }, id: string | null) => void
+    onSubmitStructured: (
+      r: { brand?: string; model?: string },
+      id: string | null,
+      photoBlob?: Blob | null,
+    ) => void
     onSwitchToUrl: () => void
   }) => (
     <div data-testid="search-entry">
@@ -131,6 +145,28 @@ vi.mock('@/components/watch/SearchEntry', () => ({
         onClick={() => onSubmitStructured({ brand: 'Omega', model: 'Speedmaster' }, 'cat-structured')}
       >
         Submit structured
+      </button>
+      <button
+        onClick={() =>
+          onSubmitStructured(
+            { brand: 'Omega', model: 'Speedmaster' },
+            'cat-structured',
+            new Blob(['x'], { type: 'image/jpeg' }),
+          )
+        }
+      >
+        Submit structured with photo
+      </button>
+      <button
+        onClick={() =>
+          onSubmitStructured(
+            { brand: 'Omega', model: 'Speedmaster' },
+            'cat-structured',
+            undefined,
+          )
+        }
+      >
+        Submit structured no photo
       </button>
       <button onClick={onSwitchToUrl}>Switch to URL</button>
     </div>
@@ -232,6 +268,8 @@ import {
   moveWishlistToCollection,
   findViewerWatchByCatalogIdAction,
 } from '@/app/actions/watches'
+import { uploadCatalogSourcePhoto } from '@/lib/storage/catalogSourcePhotos'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 // Suppress unused-import lint for action handles consumed only by mockResolvedValueOnce.
 void addWatch
 
@@ -268,6 +306,17 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
     __resetUrlExtractCacheForTests()
     // Re-establish default mocks (clearAllMocks wipes mockResolvedValue defaults).
     vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({ success: true, data: null })
+    // Phase 70 gap plan 07 — photo upload default mocks (overridable per test).
+    vi.mocked(uploadCatalogSourcePhoto).mockResolvedValue({
+      path: 'user-id-1/pending/abc.jpg',
+    })
+    vi.mocked(createSupabaseBrowserClient).mockReturnValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: 'user-id-1' } }, error: null }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
   })
 
   // T-70-01 — DUPE-01 owned-pick with reference → router.push /w/REF-001, no confirm.
@@ -429,6 +478,211 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
     renderFlow()
     expect(screen.getByTestId('search-entry')).toBeInTheDocument()
     expect(screen.getByText('Skip search — enter manually')).toBeInTheDocument()
+  })
+})
+
+// =============================================================================
+// Phase 70 gap plan 07 — payload assembly fixes (CR-02) + photoSourcePath wiring (CR-01)
+// =============================================================================
+
+/**
+ * Phase 70 VERIFICATION gap #1 closure tests.
+ *
+ * Closes three sub-gaps in the addWatch payload assembly:
+ *   - CR-02 movement: never synthesize `movement: 'auto'`; omit movement entirely
+ *     when catalogId is set (the catalog row supplies it via downstream taste
+ *     enrichment). When no catalogId, only forward extracted.movement if present.
+ *   - CR-02 imageUrl: strip the dead `imageUrl: captured.extracted.imageUrl`
+ *     line from the addWatch payload (column dropped in Phase 60).
+ *   - CR-01 photoSourcePath: handleStructuredSubmit accepts a third Blob arg
+ *     from gap plan 06's widened SearchEntry contract; handleConfirmPrimary
+ *     uploads the Blob via uploadCatalogSourcePhoto BEFORE addWatch and forwards
+ *     photoSourcePath into the payload.
+ *
+ * All assertions are at the addWatch call-args level — the orchestrator's payload
+ * is the regression-fingerprint surface (per the VERIFICATION Data-Flow Trace).
+ */
+describe('Phase 70 gap plan 07 — photoSourcePath wiring + movement/imageUrl payload fixes', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    pushSpy.mockClear()
+    global.fetch = vi.fn() as unknown as typeof fetch
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    __resetUrlExtractCacheForTests()
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({ success: true, data: null })
+    vi.mocked(uploadCatalogSourcePhoto).mockResolvedValue({
+      path: 'user-id-1/pending/abc.jpg',
+    })
+    vi.mocked(createSupabaseBrowserClient).mockReturnValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: 'user-id-1' } }, error: null }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    // addWatch default success — so handleConfirmPrimary completes without toast.error.
+    vi.mocked(addWatch).mockResolvedValue({
+      success: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { id: 'new-watch-id', status: 'wishlist' } as any,
+    })
+  })
+
+  // CR-01 outcome — Blob flows from handleStructuredSubmit → uploadCatalogSourcePhoto → payload.
+  it('handleStructuredSubmit with photoBlob → addWatch payload includes photoSourcePath', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByText('Submit structured with photo'))
+    // Wait for confirming branch.
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalledWith(
+        expect.objectContaining({ photoSourcePath: 'user-id-1/pending/abc.jpg' }),
+      )
+    })
+    expect(uploadCatalogSourcePhoto).toHaveBeenCalledWith(
+      'user-id-1',
+      'pending',
+      expect.any(Blob),
+    )
+  })
+
+  // CR-01 inverse — no Blob → no photoSourcePath in payload (no upload attempt).
+  it('handleStructuredSubmit without photoBlob → addWatch payload omits photoSourcePath', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByText('Submit structured no photo'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ photoSourcePath: expect.anything() }),
+    )
+    expect(uploadCatalogSourcePhoto).not.toHaveBeenCalled()
+  })
+
+  // CR-01 non-fatal upload failure — addWatch still fires, no toast.error.
+  it('handleConfirmPrimary proceeds when uploadCatalogSourcePhoto fails (fire-and-forget)', async () => {
+    vi.mocked(uploadCatalogSourcePhoto).mockResolvedValueOnce({ error: 'upload denied' })
+    renderFlow()
+    fireEvent.click(screen.getByText('Submit structured with photo'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    // addWatch is called WITHOUT photoSourcePath when upload fails.
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ photoSourcePath: expect.anything() }),
+    )
+  })
+
+  // CR-02 movement fingerprint — structured-submit (catalogId set) omits movement.
+  it('addWatch payload omits movement when catalogId is set (CR-02 fingerprint)', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByText('Submit structured'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ movement: expect.anything() }),
+    )
+    // Catalog identity is still threaded.
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.objectContaining({ catalogId: 'cat-structured' }),
+    )
+  })
+
+  // CR-02 movement on search-pick (catalogId always set) → also omitted.
+  it('search-pick → addWatch payload omits movement even when catalogId is set', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ movement: expect.anything() }),
+    )
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.objectContaining({ catalogId: 'cat-null' }),
+    )
+  })
+
+  // CR-02 imageUrl strip — dead column never appears in the payload.
+  it('addWatch payload omits imageUrl entirely (CR-02 dead-code)', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ imageUrl: expect.anything() }),
+    )
+  })
+
+  // CR-02 movement gate inverse — URL-backup with NO catalogId AND extracted.movement
+  // present preserves the verbatim value (no synthetic 'auto').
+  it('URL-backup WITHOUT catalogId WITH extracted.movement="quartz" preserves movement verbatim', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: null,
+        data: { brand: 'Grand Seiko', model: 'SBGW', movement: 'quartz' },
+      }),
+    } as Response)
+    renderFlow()
+    fireEvent.click(screen.getByText('Switch to URL'))
+    const urlInput = await screen.findByLabelText('Watch page URL')
+    fireEvent.change(urlInput, { target: { value: 'https://example.com/sbgw' } })
+    fireEvent.click(screen.getByRole('button', { name: /Find specs/i }))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.objectContaining({ movement: 'quartz' }),
+    )
+    // No catalogId threaded.
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ catalogId: expect.anything() }),
+    )
+  })
+
+  // CR-02 movement gate critical-case — URL-backup with NO catalogId AND NO extracted.movement
+  // omits movement entirely (NO synthetic 'auto' fallback ever).
+  it('URL-backup WITHOUT catalogId AND WITHOUT extracted.movement omits movement entirely', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        catalogId: null,
+        data: { brand: 'NoMovementBrand', model: 'NoMovementModel' },
+      }),
+    } as Response)
+    renderFlow()
+    fireEvent.click(screen.getByText('Switch to URL'))
+    const urlInput = await screen.findByLabelText('Watch page URL')
+    fireEvent.change(urlInput, { target: { value: 'https://example.com/x' } })
+    fireEvent.click(screen.getByRole('button', { name: /Find specs/i }))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(addWatch).toHaveBeenCalled()
+    })
+    expect(addWatch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ movement: expect.anything() }),
+    )
   })
 })
 

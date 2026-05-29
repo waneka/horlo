@@ -26,12 +26,23 @@ import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
  * photos-pending ──onDone / onSkip──────────────→ destination
  * extraction-failed ──retryAction───────────────→ search-idle
  * extraction-failed ──manualAction──────────────→ /watch/new?manual=1
+ *
+ * Phase 70 gap plan 07 (CR-01 closure): the `confirming` variant carries an
+ * optional `photoBlob` field. When set, it is the EXIF-cleaned Blob captured by
+ * `StructuredEntryPanel`'s `CatalogPhotoUploader` and forwarded upward via the
+ * widened (gap plan 06) `onSubmitStructured(result, catalogId, photoBlob?)`
+ * contract. `AddWatchFlow.handleConfirmPrimary` uploads it via
+ * `uploadCatalogSourcePhoto(user.id, 'pending', photoBlob)` before `addWatch`
+ * and forwards `photoSourcePath` into the payload (mirrors WatchForm.tsx:222-249).
+ * The URL-backup path and search-pick path always pass `photoBlob: null` because
+ * neither has an inline photo affordance (search-pick's photo step happens later
+ * in WatchPhotoStep per D-17).
  */
 export type FlowState =
   | { kind: 'search-idle' }
   | { kind: 'extracting-url'; url: string }
   | { kind: 'extraction-failed'; partial: ExtractedWatchData | null; reason: string; category: ExtractErrorCategory; mode: 'url' | 'structured' }
-  | { kind: 'confirming'; catalogId: string | null; extracted: ExtractedWatchData; pickedResult: SearchCatalogWatchResult | null; dupeContext: DupeContext | null; pending: boolean }
+  | { kind: 'confirming'; catalogId: string | null; extracted: ExtractedWatchData; pickedResult: SearchCatalogWatchResult | null; dupeContext: DupeContext | null; pending: boolean; photoBlob?: Blob | null }
   | { kind: 'form-prefill'; catalogId: string; extracted: ExtractedWatchData }
   | { kind: 'manual-entry'; partial?: ExtractedWatchData | null }
   | { kind: 'photos-pending'; watchId: string; destination: string }

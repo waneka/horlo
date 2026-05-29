@@ -179,6 +179,9 @@ export function AddWatchFlow({
           pickedResult: result,
           dupeContext,
           pending: false,
+          // Search-pick has no inline photo affordance — the photo step happens
+          // later in WatchPhotoStep (D-17 owned gate). photoBlob stays null.
+          photoBlob: null,
         })
         return
       }
@@ -203,14 +206,25 @@ export function AddWatchFlow({
         pickedResult: result,
         dupeContext,
         pending: false,
+        // Search-pick has no inline photo affordance — photoBlob stays null.
+        photoBlob: null,
       })
     },
     [router, initialStatus],
   )
 
   // DUPE-02 entry — structured-input branch (T-70-04: server-side dupe re-verify).
+  // Phase 70 gap plan 07 — CR-01 closure: the third arg `photoBlob` is the
+  // EXIF-cleaned Blob captured by StructuredEntryPanel's CatalogPhotoUploader and
+  // forwarded upward via the widened (gap plan 06) onSubmitStructured contract.
+  // Capture it onto the confirming state so handleConfirmPrimary can upload via
+  // uploadCatalogSourcePhoto before addWatch (mirrors WatchForm.tsx:222-249).
   const handleStructuredSubmit = useCallback(
-    async (extracted: ExtractedWatchData, catalogId: string | null) => {
+    async (
+      extracted: ExtractedWatchData,
+      catalogId: string | null,
+      photoBlob?: Blob | null,
+    ) => {
       const dupeRow = catalogId ? await resolveDupeContext(catalogId) : null
       const dupeContext: DupeContext | null = dupeRow
         ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
@@ -236,6 +250,7 @@ export function AddWatchFlow({
         pickedResult: null,
         dupeContext,
         pending: false,
+        photoBlob: photoBlob ?? null,
       })
     },
     [initialStatus],
@@ -291,6 +306,8 @@ export function AddWatchFlow({
         pickedResult: null,
         dupeContext,
         pending: false,
+        // URL-backup path has no inline photo affordance — photoBlob stays null.
+        photoBlob: null,
       })
       return
     }
@@ -348,6 +365,8 @@ export function AddWatchFlow({
         pickedResult: null,
         dupeContext,
         pending: false,
+        // URL-backup path has no inline photo affordance — photoBlob stays null.
+        photoBlob: null,
       })
     } catch (err) {
       console.error('[AddWatchFlow] URL-backup extract failed:', err)
