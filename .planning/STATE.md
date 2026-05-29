@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: verifying
+status: in_progress
 last_updated: "2026-05-29T02:24:45.049Z"
 last_activity: 2026-05-29
 progress:
-  total_phases: 3
+  total_phases: 6
   completed_phases: 3
   total_plans: 6
   completed_plans: 6
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 68 — confirmstep-component
+**Current focus:** Phase 69 — searchentry-structuredentry-cache-hygiene (next)
 
 ## Current Position
 
-Phase: 68 (confirmstep-component) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
+Phase: 69
+Plan: Not started
+Status: Ready to discuss
 Last activity: 2026-05-29
 Resume file: None
 
