@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: executing
-last_updated: "2026-05-29T18:45:00.000Z"
+status: verifying
+last_updated: "2026-05-29T18:55:48.354Z"
 last_activity: 2026-05-29
 progress:
-  total_phases: 5
-  completed_phases: 4
+  total_phases: 6
+  completed_phases: 5
   total_plans: 20
   completed_plans: 20
   percent: 100
@@ -28,7 +28,7 @@ Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — COMPLETE (all 8 p
 Plan: 8 of 8 (last shipped: 70-08 — WR-01 ConfirmStep pending-gate + WR-02 handleSearchPick toast.error fallback)
 Status: Awaiting re-verification (`/gsd-verify-phase 70`) — code-level gap closure complete; 12 visual UAT items deferred to Phase 71 prod push per `feedback_mobile_ui_verify_on_prod`
 Last activity: 2026-05-29
-Resume file: None
+Resume file: .planning/phases/71-dead-code-cleanup-static-guards/71-CONTEXT.md
 
 ## Performance Metrics
 
