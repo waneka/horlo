@@ -42,6 +42,16 @@ vi.mock('@/app/actions/watches', () => ({
   findViewerWatchByCatalogIdAction: vi.fn().mockResolvedValue({ success: true, data: null }),
 }))
 
+// Phase 70 gap plan 08 — sonner mock so WR-02 tests can assert toast.error.
+// Used by the WR-02 describe block at the bottom of the file. Other tests don't
+// rely on toast assertions; the mock's no-op behavior is backward compatible.
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
 // Phase 70 gap plan 07 — CR-01 photo upload mocks.
 // `uploadCatalogSourcePhoto` is dynamic-imported from handleConfirmPrimary; Vitest's
 // vi.mock intercepts static AND dynamic imports of the same specifier by default.
@@ -270,6 +280,7 @@ import {
 } from '@/app/actions/watches'
 import { uploadCatalogSourcePhoto } from '@/lib/storage/catalogSourcePhotos'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 // Suppress unused-import lint for action handles consumed only by mockResolvedValueOnce.
 void addWatch
 
@@ -683,6 +694,211 @@ describe('Phase 70 gap plan 07 — photoSourcePath wiring + movement/imageUrl pa
     expect(addWatch).toHaveBeenCalledWith(
       expect.not.objectContaining({ movement: expect.anything() }),
     )
+  })
+})
+
+// =============================================================================
+// Phase 70 gap plan 08 — WR-01 ConfirmStep gating + WR-02 known-dupe resolver failure
+// =============================================================================
+
+/**
+ * Phase 70 VERIFICATION gaps #2 (WR-01) + #3 (WR-02) closure tests.
+ *
+ * WR-01 — ConfirmStep gating:
+ *   When DupeBanner is mounted (state.dupeContext != null), the ConfirmStep primary
+ *   CTA must be disabled. A user who ignores the banner and clicks the ConfirmStep
+ *   primary button must NOT bypass the banner to silently call addWatch. The user
+ *   is forced through one of the banner's affordances (View existing / Move to
+ *   Collection / Add another copy). After Add another copy clears dupeContext,
+ *   the ConfirmStep primary CTA re-enables.
+ *
+ * WR-02 — Known-dupe resolver failure:
+ *   When handleSearchPick sees `result.viewerState === 'owned' | 'wishlist'` AND
+ *   `resolveDupeContext` returns null (transient findViewerWatchByCatalogIdAction
+ *   failure), the orchestrator KNOWS a dupe exists from the search projection but
+ *   cannot fetch the banner data. It must surface `toast.error("Couldn't check
+ *   your collection — try again")` and STAY on search-idle — not silently advance
+ *   to confirm-without-banner. For structured-input + URL-backup (where no
+ *   viewerState is pre-known), the silent fallthrough remains by design.
+ */
+describe('Phase 70 gap plan 08 — WR-01 ConfirmStep gating when DupeBanner mounted', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    pushSpy.mockClear()
+    global.fetch = vi.fn() as unknown as typeof fetch
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    __resetUrlExtractCacheForTests()
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({ success: true, data: null })
+    vi.mocked(uploadCatalogSourcePhoto).mockResolvedValue({
+      path: 'user-id-1/pending/abc.jpg',
+    })
+    vi.mocked(createSupabaseBrowserClient).mockReturnValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: 'user-id-1' } }, error: null }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    vi.mocked(addWatch).mockResolvedValue({
+      success: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { id: 'new-watch-id', status: 'wishlist' } as any,
+    })
+  })
+
+  // WR-01 Test A — wishlist dupeContext set → ConfirmStep primary is disabled.
+  it('WR-01 — ConfirmStep primary CTA is disabled when wishlist dupeContext is set', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'wish-id-001', status: 'wishlist', reference: 'REF-001' },
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick wishlist'))
+    expect(await screen.findByTestId('dupe-banner-wishlist')).toBeInTheDocument()
+    expect(screen.getByText('Confirm primary')).toBeDisabled()
+  })
+
+  // WR-01 Test B — owned dupeContext set → ConfirmStep primary disabled; click does not call addWatch.
+  it('WR-01 — ConfirmStep primary CTA is disabled when owned dupeContext is set; clicking does NOT call addWatch', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'existing-owned-id', status: 'owned', reference: null },
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick owned no-ref'))
+    expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
+    expect(screen.getByText('Confirm primary')).toBeDisabled()
+
+    // Attempt to click the disabled CTA — addWatch must not fire.
+    fireEvent.click(screen.getByText('Confirm primary'))
+    // Allow any pending microtasks to flush.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(vi.mocked(addWatch)).not.toHaveBeenCalled()
+  })
+
+  // WR-01 Test C — "Add another copy" clears dupeContext and re-enables ConfirmStep primary
+  // (the gate releases correctly; clicking the now-enabled CTA calls addWatch).
+  it('WR-01 — clicking "Add another copy" clears dupeContext + re-enables ConfirmStep primary; subsequent click calls addWatch', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'existing-owned-id', status: 'owned', reference: 'REF-OWNED' },
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Submit structured'))
+    expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
+    // Gate engaged before the click.
+    expect(screen.getByText('Confirm primary')).toBeDisabled()
+
+    // Add another copy clears dupeContext → banner unmounts → CTA re-enables.
+    fireEvent.click(screen.getByText('Add another copy'))
+    await waitFor(() => {
+      expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Confirm primary')).not.toBeDisabled()
+
+    // Clicking now actually fires addWatch — proves the gate released correctly.
+    fireEvent.click(screen.getByText('Confirm primary'))
+    await waitFor(() => {
+      expect(vi.mocked(addWatch)).toHaveBeenCalled()
+    })
+  })
+})
+
+describe('Phase 70 gap plan 08 — WR-02 known-dupe resolver failure (toast.error)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    pushSpy.mockClear()
+    global.fetch = vi.fn() as unknown as typeof fetch
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    __resetUrlExtractCacheForTests()
+    // Reset sonner toast spy.
+    vi.mocked(toast.error).mockClear()
+    vi.mocked(toast.success).mockClear()
+    vi.mocked(uploadCatalogSourcePhoto).mockResolvedValue({
+      path: 'user-id-1/pending/abc.jpg',
+    })
+    vi.mocked(createSupabaseBrowserClient).mockReturnValue({
+      auth: {
+        getUser: () =>
+          Promise.resolve({ data: { user: { id: 'user-id-1' } }, error: null }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    vi.mocked(addWatch).mockResolvedValue({
+      success: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { id: 'new-watch-id', status: 'wishlist' } as any,
+    })
+  })
+
+  // WR-02 Test A — owned (null reference) + resolver failure → toast.error + stay on search-idle.
+  it('WR-02 — search-pick owned (D-06 null-ref fallthrough) with resolver failure → toast.error + stay on search-idle', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: false,
+      error: 'DB down',
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick owned no-ref'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("Couldn't check your collection"),
+      )
+    })
+    // Stays on search-idle — no ConfirmStep, no DupeBanner.
+    expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dupe-banner-wishlist')).not.toBeInTheDocument()
+    expect(screen.getByTestId('search-entry')).toBeInTheDocument()
+  })
+
+  // WR-02 Test B — wishlist + resolver failure → toast.error + stay on search-idle.
+  it('WR-02 — search-pick wishlist with resolver failure → toast.error + stay on search-idle', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: false,
+      error: 'DB down',
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick wishlist'))
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("Couldn't check your collection"),
+      )
+    })
+    expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dupe-banner-wishlist')).not.toBeInTheDocument()
+    expect(screen.getByTestId('search-entry')).toBeInTheDocument()
+  })
+
+  // WR-02 Test C — null viewerState + resolver failure → silent fallthrough preserved.
+  // (no toast.error because the resolver is not consulted when viewerState is null —
+  // the structured/URL-backup-style silent fallthrough is preserved for the unknown-dupe case
+  // per WR-02 review rationale.)
+  it('WR-02 inverse — search-pick null viewerState proceeds to confirming-without-banner (no toast.error)', async () => {
+    // Even if the action returns failure, it should NOT be consulted for null viewerState picks.
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({
+      success: false,
+      error: 'DB down',
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
+    // No banner mounts since dupeContext is null.
+    expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dupe-banner-wishlist')).not.toBeInTheDocument()
+  })
+
+  // WR-02 Test D — owned-with-ref redirect fast-path: resolveDupeContext is NOT consulted.
+  // T-70-01 already covers the redirect; this extends it to assert findViewerWatchByCatalogIdAction
+  // was NOT called (proves the fast-path semantic).
+  it('WR-02 inverse — search-pick owned WITH reference fast-path redirects WITHOUT calling resolveDupeContext', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick owned'))
+    await waitFor(() => {
+      expect(pushSpy).toHaveBeenCalledWith('/w/REF-001')
+    })
+    expect(findViewerWatchByCatalogIdAction).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })
 

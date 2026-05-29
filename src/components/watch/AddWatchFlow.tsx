@@ -682,7 +682,12 @@ export function AddWatchFlow({
             onPrimary={handleConfirmPrimary}
             onEditDetails={handleConfirmEditDetails}
             onStartOver={handleConfirmStartOver}
-            pending={state.pending}
+            // WR-01 fix (gap plan 08): when DupeBanner is mounted (dupeContext != null),
+            // the ConfirmStep primary CTA is disabled so the user is forced through one
+            // of the banner's explicit affordances (View existing / Move to Collection /
+            // Add another copy). "Add another copy" clears dupeContext → primary re-enables.
+            // Pending during async commits also disables (state.pending — the original gate).
+            pending={state.pending || state.dupeContext != null}
             movement={state.extracted.movement ?? null}
             caseSizeMm={state.extracted.caseSizeMm ?? null}
             dialColor={state.extracted.dialColor ?? null}
