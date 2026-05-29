@@ -299,8 +299,8 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   3. `tests/static/AddWatchFlow.no-collection-fit-card.test.ts` (with `// @vitest-environment node`) fails CI if `CollectionFitCard` is imported by any file in the add-flow component tree
   4. The `FlowState` discriminated union in `flowTypes.ts` contains only active states (`search-idle`, `search-results`, `structured-input`, `extracting-structured`, `confirming`, plus surviving `form-prefill`, `manual-entry`, `photos-pending`); the old `verdict-ready`, `wishlist-rationale-open`, `submitting-wishlist` variants are gone
 **Plans**: 2 plans
-- [ ] 71-01-PLAN.md — Static guards (CLNP-02 + CLNP-03) + prebuild extension to tests/static/
-- [ ] 71-02-PLAN.md — Delete 4 dead component+test pairs (CLNP-01 + CLNP-04) + flowTypes.ts prune (RailEntry/PendingTarget/forward-coord JSDoc) + AddWatchFlow.tsx residue sweep (10 rail/setRail/railRef sites + JSDoc reword)
+- [x] 71-01-PLAN.md — Static guards (CLNP-02 + CLNP-03) + prebuild extension to tests/static/
+- [x] 71-02-PLAN.md — Delete 4 dead component+test pairs (CLNP-01 + CLNP-04) + flowTypes.ts prune (RailEntry/PendingTarget/forward-coord JSDoc) + AddWatchFlow.tsx residue sweep (10 rail/setRail/railRef sites + JSDoc reword)
 
 ## Progress
 
@@ -311,6 +311,6 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 8/8 | Complete    | 2026-05-29 |
-| 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
+| 71. Dead Code Cleanup + Static Guards | 2/2 | Complete   | 2026-05-29 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

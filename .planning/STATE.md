@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: verifying
-last_updated: "2026-05-29T18:55:48.354Z"
+status: executing
+last_updated: "2026-05-29T19:29:33.935Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
+  completed_phases: 6
+  total_plans: 22
+  completed_plans: 22
   percent: 100
 ---
 
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 70 — all 8 plans complete (5 original + 3 gap closures); awaiting `/gsd-verify-phase 70` re-verification (gaps[0..2] expected to flip 4/6 → 6/6) + bundled Phase 71 prod UAT push.
+**Current focus:** Phase 71 — dead-code-cleanup-static-guards
 
 ## Current Position
 
-Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — COMPLETE (all 8 plans landed)
-Plan: 8 of 8 (last shipped: 70-08 — WR-01 ConfirmStep pending-gate + WR-02 handleSearchPick toast.error fallback)
-Status: Awaiting re-verification (`/gsd-verify-phase 70`) — code-level gap closure complete; 12 visual UAT items deferred to Phase 71 prod push per `feedback_mobile_ui_verify_on_prod`
+Phase: 71 (dead-code-cleanup-static-guards) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 71
 Last activity: 2026-05-29
 Resume file: .planning/phases/71-dead-code-cleanup-static-guards/71-CONTEXT.md
 
