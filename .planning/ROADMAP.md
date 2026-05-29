@@ -284,7 +284,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 - [x] 70-03-PLAN.md — moveWishlistToCollection Server Action + 6-case unit suite (DUPE-03)
 - [x] 70-04-PLAN.md — flowTypes.ts D-01 union rewrite + DupeContext + transition map JSDoc + CLNP-05 enumeration test
 - [x] 70-05-PLAN.md — AddWatchFlow.tsx orchestrator rewrite + test retrofit (DUPE-01/02/03 UI, CLNP-06, all 22 D-NN decisions)
-- [ ] 70-06-PLAN.md — Gap closure (CR-01 upward): widen StructuredEntryPanel.onSubmitStructured + SearchEntry pass-through to forward photoBlob third arg (forwards captured EXIF-cleaned Blob; closes write-only setter deadcode)
+- [x] 70-06-PLAN.md — Gap closure (CR-01 upward): widen StructuredEntryPanel.onSubmitStructured + SearchEntry pass-through to forward photoBlob third arg (forwards captured EXIF-cleaned Blob; closes write-only setter deadcode)
 - [ ] 70-07-PLAN.md — Gap closure (CR-01 consumer + CR-02): AddWatchFlow movement gating on catalogId + strip dead imageUrl + capture photoBlob into confirming state + uploadCatalogSourcePhoto + photoSourcePath in addWatch payload
 - [ ] 70-08-PLAN.md — Gap closure (WR-01 + WR-02): ConfirmStep pending gated on dupeContext (silent-duplicate hole closed) + handleSearchPick toast.error fallback when known-dupe resolveDupeContext fails + human re-verification checkpoint
 **UI hint**: yes
@@ -308,7 +308,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
-| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 5/8 | Gap closure planned (06/07/08) | - |
+| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 6/8 | In Progress|  |
 | 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

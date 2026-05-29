@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: verifying
-last_updated: "2026-05-29T14:03:59.620Z"
+status: executing
+last_updated: "2026-05-29T18:08:40.296Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
-  completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
+  completed_phases: 4
+  total_plans: 20
+  completed_plans: 18
+  percent: 90
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 ## Current Position
 
 Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Plan: 2 of 8
+Status: Ready to execute
 Last activity: 2026-05-29
 Resume file: None
 
@@ -118,6 +118,7 @@ Resume file: None
 - **D-02 transition map ships verbatim as a 19-line JSDoc block ABOVE FlowState** (Phase 70 Plan 04) — pattern-mapping decision per D-02; future readers see the state-machine at a glance without leaving the type file. Reads as `search-idle ──onPick (owned)──→ /w/[ref]   [DUPE-01]` style entries; one line per transition. Phase 71 CLNP-02 static guard treats this as a documentation reference, not an assertion target.
 - **RailEntry.verdict re-typed to `unknown \| null` (was `VerdictBundle \| null`)** (Phase 70 Plan 04) — drops the stale legacy verdict-types import while preserving `RailEntry` shape for `RecentlyEvaluatedRail.tsx` through Phase 71 cleanup. Phase 71 deletes both fields + their consumer in a single sweep alongside the RecentlyEvaluatedRail disposition (CLNP-04). `RailEntry` + `PendingTarget` exports retained per CLNP-04 deferral.
 - **JSDoc-prose grep-collision recurrence-3 mitigated proactively** (Phase 70 Plan 04) — initial RailEntry comment included the literal phrase "stale `VerdictBundle` import"; reworded to "stale legacy verdict-types import" so `grep -c "VerdictBundle" src/components/watch/flowTypes.ts` returns 0. Recurrence-3 of the pattern from `feedback_decision_coverage_gate_citations` family + Phase 69 Plan 04 lessons. No semantic change.
+- **onSubmitStructured widened to 3-arg (result, catalogId, photoBlob?) across StructuredEntryPanel + SearchEntry** (Phase 70 Plan 06 — CR-01 upstream half) — closes VERIFICATION gap #1 half-A: the EXIF-cleaned Blob captured by `CatalogPhotoUploader` inside `StructuredEntryPanel` flowed into a write-only `const [, setPhotoBlob] = useState<Blob | null>(null)` and silently died. Plan 06 reads `photoBlob` from state, forwards it as `photoBlob ?? undefined` (third arg, `Blob | undefined` sentinel — `undefined` = absence, no-pick AND post-clear both surface as `undefined`) in both cache-hit + network-success branches of `handleFindSpecs`. SearchEntry stays an identity-stable pass-through (`onSubmitStructured={onSubmitStructured}` unchanged at line 345) — the TypeScript widen makes the contract enforcement explicit. AddWatchFlow's 2-arg `handleStructuredSubmit` signature still type-checks because optional third args are tolerable on the consumer side; gap plan 07 widens the consumer and calls `uploadCatalogSourcePhoto` before `addWatch` (mirrors `WatchForm.tsx:222-249`). 4 new regression tests in StructuredEntryPanel.test.tsx + 1 in SearchEntry.test.tsx; existing tests 8/10 of StructuredEntryPanel widened to assert the new arity. Commits `0db88d1c` (panel) + `03c88a5e` (search).
 
 ### Pending Todos
 
@@ -177,6 +178,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase 70 P03 | 4 | 2 tasks | 2 files |
 | Phase Phase 70 P04 P04 | 3min | 1 tasks | 2 files |
 | Phase 70 P05 | 35 | 3 tasks | 3 files |
+| Phase 70 P06 | 5min | 2 tasks | 4 files |
 
 ## Session Continuity
 
