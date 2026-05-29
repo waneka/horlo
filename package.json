@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "vitest run tests/static/legacy-watch-routes.test.ts",
+    "prebuild": "vitest run tests/static/",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
