@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Phase 41 — Track B (SET-14) static test: exported email template HTML.
  *

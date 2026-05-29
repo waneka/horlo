@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Phase 37 — static guard for WatchCard.tsx sold-badge variant (V-13).
  *

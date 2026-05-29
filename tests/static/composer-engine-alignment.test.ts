@@ -1,3 +1,4 @@
+// @vitest-environment node
 // tests/static/composer-engine-alignment.test.ts
 // Phase 38 D-04 + D-15 — verbal-numeric alignment.
 //

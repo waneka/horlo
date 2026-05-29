@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Phase 37 — static file-grep guards for WatchForm.tsx accordion (V-11 + V-12).
  *
