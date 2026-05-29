@@ -198,7 +198,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 - [ ] **Phase 66**: API Route Extension — `/api/extract-watch` structured mode
 - [x] **Phase 67**: Server Action + DAL Extensions — `searchCatalogForAddFlow`, `addWatch` catalogId, DAL helper
 - [ ] **Phase 68**: ConfirmStep Component — segmented status picker incl. grail, lighter confirm screen
-- [ ] **Phase 69**: SearchEntry + StructuredEntryPanel + Cache Hygiene — typeahead, 4-field form, cache signOut cleanup
+- [x] **Phase 69**: SearchEntry + StructuredEntryPanel + Cache Hygiene — typeahead, 4-field form, cache signOut cleanup
 - [ ] **Phase 70**: AddWatchFlow State Machine Rewrite + DUPE Wiring — all four flow branches wired
 - [ ] **Phase 71**: Dead Code Cleanup + Static Guards — VerdictStep + WishlistRationalePanel + PasteSection deleted
 
@@ -265,7 +265,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 - [x] 69-03-PLAN.md — useUrlExtractCache + useWatchSearchVerdictCache retrofit + 3-layer SearchPageClient/WatchesPanel/WatchSearchRowsAccordion thread + AddWatchFlow cache call sites + catalogBrands prop typed (CLNP-07 retrofit)
 - [x] 69-04-PLAN.md — StructuredEntryPanel + ExtractErrorCard mode-branched copy (EXTR-05, EXTR-06, EXTR-07, Phase 66 D-06)
 - [x] 69-05-PLAN.md — SearchEntry @base-ui/react/combobox typeahead (SRCH-17..25)
-- [ ] 69-06-PLAN.md — /watch/new/page.tsx wiring + AddWatchFlow.test.tsx four-cache integration test (CLNP-07 phase gate)
+- [x] 69-06-PLAN.md — /watch/new/page.tsx wiring + AddWatchFlow.test.tsx four-cache integration test (CLNP-07 phase gate)
 **UI hint**: yes
 
 ### Phase 70: AddWatchFlow State Machine Rewrite + DUPE Wiring
@@ -299,7 +299,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
 | 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
-| 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 5/6 | In Progress|  |
+| 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 0/? | Not started | - |
 | 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
 
