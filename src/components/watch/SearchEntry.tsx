@@ -9,7 +9,8 @@
  *
  * Contract (props in, callbacks out):
  *   - onPick(result) — full SearchCatalogWatchResult row on pick (D-03)
- *   - onSubmitStructured(result) — bubbled up from the inline StructuredEntryPanel
+ *   - onSubmitStructured(result, catalogId, photoBlob?) — bubbled up from the
+ *     inline StructuredEntryPanel (Phase 70 gap plan 06 widens the photoBlob arg)
  *   - onSwitchToUrl() — EXTR-07 escape hatch, bubbled up from StructuredEntryPanel
  *   - No internal navigation; no router-push surface (pure presenter per Phase 68 precedent)
  *
@@ -71,8 +72,16 @@ export interface SearchEntryProps {
   /** D-11 — bubbled up from the inline StructuredEntryPanel on extract success.
    *  Phase 70 Wave 0 widens the contract to include `catalogId` as the second
    *  arg so the orchestrator can do the DUPE lookup + addWatch in one round-trip
-   *  (RESEARCH §1, Pitfall #1). null when the catalog upsert failed. */
-  onSubmitStructured: (result: ExtractedWatchData, catalogId: string | null) => void
+   *  (RESEARCH §1, Pitfall #1). null when the catalog upsert failed.
+   *  Phase 70 gap plan 06 widens to (result, catalogId, photoBlob?) so the
+   *  orchestrator can call uploadCatalogSourcePhoto before addWatch.
+   *  SearchEntry is a pure pass-through — does not consume photoBlob itself
+   *  (the identity-stable callback at the JSX site below preserves all args). */
+  onSubmitStructured: (
+    result: ExtractedWatchData,
+    catalogId: string | null,
+    photoBlob?: Blob | null,
+  ) => void
   /** EXTR-07 — bubbled up from the inline StructuredEntryPanel's URL backup link. */
   onSwitchToUrl: () => void
 }

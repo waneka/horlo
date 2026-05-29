@@ -54,6 +54,9 @@ vi.mock('@/components/watch/useCatalogSearchCache', () => ({
 // StructuredEntryPanel is mocked as a transparent test-double. The mock exposes
 // the props it received via data-* attributes so tests can assert pre-seed
 // values (Test 10) and the onSwitchToUrl pass-through (D-11 / EXTR-07).
+// Phase 70 gap plan 06 — the mock now also exposes a "submit-structured" button
+// that fires onSubmitStructured with a 3-arg payload so the test below can
+// assert the pass-through preserves the photoBlob third arg.
 vi.mock('@/components/watch/StructuredEntryPanel', () => ({
   StructuredEntryPanel: (props: {
     viewerUserId: string
@@ -76,6 +79,19 @@ vi.mock('@/components/watch/StructuredEntryPanel', () => ({
         onClick={() => props.onSwitchToUrl()}
       >
         switch
+      </button>
+      <button
+        type="button"
+        data-testid="structured-panel-mock-submit-with-blob"
+        onClick={() =>
+          props.onSubmitStructured(
+            { brand: 'Omega', model: 'Speedmaster' },
+            'cat-omega-speed',
+            new Blob(['test'], { type: 'image/jpeg' }),
+          )
+        }
+      >
+        submit-with-blob
       </button>
     </div>
   ),
@@ -715,5 +731,54 @@ describe('SearchEntry — pure-presenter discipline (counter-assert)', () => {
     expect(() => {
       render(<SearchEntry {...BASE_PROPS} />)
     }).not.toThrow()
+  })
+})
+
+describe('Phase 70 gap plan 06 — onSubmitStructured photoBlob pass-through (CR-01 closure)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(searchCatalogForAddFlow).mockReset()
+    vi.mocked(useCatalogSearchCache).mockReturnValue({
+      get: vi.fn(() => undefined),
+      set: vi.fn(),
+    })
+    BASE_PROPS.onPick.mockReset()
+    BASE_PROPS.onSubmitStructured.mockReset()
+    BASE_PROPS.onSwitchToUrl.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('(P70-06) StructuredEntryPanel.onSubmitStructured 3-arg payload propagates through SearchEntry to the external onSubmitStructured spy with Blob preserved', async () => {
+    const onSubmitStructured = vi.fn()
+    vi.mocked(searchCatalogForAddFlow).mockResolvedValue({
+      success: true,
+      data: [],
+    })
+
+    render(<SearchEntry {...BASE_PROPS} onSubmitStructured={onSubmitStructured} />)
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'zzz' },
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(250)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // StructuredEntryPanel mock is mounted (empty-state path); fire its
+    // submit-with-blob button — the inner mock invokes
+    // onSubmitStructured(extracted, catalogId, blob).
+    fireEvent.click(screen.getByTestId('structured-panel-mock-submit-with-blob'))
+
+    expect(onSubmitStructured).toHaveBeenCalledTimes(1)
+    const [extracted, catalogId, photoBlob] = onSubmitStructured.mock.calls[0]
+    expect(extracted).toEqual({ brand: 'Omega', model: 'Speedmaster' })
+    expect(catalogId).toBe('cat-omega-speed')
+    expect(photoBlob).toBeInstanceOf(Blob)
+    expect((photoBlob as Blob).type).toBe('image/jpeg')
   })
 })
