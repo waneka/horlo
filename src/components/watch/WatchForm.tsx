@@ -66,8 +66,15 @@ interface WatchFormProps {
    *  watchId to insert the photos-pending step before final navigation.
    *  Without this prop, the existing router.push(dest) behavior is unchanged
    *  (backward compatible with all other callers). Edit-mode commits are
-   *  unaffected. */
-  onWatchCreated?: (watchId: string, destination: string) => void
+   *  unaffected.
+   *
+   *  Phase 70 Wave 0 (CONTEXT D-17): widened to surface the committed status
+   *  so AddWatchFlow's manual-entry branch can gate photos-pending on
+   *  status === 'owned' (wishlist/grail watches have no physical copy to
+   *  photograph). form-prefill branch is always 'owned' via lockedStatus —
+   *  the gate is trivially true there; manual-entry's user-chosen status
+   *  flows through the third arg. */
+  onWatchCreated?: (watchId: string, destination: string, status: WatchStatus) => void
 }
 
 type FormData = Omit<Watch, 'id'>
@@ -267,8 +274,14 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
         // INSTEAD of router.push. AddWatchFlow will show the photos-pending
         // step and navigate on Done/Skip. Without this prop, existing behavior
         // is unchanged (backward compatible with all other WatchForm callers).
+        //
+        // Phase 70 Wave 0 (D-17): pass finalStatus as the third arg so the
+        // orchestrator can gate photos-pending on status === 'owned' from the
+        // manual-entry branch. lockedStatus="owned" makes finalStatus trivially
+        // 'owned' on the form-prefill branch; user-chosen status flows from
+        // manual-entry. Computed at line 202 above (lockedStatus ?? formData.status).
         if (onWatchCreated && result.data && 'id' in result.data) {
-          onWatchCreated(result.data.id, dest)
+          onWatchCreated(result.data.id, dest, finalStatus)
           return result
         }
         router.push(dest)

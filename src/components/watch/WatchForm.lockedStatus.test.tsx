@@ -79,4 +79,39 @@ describe('Phase 20.1 Plan 04 — WatchForm lockedStatus prop (D-12)', () => {
     expect(screen.queryByText(/Import from URL/i)).toBeNull()
     expect(screen.queryByText(/Apply to Form/i)).toBeNull()
   })
+
+  it('Phase 70 Wave 0 (D-17) — onWatchCreated fires with (watchId, destination, status) on create-success', async () => {
+    // Verifies the widened callback contract — third `status` arg lets
+    // AddWatchFlow gate photos-pending on status === 'owned' from the
+    // manual-entry branch. lockedStatus="owned" pins finalStatus regardless
+    // of any formData.status drift (Phase 20.1 D-12 defense).
+    mockAddWatch.mockResolvedValue({ success: true, data: { id: 'w-create-1' } })
+    const onWatchCreated = vi.fn()
+
+    render(
+      <WatchForm
+        mode="create"
+        lockedStatus="owned"
+        onWatchCreated={onWatchCreated}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText(/^Brand/i), { target: { value: 'Omega' } })
+    fireEvent.change(screen.getByLabelText(/^Model/i), { target: { value: 'Speedy' } })
+
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByRole('button', { name: /Add Watch/i }).closest('form')!,
+      )
+    })
+
+    await waitFor(() => expect(onWatchCreated).toHaveBeenCalled())
+    expect(onWatchCreated).toHaveBeenCalledTimes(1)
+    // Three args: (watchId, destination, status). Destination computed by
+    // defaultDestinationForStatus('owned', viewerUsername ?? null).
+    expect(onWatchCreated).toHaveBeenCalledWith(
+      'w-create-1',
+      expect.any(String),
+      'owned',
+    )
+  })
 })
