@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MOVEMENT_LABELS } from '@/lib/constants'
+import type { MovementType } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /**
@@ -91,7 +92,7 @@ interface ConfirmStepProps {
   /** Pending state for the primary CTA. Disables all action buttons + swaps CTA to Loader2. */
   pending?: boolean
   // Optional spec props per 68-UI-SPEC §SpecHeadline Helper (recommendation (a))
-  movement?: string | null
+  movement?: MovementType | null
   caseSizeMm?: number | null
   dialColor?: string | null
 }
@@ -334,12 +335,12 @@ function SpecHeadline({
   caseSizeMm,
   dialColor,
 }: {
-  movement?: string | null
+  movement?: MovementType | null
   caseSizeMm?: number | null
   dialColor?: string | null
 }) {
   const parts = [
-    movement ? MOVEMENT_LABELS[movement as keyof typeof MOVEMENT_LABELS] : null,
+    movement ? MOVEMENT_LABELS[movement] : null,
     caseSizeMm ? `${caseSizeMm}mm` : null,
     dialColor,
   ].filter((p): p is string => Boolean(p))
