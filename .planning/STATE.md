@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: verifying
-last_updated: "2026-05-29T06:56:18.256Z"
+status: executing
+last_updated: "2026-05-29T13:22:05.618Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 17
+  completed_plans: 13
+  percent: 76
 ---
 
 # Project State
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 69 — SearchEntry + StructuredEntryPanel + Cache Hygiene
+**Current focus:** Phase 70 — addwatchflow-state-machine-rewrite-dupe-wiring
 
 ## Current Position
 
-Phase: 69 (SearchEntry + StructuredEntryPanel + Cache Hygiene) — COMPLETE (6/6 plans, 14/14 REQ-IDs)
-Plan: 6 of 6
-Status: Phase complete — ready for verification
+Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-05-29
-Resume file: .planning/phases/70-addwatchflow-state-machine-rewrite-dupe-wiring/70-CONTEXT.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -161,6 +161,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase 69 P03 | 8m 5s | 3 tasks | 7 files |
 | Phase 69 P5 | 8m | 1 tasks | 2 files |
 | Phase 69 P06 | 4 | 2 tasks | 2 files |
+| Phase 70 P01 | 17 | 4 tasks | 7 files |
 
 ## Session Continuity
 

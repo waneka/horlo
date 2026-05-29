@@ -279,7 +279,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   4. The `?returnTo=` URL parameter round-trips correctly — after adding a watch the user is returned to the originating page (e.g., the wishlist empty-state CTA)
   5. Revisiting `/watch/new` after a previous session does not poison state from the prior search or extract — the Phase 29 three-layer reset is extended to the new `useCatalogSearchCache` and `useStructuredExtractCache` caches
 **Plans**: 5 plans
-- [ ] 70-01-PLAN.md — Wave 0 prerequisite patches: StructuredEntryPanel.onSubmitStructured emit + findViewerWatchByCatalogId DAL JOIN + WatchForm.onWatchCreated status arg
+- [x] 70-01-PLAN.md — Wave 0 prerequisite patches: StructuredEntryPanel.onSubmitStructured emit + findViewerWatchByCatalogId DAL JOIN + WatchForm.onWatchCreated status arg
 - [ ] 70-02-PLAN.md — DupeBanner pure-presenter component + co-located test (DUPE-02/03 UI)
 - [ ] 70-03-PLAN.md — moveWishlistToCollection Server Action + 6-case unit suite (DUPE-03)
 - [ ] 70-04-PLAN.md — flowTypes.ts D-01 union rewrite + DupeContext + transition map JSDoc + CLNP-05 enumeration test
@@ -305,7 +305,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
-| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 0/? | Not started | - |
+| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 1/5 | In Progress|  |
 | 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
