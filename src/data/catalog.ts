@@ -804,3 +804,42 @@ export async function applyUserUploadedPhoto(
   const rows = result as unknown as Array<{ id: string }>
   return { applied: rows.length > 0 }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 69 D-13 — listCatalogBrands: SSR-fetched brand list for SRCH-26 pre-seed
+// ---------------------------------------------------------------------------
+
+/**
+ * Phase 69 D-13 — listCatalogBrands.
+ *
+ * Returns the DISTINCT set of brand strings present in `watches_catalog`,
+ * sorted ascending. SSR-fetched at `/watch/new` render time and prop-drilled
+ * through `AddWatchFlow` → `SearchEntry` → `parseSearchQuery` for the SRCH-26
+ * longest-prefix brand match (D-12).
+ *
+ * Drizzle ORM `selectDistinct` — NOT raw `sql`. Mirror of `getTopStyleTags`
+ * minus the cache wrapper.
+ *
+ * NO `'use cache'` / `cacheLife` — INTENTIONAL. Brand list is fetched
+ * per-request at navigation-to-page cadence; the SELECT DISTINCT is cheap
+ * (~100 rows in prod) and brand-list staleness has no behavioral failure
+ * mode (D-12 falls back to a naive split for novel brands not yet in the
+ * list — see Test case (e) `cartier` in the parser test matrix).
+ *
+ * Zero arguments — public-read RLS on `watches_catalog` already allows this
+ * without viewer identity. The DAL stays viewer-agnostic.
+ *
+ * Returns original-case brand values (NOT lowercased) so the parser can
+ * preserve catalog casing on a brand hit (e.g. user typed "omega", returned
+ * brand is "Omega"). Aligns with the
+ * `project_local_catalog_natural_key_drift` memory: D-12 normalization is
+ * conceptually symmetric with the catalog DAL's natural-key
+ * `regexp_replace(lower(trim(...)))` on the cache-key axis.
+ */
+export async function listCatalogBrands(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ brand: watchesCatalog.brand })
+    .from(watchesCatalog)
+    .orderBy(asc(watchesCatalog.brand))
+  return rows.map((r) => r.brand)
+}
