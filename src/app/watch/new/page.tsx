@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { getWatchesByUser } from '@/data/watches'
-import { getCatalogById } from '@/data/catalog'
+import { getCatalogById, listCatalogBrands } from '@/data/catalog'
 import { getProfileById } from '@/data/profiles'
 import { AddWatchFlow } from '@/components/watch/AddWatchFlow'
 import { validateReturnTo } from '@/lib/watchFlow/destinations'
@@ -87,10 +87,11 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
   // At v4.0+ every authenticated user has a username via the signup trigger,
   // so null here is a soft alarm — the flow falls back to "no toast" + "/"
   // default destination.
-  const [collection, catalogPrefill, viewerProfile] = await Promise.all([
+  const [collection, catalogPrefill, viewerProfile, catalogBrands] = await Promise.all([
     getWatchesByUser(user.id),
     catalogId ? hydrateCatalogPrefill(catalogId) : Promise.resolve(null),
     getProfileById(user.id),
+    listCatalogBrands(),
   ])
   const viewerUsername = viewerProfile?.username ?? null
 
@@ -128,11 +129,11 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         initialReturnTo={initialReturnTo}
         viewerUsername={viewerUsername}
         viewerUserId={user.id}
-        // Phase 69 D-13 — typed pass-through; Phase 70 (SearchEntry mount)
-        // consumes. Plan 06 of Phase 69 replaces the empty-array placeholder
-        // with `await listCatalogBrands()` from the new DAL fn. parseSearchQuery
-        // falls back to the naive split when this is empty — safe default.
-        catalogBrands={[]}
+        // Phase 69 D-13 — SSR-fetched brand list for SearchEntry / parseSearchQuery
+        // SRCH-26 pre-seed. Per-request fetch (uncached on purpose); cheap SELECT DISTINCT.
+        // Public-read RLS on watches_catalog already allows this without viewer identity.
+        // Phase 70 mounts SearchEntry which consumes this list.
+        catalogBrands={catalogBrands}
       />
     </div>
   )
