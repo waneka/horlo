@@ -131,9 +131,13 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
       }
       // D-10: server-side override — catalog row IS the identity truth.
       // Client-supplied brand/model/reference are discarded for the identity tuple.
+      // Unconditional assignment: when catalogRow.reference is null (catalog row has
+      // no reference number), the canonical value IS null — coerce to undefined to
+      // match Watch.reference: string | undefined. A conditional guard would let
+      // a client forge a reference string on a null-reference catalog row.
       cleanData.brand = catalogRow.brand
       cleanData.model = catalogRow.model
-      if (catalogRow.reference) cleanData.reference = catalogRow.reference
+      cleanData.reference = catalogRow.reference ?? undefined
       catalogId = cleanData.catalogId
       catalogRowForSkipCheck = catalogRow
     } else {

@@ -431,4 +431,20 @@ describe('addWatch — catalogId branch (CONF-11)', () => {
     await addWatch({ ...validWatch, catalogId: CATALOG_UUID })
     expect(enrichTasteAttributes).toHaveBeenCalled()
   })
+
+  it('(f) catalogId + catalogRow.reference=null + client reference="FAKE-REF" → created watch reference != "FAKE-REF" (D-10 null-clear)', async () => {
+    // D-10 invariant: catalog row IS the identity truth. When the catalog row has no
+    // reference number, the canonical reference IS null — a client must NOT be able
+    // to forge a reference string onto a null-reference catalog row.
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
+    vi.mocked(catalogDAL.getCatalogById).mockResolvedValue({ ...catalogRow, reference: null } as any)
+    vi.mocked(watchDAL.createWatch).mockResolvedValue({ id: 'w-1', ...validWatch } as any)
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+    await addWatch({ ...validWatch, reference: 'FAKE-REF', catalogId: CATALOG_UUID })
+    expect(watchDAL.createWatch).toHaveBeenCalledWith(
+      'u-1',
+      CATALOG_UUID,
+      expect.not.objectContaining({ reference: 'FAKE-REF' }),
+    )
+  })
 })
