@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: executing
-last_updated: "2026-05-29T13:39:53.471Z"
+last_updated: "2026-05-29T13:47:06.250Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 ## Current Position
 
 Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-05-29
 Resume file: None
@@ -113,6 +113,11 @@ Resume file: None
 - **moveWishlistToCollection ships as Wave 2 Server Action** (Phase 70 Plan 03, D-10) — new export at `src/app/actions/watches.ts:382`; UPDATE on existing watch row (NOT INSERT) because `editWatch` (watches.ts:496-650) deliberately skips `logActivity` + `findOverlapRecipients` + `logNotification`. T-70-01 IDOR mitigation = two-layer gate (Zod uuid + `watchDAL.getWatchById(user.id, watchId)`); T-70-02 idempotency = `priorRow.status === 'owned'` early-return without re-firing side-effects; T-70-03 = template-literal `Cannot move ${status} watch to collection` for sold/grail. 8-case unit suite green; build gate exit 0. Plan 05 wires `DupeBanner.onMoveToCollection → moveWishlistToCollection(dupeContext.existingWatchId)`.
 - **Pitfall 3 resolved by omission, not type extension** (Phase 70 Plan 03) — CONTEXT D-10's `source: 'wishlist_move'` literal in `logActivity` metadata would not type-check: `WatchAddedMetadata` at activities.ts:23-27 is `{ brand, model, imageUrl }` only. Resolution = operator `console.warn('[Phase 70] moveWishlistToCollection: wishlist→collection', { watchId })` ABOVE the action's mutation block. Same telemetry intent at zero type-extension cost. Case 3 of the unit suite has a defensive `expect(logActivity).not.toHaveBeenCalledWith(..., expect.objectContaining({ source: 'wishlist_move' }))` to catch future regression.
 - **Watch.pricePaid is `number | undefined` not nullable** (Phase 70 Plan 03 Rule 1 fix) — `src/lib/types.ts:60` declares `pricePaid?: number`. Plan body's `?? null` fallback pattern violated the static contract; build gate caught it. `?? undefined` is semantically equivalent inside `Partial<Watch>` because `mapDomainToRow` strips undefined keys before the DB UPDATE — prior DB value is preserved when caller omits. Pattern applies to any other `?: T` field on Watch when constructing update payloads.
+- **FlowState final union — 7 variants, 6 removed (Phase 70 Plan 04 CLNP-05)** — `src/components/watch/flowTypes.ts` rewritten to D-01 final shape: `search-idle`, `extracting-url`, `extraction-failed` (+ new `mode: 'url' \| 'structured'` field for Phase 69 D-06 ExtractErrorCard parity), `confirming` (+ new `catalogId`, `pickedResult`, `dupeContext`, `pending` fields), `form-prefill`, `manual-entry`, `photos-pending`. Removed: `idle`, `extracting`, `verdict-ready`, `wishlist-rationale-open`, `submitting-wishlist`, `submitting-collection`. ROADMAP CLNP-05 listed `search-idle` + `search-results` + `structured-input` + `extracting-structured` as 4 separate orchestrator-level states; D-01 collapses those into 1 (`search-idle`) because SearchEntry (Phase 69) owns the result/structured/extracting sub-states internally — splitting them at the orchestrator would mirror SearchEntry's local state. **Phase 71 CLNP-02 static guard asserts against THIS shape, NOT the ROADMAP draft enumeration** (per CONTEXT.md §Phase 71 forward-coordination). Commit c8f0c38c.
+- **DupeContext interface shipped (Phase 70 Plan 04)** — `export interface DupeContext { existingWatchId: string; existingStatus: 'owned' \| 'wishlist'; existingReference: string \| null }` at `src/components/watch/flowTypes.ts:49`. `existingReference: null` is legitimate (catalog rows without public ref) and tells DupeBanner (Plan 02) to hide its "View existing" `/w/[ref]` link per D-06. Consumed by Plan 02 DupeBanner + Plan 05 orchestrator.
+- **D-02 transition map ships verbatim as a 19-line JSDoc block ABOVE FlowState** (Phase 70 Plan 04) — pattern-mapping decision per D-02; future readers see the state-machine at a glance without leaving the type file. Reads as `search-idle ──onPick (owned)──→ /w/[ref]   [DUPE-01]` style entries; one line per transition. Phase 71 CLNP-02 static guard treats this as a documentation reference, not an assertion target.
+- **RailEntry.verdict re-typed to `unknown \| null` (was `VerdictBundle \| null`)** (Phase 70 Plan 04) — drops the stale legacy verdict-types import while preserving `RailEntry` shape for `RecentlyEvaluatedRail.tsx` through Phase 71 cleanup. Phase 71 deletes both fields + their consumer in a single sweep alongside the RecentlyEvaluatedRail disposition (CLNP-04). `RailEntry` + `PendingTarget` exports retained per CLNP-04 deferral.
+- **JSDoc-prose grep-collision recurrence-3 mitigated proactively** (Phase 70 Plan 04) — initial RailEntry comment included the literal phrase "stale `VerdictBundle` import"; reworded to "stale legacy verdict-types import" so `grep -c "VerdictBundle" src/components/watch/flowTypes.ts` returns 0. Recurrence-3 of the pattern from `feedback_decision_coverage_gate_citations` family + Phase 69 Plan 04 lessons. No semantic change.
 
 ### Pending Todos
 
@@ -170,6 +175,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase 70 P01 | 17 | 4 tasks | 7 files |
 | Phase 70 P02 | 5min | 2 tasks | 2 files |
 | Phase 70 P03 | 4 | 2 tasks | 2 files |
+| Phase Phase 70 P04 P04 | 3min | 1 tasks | 2 files |
 
 ## Session Continuity
 
