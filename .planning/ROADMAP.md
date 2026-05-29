@@ -245,7 +245,8 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   3. The "Grail" picker option renders a lucide `Star` icon inline; its visual weight matches the other options
   4. The primary CTA label updates dynamically: "Add to Collection", "Add to Wishlist", or "Save as Grail" per the selected status
   5. Clicking "Start over" returns the user to the search idle state without persisting any partial data; clicking "Edit details" opens `WatchForm` with all extracted/catalog data pre-filled and status unlocked
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 68-01-PLAN.md — Create `src/components/watch/ConfirmStep.tsx` (pure-presenter w/ cover photo fallback, radiogroup picker, status-gated price, ghost escapes, primary CTA) + co-located test file with 15 cases (a)-(o) (CONF-01..CONF-10)
 **UI hint**: yes
 
 ### Phase 69: SearchEntry + StructuredEntryPanel + Cache Hygiene
@@ -291,7 +292,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 |-------|----------------|--------|-----------|
 | 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
 | 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
-| 68. ConfirmStep Component | 0/? | Not started | - |
+| 68. ConfirmStep Component | 0/1 | Planned     | - |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 0/? | Not started | - |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 0/? | Not started | - |
 | 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
