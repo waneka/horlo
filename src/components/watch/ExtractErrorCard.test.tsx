@@ -134,6 +134,74 @@ describe('ExtractErrorCard — interactions', () => {
   })
 })
 
+describe('ExtractErrorCard — mode branch (Phase 69, Phase 66 D-06)', () => {
+  it('mode="structured" renders structured-mode body verbatim for structured-data-missing', () => {
+    render(
+      <ExtractErrorCard
+        category="structured-data-missing"
+        mode="structured"
+        retryAction={vi.fn()}
+        manualAction={vi.fn()}
+      />,
+    )
+    // Phase 66 D-06 NEW body — verbatim from UI-SPEC.md Copywriting Contract.
+    expect(
+      screen.getByText(
+        "Couldn't find specs for that watch. Try adding a reference number, or enter manually.",
+      ),
+    ).toBeInTheDocument()
+    // The URL-mode body MUST NOT leak through in structured mode.
+    expect(
+      screen.queryByText(
+        "Couldn't find watch info on this page. Try the original product page or enter manually.",
+      ),
+    ).not.toBeInTheDocument()
+  })
+
+  it('mode="url" (explicit) preserves Phase 25 D-15 LOCKED URL-mode body for structured-data-missing', () => {
+    render(
+      <ExtractErrorCard
+        category="structured-data-missing"
+        mode="url"
+        retryAction={vi.fn()}
+        manualAction={vi.fn()}
+      />,
+    )
+    // Phase 25 D-15 LOCKED body — must remain verbatim even when mode is
+    // explicitly passed as 'url' (backward-compat regression guard / UI-SPEC A9).
+    expect(
+      screen.getByText(
+        "Couldn't find watch info on this page. Try the original product page or enter manually.",
+      ),
+    ).toBeInTheDocument()
+    // The structured-mode body MUST NOT appear in URL mode.
+    expect(
+      screen.queryByText(
+        "Couldn't find specs for that watch. Try adding a reference number, or enter manually.",
+      ),
+    ).not.toBeInTheDocument()
+  })
+
+  it('mode="structured" does NOT change body for host-403 (only structured-data-missing varies)', () => {
+    render(
+      <ExtractErrorCard
+        category="host-403"
+        mode="structured"
+        retryAction={vi.fn()}
+        manualAction={vi.fn()}
+      />,
+    )
+    // Phase 25 D-15 LOCKED host-403 body — unchanged in structured mode per
+    // Phase 66 D-06 ("unlocks ONE row of the D-15 copy table"). Verified
+    // against the CASES table at L19-45 above.
+    expect(
+      screen.getByText(
+        "This site doesn't allow data extraction. Try entering manually.",
+      ),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('ExtractErrorCard — accessibility', () => {
   it('root has role="alert" and aria-live="polite"', () => {
     const { container } = render(

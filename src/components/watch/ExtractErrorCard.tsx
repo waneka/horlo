@@ -42,6 +42,15 @@ export type ExtractErrorCategory =
 export interface ExtractErrorCardProps {
   category: ExtractErrorCategory
   /**
+   * Phase 69 — Phase 66 D-06 unlock. Defaults to 'url' behavior for
+   * backward compat (LOCKED Phase 25 D-15 copy). Only the
+   * `structured-data-missing` category body branches on this prop; all
+   * other categories preserve LOCKED copy in both modes. The mode-aware
+   * body is computed in the component body — CONTRACT_BY_CATEGORY itself
+   * remains the URL-mode source of truth and stays LOCKED.
+   */
+  mode?: 'url' | 'structured'
+  /**
    * Optional verbatim error message from the route (debug-grade; not
    * user-facing). Rendered as a small dev-only detail beneath the body.
    * NEVER replaces the LOCKED D-15 body copy.
@@ -68,6 +77,13 @@ interface CategoryContract {
 
 // LOCKED per UI-SPEC §Per-category contract (D-14 + D-15).
 // DO NOT paraphrase any string in this map. DO NOT swap any icon.
+//
+// Phase 69 (Phase 66 D-06) single-row unlock: only `structured-data-missing.body`
+// has a mode-aware variant. That variant is computed in the component body
+// below — NOT in this table. The 4 other categories (`host-403`, `LLM-timeout`,
+// `quota-exceeded`, `generic-network`) reuse the entries here verbatim in BOTH
+// modes; the `structured-data-missing` entry IS the URL-mode source of truth
+// and stays LOCKED, with the structured-mode body branched downstream.
 const CONTRACT_BY_CATEGORY: Record<ExtractErrorCategory, CategoryContract> = {
   'host-403': {
     Icon: Lock,
@@ -98,11 +114,20 @@ const CONTRACT_BY_CATEGORY: Record<ExtractErrorCategory, CategoryContract> = {
 
 export function ExtractErrorCard({
   category,
+  mode,
   message,
   retryAction,
   manualAction,
 }: ExtractErrorCardProps) {
-  const { Icon, heading, body } = CONTRACT_BY_CATEGORY[category]
+  const { Icon, heading, body: rawBody } = CONTRACT_BY_CATEGORY[category]
+  // Phase 69 — Phase 66 D-06 single-row unlock. Only the
+  // `structured-data-missing` body varies on mode; everything else stays on
+  // the LOCKED Phase 25 D-15 URL-mode copy in both modes. The string below is
+  // VERBATIM from UI-SPEC.md Copywriting Contract — DO NOT paraphrase.
+  const body =
+    category === 'structured-data-missing' && mode === 'structured'
+      ? "Couldn't find specs for that watch. Try adding a reference number, or enter manually."
+      : rawBody
 
   return (
     <div
