@@ -278,12 +278,15 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   3. Navigating to `/watch/new?manual=1` bypasses search and lands directly on the structured-input / manual-entry screen, preserving v4.1 Phase 29 priority behavior
   4. The `?returnTo=` URL parameter round-trips correctly — after adding a watch the user is returned to the originating page (e.g., the wishlist empty-state CTA)
   5. Revisiting `/watch/new` after a previous session does not poison state from the prior search or extract — the Phase 29 three-layer reset is extended to the new `useCatalogSearchCache` and `useStructuredExtractCache` caches
-**Plans**: 5 plans
+**Plans**: 8 plans (5 shipped + 3 gap-closure)
 - [x] 70-01-PLAN.md — Wave 0 prerequisite patches: StructuredEntryPanel.onSubmitStructured emit + findViewerWatchByCatalogId DAL JOIN + WatchForm.onWatchCreated status arg
 - [x] 70-02-PLAN.md — DupeBanner pure-presenter component + co-located test (DUPE-02/03 UI)
 - [x] 70-03-PLAN.md — moveWishlistToCollection Server Action + 6-case unit suite (DUPE-03)
 - [x] 70-04-PLAN.md — flowTypes.ts D-01 union rewrite + DupeContext + transition map JSDoc + CLNP-05 enumeration test
 - [x] 70-05-PLAN.md — AddWatchFlow.tsx orchestrator rewrite + test retrofit (DUPE-01/02/03 UI, CLNP-06, all 22 D-NN decisions)
+- [ ] 70-06-PLAN.md — Gap closure (CR-01 upward): widen StructuredEntryPanel.onSubmitStructured + SearchEntry pass-through to forward photoBlob third arg (forwards captured EXIF-cleaned Blob; closes write-only setter deadcode)
+- [ ] 70-07-PLAN.md — Gap closure (CR-01 consumer + CR-02): AddWatchFlow movement gating on catalogId + strip dead imageUrl + capture photoBlob into confirming state + uploadCatalogSourcePhoto + photoSourcePath in addWatch payload
+- [ ] 70-08-PLAN.md — Gap closure (WR-01 + WR-02): ConfirmStep pending gated on dupeContext (silent-duplicate hole closed) + handleSearchPick toast.error fallback when known-dupe resolveDupeContext fails + human re-verification checkpoint
 **UI hint**: yes
 
 ### Phase 71: Dead Code Cleanup + Static Guards
@@ -305,7 +308,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
-| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 5/5 | Complete   | 2026-05-29 |
+| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 5/8 | Gap closure planned (06/07/08) | - |
 | 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
