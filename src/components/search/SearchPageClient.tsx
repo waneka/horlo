@@ -193,6 +193,7 @@ export function SearchPageClient({ viewerId, collectionRevision, viewerUsername,
             hasError={watchesHasError}
             collectionRevision={collectionRevision}
             viewerUsername={viewerUsername}
+            viewerId={viewerId}
             hasActiveFacet={activeCount > 0}
             brand={brand}
             era={era}
@@ -321,6 +322,7 @@ function WatchesPanel({
   hasError,
   collectionRevision,
   viewerUsername,
+  viewerId,
   hasActiveFacet,
   brand = null,
   era = null,
@@ -333,6 +335,11 @@ function WatchesPanel({
   hasError: boolean
   collectionRevision: number
   viewerUsername: string | null
+  /** Phase 69 D-08 — threaded down to `WatchSearchRowsAccordion.viewerUserId`
+   *  for the cache-hygiene retrofit (CLNP-07). Already in scope at
+   *  `SearchPageClient` via `SearchPageClientProps.viewerId`; this is the
+   *  middle hop of the 3-layer thread. */
+  viewerId: string
   hasActiveFacet: boolean
   // Phase 49.1 D-SCOPE-01d — archetype and genre props removed at this surface.
   brand?: string | null
@@ -453,11 +460,15 @@ function WatchesPanel({
         </div>
       )}
       {/* FIT-04 D-05/D-06: Accordion shell with lazy Server Action + verdict cache */}
+      {/* Phase 69 D-08 — viewerUserId={viewerId} maps the WatchesPanel-level
+          prop name (`viewerId`) onto the Accordion's `viewerUserId` prop name;
+          both are correct in their own context. */}
       <WatchSearchRowsAccordion
         results={results}
         q={q}
         collectionRevision={collectionRevision}
         viewerUsername={viewerUsername}
+        viewerUserId={viewerId}
       />
       {results.length === 20 && (
         <p className="text-sm text-muted-foreground text-center py-2">

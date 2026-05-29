@@ -33,6 +33,7 @@ export function WatchSearchRowsAccordion({
   q,
   collectionRevision,
   viewerUsername,
+  viewerUserId,
 }: {
   results: SearchCatalogWatchResult[]
   q: string
@@ -40,11 +41,16 @@ export function WatchSearchRowsAccordion({
   /** Phase 28 D-02 — viewer's profile username for the View toast destination.
    *  Null is a soft alarm — toast body still fires but action slot is omitted. */
   viewerUsername: string | null
+  /** Phase 69 D-08 retrofit — viewer's user id required by the updated
+   *  `useWatchSearchVerdictCache(collectionRevision, viewerUserId)` signature
+   *  for CLNP-07 cross-user cache reset. Threaded from `SearchPageClient.viewerId`
+   *  via the internal `WatchesPanel` component (3-layer thread). */
+  viewerUserId: string
 }) {
   const [openValues, setOpenValues] = useState<string[]>([])
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
-  const cache = useWatchSearchVerdictCache(collectionRevision)
+  const cache = useWatchSearchVerdictCache(collectionRevision, viewerUserId)
   const router = useRouter()
   const [committingId, setCommittingId] = useState<string | null>(null)
   const [committingTarget, setCommittingTarget] = useState<'wishlist' | 'collection' | null>(null)

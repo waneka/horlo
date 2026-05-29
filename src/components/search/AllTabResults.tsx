@@ -112,6 +112,7 @@ export function AllTabResults({
             q={q}
             collectionRevision={collectionRevision}
             viewerUsername={viewerUsername}
+            viewerUserId={viewerId}
           />
         )}
       </Section>

@@ -128,6 +128,11 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         initialReturnTo={initialReturnTo}
         viewerUsername={viewerUsername}
         viewerUserId={user.id}
+        // Phase 69 D-13 — typed pass-through; Phase 70 (SearchEntry mount)
+        // consumes. Plan 06 of Phase 69 replaces the empty-array placeholder
+        // with `await listCatalogBrands()` from the new DAL fn. parseSearchQuery
+        // falls back to the naive split when this is empty — safe default.
+        catalogBrands={[]}
       />
     </div>
   )

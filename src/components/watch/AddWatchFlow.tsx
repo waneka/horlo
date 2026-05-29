@@ -80,8 +80,27 @@ interface AddWatchFlowProps {
    * WR-03 fix: viewer's user id resolved server-side at /watch/new via
    * getCurrentUser(). Threaded into WatchPhotoStep so the PhotoDropzone is
    * immediately enabled without a client-side getUser() round-trip.
+   *
+   * Phase 69 D-07 retrofit: also threaded into the two existing module-scope
+   * caches (`useWatchSearchVerdictCache`, `useUrlExtractCache`) and the two
+   * new Phase 69 caches (`useCatalogSearchCache`, `useStructuredExtractCache`)
+   * via the same prop-drill — closes CLNP-07 (cross-user cache leak) for all
+   * four caches in the same change.
    */
   viewerUserId: string
+  /**
+   * Phase 69 D-13: catalog brand list SSR-fetched by `/watch/new/page.tsx`
+   * (DAL fn `listCatalogBrands()`) and prop-drilled through here to the
+   * downstream `SearchEntry` → `parseSearchQuery(q, catalogBrands)` SRCH-26
+   * pre-seed.
+   *
+   * Phase 69 ships this typed only — `AddWatchFlow` does NOT consume the
+   * prop internally in this phase (it has no SearchEntry mount yet). Phase 70
+   * is the consumer: it mounts SearchEntry which calls parseSearchQuery with
+   * this list. Empty array is a safe default (parseSearchQuery falls back to
+   * the naive split for novel brands).
+   */
+  catalogBrands: string[]
 }
 
 const RAIL_MAX = 5
@@ -96,6 +115,10 @@ export function AddWatchFlow({
   initialReturnTo,
   viewerUsername,
   viewerUserId,
+  // Phase 69 D-13 — typed pass-through only; consumed by Phase 70 when SearchEntry mounts.
+  // Destructured (not omitted) so the prop is exhaustively acknowledged at the call boundary;
+  // intentionally unused inside the current renderer.
+  catalogBrands: _catalogBrands,
 }: AddWatchFlowProps) {
   const router = useRouter()
   // Phase 28 D-12 — initialReturnTo + viewerUsername are validated server-side
@@ -120,11 +143,12 @@ export function AddWatchFlow({
   const [url, setUrl] = useState('')
   const [, startTransition] = useTransition()
   const [rail, setRail] = useState<RailEntry[]>([])
-  const cache = useWatchSearchVerdictCache(collectionRevision)
+  const cache = useWatchSearchVerdictCache(collectionRevision, viewerUserId)
   // FORM-04 Gap 3 — sibling cache for the upstream extract step. Mirrors 29-05's
   // module-scope pattern; survives the same per-request UUID `key` boundary.
   // Skips /api/extract-watch entirely on re-paste of an already-extracted URL.
-  const urlCache = useUrlExtractCache()
+  // Phase 69 D-08 retrofit: viewerUserId threaded for CLNP-07 cross-user reset.
+  const urlCache = useUrlExtractCache(viewerUserId)
   // UAT gap 1 (Plan 06): drives the VerdictStep fallback copy split. Threaded
   // into every VerdictStep render call site so a null verdict on a non-empty
   // collection surfaces "Couldn't compute fit" instead of the misleading
