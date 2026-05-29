@@ -233,7 +233,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 **Plans**: 3 plans
 - [x] 67-01-PLAN.md — Extend `findViewerWatchByCatalogId` (D-06/D-07/D-08) + Wave 0 test scaffold (DUPE-01/03 DAL part)
 - [x] 67-02-PLAN.md — Add `searchCatalogForAddFlow` DAL + Server Action with exact-reference sort tier (D-01/D-03/D-04/D-05) + Wave 0 test scaffold
-- [ ] 67-03-PLAN.md — Extend `insertWatchSchema` + `addWatch` catalogId branch (D-09/D-10/D-11) with 5 integration tests (CONF-11)
+- [x] 67-03-PLAN.md — Extend `insertWatchSchema` + `addWatch` catalogId branch (D-09/D-10/D-11) with 5 integration tests (CONF-11)
 
 ### Phase 68: ConfirmStep Component
 **Goal**: A `ConfirmStep` pure presenter component exists that renders a cover photo, read-only watch identity, a segmented status picker (owned / wishlist / grail, no sold), status-gated price field, "Edit details" escape, and a primary CTA whose label reflects the chosen status
@@ -290,7 +290,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
-| 67. Server Action + DAL Extensions | 2/3 | In Progress|  |
+| 67. Server Action + DAL Extensions | 3/3 | Complete   | 2026-05-29 |
 | 68. ConfirmStep Component | 0/? | Not started | - |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 0/? | Not started | - |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 0/? | Not started | - |

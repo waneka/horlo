@@ -51,7 +51,7 @@ Lighter review surface that replaces `VerdictStep`. Status incl. grail picked he
 - [ ] **CONF-08**: The primary CTA label reflects the chosen status ("Add to Collection" / "Add to Wishlist" / "Save as Grail")
 - [ ] **CONF-09**: A "Start over" escape returns the user to the search idle state without persisting partial data
 - [ ] **CONF-10**: Status default derives from a `?status=` URL parameter (e.g. `/watch/new?status=wishlist` from the wishlist empty-state CTA) by threading `initialStatus` through to the confirm screen
-- [ ] **CONF-11**: `addWatch` Server Action Zod schema gains optional `catalogId: z.string().uuid()`; when supplied, the action calls `getCatalogById(catalogId)` to bind the user's watch row to the existing catalog row (skipping redundant `upsertCatalogFromUserInput`)
+- [x] **CONF-11**: `addWatch` Server Action Zod schema gains optional `catalogId: z.string().uuid()`; when supplied, the action calls `getCatalogById(catalogId)` to bind the user's watch row to the existing catalog row (skipping redundant `upsertCatalogFromUserInput`)
 
 ### Existing-in-Collection Handling (DUPE)
 
@@ -147,7 +147,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONF-08 | Phase 68 | Pending |
 | CONF-09 | Phase 68 | Pending |
 | CONF-10 | Phase 68 | Pending |
-| CONF-11 | Phase 67 | Pending |
+| CONF-11 | Phase 67 | Complete |
 | DUPE-01 | Phase 70 | Complete |
 | DUPE-02 | Phase 70 | Pending |
 | DUPE-03 | Phase 70 | Complete |
