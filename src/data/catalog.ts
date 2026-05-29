@@ -265,6 +265,11 @@ const SEARCH_WATCHES_TRIM_MIN_LEN = 2
 const SEARCH_WATCHES_CANDIDATE_CAP = 50
 const SEARCH_WATCHES_DEFAULT_LIMIT = 20
 
+// Phase 67 Plan 02: searchCatalogForAddFlow constants (sibling of SEARCH_WATCHES_*)
+const SEARCH_ADD_FLOW_TRIM_MIN_LEN = 2
+const SEARCH_ADD_FLOW_CANDIDATE_CAP = 50
+const SEARCH_ADD_FLOW_DEFAULT_LIMIT = 20
+
 // ---------------------------------------------------------------------------
 // Phase 40 SRCH-16: CatalogSearchFilters + SIZE_BAND_MAP
 // ---------------------------------------------------------------------------
@@ -466,6 +471,131 @@ export async function searchCatalogWatches({
   if (candidates.length === 0) return []
 
   const top = candidates.slice(0, limit)
+  const topIds = top.map((r) => r.id)
+
+  // Pitfall 4: length-guard before inArray to skip the degenerate empty IN clause.
+  const stateRows = topIds.length
+    ? await db
+        .select({
+          catalogId: watches.catalogId,
+          status: watches.status,
+        })
+        .from(watches)
+        .where(
+          and(
+            eq(watches.userId, viewerId),
+            inArray(watches.catalogId, topIds),
+          ),
+        )
+    : []
+
+  // D-05 resolution: 'owned' wins over 'wishlist' for the same catalogId.
+  // 'sold' + 'grail' are NOT badged.
+  const stateMap = new Map<string, 'owned' | 'wishlist'>()
+  for (const row of stateRows) {
+    if (!row.catalogId) continue
+    const prior = stateMap.get(row.catalogId)
+    if (row.status === 'owned') {
+      stateMap.set(row.catalogId, 'owned')
+    } else if (row.status === 'wishlist' && prior !== 'owned') {
+      stateMap.set(row.catalogId, 'wishlist')
+    }
+    // 'sold' and 'grail' deliberately fall through — no badge.
+  }
+
+  return top.map((r) => ({
+    catalogId: r.id,
+    brand: r.brand,
+    model: r.model,
+    reference: r.reference,
+    imageUrl: r.imageUrl,
+    ownersCount: r.ownersCount,
+    wishlistCount: r.wishlistCount,
+    viewerState: stateMap.get(r.id) ?? null,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Phase 67 Plan 02: searchCatalogForAddFlow — Add Flow typeahead DAL (DUPE-01/DUPE-03)
+// ---------------------------------------------------------------------------
+
+/**
+ * Phase 67 Add-Flow typeahead catalog search (D-01 sibling of searchCatalogWatches).
+ *
+ * Identical candidate query + anti-N+1 viewerState hydration as searchCatalogWatches,
+ * with ONE intentional difference: the ORDER BY gains a boolean-DESC tier
+ * `(reference_normalized = queryNormalized) DESC` above the popularity sort so
+ * exact-reference matches bubble to the top (D-04/D-05).
+ *
+ * D-03: no facet predicates — WHERE is ILIKE OR over brand/model/ref normalized only.
+ * D-02: viewerId is always required (viewer-state hydration needs session identity).
+ *
+ * Pitfall 1 (empty queryNormalized): when the normalized query is empty, substitute
+ * sql`false` for the boolean-DESC tier so no rows receive a false exact-ref bump.
+ *
+ * Pitfall 4 (empty inArray): topIds.length === 0 short-circuits before the inArray
+ * call to avoid degenerate WHERE catalog_id IN () SQL.
+ *
+ * All `q` interpolations use Drizzle parameterized template binds — never
+ * string-concatenated into SQL text (T-67-02-01 mitigation).
+ */
+export async function searchCatalogForAddFlow({
+  q,
+  viewerId,
+  limit = SEARCH_ADD_FLOW_DEFAULT_LIMIT,
+}: {
+  q: string
+  viewerId: string
+  limit: number
+}): Promise<SearchCatalogWatchResult[]> {
+  const qTrimmed = q.trim()
+  if (qTrimmed.length < SEARCH_ADD_FLOW_TRIM_MIN_LEN) return []
+
+  const lowerQ = qTrimmed.toLowerCase()
+  const pattern = `%${lowerQ}%`
+  const queryNormalized = lowerQ.replace(/[^a-z0-9]+/g, '')
+  // Pitfall 1 guard: when normalized query is empty, use sql`false` so no rows
+  // receive a false exact-ref bump (mirrors searchCatalogWatches refPattern guard).
+  const exactRefOrderTier =
+    queryNormalized.length > 0
+      ? desc(sql`(${watchesCatalog.referenceNormalized} = ${queryNormalized})`)
+      : desc(sql`false`)
+
+  const candidates = await db
+    .select({
+      id: watchesCatalog.id,
+      brand: watchesCatalog.brand,
+      model: watchesCatalog.model,
+      reference: watchesCatalog.reference,
+      imageUrl: watchesCatalog.imageUrl,
+      ownersCount: watchesCatalog.ownersCount,
+      wishlistCount: watchesCatalog.wishlistCount,
+    })
+    .from(watchesCatalog)
+    .where(
+      // D-03: ILIKE OR only — no facets (no movement/size/style/brand/era predicates)
+      or(
+        ilike(watchesCatalog.brandNormalized, pattern),
+        ilike(watchesCatalog.modelNormalized, pattern),
+        // Pitfall 1: only run reference branch when stripped query is non-empty.
+        queryNormalized.length > 0
+          ? ilike(watchesCatalog.referenceNormalized, `%${queryNormalized}%`)
+          : sql`false`,
+      ),
+    )
+    .orderBy(
+      // D-04/D-05 tier 1: exact-reference bump — true sorts first under DESC
+      exactRefOrderTier,
+      // Existing popularity + alpha tie-break (matches searchCatalogWatches)
+      desc(sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount})`),
+      asc(watchesCatalog.brandNormalized),
+      asc(watchesCatalog.modelNormalized),
+    )
+    .limit(SEARCH_ADD_FLOW_CANDIDATE_CAP)
+
+  if (candidates.length === 0) return []
+
+  const top = candidates.slice(0, Math.min(limit, SEARCH_ADD_FLOW_CANDIDATE_CAP))
   const topIds = top.map((r) => r.id)
 
   // Pitfall 4: length-guard before inArray to skip the degenerate empty IN clause.
