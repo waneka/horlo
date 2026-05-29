@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: verifying
-last_updated: "2026-05-29T05:39:58.347Z"
+last_updated: "2026-05-29T06:56:18.256Z"
 last_activity: 2026-05-29
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 12
   completed_plans: 12
@@ -28,7 +28,7 @@ Phase: 69 (SearchEntry + StructuredEntryPanel + Cache Hygiene) — COMPLETE (6/6
 Plan: 6 of 6
 Status: Phase complete — ready for verification
 Last activity: 2026-05-29
-Resume file: None
+Resume file: .planning/phases/70-addwatchflow-state-machine-rewrite-dupe-wiring/70-CONTEXT.md
 
 ## Performance Metrics
 
