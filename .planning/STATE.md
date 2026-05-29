@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: executing
-last_updated: "2026-05-29T18:08:40.296Z"
+last_updated: "2026-05-29T18:20:03.456Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 ## Current Position
 
 Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-05-29
 Resume file: None
@@ -119,6 +119,7 @@ Resume file: None
 - **RailEntry.verdict re-typed to `unknown \| null` (was `VerdictBundle \| null`)** (Phase 70 Plan 04) — drops the stale legacy verdict-types import while preserving `RailEntry` shape for `RecentlyEvaluatedRail.tsx` through Phase 71 cleanup. Phase 71 deletes both fields + their consumer in a single sweep alongside the RecentlyEvaluatedRail disposition (CLNP-04). `RailEntry` + `PendingTarget` exports retained per CLNP-04 deferral.
 - **JSDoc-prose grep-collision recurrence-3 mitigated proactively** (Phase 70 Plan 04) — initial RailEntry comment included the literal phrase "stale `VerdictBundle` import"; reworded to "stale legacy verdict-types import" so `grep -c "VerdictBundle" src/components/watch/flowTypes.ts` returns 0. Recurrence-3 of the pattern from `feedback_decision_coverage_gate_citations` family + Phase 69 Plan 04 lessons. No semantic change.
 - **onSubmitStructured widened to 3-arg (result, catalogId, photoBlob?) across StructuredEntryPanel + SearchEntry** (Phase 70 Plan 06 — CR-01 upstream half) — closes VERIFICATION gap #1 half-A: the EXIF-cleaned Blob captured by `CatalogPhotoUploader` inside `StructuredEntryPanel` flowed into a write-only `const [, setPhotoBlob] = useState<Blob | null>(null)` and silently died. Plan 06 reads `photoBlob` from state, forwards it as `photoBlob ?? undefined` (third arg, `Blob | undefined` sentinel — `undefined` = absence, no-pick AND post-clear both surface as `undefined`) in both cache-hit + network-success branches of `handleFindSpecs`. SearchEntry stays an identity-stable pass-through (`onSubmitStructured={onSubmitStructured}` unchanged at line 345) — the TypeScript widen makes the contract enforcement explicit. AddWatchFlow's 2-arg `handleStructuredSubmit` signature still type-checks because optional third args are tolerable on the consumer side; gap plan 07 widens the consumer and calls `uploadCatalogSourcePhoto` before `addWatch` (mirrors `WatchForm.tsx:222-249`). 4 new regression tests in StructuredEntryPanel.test.tsx + 1 in SearchEntry.test.tsx; existing tests 8/10 of StructuredEntryPanel widened to assert the new arity. Commits `0db88d1c` (panel) + `03c88a5e` (search).
+- **VERIFICATION gap #1 fully closes — CR-01 consumer + CR-02 movement + CR-02 imageUrl** (Phase 70 Plan 07) — `handleConfirmPrimary` payload now (a) OMITS movement entirely when `captured.catalogId` is set (catalog row + Phase 19.5 LLM-derived taste enrichment owns the truth; no synthetic `'auto'` default ever — pre-gap quartz/manual catalog rows persisted `movement='auto'` to the user's watches row, overriding catalog truth), (b) forwards `extracted.movement` verbatim only when no catalogId AND extracted volunteered it (URL-backup transient failure), (c) strips dead `imageUrl: captured.extracted.imageUrl` line entirely (Phase 60 dropped the column; `mapDomainToRow:94` silently drops it; dead-code obscured the cover-fallback chain), and (d) wires `uploadCatalogSourcePhoto(user.id, 'pending', captured.photoBlob)` BEFORE `addWatch` when `captured.photoBlob` is set; forwards `photoSourcePath` into the payload — mirrors `WatchForm.tsx:222-249` (dynamic imports, fire-and-forget on failure). FlowState.confirming variant gains optional `photoBlob?: Blob | null`; `handleStructuredSubmit` widened to 3-arg matching Plan 06's contract; all 5 confirming setState sites pass photoBlob explicitly (null for search-pick + URL-backup; the captured Blob for structured-submit). 7 new gap-plan-07 regression tests green in the describe block; existing 13 AddWatchFlow tests + CLNP-07 cache-hygiene test stay green; `npm run build` exit 0. JSDoc-prose grep-collision recurrence-3 preempted (CR-02 explanation comments reworded to avoid backticked literal patterns that the plan's done-criteria static greps target). Commits `53b22a34` (FlowState + handleStructuredSubmit + tests) + `7060799c` (handleConfirmPrimary payload + upload pipeline).
 
 ### Pending Todos
 
@@ -179,6 +180,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase Phase 70 P04 P04 | 3min | 1 tasks | 2 files |
 | Phase 70 P05 | 35 | 3 tasks | 3 files |
 | Phase 70 P06 | 5min | 2 tasks | 4 files |
+| Phase 70 P07 | 9min | 2 tasks | 3 files |
 
 ## Session Continuity
 
