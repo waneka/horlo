@@ -5,7 +5,7 @@
  * status radiogroup picker, price field label flip, inline-editable
  * inputs, action affordances, and pending state.
  *
- * 15 cases (a)-(o):
+ * 17 cases (a)-(o) + (p)-(q):
  *   (a) catalogImageUrl set + extractedImageUrl also set → catalog wins
  *   (b) only extractedImageUrl set → extracted renders
  *   (c) neither image set → WatchIcon placeholder (data-testid="confirm-cover-placeholder")
@@ -21,11 +21,14 @@
  *   (m) "Start over" click fires onStartOver exactly once
  *   (n) pending=true → primary CTA disabled + "Saving..." + Loader2; ghost buttons disabled
  *   (o) aria-checked flips correctly across 3 options on rerender
+ *   (p) ArrowRight from "Owned" moves DOM focus to and selects "Wishlist" (CR-01)
+ *   (q) ArrowLeft from "Owned" wraps around and moves DOM focus to "Grail" (CR-01)
  *
  * RED until Wave 1 ships `@/components/watch/ConfirmStep`.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 vi.mock('next/image', () => ({
   default: (p: { src: string; alt: string }) => <img src={p.src} alt={p.alt} />,
@@ -162,6 +165,59 @@ describe("ConfirmStep — status picker (CONF-03/04/08)", () => {
     expect(screen.getByRole('radio', { name: 'Owned' })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByRole('radio', { name: 'Wishlist' })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByRole('radio', { name: /Grail/i })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('(p) ArrowRight from "Owned" moves DOM focus to and selects "Wishlist" (CR-01)', async () => {
+    const onStatusChange = vi.fn()
+    render(
+      <ConfirmStep
+        {...BASE_PROPS}
+        status="owned"
+        onStatusChange={onStatusChange}
+      />,
+    )
+    // Place focus on the Owned button (the currently selected radio)
+    const ownedBtn = screen.getByRole('radio', { name: 'Owned' })
+    ownedBtn.focus()
+    expect(document.activeElement).toBe(ownedBtn)
+
+    // Press ArrowRight — handleKeyDown calls onStatusChange + requestAnimationFrame focus
+    await act(async () => {
+      await userEvent.keyboard('{ArrowRight}')
+      // Flush requestAnimationFrame so the focus() call inside rAF executes
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+
+    expect(onStatusChange).toHaveBeenCalledTimes(1)
+    expect(onStatusChange).toHaveBeenCalledWith('wishlist')
+    // DOM focus should now be on the Wishlist button
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Wishlist' }))
+  })
+
+  it('(q) ArrowLeft from "Owned" wraps around and moves DOM focus to "Grail" (CR-01)', async () => {
+    const onStatusChange = vi.fn()
+    render(
+      <ConfirmStep
+        {...BASE_PROPS}
+        status="owned"
+        onStatusChange={onStatusChange}
+      />,
+    )
+    // Place focus on the Owned button (index 0 — wraps left to Grail at index 2)
+    const ownedBtn = screen.getByRole('radio', { name: 'Owned' })
+    ownedBtn.focus()
+    expect(document.activeElement).toBe(ownedBtn)
+
+    // Press ArrowLeft — wraps around: owned(0) → grail(2)
+    await act(async () => {
+      await userEvent.keyboard('{ArrowLeft}')
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+
+    expect(onStatusChange).toHaveBeenCalledTimes(1)
+    expect(onStatusChange).toHaveBeenCalledWith('grail')
+    // DOM focus should now be on the Grail button
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: /Grail/i }))
   })
 })
 

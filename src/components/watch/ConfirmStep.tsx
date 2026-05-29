@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import Image from 'next/image'
 import { Loader2, Star, Watch as WatchIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -122,22 +123,40 @@ export function ConfirmStep({
   const isOwned = status === 'owned'
   const coverUrl = catalogImageUrl ?? extractedImageUrl ?? null
 
+  // Ref on the radiogroup container — used to move DOM focus after status change (CR-01)
+  const groupRef = useRef<HTMLDivElement>(null)
+
   // WAI-ARIA 1.2 radiogroup roving-tabindex keyboard handler (68-UI-SPEC §Keyboard navigation)
+  // After calling onStatusChange, imperatively move focus to the newly selected button so
+  // the browser does not leave keyboard cursor on the old button (now tabIndex=-1). Focus
+  // is dispatched via requestAnimationFrame so it runs after React commits the new tabIndex.
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     const values = ['owned', 'wishlist', 'grail'] as const
     const idx = values.indexOf(status)
+    let next: typeof values[number] | null = null
+
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault()
-      onStatusChange(values[(idx + 1) % values.length])
+      next = values[(idx + 1) % values.length]
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault()
-      onStatusChange(values[(idx + values.length - 1) % values.length])
+      next = values[(idx + values.length - 1) % values.length]
     } else if (e.key === 'Home') {
       e.preventDefault()
-      onStatusChange(values[0])
+      next = values[0]
     } else if (e.key === 'End') {
       e.preventDefault()
-      onStatusChange(values[values.length - 1])
+      next = values[values.length - 1]
+    }
+
+    if (next !== null) {
+      onStatusChange(next)
+      const nextValue = next
+      requestAnimationFrame(() => {
+        groupRef.current
+          ?.querySelector<HTMLButtonElement>(`[data-value="${nextValue}"]`)
+          ?.focus()
+      })
     }
   }
 
@@ -210,6 +229,7 @@ export function ConfirmStep({
       <div className="space-y-2">
         <Label htmlFor="confirm-status-group">Status</Label>
         <div
+          ref={groupRef}
           role="radiogroup"
           aria-label="Watch status"
           id="confirm-status-group"
@@ -223,6 +243,7 @@ export function ConfirmStep({
               role="radio"
               aria-checked={status === value}
               tabIndex={status === value ? 0 : -1}
+              data-value={value}
               variant="outline"
               className={cn(
                 'min-h-[44px]',
