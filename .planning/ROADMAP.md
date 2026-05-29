@@ -278,7 +278,12 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   3. Navigating to `/watch/new?manual=1` bypasses search and lands directly on the structured-input / manual-entry screen, preserving v4.1 Phase 29 priority behavior
   4. The `?returnTo=` URL parameter round-trips correctly — after adding a watch the user is returned to the originating page (e.g., the wishlist empty-state CTA)
   5. Revisiting `/watch/new` after a previous session does not poison state from the prior search or extract — the Phase 29 three-layer reset is extended to the new `useCatalogSearchCache` and `useStructuredExtractCache` caches
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 70-01-PLAN.md — Wave 0 prerequisite patches: StructuredEntryPanel.onSubmitStructured emit + findViewerWatchByCatalogId DAL JOIN + WatchForm.onWatchCreated status arg
+- [ ] 70-02-PLAN.md — DupeBanner pure-presenter component + co-located test (DUPE-02/03 UI)
+- [ ] 70-03-PLAN.md — moveWishlistToCollection Server Action + 6-case unit suite (DUPE-03)
+- [ ] 70-04-PLAN.md — flowTypes.ts D-01 union rewrite + DupeContext + transition map JSDoc + CLNP-05 enumeration test
+- [ ] 70-05-PLAN.md — AddWatchFlow.tsx orchestrator rewrite + test retrofit (DUPE-01/02/03 UI, CLNP-06, all 22 D-NN decisions)
 **UI hint**: yes
 
 ### Phase 71: Dead Code Cleanup + Static Guards
