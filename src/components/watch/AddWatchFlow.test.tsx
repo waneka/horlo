@@ -114,6 +114,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -160,6 +162,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -210,6 +214,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -254,6 +260,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -306,6 +314,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -344,6 +354,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -375,6 +387,8 @@ describe('Phase 20.1 Plan 04 — AddWatchFlow state machine', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -431,6 +445,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -479,6 +495,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -527,6 +545,8 @@ describe('Phase 20.1 gap-closure — Plan 06', () => {
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
     fireEvent.change(screen.getByPlaceholderText(/Paste a product page URL/i), {
@@ -570,6 +590,8 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -622,6 +644,8 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
         initialStatus={null}
         initialReturnTo={null}
         viewerUsername={null}
+        viewerUserId="user-a"
+        catalogBrands={[]}
       />,
     )
 
@@ -645,5 +669,118 @@ describe('Phase 20.1 gap-closure — Plan 08 (UAT gap 4 — manual-entry escape)
       ) as HTMLInputElement
       expect(inputAfter.value).toBe('')
     })
+  })
+})
+
+/**
+ * Phase 69 Plan 06 (CLNP-07): cross-cache hygiene integration.
+ *
+ * D-09 contract: a single user-switch must clear ALL FOUR module-scope caches
+ * (useCatalogSearchCache, useStructuredExtractCache, useUrlExtractCache,
+ * useWatchSearchVerdictCache) so that signing in as a different viewer does
+ * NOT surface the previous user's cached typeahead/extract/verdict bytes.
+ *
+ * This test is the composition proof for the per-hook unit tests shipped in
+ * Plans 02 + 03. Each hook owns its own user-switch reset (D-06: inline mutation
+ * in render). This test asserts the contract holds when the four are exercised
+ * back-to-back at the AddWatchFlow plumbing layer.
+ *
+ * NOTE on `useWatchSearchVerdictCache(collectionRevision, viewerUserId)`:
+ * both args reset the cache when changed. We hold `collectionRevision=1` on
+ * BOTH user-a and user-b reads so the OUTER user-switch is the sole invalidator
+ * under test (the inner revision guard is unit-tested separately).
+ *
+ * NOTE on hook calls outside React render: all 4 cache hooks return plain
+ * `{get, set}` over module-scope state with no React-tracked subscribers. The
+ * in-render reset is a sync mutation, not setState, so calling the hooks
+ * directly in the test body produces the same observable behavior as
+ * rendering a component that calls them. No renderHook harness required.
+ */
+describe('Phase 69 — cache hygiene integration (CLNP-07)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    const { __resetVerdictCacheForTests } = await import(
+      '@/components/search/useWatchSearchVerdictCache'
+    )
+    const { __resetCatalogSearchCacheForTests } = await import('./useCatalogSearchCache')
+    const { __resetStructuredExtractCacheForTests } = await import(
+      './useStructuredExtractCache'
+    )
+    __resetUrlExtractCacheForTests()
+    __resetVerdictCacheForTests()
+    __resetCatalogSearchCacheForTests()
+    __resetStructuredExtractCacheForTests()
+  })
+
+  it('switching viewerUserId clears all 4 module-scope caches in a single user-switch', async () => {
+    const { useCatalogSearchCache } = await import('./useCatalogSearchCache')
+    const { useStructuredExtractCache } = await import('./useStructuredExtractCache')
+    const { useUrlExtractCache } = await import('./useUrlExtractCache')
+    const { useWatchSearchVerdictCache } = await import(
+      '@/components/search/useWatchSearchVerdictCache'
+    )
+
+    // --- Fixtures ---
+    const catalogKey = 'omega speedmaster'
+    const catalogValue: import('@/lib/searchTypes').SearchCatalogWatchResult[] = [
+      {
+        catalogId: 'cat-a',
+        brand: 'Omega',
+        model: 'Speedmaster',
+        reference: '3135',
+        imageUrl: null,
+        ownersCount: 47,
+        wishlistCount: 12,
+        viewerState: null,
+      },
+    ]
+    const structuredKey = JSON.stringify({
+      brand: 'omega',
+      model: 'speedmaster',
+      reference: '3135',
+      year: null,
+    })
+    const urlKey = 'https://example.com/spd'
+    const extractFixture: import('./useUrlExtractCache').ExtractCacheEntry = {
+      catalogId: 'cat-a',
+      extracted: { brand: 'Omega', model: 'Speedmaster' },
+      catalogIdError: null,
+    }
+    const verdictKey = 'cat-a'
+    // Reuse the test-scoped fixtureFullVerdict declared above as the verdict
+    // payload — it's already a valid VerdictBundle (post-ARCH-02 alias).
+
+    // --- Seed user-a in all 4 caches ---
+    const aCatalog = useCatalogSearchCache('user-a')
+    aCatalog.set(catalogKey, catalogValue)
+    expect(aCatalog.get(catalogKey)).toEqual(catalogValue)
+
+    const aStructured = useStructuredExtractCache('user-a')
+    aStructured.set(structuredKey, extractFixture)
+    expect(aStructured.get(structuredKey)).toEqual(extractFixture)
+
+    const aUrl = useUrlExtractCache('user-a')
+    aUrl.set(urlKey, extractFixture)
+    expect(aUrl.get(urlKey)).toEqual(extractFixture)
+
+    const aVerdict = useWatchSearchVerdictCache(1, 'user-a')
+    aVerdict.set(verdictKey, fixtureFullVerdict)
+    expect(aVerdict.get(verdictKey)).toEqual(fixtureFullVerdict)
+
+    // --- User-switch: same revision, different viewerUserId ---
+    const bCatalog = useCatalogSearchCache('user-b')
+    const bStructured = useStructuredExtractCache('user-b')
+    const bUrl = useUrlExtractCache('user-b')
+    const bVerdict = useWatchSearchVerdictCache(1, 'user-b')
+
+    // --- Assertions: all 4 caches surface undefined for the user-a keys ---
+    // The in-render `if (moduleUserId !== viewerUserId) moduleCache = new Map()`
+    // guard fires once per hook call, so the same-render rebind to user-b
+    // already returns an empty Map. CLNP-07 is closed if these 4 lines pass.
+    expect(bCatalog.get(catalogKey)).toBeUndefined()
+    expect(bStructured.get(structuredKey)).toBeUndefined()
+    expect(bUrl.get(urlKey)).toBeUndefined()
+    expect(bVerdict.get(verdictKey)).toBeUndefined()
   })
 })
