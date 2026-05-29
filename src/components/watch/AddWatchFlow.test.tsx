@@ -37,10 +37,9 @@ vi.mock('next/cache', () => ({
 vi.mock('@/app/actions/watches', () => ({
   addWatch: vi.fn(),
   moveWishlistToCollection: vi.fn(),
-}))
-
-vi.mock('@/data/watches', () => ({
-  findViewerWatchByCatalogId: vi.fn().mockResolvedValue(null),
+  // Phase 70 — Server Action wrapper around watchDAL.findViewerWatchByCatalogId.
+  // Default: returns { success: true, data: null } (no dupe).
+  findViewerWatchByCatalogIdAction: vi.fn().mockResolvedValue({ success: true, data: null }),
 }))
 
 // SearchEntry mock — exposes 5 buttons for the 4 onPick branches + onSubmitStructured + onSwitchToUrl.
@@ -228,8 +227,13 @@ vi.mock('@/components/watch/ExtractErrorCard', () => ({
 
 // IMPORT UNDER TEST — must be AFTER the vi.mock calls.
 import { AddWatchFlow } from '@/components/watch/AddWatchFlow'
-import { findViewerWatchByCatalogId } from '@/data/watches'
-import { addWatch, moveWishlistToCollection } from '@/app/actions/watches'
+import {
+  addWatch,
+  moveWishlistToCollection,
+  findViewerWatchByCatalogIdAction,
+} from '@/app/actions/watches'
+// Suppress unused-import lint for action handles consumed only by mockResolvedValueOnce.
+void addWatch
 
 // ---- Render helper ---------------------------------------------------------
 
@@ -262,6 +266,8 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
     global.fetch = vi.fn() as unknown as typeof fetch
     const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
     __resetUrlExtractCacheForTests()
+    // Re-establish default mocks (clearAllMocks wipes mockResolvedValue defaults).
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({ success: true, data: null })
   })
 
   // T-70-01 — DUPE-01 owned-pick with reference → router.push /w/REF-001, no confirm.
@@ -276,10 +282,9 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
 
   // T-70-02 — DUPE-01 owned-pick with null reference → confirming + DupeBanner-owned (D-06).
   it('T-70-02 — owned-pick with null reference → confirming + DupeBanner-owned mounted (D-06 fallback)', async () => {
-    vi.mocked(findViewerWatchByCatalogId).mockResolvedValueOnce({
-      id: 'existing-owned-id',
-      status: 'owned',
-      reference: null,
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'existing-owned-id', status: 'owned', reference: null },
     })
     renderFlow()
     fireEvent.click(screen.getByText('Pick owned no-ref'))
@@ -290,10 +295,9 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
 
   // T-70-03 — DUPE-02 structured-submit on owned existing → DupeBanner-owned + Add another copy clears.
   it('T-70-03 — structured-submit on owned existing → DupeBanner-owned mounted; "Add another copy" clears dupeContext', async () => {
-    vi.mocked(findViewerWatchByCatalogId).mockResolvedValueOnce({
-      id: 'existing-owned-id',
-      status: 'owned',
-      reference: 'REF-OWNED',
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'existing-owned-id', status: 'owned', reference: 'REF-OWNED' },
     })
     renderFlow()
     fireEvent.click(screen.getByText('Submit structured'))
@@ -310,10 +314,9 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
 
   // T-70-04 — DUPE-03 wishlist pick → DupeBanner-wishlist + Move to Collection succeeds.
   it('T-70-04 — wishlist pick → DupeBanner-wishlist; Move to Collection calls action; success routes to /u/tester/collection', async () => {
-    vi.mocked(findViewerWatchByCatalogId).mockResolvedValueOnce({
-      id: 'wish-id-001',
-      status: 'wishlist',
-      reference: 'REF-001',
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'wish-id-001', status: 'wishlist', reference: 'REF-001' },
     })
     vi.mocked(moveWishlistToCollection).mockResolvedValueOnce({
       success: true,

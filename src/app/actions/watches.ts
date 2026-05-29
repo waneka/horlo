@@ -719,3 +719,54 @@ export async function removeWatch(watchId: string): Promise<ActionResult<void>> 
     return { success: false, error: 'Failed to delete watch' }
   }
 }
+
+/**
+ * Phase 70 Plan 05 — Server Action wrapper around `watchDAL.findViewerWatchByCatalogId`.
+ *
+ * The DAL function cannot be imported directly into the client AddWatchFlow
+ * orchestrator (postgres driver pulls fs/net/tls into the client bundle —
+ * Next.js `Module not found` at build). This thin wrapper exposes it as a
+ * Server Action so the orchestrator's handleSearchPick / handleStructuredSubmit
+ * / handleUrlBackup handlers can resolve dupeContext server-side.
+ *
+ * Auth: gates via getCurrentUser (T-70-04 mitigation — never trust client-supplied
+ * userId for the lookup). The orchestrator passes the viewerUserId prop, but
+ * server-side we re-derive the user identity from the session cookie so the
+ * lookup is always viewer-scoped regardless of what the client supplies.
+ *
+ * Status whitelist: the caller passes ['owned', 'wishlist'] for Phase 70 DUPE
+ * resolution; the action accepts only that union to prevent surface widening.
+ */
+export async function findViewerWatchByCatalogIdAction(
+  catalogId: string,
+  statuses: ('owned' | 'wishlist')[],
+): Promise<
+  { success: true; data: { id: string; status: 'owned' | 'wishlist'; reference: string | null } | null }
+  | { success: false; error: string }
+> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+  const parsed = z
+    .object({
+      catalogId: z.string().uuid(),
+      statuses: z.array(z.enum(['owned', 'wishlist'])).min(1).max(2),
+    })
+    .safeParse({ catalogId, statuses })
+  if (!parsed.success) return { success: false, error: 'Invalid request' }
+
+  try {
+    const row = await watchDAL.findViewerWatchByCatalogId(
+      user.id,
+      parsed.data.catalogId,
+      parsed.data.statuses,
+    )
+    return { success: true, data: row }
+  } catch (err) {
+    console.error('[findViewerWatchByCatalogIdAction] unexpected error:', err)
+    return { success: false, error: 'Failed to resolve existing watch' }
+  }
+}

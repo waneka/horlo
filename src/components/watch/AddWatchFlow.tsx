@@ -12,8 +12,11 @@ import { WatchForm } from './WatchForm'
 import { WatchPhotoStep } from './WatchPhotoStep'
 import { ExtractErrorCard, type ExtractErrorCategory } from './ExtractErrorCard'
 import { useUrlExtractCache } from './useUrlExtractCache'
-import { findViewerWatchByCatalogId } from '@/data/watches'
-import { addWatch, moveWishlistToCollection } from '@/app/actions/watches'
+import {
+  addWatch,
+  moveWishlistToCollection,
+  findViewerWatchByCatalogIdAction,
+} from '@/app/actions/watches'
 import { defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -160,7 +163,7 @@ export function AddWatchFlow({
       // D-06 — owned + null reference → confirm with owned-banner.
       if (result.viewerState === 'owned') {
         console.warn('[Phase 70] dupeContext: owned existing → confirm-with-banner (null reference fallback)')
-        const dupeRow = await findViewerWatchByCatalogId(viewerUserId, result.catalogId, ['owned', 'wishlist'])
+        const dupeRow = await resolveDupeContext(result.catalogId)
         const dupeContext: DupeContext | null = dupeRow
           ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
           : null
@@ -183,9 +186,7 @@ export function AddWatchFlow({
       if (result.viewerState === 'wishlist') {
         console.warn('[Phase 70] dupeContext: wishlist existing → move-to-collection affordance')
       }
-      const dupeRow = result.viewerState
-        ? await findViewerWatchByCatalogId(viewerUserId, result.catalogId, ['owned', 'wishlist'])
-        : null
+      const dupeRow = result.viewerState ? await resolveDupeContext(result.catalogId) : null
       const dupeContext: DupeContext | null = dupeRow
         ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
         : null
@@ -204,15 +205,13 @@ export function AddWatchFlow({
         pending: false,
       })
     },
-    [router, viewerUserId, initialStatus],
+    [router, initialStatus],
   )
 
   // DUPE-02 entry — structured-input branch (T-70-04: server-side dupe re-verify).
   const handleStructuredSubmit = useCallback(
     async (extracted: ExtractedWatchData, catalogId: string | null) => {
-      const dupeRow = catalogId
-        ? await findViewerWatchByCatalogId(viewerUserId, catalogId, ['owned', 'wishlist'])
-        : null
+      const dupeRow = catalogId ? await resolveDupeContext(catalogId) : null
       const dupeContext: DupeContext | null = dupeRow
         ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
         : null
@@ -239,7 +238,7 @@ export function AddWatchFlow({
         pending: false,
       })
     },
-    [viewerUserId, initialStatus],
+    [initialStatus],
   )
 
   // D-14 — switch to URL-backup mode.
@@ -275,9 +274,7 @@ export function AddWatchFlow({
     const cachedExtract = urlCache.get(trimmedUrl)
     if (cachedExtract) {
       const { catalogId, extracted } = cachedExtract
-      const dupeRow = catalogId
-        ? await findViewerWatchByCatalogId(viewerUserId, catalogId, ['owned', 'wishlist'])
-        : null
+      const dupeRow = catalogId ? await resolveDupeContext(catalogId) : null
       const dupeContext: DupeContext | null = dupeRow
         ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
         : null
@@ -327,9 +324,7 @@ export function AddWatchFlow({
         urlCache.set(trimmedUrl, { catalogId, extracted, catalogIdError })
       }
 
-      const dupeRow = catalogId
-        ? await findViewerWatchByCatalogId(viewerUserId, catalogId, ['owned', 'wishlist'])
-        : null
+      const dupeRow = catalogId ? await resolveDupeContext(catalogId) : null
       const dupeContext: DupeContext | null = dupeRow
         ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
         : null
@@ -366,7 +361,7 @@ export function AddWatchFlow({
         mode: 'url',
       })
     }
-  }, [url, urlCache, viewerUserId, initialStatus])
+  }, [url, urlCache, initialStatus])
 
   // ---------------------------------------------------------------------------
   // ConfirmStep handlers
@@ -711,6 +706,29 @@ export function AddWatchFlow({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Thin wrapper that calls the `findViewerWatchByCatalogIdAction` Server Action
+ * with the LOCKED `['owned', 'wishlist']` status whitelist (Phase 70 DUPE
+ * resolution) and unwraps the ActionResult envelope. Returns `null` for both
+ * "no existing row" and "action failed" — failing to resolve is non-fatal for
+ * the orchestrator (the confirming branch falls back to dupeContext=null,
+ * losing only the DupeBanner affordance; the primary add path continues to work).
+ *
+ * T-70-04 mitigation: viewer identity is re-derived inside the action via
+ * `getCurrentUser()`; the client-supplied viewerUserId prop is NOT trusted on
+ * this code path (the action ignores the client identity entirely).
+ */
+async function resolveDupeContext(
+  catalogId: string,
+): Promise<{ id: string; status: 'owned' | 'wishlist'; reference: string | null } | null> {
+  const result = await findViewerWatchByCatalogIdAction(catalogId, ['owned', 'wishlist'])
+  if (!result.success) {
+    console.warn('[Phase 70] resolveDupeContext failed (non-fatal):', result.error)
+    return null
+  }
+  return result.data
+}
 
 /**
  * Map a SearchCatalogWatchResult into the partial ExtractedWatchData shape
