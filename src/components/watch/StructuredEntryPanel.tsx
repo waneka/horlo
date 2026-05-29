@@ -8,9 +8,14 @@
  * (via SearchEntry, Plan 05) and wires onSubmitStructured / onSwitchToUrl.
  *
  * Contract (props in, callbacks out):
- *   - Emits onSubmitStructured(result, catalogId) on extract success (cache hit OR network);
- *     catalogId is null when the LLM round-trip succeeded but the catalog upsert failed
- *     (Phase 70 Wave 0 — closes the RESEARCH §1 coordination gap for the AddWatchFlow rewrite).
+ *   - Emits onSubmitStructured(result, catalogId, photoBlob?) on extract success
+ *     (cache hit OR network); catalogId is null when the LLM round-trip succeeded
+ *     but the catalog upsert failed (Phase 70 Wave 0 — closes the RESEARCH §1
+ *     coordination gap for the AddWatchFlow rewrite). photoBlob is the optional
+ *     EXIF-cleaned Blob captured by CatalogPhotoUploader; AddWatchFlow (Phase 70
+ *     gap plan 06+07) uploads via uploadCatalogSourcePhoto before addWatch and
+ *     forwards photoSourcePath into the payload (mirrors WatchForm.tsx:222-249).
+ *     undefined when the user did not pick a photo or cleared it before submit.
  *   - Emits onSwitchToUrl() when the URL backup ghost link (EXTR-07 copy
  *     verbatim in JSX) is clicked, and when the in-card "Add manually" button
  *     on the ExtractErrorCard is clicked (same manualAction wiring)
@@ -58,11 +63,21 @@ export interface StructuredEntryPanelProps {
   initialBrand?: string
   initialModel?: string
   initialReference?: string
-  /** D-03 — emits the extracted data + catalogId upward; Phase 70 transitions to ConfirmStep.
-   *  catalogId is null when the catalog upsert side-channel failed but the LLM round-trip
-   *  returned valid ExtractedWatchData (the orchestrator falls through to manual-confirm).
-   *  Phase 70 Wave 0 — RESEARCH §1 gap closed (StructuredEntryPanel.tsx:60). */
-  onSubmitStructured: (result: ExtractedWatchData, catalogId: string | null) => void
+  /** D-03 — emits the extracted data + catalogId + photoBlob upward; Phase 70
+   *  transitions to ConfirmStep.
+   *  catalogId is null when the catalog upsert side-channel failed but the LLM
+   *  round-trip returned valid ExtractedWatchData (the orchestrator falls through
+   *  to manual-confirm). Phase 70 Wave 0 — RESEARCH §1 gap closed.
+   *  photoBlob is the optional EXIF-cleaned Blob from CatalogPhotoUploader.
+   *  AddWatchFlow (Phase 70 gap plan 06+07) uploads via uploadCatalogSourcePhoto
+   *  before addWatch and forwards photoSourcePath into the payload
+   *  (mirrors WatchForm.tsx:222-249). undefined when the user did not pick a photo
+   *  or cleared it before submit. Phase 70 gap plan 06 closes CR-01. */
+  onSubmitStructured: (
+    result: ExtractedWatchData,
+    catalogId: string | null,
+    photoBlob?: Blob | null,
+  ) => void
   /** EXTR-07 escape hatch — Phase 70 wires routing to the URL-paste path. */
   onSwitchToUrl: () => void
 }
@@ -96,11 +111,13 @@ export function StructuredEntryPanel({
   // Year is tracked as string for input ergonomics; converted to number-or-null
   // on send. Aligns with the UI-SPEC tree's controlled-number Input pattern.
   const [year, setYear] = useState<string>('')
-  // photoBlob is captured for parity with WatchForm — Phase 70 forwards it to
-  // the catalog source-photo upload pipeline at ConfirmStep commit. Held here
-  // because EXTR-06 requires the affordance to live inline alongside the
-  // structured-input fields.
-  const [, setPhotoBlob] = useState<Blob | null>(null)
+  // photoBlob is captured for parity with WatchForm — Phase 70 gap plan 06 reads
+  // it (previously write-only via `[, setPhotoBlob]` — see CR-01) and forwards it
+  // as the optional third arg of onSubmitStructured. Phase 70 gap plan 07 consumes
+  // it in AddWatchFlow.handleStructuredSubmit and uploads via uploadCatalogSourcePhoto
+  // before addWatch (mirrors WatchForm.tsx:222-249). EXTR-06 requires the
+  // affordance to live inline alongside the structured-input fields.
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState<ExtractErrorCategory | null>(
     null,
@@ -130,7 +147,12 @@ export function StructuredEntryPanel({
       // contract. The cache writes `catalogId: '' | string` (see set() below);
       // coerce empty-string to null at the boundary to match the network-branch
       // shape (envelope.catalogId ?? null).
-      onSubmitStructured(cached.extracted, cached.catalogId || null)
+      // Phase 70 gap plan 06 — third arg uses `photoBlob ?? undefined` (not
+      // `photoBlob`) so the type narrows to `Blob | undefined` matching the
+      // optional-arg shape. undefined is the absence sentinel (no pick / cleared);
+      // null at this site would force consumers to handle both no-pick AND
+      // post-clear via the same branch.
+      onSubmitStructured(cached.extracted, cached.catalogId || null, photoBlob ?? undefined)
       return
     }
 
@@ -167,7 +189,9 @@ export function StructuredEntryPanel({
         // addWatch({...extracted, catalogId}) without a side-channel re-query.
         // null when the catalog upsert side-channel failed (envelope.catalogId
         // is optional in ExtractSuccessEnvelope).
-        onSubmitStructured(envelope.data, envelope.catalogId ?? null)
+        // Phase 70 gap plan 06 — forward photoBlob as the optional third arg.
+        // See cache-hit branch above for the coercion rationale.
+        onSubmitStructured(envelope.data, envelope.catalogId ?? null, photoBlob ?? undefined)
       } else {
         setExtractError(envelope.error.category)
       }
