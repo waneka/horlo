@@ -13,15 +13,15 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 Entry surface for the redesigned add flow. Typeahead over `watches_catalog` is the primary path; structured-input + URL paste are no-match fallbacks.
 
-- [ ] **SRCH-17**: User can type in a search input as the primary entry to `/watch/new` (replaces today's `PasteSection` URL paste as the headline path)
-- [ ] **SRCH-18**: Search results fire at ≥2 characters with ~200–250 ms debounce via Server Action wrapping `searchCatalogWatches`
-- [ ] **SRCH-19**: Each result row shows brand, model, reference, cover photo, and a viewer-state badge ("In collection" for `owned`, "On wishlist" for `wishlist`) — sold/null states show no badge
-- [ ] **SRCH-20**: Keyboard navigation through results (Up/Down/Enter) using `role="listbox"` + `role="option"` combobox ARIA pattern
-- [ ] **SRCH-21**: Clicking a result advances the flow (to confirm screen for non-owned, to `/w/[ref]` for owned — see DUPE-01)
-- [ ] **SRCH-22**: Matched-text substring is highlighted in result rows via the existing Phase 16 XSS-safe `HighlightedText` component
-- [ ] **SRCH-23**: Owners count is displayed on each result row (e.g. "47 collectors") sourced from existing `ownersCount` field
-- [ ] **SRCH-24**: A persistent "Not finding it? Add manually" footer row appears below results (when results > 0) AND in the no-match empty state — both link to the structured-input screen
-- [ ] **SRCH-25**: When `query.length ≥ 3` and `results.length === 0`, a no-match empty state renders with structured-input CTA + "Have a URL for this watch?" backup link
+- [x] **SRCH-17**: User can type in a search input as the primary entry to `/watch/new` (replaces today's `PasteSection` URL paste as the headline path)
+- [x] **SRCH-18**: Search results fire at ≥2 characters with ~200–250 ms debounce via Server Action wrapping `searchCatalogWatches`
+- [x] **SRCH-19**: Each result row shows brand, model, reference, cover photo, and a viewer-state badge ("In collection" for `owned`, "On wishlist" for `wishlist`) — sold/null states show no badge
+- [x] **SRCH-20**: Keyboard navigation through results (Up/Down/Enter) using `role="listbox"` + `role="option"` combobox ARIA pattern
+- [x] **SRCH-21**: Clicking a result advances the flow (to confirm screen for non-owned, to `/w/[ref]` for owned — see DUPE-01)
+- [x] **SRCH-22**: Matched-text substring is highlighted in result rows via the existing Phase 16 XSS-safe `HighlightedText` component
+- [x] **SRCH-23**: Owners count is displayed on each result row (e.g. "47 collectors") sourced from existing `ownersCount` field
+- [x] **SRCH-24**: A persistent "Not finding it? Add manually" footer row appears below results (when results > 0) AND in the no-match empty state — both link to the structured-input screen
+- [x] **SRCH-25**: When `query.length ≥ 3` and `results.length === 0`, a no-match empty state renders with structured-input CTA + "Have a URL for this watch?" backup link
 - [x] **SRCH-26**: Search query string pre-seeds the structured-input screen fields (e.g. "omega speedmaster 3135" → brand="omega", model="speedmaster", reference="3135" best-effort split)
 
 ### Structured-Input Extraction (EXTR)
@@ -119,15 +119,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SRCH-17 | Phase 69 | Pending |
-| SRCH-18 | Phase 69 | Pending |
-| SRCH-19 | Phase 69 | Pending |
-| SRCH-20 | Phase 69 | Pending |
-| SRCH-21 | Phase 69 | Pending |
-| SRCH-22 | Phase 69 | Pending |
-| SRCH-23 | Phase 69 | Pending |
-| SRCH-24 | Phase 69 | Pending |
-| SRCH-25 | Phase 69 | Pending |
+| SRCH-17 | Phase 69 | Complete |
+| SRCH-18 | Phase 69 | Complete |
+| SRCH-19 | Phase 69 | Complete |
+| SRCH-20 | Phase 69 | Complete |
+| SRCH-21 | Phase 69 | Complete |
+| SRCH-22 | Phase 69 | Complete |
+| SRCH-23 | Phase 69 | Complete |
+| SRCH-24 | Phase 69 | Complete |
+| SRCH-25 | Phase 69 | Complete |
 | SRCH-26 | Phase 69 | Complete |
 | EXTR-01 | Phase 66 | Complete |
 | EXTR-02 | Phase 66 | Complete |
