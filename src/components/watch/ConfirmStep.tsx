@@ -232,7 +232,7 @@ export function ConfirmStep({
       <div className="space-y-2">
         {/* Plain text heading — <label htmlFor> over a <div role="radiogroup"> is a no-op
             and misleading; the radiogroup's own aria-label provides the accessible name. */}
-        <p className="text-sm font-medium leading-none">Status</p>
+        <p className="text-sm font-semibold leading-none">Status</p>
         <div
           ref={groupRef}
           role="radiogroup"
