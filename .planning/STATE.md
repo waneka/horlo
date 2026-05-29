@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: executing
-last_updated: "2026-05-29T13:22:05.618Z"
+last_updated: "2026-05-29T13:30:03.404Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 13
-  percent: 76
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 ## Current Position
 
 Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
-Plan: 2 of 5
-Status: Ready to execute
+Plan: 3 of 5
+Status: Plan 02 complete (DupeBanner pure-presenter shipped dormant); Plan 03 ready
 Last activity: 2026-05-29
 Resume file: None
 
@@ -107,6 +107,8 @@ Resume file: None
   (b) `grep -c "Have a URL for this watch?"` AC required exactly 1 hit but JSDoc + JSX = 2 — fixed by rewording JSDoc to "URL backup ghost link (EXTR-07 copy verbatim in JSX)";
   (c) no-raw-palette `\bfont-medium\b` word-boundary regex matched JSDoc explaining the guardrail — fixed by rewording to "no raw weight-500 className overrides".
   Pattern: any grep-based test or AC that targets a literal token can false-positive on prose explaining that literal. Future plans: prefer "Anti-Pattern N — don't use X" prose phrasing where X is paraphrased, or scope grep tests to JSX-only via more specific patterns.
+- **DupeBanner is a pure-presenter sibling above ConfirmStep — never a ConfirmStep prop extension** (Phase 70 Plan 02, D-11) — Phase 68 D-03 ConfirmStep prop contract is LOCKED; adding `onMoveToCollection`/`onAddAnotherCopy` callbacks to ConfirmStep would break it. DupeBanner mounts ABOVE ConfirmStep in the `confirming` branch when `state.dupeContext !== null`. Plan 02 ships the presenter dormant (123 LOC component + 121 LOC test, 6 cases green); Plan 05 wires the JSX. Two visual contexts — owned (DUPE-02) → "Already in your collection"; wishlist (DUPE-03) → "On your wishlist". Null-reference fallback (D-06) hides both the "View existing" button AND the "Reference: …" subtext line.
+- **no-raw-palette guardrail #4 pinned at Phase 70 Plan 02** — DupeBanner headline uses `text-sm font-semibold text-foreground` (NOT `font-medium`). Recurrence #4 of the Phase 65 / 68 / 69 guardrail family. The forbidden `\bfont-medium\b` regex would catch `font-medium` on the plain `<p>` element if used; Button CVA `font-medium` is the component default and stays inside the Button primitive. `grep -c "font-medium" src/components/watch/DupeBanner.tsx` returns 0; targeted run of `tests/no-raw-palette.test.ts` shows 3 PRE-EXISTING failures (CommentGateLocked, SearchEntry.tsx, SearchEntry.test.tsx — Phase 69 Plan 04 recurrence-2) — DupeBanner is NOT in the failure list.
 
 ### Pending Todos
 
@@ -162,6 +164,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase 69 P5 | 8m | 1 tasks | 2 files |
 | Phase 69 P06 | 4 | 2 tasks | 2 files |
 | Phase 70 P01 | 17 | 4 tasks | 7 files |
+| Phase 70 P02 | 5min | 2 tasks | 2 files |
 
 ## Session Continuity
 
