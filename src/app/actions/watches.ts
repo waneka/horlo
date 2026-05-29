@@ -350,6 +350,172 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
 }
 
 /**
+ * Phase 70 (DUPE-03) — Move a wishlist watch into the collection.
+ *
+ * UPDATE on the existing `watches` row (NOT INSERT). The action fires the
+ * side-effects `editWatch` deliberately skips: `logActivity('watch_added', …)`
+ * for the Network Activity feed entry and the cross-user overlap notification
+ * fan-out — mirrors the matching blocks in `addWatch` so wishlist→collection
+ * transitions surface in the v6.0 social layer identically to a fresh
+ * `addWatch({ status: 'owned' })`.
+ *
+ * Internal sequence (D-10):
+ *   1. Auth-first gate (BEFORE Zod — matches addWatch:84).
+ *   2. Zod parse: watchId must be a UUID; pricePaid + notes optional.
+ *   3. DAL ownership check via `watchDAL.getWatchById(user.id, watchId)`
+ *      — null → "Watch not found" (T-70-01 second-layer IDOR mitigation).
+ *   4. Status whitelist: wishlist → continue; owned → idempotent no-op
+ *      (T-70-02 double-click mitigation); sold/grail → explicit rejection
+ *      (T-70-03).
+ *   5. `updateWatch({ status:'owned', pricePaid, notes })` — sortOrder stripped
+ *      (WR-01 server-truth; matches editWatch).
+ *   6. `logActivity('watch_added', updatedWatch.id, { brand, model, imageUrl })`
+ *      — RESEARCH Pitfall 3: `WatchAddedMetadata` has no `source` field; the
+ *      "wishlist_move" semantic is communicated via the operator console.warn,
+ *      not metadata extension.
+ *   7. Overlap notifications via `findOverlapRecipients` + `logNotification`
+ *      (mirrors addWatch:272-318).
+ *   8. Cache invalidation matrix (mirrors addWatch:319-341).
+ *
+ * Returns ActionResult — never throws across the boundary (D-12, D-15).
+ */
+export async function moveWishlistToCollection(
+  watchId: string,
+  opts?: { pricePaid?: number; notes?: string },
+): Promise<ActionResult<Watch>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // Zod parse — Claude's Discretion schema per Phase 70 Plan 03 CONTEXT.
+  // watchId UUID validation is the FIRST IDOR layer; DAL ownership check below
+  // is the SECOND layer (T-70-01 two-layer gate per Phase 25 AUTH-04 pattern).
+  const parsed = z
+    .object({
+      watchId: z.string().uuid(),
+      pricePaid: z.number().int().min(0).optional(),
+      notes: z.string().max(2000).optional(),
+    })
+    .safeParse({ watchId, ...opts })
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  try {
+    // Second IDOR layer — DAL is scoped to user.id, so a watchId owned by
+    // another user resolves to null (Phase 25 AUTH-04 pattern).
+    const priorRow = await watchDAL.getWatchById(user.id, watchId)
+    if (!priorRow) {
+      return { success: false, error: 'Watch not found' }
+    }
+
+    // Status whitelist (T-70-02 idempotency + T-70-03 sold/grail rejection).
+    if (priorRow.status !== 'wishlist') {
+      // T-70-02 — double-click race: prior request already committed the flip.
+      // Return success WITHOUT re-firing side-effects so the activity feed
+      // doesn't double-log and recipients don't get duplicate notifications.
+      if (priorRow.status === 'owned') {
+        return { success: true, data: priorRow }
+      }
+      // T-70-03 — sold/grail are semantically incoherent transitions to owned.
+      // Explicit rejection with the status interpolated for the operator log.
+      return {
+        success: false,
+        error: `Cannot move ${priorRow.status} watch to collection`,
+      }
+    }
+
+    // Operator telemetry (Claude's Discretion per CONTEXT D-10) — cheap
+    // visibility for first prod sessions; remove if noisy.
+    console.warn('[Phase 70] moveWishlistToCollection: wishlist→collection', {
+      watchId,
+    })
+
+    // Build update payload — WR-01 server-truth: sortOrder is NOT set here
+    // (status entering owned/sold group; Collection-tab reorder deferred per
+    // CONTEXT). updateWatch's Partial<Watch> shape means absent fields are
+    // not changed; only the explicit keys flip on the DB row.
+    const updatePayload: Partial<Watch> = {
+      status: 'owned',
+      pricePaid: parsed.data.pricePaid ?? null,
+      notes: parsed.data.notes ?? priorRow.notes ?? undefined,
+    }
+
+    const updatedWatch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
+
+    // ── Activity logging (mirrors addWatch:247-266 'watch_added' branch) ──
+    // RESEARCH Pitfall 3: WatchAddedMetadata is { brand, model, imageUrl } ONLY.
+    // The CONTEXT.md "source: 'wishlist_move'" suggestion is replaced with the
+    // console.warn line above per Claude's Discretion. No type extension needed.
+    try {
+      await logActivity(user.id, 'watch_added', updatedWatch.id, {
+        brand: updatedWatch.brand,
+        model: updatedWatch.model,
+        imageUrl: updatedWatch.imageUrl ?? null,
+      })
+    } catch (err) {
+      console.error('[moveWishlistToCollection] activity log failed (non-fatal):', err)
+    }
+
+    // ── Overlap notifications (mirrors addWatch:272-318 verbatim) ──
+    // The `if (updatedWatch.status === 'owned')` conditional is kept for
+    // symmetry with addWatch even though the status is owned by definition
+    // here — eases future grep-equivalence audits between the two actions.
+    if (updatedWatch.status === 'owned') {
+      try {
+        const recipients = await findOverlapRecipients({
+          brand: updatedWatch.brand,
+          model: updatedWatch.model,
+          actorUserId: user.id,
+        })
+        if (recipients.length > 0) {
+          const actorProfile = await getProfileById(user.id)
+          const brandNormalized = updatedWatch.brand.trim().toLowerCase()
+          const modelNormalized = updatedWatch.model.trim().toLowerCase()
+          for (const recipient of recipients) {
+            await logNotification({
+              type: 'watch_overlap',
+              recipientUserId: recipient.userId,
+              actorUserId: user.id,
+              payload: {
+                actor_username: actorProfile?.username ?? '',
+                actor_display_name: actorProfile?.displayName ?? null,
+                watch_id: updatedWatch.id,
+                watch_brand: updatedWatch.brand,
+                watch_model: updatedWatch.model,
+                watch_brand_normalized: brandNormalized,
+                watch_model_normalized: modelNormalized,
+              },
+            })
+            // Invalidate recipient's NotificationBell cache (matches addWatch).
+            revalidateTag(`viewer:${recipient.userId}`, 'max')
+          }
+        }
+      } catch (err) {
+        console.error('[moveWishlistToCollection] overlap lookup failed (non-fatal):', err)
+      }
+    }
+
+    // ── Cache invalidation matrix (mirrors addWatch:319-341 verbatim) ──
+    revalidatePath('/')
+    revalidatePath('/u/[username]', 'layout')
+    const ownerProfile = await getProfileById(user.id)
+    if (ownerProfile?.username) {
+      revalidateTag(`profile:${ownerProfile.username}`, 'max')
+    }
+    revalidateTag('explore', 'max')
+
+    return { success: true, data: updatedWatch }
+  } catch (err) {
+    console.error('[moveWishlistToCollection] unexpected error:', err)
+    return { success: false, error: 'Failed to move watch to collection' }
+  }
+}
+
+/**
  * Update an existing watch.
  * Reads userId from session — callers do not pass userId (D-02).
  * Validates partial input, delegates to DAL, revalidates the home path on success.
