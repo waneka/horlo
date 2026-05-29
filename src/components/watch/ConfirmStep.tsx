@@ -227,12 +227,13 @@ export function ConfirmStep({
 
       {/* Section 3: Status radiogroup picker */}
       <div className="space-y-2">
-        <Label htmlFor="confirm-status-group">Status</Label>
+        {/* Plain text heading — <label htmlFor> over a <div role="radiogroup"> is a no-op
+            and misleading; the radiogroup's own aria-label provides the accessible name. */}
+        <p className="text-sm font-medium leading-none">Status</p>
         <div
           ref={groupRef}
           role="radiogroup"
           aria-label="Watch status"
-          id="confirm-status-group"
           className="flex gap-2"
           onKeyDown={handleKeyDown}
         >
