@@ -22,7 +22,7 @@ Entry surface for the redesigned add flow. Typeahead over `watches_catalog` is t
 - [ ] **SRCH-23**: Owners count is displayed on each result row (e.g. "47 collectors") sourced from existing `ownersCount` field
 - [ ] **SRCH-24**: A persistent "Not finding it? Add manually" footer row appears below results (when results > 0) AND in the no-match empty state — both link to the structured-input screen
 - [ ] **SRCH-25**: When `query.length ≥ 3` and `results.length === 0`, a no-match empty state renders with structured-input CTA + "Have a URL for this watch?" backup link
-- [ ] **SRCH-26**: Search query string pre-seeds the structured-input screen fields (e.g. "omega speedmaster 3135" → brand="omega", model="speedmaster", reference="3135" best-effort split)
+- [x] **SRCH-26**: Search query string pre-seeds the structured-input screen fields (e.g. "omega speedmaster 3135" → brand="omega", model="speedmaster", reference="3135" best-effort split)
 
 ### Structured-Input Extraction (EXTR)
 
@@ -128,7 +128,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRCH-23 | Phase 69 | Pending |
 | SRCH-24 | Phase 69 | Pending |
 | SRCH-25 | Phase 69 | Pending |
-| SRCH-26 | Phase 69 | Pending |
+| SRCH-26 | Phase 69 | Complete |
 | EXTR-01 | Phase 66 | Complete |
 | EXTR-02 | Phase 66 | Complete |
 | EXTR-03 | Phase 66 | Complete |
