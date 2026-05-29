@@ -32,9 +32,9 @@ No-URL LLM extraction path for catalog misses.
 - [x] **EXTR-02**: Structured mode short-circuits BEFORE the cheerio HTML stages (Pitfall 3 mitigation) — verified by integration test asserting no `cheerio` call when `mode === 'structured'`
 - [x] **EXTR-03**: Brand and model are required fields; reference and year are optional inputs; the structured branch returns an `ExtractedWatchData` shape consistent with the URL branch
 - [x] **EXTR-04**: A new LLM prompt variant ("given watch identity, infer known specs from training knowledge") drives the structured extraction via existing `@anthropic-ai/sdk` + `claude-sonnet-4-6` strict tool-use
-- [ ] **EXTR-05**: A loading state (reuse `VerdictSkeleton` or equivalent) renders during the LLM round-trip; explicit "Find specs" button gates the call (no per-keystroke firing)
-- [ ] **EXTR-06**: An optional photo-upload affordance is surfaced on the structured-input screen via the existing `CatalogPhotoUploader`, feeding Phase 19.1 photo-based taste enrichment when present
-- [ ] **EXTR-07**: The no-match panel includes a "Have a URL for this watch?" secondary affordance that routes the user back through the existing URL-paste extraction path (URL paste demoted, not deleted)
+- [x] **EXTR-05**: A loading state (reuse `VerdictSkeleton` or equivalent) renders during the LLM round-trip; explicit "Find specs" button gates the call (no per-keystroke firing)
+- [x] **EXTR-06**: An optional photo-upload affordance is surfaced on the structured-input screen via the existing `CatalogPhotoUploader`, feeding Phase 19.1 photo-based taste enrichment when present
+- [x] **EXTR-07**: The no-match panel includes a "Have a URL for this watch?" secondary affordance that routes the user back through the existing URL-paste extraction path (URL paste demoted, not deleted)
 - [x] **EXTR-08**: Structured-extract catalog row creation uses `upsertCatalogFromUserInput` (ON CONFLICT DO NOTHING), NOT `upsertCatalogFromExtractedUrl` — prevents LLM-inferred values from overwriting truthful nulls (Pitfall 5 mitigation)
 
 ### Confirm Screen + Status Selection (CONF)
@@ -133,9 +133,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXTR-02 | Phase 66 | Complete |
 | EXTR-03 | Phase 66 | Complete |
 | EXTR-04 | Phase 66 | Complete |
-| EXTR-05 | Phase 69 | Pending |
-| EXTR-06 | Phase 69 | Pending |
-| EXTR-07 | Phase 69 | Pending |
+| EXTR-05 | Phase 69 | Complete |
+| EXTR-06 | Phase 69 | Complete |
+| EXTR-07 | Phase 69 | Complete |
 | EXTR-08 | Phase 66 | Complete |
 | CONF-01 | Phase 68 | Complete |
 | CONF-02 | Phase 68 | Complete |

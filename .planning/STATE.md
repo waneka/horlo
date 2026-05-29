@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: executing
-last_updated: "2026-05-29T05:06:10.659Z"
+last_updated: "2026-05-29T05:20:00.000Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_plans: 10
+  percent: 83
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 ## Current Position
 
 Phase: 69 (SearchEntry + StructuredEntryPanel + Cache Hygiene) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-05-29
 Resume file: None
@@ -98,6 +98,15 @@ Resume file: None
 - **Structured branch flow** (Phase 66 Plan 02, D-03/D-04) — `extractFromStructuredInput` → empty-output gate → `upsertCatalogFromUserInput` (3 fields, NOT `upsertCatalogFromExtractedUrl` — EXTR-08 / Pitfall 5) → taste-enrichment parity with `source: 'structured-input'` + `photoSourcePath: null` → `revalidateTag('explore', 'max')` → success envelope with `source: 'llm'`, `confidence: 'medium'`, `fieldsExtracted`, `llmUsed: true`, `mode: 'structured'`.
 - **EXTR-02 cheerio short-circuit asserted via `mockFetchAndExtract.not.toHaveBeenCalled()`** (Phase 66 Plan 02, Rule 3 deviation) — `vi.spyOn(cheerio, 'load')` raises `Cannot redefine property: load` in this environment. Route-level assertion is strictly stronger because cheerio is downstream of `fetchAndExtract` for this route. Plan 01's import discipline (`./llm` direct, not the barrel) provides the module-graph defense.
 - **Auth fixture in `tests/api/extract-watch-auth.test.ts` extended** (Phase 66 Plan 02, additive) — three `mkPost({ url: ... })` callers now send `mkPost({ mode: 'url', url: ... })` so the new Zod schema parses them; the `.toEqual({ error: 'Unauthorized' })` strict-equality check on the auth 401 path remains untouched (auth response intentionally omits mode).
+- **ExtractErrorCard mode-branch is single-row, derivation lives in component body** (Phase 69 Plan 04, Phase 66 D-06) — `mode?: 'url' | 'structured'` added as optional prop (default URL-mode behavior for backward compat). Only `category === 'structured-data-missing' && mode === 'structured'` derives a new body string ("Couldn't find specs for that watch. Try adding a reference number, or enter manually."); CONTRACT_BY_CATEGORY stays LOCKED as the URL-mode source of truth. 4 other Phase 25 D-15 categories reuse LOCKED copy in both modes. UI-SPEC A9 backward-compat regression guard: existing 15 tests stay green (no mode prop → URL-mode behavior).
+- **StructuredEntryPanel is a pure presenter ships dormant** (Phase 69 Plan 04) — Phase 70 mounts; props in, callbacks out (`onSubmitStructured(data)` + `onSwitchToUrl()`); no useRouter / no action imports. Cache check (D-18 JSON-tuple key with per-field trim().toLowerCase(), year nullable) happens BEFORE network call. Generic-network catch path on `fetch` rejection sets `extractError='generic-network'` so ExtractErrorCard branch renders (mode-branch only affects `structured-data-missing` body).
+- **CatalogPhotoUploader `onError` is REQUIRED (not optional) — auto-fix** (Phase 69 Plan 04, Rule 3 deviation) — Plan body referenced only `onPhotoReady`/`onClear`/`disabled` props but the actual `CatalogPhotoUploaderProps` declares `onError: (message: string) => void` as required. Passed no-op `onError={() => {}}` in StructuredEntryPanel because the uploader surfaces its own error UI inline and the photo is optional (a failure does not block Find specs). Document for any future consumer.
+- **photoBlob held in state but not read inside StructuredEntryPanel** (Phase 69 Plan 04) — destructured as `const [, setPhotoBlob] = useState<Blob | null>(null)` to avoid unused-state warning. Phase 70 wires the upload pipeline at ConfirmStep commit. The state is held in React so Phase 70 wiring is a one-line addition (return photoBlob from the panel as part of onSubmitStructured payload or via a separate callback).
+- **JSDoc prose can trip presenter-purity / no-raw-palette / acceptance-grep checks** (Phase 69 Plan 04, recurrence-2 of the JSDoc-as-test-input class) — three separate prose-vs-grep collisions in this plan:
+  (a) `grep -v '^//' | grep -c "useRouter\|next/navigation"` matched JSDoc `* ` block comments containing the literal tokens — fixed by rewording to "no client-side navigation hooks";
+  (b) `grep -c "Have a URL for this watch?"` AC required exactly 1 hit but JSDoc + JSX = 2 — fixed by rewording JSDoc to "URL backup ghost link (EXTR-07 copy verbatim in JSX)";
+  (c) no-raw-palette `\bfont-medium\b` word-boundary regex matched JSDoc explaining the guardrail — fixed by rewording to "no raw weight-500 className overrides".
+  Pattern: any grep-based test or AC that targets a literal token can false-positive on prose explaining that literal. Future plans: prefer "Anti-Pattern N — don't use X" prose phrasing where X is paraphrased, or scope grep tests to JSX-only via more specific patterns.
 
 ### Pending Todos
 

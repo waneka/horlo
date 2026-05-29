@@ -263,7 +263,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 - [x] 69-01-PLAN.md — parseSearchQuery pure helper + listCatalogBrands DAL fn (SRCH-26, D-12, D-13)
 - [x] 69-02-PLAN.md — useCatalogSearchCache + useStructuredExtractCache new module-scope caches (CLNP-07 new)
 - [x] 69-03-PLAN.md — useUrlExtractCache + useWatchSearchVerdictCache retrofit + 3-layer SearchPageClient/WatchesPanel/WatchSearchRowsAccordion thread + AddWatchFlow cache call sites + catalogBrands prop typed (CLNP-07 retrofit)
-- [ ] 69-04-PLAN.md — StructuredEntryPanel + ExtractErrorCard mode-branched copy (EXTR-05, EXTR-06, EXTR-07, Phase 66 D-06)
+- [x] 69-04-PLAN.md — StructuredEntryPanel + ExtractErrorCard mode-branched copy (EXTR-05, EXTR-06, EXTR-07, Phase 66 D-06)
 - [ ] 69-05-PLAN.md — SearchEntry @base-ui/react/combobox typeahead (SRCH-17..25)
 - [ ] 69-06-PLAN.md — /watch/new/page.tsx wiring + AddWatchFlow.test.tsx four-cache integration test (CLNP-07 phase gate)
 **UI hint**: yes
