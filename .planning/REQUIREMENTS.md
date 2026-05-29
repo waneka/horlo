@@ -41,16 +41,16 @@ No-URL LLM extraction path for catalog misses.
 
 Lighter review surface that replaces `VerdictStep`. Status incl. grail picked here.
 
-- [ ] **CONF-01**: Confirm screen renders cover photo at top (catalog `imageUrl`, then extracted `imageUrl`, then watch-icon placeholder fallback)
-- [ ] **CONF-02**: Brand, model, reference identity is displayed read-only by default
-- [ ] **CONF-03**: A segmented status picker (button group) presents owned / wishlist / grail; the `sold` status is intentionally absent from the add flow
-- [ ] **CONF-04**: Grail is visually distinguished by an inline lucide-react `Star` icon next to the "Grail" label (option weight/size unchanged)
-- [ ] **CONF-05**: Reference and year are inline-editable text inputs on the confirm screen (distinct from "Edit details" → WatchForm)
-- [ ] **CONF-06**: A status-gated price field renders — "Price paid" for owned, "Target price" for wishlist/grail — using the same `isOwned` conditional logic established in `WatchForm`
-- [ ] **CONF-07**: An "Edit details" affordance opens the full `WatchForm` (or expands inline) with all extracted/catalog data pre-filled; `lockedStatus` is NOT set (user can still change status in the full form)
-- [ ] **CONF-08**: The primary CTA label reflects the chosen status ("Add to Collection" / "Add to Wishlist" / "Save as Grail")
-- [ ] **CONF-09**: A "Start over" escape returns the user to the search idle state without persisting partial data
-- [ ] **CONF-10**: Status default derives from a `?status=` URL parameter (e.g. `/watch/new?status=wishlist` from the wishlist empty-state CTA) by threading `initialStatus` through to the confirm screen
+- [x] **CONF-01**: Confirm screen renders cover photo at top (catalog `imageUrl`, then extracted `imageUrl`, then watch-icon placeholder fallback)
+- [x] **CONF-02**: Brand, model, reference identity is displayed read-only by default
+- [x] **CONF-03**: A segmented status picker (button group) presents owned / wishlist / grail; the `sold` status is intentionally absent from the add flow
+- [x] **CONF-04**: Grail is visually distinguished by an inline lucide-react `Star` icon next to the "Grail" label (option weight/size unchanged)
+- [x] **CONF-05**: Reference and year are inline-editable text inputs on the confirm screen (distinct from "Edit details" → WatchForm)
+- [x] **CONF-06**: A status-gated price field renders — "Price paid" for owned, "Target price" for wishlist/grail — using the same `isOwned` conditional logic established in `WatchForm`
+- [x] **CONF-07**: An "Edit details" affordance opens the full `WatchForm` (or expands inline) with all extracted/catalog data pre-filled; `lockedStatus` is NOT set (user can still change status in the full form)
+- [x] **CONF-08**: The primary CTA label reflects the chosen status ("Add to Collection" / "Add to Wishlist" / "Save as Grail")
+- [x] **CONF-09**: A "Start over" escape returns the user to the search idle state without persisting partial data
+- [x] **CONF-10**: Status default derives from a `?status=` URL parameter (e.g. `/watch/new?status=wishlist` from the wishlist empty-state CTA) by threading `initialStatus` through to the confirm screen
 - [x] **CONF-11**: `addWatch` Server Action Zod schema gains optional `catalogId: z.string().uuid()`; when supplied, the action calls `getCatalogById(catalogId)` to bind the user's watch row to the existing catalog row (skipping redundant `upsertCatalogFromUserInput`)
 
 ### Existing-in-Collection Handling (DUPE)
@@ -137,16 +137,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXTR-06 | Phase 69 | Pending |
 | EXTR-07 | Phase 69 | Pending |
 | EXTR-08 | Phase 66 | Complete |
-| CONF-01 | Phase 68 | Pending |
-| CONF-02 | Phase 68 | Pending |
-| CONF-03 | Phase 68 | Pending |
-| CONF-04 | Phase 68 | Pending |
-| CONF-05 | Phase 68 | Pending |
-| CONF-06 | Phase 68 | Pending |
-| CONF-07 | Phase 68 | Pending |
-| CONF-08 | Phase 68 | Pending |
-| CONF-09 | Phase 68 | Pending |
-| CONF-10 | Phase 68 | Pending |
+| CONF-01 | Phase 68 | Complete |
+| CONF-02 | Phase 68 | Complete |
+| CONF-03 | Phase 68 | Complete |
+| CONF-04 | Phase 68 | Complete |
+| CONF-05 | Phase 68 | Complete |
+| CONF-06 | Phase 68 | Complete |
+| CONF-07 | Phase 68 | Complete |
+| CONF-08 | Phase 68 | Complete |
+| CONF-09 | Phase 68 | Complete |
+| CONF-10 | Phase 68 | Complete |
 | CONF-11 | Phase 67 | Complete |
 | DUPE-01 | Phase 70 | Complete |
 | DUPE-02 | Phase 70 | Pending |
