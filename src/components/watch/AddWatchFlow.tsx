@@ -164,9 +164,20 @@ export function AddWatchFlow({
       if (result.viewerState === 'owned') {
         console.warn('[Phase 70] dupeContext: owned existing → confirm-with-banner (null reference fallback)')
         const dupeRow = await resolveDupeContext(result.catalogId)
-        const dupeContext: DupeContext | null = dupeRow
-          ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
-          : null
+        // WR-02 fix (gap plan 08): the search projection pre-signals
+        // viewerState='owned' so we KNOW a dupe exists. If the resolver returns
+        // null (transient findViewerWatchByCatalogIdAction failure), do NOT
+        // silently fall through to confirm-without-banner — surface toast.error
+        // and stay on search-idle so the user retries.
+        if (!dupeRow) {
+          toast.error("Couldn't check your collection — try again")
+          return
+        }
+        const dupeContext: DupeContext = {
+          existingWatchId: dupeRow.id,
+          existingStatus: dupeRow.status,
+          existingReference: dupeRow.reference,
+        }
         const extracted = searchResultToExtracted(result)
         setConfirmStatus('owned')
         setConfirmReference(result.reference ?? '')
@@ -185,16 +196,46 @@ export function AddWatchFlow({
         })
         return
       }
-      // wishlist or null — confirming branch.
+      // wishlist branch — DUPE-03 entry; pre-known dupe must succeed to mount banner.
       if (result.viewerState === 'wishlist') {
         console.warn('[Phase 70] dupeContext: wishlist existing → move-to-collection affordance')
+        const dupeRow = await resolveDupeContext(result.catalogId)
+        // WR-02 fix (gap plan 08): same rationale as the owned branch above —
+        // the search projection pre-signals viewerState='wishlist'; a null
+        // resolver result is a transient failure, not absence. Surface
+        // toast.error + stay on search-idle.
+        if (!dupeRow) {
+          toast.error("Couldn't check your collection — try again")
+          return
+        }
+        const dupeContext: DupeContext = {
+          existingWatchId: dupeRow.id,
+          existingStatus: dupeRow.status,
+          existingReference: dupeRow.reference,
+        }
+        const extracted = searchResultToExtracted(result)
+        // D-21 — DUPE-03 wishlist context: default status to wishlist.
+        setConfirmStatus(initialStatus ?? 'wishlist')
+        setConfirmReference(result.reference ?? '')
+        setConfirmYear(undefined)
+        setConfirmPrice(undefined)
+        setState({
+          kind: 'confirming',
+          catalogId: result.catalogId,
+          extracted,
+          pickedResult: result,
+          dupeContext,
+          pending: false,
+          // Search-pick has no inline photo affordance — photoBlob stays null.
+          photoBlob: null,
+        })
+        return
       }
-      const dupeRow = result.viewerState ? await resolveDupeContext(result.catalogId) : null
-      const dupeContext: DupeContext | null = dupeRow
-        ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
-        : null
+      // null viewerState — no pre-signaled dupe; silent fallthrough is acceptable
+      // per WR-02 review rationale (the unknown-dupe case mirrors the
+      // structured-input + URL-backup paths where the orchestrator has no
+      // upstream signal that a dupe exists).
       const extracted = searchResultToExtracted(result)
-      // D-21 — DUPE-03 wishlist context: default status to wishlist (already initialStatus ?? 'wishlist').
       setConfirmStatus(initialStatus ?? 'wishlist')
       setConfirmReference(result.reference ?? '')
       setConfirmYear(undefined)
@@ -204,7 +245,7 @@ export function AddWatchFlow({
         catalogId: result.catalogId,
         extracted,
         pickedResult: result,
-        dupeContext,
+        dupeContext: null,
         pending: false,
         // Search-pick has no inline photo affordance — photoBlob stays null.
         photoBlob: null,
