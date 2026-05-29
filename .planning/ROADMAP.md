@@ -311,6 +311,6 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
 | 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 8/8 | Complete    | 2026-05-29 |
-| 71. Dead Code Cleanup + Static Guards | 2/2 | Complete   | 2026-05-29 |
+| 71. Dead Code Cleanup + Static Guards | 2/2 | Complete    | 2026-05-29 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

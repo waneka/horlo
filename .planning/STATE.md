@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: executing
+status: milestone_complete
 last_updated: "2026-05-29T19:29:33.935Z"
 last_activity: 2026-05-29
 progress:
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 ## Current Position
 
-Phase: 71 (dead-code-cleanup-static-guards) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 71
+Phase: 71
+Plan: Not started
+Status: Milestone complete
 Last activity: 2026-05-29
 Resume file: .planning/phases/71-dead-code-cleanup-static-guards/71-CONTEXT.md
 
