@@ -1,112 +1,79 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
-import { PasteSection } from './PasteSection'
-import { VerdictStep } from './VerdictStep'
-import { WishlistRationalePanel } from './WishlistRationalePanel'
-import { RecentlyEvaluatedRail } from './RecentlyEvaluatedRail'
+import { SearchEntry } from './SearchEntry'
+import { ConfirmStep } from './ConfirmStep'
+import { DupeBanner } from './DupeBanner'
 import { WatchForm } from './WatchForm'
 import { WatchPhotoStep } from './WatchPhotoStep'
 import { ExtractErrorCard, type ExtractErrorCategory } from './ExtractErrorCard'
-import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
-import { useWatchSearchVerdictCache } from '@/components/search/useWatchSearchVerdictCache'
 import { useUrlExtractCache } from './useUrlExtractCache'
-import { getVerdictForCatalogWatch } from '@/app/actions/verdict'
-import { addWatch } from '@/app/actions/watches'
-import { canonicalize, defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
+import { findViewerWatchByCatalogId } from '@/data/watches'
+import { addWatch, moveWishlistToCollection } from '@/app/actions/watches'
+import { defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
-import type { FlowState, RailEntry } from './flowTypes'
+import type { FlowState, RailEntry, DupeContext } from './flowTypes'
 import type { ExtractedWatchData } from '@/lib/extractors'
 import type { Watch, MovementType, WatchStatus } from '@/lib/types'
-import type { VerdictBundle } from '@/lib/verdict/types'
+import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
 
 /**
- * Phase 20.1 D-01 + D-02 — Add-Watch Flow orchestrator.
+ * Phase 70 — Add-Watch Flow orchestrator (v8.0 search-first rewrite).
  *
- * Owns the FlowState state machine, fetches /api/extract-watch (D-08),
- * computes verdict via getVerdictForCatalogWatch Server Action (D-07
- * single round-trip), commits Wishlist via addWatch (D-13 verdict
- * rationale), and routes Collection to a prefilled <WatchForm
- * lockedStatus="owned"> (D-12).
+ * Owns the FlowState state machine per Plan 04's D-01 union. Mounts the
+ * dormant Phase 66/67/68/69 primitives (SearchEntry, ConfirmStep,
+ * StructuredEntryPanel via SearchEntry, ExtractErrorCard, WatchPhotoStep)
+ * and the new Phase 70 DupeBanner. Hard-cutover: no PasteSection /
+ * VerdictStep / WishlistRationalePanel / RecentlyEvaluatedRail /
+ * useWatchSearchVerdictCache / verdict imports.
  *
- * Pitfalls explicitly mitigated:
- *   - Pitfall 1: searchParams Promise — handled in page.tsx; here we just
- *     short-circuit to form-prefill when initialCatalogId+intent+prefill
- *     are all set
- *   - Pitfall 3 (resolved Phase 28 D-15): router.refresh() removed from
- *     Wishlist commit. The new nav-on-commit pattern (router.push to
- *     /u/{username}/{tab} or returnTo) lands on a different route whose
- *     Server Component re-fetches getWatchesByUser fresh; on next visit to
- *     /watch/new the collectionRevision reflects the just-added row.
- *   - Pitfall 5: textarea blank passes through to addWatch verbatim — the
- *     WishlistRationalePanel sends notes literal; we forward as-is
- *   - Pitfall 6: photoSourcePath is NEVER set on the URL-extract surface
- *     (only the manual-entry photo uploader path may set it; this flow
- *     does not pass through that uploader on the Wishlist commit)
- *   - Pitfall 8: collectionRevision === 0 short-circuits the verdict
- *     compute entirely (D-06 empty-collection edge)
+ * D-NN locked decisions implemented:
+ *   D-01 FlowState union from flowTypes.ts (Plan 04)
+ *   D-02 transition map JSDoc in flowTypes.ts
+ *   D-03 initialState precedence: form-prefill > manual-entry > search-idle
+ *   D-04 initialReturnTo threaded through every commit branch
+ *   D-05 DUPE-01 owned-pick → router.push(`/w/${reference}`)
+ *   D-06 null-reference owned fallthrough → confirming with owned banner
+ *   D-07 DUPE-02 only in confirming when dupeContext.existingStatus==='owned'
+ *   D-08 "Add another copy" clears dupeContext only; CTA stays addWatch
+ *   D-09 no /w/[ref] edit (PROJECT.md lock)
+ *   D-11 DupeBanner sibling ABOVE ConfirmStep (Phase 68 D-03 contract intact)
+ *   D-12 DupeBanner is the primary affordance when mounted
+ *   D-13 post-DUPE-03 nav: defaultDestinationForStatus('owned', viewerUsername); no photos step
+ *   D-14 extracting-url is INLINE (no PasteSection); {mode:'url',url} body
+ *   D-15 "← Back to search" always rendered in extracting-url
+ *   D-16 useUrlExtractCache reused identically (Phase 69 D-08)
+ *   D-17 photos-pending gated on status === 'owned'
+ *   D-18 full destination matrix
+ *   D-19 CLNP-06 skip link BELOW SearchEntry; setState manual-entry, no router.push
+ *   D-20 manual-entry back affordance: "← Cancel — return to search" → search-idle
+ *   D-21 default confirming status: initialStatus ?? 'wishlist'
+ *   D-22 useLayoutEffect cleanup updated for new FlowState kinds; module caches NOT cleared
  */
 interface AddWatchFlowProps {
-  /** Length of viewer's collection — drives verdict cache invalidation per Phase 20 D-06. */
+  /** Length of viewer's collection — historically drove verdict cache invalidation; retained for
+   *  the page-side prop shape per /watch/new/page.tsx; not consumed in the v8.0 search-first flow. */
   collectionRevision: number
-  /** Deep-link prefill from /search ADD-06 or /catalog ADD-06: jumps flow into form-prefill directly. */
   initialCatalogId: string | null
-  /** Whitelisted by the page Server Component to literal 'owned' or null. */
   initialIntent: 'owned' | null
-  /** Server-fetched ExtractedWatchData synthesized from a catalog row when initialCatalogId is set. */
   initialCatalogPrefill: ExtractedWatchData | null
-  /** Phase 25 D-09: when true (from `?manual=1` server-whitelisted), the flow
-   *  starts in `manual-entry` and skips the paste step entirely. Used by the
-   *  Collection no-key fallback CTA + the Wishlist empty-state CTA. */
   initialManual: boolean
-  /** Phase 25 D-05: when set (from `?status=wishlist` server-whitelisted), the
-   *  manual-entry WatchForm opens with status pre-set to this value (still
-   *  user-editable; uses WatchForm's `defaultStatus` prop, not `lockedStatus`). */
   initialStatus: 'wishlist' | null
-  /** Phase 28 D-11/D-12 — validated server-side at /watch/new. Null when
-   *  invalid or absent. AddWatchFlow holds this as a one-way "where to go on
-   *  commit" parameter; consumed by handleWishlistConfirm + WatchForm submit
-   *  in Plan 05. AddWatchFlow does NOT push it back into the URL bar. */
   initialReturnTo: string | null
-  /** Phase 28 D-02 / D-06 — viewer's profile username, resolved server-side
-   *  at /watch/new via getProfileById(user.id). Used for the D-13 default
-   *  destination + the D-06 /u/me/... canonicalization. Null is a soft alarm
-   *  — flow falls back to no-toast + '/' default. */
   viewerUsername: string | null
-  /**
-   * WR-03 fix: viewer's user id resolved server-side at /watch/new via
-   * getCurrentUser(). Threaded into WatchPhotoStep so the PhotoDropzone is
-   * immediately enabled without a client-side getUser() round-trip.
-   *
-   * Phase 69 D-07 retrofit: also threaded into the two existing module-scope
-   * caches (`useWatchSearchVerdictCache`, `useUrlExtractCache`) and the two
-   * new Phase 69 caches (`useCatalogSearchCache`, `useStructuredExtractCache`)
-   * via the same prop-drill — closes CLNP-07 (cross-user cache leak) for all
-   * four caches in the same change.
-   */
   viewerUserId: string
-  /**
-   * Phase 69 D-13: catalog brand list SSR-fetched by `/watch/new/page.tsx`
-   * (DAL fn `listCatalogBrands()`) and prop-drilled through here to the
-   * downstream `SearchEntry` → `parseSearchQuery(q, catalogBrands)` SRCH-26
-   * pre-seed.
-   *
-   * Phase 69 ships this typed only — `AddWatchFlow` does NOT consume the
-   * prop internally in this phase (it has no SearchEntry mount yet). Phase 70
-   * is the consumer: it mounts SearchEntry which calls parseSearchQuery with
-   * this list. Empty array is a safe default (parseSearchQuery falls back to
-   * the naive split for novel brands).
-   */
+  /** Phase 69 D-13 — SSR-fetched catalog brand list for SearchEntry / parseSearchQuery SRCH-26 pre-seed. */
   catalogBrands: string[]
 }
 
-const RAIL_MAX = 5
-
 export function AddWatchFlow({
-  collectionRevision,
+  collectionRevision: _collectionRevision,
   initialCatalogId,
   initialIntent,
   initialCatalogPrefill,
@@ -115,81 +82,46 @@ export function AddWatchFlow({
   initialReturnTo,
   viewerUsername,
   viewerUserId,
-  // Phase 69 D-13 — typed pass-through only; consumed by Phase 70 when SearchEntry mounts.
-  // Destructured (not omitted) so the prop is exhaustively acknowledged at the call boundary;
-  // intentionally unused inside the current renderer.
-  catalogBrands: _catalogBrands,
+  catalogBrands,
 }: AddWatchFlowProps) {
   const router = useRouter()
-  // Phase 28 D-12 — initialReturnTo + viewerUsername are validated server-side
-  // and threaded through here. Consumed by handleWishlistConfirm (suppress +
-  // nav-on-commit) + WatchForm prop pass-through (form-prefill / manual-entry
-  // commit branches).
 
-  // Pitfall 1 deep-link short-circuit: if catalogId+intent='owned'+prefill all
-  // present, jump straight to form-prefill (skip paste + verdict).
-  // Phase 25 D-09: else if `?manual=1` is set, skip paste and jump straight to
-  // manual-entry. The order of precedence is form-prefill > manual-entry > idle
-  // because catalog deep-links carry full extracted data and shouldn't be
-  // overridden by a stray manual=1 query string.
+  // D-03 — initialState precedence: form-prefill > manual-entry > search-idle.
   const initialState: FlowState =
     initialCatalogId && initialIntent === 'owned' && initialCatalogPrefill
       ? { kind: 'form-prefill', catalogId: initialCatalogId, extracted: initialCatalogPrefill }
       : initialManual
         ? { kind: 'manual-entry', partial: null }
-        : { kind: 'idle' }
+        : { kind: 'search-idle' }
 
   const [state, setState] = useState<FlowState>(initialState)
+  // `url` is the local input for the extracting-url inline mini-form (D-14).
   const [url, setUrl] = useState('')
-  const [, startTransition] = useTransition()
+  // `rail` is preserved for Activity-hide cleanup safety; CLNP-04 deferred to Phase 71.
   const [rail, setRail] = useState<RailEntry[]>([])
-  const cache = useWatchSearchVerdictCache(collectionRevision, viewerUserId)
-  // FORM-04 Gap 3 — sibling cache for the upstream extract step. Mirrors 29-05's
-  // module-scope pattern; survives the same per-request UUID `key` boundary.
-  // Skips /api/extract-watch entirely on re-paste of an already-extracted URL.
-  // Phase 69 D-08 retrofit: viewerUserId threaded for CLNP-07 cross-user reset.
-  const urlCache = useUrlExtractCache(viewerUserId)
-  // UAT gap 1 (Plan 06): drives the VerdictStep fallback copy split. Threaded
-  // into every VerdictStep render call site so a null verdict on a non-empty
-  // collection surfaces "Couldn't compute fit" instead of the misleading
-  // empty-collection copy.
-  const hasCollection = collectionRevision > 0
 
-  // Auto-focus URL input on transitions back to idle (D-14 skip behavior).
+  // D-16 — Phase 69 D-08 retrofit: viewerUserId threaded for CLNP-07 cross-user reset.
+  const urlCache = useUrlExtractCache(viewerUserId)
+
+  // ConfirmStep-controlled fields (Phase 68 D-03 LOCKED contract — orchestrator owns the state).
+  // D-21 default status: initialStatus ?? 'wishlist'.
+  const [confirmStatus, setConfirmStatus] = useState<'owned' | 'wishlist' | 'grail'>(
+    initialStatus ?? 'wishlist',
+  )
+  const [confirmReference, setConfirmReference] = useState<string>('')
+  const [confirmYear, setConfirmYear] = useState<number | undefined>(undefined)
+  const [confirmPrice, setConfirmPrice] = useState<number | undefined>(undefined)
+
+  // Auto-focus URL input when entering extracting-url so the user can paste immediately.
   useEffect(() => {
-    if (state.kind === 'idle') {
-      const el = document.getElementById('paste-url') as HTMLInputElement | null
+    if (state.kind === 'extracting-url') {
+      const el = document.getElementById('extracting-url-input') as HTMLInputElement | null
       el?.focus()
     }
   }, [state.kind])
 
-  // FORM-04 — Activity-hide reset (back-button defense), StrictMode-safe.
-  //
-  // When the user navigates AWAY from /watch/new, Next.js's <Activity>
-  // wrapper sets this route's mode to "hidden". React runs effect cleanup
-  // at that boundary (per node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md).
-  // This cleanup resets local state to idle so when the user later navigates
-  // BACK (within the 3-route Activity window), the un-hidden tree is fresh —
-  // even though the Server Component does NOT re-run on back-nav and the
-  // `key` prop value is therefore unchanged.
-  //
-  // StrictMode safety (Phase 29 Plan 06 — closes UAT Gap 2):
-  //   Next.js 16 dev wraps the tree in <StrictMode>. StrictMode runs every
-  //   effect with a mount → cleanup → mount cycle on initial render. The
-  //   first cleanup fires SYNCHRONOUSLY before any user interaction. If
-  //   the cleanup unconditionally resets state, it clobbers the
-  //   initialState-derived `form-prefill` state (deep-link from /search
-  //   with ?catalogId=X&intent=owned) — breaking CONTEXT D-16.
-  //
-  // Guard: read latest state via refs and only run the reset body when
-  // there is actual user-accumulated state to clean up. The two skip cases:
-  //   (1) Initial idle (state.kind === 'idle' && url === '' && rail empty)
-  //       — no user activity has happened yet (StrictMode spurious cycle
-  //       OR a fresh forward-nav Activity-hide before any interaction).
-  //   (2) form-prefill (state.kind === 'form-prefill') — derived from
-  //       URL params (D-16 deep-link). NOT user-accumulated state; must
-  //       survive the StrictMode spurious cycle so the WatchForm renders
-  //       with brand/model populated from the catalog row.
+  // D-22 — Activity-hide cleanup (Phase 29 / FORM-04). Three skip cases; otherwise reset to search-idle.
+  // Module-scope caches are NOT cleared here — Phase 69 CLNP-07 handles cross-user reset via viewerUserId mismatch.
   const stateRef = useRef(state)
   const urlRef = useRef(url)
   const railRef = useRef(rail)
@@ -199,40 +131,138 @@ export function AddWatchFlow({
   useLayoutEffect(() => {
     return () => {
       const s = stateRef.current
-      // Skip case 2: form-prefill is initialState-derived from URL params.
-      // Must survive StrictMode mount/cleanup/mount.
+      // Skip case 2: form-prefill is initialState-derived from URL params; survives StrictMode.
       if (s.kind === 'form-prefill') return
-      // Skip case 1: nothing user-accumulated to reset.
-      if (s.kind === 'idle' && urlRef.current === '' && railRef.current.length === 0) return
-      // Real Activity-hide / unmount: user has accumulated state. Reset.
-      // Phase 61 Plan 03: photos-pending is also transient user state — reset it.
-      // RESEARCH Pitfall 6: Activity preserves React state across back-nav; a
-      // returning user must not land back on the photos step for a stale watchId.
-      setState({ kind: 'idle' })
+      // Skip case 3: manual-entry-from-deep-link must survive StrictMode mount/cleanup/mount.
+      if (s.kind === 'manual-entry' && s.partial === null && initialManual === true) return
+      // Skip case 1: nothing user-accumulated to reset (search-idle, no URL, no rail).
+      if (s.kind === 'search-idle' && urlRef.current === '' && railRef.current.length === 0) return
+      // Real Activity-hide reset.
+      setState({ kind: 'search-idle' })
       setUrl('')
       setRail([])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // -- Extract handler (D-07 sync wait + D-08 single round-trip) --
-  // Plain async (no startTransition) — the extract path needs the
-  // 'extracting' render to commit promptly so users (and tests) observe
-  // the "Working..." copy. startTransition would defer the awaited
-  // verdict-ready setState as a transition; act() in tests flushes all
-  // pending updates and skips the intermediate render. The Wishlist
-  // commit still uses startTransition because its post-commit work
-  // (toast + router.refresh) IS legitimately deferrable.
-  const handleExtract = async () => {
+  // ---------------------------------------------------------------------------
+  // SearchEntry handlers
+  // ---------------------------------------------------------------------------
+
+  // D-05 / D-06 / DUPE-01 / DUPE-03 entry — search-pick branch.
+  const handleSearchPick = useCallback(
+    async (result: SearchCatalogWatchResult) => {
+      // D-05 — owned + non-null reference → /w/[ref] redirect.
+      if (result.viewerState === 'owned' && result.reference) {
+        router.push(`/w/${encodeURIComponent(result.reference)}`)
+        return
+      }
+      // D-06 — owned + null reference → confirm with owned-banner.
+      if (result.viewerState === 'owned') {
+        console.warn('[Phase 70] dupeContext: owned existing → confirm-with-banner (null reference fallback)')
+        const dupeRow = await findViewerWatchByCatalogId(viewerUserId, result.catalogId, ['owned', 'wishlist'])
+        const dupeContext: DupeContext | null = dupeRow
+          ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
+          : null
+        const extracted = searchResultToExtracted(result)
+        setConfirmStatus('owned')
+        setConfirmReference(result.reference ?? '')
+        setConfirmYear(undefined)
+        setConfirmPrice(undefined)
+        setState({
+          kind: 'confirming',
+          catalogId: result.catalogId,
+          extracted,
+          pickedResult: result,
+          dupeContext,
+          pending: false,
+        })
+        return
+      }
+      // wishlist or null — confirming branch.
+      if (result.viewerState === 'wishlist') {
+        console.warn('[Phase 70] dupeContext: wishlist existing → move-to-collection affordance')
+      }
+      const dupeRow = result.viewerState
+        ? await findViewerWatchByCatalogId(viewerUserId, result.catalogId, ['owned', 'wishlist'])
+        : null
+      const dupeContext: DupeContext | null = dupeRow
+        ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
+        : null
+      const extracted = searchResultToExtracted(result)
+      // D-21 — DUPE-03 wishlist context: default status to wishlist (already initialStatus ?? 'wishlist').
+      setConfirmStatus(initialStatus ?? 'wishlist')
+      setConfirmReference(result.reference ?? '')
+      setConfirmYear(undefined)
+      setConfirmPrice(undefined)
+      setState({
+        kind: 'confirming',
+        catalogId: result.catalogId,
+        extracted,
+        pickedResult: result,
+        dupeContext,
+        pending: false,
+      })
+    },
+    [router, viewerUserId, initialStatus],
+  )
+
+  // DUPE-02 entry — structured-input branch (T-70-04: server-side dupe re-verify).
+  const handleStructuredSubmit = useCallback(
+    async (extracted: ExtractedWatchData, catalogId: string | null) => {
+      const dupeRow = catalogId
+        ? await findViewerWatchByCatalogId(viewerUserId, catalogId, ['owned', 'wishlist'])
+        : null
+      const dupeContext: DupeContext | null = dupeRow
+        ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
+        : null
+      if (dupeContext) {
+        console.warn(
+          `[Phase 70] dupeContext: ${dupeContext.existingStatus} existing → ${
+            dupeContext.existingStatus === 'owned' ? 'confirm-with-banner' : 'move-to-collection affordance'
+          }`,
+        )
+      }
+      // D-21 — DUPE-02 owned context overrides to 'owned'; else default.
+      const nextStatus: 'owned' | 'wishlist' | 'grail' =
+        dupeContext?.existingStatus === 'owned' ? 'owned' : (initialStatus ?? 'wishlist')
+      setConfirmStatus(nextStatus)
+      setConfirmReference(extracted.reference ?? '')
+      setConfirmYear(undefined)
+      setConfirmPrice(undefined)
+      setState({
+        kind: 'confirming',
+        catalogId,
+        extracted,
+        pickedResult: null,
+        dupeContext,
+        pending: false,
+      })
+    },
+    [viewerUserId, initialStatus],
+  )
+
+  // D-14 — switch to URL-backup mode.
+  const handleSwitchToUrl = useCallback(() => {
+    setUrl('')
+    setState({ kind: 'extracting-url', url: '' })
+  }, [])
+
+  // D-19 — CLNP-06 skip link → in-flow transition to manual-entry (NO router.push).
+  const handleSkipSearch = useCallback(() => {
+    setState({ kind: 'manual-entry', partial: null })
+  }, [])
+
+  // ---------------------------------------------------------------------------
+  // URL-backup handler (D-14 / D-16 / Phase 66 mode-discriminated body)
+  // ---------------------------------------------------------------------------
+
+  const handleUrlBackup = useCallback(async () => {
     const trimmedUrl = url.trim()
     if (!trimmedUrl) return
-    setState({ kind: 'extracting', url })
-    // Yield via requestAnimationFrame so the 'extracting' render commits and
-    // is observable (e.g. the "Working..." copy + VerdictSkeleton) before we
-    // kick off the network round-trip. Without this yield, RTL's act() flushes
-    // all awaited microtasks (fetch + verdict resolves) in the same batch as
-    // the click handler, and the intermediate render is never observable from
-    // findByText. Users in real browsers also benefit from the brief paint
-    // pass before the heavier fetch begins.
+    setState({ kind: 'extracting-url', url: trimmedUrl })
+
+    // Yield via requestAnimationFrame so the extracting render commits.
     await new Promise<void>((resolve) => {
       if (typeof requestAnimationFrame !== 'undefined') {
         requestAnimationFrame(() => resolve())
@@ -241,45 +271,42 @@ export function AddWatchFlow({
       }
     })
 
-    // FORM-04 Gap 3 — URL-keyed extract cache check BEFORE the fetch.
-    // On hit, skip /api/extract-watch entirely and reuse the cached
-    // {catalogId, extracted, catalogIdError}. Only successful previous
-    // extracts with a non-null catalogId are cached, so the !catalogId
-    // branch below is unreachable on this path.
+    // FORM-04 Gap 3 / D-16 — cache check.
     const cachedExtract = urlCache.get(trimmedUrl)
     if (cachedExtract) {
-      const { catalogId, extracted, catalogIdError } = cachedExtract
-      if (collectionRevision === 0) {
-        console.warn('[AddWatchFlow] verdict=null path: collection-empty (url-cache hit)', { catalogId, catalogIdError })
-        setState({ kind: 'verdict-ready', catalogId, extracted, verdict: null })
-        return
-      }
-      const cachedVerdict = cache.get(catalogId)
-      if (cachedVerdict) {
-        setState({ kind: 'verdict-ready', catalogId, extracted, verdict: cachedVerdict })
-        return
-      }
-      const v = await getVerdictForCatalogWatch({ catalogId })
-      const bundle: VerdictBundle | null = v.success ? v.data : null
-      if (!v.success) {
-        console.warn('[AddWatchFlow] verdict=null path: verdict-failed (url-cache hit)', { catalogId, error: v.error })
-      }
-      if (bundle) cache.set(catalogId, bundle)
-      setState({ kind: 'verdict-ready', catalogId, extracted, verdict: bundle })
+      const { catalogId, extracted } = cachedExtract
+      const dupeRow = catalogId
+        ? await findViewerWatchByCatalogId(viewerUserId, catalogId, ['owned', 'wishlist'])
+        : null
+      const dupeContext: DupeContext | null = dupeRow
+        ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
+        : null
+      const nextStatus: 'owned' | 'wishlist' | 'grail' =
+        dupeContext?.existingStatus === 'owned' ? 'owned' : (initialStatus ?? 'wishlist')
+      setConfirmStatus(nextStatus)
+      setConfirmReference(extracted.reference ?? '')
+      setConfirmYear(undefined)
+      setConfirmPrice(undefined)
+      setState({
+        kind: 'confirming',
+        catalogId,
+        extracted,
+        pickedResult: null,
+        dupeContext,
+        pending: false,
+      })
       return
     }
 
     try {
+      // D-14 — Phase 66 mode-discriminated body.
       const res = await fetch('/api/extract-watch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ mode: 'url', url: trimmedUrl }),
       })
       const data = await res.json()
       if (!res.ok) {
-        // Phase 25 Plan 04 (UX-05 / D-11..D-15): server emits category as part
-        // of the error response. Defensive fallback to 'generic-network' per
-        // T-25-04-03 (handles unexpected server shapes / future build skew).
         const category: ExtractErrorCategory =
           (data?.category as ExtractErrorCategory | undefined) ?? 'generic-network'
         setState({
@@ -287,319 +314,327 @@ export function AddWatchFlow({
           partial: null,
           reason: data?.error ?? 'Extraction failed',
           category,
+          mode: 'url',
         })
         return
       }
       const extracted: ExtractedWatchData = data.data ?? {}
       const catalogId: string | null = data.catalogId ?? null
-      // Phase 20.1 UAT gap 1 observability: route surfaces an explicit error
-      // indicator whenever the catalog upsert path could not produce a real id.
       const catalogIdError: string | null = data.catalogIdError ?? null
 
-      // FORM-04 Gap 3 — only cache fully-successful extracts with a real
-      // catalogId. Failures (catalogId=null, !res.ok, network throws) are
-      // intentionally NOT cached so the user can retry.
+      // Only cache fully-successful extracts with a real catalogId.
       if (catalogId) {
         urlCache.set(trimmedUrl, { catalogId, extracted, catalogIdError })
       }
 
-      // Pitfall 8: empty collection → skip verdict compute entirely.
-      if (collectionRevision === 0) {
-        // UAT gap 1 observability — distinguish empty-collection short-circuit
-        // from upstream silent failures.
-        console.warn('[AddWatchFlow] verdict=null path: collection-empty', { catalogId, catalogIdError })
-        setState({
-          kind: 'verdict-ready',
-          catalogId: catalogId ?? '',
-          extracted,
-          verdict: null,
-        })
-        return
+      const dupeRow = catalogId
+        ? await findViewerWatchByCatalogId(viewerUserId, catalogId, ['owned', 'wishlist'])
+        : null
+      const dupeContext: DupeContext | null = dupeRow
+        ? { existingWatchId: dupeRow.id, existingStatus: dupeRow.status, existingReference: dupeRow.reference }
+        : null
+      if (dupeContext) {
+        console.warn(
+          `[Phase 70] dupeContext: ${dupeContext.existingStatus} existing → ${
+            dupeContext.existingStatus === 'owned' ? 'confirm-with-banner' : 'move-to-collection affordance'
+          }`,
+        )
       }
-      if (!catalogId) {
-        // Brand+model missing OR catalog upsert failed; render verdict-ready
-        // without verdict so the user can still pick Wishlist/Collection/Skip.
-        // UAT gap 1 observability — surfaces which sub-case fired:
-        //   - "brand/model missing from extraction" (extractor-side)
-        //   - "catalog upsert threw: <msg>" (DB-side)
-        //   - "catalog upsert returned null id" (DAL-side, possibly RETURNING shape)
-        console.warn('[AddWatchFlow] verdict=null path: catalogId-missing', { catalogIdError })
-        setState({ kind: 'verdict-ready', catalogId: '', extracted, verdict: null })
-        return
-      }
-      // Cache hit shortcut (D-10).
-      const cached = cache.get(catalogId)
-      if (cached) {
-        setState({ kind: 'verdict-ready', catalogId, extracted, verdict: cached })
-        return
-      }
-      // Compute verdict.
-      const v = await getVerdictForCatalogWatch({ catalogId })
-      const bundle: VerdictBundle | null = v.success ? v.data : null
-      if (!v.success) {
-        // UAT gap 1 observability — surfaces the Server Action error string.
-        console.warn('[AddWatchFlow] verdict=null path: verdict-failed', { catalogId, error: v.error })
-      }
-      if (bundle) cache.set(catalogId, bundle)
-      setState({ kind: 'verdict-ready', catalogId, extracted, verdict: bundle })
+      const nextStatus: 'owned' | 'wishlist' | 'grail' =
+        dupeContext?.existingStatus === 'owned' ? 'owned' : (initialStatus ?? 'wishlist')
+      setConfirmStatus(nextStatus)
+      setConfirmReference(extracted.reference ?? '')
+      setConfirmYear(undefined)
+      setConfirmPrice(undefined)
+      setState({
+        kind: 'confirming',
+        catalogId,
+        extracted,
+        pickedResult: null,
+        dupeContext,
+        pending: false,
+      })
     } catch (err) {
-      console.error('[AddWatchFlow] extract failed:', err)
-      // Strip leading "Error:" prefix from String(err) so the surfaced reason
-      // reads as user-facing copy rather than a debug toString.
-      const reason = err instanceof Error
-        ? err.message
-        : String(err).replace(/^Error:\s*/i, '')
-      // Phase 25 Plan 04: client-side thrown errors (network unreachable,
-      // fetch failure, JSON parse failure) all map to generic-network.
+      console.error('[AddWatchFlow] URL-backup extract failed:', err)
+      const reason =
+        err instanceof Error ? err.message : String(err).replace(/^Error:\s*/i, '')
       setState({
         kind: 'extraction-failed',
         partial: null,
         reason,
         category: 'generic-network',
+        mode: 'url',
       })
     }
-  }
+  }, [url, urlCache, viewerUserId, initialStatus])
 
-  // -- 3-button handlers from VerdictStep --
-  const handleWishlist = () => {
-    if (state.kind !== 'verdict-ready') return
-    setState({
-      kind: 'wishlist-rationale-open',
-      catalogId: state.catalogId,
-      extracted: state.extracted,
-      verdict: state.verdict,
-    })
-  }
+  // ---------------------------------------------------------------------------
+  // ConfirmStep handlers
+  // ---------------------------------------------------------------------------
 
-  const handleCollection = () => {
-    if (state.kind !== 'verdict-ready') return
-    setState({ kind: 'form-prefill', catalogId: state.catalogId, extracted: state.extracted })
-  }
-
-  // -- Skip handler — UAT gap 3 fix --
-  // Previously guarded with `if (state.catalogId)` which silently no-op'd the
-  // rail push when catalogId was empty (silent catalog upsert failure path).
-  // Now always pushes; synthesizes id from brand|model when catalogId missing.
-  const handleSkip = () => {
-    if (state.kind !== 'verdict-ready') return
-    // UAT gap 3 fix: ALWAYS push a rail entry. When state.catalogId is empty
-    // (upstream catalog upsert silently failed OR brand/model missing), synthesize
-    // a stable id from brand|model so the chip still renders. Cache lookup on
-    // synthesized ids will miss intentionally — re-clicking the chip restores the
-    // previously-stored verdict (which may be null) without re-extracting.
-    const brand = state.extracted.brand ?? 'Unknown'
-    const model = state.extracted.model ?? ''
-    const railId = state.catalogId
-      ? state.catalogId
-      : `synth:${brand.trim().toLowerCase()}|${model.trim().toLowerCase()}`
-    const entry: RailEntry = {
-      catalogId: railId,
-      brand,
-      model,
-      imageUrl: state.extracted.imageUrl ?? null,
-      extracted: state.extracted,
-      verdict: state.verdict,
-    }
-    setRail((prev) =>
-      [entry, ...prev.filter((r) => r.catalogId !== entry.catalogId)].slice(0, RAIL_MAX),
-    )
-    setUrl('')
-    setState({ kind: 'idle' })
-  }
-
-  // -- Wishlist commit handler (from WishlistRationalePanel) --
-  const handleWishlistConfirm = (notes: string) => {
-    if (state.kind !== 'wishlist-rationale-open') return
+  // Primary commit — addWatch with the catalogId branch (Phase 67).
+  const handleConfirmPrimary = useCallback(async () => {
+    if (state.kind !== 'confirming') return
     const captured = state
-    setState({
-      kind: 'submitting-wishlist',
-      catalogId: captured.catalogId,
-      extracted: captured.extracted,
-      verdict: captured.verdict,
-      notes,
-    })
-    startTransition(async () => {
-      // Pitfall 5: notes is verbatim — '' if user blanked.
-      // Pitfall 6: NEVER pass photoSourcePath from URL-extract surface.
-      const payload = buildAddWatchPayload(captured.extracted, 'wishlist', notes)
-      const result = await addWatch(payload)
-      if (result.success) {
-        // Phase 28 D-13 default + D-14 returnTo: where to go on commit.
-        const dest = initialReturnTo ?? defaultDestinationForStatus('wishlist', viewerUsername)
-        // Phase 28 D-02 — toast destination when not suppressed.
-        const actionHref = viewerUsername ? `/u/${viewerUsername}/wishlist` : null
-        // Phase 28 D-05/D-06 — suppress when post-commit landing equals action target.
-        const suppress =
-          actionHref === null ||
-          canonicalize(dest, viewerUsername) === canonicalize(actionHref, viewerUsername)
-        if (!suppress && actionHref !== null) {
-          // Phase 28 D-01/D-03 — Sonner action-slot toast. Locked UI-SPEC body.
-          toast.success('Saved to your wishlist', {
-            action: {
-              label: 'View',
-              onClick: () => router.push(actionHref),
-            },
-          })
-        }
-        // Phase 28 D-15 — REMOVED router.refresh().
-        // Verified safe: /u/[username]/[tab]/page.tsx is a Server Component
-        // that re-fetches getWatchesByUser(profile.id) on every render. The
-        // next visit to /watch/new will compute collectionRevision fresh.
-        //
-        // Phase 29 FORM-04 D-14 — defense-in-depth state reset BEFORE router.push.
-        // Activity preserves React state across navigation; without this reset,
-        // a return visit to /watch/new (within the 3-route Activity window)
-        // could briefly paint stale state before the useLayoutEffect cleanup
-        // resolves. The key prop on <AddWatchFlow> is the primary fix; this
-        // reset closes the post-commit gap.
+    setState({ ...captured, pending: true })
+
+    // Build payload. catalogId branch (Phase 67 D-10) server-overrides brand/model/reference.
+    const payload: Record<string, unknown> = {
+      brand: captured.extracted.brand ?? '',
+      model: captured.extracted.model ?? '',
+      reference: confirmReference || captured.extracted.reference || undefined,
+      status: confirmStatus,
+      movement: captured.extracted.movement ?? 'auto',
+      complications: captured.extracted.complications ?? [],
+      caseSizeMm: captured.extracted.caseSizeMm,
+      lugToLugMm: captured.extracted.lugToLugMm,
+      waterResistanceM: captured.extracted.waterResistanceM,
+      strapType: captured.extracted.strapType,
+      crystalType: captured.extracted.crystalType,
+      dialColor: captured.extracted.dialColor,
+      styleTags: captured.extracted.styleTags ?? [],
+      designTraits: captured.extracted.designTraits ?? [],
+      roleTags: [],
+      isChronometer: captured.extracted.isChronometer,
+      marketPrice: captured.extracted.marketPrice,
+      imageUrl: captured.extracted.imageUrl,
+      productionYear: confirmYear,
+    }
+    if (captured.catalogId) payload.catalogId = captured.catalogId
+    if (confirmStatus === 'owned' && confirmPrice !== undefined) payload.pricePaid = confirmPrice
+    if ((confirmStatus === 'wishlist' || confirmStatus === 'grail') && confirmPrice !== undefined) {
+      payload.targetPrice = confirmPrice
+    }
+
+    const result = await addWatch(payload)
+    if (!result.success) {
+      toast.error(result.error)
+      setState({ ...captured, pending: false })
+      return
+    }
+
+    const watchId = result.data.id
+    // D-18 / D-17 — destination matrix.
+    const dest = initialReturnTo ?? defaultDestinationForStatus(confirmStatus, viewerUsername)
+    if (confirmStatus === 'owned') {
+      setState({ kind: 'photos-pending', watchId, destination: dest })
+    } else {
+      setUrl('')
+      setRail([])
+      setState({ kind: 'search-idle' })
+      router.push(dest)
+    }
+  }, [state, confirmStatus, confirmReference, confirmYear, confirmPrice, initialReturnTo, viewerUsername, router])
+
+  // CONF-07 — open WatchForm for full edit.
+  const handleConfirmEditDetails = useCallback(() => {
+    if (state.kind !== 'confirming') return
+    if (!state.catalogId) {
+      // Without a catalogId we fall back to manual-entry with the extracted partial.
+      setState({ kind: 'manual-entry', partial: state.extracted })
+      return
+    }
+    setState({ kind: 'form-prefill', catalogId: state.catalogId, extracted: state.extracted })
+  }, [state])
+
+  // CONF-09 — return to search idle.
+  const handleConfirmStartOver = useCallback(() => {
+    setUrl('')
+    setState({ kind: 'search-idle' })
+  }, [])
+
+  // ---------------------------------------------------------------------------
+  // DupeBanner handlers
+  // ---------------------------------------------------------------------------
+
+  // D-05 / D-09 — onViewExisting only called when existingReference is non-null
+  // (DupeBanner hides the button otherwise).
+  const handleViewExisting = useCallback(() => {
+    if (state.kind !== 'confirming' || !state.dupeContext?.existingReference) return
+    router.push(`/w/${encodeURIComponent(state.dupeContext.existingReference)}`)
+  }, [state, router])
+
+  // D-13 — DUPE-03 commit. Plain async; orchestrator sets pending; no useTransition.
+  const handleMoveToCollection = useCallback(async () => {
+    if (state.kind !== 'confirming' || !state.dupeContext || state.dupeContext.existingStatus !== 'wishlist') return
+    const captured = state
+    const existingWatchId = captured.dupeContext!.existingWatchId
+    setState({ ...captured, pending: true })
+
+    const result = await moveWishlistToCollection(existingWatchId)
+    if (!result.success) {
+      toast.error(result.error)
+      setState({ ...captured, pending: false })
+      return
+    }
+
+    const dest = initialReturnTo ?? defaultDestinationForStatus('owned', viewerUsername)
+    const actionHref = viewerUsername ? `/u/${viewerUsername}/collection` : null
+    if (actionHref) {
+      toast.success('Moved to collection', {
+        action: {
+          label: 'View',
+          onClick: () => router.push(actionHref),
+        },
+      })
+    }
+    setUrl('')
+    setRail([])
+    setState({ kind: 'search-idle' })
+    router.push(dest)
+  }, [state, initialReturnTo, viewerUsername, router])
+
+  // D-08 — "Add another copy" clears dupeContext only; ConfirmStep stays mounted.
+  const handleAddAnotherCopy = useCallback(() => {
+    if (state.kind !== 'confirming') return
+    setState({ ...state, dupeContext: null, pending: false })
+  }, [state])
+
+  // ---------------------------------------------------------------------------
+  // WatchForm / WatchPhotoStep handlers
+  // ---------------------------------------------------------------------------
+
+  // D-17 — form-prefill / manual-entry intercept. Status from WatchForm's third arg gates photos-pending.
+  const handleWatchCreated = useCallback(
+    (watchId: string, dest: string, status: WatchStatus) => {
+      if (status === 'owned') {
+        setState({ kind: 'photos-pending', watchId, destination: dest })
+      } else {
         setUrl('')
         setRail([])
-        setState({ kind: 'idle' })
+        setState({ kind: 'search-idle' })
         router.push(dest)
-      } else {
-        toast.error(result.error)
-        // Roll back to wishlist-rationale-open so user can retry.
-        setState({
-          kind: 'wishlist-rationale-open',
-          catalogId: captured.catalogId,
-          extracted: captured.extracted,
-          verdict: captured.verdict,
-        })
       }
-    })
-  }
+    },
+    [router],
+  )
 
-  const handleWishlistCancel = () => {
-    if (state.kind !== 'wishlist-rationale-open') return
-    setState({
-      kind: 'verdict-ready',
-      catalogId: state.catalogId,
-      extracted: state.extracted,
-      verdict: state.verdict,
-    })
-  }
+  // ---------------------------------------------------------------------------
+  // ExtractErrorCard recovery actions (preserved verbatim from prior orchestrator)
+  // ---------------------------------------------------------------------------
 
-  // -- Phase 61 Plan 03 (PHOTO-09 / D-15): intercept WatchForm's create-success
-  // path to insert the photos step before navigation. WatchForm calls this
-  // instead of router.push when onWatchCreated is present.
-  const handleWatchCreated = (watchId: string, dest: string) => {
-    setState({ kind: 'photos-pending', watchId, destination: dest })
-  }
-
-  // -- Manual entry (D-03) — kept as-is for PasteSection's "or enter manually"
-  // link (in-flow transition; user can change their mind without leaving the
-  // page). The post-failure in-flow manual transition is gone in Phase 25
-  // Plan 04: ExtractErrorCard's "Add manually" CTA navigates to
-  // /watch/new?manual=1 instead (per D-14 LITERAL).
-  const handleManualEntry = () => {
-    setState({ kind: 'manual-entry', partial: null })
-  }
-
-  const handleStartOver = () => {
-    setUrl('')
-    setState({ kind: 'idle' })
-  }
-
-  // -- Phase 25 Plan 04 (UX-05 / D-14): stable callbacks for ExtractErrorCard.
-  // T-25-04-04 mitigation: useCallback prevents identity churn that could
-  // otherwise drive effect-loops in any future consumer that observes the
-  // props. retryAction reuses handleStartOver semantics (clear URL, idle);
-  // manualAction routes to /watch/new?manual=1 per D-14 LITERAL (matches the
-  // 25-05 Collection no-key fallback CTA semantics).
   const retryAction = useCallback(() => {
     setUrl('')
-    setState({ kind: 'idle' })
+    setState({ kind: 'search-idle' })
   }, [])
+
   const manualAction = useCallback(() => {
-    // Phase 28: preserve initialReturnTo through the manual-entry restart so
-    // the user doesn't lose their entry-point context after re-pasting.
     const qs = initialReturnTo
       ? `?manual=1&returnTo=${encodeURIComponent(initialReturnTo)}`
       : '?manual=1'
     router.push(`/watch/new${qs}`)
   }, [router, initialReturnTo])
 
-  // -- Rail click → re-open verdict from cache or stored entry --
-  const handleRailSelect = (entry: RailEntry) => {
-    const cached = cache.get(entry.catalogId)
-    setState({
-      kind: 'verdict-ready',
-      catalogId: entry.catalogId,
-      extracted: entry.extracted,
-      verdict: cached ?? entry.verdict,
-    })
-  }
+  // ---------------------------------------------------------------------------
+  // Render branches per UI-SPEC §C / B / E / D
+  // ---------------------------------------------------------------------------
 
-  // -- Render branches per UI-SPEC §Section Visibility per State --
   return (
     <div className="space-y-8">
-      {/* Idle / extraction-failed: paste section + manual link */}
-      {(state.kind === 'idle' || state.kind === 'extraction-failed') && (
-        <PasteSection
-          url={url}
-          onUrlChange={setUrl}
-          onExtract={handleExtract}
-          onManualEntry={handleManualEntry}
-          pending={false}
-        />
-      )}
-
-      {/* Extracting: disabled paste + skeleton + Working copy */}
-      {state.kind === 'extracting' && (
-        <div className="space-y-4">
-          <PasteSection
-            url={url}
-            onUrlChange={setUrl}
-            onExtract={() => {}}
-            onManualEntry={() => {}}
-            pending={true}
-            disabled={true}
+      {/* C — search-idle branch: SearchEntry + CLNP-06 skip link (D-19) */}
+      {state.kind === 'search-idle' && (
+        <div className="space-y-6">
+          <SearchEntry
+            viewerUserId={viewerUserId}
+            catalogBrands={catalogBrands}
+            onPick={handleSearchPick}
+            onSubmitStructured={handleStructuredSubmit}
+            onSwitchToUrl={handleSwitchToUrl}
           />
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            Extracting + computing fit...
-          </p>
-          <VerdictSkeleton />
+          <button
+            type="button"
+            onClick={handleSkipSearch}
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
+          >
+            Skip search — enter manually
+          </button>
         </div>
       )}
 
-      {/* Verdict-ready: full step UI */}
-      {state.kind === 'verdict-ready' && (
-        <VerdictStep
-          extracted={state.extracted}
-          verdict={state.verdict}
-          hasCollection={hasCollection}
-          pending={false}
-          pendingTarget={null}
-          onWishlist={handleWishlist}
-          onCollection={handleCollection}
-          onSkip={handleSkip}
-        />
+      {/* B — extracting-url branch: inline URL input + "Find specs" + "← Back to search" (D-14/D-15) */}
+      {state.kind === 'extracting-url' && (
+        <div className="space-y-4" aria-live="polite">
+          <button
+            type="button"
+            onClick={() => {
+              setUrl('')
+              setState({ kind: 'search-idle' })
+            }}
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
+          >
+            ← Back to search
+          </button>
+          <div className="space-y-2">
+            <Input
+              id="extracting-url-input"
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Paste a watch URL"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUrlBackup()
+              }}
+              aria-label="Watch page URL"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleUrlBackup}
+            disabled={!url.trim()}
+            className="w-full"
+          >
+            {state.url !== '' ? (
+              <>
+                <Loader2 className="size-4 mr-2 animate-spin" aria-hidden="true" />
+                Finding specs…
+              </>
+            ) : (
+              'Find specs'
+            )}
+          </Button>
+        </div>
       )}
 
-      {/* Wishlist-rationale-open / submitting: panel pre-filled with verdict copy */}
-      {(state.kind === 'wishlist-rationale-open' ||
-        state.kind === 'submitting-wishlist') && (
-        <>
-          <VerdictStep
-            extracted={state.extracted}
-            verdict={state.verdict}
-            hasCollection={hasCollection}
-            pending={state.kind === 'submitting-wishlist'}
-            pendingTarget={state.kind === 'submitting-wishlist' ? 'wishlist' : null}
-            onWishlist={() => {}}
-            onCollection={() => {}}
-            onSkip={() => {}}
+      {/* E — confirming branch: DupeBanner (when dupeContext) ABOVE ConfirmStep (D-11) */}
+      {state.kind === 'confirming' && (
+        <div className="space-y-6">
+          {state.dupeContext && (
+            <DupeBanner
+              existingStatus={state.dupeContext.existingStatus}
+              existingReference={state.dupeContext.existingReference}
+              onViewExisting={handleViewExisting}
+              onMoveToCollection={
+                state.dupeContext.existingStatus === 'wishlist' ? handleMoveToCollection : undefined
+              }
+              onAddAnotherCopy={handleAddAnotherCopy}
+              pending={state.pending}
+            />
+          )}
+          <ConfirmStep
+            catalogImageUrl={state.pickedResult?.imageUrl ?? null}
+            extractedImageUrl={state.extracted.imageUrl ?? null}
+            brand={state.extracted.brand ?? ''}
+            model={state.extracted.model ?? ''}
+            reference={confirmReference}
+            onReferenceChange={setConfirmReference}
+            productionYear={confirmYear}
+            onProductionYearChange={setConfirmYear}
+            status={confirmStatus}
+            onStatusChange={setConfirmStatus}
+            price={confirmPrice}
+            onPriceChange={setConfirmPrice}
+            onPrimary={handleConfirmPrimary}
+            onEditDetails={handleConfirmEditDetails}
+            onStartOver={handleConfirmStartOver}
+            pending={state.pending}
+            movement={state.extracted.movement ?? null}
+            caseSizeMm={state.extracted.caseSizeMm ?? null}
+            dialColor={state.extracted.dialColor ?? null}
           />
-          <WishlistRationalePanel
-            verdict={state.verdict}
-            onConfirm={handleWishlistConfirm}
-            onCancel={handleWishlistCancel}
-            pending={state.kind === 'submitting-wishlist'}
-          />
-        </>
+        </div>
       )}
 
-      {/* Form-prefill (D-12): WatchForm with lockedStatus="owned" */}
+      {/* form-prefill branch: WatchForm locked to owned (existing pattern) */}
       {state.kind === 'form-prefill' && (
         <WatchForm
           mode="create"
@@ -611,24 +646,18 @@ export function AddWatchFlow({
         />
       )}
 
-      {/* Manual-entry (D-03 + D-18): WatchForm without lockedStatus.
-          UAT gap 4 fix (Plan 08): prepend a quiet "Cancel — paste a URL instead"
-          back affordance wired to the existing handleStartOver. The direct
-          ingress path is PasteSection's "or enter manually" link; the post-
-          failure ingress is now via ExtractErrorCard's "Add manually" CTA
-          which routes to /watch/new?manual=1 (rather than transitioning
-          in-flow as the legacy fallback did).
-          Phase 25 D-05: when initialStatus='wishlist' was threaded from
-          `?status=wishlist`, pass it as `defaultStatus` (NOT `lockedStatus`)
-          so the form opens pre-set to wishlist but the user can still change. */}
+      {/* D — manual-entry branch: back affordance copy updated per D-20 */}
       {state.kind === 'manual-entry' && (
         <div className="space-y-4">
           <button
             type="button"
-            onClick={handleStartOver}
+            onClick={() => {
+              setUrl('')
+              setState({ kind: 'search-idle' })
+            }}
             className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
           >
-            ← Cancel — paste a URL instead
+            ← Cancel — return to search
           </button>
           <WatchForm
             mode="create"
@@ -645,10 +674,7 @@ export function AddWatchFlow({
         </div>
       )}
 
-      {/* Photos-pending (Phase 61 Plan 03 PHOTO-09 / D-15/D-16):
-          Rendered after a watch row is created, before final navigation.
-          Lets the user add photos; skippable with friction ("Skip for now").
-          Both Done and Skip routes to state.destination without blocking. */}
+      {/* photos-pending branch: D-17 gate is applied upstream (handleConfirmPrimary / handleWatchCreated) */}
       {state.kind === 'photos-pending' && (
         <WatchPhotoStep
           watchId={state.watchId}
@@ -656,51 +682,55 @@ export function AddWatchFlow({
           onDone={() => {
             setUrl('')
             setRail([])
-            setState({ kind: 'idle' })
+            setState({ kind: 'search-idle' })
             router.push(state.destination)
           }}
           onSkip={() => {
             setUrl('')
             setRail([])
-            setState({ kind: 'idle' })
+            setState({ kind: 'search-idle' })
             router.push(state.destination)
           }}
         />
       )}
 
-      {/* Extraction-failed (Phase 25 Plan 04 — UX-05 / D-14):
-          <ExtractErrorCard> renders the locked D-15 recovery copy + locked
-          D-14 dual CTAs ("Add manually" / "Try a different URL"). The card
-          is mounted UNDER the visible PasteSection (above) so the URL input
-          stays editable in place per UI-SPEC §"Where it mounts inside
-          AddWatchFlow". */}
+      {/* extraction-failed branch: ExtractErrorCard with mode prop wired (Phase 69 D-06) */}
       {state.kind === 'extraction-failed' && (
         <ExtractErrorCard
           category={state.category}
+          mode={state.mode}
           message={state.reason}
           retryAction={retryAction}
           manualAction={manualAction}
         />
       )}
-
-      {/* Rail visible in idle / extracting / verdict-ready / extraction-failed
-          (UI-SPEC §Section Visibility per State); hidden in form-prefill / manual-entry / photos-pending. */}
-      {state.kind !== 'form-prefill' &&
-        state.kind !== 'manual-entry' &&
-        state.kind !== 'wishlist-rationale-open' &&
-        state.kind !== 'submitting-wishlist' &&
-        state.kind !== 'photos-pending' && (
-          <RecentlyEvaluatedRail entries={rail} onSelect={handleRailSelect} />
-        )}
     </div>
   )
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Map ExtractedWatchData (URL-extract shape) into a partial Watch for WatchForm prefill.
- * - status defaulted to caller-provided value
- * - id is a placeholder string (WatchForm.mode='create' ignores id)
- * - Required fields with no extracted value get safe defaults
+ * Map a SearchCatalogWatchResult into the partial ExtractedWatchData shape
+ * ConfirmStep consumes. The search result carries brand/model/reference/imageUrl
+ * directly; the other ExtractedWatchData fields are unknown at search-pick time
+ * (they live on the catalog row but the search projection does not fetch them).
+ */
+function searchResultToExtracted(result: SearchCatalogWatchResult): ExtractedWatchData {
+  return {
+    brand: result.brand,
+    model: result.model,
+    reference: result.reference ?? undefined,
+    imageUrl: result.imageUrl ?? undefined,
+  }
+}
+
+/**
+ * Map ExtractedWatchData (URL-extract / search-pick / structured-input shape)
+ * into a partial Watch for WatchForm prefill. Preserved verbatim from the prior
+ * orchestrator.
  */
 function extractedToPartialWatch(data: ExtractedWatchData, status: WatchStatus): Watch {
   const movement: MovementType = data.movement ?? 'auto'
@@ -725,39 +755,6 @@ function extractedToPartialWatch(data: ExtractedWatchData, status: WatchStatus):
     productionYear: undefined,
     isChronometer: data.isChronometer,
     notes: undefined,
-    imageUrl: data.imageUrl,
-  }
-}
-
-/**
- * Build the addWatch payload for the Wishlist commit path.
- * - Pitfall 6: NEVER set photoSourcePath (URL-extract surface forbids it).
- * - Pitfall 5: notes is verbatim, including '' when user blanked.
- */
-function buildAddWatchPayload(
-  data: ExtractedWatchData,
-  status: WatchStatus,
-  notes: string,
-) {
-  return {
-    brand: data.brand ?? '',
-    model: data.model ?? '',
-    reference: data.reference,
-    status,
-    marketPrice: data.marketPrice,
-    movement: data.movement ?? 'auto',
-    complications: data.complications ?? [],
-    caseSizeMm: data.caseSizeMm,
-    lugToLugMm: data.lugToLugMm,
-    waterResistanceM: data.waterResistanceM,
-    strapType: data.strapType,
-    crystalType: data.crystalType,
-    dialColor: data.dialColor,
-    styleTags: data.styleTags ?? [],
-    designTraits: data.designTraits ?? [],
-    roleTags: [],
-    isChronometer: data.isChronometer,
-    notes,
     imageUrl: data.imageUrl,
   }
 }
