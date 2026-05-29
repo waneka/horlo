@@ -387,6 +387,20 @@ export function AddWatchFlow({
   // ---------------------------------------------------------------------------
 
   // Primary commit — addWatch with the catalogId branch (Phase 67).
+  //
+  // Phase 70 gap plan 07 (VERIFICATION gap #1 closure):
+  //   CR-02 movement: the pre-gap code shipped a synthetic auto-default on the
+  //     movement field which corrupted quartz/manual catalog rows to auto in the
+  //     user's watches row. Fix: gate on catalogId — when set, OMIT movement
+  //     entirely so the catalog row + Phase 19.5 LLM-derived taste enrichment
+  //     owns the truth. When no catalogId (URL-backup transient failure), only
+  //     forward extracted.movement if it was actually provided (no synthetic
+  //     default ever).
+  //   CR-02 imageUrl: the dead imageUrl payload field has been removed (Phase 60
+  //     dropped the column; mapDomainToRow:94 silently drops it).
+  //   CR-01 photoSourcePath: upload the captured photoBlob via uploadCatalogSourcePhoto
+  //     BEFORE addWatch; forward bucket path as photoSourcePath in the payload.
+  //     Mirrors WatchForm.tsx:222-249. Fire-and-forget on failure (proceed without photo).
   const handleConfirmPrimary = useCallback(async () => {
     if (state.kind !== 'confirming') return
     const captured = state
@@ -398,7 +412,6 @@ export function AddWatchFlow({
       model: captured.extracted.model ?? '',
       reference: confirmReference || captured.extracted.reference || undefined,
       status: confirmStatus,
-      movement: captured.extracted.movement ?? 'auto',
       complications: captured.extracted.complications ?? [],
       caseSizeMm: captured.extracted.caseSizeMm,
       lugToLugMm: captured.extracted.lugToLugMm,
@@ -411,13 +424,42 @@ export function AddWatchFlow({
       roleTags: [],
       isChronometer: captured.extracted.isChronometer,
       marketPrice: captured.extracted.marketPrice,
-      imageUrl: captured.extracted.imageUrl,
       productionYear: confirmYear,
+    }
+    // CR-02 movement fix: when catalogId is set, the catalog row + downstream
+    // taste enrichment supplies movement; never default to 'auto'. When no
+    // catalogId (URL-backup transient failure), forward extracted.movement only
+    // if it was actually provided (no synthetic default).
+    if (!captured.catalogId && captured.extracted.movement) {
+      payload.movement = captured.extracted.movement
     }
     if (captured.catalogId) payload.catalogId = captured.catalogId
     if (confirmStatus === 'owned' && confirmPrice !== undefined) payload.pricePaid = confirmPrice
     if ((confirmStatus === 'wishlist' || confirmStatus === 'grail') && confirmPrice !== undefined) {
       payload.targetPrice = confirmPrice
+    }
+
+    // CR-01 photo upload: if a Blob was captured via the gap plan 06 widened
+    // onSubmitStructured(result, catalogId, photoBlob?) contract, upload it
+    // BEFORE addWatch. Fire-and-forget on failure — the watch commit proceeds
+    // without photoSourcePath (mirrors WatchForm.tsx:222-249).
+    if (captured.photoBlob) {
+      try {
+        const { createSupabaseBrowserClient } = await import('@/lib/supabase/client')
+        const supabase = createSupabaseBrowserClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { uploadCatalogSourcePhoto } = await import('@/lib/storage/catalogSourcePhotos')
+          const uploadResult = await uploadCatalogSourcePhoto(user.id, 'pending', captured.photoBlob)
+          if ('path' in uploadResult) {
+            payload.photoSourcePath = uploadResult.path
+          } else {
+            console.error('[AddWatchFlow gap-07] photo upload failed:', uploadResult.error)
+          }
+        }
+      } catch (err) {
+        console.error('[AddWatchFlow gap-07] photo upload exception (non-fatal):', err)
+      }
     }
 
     const result = await addWatch(payload)
