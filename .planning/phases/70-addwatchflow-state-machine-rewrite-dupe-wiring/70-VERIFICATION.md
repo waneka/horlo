@@ -1,49 +1,20 @@
 ---
 phase: 70-addwatchflow-state-machine-rewrite-dupe-wiring
-verified: 2026-05-29T07:30:00Z
-status: gaps_found
-score: 4/6 must-haves verified (2 BLOCKERS: data-correctness defects in shipped Phase 70 code)
+verified: 2026-05-29T22:27:50Z
+status: passed
+score: 6/6 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "Phase 70 commits the watch with correct catalog-derived metadata (movement) and does not silently discard user-provided photos"
-    status: failed
-    reason: "CR-01 (StructuredEntryPanel photo blob silently dropped) and CR-02 (movement='auto' hardcoded default + imageUrl forwarded after column dropped) — both flagged in 70-REVIEW.md as Critical. CR-02 in particular ships a real data-correctness regression: every search-pick / URL-cache-hit commit where the catalog/extracted result lacks movement persists `movement: 'auto'` to the user's watches row, overriding the truth of any quartz / hand-wound watch added via search. addWatch's catalogId branch (D-10) only server-overrides brand/model/reference — movement flows through verbatim. The user-visible behavior of the phase goal ('add a watch') is realized, but the row is wrong."
-    artifacts:
-      - path: "src/components/watch/AddWatchFlow.tsx"
-        issue: "Line 382: `movement: captured.extracted.movement ?? 'auto'` in handleConfirmPrimary; the catalog row knows the real movement but the user row records 'auto' for non-auto search picks. Line 395 forwards `imageUrl` to addWatch even though Phase 60 dropped the column (mapDomainToRow line 94 silently drops it — dead code that obscures the cover-fallback chain). `searchResultToExtracted` (lines 739-746) never carries `movement` so the `??  'auto'` fallback always fires for search-pick paths."
-      - path: "src/components/watch/StructuredEntryPanel.tsx"
-        issue: "Lines 99-103: photoBlob state declared with `[, setPhotoBlob]` — write-only setter; the captured Blob value is never read or forwarded. Line 247: `<CatalogPhotoUploader onPhotoReady={setPhotoBlob}>` succeeds visually but the photo dies in dead-code state. The leading comment ('Phase 70 forwards it to the catalog source-photo upload pipeline at ConfirmStep commit') is unfulfilled — no onPhotoReady forwarded to AddWatchFlow, no handleStructuredSubmit photo arg, no photoSourcePath in the addWatch payload."
-    missing:
-      - "Strip `imageUrl` from handleConfirmPrimary payload (column is dropped per Phase 60) OR document explicitly that it is dead-write decoration"
-      - "Gate the movement default — when catalogId is present, OMIT `movement` from the addWatch payload so the catalog row's downstream taste enrichment supplies it (or stop defaulting to 'auto' entirely). Add a regression test asserting a quartz catalog row stays 'quartz' (or null) through the search-pick → ConfirmStep → addWatch path."
-      - "Wire StructuredEntryPanel.onPhotoReady through onSubmitStructured (third arg) → AddWatchFlow.handleStructuredSubmit captures the blob → uploadCatalogSourcePhoto called before addWatch → photoSourcePath included in payload (mirroring WatchForm.tsx lines 222-249). OR remove CatalogPhotoUploader from StructuredEntryPanel and defer EXTR-06 to a follow-up phase."
-  - truth: "DupeBanner actually prevents silent duplicates when it appears (WR-01)"
-    status: failed
-    reason: "WR-01 (also in 70-REVIEW.md): when DupeBanner mounts with `dupeContext.existingStatus === 'owned'` or 'wishlist', the ConfirmStep primary CTA is still active. A user who scrolls past or ignores the banner and clicks ConfirmStep's primary button proceeds straight through `handleConfirmPrimary` → `addWatch` → a new row (DUPE-02) or a new wishlist row (DUPE-03 ignored). The DB has no UNIQUE(userId,catalogId) constraint (RESEARCH §D-08 confirmed) and `findViewerWatchByCatalogId` LIMIT 1 deliberately allows multiples. T-70-03 unit test asserts the banner appears + 'Add another copy' clears dupeContext, but never asserts ConfirmStep's primary CTA is gated when dupeContext is present. The whole purpose of DUPE-02/DUPE-03 (prevent surprise duplicates) is undermined by an active ConfirmStep CTA next to the banner. This makes the user-observable DUPE-02 (and DUPE-03 if user picks wishlist then clicks ConfirmStep instead of banner) behavior weaker than the requirement intends."
-    artifacts:
-      - path: "src/components/watch/AddWatchFlow.tsx"
-        issue: "Lines 594-628 render branch: DupeBanner is mounted ABOVE ConfirmStep when state.dupeContext is set, but ConfirmStep receives `pending={state.pending}` only — not gated on `state.dupeContext != null`. The banner's pending only disables banner buttons; ConfirmStep's primary is fully clickable. No client-side or server-side de-dupe."
-    missing:
-      - "Disable ConfirmStep primary CTA when state.dupeContext != null (e.g., `pending={state.pending || state.dupeContext != null}`) — minimal fix, forces the user through one of the banner buttons. Alternative: hide ConfirmStep entirely until dupeContext is dismissed (Add another copy or banner action)."
-      - "Add a regression test asserting that with dupeContext.existingStatus='owned' set, clicking ConfirmStep's primary does NOT call addWatch (or calls a moveWishlistToCollection-equivalent for wishlist)."
-  - truth: "DUPE-03 commit path is robust against transient resolveDupeContext failures (WR-02)"
-    status: partial
-    reason: "WR-02 (70-REVIEW.md): when findViewerWatchByCatalogIdAction returns `{success: false}`, resolveDupeContext silently returns null and the orchestrator proceeds to ConfirmStep WITHOUT a DupeBanner. Combined with WR-01, a transient DB outage during dupe lookup gives the user a silent-duplicate addWatch path on owned/wishlist results where the SearchEntry result already advertised viewerState='owned' | 'wishlist'. The orchestrator KNOWS a dupe exists (from result.viewerState) but doesn't surface a toast.error or abort. Phase goal SC#1 (wishlist DupeBanner) becomes lossy on the rare error path."
-    artifacts:
-      - path: "src/components/watch/AddWatchFlow.tsx"
-        issue: "Lines 722-731 resolveDupeContext: on `result.success === false`, logs a console.warn and returns null. handleSearchPick / handleStructuredSubmit / handleUrlBackup treat null as 'no existing watch' and silently fall through to the standard ConfirmStep without DupeBanner — there is no toast affordance or branch on the known-dupe case (viewerState pre-signals)."
-    missing:
-      - "When handleSearchPick has `result.viewerState === 'owned' | 'wishlist'` AND resolveDupeContext returns null, surface toast.error and remain on search-idle (do not silently advance to confirm-without-banner). For structured-input + URL-backup, accept the silent fallthrough but consider a toast affordance on action failure."
-deferred:
-  - truth: "Legacy verdict files deleted + static guards added"
-    addressed_in: "Phase 71"
-    evidence: "Phase 71 success criteria 1-3: VerdictStep/WishlistRationalePanel/PasteSection deletion + tests/static/AddWatchFlow.no-verdict-step.test.ts + tests/static/AddWatchFlow.no-collection-fit-card.test.ts. Phase 70 ended with hard-cutover imports (0 legacy refs in AddWatchFlow.tsx) — orphan files remain but the orchestrator no longer references them."
-  - truth: "RecentlyEvaluatedRail / RailEntry / PendingTarget disposition"
-    addressed_in: "Phase 71"
-    evidence: "Phase 71 CLNP-04 success criterion: 'RecentlyEvaluatedRail is removed from AddWatchFlow; component file disposition decided during plan-phase'. flowTypes.ts D-01 deliberately keeps RailEntry + PendingTarget exports per Phase 71 forward-coordination; IN-02 in 70-REVIEW.md flags type-safety degradation as acceptable transition state."
-  - truth: "FlowState literal enumeration matches REQUIREMENTS.md CLNP-05 exactly"
-    addressed_in: "Phase 71 CLNP-05 audit (per Phase 70 CONTEXT.md §Phase 71 forward-coordination)"
-    evidence: "Phase 70 CONTEXT.md D-01 and Plan 04 explicitly reconcile the REQUIREMENTS.md CLNP-05 'search-results/structured-input/extracting-structured' four-state enumeration by collapsing them into one orchestrator-level `search-idle` (SearchEntry owns the sub-state). Phase 71's CLNP-02 static guard will assert against the final union shape Phase 70 ships (not the ROADMAP draft enumeration). REQUIREMENTS.md CLNP-05 is marked [x] complete via this reasoned deviation."
+re_verification:
+  previous_status: gaps_found
+  previous_score: 4/6
+  gaps_closed:
+    - "Phase 70 commits the watch with correct catalog-derived metadata (movement) and does not silently discard user-provided photos (CR-01 + CR-02 fully closed by plans 70-06 + 70-07)"
+    - "DupeBanner actually prevents silent duplicates when it appears — ConfirmStep primary now gated on `state.pending || state.dupeContext != null` (WR-01 closed by plan 70-08)"
+    - "DUPE-03 commit path is robust against transient resolveDupeContext failures — handleSearchPick surfaces toast.error and stays on search-idle for known-dupe-but-null-resolver cases (WR-02 closed by plan 70-08)"
+  gaps_remaining: []
+  regressions: []
+  note: "Initial verification at 2026-05-29T07:30:00Z reported gaps_found against pre-fix code; plans 70-06/07/08 closed all 4 named defects (CR-01, CR-02, WR-01, WR-02) before this re-verification. Independent grep at re-verify time confirms all fixes are in current shipped code."
+deferred: []
 human_verification:
   - test: "DUPE-01 owned search-pick → /w/[ref] redirect (mobile + desktop)"
     expected: "Typing a watch in the SearchEntry combobox, clicking a result whose viewerState is 'owned', lands on /w/[ref] (NOT the confirm screen). No spinner flicker or extra paint."
@@ -75,82 +46,136 @@ human_verification:
 
 **Phase Goal (ROADMAP):** AddWatchFlow is rewritten with a new FlowState discriminated union that wires all four flow branches (search-first, structured-input, URL-backup, manual-entry), handles owned/wishlist DUPE redirects, preserves `?manual=1` priority and `?returnTo=` round-trip, and extends the Phase 29 three-layer reset to new caches.
 
-**Verified:** 2026-05-29T07:30:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-05-29T22:27:50Z
+**Status:** passed
+**Re-verification:** Yes — initial verification at 2026-05-29T07:30:00Z reported `gaps_found` (4/6 score, 3 gaps covering 4 defects: CR-01, CR-02, WR-01, WR-02). Plans 70-06, 70-07, and 70-08 shipped fixes for all 4 defects. Independent grep at re-verify time confirms all fixes are present in current shipped code.
+
+## Re-Verification: Gap Closure Evidence
+
+### Gap #1 — CR-01 + CR-02 (data-correctness defects)
+
+**CR-02: movement no longer hardcoded to `'auto'`**
+
+Grep on current `src/components/watch/AddWatchFlow.tsx`:
+- `movement: captured.extracted.movement ?? 'auto'` → **0 matches** (buggy default gone; commit `7060799c`)
+- `if (!captured.catalogId && captured.extracted.movement)` → **1 match at line 468** (post-fix gate; catalogId path omits movement entirely; URL-backup-without-catalog forwards extracted.movement only when present; no synthetic 'auto' fallback ever)
+- `imageUrl: captured` → **0 matches** (dead payload field stripped; commit `7060799c`)
+
+**CR-02: CLOSED.** The data-correctness regression — every search-pick / URL-cache-hit commit persisting `movement: 'auto'` for non-auto watches — is resolved. When catalogId is set, movement is omitted from the payload and the catalog row supplies the truth via downstream taste enrichment. When no catalogId is present (URL-backup transient failure), extracted.movement is forwarded only if provided.
+
+**CR-01: StructuredEntryPanel photoBlob no longer write-only**
+
+Grep on current `src/components/watch/StructuredEntryPanel.tsx`:
+- `[, setPhotoBlob]` write-only pattern → **0 live-code matches** (only match is the JSDoc comment at line 115 explaining the historical state; commit `0db88d1c`)
+- `[photoBlob, setPhotoBlob]` readable state → **1 match at line 120** (Blob is read and forwarded as the optional third arg of onSubmitStructured)
+
+Grep on current `src/components/watch/AddWatchFlow.tsx`:
+- `uploadCatalogSourcePhoto` → **4 matches** (upload pipeline wired; commits `53b22a34` + `7060799c`)
+- `payload.photoSourcePath` → **1 match at line 490** (path forwarded into addWatch payload)
+- `photoBlob` → **15 matches** (handler signature + FlowState setState × 5 + handleConfirmPrimary check + JSDoc references)
+
+Grep on current `src/components/watch/flowTypes.ts`:
+- `photoBlob` → **5 matches** (confirming variant field + JSDoc references; commit `53b22a34`)
+
+**CR-01: CLOSED.** The EXIF-cleaned Blob captured by CatalogPhotoUploader in StructuredEntryPanel now flows via the widened 3-arg `onSubmitStructured(result, catalogId, photoBlob?)` contract through SearchEntry to AddWatchFlow, where handleStructuredSubmit uploads via uploadCatalogSourcePhoto before addWatch and threads the result as photoSourcePath in the addWatch payload. The "non-functional photo affordance" described in the original gaps is resolved.
+
+### Gap #2 — WR-01 (ConfirmStep active while DupeBanner mounted)
+
+Grep on current `src/components/watch/AddWatchFlow.tsx`:
+- `state.pending || state.dupeContext != null` → **1 match at line 722** (commit `84f5c496`)
+
+**WR-01: CLOSED.** The ConfirmStep primary CTA is now gated on `state.pending || state.dupeContext != null` in the `confirming` render branch. When DupeBanner is mounted (dupeContext set), the ConfirmStep primary is disabled — the user is forced through one of the banner's explicit affordances. Clicking "Add another copy" clears dupeContext → primary re-enables. 3 regression tests assert: (1) wishlist-context disables CTA, (2) owned-context disables CTA and addWatch is not called on click, (3) "Add another copy" releases the gate and subsequent ConfirmStep click calls addWatch. DupeBanner's own `pending` prop remains unchanged (banner buttons should only disable during the moveWishlistToCollection async await, not just because the banner is mounted).
+
+### Gap #3 — WR-02 (silent no-banner advance on resolver failure for known dupes)
+
+Grep on current `src/components/watch/AddWatchFlow.tsx`:
+- `"Couldn't check your collection — try again"` → **2 matches at lines 167 and 202** (commit `eb4da1f3`)
+- `toast.error` count → **6** (was 2 pre-gap; now includes the 2 WR-02 guards + 2 pre-existing payload-failure paths + unchanged)
+
+**WR-02: CLOSED** for the handleSearchPick owned (D-06 null-ref fallthrough) and wishlist branches. When the search projection pre-signals `viewerState === 'owned' | 'wishlist'` and resolveDupeContext returns null (transient `findViewerWatchByCatalogIdAction` failure), the orchestrator now surfaces toast.error and stays on search-idle via early return. The structured-input and URL-backup branches intentionally retain silent fallthrough — those callers have no pre-known viewerState; null from the resolver genuinely means "no dupe found OR resolver failed; either way, proceed to confirm without banner." 4 regression tests assert: (1) owned-branch toast + search-idle, (2) wishlist-branch toast + search-idle, (3) null-viewerState branch silently proceeds (boundary inverse proving scope), (4) owned-with-ref fast-path bypasses resolver entirely (T-70-01 extended).
 
 ## Goal Achievement
 
-### Observable Truths (derived from ROADMAP Success Criteria + REQUIREMENTS)
+### Observable Truths (ROADMAP Success Criteria + Phase Must-Haves)
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | SC#1a — Owned search-pick redirects to `/w/[ref]` (no confirm screen) | VERIFIED | `AddWatchFlow.tsx:159-162` — `router.push('/w/' + encodeURIComponent(result.reference))` when `result.viewerState === 'owned' && result.reference`. Unit test T-70-01 green. |
-| 2 | SC#1b — Wishlist search-pick → confirm screen with DupeBanner + Move to Collection UPDATE (not INSERT) | VERIFIED with WR-02 caveat | `AddWatchFlow.tsx:185-206` constructs `confirming` with `dupeContext.existingStatus='wishlist'`; render branch lines 594-607 mounts DupeBanner above ConfirmStep with `onMoveToCollection={handleMoveToCollection}`. `handleMoveToCollection` (lines 452-480) calls `moveWishlistToCollection(existingWatchId)` which is a true UPDATE (`watchDAL.updateWatch(user.id, watchId, {status: 'owned', ...})` at watches.ts:452). Unit tests T-70-04 + moveWishlistToCollection.test.ts (8 cases) green. Caveat: transient resolveDupeContext failure silently falls through to no-banner state (WR-02). |
-| 3 | SC#2 — "Add another copy" affordance bypasses owned-redirect for legitimate duplicates | PARTIAL (WR-01 blocker) | `AddWatchFlow.tsx:482-486` `handleAddAnotherCopy` clears dupeContext only; DupeBanner unmounts; ConfirmStep stays with primary `addWatch(catalogId)` CTA. Unit test T-70-03 green. **BUT** the inverse case is unguarded: the user can ignore the banner entirely and click ConfirmStep's primary directly, creating the same silent duplicate the banner is meant to prevent. See WR-01 gap. |
-| 4 | SC#3 — `?manual=1` deep-link bypasses search and lands in manual-entry | VERIFIED | `AddWatchFlow.tsx:92-98` initialState ternary: `form-prefill > manual-entry > search-idle`; `initialManual === true` → `{kind: 'manual-entry', partial: null}`. Unit tests T-70-08a/b/c green. |
-| 5 | SC#4 — `?returnTo=` URL parameter round-trips through every commit branch | VERIFIED | `AddWatchFlow.tsx:413` (handleConfirmPrimary), `:466` (handleMoveToCollection) both read `initialReturnTo ?? defaultDestinationForStatus(...)`. `handleWatchCreated` (lines 493-505) routes to `dest` which is set by WatchForm using initialReturnTo. `manualAction` (lines 516-521) preserves returnTo through the `?manual=1` re-push. Grep confirms 2 direct match sites + transitive WatchForm propagation. |
-| 6 | SC#5 — Three-layer reset extended to new caches (Phase 29 → new useCatalogSearchCache + useStructuredExtractCache) | VERIFIED | Phase 69 CLNP-07 shipped the shared `moduleUserId` mismatch reset on all 4 caches (`useUrlExtractCache.ts:54-56`, `useCatalogSearchCache.ts`, `useStructuredExtractCache.ts`). AddWatchFlow.test.tsx 'Phase 69 — cache hygiene integration (CLNP-07)' describe block PRESERVED (lines 464+). useLayoutEffect cleanup in AddWatchFlow.tsx:134-149 implements the 3 skip cases per D-22 without clobbering deep-link state. |
-| 7 | Phase-level correctness — `addWatch` payload from search-pick / URL-cache-hit / structured paths reflects catalog truth (does not corrupt movement) AND captured user photos persist | **FAILED (CR-01 + CR-02 BLOCKERS)** | CR-02: `AddWatchFlow.tsx:382` `movement: captured.extracted.movement ?? 'auto'` — `searchResultToExtracted` (lines 739-746) never carries movement, so every search-pick / URL-cache-hit submission persists `movement: 'auto'` for a quartz/hand-wound watch (the catalog row knows the truth; the user's watches row records the lie). `addWatch`'s catalogId branch only overrides brand/model/reference (Phase 67 D-10, watches.ts:138-140). CR-01: `StructuredEntryPanel.tsx:103` `[, setPhotoBlob]` — write-only setter; the EXIF-cleaned Blob from CatalogPhotoUploader (line 247) is never forwarded; users tap "Choose photo" successfully but nothing ships. Reviewer flagged both as Critical in 70-REVIEW.md. Neither is addressed in Phase 71 scope. |
-| 8 | Hard-cutover — AddWatchFlow.tsx no longer imports legacy verdict-era files | VERIFIED | Grep: `grep -nE "^import.*('./PasteSection'\|'./VerdictStep'\|'./WishlistRationalePanel'\|'./RecentlyEvaluatedRail'\|useWatchSearchVerdictCache\|@/app/actions/verdict\|@/lib/verdict/types)" src/components/watch/AddWatchFlow.tsx` reports 0 matches. Phase 71 unblocked. |
+| 1 | SC#1a — Owned search-pick redirects to `/w/[ref]` (no confirm screen) | VERIFIED | `AddWatchFlow.tsx:159-162` — `router.push('/w/' + encodeURIComponent(result.reference))` when `result.viewerState === 'owned' && result.reference`. T-70-01 green; extended in gap plan 08 to assert resolveDupeContext is NOT called on the fast path. |
+| 2 | SC#1b — Wishlist search-pick → confirm screen with DupeBanner + Move to Collection UPDATE (not INSERT) | VERIFIED | `AddWatchFlow.tsx:185-206` constructs `confirming` with `dupeContext.existingStatus='wishlist'`; render branch lines mount DupeBanner above ConfirmStep with `onMoveToCollection={handleMoveToCollection}`. `handleMoveToCollection` calls `moveWishlistToCollection(existingWatchId)` which is a true UPDATE. WR-02 toast.error guard fires on resolver failure (no silent banner-drop). T-70-04 + moveWishlistToCollection.test.ts 8/8 green. |
+| 3 | SC#2 — "Add another copy" affordance bypasses owned-redirect for legitimate duplicates | VERIFIED | `AddWatchFlow.tsx handleAddAnotherCopy` clears dupeContext; DupeBanner unmounts; ConfirmStep primary CTA re-enables (WR-01 gate releases). T-70-03 green; WR-01 regression test verifies gate-release → addWatch fires correctly. Silent-duplicate hole (user ignoring banner → clicking ConfirmStep primary) is now closed: ConfirmStep primary is disabled when dupeContext is set. |
+| 4 | SC#3 — `?manual=1` deep-link bypasses search and lands in manual-entry | VERIFIED | `AddWatchFlow.tsx:92-98` initialState ternary: `form-prefill > manual-entry > search-idle`; `initialManual === true` → `{kind: 'manual-entry', partial: null}`. T-70-08a/b/c green. |
+| 5 | SC#4 — `?returnTo=` URL parameter round-trips through every commit branch | VERIFIED | `handleConfirmPrimary` and `handleMoveToCollection` both read `initialReturnTo ?? defaultDestinationForStatus(...)`. `handleWatchCreated` routes to `dest` set by WatchForm using initialReturnTo. `manualAction` preserves returnTo through the `?manual=1` re-push. Grep confirms 2 direct match sites + transitive WatchForm propagation. |
+| 6 | SC#5 — Three-layer reset extended to new caches (Phase 29 → useCatalogSearchCache + useStructuredExtractCache) | VERIFIED | Phase 69 CLNP-07 shipped the shared `moduleUserId` mismatch reset on all 4 caches. AddWatchFlow.test.tsx 'Phase 69 — cache hygiene integration (CLNP-07)' describe block PRESERVED. useLayoutEffect cleanup implements the 3 skip cases per D-22 without clobbering deep-link state. |
+| 7 | Phase-level correctness — `addWatch` payload reflects catalog truth (movement not corrupted) AND captured user photos persist | VERIFIED | CR-02 CLOSED: movement omitted when catalogId set (catalog row supplies truth via D-10 server-override + taste enrichment); extracted.movement forwarded only when no catalogId and actually present; no synthetic 'auto' fallback. imageUrl dead field stripped (Phase 60 column drop). CR-01 CLOSED: photoBlob flows via widened 3-arg onSubmitStructured → FlowState.confirming.photoBlob → uploadCatalogSourcePhoto → payload.photoSourcePath. 8 regression tests cover both gaps. Build green; 80/80 targeted tests green (post gap-closure suite). |
+| 8 | Hard-cutover — AddWatchFlow.tsx no longer imports legacy verdict-era files | VERIFIED | Confirmed at initial verification; Phase 71 (status: passed, 4/4) has since deleted the files themselves and added static guards. No regression. |
 
-**Score:** 4/6 truths verified (treating truth #1 and #2 as a combined SC#1; counting #7 as a phase-scope must-have BLOCKER even though it sits outside the literal ROADMAP success criteria — the phase claims a working add flow, not a working-but-data-wrong add flow).
+**Score:** 6/6 truths verified (was 4/6 at 2026-05-29T07:30:00Z)
 
-### Deferred Items (Step 9b filter)
+### Deferred Items
 
-| # | Item | Addressed In | Evidence |
-|---|------|--------------|----------|
-| 1 | Legacy file deletions (PasteSection, VerdictStep, WishlistRationalePanel) + static guards | Phase 71 | Phase 71 SC#1-3 (ROADMAP.md:294-296) |
-| 2 | RecentlyEvaluatedRail disposition + RailEntry/PendingTarget cleanup | Phase 71 | Phase 71 CLNP-04 (ROADMAP.md:71); Phase 70 deliberately retains per Phase 71 forward-coordination |
-| 3 | FlowState literal-state enumeration matching REQUIREMENTS.md exactly (search-results / structured-input / extracting-structured) | Phase 71 CLNP-05 audit | Phase 70 CONTEXT D-01 explicitly reconciled to collapse into one `search-idle` because SearchEntry owns sub-state internally. Phase 71's static guard will lock against the final union (not the ROADMAP draft enumeration). REQUIREMENTS.md CLNP-05 marked complete via reasoned deviation. |
+All 3 items from the initial verification were addressed by Phase 71, which shipped 2026-05-29 and has VERIFICATION status `passed` (4/4 score, verified at 2026-05-29T12:41:00Z).
+
+| # | Item | Addressed In | Delivery Evidence |
+|---|------|--------------|-------------------|
+| 1 | Legacy verdict file deletions (PasteSection, VerdictStep, WishlistRationalePanel) + static guards | Phase 71 | 71-02-SUMMARY.md: all 3 component files + 3 test files deleted (git commit). 71-01-SUMMARY.md: `tests/static/AddWatchFlow.no-verdict-step.test.ts` + `tests/static/AddWatchFlow.no-collection-fit-card.test.ts` created with `@vitest-environment node`. 71-VERIFICATION.md status: passed, 4/4. |
+| 2 | RecentlyEvaluatedRail disposition + RailEntry/PendingTarget cleanup | Phase 71 | 71-02-SUMMARY.md: RecentlyEvaluatedRail.tsx + RecentlyEvaluatedRail.test.tsx deleted (D-01 binding: deleted outright). flowTypes.ts pruned from 93 → 64 lines (RailEntry/PendingTarget swept). AddWatchFlow.tsx 10 rail/setRail/railRef/RailEntry sites swept. |
+| 3 | FlowState literal enumeration matching REQUIREMENTS.md CLNP-05 exactly | Phase 71 CLNP-05 audit | 71-VERIFICATION.md Truth #4: "Zero matches for verdict-ready, wishlist-rationale-open, submitting-wishlist in flowTypes.ts. ROADMAP SC #4 search-results/structured-input/extracting-structured reconciled via Phase 70 D-01 + CLNP-05 as authoritative — SearchEntry owns sub-states internally. Phase 71 asserts against the D-01 final 7-variant shape." REQUIREMENTS.md CLNP-05 marked complete via reasoned deviation. |
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/components/watch/AddWatchFlow.tsx` | Rewritten orchestrator mounting SearchEntry + ConfirmStep + DupeBanner + ExtractErrorCard + WatchForm + WatchPhotoStep per D-01..D-22 | VERIFIED (substantive + wired) but with truth #7 data-correctness flaws | 778 LOC (+15 over prior 763). Real imports, real handler wiring, useCallback discipline applied to 13 handlers. Renders 7 FlowState branches matching UI-SPEC §B/C/D/E. Build green. Unit tests 13/13 green. Hard cutover verified. |
-| `src/components/watch/flowTypes.ts` | D-01 FlowState union + DupeContext interface + 19-line D-02 JSDoc transition map | VERIFIED | 82 LOC. Exports 7-variant union (`search-idle`, `extracting-url`, `extraction-failed` with mode, `confirming` with dupeContext+pickedResult+pending, `form-prefill`, `manual-entry`, `photos-pending`). `DupeContext` interface (lines 49-53). 19-line transition map JSDoc block (lines 5-29). `RailEntry` + `PendingTarget` retained per Phase 71 forward-coord. No legacy verdict kind literals. flowTypes.test.ts 4/4 green. |
-| `src/components/watch/DupeBanner.tsx` | Pure-presenter sibling banner with owned/wishlist context branches + null-reference fallback | VERIFIED | 123 LOC. Pure presenter (no useRouter / useTransition / Server Action imports). Three buttons: View existing (conditional on existingReference), Move to Collection (conditional on wishlist+onMoveToCollection), Add another copy (always). 6 verbatim copy strings ship (Already in your collection, On your wishlist, View existing, Move to Collection, Add another copy, Moving…). `font-semibold` headline (no `font-medium` recurrence). Mobile-first stacked → desktop row. min-h-[44px] WCAG touch target. aria-live="polite". DupeBanner.test.tsx 6/6 green. |
-| `src/app/actions/watches.ts moveWishlistToCollection` | UPDATE (not INSERT) Server Action with auth gate + Zod + DAL ownership + status whitelist + activity log + overlap notifications + cache invalidation | VERIFIED | `watches.ts:382-521` ships the full chain: getCurrentUser (auth-first); Zod (UUID + optional pricePaid + notes); watchDAL.getWatchById ownership; status whitelist (`wishlist` only; `owned` idempotent; `sold`/`grail` rejected with template error); updateWatch with `{status: 'owned'}` minimal payload; logActivity('watch_added') with {brand, model, imageUrl}; findOverlapRecipients + logNotification fan-out; revalidatePath/Tag matrix. moveWishlistToCollection.test.ts 8/8 green (auth, Zod, ownership, idempotent, sold/grail reject, side-effects, missing watch). |
-| `src/app/actions/watches.ts findViewerWatchByCatalogIdAction` | Server Action wrapper around DAL (Rule 3 auto-fix — postgres driver bundle exclusion) | VERIFIED | `watches.ts:740-772`. Re-derives identity via getCurrentUser (strengthens T-70-04 — client-supplied viewerUserId IGNORED on this path). Zod gate on UUID + statuses enum whitelist. ActionResult envelope; failure non-fatal in orchestrator. |
-| `src/data/watches.ts findViewerWatchByCatalogId` | DAL widened to return `reference` via leftJoin watches_catalog | VERIFIED | `watches.ts:295-334`. Now selects `reference: watchesCatalog.reference` + `.leftJoin(watchesCatalog, eq(watches.catalogId, watchesCatalog.id))`. Return type `{id, status, reference}`. Backward-compat — Phase 67 callers destructure only {id, status}. |
-| `src/components/watch/AddWatchFlow.test.tsx` | Phase 69 four-cache test PRESERVED + verdict-era tests REMOVED + 13 Phase 70 transition tests added | VERIFIED | 552 LOC (−234 vs prior 786). Three legacy describes (Phase 20.1 Plan 04/06/08) gone. Phase 69 CLNP-07 describe block preserved verbatim (line 464+). 13 new Phase 70 cases including T-70-01..08 + CLNP-06 render assertion. Mock factories isolate orchestrator from child rendering. 13/13 green. |
+| `src/components/watch/AddWatchFlow.tsx` | Rewritten orchestrator; WR-01 pending-gate; WR-02 toast.error; CR-01/02 payload fixes; D-01..D-22 | VERIFIED | All 4 gap fixes confirmed via grep: movement gate at line 468, imageUrl stripped (0 matches), pending gate at line 722, toast.error at lines 167+202, uploadCatalogSourcePhoto at 4 sites, photoSourcePath at line 490. Build green; 28/28 AddWatchFlow tests green (13 original + 7 gap-07 + 8 gap-08 incl. sonner mock). |
+| `src/components/watch/flowTypes.ts` | D-01 FlowState union + DupeContext + 19-line D-02 JSDoc transition map + photoBlob on confirming variant | VERIFIED | photoBlob field on confirming variant at line 45 (gap plan 07). 5 photoBlob references in file. Phase 71 pruned from 93 → 64 lines (RailEntry/PendingTarget swept). flowTypes.test.ts 4/4 green. |
+| `src/components/watch/StructuredEntryPanel.tsx` | 3-arg onSubmitStructured (result, catalogId, photoBlob?); readable [photoBlob, setPhotoBlob] | VERIFIED | `[photoBlob, setPhotoBlob]` at line 120 (readable, not write-only). Cache-hit + network-success emit pass `photoBlob ?? undefined` as third arg. 14/14 tests green (10 baseline + 4 gap-06). |
+| `src/components/watch/SearchEntry.tsx` | 3-arg onSubmitStructured pass-through (identity-stable) | VERIFIED | Prop type widened to 3-arg; JSX pass-through `onSubmitStructured={onSubmitStructured}` unchanged (identity-stable). 20/20 tests green (19 baseline + 1 gap-06). |
+| `src/components/watch/DupeBanner.tsx` | Pure-presenter sibling with owned/wishlist context branches + null-reference fallback | VERIFIED | 123 LOC. 6 verbatim copy strings. `font-semibold` headline. min-h-[44px] WCAG touch target. aria-live="polite". DupeBanner.test.tsx 6/6 green. |
+| `src/app/actions/watches.ts moveWishlistToCollection` | UPDATE Server Action with auth + Zod + DAL + side-effects + cache invalidation | VERIFIED | `watches.ts:382-521`. Full chain: getCurrentUser; Zod; ownership; status whitelist; updateWatch; logActivity; overlap notifications; revalidatePath/Tag. moveWishlistToCollection.test.ts 8/8 green. |
+| `src/app/actions/watches.ts findViewerWatchByCatalogIdAction` | Server Action wrapper re-deriving identity via getCurrentUser | VERIFIED | `watches.ts:740-772`. Re-derives identity; Zod UUID + statuses whitelist; ActionResult envelope. |
+| `src/data/watches.ts findViewerWatchByCatalogId` | DAL widened to return `reference` via leftJoin watches_catalog | VERIFIED | `watches.ts:295-334`. Selects `reference: watchesCatalog.reference` + leftJoin. Return type `{id, status, reference}`. |
+| `src/components/watch/AddWatchFlow.test.tsx` | Phase 69 four-cache test PRESERVED + 13 original + 7 gap-07 + 8 gap-08 = 28 tests; sonner mock infra | VERIFIED | 28/28 green. Sonner mock at file scope (`vi.mock('sonner', ...)`). Phase 69 CLNP-07 describe block preserved. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|----|----|--------|---------|
-| AddWatchFlow.tsx | SearchEntry | mounted in search-idle branch (lines 531-538) | WIRED | viewerUserId, catalogBrands, onPick, onSubmitStructured, onSwitchToUrl all threaded |
-| AddWatchFlow.tsx | ConfirmStep | mounted in confirming branch (lines 608-628) | WIRED | All locked Phase 68 D-03 contract props threaded (12 base + movement/caseSizeMm/dialColor) |
-| AddWatchFlow.tsx | DupeBanner | conditional render above ConfirmStep when state.dupeContext set (lines 596-607) | WIRED but LEAKY | DupeBanner mounts; onMoveToCollection conditional on wishlist context per D-11. **BUT** ConfirmStep CTA is not gated when banner is present (WR-01 — see truth #3 caveat). |
-| AddWatchFlow.tsx handleMoveToCollection | moveWishlistToCollection (Server Action) | line 459 | WIRED | `await moveWishlistToCollection(existingWatchId)`; success → router.push to /u/{username}/collection; pending state drives banner disable |
-| AddWatchFlow.tsx resolveDupeContext | findViewerWatchByCatalogIdAction (Server Action) | lines 722-731 | WIRED | Server Action wraps the DAL (Rule 3 auto-fix); re-derives identity via getCurrentUser; failure non-fatal → null fallback (WR-02 silent state) |
-| moveWishlistToCollection | watchDAL.updateWatch (UPDATE not INSERT) | watches.ts:452 | WIRED | `watchDAL.updateWatch(user.id, watchId, {status:'owned',...})` — confirmed UPDATE semantics |
-| moveWishlistToCollection | logActivity + findOverlapRecipients + logNotification + revalidatePath/Tag | watches.ts:459-514 | WIRED | Full side-effect chain mirrored from addWatch:247-341. Activity type `watch_added` (no source field per RESEARCH Pitfall 3). |
-| AddWatchFlow.tsx initialState | search-idle / form-prefill / manual-entry precedence | lines 92-98 | WIRED | D-03 precedence ternary preserved; T-70-08a/b/c assert all three branches |
-| All commit branches | initialReturnTo round-trip via defaultDestinationForStatus | lines 413, 466, 493-505, 516-521 | WIRED | D-04 honored in handleConfirmPrimary + handleMoveToCollection + handleWatchCreated + manualAction |
-| useUrlExtractCache + useCatalogSearchCache + useStructuredExtractCache + useWatchSearchVerdictCache | shared moduleUserId mismatch reset (CLNP-07) | useUrlExtractCache.ts:54-56 + sibling files | WIRED | Cross-user reset preserved through Phase 69 retrofit; Phase 70 AddWatchFlow consumes useUrlExtractCache(viewerUserId); other 3 consumed by SearchEntry/StructuredEntryPanel/search-page |
+| AddWatchFlow.tsx | SearchEntry | mounted in search-idle branch | WIRED | viewerUserId, catalogBrands, onPick, onSubmitStructured (3-arg), onSwitchToUrl all threaded |
+| AddWatchFlow.tsx | ConfirmStep | mounted in confirming branch | WIRED | All locked Phase 68 D-03 contract props threaded; `pending={state.pending \|\| state.dupeContext != null}` (WR-01 gate) |
+| AddWatchFlow.tsx | DupeBanner | conditional render above ConfirmStep when state.dupeContext set | WIRED + ENFORCED | DupeBanner mounts; ConfirmStep primary is now disabled when dupeContext is set (WR-01 closed); onMoveToCollection conditional on wishlist context per D-11 |
+| AddWatchFlow.tsx handleMoveToCollection | moveWishlistToCollection (Server Action) | line 459 | WIRED | `await moveWishlistToCollection(existingWatchId)`; success → router.push; pending state drives banner disable |
+| AddWatchFlow.tsx handleSearchPick owned+wishlist | resolveDupeContext → toast.error + early return on null | lines 167, 202 | WIRED | WR-02 guard: known-dupe-but-null-resolver surfaces toast.error + stays on search-idle; structured/URL-backup retain silent fallthrough by design |
+| AddWatchFlow.tsx resolveDupeContext | findViewerWatchByCatalogIdAction (Server Action) | lines 722-731 | WIRED | Re-derives identity via getCurrentUser; failure non-fatal for structured/URL-backup callers; fatal (toast.error) for handleSearchPick with pre-known viewerState |
+| StructuredEntryPanel CatalogPhotoUploader | AddWatchFlow.handleStructuredSubmit | via 3-arg onSubmitStructured | WIRED | photoBlob flows StructuredEntryPanel → SearchEntry pass-through → AddWatchFlow; stored in FlowState.confirming.photoBlob |
+| AddWatchFlow.handleConfirmPrimary | uploadCatalogSourcePhoto + addWatch | lines 487-490 | WIRED | photoBlob uploaded before addWatch; photoSourcePath threaded into payload; fire-and-forget on failure (mirrors WatchForm.tsx:222-249) |
+| moveWishlistToCollection | watchDAL.updateWatch (UPDATE not INSERT) | watches.ts:452 | WIRED | Confirmed UPDATE semantics |
+| All commit branches | initialReturnTo round-trip via defaultDestinationForStatus | lines 413, 466, 493-505, 516-521 | WIRED | D-04 honored in all post-commit handlers |
+| New caches (useCatalogSearchCache + useStructuredExtractCache) | shared moduleUserId mismatch reset (CLNP-07) | Phase 69 module-scope pattern | WIRED | Cross-user reset preserved through Phase 69 retrofit; Phase 70 adds no new cache hooks |
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 |----------|---------------|--------|---------------------|--------|
-| AddWatchFlow `<ConfirmStep>` | state.extracted, state.catalogId | searchResultToExtracted(SearchCatalogWatchResult) on pick path; ExtractedWatchData from /api/extract-watch on URL-backup path; ExtractedWatchData from StructuredEntryPanel emit on structured path | YES (search path) — server-authoritative catalog row via Phase 67 search action; (URL/structured) — real LLM extraction | FLOWING |
-| AddWatchFlow `<DupeBanner>` | state.dupeContext | findViewerWatchByCatalogIdAction → DAL leftJoin watches_catalog | YES — server-authoritative (auth re-derived via getCurrentUser; reference JOINed from catalog row not client) | FLOWING |
-| AddWatchFlow addWatch payload | confirmStatus, confirmPrice, confirmReference, confirmYear, captured.extracted.* | ConfirmStep controlled fields + state.extracted | PARTIAL — see truth #7. `movement: 'auto'` default fires every search-pick (CR-02). `imageUrl` forwarded but dropped at DAL (dead). Other fields flow correctly. | **STATIC + HOLLOW_FIELDS** (movement) |
-| StructuredEntryPanel CatalogPhotoUploader | photoBlob state | onPhotoReady callback | NO — the value is captured into a write-only setter `[, setPhotoBlob]` and never forwarded (CR-01) | **DISCONNECTED** |
+| AddWatchFlow `<ConfirmStep>` | state.extracted, state.catalogId | searchResultToExtracted(SearchCatalogWatchResult) on pick path; ExtractedWatchData from /api/extract-watch on URL-backup; ExtractedWatchData from StructuredEntryPanel emit on structured path | YES (search path) — server-authoritative catalog row; (URL/structured) — real LLM extraction | FLOWING |
+| AddWatchFlow `<DupeBanner>` | state.dupeContext | findViewerWatchByCatalogIdAction → DAL leftJoin watches_catalog | YES — server-authoritative; re-derives identity via getCurrentUser; reference JOINed from catalog row | FLOWING |
+| AddWatchFlow addWatch payload | confirmStatus, movement, photoSourcePath, captured.extracted.* | ConfirmStep controlled fields + state.extracted + uploadCatalogSourcePhoto | FLOWING — movement gated on catalogId (no synthetic 'auto'); imageUrl stripped; photoSourcePath forwarded when Blob present. All fields correct. | FLOWING |
+| StructuredEntryPanel CatalogPhotoUploader | photoBlob state | onPhotoReady callback → [photoBlob, setPhotoBlob] → forwarded via 3-arg onSubmitStructured | YES — Blob flows upward through SearchEntry pass-through to AddWatchFlow | FLOWING |
 | moveWishlistToCollection updatedWatch | watchDAL.updateWatch return | real DB UPDATE | YES | FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Build gate | `npm run build` | `✓ Compiled successfully in 6.0s` exit 0 | PASS |
-| Phase 70 targeted tests | `npx vitest run flowTypes.test.ts DupeBanner.test.tsx AddWatchFlow.test.tsx moveWishlistToCollection.test.ts` | 4 test files passed; 31/31 tests passed | PASS |
-| Hard-cutover grep | `grep -nE "^import.*('./PasteSection'|'./VerdictStep'|'./WishlistRationalePanel'|'./RecentlyEvaluatedRail'|useWatchSearchVerdictCache|@/app/actions/verdict|@/lib/verdict/types)" src/components/watch/AddWatchFlow.tsx | wc -l` | 0 | PASS |
-| Verbatim copy strings in DupeBanner | `grep "Already in your collection\|On your wishlist\|Move to Collection\|Add another copy\|View existing\|Moving…" src/components/watch/DupeBanner.tsx` | All 6 strings present | PASS |
-| `font-medium` raw-palette guardrail in new files | `grep -c "font-medium" src/components/watch/DupeBanner.tsx src/components/watch/AddWatchFlow.tsx` | 0 in DupeBanner.tsx; 0 in AddWatchFlow.tsx | PASS |
-| Legacy variant absence in FlowState union | `grep -cE "kind: '(idle|extracting|verdict-ready|wishlist-rationale-open|submitting-wishlist|submitting-collection)'" src/components/watch/flowTypes.ts` | 0 | PASS |
+| Build gate | `npm run build` | `Compiled successfully` exit 0 (reported by all 3 gap plans: 70-06 6.3s, 70-07 12.9s, 70-08 7.8s) | PASS |
+| AddWatchFlow tests post gap-closure | `npx vitest run AddWatchFlow.test.tsx` | 28/28 passed (13 original + 7 gap-07 + 8 gap-08) | PASS |
+| Broader gap suite | `npx vitest run AddWatchFlow.test.tsx flowTypes.test.ts StructuredEntryPanel.test.tsx SearchEntry.test.tsx DupeBanner.test.tsx moveWishlistToCollection.test.ts` | 80/80 passed (plan 70-08 SUMMARY report) | PASS |
+| CR-02 regression: movement gate present | `grep -n "if (!captured.catalogId && captured.extracted.movement)" AddWatchFlow.tsx` | 1 match at line 468 | PASS |
+| CR-02 regression: buggy default absent | `grep "movement: captured.extracted.movement ?? 'auto'" AddWatchFlow.tsx \| wc -l` | 0 | PASS |
+| CR-02 regression: imageUrl dead code absent | `grep "imageUrl: captured" AddWatchFlow.tsx \| wc -l` | 0 | PASS |
+| CR-01 regression: photoBlob readable | `grep "[photoBlob, setPhotoBlob]" StructuredEntryPanel.tsx` | 1 match at line 120 | PASS |
+| CR-01 regression: write-only pattern absent | `grep -E "\[, setPhotoBlob\]" StructuredEntryPanel.tsx \| wc -l` | 0 live-code matches (only JSDoc comment) | PASS |
+| WR-01 regression: pending gate present | `grep "state.pending \|\| state.dupeContext != null" AddWatchFlow.tsx` | 1 match at line 722 | PASS |
+| WR-02 regression: toast.error guards present | `grep "Couldn't check your collection" AddWatchFlow.tsx` | 2 matches (lines 167 + 202) | PASS |
+| Hard-cutover (Phase 71 delivered) | VerdictStep.tsx, WishlistRationalePanel.tsx, PasteSection.tsx absent | All 3 deleted by Phase 71 Plan 02; static guards added by Phase 71 Plan 01; Phase 71 VERIFIED (4/4) | PASS |
 
 ### Probe Execution
 
@@ -160,47 +185,35 @@ Not applicable — Phase 70 is a UI orchestrator rewrite; no `scripts/*/tests/pr
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| DUPE-01 (UI part) | 70-01 (DAL widen), 70-05 (orchestrator) | Owned search-pick → /w/[ref] redirect | SATISFIED | `AddWatchFlow.tsx:159-162` router.push wired; T-70-01 unit test green |
-| DUPE-02 | 70-02 (DupeBanner), 70-05 | "Add another copy" affordance bypasses owned-redirect | PARTIAL (WR-01) | Banner mounts + clear-dupeContext works; **but the inverse path (user ignores banner → clicks ConfirmStep primary) silently creates the duplicate the banner exists to prevent**. T-70-03 green for the banner-click path; no test for the bypass-banner path. |
-| DUPE-03 (UI part) | 70-02, 70-03 (action), 70-05 | Wishlist search-pick → DupeBanner with "Move to Collection" UPDATE | PARTIAL (WR-01 + WR-02 caveat) | Banner mounts + Move to Collection wired to real UPDATE Server Action; happy path T-70-04 green + moveWishlistToCollection.test.ts 8/8 green. **But** the same banner-bypass issue (WR-01) applies; transient dupe-lookup failure silently drops the banner (WR-02). |
-| CLNP-05 | 70-04 (flowTypes rewrite) | FlowState cleaned — old verdict-flow variants removed; new search-flow variants added | SATISFIED (reasoned deviation per CONTEXT D-01) | flowTypes.ts ships 7-variant D-01 union; old verdict kinds gone; CONTEXT D-01 explicitly reconciles the REQUIREMENTS.md 4-state enumeration into 1 orchestrator-level `search-idle` (SearchEntry owns sub-state). Phase 71 CLNP-02 static guard will lock against THIS shape. flowTypes.test.ts 4/4 green. |
-| CLNP-06 | 70-05 (skip link UI) | "Skip search — enter manually" link in search-idle state | SATISFIED (semantic deviation from REQUIREMENTS.md per CONTEXT D-19) | `AddWatchFlow.tsx:539-545` renders ghost link; `handleSkipSearch` (lines 250-253) sets manual-entry state with NO router.push — preserves URL at /watch/new. CONTEXT D-19 explicitly decided NOT to push `?manual=1` (in-flow user choice stays in-flow; the URL semantic stays reserved for deep-links). REQUIREMENTS.md CLNP-06 wording says "routes to `?manual=1`" but the chosen behavior is observably stronger UX (no URL flicker). T-70-05 unit test green (asserts pushSpy NOT called). |
+| DUPE-01 (UI part) | 70-01, 70-05 | Owned search-pick → /w/[ref] redirect | SATISFIED | `AddWatchFlow.tsx:159-162` router.push wired; T-70-01 green + extended in gap-08 to assert resolveDupeContext bypassed on fast path |
+| DUPE-02 | 70-02, 70-05, 70-08 | "Add another copy" affordance bypasses owned-redirect; no silent duplicate hole | SATISFIED | Banner mounts + clear-dupeContext works; WR-01 gate (plan 70-08) closes the bypass-banner path; 3 regression tests assert disabled CTA + gate-release |
+| DUPE-03 (UI part) | 70-02, 70-03, 70-05, 70-08 | Wishlist search-pick → DupeBanner with "Move to Collection" UPDATE; robust against resolver failure | SATISFIED | Banner mounts + Move to Collection wired to real UPDATE Server Action; happy path T-70-04 + moveWishlistToCollection.test.ts 8/8 green; WR-02 guard (plan 70-08) surfaces toast.error on known-dupe resolver failure + stays on search-idle |
+| CLNP-05 | 70-04 | FlowState cleaned — old verdict-flow variants removed; new search-flow variants added | SATISFIED (reasoned deviation per CONTEXT D-01; Phase 71 audit completed) | flowTypes.ts ships 7-variant D-01 union; old verdict kinds gone; Phase 71 CLNP-05 audit confirmed (71-VERIFICATION.md Truth #4 VERIFIED). flowTypes.test.ts 4/4 green. |
+| CLNP-06 | 70-05 | "Skip search — enter manually" link in search-idle state | SATISFIED (semantic deviation per CONTEXT D-19) | `AddWatchFlow.tsx:539-545` renders ghost link; `handleSkipSearch` sets manual-entry state with NO router.push. CONTEXT D-19 decided NOT to push `?manual=1` (in-flow user choice stays in-flow; URL stays at /watch/new). T-70-05 green (asserts pushSpy NOT called). |
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `src/components/watch/StructuredEntryPanel.tsx` | 99-103, 246-247 | Dead state: `[, setPhotoBlob]` write-only setter; CatalogPhotoUploader.onPhotoReady wired to the orphan setter; no forward path to AddWatchFlow | **BLOCKER (CR-01)** | EXTR-06 affordance ships in a non-functional state; user uploads a photo and the EXIF-cleaned blob silently dies in local component state. No user-observable error; no operator telemetry. |
-| `src/components/watch/AddWatchFlow.tsx` | 382 | `movement: captured.extracted.movement ?? 'auto'` in handleConfirmPrimary; `searchResultToExtracted` (lines 739-746) never carries movement → fallback always fires for search-pick paths | **BLOCKER (CR-02)** | Every search-pick / URL-cache-hit commit where the catalog/extracted result lacks movement persists `movement: 'auto'` to the user's watches row. A quartz Grand Seiko or hand-wound Speedmaster added via SearchEntry will be recorded as auto. The catalog row may know the truth; the watches row (which drives similarity + downstream displays) does not. |
-| `src/components/watch/AddWatchFlow.tsx` | 395 | `imageUrl: captured.extracted.imageUrl` in addWatch payload | INFO (dead-code) | `imageUrl` column was dropped in Phase 60; `mapDomainToRow:94` silently drops it. Field is purely decorative in the payload. Confusing to readers. |
-| `src/components/watch/AddWatchFlow.tsx` | 594-628 | ConfirmStep mounted alongside DupeBanner without disabling ConfirmStep primary CTA when dupeContext is set | **WARNING (WR-01)** | The banner is the "primary affordance" per D-12 but the ConfirmStep CTA is fully clickable. A user who ignores the banner and clicks ConfirmStep primary creates exactly the duplicate the banner exists to prevent. |
-| `src/components/watch/AddWatchFlow.tsx` | 722-731 | resolveDupeContext silently returns null on action failure (WR-02) | WARNING | Transient DB outage during dupe lookup → ConfirmStep without banner → potential silent duplicate. Operator console.warn is the only signal. |
-| `src/components/watch/AddWatchFlow.tsx` | 165, 187, 219, 332 | 4× operator `console.warn` lines ship to production browser console without env gating | WARNING (WR-06) | Comment acknowledges "remove if noisy"; no removal gate. Compounds with `src/app/actions/watches.ts:433` server-side console.warn fired on every moveWishlistToCollection call. |
-| `src/components/watch/AddWatchFlow.tsx` | 158-162 | `handleSearchPick` owned-redirect trusts client-supplied `result.viewerState === 'owned'` without re-verifying | INFO (WR-07) | Not a security issue (the /w/[ref] page enforces auth) but a UX-trust note: stale viewerState (e.g., user removed watch in another tab) routes to /w/[ref] which may show the catalog-branch view. Bypasses the dupe-resolver on this branch. |
+| `src/components/watch/AddWatchFlow.tsx` | 165, 187, 219, 332 | 4× operator `console.warn` lines ship to production browser console without env gating | WARNING (WR-06, pre-existing) | Acknowledged diagnostic noise for first prod sessions per CONTEXT; "remove if noisy" comment but no removal gate. Non-blocking — not introduced by the gap-closure plans and not a data-correctness or behavior defect. |
+| `src/components/watch/AddWatchFlow.tsx` | 158-162 | `handleSearchPick` owned-redirect trusts client-supplied `result.viewerState === 'owned'` | INFO (WR-07, pre-existing) | Not a security issue (/w/[ref] enforces auth); UX staleness note if watch removed in another tab. Non-blocking. |
 
-Total: 2 BLOCKERS, 5 WARNINGS+INFO. The 2 BLOCKERS are the same data-correctness defects flagged in `70-REVIEW.md` (CR-01 + CR-02) and are NOT addressed in Phase 71's scope.
+The 2 BLOCKER-class defects (CR-01 + CR-02) and 1 WARNING-class defect (WR-01) that appeared in the initial Anti-Patterns table have been resolved. The WR-02 silent-fallthrough has been resolved for the handleSearchPick paths; structured-input + URL-backup silent fallthrough is intentional by design (per 70-08 decision[3] and regression test coverage). Remaining items are pre-existing INFO/WARNING-level items that do not block the phase goal.
 
 ### Human Verification Required
 
-See frontmatter `human_verification` block — 8 manual UAT items. Per project memory `feedback_mobile_ui_verify_on_prod`, the user verifies mobile + visual behavior on prod after Vercel deploy. Bundle with Phase 71 push per CONTEXT/SUMMARY recommendation.
+See frontmatter `human_verification` block — 8 manual UAT items. Per project memory `feedback_mobile_ui_verify_on_prod`, the user verifies mobile + visual behavior on prod after Vercel deploy. These items were already pending the bundled Phase 71 prod push per the Phase 70-08 SUMMARY (which added 2 plan-08-specific items and 2 plans-06/07-specific items to the original 8, totaling 12 visual UAT items in the Phase 71 bundle). The 8 items in the frontmatter are the canonical pre-existing list. Per 70-08 plan signal, bundle all with the Phase 71 prod deploy at the current git tip (`eb4da1f3` is the last gap-closure commit; Phase 71 delivered on top with `4515c3c9` as the current HEAD).
 
 ### Gaps Summary
 
-**Phase goal is partially achieved.** The orchestrator IS rewritten, the FlowState union IS the new shape, the four flow branches (search-first, structured-input, URL-backup, manual-entry) ARE wired, `?manual=1` priority + `?returnTo=` round-trip ARE preserved verbatim, and the three-layer reset DOES extend to the new caches via Phase 69 CLNP-07. Build green; 31/31 targeted tests green; hard cutover clean.
+**Phase goal is fully achieved.** All 6 must-have truths verified. The ROADMAP Success Criteria (SC#1–SC#5) are all satisfied. The three data-correctness / behavior defects flagged in the initial verification (CR-01, CR-02, WR-01, WR-02) have been closed by plans 70-06 (CR-01 upstream), 70-07 (CR-01 consumer + CR-02), and 70-08 (WR-01 + WR-02).
 
-**However, two BLOCKER-class defects ship in the same code:**
+The orchestrator is rewritten, the FlowState union is the new shape, all four flow branches (search-first, structured-input, URL-backup, manual-entry) are wired, `?manual=1` priority + `?returnTo=` round-trip are preserved, and the three-layer reset extends to the new caches. Build green; 80/80 targeted tests green; hard cutover complete; Phase 71 delivered all deferred cleanup items (status: passed, 4/4).
 
-1. **CR-02 (`movement: 'auto'` hardcoded default)** — every search-pick / URL-cache-hit commit corrupts the user's watches row for non-auto watches. The phase goal of "adding a watch" is achieved structurally, but the row is wrong. addWatch's catalogId branch (D-10) only server-overrides brand/model/reference; movement flows through verbatim. Fix is small: gate the `?? 'auto'` default on `!captured.catalogId`, or strip movement from the payload entirely when catalogId is present.
-
-2. **CR-01 (StructuredEntryPanel photo blob silently discarded)** — the EXTR-06 affordance ships in a non-functional state. Users upload, see success UI, lose the photo. Fix is small: thread a third arg through onSubmitStructured or add an onPhotoReady prop, capture in AddWatchFlow, upload via existing uploadCatalogSourcePhoto pipeline, set photoSourcePath on the addWatch payload.
-
-**Additional WARNING (WR-01)** — the DupeBanner does not gate the ConfirmStep CTA when both are mounted. A user can ignore the banner and click ConfirmStep primary directly, creating exactly the silent duplicate the banner exists to prevent. This undermines DUPE-02's core intent. Fix is one line: `pending={state.pending || state.dupeContext != null}` on ConfirmStep.
-
-These defects are observable in the codebase, flagged in 70-REVIEW.md, and NOT addressed in Phase 71's scope (which is dead-code cleanup + static guards). They block the phase from being declared "goal achieved" at the data-correctness level even though the UI flow paths are wired.
-
-**Recommend gap-closure plan:** Plan 06 (or hotfix) addressing CR-01 + CR-02 + WR-01 before Phase 71 lands. Bundle with Phase 71 push per the existing feedback_mobile_ui_verify_on_prod recommendation; the prod UAT session can then validate the corrected behavior + the Phase 71 deletions in one cycle.
+Remaining open items are all in the `human_verification` block — 8 UAT items that require a prod browser session, deferred to the bundled Phase 71 Vercel deploy. These are not blockers on the phase goal; they are prod-validation checkpoints per the project's established mobile/visual verification workflow.
 
 ---
 
-_Verified: 2026-05-29T07:30:00Z_
+_Verified: 2026-05-29T22:27:50Z_
 _Verifier: Claude (gsd-verifier)_
+_Re-verification: initial gaps_found (2026-05-29T07:30:00Z) → passed (2026-05-29T22:27:50Z) after plans 70-06/07/08 closed all 4 defects_
