@@ -95,9 +95,11 @@ describe('findViewerWatchByCatalogId (D-06/D-07/D-08)', () => {
     await findViewerWatchByCatalogId(USER_ID, CATALOG_ID) // no statuses arg
     const whereCall = calls.find((c) => c.op === 'where')
     const json = safeStringify(whereCall!.args)
-    // Must NOT contain 'wishlist' in the WHERE predicate
-    expect(json).not.toContain('wishlist')
-    // Must contain 'owned'
-    expect(json).toContain('owned')
+    // Drizzle inArray serializes bound values as {"value":"X","encoder":...}
+    // Enum column metadata carries enumValues but not as bound values.
+    // Must NOT have 'wishlist' as a bound IN-clause value
+    expect(json).not.toContain('"value":"wishlist"')
+    // Must have 'owned' as a bound IN-clause value
+    expect(json).toContain('"value":"owned"')
   })
 })

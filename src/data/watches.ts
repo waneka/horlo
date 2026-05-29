@@ -295,25 +295,30 @@ export async function getWatchByIdForViewer(
 export async function findViewerWatchByCatalogId(
   userId: string,
   catalogId: string,
-): Promise<{ id: string } | null> {
+  statuses: ('owned' | 'wishlist')[] = ['owned'],  // D-06: default preserves BUG-01 contract
+): Promise<{ id: string; status: 'owned' | 'wishlist' } | null> {  // D-07: widened return
   const rows = await db
     .select({
       id: watches.id,
+      status: watches.status,  // ADD: projection required for widened return type (RESEARCH Pitfall 2)
     })
     .from(watches)
     .where(and(
       eq(watches.userId, userId),
       eq(watches.catalogId, catalogId),
-      eq(watches.status, 'owned'),  // BUG-01 fix: only 'owned' rows are "truly owned"
+      inArray(watches.status, statuses),  // replaces eq(watches.status, 'owned') — D-06
     ))
-    // D-05: a collector may own duplicate copies of one reference (two owned rows,
-    // same catalogId). ORDER BY makes the picked copy deterministic (most-recently
-    // acquired) instead of an arbitrary .limit(1) row.
-    .orderBy(desc(watches.createdAt))
+    // D-08: owned wins over wishlist when both rows exist for the same catalogId.
+    // Within each status tier, most-recently acquired wins (D-05 carry-forward).
+    // T-20-06-01: query is scoped by BOTH userId AND catalogId — cross-user read is impossible.
+    .orderBy(
+      asc(sql`CASE ${watches.status} WHEN 'owned' THEN 0 WHEN 'wishlist' THEN 1 ELSE 2 END`),
+      desc(watches.createdAt),
+    )
     .limit(1)
   if (rows.length === 0) return null
   const row = rows[0]
-  return { id: row.id }
+  return { id: row.id, status: row.status as 'owned' | 'wishlist' }
 }
 
 /**
