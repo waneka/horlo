@@ -556,10 +556,13 @@ export async function searchCatalogForAddFlow({
   const queryNormalized = lowerQ.replace(/[^a-z0-9]+/g, '')
   // Pitfall 1 guard: when normalized query is empty, use sql`false` so no rows
   // receive a false exact-ref bump (mirrors searchCatalogWatches refPattern guard).
+  // D-05: DESC NULLS LAST — under PostgreSQL's default DESC = NULLS FIRST,
+  // rows with reference_normalized IS NULL would sort ABOVE non-matching rows.
+  // Emit the NULLS LAST modifier as raw SQL since Drizzle's desc() helper does not.
   const exactRefOrderTier =
     queryNormalized.length > 0
-      ? desc(sql`(${watchesCatalog.referenceNormalized} = ${queryNormalized})`)
-      : desc(sql`false`)
+      ? sql`(${watchesCatalog.referenceNormalized} = ${queryNormalized}) DESC NULLS LAST`
+      : sql`false DESC NULLS LAST`
 
   const candidates = await db
     .select({
