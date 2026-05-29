@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: Ready to discuss
-last_updated: "2026-05-29T01:41:21.721Z"
+last_updated: "2026-05-29T01:58:26.437Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 3
@@ -28,7 +28,7 @@ Phase: 68
 Plan: Not started
 Status: Ready to discuss
 Last activity: 2026-05-29
-Resume file: .planning/phases/68-confirmstep-component/68-CONTEXT.md
+Resume file: .planning/phases/68-confirmstep-component/68-UI-SPEC.md
 
 ## Performance Metrics
 
