@@ -296,13 +296,21 @@ export async function findViewerWatchByCatalogId(
   userId: string,
   catalogId: string,
   statuses: ('owned' | 'wishlist')[] = ['owned'],  // D-06: default preserves BUG-01 contract
-): Promise<{ id: string; status: 'owned' | 'wishlist' } | null> {  // D-07: widened return
+): Promise<{ id: string; status: 'owned' | 'wishlist'; reference: string | null } | null> {
+  // Phase 70 Wave 0 (RESEARCH §2 / Pitfall #2) — return shape widened to
+  // include the catalog row's `reference`. DupeBanner's "View existing" link
+  // builds `/w/${reference}` from this server-authoritative value (T-70-04 —
+  // reference is JOINed from watches_catalog server-side, never client-supplied).
+  // Backward-compat: existing callers (Phase 67 tests + /w/[ref] Branch 2 catalog
+  // lookup) destructure only {id, status}; the added field is additive.
   const rows = await db
     .select({
       id: watches.id,
       status: watches.status,  // ADD: projection required for widened return type (RESEARCH Pitfall 2)
+      reference: watchesCatalog.reference,  // Phase 70 Wave 0 — DupeBanner /w/[ref] target
     })
     .from(watches)
+    .leftJoin(watchesCatalog, eq(watches.catalogId, watchesCatalog.id))  // Phase 70 Wave 0
     .where(and(
       eq(watches.userId, userId),
       eq(watches.catalogId, catalogId),
@@ -318,7 +326,11 @@ export async function findViewerWatchByCatalogId(
     .limit(1)
   if (rows.length === 0) return null
   const row = rows[0]
-  return { id: row.id, status: row.status as 'owned' | 'wishlist' }
+  return {
+    id: row.id,
+    status: row.status as 'owned' | 'wishlist',
+    reference: row.reference ?? null,  // Phase 70 Wave 0 — catalog row's reference (nullable column)
+  }
 }
 
 /**

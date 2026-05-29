@@ -12,13 +12,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // safeStringify from tests/data/searchCatalogWatches.test.ts (cycle-breaker).
 // ---------------------------------------------------------------------------
 
-let returnedRows: Array<{ id: string; status: string }> = []
+// Phase 70 Wave 0 — row shape widened to include `reference` from the
+// watches_catalog leftJoin (RESEARCH §2 / Pitfall #2). Pre-existing tests pass
+// rows without a reference field; the chain mock now also accepts a leftJoin
+// step inserted between from() and where() in the DAL.
+let returnedRows: Array<{ id: string; status: string; reference?: string | null }> = []
 let calls: Array<{ op: string; args: unknown[] }> = []
 
 function makeChain() {
   const chain: Record<string, (...args: unknown[]) => unknown> = {
     from: (...args: unknown[]) => {
       calls.push({ op: 'from', args })
+      return chain
+    },
+    // Phase 70 Wave 0 — chain through the new leftJoin step.
+    leftJoin: (...args: unknown[]) => {
+      calls.push({ op: 'leftJoin', args })
       return chain
     },
     where: (...args: unknown[]) => {
@@ -65,23 +74,35 @@ beforeEach(() => {
 })
 
 describe('findViewerWatchByCatalogId (D-06/D-07/D-08)', () => {
-  it('(a) statuses=["owned"], owned row present → returns { id, status: "owned" }', async () => {
+  it('(a) statuses=["owned"], owned row present → returns { id, status: "owned", reference: null }', async () => {
+    // Phase 70 Wave 0 — reference field is additive; undefined in mock row → null at boundary.
     returnedRows = [{ id: 'w-1', status: 'owned' }]
     const result = await findViewerWatchByCatalogId(USER_ID, CATALOG_ID, ['owned'])
-    expect(result).toEqual({ id: 'w-1', status: 'owned' })
+    expect(result).toEqual({ id: 'w-1', status: 'owned', reference: null })
   })
 
-  it('(b) statuses=["owned","wishlist"], only wishlist row present → returns { id, status: "wishlist" }', async () => {
+  it('(b) statuses=["owned","wishlist"], only wishlist row present → returns { id, status: "wishlist", reference: null }', async () => {
     returnedRows = [{ id: 'w-2', status: 'wishlist' }]
     const result = await findViewerWatchByCatalogId(USER_ID, CATALOG_ID, ['owned', 'wishlist'])
-    expect(result).toEqual({ id: 'w-2', status: 'wishlist' })
+    expect(result).toEqual({ id: 'w-2', status: 'wishlist', reference: null })
   })
 
   it('(c) statuses=["owned","wishlist"], both rows exist → returns owned row (D-08 precedence)', async () => {
     // The DB CASE ORDER BY returns owned first; mock returns that first row
     returnedRows = [{ id: 'w-owned', status: 'owned' }]
     const result = await findViewerWatchByCatalogId(USER_ID, CATALOG_ID, ['owned', 'wishlist'])
-    expect(result).toEqual({ id: 'w-owned', status: 'owned' })
+    expect(result).toEqual({ id: 'w-owned', status: 'owned', reference: null })
+  })
+
+  it('(f) Phase 70 Wave 0 — when catalog row has a reference, leftJoin surfaces it in the return', async () => {
+    // RESEARCH §2 closure: DupeBanner "View existing" /w/[ref] target source.
+    returnedRows = [{ id: 'w-1', status: 'owned', reference: '311.30.42.30.01.005' }]
+    const result = await findViewerWatchByCatalogId(USER_ID, CATALOG_ID, ['owned', 'wishlist'])
+    expect(result).toEqual({
+      id: 'w-1',
+      status: 'owned',
+      reference: '311.30.42.30.01.005',
+    })
   })
 
   it('(d) no matching rows → returns null', async () => {
