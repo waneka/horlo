@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
 status: executing
-last_updated: "2026-05-29T18:20:03.456Z"
+last_updated: "2026-05-29T18:45:00.000Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 20
-  completed_plans: 19
-  percent: 95
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 70 — addwatchflow-state-machine-rewrite-dupe-wiring
+**Current focus:** Phase 70 — all 8 plans complete (5 original + 3 gap closures); awaiting `/gsd-verify-phase 70` re-verification (gaps[0..2] expected to flip 4/6 → 6/6) + bundled Phase 71 prod UAT push.
 
 ## Current Position
 
-Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
-Plan: 3 of 8
-Status: Ready to execute
+Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — COMPLETE (all 8 plans landed)
+Plan: 8 of 8 (last shipped: 70-08 — WR-01 ConfirmStep pending-gate + WR-02 handleSearchPick toast.error fallback)
+Status: Awaiting re-verification (`/gsd-verify-phase 70`) — code-level gap closure complete; 12 visual UAT items deferred to Phase 71 prod push per `feedback_mobile_ui_verify_on_prod`
 Last activity: 2026-05-29
 Resume file: None
 
@@ -119,6 +119,7 @@ Resume file: None
 - **RailEntry.verdict re-typed to `unknown \| null` (was `VerdictBundle \| null`)** (Phase 70 Plan 04) — drops the stale legacy verdict-types import while preserving `RailEntry` shape for `RecentlyEvaluatedRail.tsx` through Phase 71 cleanup. Phase 71 deletes both fields + their consumer in a single sweep alongside the RecentlyEvaluatedRail disposition (CLNP-04). `RailEntry` + `PendingTarget` exports retained per CLNP-04 deferral.
 - **JSDoc-prose grep-collision recurrence-3 mitigated proactively** (Phase 70 Plan 04) — initial RailEntry comment included the literal phrase "stale `VerdictBundle` import"; reworded to "stale legacy verdict-types import" so `grep -c "VerdictBundle" src/components/watch/flowTypes.ts` returns 0. Recurrence-3 of the pattern from `feedback_decision_coverage_gate_citations` family + Phase 69 Plan 04 lessons. No semantic change.
 - **onSubmitStructured widened to 3-arg (result, catalogId, photoBlob?) across StructuredEntryPanel + SearchEntry** (Phase 70 Plan 06 — CR-01 upstream half) — closes VERIFICATION gap #1 half-A: the EXIF-cleaned Blob captured by `CatalogPhotoUploader` inside `StructuredEntryPanel` flowed into a write-only `const [, setPhotoBlob] = useState<Blob | null>(null)` and silently died. Plan 06 reads `photoBlob` from state, forwards it as `photoBlob ?? undefined` (third arg, `Blob | undefined` sentinel — `undefined` = absence, no-pick AND post-clear both surface as `undefined`) in both cache-hit + network-success branches of `handleFindSpecs`. SearchEntry stays an identity-stable pass-through (`onSubmitStructured={onSubmitStructured}` unchanged at line 345) — the TypeScript widen makes the contract enforcement explicit. AddWatchFlow's 2-arg `handleStructuredSubmit` signature still type-checks because optional third args are tolerable on the consumer side; gap plan 07 widens the consumer and calls `uploadCatalogSourcePhoto` before `addWatch` (mirrors `WatchForm.tsx:222-249`). 4 new regression tests in StructuredEntryPanel.test.tsx + 1 in SearchEntry.test.tsx; existing tests 8/10 of StructuredEntryPanel widened to assert the new arity. Commits `0db88d1c` (panel) + `03c88a5e` (search).
+- **VERIFICATION gaps #2 (WR-01) + #3 (WR-02) fully close — ConfirmStep pending-gate + handleSearchPick toast.error fallback** (Phase 70 Plan 08) — Phase 70 gap closure trilogy COMPLETE. (a) WR-01: one-line gate at `AddWatchFlow.tsx:731` widens ConfirmStep `pending={state.pending}` to `pending={state.pending || state.dupeContext != null}` — when DupeBanner is mounted, the ConfirmStep primary CTA disables so the user is forced through one of the banner's explicit affordances (View existing / Move to Collection / Add another copy → clears dupeContext → CTA re-enables). DupeBanner's own `pending={state.pending}` prop intentionally unchanged (banner's buttons disable during the moveWishlistToCollection await, NOT just because mounted). (b) WR-02: refactored `handleSearchPick` (AddWatchFlow.tsx:155-247) adds an explicit `if (!dupeRow) { toast.error("Couldn't check your collection — try again"); return }` guard after each `resolveDupeContext` await in the owned (D-06 null-ref fallthrough) and wishlist branches — when the search projection pre-signals viewerState BUT the resolver returns null (transient `findViewerWatchByCatalogIdAction` failure), the orchestrator KNOWS a dupe exists; surfaces toast.error + stays on search-idle. The null-viewerState branch keeps silent-fallthrough by design (mirrors structured-input + URL-backup paths where viewerState is NOT pre-known). `resolveDupeContext` itself unchanged (null-on-failure semantic correct for unknown-dupe callers). Top-level `vi.mock('sonner', ...)` mock infrastructure added at AddWatchFlow.test.tsx for the new toast assertions (pre-existing handleConfirmPrimary `toast.error` calls had been hitting real sonner runtime in jsdom — harmless no-op, now hits mock). 7 new regression tests (3 WR-01 + 4 WR-02 including 2 boundary inverses: null-viewerState branch silently proceeds; owned-with-ref redirect fast-path bypasses resolver entirely). Existing 21 AddWatchFlow tests + gap-suite (6 files, 80 total) all stay green; `npm run build` exit 0. Forward signal: `gsd-verify-phase 70` re-verification expected to flip score 4/6 → 6/6, status `gaps_found` → `passed`. 12 visual UAT items (2 from this plan, 2 from plans 06+07, 8 pre-existing) deferred to bundled Phase 71 prod push per `feedback_mobile_ui_verify_on_prod`. Commits `84f5c496` (WR-01 + sonner mock + 3 tests) + `eb4da1f3` (WR-02 + 4 tests).
 - **VERIFICATION gap #1 fully closes — CR-01 consumer + CR-02 movement + CR-02 imageUrl** (Phase 70 Plan 07) — `handleConfirmPrimary` payload now (a) OMITS movement entirely when `captured.catalogId` is set (catalog row + Phase 19.5 LLM-derived taste enrichment owns the truth; no synthetic `'auto'` default ever — pre-gap quartz/manual catalog rows persisted `movement='auto'` to the user's watches row, overriding catalog truth), (b) forwards `extracted.movement` verbatim only when no catalogId AND extracted volunteered it (URL-backup transient failure), (c) strips dead `imageUrl: captured.extracted.imageUrl` line entirely (Phase 60 dropped the column; `mapDomainToRow:94` silently drops it; dead-code obscured the cover-fallback chain), and (d) wires `uploadCatalogSourcePhoto(user.id, 'pending', captured.photoBlob)` BEFORE `addWatch` when `captured.photoBlob` is set; forwards `photoSourcePath` into the payload — mirrors `WatchForm.tsx:222-249` (dynamic imports, fire-and-forget on failure). FlowState.confirming variant gains optional `photoBlob?: Blob | null`; `handleStructuredSubmit` widened to 3-arg matching Plan 06's contract; all 5 confirming setState sites pass photoBlob explicitly (null for search-pick + URL-backup; the captured Blob for structured-submit). 7 new gap-plan-07 regression tests green in the describe block; existing 13 AddWatchFlow tests + CLNP-07 cache-hygiene test stay green; `npm run build` exit 0. JSDoc-prose grep-collision recurrence-3 preempted (CR-02 explanation comments reworded to avoid backticked literal patterns that the plan's done-criteria static greps target). Commits `53b22a34` (FlowState + handleStructuredSubmit + tests) + `7060799c` (handleConfirmPrimary payload + upload pipeline).
 
 ### Pending Todos
@@ -181,8 +182,9 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase 70 P05 | 35 | 3 tasks | 3 files |
 | Phase 70 P06 | 5min | 2 tasks | 4 files |
 | Phase 70 P07 | 9min | 2 tasks | 3 files |
+| Phase 70 P08 | ~12min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last activity: 2026-05-28 — Roadmap for v8.0 created. Phases 66-71 defined; all 39 requirements mapped (SRCH-17..26 → Phase 69; EXTR-01..04, EXTR-08 → Phase 66; EXTR-05..07 → Phase 69; CONF-01..10 → Phase 68; CONF-11, DUPE-01 DAL, DUPE-03 DAL → Phase 67; DUPE-01 UI, DUPE-02, DUPE-03 UI, CLNP-05, CLNP-06 → Phase 70; CLNP-01..04 → Phase 71; CLNP-07 → Phase 69). Parallelization: 66+67 in parallel, then 68+69 in parallel, then 70, then 71.
-Next action: `/gsd-plan-phase 66` (or run 66+67 in parallel)
+Last activity: 2026-05-29 — Phase 70 gap closure trilogy (Plans 06/07/08) COMPLETE. All 8 plans landed; VERIFICATION gaps[0..2] (CR-01, CR-02, WR-01, WR-02) all close at the code level. 12 visual UAT items bundled for Phase 71 prod push.
+Next action: `/gsd-verify-phase 70` for re-verification (expected flip 4/6 → 6/6, `gaps_found` → `passed`), then `/gsd-plan-phase 71` for the final Dead Code Cleanup + Static Guards phase. Phase 71 push deploys with bundled visual UAT.
