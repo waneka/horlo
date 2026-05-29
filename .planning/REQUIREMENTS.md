@@ -58,7 +58,7 @@ Lighter review surface that replaces `VerdictStep`. Status incl. grail picked he
 What happens when search surfaces a catalog row the viewer already owns or wishlists.
 
 - [x] **DUPE-01**: Clicking a search result with `viewerState === 'owned'` navigates the user to `/w/[ref]` instead of advancing the add flow — requires a new `getWatchIdByCatalogId(userId, catalogId)` DAL helper to resolve the user's watch ID
-- [ ] **DUPE-02**: If the user explicitly wants to add a second copy of an already-owned reference, an "Add another copy" affordance on the confirm screen (reachable via the structured-input or URL paths) bypasses the redirect
+- [x] **DUPE-02**: If the user explicitly wants to add a second copy of an already-owned reference, an "Add another copy" affordance on the confirm screen (reachable via the structured-input or URL paths) bypasses the redirect
 - [x] **DUPE-03**: Clicking a search result with `viewerState === 'wishlist'` advances to the confirm screen with status defaulting to `wishlist` AND a secondary "Move to Collection" affordance that updates the existing watch row's status (UPDATE, not INSERT) — reuses the resolved existing watch ID
 
 ### Legacy Path Cleanup (CLNP)
@@ -70,7 +70,7 @@ Subtractions enforcing the new flow as canonical.
 - [ ] **CLNP-03**: Static guard `tests/static/AddWatchFlow.no-collection-fit-card.test.ts` (`// @vitest-environment node`) mirrors the Phase 20 `tests/static/CollectionFitCard.no-engine.test.ts` pattern — fails CI if `CollectionFitCard` is imported by any file in the add flow
 - [ ] **CLNP-04**: `RecentlyEvaluatedRail` is removed from `AddWatchFlow`; component file disposition (delete vs. retain for future repurpose) decided during plan-phase
 - [x] **CLNP-05**: `FlowState` discriminated union in `flowTypes.ts` is cleaned — old states (`verdict-ready`, `wishlist-rationale-open`, `submitting-wishlist`) removed; new states (`search-idle`, `search-results`, `structured-input`, `extracting-structured`, `confirming`) added; surviving states (`form-prefill`, `manual-entry`, `photos-pending`) preserved
-- [ ] **CLNP-06**: A "Skip search — enter manually" link renders in the search idle state and routes to `?manual=1` (priority preserved above the new search-first default)
+- [x] **CLNP-06**: A "Skip search — enter manually" link renders in the search idle state and routes to `?manual=1` (priority preserved above the new search-first default)
 - [x] **CLNP-07**: All four module-scope caches (`useCatalogSearchCache`, `useStructuredExtractCache`, `useWatchSearchVerdictCache`, `useUrlExtractCache`) clear on signOut via a shared `lastUserId` check — closes the existing Active tech debt item for `useWatchSearchVerdictCache` in the same change *(Plan 02: 2 new caches; Plan 03: 2 existing caches retrofit + 3-layer thread; Plan 06: four-cache user-switch integration test in AddWatchFlow.test.tsx — green)*
 
 ## v2 Requirements
@@ -149,14 +149,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONF-10 | Phase 68 | Complete |
 | CONF-11 | Phase 67 | Complete |
 | DUPE-01 | Phase 70 | Complete |
-| DUPE-02 | Phase 70 | Pending |
+| DUPE-02 | Phase 70 | Complete |
 | DUPE-03 | Phase 70 | Complete |
 | CLNP-01 | Phase 71 | Pending |
 | CLNP-02 | Phase 71 | Pending |
 | CLNP-03 | Phase 71 | Pending |
 | CLNP-04 | Phase 71 | Pending |
 | CLNP-05 | Phase 70 | Complete |
-| CLNP-06 | Phase 70 | Pending |
+| CLNP-06 | Phase 70 | Complete |
 | CLNP-07 | Phase 69 | Done (Plan 06: AddWatchFlow.test.tsx four-cache integration test green; build gate exit 0) |
 
 **Notes on split requirements:**

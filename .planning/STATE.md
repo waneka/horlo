@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: executing
-last_updated: "2026-05-29T13:47:06.250Z"
+status: verifying
+last_updated: "2026-05-29T14:03:59.620Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 Phase: 70 (addwatchflow-state-machine-rewrite-dupe-wiring) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-29
 Resume file: None
 
@@ -176,6 +176,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | Phase 70 P02 | 5min | 2 tasks | 2 files |
 | Phase 70 P03 | 4 | 2 tasks | 2 files |
 | Phase Phase 70 P04 P04 | 3min | 1 tasks | 2 files |
+| Phase 70 P05 | 35 | 3 tasks | 3 files |
 
 ## Session Continuity
 
