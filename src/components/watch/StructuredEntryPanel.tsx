@@ -8,7 +8,9 @@
  * (via SearchEntry, Plan 05) and wires onSubmitStructured / onSwitchToUrl.
  *
  * Contract (props in, callbacks out):
- *   - Emits onSubmitStructured(result) on extract success (cache hit OR network)
+ *   - Emits onSubmitStructured(result, catalogId) on extract success (cache hit OR network);
+ *     catalogId is null when the LLM round-trip succeeded but the catalog upsert failed
+ *     (Phase 70 Wave 0 — closes the RESEARCH §1 coordination gap for the AddWatchFlow rewrite).
  *   - Emits onSwitchToUrl() when the URL backup ghost link (EXTR-07 copy
  *     verbatim in JSX) is clicked, and when the in-card "Add manually" button
  *     on the ExtractErrorCard is clicked (same manualAction wiring)
@@ -56,8 +58,11 @@ export interface StructuredEntryPanelProps {
   initialBrand?: string
   initialModel?: string
   initialReference?: string
-  /** D-03 — emits the extracted data upward; Phase 70 transitions to ConfirmStep. */
-  onSubmitStructured: (result: ExtractedWatchData) => void
+  /** D-03 — emits the extracted data + catalogId upward; Phase 70 transitions to ConfirmStep.
+   *  catalogId is null when the catalog upsert side-channel failed but the LLM round-trip
+   *  returned valid ExtractedWatchData (the orchestrator falls through to manual-confirm).
+   *  Phase 70 Wave 0 — RESEARCH §1 gap closed (StructuredEntryPanel.tsx:60). */
+  onSubmitStructured: (result: ExtractedWatchData, catalogId: string | null) => void
   /** EXTR-07 escape hatch — Phase 70 wires routing to the URL-paste path. */
   onSwitchToUrl: () => void
 }
@@ -121,7 +126,11 @@ export function StructuredEntryPanel({
     // Cache check happens BEFORE the network call (EXTR-05).
     const cached = cache.get(key)
     if (cached) {
-      onSubmitStructured(cached.extracted)
+      // Phase 70 Wave 0 — route the cached catalogId through the widened emit
+      // contract. The cache writes `catalogId: '' | string` (see set() below);
+      // coerce empty-string to null at the boundary to match the network-branch
+      // shape (envelope.catalogId ?? null).
+      onSubmitStructured(cached.extracted, cached.catalogId || null)
       return
     }
 
@@ -153,7 +162,12 @@ export function StructuredEntryPanel({
           extracted: envelope.data,
           catalogIdError: null,
         })
-        onSubmitStructured(envelope.data)
+        // Phase 70 Wave 0 — emit catalogId as the second arg so the
+        // AddWatchFlow orchestrator can call findViewerWatchByCatalogId(...) and
+        // addWatch({...extracted, catalogId}) without a side-channel re-query.
+        // null when the catalog upsert side-channel failed (envelope.catalogId
+        // is optional in ExtractSuccessEnvelope).
+        onSubmitStructured(envelope.data, envelope.catalogId ?? null)
       } else {
         setExtractError(envelope.error.category)
       }

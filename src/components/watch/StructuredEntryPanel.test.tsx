@@ -19,9 +19,12 @@
  *   (5) EXTR-06 inline photo: CatalogPhotoUploader rendered on mount
  *   (6) EXTR-07 URL backup: "Have a URL for this watch?" link → onSwitchToUrl()
  *   (7) Phase 66 D-06: failure → <ExtractErrorCard mode="structured"> body
- *   (8) D-18 cache hit: skips fetch + calls onSubmitStructured(cached.extracted)
+ *   (8) D-18 cache hit: skips fetch + calls onSubmitStructured(cached.extracted, cached.catalogId || null)
  *   (9) presenter purity: no useRouter/next/navigation import in the SOURCE
- *  (10) success → onSubmitStructured(result) with parsed ExtractedWatchData
+ *  (10) success → onSubmitStructured(result, envelope.catalogId) with parsed ExtractedWatchData
+ *
+ * Phase 70 Wave 0 — onSubmitStructured signature widened to (extracted, catalogId)
+ * so the AddWatchFlow orchestrator can DUPE-lookup + addWatch without a side-channel.
  *
  * RED until Task 2 ships `@/components/watch/StructuredEntryPanel`.
  */
@@ -229,7 +232,9 @@ describe('StructuredEntryPanel — cache hit (D-18)', () => {
     // No network call when cache hits.
     expect(global.fetch).not.toHaveBeenCalled()
     expect(onSubmitStructured).toHaveBeenCalledTimes(1)
-    expect(onSubmitStructured).toHaveBeenCalledWith(cachedExtracted)
+    // Phase 70 Wave 0 — widened emit: cache stores catalogId='cat-1', surfaces
+    // as second arg (empty-string coerced to null at boundary; 'cat-1' passes through).
+    expect(onSubmitStructured).toHaveBeenCalledWith(cachedExtracted, 'cat-1')
   })
 })
 
@@ -275,7 +280,10 @@ describe('StructuredEntryPanel — success path (D-03)', () => {
     await waitFor(() => {
       expect(onSubmitStructured).toHaveBeenCalledTimes(1)
     })
-    expect(onSubmitStructured).toHaveBeenCalledWith(extracted)
+    // Phase 70 Wave 0 — envelope.catalogId='cat-omega-speed' surfaces as the
+    // second arg of onSubmitStructured. The Network-branch emit at
+    // StructuredEntryPanel.tsx (formerly bare emit) now routes catalogId through.
+    expect(onSubmitStructured).toHaveBeenCalledWith(extracted, 'cat-omega-speed')
     // Cache write should fire on success.
     expect(cacheSet).toHaveBeenCalledTimes(1)
   })

@@ -68,8 +68,11 @@ export interface SearchEntryProps {
   catalogBrands: string[]
   /** D-03 — emits FULL SearchCatalogWatchResult upward; Phase 70 owns DUPE branching. */
   onPick: (result: SearchCatalogWatchResult) => void
-  /** D-11 — bubbled up from the inline StructuredEntryPanel on extract success. */
-  onSubmitStructured: (result: ExtractedWatchData) => void
+  /** D-11 — bubbled up from the inline StructuredEntryPanel on extract success.
+   *  Phase 70 Wave 0 widens the contract to include `catalogId` as the second
+   *  arg so the orchestrator can do the DUPE lookup + addWatch in one round-trip
+   *  (RESEARCH §1, Pitfall #1). null when the catalog upsert failed. */
+  onSubmitStructured: (result: ExtractedWatchData, catalogId: string | null) => void
   /** EXTR-07 — bubbled up from the inline StructuredEntryPanel's URL backup link. */
   onSwitchToUrl: () => void
 }
