@@ -31,10 +31,12 @@ vi.mock('@/lib/notifications/logger', () => ({
 vi.mock('@/data/notifications', () => ({ findOverlapRecipients: vi.fn() }))
 vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 // Phase 19.1 Plan 05: mock catalog DAL taste helpers (fire-and-forget paths)
+// CONF-11: also mock getCatalogById for the catalogId-supplied branch
 vi.mock('@/data/catalog', () => ({
   upsertCatalogFromUserInput: vi.fn().mockResolvedValue('cat-id-1'),
   updateCatalogTaste: vi.fn().mockResolvedValue({ updated: true }),
   applyUserUploadedPhoto: vi.fn().mockResolvedValue({ applied: true }),
+  getCatalogById: vi.fn(),
 }))
 // Phase 19.1 Plan 05: mock enricher (fire-and-forget path)
 vi.mock('@/lib/taste/enricher', () => ({
@@ -57,6 +59,7 @@ vi.mock('@/app/actions/account', () => ({
 import { addWatch, editWatch, removeWatch } from '@/app/actions/watches'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import * as watchDAL from '@/data/watches'
+import * as catalogDAL from '@/data/catalog'
 import { logNotification } from '@/lib/notifications/logger'
 import { findOverlapRecipients } from '@/data/notifications'
 import { getProfileById } from '@/data/profiles'
@@ -359,5 +362,73 @@ describe('addWatch — Phase 19.1 photoSourcePath validation (T-19.1-05-01 + T-1
     })
 
     expect(result.success).toBe(true)
+  })
+})
+
+describe('addWatch — catalogId branch (CONF-11)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  // Valid UUIDs required — Zod z.string().uuid() validates format before DAL is called
+  const CATALOG_UUID = '11111111-2222-4333-8444-555555555555'
+  const CATALOG_UUID_MISSING = '99999999-9999-4999-8999-999999999999'
+
+  const catalogRow = {
+    id: CATALOG_UUID,
+    brand: 'Omega',
+    model: 'Speedmaster',
+    reference: '311.30.42.30.01.005',
+    styleTags: ['sport', 'dress'],
+  }
+
+  it('(a) catalogId supplied + row exists → no upsertCatalogFromUserInput call', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
+    vi.mocked(catalogDAL.getCatalogById).mockResolvedValue(catalogRow as any)
+    vi.mocked(watchDAL.createWatch).mockResolvedValue({ id: 'w-1', ...validWatch } as any)
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+    await addWatch({ ...validWatch, catalogId: CATALOG_UUID })
+    expect(catalogDAL.upsertCatalogFromUserInput).not.toHaveBeenCalled()
+    expect(watchDAL.createWatch).toHaveBeenCalledWith('u-1', CATALOG_UUID, expect.anything())
+  })
+
+  it('(b) catalogId supplied + row missing → { success: false, error: "Catalog reference not found" }', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
+    vi.mocked(catalogDAL.getCatalogById).mockResolvedValue(null)
+    const result = await addWatch({ ...validWatch, catalogId: CATALOG_UUID_MISSING })
+    expect(result).toEqual({ success: false, error: 'Catalog reference not found' })
+    expect(watchDAL.createWatch).not.toHaveBeenCalled()
+  })
+
+  it('(c) catalogId + client brand="WRONG" → created watch uses catalogRow.brand', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
+    vi.mocked(catalogDAL.getCatalogById).mockResolvedValue(catalogRow as any)
+    vi.mocked(watchDAL.createWatch).mockResolvedValue({ id: 'w-1', ...validWatch } as any)
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+    await addWatch({ ...validWatch, brand: 'WRONG', catalogId: CATALOG_UUID })
+    expect(watchDAL.createWatch).toHaveBeenCalledWith(
+      'u-1',
+      CATALOG_UUID,
+      expect.objectContaining({ brand: 'Omega' }),
+    )
+  })
+
+  it('(d) catalogId + non-empty styleTags → enrichTasteAttributes NOT called', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
+    vi.mocked(catalogDAL.getCatalogById).mockResolvedValue({ ...catalogRow, styleTags: ['sport'] } as any)
+    vi.mocked(watchDAL.createWatch).mockResolvedValue({ id: 'w-1', ...validWatch } as any)
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+    const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
+    await addWatch({ ...validWatch, catalogId: CATALOG_UUID })
+    expect(enrichTasteAttributes).not.toHaveBeenCalled()
+  })
+
+  it('(e) catalogId + empty styleTags → enrichTasteAttributes IS called', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ id: 'u-1', email: 'a@b.co' })
+    vi.mocked(catalogDAL.getCatalogById).mockResolvedValue({ ...catalogRow, styleTags: [] } as any)
+    vi.mocked(watchDAL.createWatch).mockResolvedValue({ id: 'w-1', ...validWatch } as any)
+    vi.mocked(findOverlapRecipients).mockResolvedValue([])
+    const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
+    vi.mocked(enrichTasteAttributes).mockResolvedValue(null)
+    await addWatch({ ...validWatch, catalogId: CATALOG_UUID })
+    expect(enrichTasteAttributes).toHaveBeenCalled()
   })
 })

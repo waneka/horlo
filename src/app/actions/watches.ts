@@ -45,6 +45,9 @@ const insertWatchSchema = z.object({
   notes: z.string().optional(),
   notesPublic: z.boolean().optional(),
   imageUrl: z.string().optional(),
+  // CONF-11: optional catalogId; when supplied, action uses getCatalogById instead
+  // of upsertCatalogFromUserInput (D-09/D-10/D-11)
+  catalogId: z.string().uuid().optional(),
   // Phase 37 D-01..D-08: collector provenance fields (all optional)
   serial: z.string().optional(),
   yearOfAcquisition: z.number().int().min(1900).max(2100).optional(),
@@ -113,31 +116,60 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     // bulkReorderWishlist 500-id cap.
     const { sortOrder: _ignoredSortOrder, ...cleanData } = parsed.data
     void _ignoredSortOrder
+
+    // CONF-11 D-09/D-10: catalogId-supplied branch.
+    // Inserted BEFORE the wishlist-sortOrder block so D-10 identity override
+    // lands in cleanData before createPayload's spread captures it.
+    let catalogId: string
+    let catalogRowForSkipCheck: { styleTags?: string[] | null } | null = null
+
+    if (cleanData.catalogId) {
+      // D-09: fail-fast on missing catalog row — never fall back to upsert.
+      const catalogRow = await catalogDAL.getCatalogById(cleanData.catalogId)
+      if (!catalogRow) {
+        return { success: false, error: 'Catalog reference not found' }
+      }
+      // D-10: server-side override — catalog row IS the identity truth.
+      // Client-supplied brand/model/reference are discarded for the identity tuple.
+      cleanData.brand = catalogRow.brand
+      cleanData.model = catalogRow.model
+      if (catalogRow.reference) cleanData.reference = catalogRow.reference
+      catalogId = cleanData.catalogId
+      catalogRowForSkipCheck = catalogRow
+    } else {
+      // Phase 38 D-06 step 2a: catalog upsert BEFORE createWatch (fail-loud).
+      // Pre-Phase-38 this was fire-and-forget after createWatch; post-Phase-38
+      // catalog_id is NOT NULL so a failed upsert must block the insert.
+      let catalogIdResult: string | null
+      try {
+        catalogIdResult = await catalogDAL.upsertCatalogFromUserInput({
+          brand: parsed.data.brand,
+          model: parsed.data.model,
+          reference: parsed.data.reference ?? null,
+        })
+      } catch (err) {
+        console.error('[addWatch] catalog upsert failed (fatal post-Phase-38 — catalog_id is NOT NULL):', err)
+        throw err // fail-loud: cannot insert watches row without catalogId
+      }
+      if (!catalogIdResult) {
+        throw new Error('[addWatch] catalog upsert returned null — cannot insert watches row without catalogId')
+      }
+      catalogId = catalogIdResult
+    }
+
     // Payload type widens cleanData to allow re-adding sortOrder server-side.
+    // Build createPayload AFTER the D-10 override so the spread captures overridden identity.
     let createPayload: typeof parsed.data = cleanData
     if (cleanData.status === 'wishlist' || cleanData.status === 'grail') {
       const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
       createPayload = { ...cleanData, sortOrder: maxSort + 1 }
     }
 
-    // Phase 38 D-06 step 2a: catalog upsert BEFORE createWatch (fail-loud).
-    // Pre-Phase-38 this was fire-and-forget after createWatch; post-Phase-38
-    // catalog_id is NOT NULL so a failed upsert must block the insert.
-    let catalogIdResult: string | null
-    try {
-      catalogIdResult = await catalogDAL.upsertCatalogFromUserInput({
-        brand: parsed.data.brand,
-        model: parsed.data.model,
-        reference: parsed.data.reference ?? null,
-      })
-    } catch (err) {
-      console.error('[addWatch] catalog upsert failed (fatal post-Phase-38 — catalog_id is NOT NULL):', err)
-      throw err // fail-loud: cannot insert watches row without catalogId
-    }
-    if (!catalogIdResult) {
-      throw new Error('[addWatch] catalog upsert returned null — cannot insert watches row without catalogId')
-    }
-    const catalogId: string = catalogIdResult
+    // D-11: enrichment-skip gate — when catalog row already has styleTags,
+    // skip taste enrichment + photo write-through (saves LLM call + signed-URL roundtrip).
+    // When styleTags is empty/null, the add is a legitimate re-enrichment trigger.
+    const alreadyEnriched = catalogRowForSkipCheck != null &&
+      (catalogRowForSkipCheck.styleTags?.length ?? 0) > 0
 
     const watch = await watchDAL.createWatch(user.id, catalogId, createPayload)
     // linkWatchToCatalog call REMOVED — createWatch now sets catalogId atomically (Phase 38 D-06).
@@ -148,11 +180,13 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     // - All operations are fire-and-forget; failures non-fatal per D-09.
     // - Await semantics: Option A (synchronous await inside addWatch) per plan recommendation.
     //   Adds ~1-3s latency but guarantees the enrichment write completes. Acceptable at v4.0 scale.
+    // D-11: photo write-through + enrichment blocks are skipped when alreadyEnriched.
+    // ALL other side-effects (logActivity, overlap notifications, revalidates) ALWAYS run.
     if (catalogId) {
       const photoPath = parsed.data.photoSourcePath ?? null
 
-      // D-21 photo write-through (only when photo present).
-      if (photoPath) {
+      // D-21 photo write-through (only when photo present AND not already enriched per D-11).
+      if (photoPath && !alreadyEnriched) {
         try {
           const { getCatalogSourcePhotoSignedUrl } = await import('@/lib/storage/catalogSourcePhotos')
           // 7-day TTL signed URL for catalog image_url.
@@ -171,32 +205,38 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
       }
 
       // D-08 enrichment dispatch — awaited (Option A) for correctness at v4.0 scale.
-      try {
-        const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
-        const taste = await enrichTasteAttributes({
-          catalogId,
-          source: 'manual',
-          spec: {
-            brand: parsed.data.brand,
-            model: parsed.data.model,
-            reference: parsed.data.reference ?? null,
-            movement: parsed.data.movement ?? null,
-            caseSizeMm: parsed.data.caseSizeMm ?? null,
-            lugToLugMm: parsed.data.lugToLugMm ?? null,
-            waterResistanceM: parsed.data.waterResistanceM ?? null,
-            crystalType: parsed.data.crystalType ?? null,
-            dialColor: parsed.data.dialColor ?? null,
-            isChronometer: parsed.data.isChronometer ?? null,
-            productionYear: parsed.data.productionYear ?? null,
-            complications: parsed.data.complications ?? [],
-          },
-          photoSourcePath: photoPath,
-        })
-        if (taste) {
-          await catalogDAL.updateCatalogTaste(catalogId, taste)
+      // D-11: skipped when catalog row already has styleTags (alreadyEnriched).
+      if (!alreadyEnriched) {
+        try {
+          const { enrichTasteAttributes } = await import('@/lib/taste/enricher')
+          const taste = await enrichTasteAttributes({
+            catalogId,
+            source: 'manual',
+            spec: {
+              // Pitfall 3 fix (D-10 + RESEARCH.md): read identity fields from cleanData
+              // (post-override), NOT parsed.data (raw client input). All other spec fields
+              // still come from parsed.data — D-10 only overrides identity.
+              brand: cleanData.brand,
+              model: cleanData.model,
+              reference: cleanData.reference ?? null,
+              movement: parsed.data.movement ?? null,
+              caseSizeMm: parsed.data.caseSizeMm ?? null,
+              lugToLugMm: parsed.data.lugToLugMm ?? null,
+              waterResistanceM: parsed.data.waterResistanceM ?? null,
+              crystalType: parsed.data.crystalType ?? null,
+              dialColor: parsed.data.dialColor ?? null,
+              isChronometer: parsed.data.isChronometer ?? null,
+              productionYear: parsed.data.productionYear ?? null,
+              complications: parsed.data.complications ?? [],
+            },
+            photoSourcePath: photoPath,
+          })
+          if (taste) {
+            await catalogDAL.updateCatalogTaste(catalogId, taste)
+          }
+        } catch (err) {
+          console.error('[addWatch] taste enrichment failed (non-fatal):', err)
         }
-      } catch (err) {
-        console.error('[addWatch] taste enrichment failed (non-fatal):', err)
       }
     }
 
