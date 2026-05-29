@@ -62,32 +62,3 @@ export interface DupeContext {
   existingStatus: 'owned' | 'wishlist'
   existingReference: string | null
 }
-
-/**
- * Phase 71 forward-coordination — `RailEntry` + `PendingTarget` exports
- * STAY in Phase 70. Phase 71 deletes them alongside the `RecentlyEvaluatedRail`
- * disposition per CLNP-04. Shape preserved verbatim from the pre-Phase-70
- * `flowTypes.ts` so existing consumers (RecentlyEvaluatedRail + its test)
- * continue to compile through this milestone.
- *
- * Note: the legacy verdict bundle field is intentionally typed as `unknown | null`
- * here to avoid a stale legacy verdict-types import (verdict is out of scope for v8.0).
- * Phase 71 deletes both fields + their consumer in a single sweep — no consumer
- * outside `RecentlyEvaluatedRail` reads `.verdict`, and the RecentlyEvaluatedRail
- * component is unrendered as of Phase 70 (CLNP-04 deferral).
- */
-export interface RailEntry {
-  catalogId: string
-  brand: string
-  model: string
-  imageUrl: string | null
-  extracted: ExtractedWatchData
-  verdict: unknown | null
-}
-
-/**
- * Pending state target for the legacy VerdictStep / WishlistRationalePanel
- * pending-CTA disambiguation. STAYS in Phase 70 per CLNP-04 deferral; Phase 71
- * removes alongside the rail.
- */
-export type PendingTarget = 'wishlist' | 'collection' | 'skip' | null
