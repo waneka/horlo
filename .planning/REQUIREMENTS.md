@@ -57,9 +57,9 @@ Lighter review surface that replaces `VerdictStep`. Status incl. grail picked he
 
 What happens when search surfaces a catalog row the viewer already owns or wishlists.
 
-- [ ] **DUPE-01**: Clicking a search result with `viewerState === 'owned'` navigates the user to `/w/[ref]` instead of advancing the add flow — requires a new `getWatchIdByCatalogId(userId, catalogId)` DAL helper to resolve the user's watch ID
+- [x] **DUPE-01**: Clicking a search result with `viewerState === 'owned'` navigates the user to `/w/[ref]` instead of advancing the add flow — requires a new `getWatchIdByCatalogId(userId, catalogId)` DAL helper to resolve the user's watch ID
 - [ ] **DUPE-02**: If the user explicitly wants to add a second copy of an already-owned reference, an "Add another copy" affordance on the confirm screen (reachable via the structured-input or URL paths) bypasses the redirect
-- [ ] **DUPE-03**: Clicking a search result with `viewerState === 'wishlist'` advances to the confirm screen with status defaulting to `wishlist` AND a secondary "Move to Collection" affordance that updates the existing watch row's status (UPDATE, not INSERT) — reuses the resolved existing watch ID
+- [x] **DUPE-03**: Clicking a search result with `viewerState === 'wishlist'` advances to the confirm screen with status defaulting to `wishlist` AND a secondary "Move to Collection" affordance that updates the existing watch row's status (UPDATE, not INSERT) — reuses the resolved existing watch ID
 
 ### Legacy Path Cleanup (CLNP)
 
@@ -148,9 +148,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONF-09 | Phase 68 | Pending |
 | CONF-10 | Phase 68 | Pending |
 | CONF-11 | Phase 67 | Pending |
-| DUPE-01 | Phase 70 | Pending |
+| DUPE-01 | Phase 70 | Complete |
 | DUPE-02 | Phase 70 | Pending |
-| DUPE-03 | Phase 70 | Pending |
+| DUPE-03 | Phase 70 | Complete |
 | CLNP-01 | Phase 71 | Pending |
 | CLNP-02 | Phase 71 | Pending |
 | CLNP-03 | Phase 71 | Pending |
