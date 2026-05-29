@@ -71,7 +71,7 @@ Subtractions enforcing the new flow as canonical.
 - [ ] **CLNP-04**: `RecentlyEvaluatedRail` is removed from `AddWatchFlow`; component file disposition (delete vs. retain for future repurpose) decided during plan-phase
 - [ ] **CLNP-05**: `FlowState` discriminated union in `flowTypes.ts` is cleaned — old states (`verdict-ready`, `wishlist-rationale-open`, `submitting-wishlist`) removed; new states (`search-idle`, `search-results`, `structured-input`, `extracting-structured`, `confirming`) added; surviving states (`form-prefill`, `manual-entry`, `photos-pending`) preserved
 - [ ] **CLNP-06**: A "Skip search — enter manually" link renders in the search idle state and routes to `?manual=1` (priority preserved above the new search-first default)
-- [ ] **CLNP-07**: All four module-scope caches (`useCatalogSearchCache`, `useStructuredExtractCache`, `useWatchSearchVerdictCache`, `useUrlExtractCache`) clear on signOut via a shared `lastUserId` check — closes the existing Active tech debt item for `useWatchSearchVerdictCache` in the same change
+- [ ] **CLNP-07**: All four module-scope caches (`useCatalogSearchCache`, `useStructuredExtractCache`, `useWatchSearchVerdictCache`, `useUrlExtractCache`) clear on signOut via a shared `lastUserId` check — closes the existing Active tech debt item for `useWatchSearchVerdictCache` in the same change *(Plan 02: 2/4 caches done — `useCatalogSearchCache` + `useStructuredExtractCache`; Plan 03 retrofits the remaining two existing caches)*
 
 ## v2 Requirements
 
@@ -157,7 +157,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLNP-04 | Phase 71 | Pending |
 | CLNP-05 | Phase 70 | Pending |
 | CLNP-06 | Phase 70 | Pending |
-| CLNP-07 | Phase 69 | Pending |
+| CLNP-07 | Phase 69 | In Progress (Plan 02: new caches done; Plan 03: existing 2 retrofit) |
 
 **Notes on split requirements:**
 - **DUPE-01**: `getWatchIdByCatalogId` DAL helper ships in Phase 67 as a primitive; the owned-result redirect click-handler (user-observable behavior) wires in Phase 70. Traceability maps DUPE-01 to Phase 70 (where the user sees the behavior).

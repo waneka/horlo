@@ -261,7 +261,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
   5. Signing out clears all four module-scope caches (`useCatalogSearchCache`, `useStructuredExtractCache`, `useWatchSearchVerdictCache`, `useUrlExtractCache`) — the pre-existing `useWatchSearchVerdictCache` tech-debt leak is closed in the same change
 **Plans**: 6 plans
 - [x] 69-01-PLAN.md — parseSearchQuery pure helper + listCatalogBrands DAL fn (SRCH-26, D-12, D-13)
-- [ ] 69-02-PLAN.md — useCatalogSearchCache + useStructuredExtractCache new module-scope caches (CLNP-07 new)
+- [x] 69-02-PLAN.md — useCatalogSearchCache + useStructuredExtractCache new module-scope caches (CLNP-07 new)
 - [ ] 69-03-PLAN.md — useUrlExtractCache + useWatchSearchVerdictCache retrofit + 3-layer SearchPageClient/WatchesPanel/WatchSearchRowsAccordion thread + AddWatchFlow cache call sites + catalogBrands prop typed (CLNP-07 retrofit)
 - [ ] 69-04-PLAN.md — StructuredEntryPanel + ExtractErrorCard mode-branched copy (EXTR-05, EXTR-06, EXTR-07, Phase 66 D-06)
 - [ ] 69-05-PLAN.md — SearchEntry @base-ui/react/combobox typeahead (SRCH-17..25)
@@ -299,7 +299,7 @@ See [v7.0-ROADMAP.md](milestones/v7.0-ROADMAP.md) for full phase details.
 | 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
 | 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
 | 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
-| 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 1/6 | In Progress|  |
+| 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 2/6 | In Progress|  |
 | 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 0/? | Not started | - |
 | 71. Dead Code Cleanup + Static Guards | 0/? | Not started | - |
 
