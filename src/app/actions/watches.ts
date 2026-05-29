@@ -438,9 +438,14 @@ export async function moveWishlistToCollection(
     // (status entering owned/sold group; Collection-tab reorder deferred per
     // CONTEXT). updateWatch's Partial<Watch> shape means absent fields are
     // not changed; only the explicit keys flip on the DB row.
+    //
+    // Rule 1 fix (build): Watch.pricePaid is `number | undefined`, not
+    // nullable. The plan body said `?? null` but the type contract is
+    // undefined-only — fall through to `undefined` (semantically equivalent;
+    // mapDomainToRow strips undefined keys, leaving prior DB value intact).
     const updatePayload: Partial<Watch> = {
       status: 'owned',
-      pricePaid: parsed.data.pricePaid ?? null,
+      pricePaid: parsed.data.pricePaid ?? undefined,
       notes: parsed.data.notes ?? priorRow.notes ?? undefined,
     }
 

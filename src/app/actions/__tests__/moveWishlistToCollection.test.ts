@@ -111,13 +111,15 @@ describe('Phase 70 — moveWishlistToCollection (DUPE-03)', () => {
     expect(result.success).toBe(true)
     if (result.success) expect(result.data).toEqual(updated)
 
-    // updateWatch payload: status flipped, notes carried over, pricePaid null
+    // updateWatch payload: status flipped, notes carried over.
+    // Watch.pricePaid is `number | undefined` (not nullable per types.ts:60) —
+    // when opts.pricePaid is absent the field falls through to `undefined`
+    // (mapDomainToRow strips undefined keys, preserving the DB-side prior value).
     expect(updateWatch).toHaveBeenCalledWith(
       'user-id',
       VALID_UUID,
       expect.objectContaining({
         status: 'owned',
-        pricePaid: null,
         notes: 'wanted this since 2019',
       }),
     )
