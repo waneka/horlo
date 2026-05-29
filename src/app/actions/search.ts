@@ -3,7 +3,7 @@
 import { z } from 'zod'
 
 import { getCurrentUser } from '@/lib/auth'
-import { searchCatalogWatches } from '@/data/catalog'
+import { searchCatalogWatches, searchCatalogForAddFlow as searchCatalogForAddFlowDAL } from '@/data/catalog'
 import { searchProfiles, searchCollections } from '@/data/search'
 // Phase 46 WR-01 / Phase 49.1 D-SCOPE-01f: era facet is validated against the
 // closed taste vocabulary (source of truth: src/lib/taste/vocab.ts) so the Zod
@@ -128,6 +128,57 @@ export async function searchWatchesAction(
     return { success: true, data: results }
   } catch (err) {
     console.error('[searchWatchesAction] unexpected error:', err)
+    return { success: false, error: "Couldn't run search." }
+  }
+}
+
+// Phase 67 Plan 02: addFlowSearchSchema — D-03: query + limit only, no facets.
+// New sibling schema (NOT a derivation of searchSchema — Pitfall 5).
+// Do NOT add .strict() here — the DAL takes explicit destructured params, so
+// unknown fields cannot reach SQL even without .strict() (T-67-02-06 mitigation).
+const addFlowSearchSchema = z.object({
+  q: z.string(),
+  limit: z.number().int().min(1).max(50).optional(),
+})
+
+/**
+ * Phase 67 Add-Flow Catalog Search Server Action (DUPE-01/DUPE-03/D-01/D-02/D-03).
+ *
+ * Sibling of searchWatchesAction — placed next to it in the same file (D-01).
+ * The existing searchWatchesAction is NOT modified; /search page UX stays bit-identical.
+ *
+ * Auth-gated (D-02): getCurrentUser() runs FIRST; UnauthorizedError → 'Not authenticated'.
+ * Input validated by the new addFlowSearchSchema (NOT searchSchema — Pitfall 5).
+ * DAL failures logged with [searchCatalogForAddFlow] prefix (T-19-02-04 lock);
+ * user-facing error is generic — DAL error detail MUST NOT leak to client.
+ *
+ * Returns ActionResult<SearchCatalogWatchResult[]> — same shape as searchWatchesAction.
+ * Phase 69 SearchEntry typeahead calls this action directly with debounced query.
+ */
+export async function searchCatalogForAddFlow(
+  data: unknown,
+): Promise<ActionResult<SearchCatalogWatchResult[]>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = addFlowSearchSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid request' }
+  }
+
+  try {
+    const results = await searchCatalogForAddFlowDAL({
+      q: parsed.data.q,
+      viewerId: user.id,
+      limit: parsed.data.limit ?? 20,
+    })
+    return { success: true, data: results }
+  } catch (err) {
+    console.error('[searchCatalogForAddFlow] unexpected error:', err)
     return { success: false, error: "Couldn't run search." }
   }
 }
