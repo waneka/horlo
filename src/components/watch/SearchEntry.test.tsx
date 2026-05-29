@@ -250,8 +250,12 @@ describe('SearchEntry — cache short-circuit (D-04 + D-18 axis 2)', () => {
     })
 
     expect(searchCatalogForAddFlow).not.toHaveBeenCalled()
-    // And the cached result must surface in the listbox
-    expect(screen.getByText(/Omega Speedmaster/)).toBeInTheDocument()
+    // Cached result must surface as an option in the listbox. HighlightedText
+    // splits the rendered text across <strong>+<Fragment> nodes, so query by
+    // role=option + textContent rather than an exact getByText.
+    const options = screen.getAllByRole('option')
+    expect(options.length).toBe(1)
+    expect(options[0].textContent).toContain('Omega Speedmaster')
   })
 })
 
@@ -287,12 +291,18 @@ describe('SearchEntry — result row composition (SRCH-19 + SRCH-22 + SRCH-23)',
       await Promise.resolve()
     })
 
-    // Primary line uses font-semibold per WatchSearchRow precedent.
-    const primary = screen.getByText('Omega Speedmaster')
-    expect(primary.className).toContain('font-semibold')
-    // Reference + " · " + collectors count are present.
-    expect(screen.getByText(/311\.30\.42\.30\.01\.005/)).toBeInTheDocument()
-    expect(screen.getByText(/47 collectors/)).toBeInTheDocument()
+    // Primary line uses font-semibold per WatchSearchRow precedent. The
+    // HighlightedText wrap splits the text across nodes, so target the <p>
+    // wrapper by content + class assertion via textContent.
+    const option = screen.getAllByRole('option')[0]
+    const primary = option.querySelector('p.font-semibold')
+    expect(primary).not.toBeNull()
+    expect(primary!.textContent).toContain('Omega Speedmaster')
+    expect(primary!.className).toContain('font-semibold')
+    expect(primary!.className).not.toContain('font-medium')
+    // Reference + " · " + collectors count are present in the subtitle.
+    expect(option.textContent).toContain('311.30.42.30.01.005')
+    expect(option.textContent).toContain('47 collectors')
   })
 
   it('(6) HighlightedText wraps matched substring inside the result row', async () => {
@@ -676,8 +686,10 @@ describe('SearchEntry — AbortController stale-result guard (D-04)', () => {
 
     // Only Submariner (the second query) is in the listbox; Speedmaster is NOT
     // because its in-flight controller was aborted on debouncedQuery change.
-    expect(screen.getByText(/Rolex Submariner/)).toBeInTheDocument()
-    expect(screen.queryByText(/Omega Speedmaster/)).not.toBeInTheDocument()
+    const options = screen.getAllByRole('option')
+    expect(options.length).toBe(1)
+    expect(options[0].textContent).toContain('Rolex Submariner')
+    expect(options[0].textContent).not.toContain('Omega Speedmaster')
   })
 })
 
