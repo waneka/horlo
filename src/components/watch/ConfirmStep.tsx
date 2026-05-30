@@ -91,6 +91,13 @@ interface ConfirmStepProps {
   onStartOver: () => void
   /** Pending state for the primary CTA. Disables all action buttons + swaps CTA to Loader2. */
   pending?: boolean
+  /**
+   * Phase 74 D-02 — when true, the primary CTA in the final section is NOT rendered at all (per Phase 74 D-01).
+   * Set when a DupeBanner is mounted as a sibling above ConfirmStep (Phase 70 D-11) and that
+   * banner is the user-action surface; the redundant gated CTA is noise. Additive extension
+   * per Phase 68 D-03 prop contract. Default false preserves backward compat.
+   */
+  bannerActive?: boolean
   // Optional spec props per 68-UI-SPEC §SpecHeadline Helper (recommendation (a))
   movement?: MovementType | null
   caseSizeMm?: number | null
@@ -116,6 +123,7 @@ export function ConfirmStep({
   onEditDetails,
   onStartOver,
   pending = false,
+  bannerActive = false,
   movement,
   caseSizeMm,
   dialColor,
@@ -307,22 +315,25 @@ export function ConfirmStep({
         </Button>
       </div>
 
-      {/* Section 6: Primary CTA (full-width at all breakpoints) */}
-      <Button
-        type="button"
-        onClick={onPrimary}
-        disabled={pending}
-        className="w-full"
-      >
-        {pending ? (
-          <>
-            <Loader2 className="size-4 mr-2 animate-spin" aria-hidden="true" />
-            Saving...
-          </>
-        ) : (
-          CTA_LABELS[status]
-        )}
-      </Button>
+      {/* Section 6: Primary CTA (full-width at all breakpoints) — Phase 74 D-01/D-02:
+          hidden entirely when bannerActive=true (DupeBanner sibling above is the action surface). */}
+      {!bannerActive && (
+        <Button
+          type="button"
+          onClick={onPrimary}
+          disabled={pending}
+          className="w-full"
+        >
+          {pending ? (
+            <>
+              <Loader2 className="size-4 mr-2 animate-spin" aria-hidden="true" />
+              Saving...
+            </>
+          ) : (
+            CTA_LABELS[status]
+          )}
+        </Button>
+      )}
 
     </div>
   )
