@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: verifying
-last_updated: "2026-05-30T10:16:18.966Z"
+status: phase_complete
+last_updated: "2026-05-30T17:30:00.000Z"
 last_activity: 2026-05-30
 progress:
-  total_phases: 1
+  total_phases: 3
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
-  percent: 100
+  percent: 33
 ---
 
 # Project State
@@ -20,18 +20,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 72 — Search Composition Fixes
+**Current focus:** Phase 73 — Owned-Redirect Route Fix (next; CONTEXT.md not yet captured)
 
 ## Current Position
 
-Phase: 72 (Search Composition Fixes) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
+Phase: 72 (Search Composition Fixes) — COMPLETE 2026-05-30 (prod UAT 3/3 pass after quick-260530-e55 SRCH-03 followup)
+Plan: 2/2 complete (72-01 SRCH-01 DAL token-AND; 72-02 SRCH-02 isItemEqualToValue+drop-index + SRCH-03 footer relocation)
+Status: Phase 72 complete — ready to start Phase 73
+Next: /gsd-discuss-phase 73  →  /gsd-plan-phase 73  →  /gsd-execute-phase 73
 Last activity: 2026-05-30
 
 ```
-v8.1 Progress [                              ] 0% (0/3 phases)
+v8.1 Progress [██████████                    ] 33% (1/3 phases)
 ```
+
+**STATE.md hand-correction (recurrence-5 of `project_phase_complete_999_1_misset`):** `gsd-sdk query phase.complete 72` returned `next_phase: null` + `is_last_phase: true` and rewrote frontmatter to `status: milestone_complete / completed_phases: 2 / percent: 200`. ROADMAP is fine (Phase 72 marked Complete, 73+74 Not started). STATE.md hand-fixed back to the real next phase.
 
 ## Performance Metrics
 

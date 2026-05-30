@@ -267,7 +267,7 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 72. Search Composition Fixes | 2/2 | Complete   | 2026-05-30 |
+| 72. Search Composition Fixes | 2/2 | Complete    | 2026-05-30 |
 | 73. Owned-Redirect Route Fix | 0/? | Not started | - |
 | 74. DupeBanner Gate Refinement + Mobile Polish | 0/? | Not started | - |
 
