@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: phase_complete
-last_updated: "2026-05-30T17:30:00.000Z"
-last_activity: 2026-05-30
+status: executing
+last_updated: "2026-05-30T18:01:52.404Z"
+last_activity: 2026-05-30 -- Phase 73 planning complete
 progress:
-  total_phases: 3
+  total_phases: 2
   completed_phases: 1
-  total_plans: 2
+  total_plans: 3
   completed_plans: 2
-  percent: 33
+  percent: 67
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 Phase: 72 (Search Composition Fixes) — COMPLETE 2026-05-30 (prod UAT 3/3 pass after quick-260530-e55 SRCH-03 followup)
 Plan: 2/2 complete (72-01 SRCH-01 DAL token-AND; 72-02 SRCH-02 isItemEqualToValue+drop-index + SRCH-03 footer relocation)
-Status: Phase 72 complete — ready to start Phase 73
+Status: Ready to execute
 Next: /gsd-discuss-phase 73  →  /gsd-plan-phase 73  →  /gsd-execute-phase 73
-Last activity: 2026-05-30
+Last activity: 2026-05-30 -- Phase 73 planning complete
 
 ```
 v8.1 Progress [██████████                    ] 33% (1/3 phases)
