@@ -323,7 +323,7 @@ expect(pushSpy).toHaveBeenCalledWith('/w/cat-owned')  // was: '/w/REF-001'
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should WR-02 Test A (line 835) be deleted or repurposed?**
    - What we know: The "owned-null-ref + resolver failure → toast.error" path ceases to exist after D-04. The test will fail without code change.
