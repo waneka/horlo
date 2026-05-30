@@ -314,18 +314,23 @@ export function SearchEntry({
                     )}
                   </Combobox.Item>
                 ))}
-
-                {/* SRCH-24 footer — D-14 entry point #1 (results > 0). Same
-                    handler as the empty-state auto-expand (no-op when forceClose
-                    is already true; otherwise setShowPanel makes it sticky). */}
-                <button
-                  type="button"
-                  onClick={() => setShowPanel(true)}
-                  className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
-                >
-                  Not finding it? Add manually
-                </button>
               </Combobox.List>
+            )}
+
+            {/* SRCH-24 footer — D-14 entry point #1 (results > 0).
+                SRCH-03: rendered as sibling of <Combobox.List> — listbox-internal
+                placement swallowed clicks in real browsers (jsdom-tolerant but
+                prod-broken). Placed OUTSIDE the listbox so native click semantics
+                apply; same gate as the List so footer appears/disappears together
+                with results. Handler preserved verbatim per D-09. */}
+            {!isLoading && results.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowPanel(true)}
+                className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
+              >
+                Not finding it? Add manually
+              </button>
             )}
             </Combobox.Popup>
           </Combobox.Positioner>
