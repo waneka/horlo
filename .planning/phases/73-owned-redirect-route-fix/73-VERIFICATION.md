@@ -1,7 +1,7 @@
 ---
 phase: 73-owned-redirect-route-fix
 verified: 2026-05-30T18:18:00Z
-status: human_needed
+status: passed
 score: 10/11 must-haves verified (10 code-verified; 1 (D-09 prod walk) human_needed)
 overrides_applied: 0
 requirements_status:

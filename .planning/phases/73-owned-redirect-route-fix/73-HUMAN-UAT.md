@@ -1,27 +1,28 @@
 ---
-status: partial
+status: passed
 phase: 73-owned-redirect-route-fix
 source: [73-VERIFICATION.md]
 started: 2026-05-30T18:13:00Z
-updated: 2026-05-30T18:13:00Z
+updated: 2026-05-30T20:55:00Z
+verified_in_bundle: v8.1 (Phases 72 + 73 + 74) — single Vercel deploy, single UAT walk per Phase 74 CONTEXT D-15
 ---
 
 ## Current Test
 
-[awaiting human testing — prod walk for ROUTE-01]
+[complete — UAT walk passed on prod 2026-05-30]
 
 ## Tests
 
 ### 1. ROUTE-01 — owned watch click from search popup renders detail page (no 404)
 expected: After deploy, open the add-watch popup on prod, search for any owned watch in your collection, click the "In collection" result. The browser navigates to `/w/<uuid>` and the D-06 in-place owned view renders: hero (image + brand/model/reference), verdict-hidden-on-owned (no Collection Fit card per `verdict_hidden_on_owned_watches` memory), and the comment thread. No 404, no blank page. Works on both desktop and mobile.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 1
-passed: 0
+passed: 1
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
