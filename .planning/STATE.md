@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: executing
-last_updated: "2026-05-30T18:01:52.404Z"
-last_activity: 2026-05-30 -- Phase 73 planning complete
+status: verifying
+last_updated: "2026-05-30T18:09:30.900Z"
+last_activity: 2026-05-30
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 73 — Owned-Redirect Route Fix (next; CONTEXT.md not yet captured)
+**Current focus:** Phase 73 — owned-redirect-route-fix
 
 ## Current Position
 
-Phase: 72 (Search Composition Fixes) — COMPLETE 2026-05-30 (prod UAT 3/3 pass after quick-260530-e55 SRCH-03 followup)
-Plan: 2/2 complete (72-01 SRCH-01 DAL token-AND; 72-02 SRCH-02 isItemEqualToValue+drop-index + SRCH-03 footer relocation)
-Status: Ready to execute
-Next: /gsd-discuss-phase 73  →  /gsd-plan-phase 73  →  /gsd-execute-phase 73
-Last activity: 2026-05-30 -- Phase 73 planning complete
+Phase: 73 (owned-redirect-route-fix) — CODE COMPLETE, READY FOR VERIFICATION
+Plan: 1 of 1 (complete)
+Status: Phase 73 code-side complete; ready for /gsd-verify-phase 73; prod click-through human_needed (bundles with Phase 74 deploy if same session per CONTEXT.md D-09 step 3)
+Next: /gsd-verify-phase 73  →  /gsd-plan-phase 74  →  /gsd-execute-phase 74  →  prod push (bundled)
+Last activity: 2026-05-30 — Phase 73 execution complete (3 tasks, 2 files, build exit 0, 27/27 vitest green)
 
 ```
 v8.1 Progress [██████████                    ] 33% (1/3 phases)
@@ -49,6 +49,11 @@ v8.1 Progress [██████████                    ] 33% (1/3 phas
 ## Accumulated Context
 
 ### Key Decisions
+
+- **Phase 73 D-01 — search-pick owned redirect uses catalogId UUID, not reference model number** (Phase 73 Plan 01) — `handleSearchPick` owned branch now pushes `/w/${encodeURIComponent(result.catalogId)}` (UUID, always present per `SearchCatalogWatchResult` contract) instead of `result.reference` (a brand-supplied model number string like `REF-001` that failed the `/w/[ref]` UUID regex at `src/app/w/[ref]/page.tsx:151` → 404). The new slug passes the guard → Branch 2 `findViewerWatchByCatalogId` at page.tsx:439 resolves ownership server-side → in-place D-06 owned render at page.tsx:472. Phase 59 D-04 UUID-only invariant preserved (D-02 — route handler untouched). No client-side round-trip added (D-03). encodeURIComponent preserved for defense-in-depth (D-05).
+- **Phase 73 D-04 — both owned search-pick branches collapsed to single early-return push** (Phase 73 Plan 01) — the Phase 70 D-06 "owned + null reference → confirm-with-banner" branch ceases to exist on the search-pick path (catalogId is always present, so the null-reference case is mooted). Removed: `resolveDupeContext` round-trip, `toast.error` path, `setConfirmStatus('owned')` setup, and the entire `setState({ kind: 'confirming', ... })` transition for the owned-null-ref search-pick case. The D-06 "confirm-with-banner" pattern remains in use on `handleStructuredSubmit` and `handleUrlBackup` branches — untouched. Both Pick owned + Pick owned no-ref test buttons now redirect identically.
+- **Disappearance assertion pairing (recurrence-2 of `feedback_test_assert_disappearance_too`)** (Phase 73 Plan 01) — T-70-01 + T-70-02 now BOTH assert push-target appearance AND `expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()` AND `expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()` (triple assertion). When a click both effects a push AND should dismiss overlapping confirming-state UI, assert BOTH directions in jsdom; pair `getByX.toBeInTheDocument()` with `queryByY.not.toBeInTheDocument()`. Guards against any future regression that reintroduces the confirming-state path on owned picks.
+- **WR-02 Test A deletion is the implicit consequence of D-04** (Phase 73 Plan 01) — when CONTEXT.md D-06 enumerates only T-70-01 + T-70-02 assertion updates but the D-04 collapse also invalidates an unrelated WR-02 test ("owned (D-06 null-ref fallthrough) + resolver failure → toast.error"), surface the deletion as an implicit consequence in the plan body rather than waiting for the test run to discover it. RESEARCH §Open Questions captures this kind of test-impact ripple before execution; planner must enumerate them in the plan tasks. Pattern: every branch removal needs a sweep across tests for sites that mount through that branch.
 
 - **llm-structured.ts is sibling-of-llm.ts and server-only** (Phase 66 Plan 01, D-01) — the new structured-INPUT LLM extractor lives at `src/lib/extractors/llm-structured.ts` next to `llm.ts`; file header explicitly disambiguates structured-INPUT (user identity) from structured-DATA / `./structured.ts` (JSON-LD scraping); module is marked `import 'server-only'` to gate against Client Component import (API-key leak mitigation).
 - **llm-structured.ts throws on missing API key (not return-null)** (Phase 66 Plan 01) — mirrors `llm.ts:54-58`, NOT the silent-null fire-and-forget pattern of `taste/enricher.ts:88-95`. Route's `categorizeExtractionError` catch needs throws to map to `generic-network` HTTP 500.
@@ -193,6 +198,7 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 | Phase 70 P08 | ~12min | 2 tasks | 2 files |
 | Phase 72-search-composition-fixes P01 | 3min | 2 tasks | 2 files |
 | Phase 72-search-composition-fixes P02 | 15min | 3 tasks | 2 files |
+| Phase 73 P01 | 4min | 3 tasks | 2 files |
 
 ## Quick Tasks Completed
 
@@ -202,10 +208,11 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 
 ## Session Continuity
 
-Last activity: 2026-05-30 — Quick task 260530-e55 complete. SRCH-03 followup popup-stay-open fix shipped. 24/24 SearchEntry tests green. Build gate exit 0.
-Next action: v8.1 prod push to verify SRCH-03 footer click behavior on prod.
+Last activity: 2026-05-30 — Phase 73 Plan 01 execution complete. ROUTE-01 fixed: handleSearchPick owned branches collapsed to single early-return router.push catalogId; T-70-01 + T-70-02 + WR-02 Test D push targets swapped to /w/cat-owned[-noref]; WR-02 Test A deleted; WR-01 Test B pivoted to structured-submit. 27/27 vitest green. npm run build exit 0.
+Next action: /gsd-verify-phase 73 → plan Phase 74 → execute → bundle prod push.
 
 ## Operator Next Steps
 
-- Push to prod (git push origin main) and verify footer click collapses popup + shows StructuredEntryPanel inline
-- Phase 72 HUMAN-UAT SC#3 can flip to `pass` after prod confirmation
+- /gsd-verify-phase 73 (expect ROUTE-01 automated checks pass; prod walk human_needed)
+- Plan + execute Phase 74 (remaining v8.1 polish defects: DUPE-04, MOB-01 + any rollover from 72/73)
+- Bundle prod push for Phase 72 SRCH-03 footer click + Phase 73 ROUTE-01 owned redirect + Phase 74 — single deploy, single UAT walk per CONTEXT.md D-09 step 3

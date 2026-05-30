@@ -19,7 +19,7 @@ Each defect from v8.0's prod UAT walk is captured as a user-centric requirement.
 
 ### Routing (1 requirement)
 
-- [ ] **ROUTE-01**: User can click an "In collection" search result and be redirected to the watch detail page `/w/[ref]` which renders successfully — no 404. Works for any owned watch regardless of which catalog row backs it (consistent with the v7.0 Phase 59 unified-route contract)
+- [x] **ROUTE-01**: User can click an "In collection" search result and be redirected to the watch detail page `/w/[ref]` which renders successfully — no 404. Works for any owned watch regardless of which catalog row backs it (consistent with the v7.0 Phase 59 unified-route contract)
 
 ### DupeBanner UX (1 requirement)
 
@@ -56,7 +56,7 @@ Explicitly excluded from v8.1 to prevent scope creep:
 | SRCH-01 | Phase 72 | Complete |
 | SRCH-02 | Phase 72 | Complete |
 | SRCH-03 | Phase 72 | Complete |
-| ROUTE-01 | Phase 73 | Pending |
+| ROUTE-01 | Phase 73 | Complete |
 | DUPE-04 | Phase 74 | Pending |
 | MOB-01 | Phase 74 | Pending |
 
