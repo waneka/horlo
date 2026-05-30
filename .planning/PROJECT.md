@@ -32,7 +32,29 @@ See `.planning/MILESTONES.md` and `.planning/milestones/v7.0-ROADMAP.md` for ful
 
 **Post-v5.2 hotfix — Phase 52 (2026-05-21):** Eliminated the recurrence-4/5 React #419 + 404 bug on authenticated `/u/[username]/[tab]` navigation. Durable fix: canonical Next 16 Cache Components structural pattern (sync `layout.tsx` + `<Suspense>` + async `profile-chrome.tsx`; sync outer `ProfileTabPage` + inner async `ProfileTabContent` inside `<Suspense>`); route exports `unstable_instant = false` PERMANENTLY. **v7.0 Phase 61 closed the related #419 family on `/w/[ref]` and `/wear/[id]`** with a complementary fix: `await connection()` ABOVE the page/layout Suspense opts out of the prerendered static shell that aborts on soft-nav resume (admin-client cover-URL signing also required). Static guard `tests/static/ppr-dynamic-before-use-cache.test.ts` (`@vitest-environment node`) locks the ordering. SEED-014 (broader Cache Components canonical sweep) remains future work.
 
-**Next milestone goals:** **v8.1 Add-Watch Polish (NEXT)** — close the 6 prod-UAT-captured defects (SRCH-01/02/03, ROUTE-01, DUPE-04, MOB-01). Matches the v4.1 / v5.1 / v5.2 polish-milestone pattern. After that: **v9.0 Catalog Expansion** (SEED-009 — promoted from unscheduled per operator decision 2026-05-28), then Market Value (SEED-005, needs the SEED-007 pricing API spike first). No paywall in any near milestone (SEED-006 resolved 2026-05-06).
+**Next milestone goals:** **v8.1 Add-Watch Polish STARTED 2026-05-29** — close the 6 prod-UAT-captured defects from v8.0. Matches the v4.1 / v5.1 / v5.2 polish-milestone pattern. After that: **v9.0 Catalog Expansion** (SEED-009 — promoted from unscheduled per operator decision 2026-05-28), then Market Value (SEED-005, needs the SEED-007 pricing API spike first). No paywall in any near milestone (SEED-006 resolved 2026-05-06).
+
+## Current Milestone: v8.1 Add-Watch Polish
+
+**Goal:** Close the 6 prod-UAT-captured defects in the v8.0 search-first add-watch flow so the experience matches its design intent — search relevance works for multi-token queries, keyboard navigation works in the combobox, the owned-redirect resolves, the DupeBanner gate doesn't confuse users with stuck "Saving..." copy, and mobile inputs don't trigger iOS auto-zoom.
+
+**Target features (defects → fixes):**
+
+- **SRCH-01: Multi-token search returns results** — Typing `Brut Datejust` or `Timex Weekender` (brand + model tokens) finds the catalog row when `Brut` / `Timex` alone matches. Likely in `parseSearchQuery` brand-prefix handoff to the `searchCatalogForAddFlow` DAL, or in how the DAL substring-matches the remaining tokens after brand consumption.
+- **SRCH-02: Combobox keyboard navigation works** — Up/Down arrows traverse search result rows; Enter fires `onPick` on the active row. WAI-ARIA combobox contract that `@base-ui/react/combobox` 1.3.0 ships by default — the `SearchEntry.tsx` composition is structurally wrong (result rows likely render as raw `<div>` instead of `<Combobox.Item>`, so the headless state has no items to track).
+- **SRCH-03: "Not finding it?" footer click expands StructuredEntryPanel** — The SRCH-24 footer row renders correctly but its click handler is dead. Either missing `onClick`, or the click is being swallowed by Combobox.List (popup eats non-Item clicks). Likely shares root cause with SRCH-02.
+- **ROUTE-01: Owned-redirect `/w/[ref]` resolves the watch detail page (not 404)** — Clicking an "In collection" search result navigates to `/w/[ref]` and renders. Either the redirect uses the wrong identifier, the `/w/[ref]` route handler doesn't lookup by reference correctly, or the catalog row's `reference` field is empty for some watches.
+- **DUPE-04: DupeBanner gate communicates the right reason** — When DupeBanner is mounted, the ConfirmStep CTA is correctly disabled (WR-01 from v8.0 closed the silent-duplicate hole) but it currently shows "Saving..." copy regardless of cause, confusing the user. Either hide ConfirmStep entirely when `dupeContext != null` (the verifier's "alternative fix" from 70-VERIFICATION.md), or differentiate the disabled-state copy by reason.
+- **MOB-01: Mobile inputs don't trigger iOS Safari auto-zoom on focus** — iOS auto-zooms any input whose font-size is `< 16px`. Single global CSS rule on `input, textarea, select` fixes the whole app, not just add-watch.
+
+**Key context:**
+- **Single-user personal-first** — these are quality defects on the primary add-watch flow; CR-02-equivalent data corruption was already closed in v8.0 Phase 70 Plans 06/07/08, so this is pure UX/correctness polish.
+- **No new add-watch features** — v8.1 is strict subtraction-of-defects; no scope creep into v9.0 catalog expansion or the SEED-014 cache components sweep.
+- **Likely 2-3 phases** — search composition (SRCH-01/02/03 likely share root cause), route fix (ROUTE-01 standalone), DupeBanner gate refinement + mobile CSS (DUPE-04 + MOB-01 small bundle).
+- **Estimated cycle:** 1-2 days, well under the v8.0 build of 150 commits / 2 days.
+- **Continue phase numbering** from v8.0 (no `--reset-phase-numbers`). v8.1 starts at Phase 72.
+- **Worktrees stay off** (build-gated + DB-touching, `workflow.use_worktrees=false` permanent).
+- **Out-of-scope cleanup:** the 10 missing-status quick_tasks in STATE.md Deferred Items remain dormant; only `260421-rdb` was marked OBSOLETE inline at v8.1 kickoff (route deleted in v7.0 — NOT adjacent to ROUTE-01 despite filename).
 
 ## Requirements
 
