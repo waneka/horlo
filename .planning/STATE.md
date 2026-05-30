@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: verifying
+status: milestone_complete
 last_updated: "2026-05-30T20:42:52.591Z"
 last_activity: "2026-05-30 — Phase 74 Plan 02 execution complete (MOB-01 closed structurally: globals.css @layer base font-size 1rem floor + 3 user-facing className rewrites text-sm → text-base md:text-sm + 2 fs-walking static guards locking viewport meta + text-sm-on-native-form-controls invariants)"
 progress:
@@ -24,11 +24,11 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 ## Current Position
 
-Phase: 74 (DupeBanner Gate Refinement + Mobile Polish) — READY FOR VERIFICATION
-Plan: 2 of 2 — COMPLETE
-Status: Phase complete — ready for verification
+Phase: 74
+Plan: Not started
+Status: Milestone complete
 Next: /gsd-verify-phase 74  →  bundled prod push (Phases 72+73+74 single deploy + UAT walk per CONTEXT D-15)
-Last activity: 2026-05-30 — Phase 74 Plan 02 execution complete (MOB-01 closed structurally: globals.css @layer base font-size 1rem floor + 3 user-facing className rewrites text-sm → text-base md:text-sm + 2 fs-walking static guards locking viewport meta + text-sm-on-native-form-controls invariants)
+Last activity: 2026-05-30
 
 ```
 v8.1 Progress [██████████████████████████████] 100% (5/5 plans across 3 phases — Phase 72 done, Phase 73 done, Phase 74 done; verify + bundled prod push next)

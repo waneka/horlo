@@ -272,6 +272,6 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 |-------|----------------|--------|-----------|
 | 72. Search Composition Fixes | 2/2 | Complete    | 2026-05-30 |
 | 73. Owned-Redirect Route Fix | 1/1 | Complete   | 2026-05-30 |
-| 74. DupeBanner Gate Refinement + Mobile Polish | 2/2 | Complete   | 2026-05-30 |
+| 74. DupeBanner Gate Refinement + Mobile Polish | 2/2 | Complete    | 2026-05-30 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
