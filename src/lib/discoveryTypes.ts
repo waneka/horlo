@@ -13,7 +13,16 @@ export interface Recommendation {
    * watch — Horlo uses per-user-independent entries, no canonical watch DB).
    */
   representativeWatchId: string
-  representativeOwnerId: string
+  /**
+   * Owner attribution for the representative instance. Nullable per Phase 75
+   * D-12 — synthetic catalog-popularity rows from
+   * `topUpFromCatalogPopularity()` in `src/data/recommendations.ts` (sparse-
+   * pool path) have no single owner and set this to `null`. Consumers that
+   * render owner-attribution UI MUST null-guard before dereferencing.
+   * RecommendationCard.tsx does not currently render an owner link, so the
+   * widening is a non-breaking type change for existing call sites.
+   */
+  representativeOwnerId: string | null
   brand: string
   model: string
   imageUrl: string | null
