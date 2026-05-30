@@ -542,6 +542,64 @@
 
 ---
 
+## Milestone: v8.1 — Add-Watch Polish
+
+**Shipped:** 2026-05-30
+**Phases:** 3 (72, 73, 74) | **Plans:** 5 | **Tasks:** 11
+**Source:** v8.0 post-deploy human UAT on prod (`418f0515`) captured 6 distinct defects across 3 issue clusters
+
+### What Was Built
+
+The 6 v8.0-captured defects all closed in 1 day across 3 surgical phases:
+
+- **Phase 72 — Search Composition Fixes** (SRCH-01/02/03): `searchCatalogForAddFlow` DAL WHERE rewritten from single-substring OR to AND-of-ORs per whitespace-split token (multi-token match for "Brut Datejust" / "Timex Weekender"); two surgical SearchEntry edits restored base-ui Combobox keyboard nav (`isItemEqualToValue` prop + `index={i}` removal); footer button relocated outside `Combobox.List` as a Popup sibling (click survives list blur).
+- **Phase 73 — Owned-Redirect Route Fix** (ROUTE-01): `handleSearchPick` owned branches swapped slug source from `result.reference` (model number, failed `/w/[ref]` UUID guard → 404) to `result.catalogId` (UUID always present); both owned branches collapsed to a single early-return `router.push`; receiver route untouched.
+- **Phase 74 — DupeBanner Gate + Mobile Polish** (DUPE-04 + MOB-01): additive `bannerActive?: boolean` on ConfirmStep — Section 6 primary CTA early-returns null when banner is mounted (the banner IS the choice surface); AddWatchFlow OR-gate reverted to pure `pending` per Phase 68 D-03 contract. Global `@layer base { input,textarea,select { font-size: 1rem; } }` + 3 className rewrites `text-sm` → `text-base md:text-sm` in CommentCompose/CommentItem/SearchEntry. Two new fs-walking static guards lock the viewport meta + className invariants (both declare `// @vitest-environment node` per `project_vitest_static_node_env`).
+
+Single bundled prod push (`9eaa94de`) → single iPhone Safari UAT walk on horlo.app: **6/6 items passed** (3 SRCH + 1 ROUTE + 1 DUPE + 1 MOB — pinch-zoom preserved, no desktop visual regressions).
+
+### What Worked
+
+- **Pure subtraction-of-defects scope** held — no scope creep into v9.0 catalog or SEED-014 cache components. Each phase shipped its own targeted regression test alongside the fix.
+- **Bundled deploy + single UAT walk** (CONTEXT D-15) collapsed 3 phases × 6 items into one push + one prod walk. Operator-stated preference (per `feedback_mobile_ui_verify_on_prod`) — saved 2 separate UAT walks vs phase-by-phase verification.
+- **Additive prop extension** kept Phase 68 D-03 ConfirmStep contract intact while solving DUPE-04. The `bannerActive?` prop reads at the call site exactly like `pending?` (same shape, default false). Rejected: conditional `{!state.dupeContext && <ConfirmStep />}` would have unmounted the entire form on dupe-context toggle, flickering focus + resetting WAI-ARIA radiogroup state (Phase 68 recurrence-4 pattern).
+- **Disappearance-paired assertion discipline** (per `feedback_test_assert_disappearance_too` recurrence-3) ported cleanly from Phase 73 ROUTE-01 to Phase 74 DUPE-04: every "X disappears" assertion is paired with "Y appears" in jsdom. Caught the test-vs-prod-discrepancy class that bit Phase 72 SRCH-03b earlier in the milestone.
+- **`@layer base` as the right cascade level for the iOS auto-zoom floor** — specificity 0,0,1 means utilities still win; shadcn primitives (already `text-base md:text-sm`) untouched; admin tooling (`text-sm` overrides intentional in those admin-only contexts) unaffected; no `!important` needed.
+
+### What Was Inefficient
+
+- **5th recurrence of `phase.complete` extractor garbage + progress-counter inflation** hit again at close. The progress-counter bug fires even when `is_last_phase: true` (no `next_phase` corruption this round, but `completed_phases: 4 / total_phases: 3 / percent: 133` still landed in STATE.md frontmatter). Hand-corrected back to 3/3/100%. 5 milestones running of the same extractor pattern.
+- **5th recurrence of JSDoc-prose grep-collision** preempted in the D-12 guard. Initial SCOPE LIMIT comment cited `src/components/admin/*` verbatim and would have tripped the AC `grep -c "src/components/admin" returns 0`. Reworded to "the admin/ subtree" — clears the grep while preserving doc intent. The same pattern across Phases 64 / 69 / 70 / 74-01 / 74-02 says: AC greps targeting literal tokens false-positive on JSDoc-prose using that token; paraphrase in prose, keep the literal in code/strings only.
+- **Pre-close artifact audit signal-to-noise still poor** (v7.0 lesson #24 re-confirmed). 3 v8.1 UAT files flagged as "gaps" — all `status: passed` with 0 pending (false positive). 13 dormant seeds listed — 5 of them actually shipped earlier (SEED-008 v5.1, SEED-010 as v8.0/v8.1, SEED-012 v6.0, SEED-013 v7.0, SEED-015 v7.0) and need re-classification. The "acknowledge all" step continues to be fixed-cost ritual friction rather than risk-surfacing signal.
+- **No `/gsd-audit-milestone` ran** — mirrors v5.0/v5.1/v7.0/v8.0 close decisions but extends the audit-skip streak. The polish-milestone pattern (small N of req-IDs, all UAT-verified) makes the audit cost feel high relative to risk; consider whether polish milestones need a lighter-weight close ritual that still proves req-coverage.
+
+### Patterns Established
+
+- **Bundled-deploy polish pattern**: when multiple polish phases ship in one session against a single deployment target, bundle the prod push and run ONE UAT walk covering all items. Add a "bundle preference" note in CONTEXT and a "verified_in_bundle" field in each phase's HUMAN-UAT.md so the lineage is grep-able.
+- **Disappearance-paired test discipline as milestone-routine** — 3 phases (72, 73, 74) all used the pattern; now a default expectation for any UI-gating change. Encoded in memory `feedback_test_assert_disappearance_too`.
+- **Additive optional prop with default-false as the ConfirmStep extension idiom** — Phase 68 D-03 + Phase 70 D-17 + Phase 74 D-02 all used this shape (`movement?`, `caseSizeMm?`, `dialColor?`, `bannerActive?`). Now the established pattern for orchestrator → presenter feature gates without breaking the prop contract.
+- **fs-walking static guard with `// @vitest-environment node` pragma as a default file-1 declaration** — Phase 71 retrofitted 8 pre-existing guards with the pragma; Phase 74 added 2 more (D-11 + D-12) with the pragma declared on line 1. Vercel prebuild gate now exercises 19 static-guard test files.
+
+### Key Lessons
+
+28. **(v8.1)** The `phase.complete` progress-counter bug is independent of the next-phase-id bug. The next-phase-id bug (`project_phase_complete_999_1_misset`) is suppressed correctly when `is_last_phase: true`, but the progress-counter inflation fires anyway (`completed_phases` increments past `total_phases` → percent > 100%). Both bugs require hand-correction at every phase close, and the assumption that "last phase = no STATE corruption" is wrong. Treat STATE.md frontmatter as needing inspection after EVERY `phase.complete`, not just the non-final ones.
+
+29. **(v8.1)** The JSDoc-prose grep-collision pattern is now load-bearing knowledge across 5 phases. Any AC of the form `grep -c "<literal>" <file>` returns N` will false-positive on JSDoc/inline comments using the literal. The mitigation is uniform: paraphrase in prose, keep the literal in code/strings only. Worth a planner-side lint rule: when a plan declares an AC of this shape, flag any JSDoc body in the same file that contains the literal token.
+
+30. **(v8.1)** Bundled deploys + single UAT walks dominate phase-by-phase prod verification for polish milestones. v8.1 ran 3 phases / 6 items into one Vercel push + one iPhone walk; the alternative (3 separate pushes + 3 walks) would have ~3× the operator overhead with no risk reduction. The `verified_in_bundle` field on HUMAN-UAT.md makes the bundle lineage grep-able. Pattern applies whenever (a) phases share a deploy target, (b) phase items are independent enough to verify in any order, and (c) operator is available for the walk.
+
+31. **(v8.1)** Additive optional props with default-false are the right shape for orchestrator → presenter feature gates. They preserve the existing prop contract, compose at the call site without breakage, and avoid the unmount-on-toggle hazard of conditional rendering. Phase 68 D-03 / Phase 70 D-17 / Phase 74 D-02 all used this shape; now an established pattern for incremental presenter evolution without contract churn.
+
+32. **(v8.1)** The `@layer base` cascade level is the right home for app-wide native-element defaults (font-size floor, focus ring, etc.). Specificity 0,0,1 means utility classes (specificity 0,1,0) still win, so component-level overrides remain in control. shadcn primitives that already encode the right value need no change; admin-only utility classes that intentionally diverge stay diverged. No `!important` needed, no specificity wars.
+
+### Cost Observations
+
+- Model mix: ~100% opus 4.7 (planning + execution + verification)
+- Sessions: 1 (full milestone in a single GSD chain — plan-phase → execute-phase → verify → ship → close)
+- Notable: smallest milestone since v4.1 (2 days / 5 phases) — and v8.1 was 1 day / 3 phases. The bundled-deploy pattern + 47 commits (28 docs, 8 test, 5 feat, 3 fix, 3 chore) shows a healthy docs-to-code ratio for a polish milestone. Zero rework cycles; zero verification-to-replan loops; zero hotfix-after-deploy follow-ups.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -558,6 +616,8 @@
 | v5.2 | 2 days | 5/5 | First v5.x close with a formal `/gsd-audit-milestone`; audit-driven inline closeout converted `tech_debt` → `passed` (D-DRIFT-01 + D-DEBT-01 dead-code cleanup closed in audit cycle). Spike-then-execute pattern reused twice in one milestone (49 → 49.1, 50 → 50.1). Researcher caught misleading ROADMAP SC wording in Plan 50.1; planner reframed with explicit rationale. Worktree base-drift on Plan 50.1-01 tolerated via 3-way merge — pattern identified for follow-up |
 | v6.0 | 3 days | 8/8 | Largest milestone since v5.0. Bottom-up vertical layering (schema → DAL → actions → UI) with explicit cross-layer cache-tag/gate contracts; per-target tables + DAL-as-load-bearing-privacy-layer (RLS = anon-block only); DB-enforced notification dedup via partial UNIQUE + `ON CONFLICT DO NOTHING`; restructure-before-feature sequencing (56A before 57); worktrees off globally for the whole DB+build-gated milestone (config default flipped). Two prod-UAT-driven inserts (56A gap-closure, 57.1 polish). CR-01 carried from Phase 53 → resolved at the correct layer in Phase 54. Second formal `/gsd-audit-milestone` close (passed). Nyquist VALIDATION docs left at `draft` → `partial` audit signal (doc-reconciliation gap) |
 | v7.0 | 4 days | 7/7 | Hard-cutover Variant C with the CI link-audit static guard as the completeness guarantee (no parallel safety-net redirect); restructure-before-feature reused (route merge first, then carousel + wear pics + grid + IA + follow module all land once); `await connection()` static-shell opt-out as the structural fix for the React #419 soft-nav 404 family (resolves what 4 prior fixes couldn't); in-place ALTER on `watches_catalog` with `(brand, model, reference)` data-migration keys; type-only client/server imports as a strict architectural lock (Phase 65); planted follow-on phases for UAT-surfaced new-requirement families (Phase 65 not as 64.1). Mobile-only JSX dup (`lg:hidden`/`hidden lg:block`) over CSS `order-` for layout hoists. Closed WITHOUT `/gsd-audit-milestone` (mirrors v5.0/v5.1 close decision; 28 pre-close items acknowledged). `milestone.complete` extractor garbage now four milestones running. ROADMAP.md found truncated at close — reconstructed from kickoff commit |
+| v8.0 | 2 days | 6/6 | Search-first add-watch flow replacing the URL-paste-then-status-lock add path with an Omega-style typeahead + structured-LLM-fallback + lighter status-picker confirm; DUPE-01/02/03 wired end-to-end (owned auto-redirect, "Add another copy", `moveWishlistToCollection` UPDATE-not-INSERT with activity-feed + cross-user overlap notification fan-out); module-scope cache hygiene closing pre-existing CLNP-07 tech debt; ~926 LOC of legacy verdict-flow code deleted; widened Vercel prebuild from one static test to the full `tests/static/` directory and retrofitted 8 pre-existing fs-walking guards with `// @vitest-environment node`. Phase 70 gap_found → manual re-verification after Plans 06/07/08 fixes; 6 distinct prod-UAT defects captured + promoted to v8.1 polish scope. `milestone.complete` extractor garbage 4th milestone running. Worktrees disabled (config default for DB+build-gated project) |
+| v8.1 | 1 day | 3/3 | Pure subtraction-of-defects polish — closed all 6 v8.0-captured prod-UAT defects in 47 commits / 11 tasks across 3 surgical phases. Bundled-deploy pattern (single Vercel push + single iPhone UAT walk covering 6 items across 3 phases) — 6/6 passed first walk. Additive optional `bannerActive?` prop preserved Phase 68 D-03 ConfirmStep contract while closing DUPE-04. `@layer base` font-size floor for input/textarea/select as the right cascade level for app-wide native-element defaults (utilities still win, no `!important`). 5th recurrence of JSDoc-prose grep-collision pattern preempted in D-12 guard. 5th recurrence of `phase.complete` extractor garbage AND progress-counter inflation (the progress-counter bug fires even when `is_last_phase: true` — confirms the two bugs are independent). Closed without `/gsd-audit-milestone` (extends the v5.0/v5.1/v7.0/v8.0 audit-skip streak; polish-milestone close-ritual question reopened). 27 pre-close audit items acknowledged + recorded in STATE.md; 5 dormant seeds in that list actually shipped earlier and need re-classification |
 
 ### Cumulative Quality
 
