@@ -330,27 +330,26 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
     } as any)
   })
 
-  // T-70-01 — DUPE-01 owned-pick with reference → router.push /w/REF-001, no confirm.
-  it('T-70-01 — owned-pick with non-null reference → router.push("/w/REF-001"); no confirm screen', async () => {
+  // T-70-01 (Phase 73 ROUTE-01) — owned-pick with non-null reference → router.push catalogId.
+  it('T-70-01 — owned-pick with non-null reference → router.push("/w/cat-owned") (catalogId); no confirm screen, no DupeBanner', async () => {
     renderFlow()
     fireEvent.click(screen.getByText('Pick owned'))
     await waitFor(() => {
-      expect(pushSpy).toHaveBeenCalledWith('/w/REF-001')
+      expect(pushSpy).toHaveBeenCalledWith('/w/cat-owned')
     })
     expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
   })
 
-  // T-70-02 — DUPE-01 owned-pick with null reference → confirming + DupeBanner-owned (D-06).
-  it('T-70-02 — owned-pick with null reference → confirming + DupeBanner-owned mounted (D-06 fallback)', async () => {
-    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
-      success: true,
-      data: { id: 'existing-owned-id', status: 'owned', reference: null },
-    })
+  // T-70-02 (Phase 73 ROUTE-01) — owned-pick with null reference → router.push catalogId (D-04 collapse).
+  it('T-70-02 — owned-pick with null reference → router.push("/w/cat-owned-noref") (D-04 collapse); no confirm screen, no DupeBanner', async () => {
     renderFlow()
     fireEvent.click(screen.getByText('Pick owned no-ref'))
-    expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
-    expect(screen.getByTestId('confirm-step')).toBeInTheDocument()
-    expect(pushSpy).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(pushSpy).toHaveBeenCalledWith('/w/cat-owned-noref')
+    })
+    expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
   })
 
   // T-70-03 — DUPE-02 structured-submit on owned existing → DupeBanner-owned + Add another copy clears.
@@ -758,14 +757,18 @@ describe('Phase 70 gap plan 08 — WR-01 ConfirmStep gating when DupeBanner moun
     expect(screen.getByText('Confirm primary')).toBeDisabled()
   })
 
-  // WR-01 Test B — owned dupeContext set → ConfirmStep primary disabled; click does not call addWatch.
-  it('WR-01 — ConfirmStep primary CTA is disabled when owned dupeContext is set; clicking does NOT call addWatch', async () => {
+  // WR-01 Test B (Phase 73 ROUTE-01 pivot) — owned dupeContext set via structured-submit
+  // (the search-pick owned-null-ref path no longer mounts the banner after Phase 73's
+  // D-04 collapse; structured-submit is now the only remaining owned-banner producer).
+  // The invariant under test is unchanged: ConfirmStep primary is disabled; clicking
+  // the disabled CTA does NOT call addWatch.
+  it('WR-01 — ConfirmStep primary CTA is disabled when owned dupeContext is set (via structured-submit); clicking does NOT call addWatch', async () => {
     vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
       success: true,
-      data: { id: 'existing-owned-id', status: 'owned', reference: null },
+      data: { id: 'existing-owned-id', status: 'owned', reference: 'REF-OWNED' },
     })
     renderFlow()
-    fireEvent.click(screen.getByText('Pick owned no-ref'))
+    fireEvent.click(screen.getByText('Submit structured'))
     expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
     expect(screen.getByText('Confirm primary')).toBeDisabled()
 
@@ -831,25 +834,11 @@ describe('Phase 70 gap plan 08 — WR-02 known-dupe resolver failure (toast.erro
     })
   })
 
-  // WR-02 Test A — owned (null reference) + resolver failure → toast.error + stay on search-idle.
-  it('WR-02 — search-pick owned (D-06 null-ref fallthrough) with resolver failure → toast.error + stay on search-idle', async () => {
-    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
-      success: false,
-      error: 'DB down',
-    })
-    renderFlow()
-    fireEvent.click(screen.getByText('Pick owned no-ref'))
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        expect.stringContaining("Couldn't check your collection"),
-      )
-    })
-    // Stays on search-idle — no ConfirmStep, no DupeBanner.
-    expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('dupe-banner-wishlist')).not.toBeInTheDocument()
-    expect(screen.getByTestId('search-entry')).toBeInTheDocument()
-  })
+  // WR-02 Test A DELETED (Phase 73 ROUTE-01) — the "owned (D-06 null-ref fallthrough) +
+  // resolver failure → toast.error" path ceases to exist after Phase 73 collapses both
+  // owned search-pick branches into a single early-return router.push (the resolver is
+  // never consulted on the owned search-pick path). WR-02 Test B (wishlist) preserves
+  // the WR-02 invariant for the only remaining viewerState-pre-signal-with-resolver-call path.
 
   // WR-02 Test B — wishlist + resolver failure → toast.error + stay on search-idle.
   it('WR-02 — search-pick wishlist with resolver failure → toast.error + stay on search-idle', async () => {
@@ -895,7 +884,8 @@ describe('Phase 70 gap plan 08 — WR-02 known-dupe resolver failure (toast.erro
     renderFlow()
     fireEvent.click(screen.getByText('Pick owned'))
     await waitFor(() => {
-      expect(pushSpy).toHaveBeenCalledWith('/w/REF-001')
+      // Phase 73 ROUTE-01 — push target swapped from reference (REF-001) to catalogId (cat-owned).
+      expect(pushSpy).toHaveBeenCalledWith('/w/cat-owned')
     })
     expect(findViewerWatchByCatalogIdAction).not.toHaveBeenCalled()
     expect(toast.error).not.toHaveBeenCalled()
