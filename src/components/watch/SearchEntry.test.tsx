@@ -32,6 +32,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 vi.mock('next/image', () => ({
   default: (p: { src: string; alt: string }) => <img src={p.src} alt={p.alt} />,
@@ -731,6 +732,155 @@ describe('SearchEntry — pure-presenter discipline (counter-assert)', () => {
     expect(() => {
       render(<SearchEntry {...BASE_PROPS} />)
     }).not.toThrow()
+  })
+})
+
+describe('SearchEntry — keyboard arrow-key navigation (SRCH-02)', () => {
+  // Use fake timers throughout (for debounce advance). Pass `advanceTimers` to
+  // userEvent.setup() so its internal scheduling uses vi.advanceTimersByTime,
+  // avoiding the deadlock described in RESEARCH.md Pitfall 6.
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(searchCatalogForAddFlow).mockReset()
+    vi.mocked(useCatalogSearchCache).mockReturnValue({
+      get: vi.fn(() => undefined),
+      set: vi.fn(),
+    })
+    BASE_PROPS.onPick.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('(SRCH-02a) ArrowDown highlights first result; second ArrowDown moves to second; ArrowUp returns to first; Enter fires onPick', async () => {
+    // delay: null disables userEvent's internal inter-event delays so keyboard
+    // events resolve synchronously without requiring real-time advances
+    // (avoids the deadlock described in RESEARCH.md Pitfall 6).
+    const user = userEvent.setup({ delay: null })
+    vi.mocked(searchCatalogForAddFlow).mockResolvedValue({
+      success: true,
+      data: [OMEGA, ROLEX],
+    })
+
+    render(<SearchEntry {...BASE_PROPS} />)
+    const input = screen.getByRole('combobox')
+
+    // Type a multi-char query; advance fake timers past debounce; flush microtask.
+    fireEvent.change(input, { target: { value: 'speed' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    await act(async () => { await Promise.resolve() })
+
+    // Popup should be open with results.
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    input.focus()
+
+    // First ArrowDown — first option should be highlighted.
+    await user.keyboard('{ArrowDown}')
+    const options = screen.getAllByRole('option')
+    expect(options[0]).toHaveAttribute('data-highlighted', '')
+
+    // Second ArrowDown — second option should be highlighted.
+    await user.keyboard('{ArrowDown}')
+    expect(options[1]).toHaveAttribute('data-highlighted', '')
+
+    // ArrowUp — first option highlighted again.
+    await user.keyboard('{ArrowUp}')
+    expect(options[0]).toHaveAttribute('data-highlighted', '')
+
+    // Enter — fires onPick with the first row (OMEGA).
+    await user.keyboard('{Enter}')
+    expect(BASE_PROPS.onPick).toHaveBeenCalledTimes(1)
+    expect(BASE_PROPS.onPick).toHaveBeenCalledWith(OMEGA)
+  })
+
+  it('(SRCH-02b) Escape closes the popup', async () => {
+    const user = userEvent.setup({ delay: null })
+    vi.mocked(searchCatalogForAddFlow).mockResolvedValue({
+      success: true,
+      data: [OMEGA],
+    })
+
+    render(<SearchEntry {...BASE_PROPS} />)
+    const input = screen.getByRole('combobox')
+
+    fireEvent.change(input, { target: { value: 'speed' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    await act(async () => { await Promise.resolve() })
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    input.focus()
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
+    )
+  })
+})
+
+describe('SearchEntry — footer placement (SRCH-03)', () => {
+  // Fake timers for debounce advance (same pattern as other describe blocks).
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(searchCatalogForAddFlow).mockReset()
+    vi.mocked(useCatalogSearchCache).mockReturnValue({
+      get: vi.fn(() => undefined),
+      set: vi.fn(),
+    })
+    BASE_PROPS.onPick.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('(SRCH-03a) footer button is NOT a descendant of the listbox element (structural regression guard)', async () => {
+    // This test WILL FAIL against the current SearchEntry.tsx where the footer
+    // button lives INSIDE <Combobox.List> (role="listbox"). jsdom does not enforce
+    // listbox event delegation so the click test (SRCH-03b) passes either way —
+    // this structural assertion catches the prod bug that jsdom-only tests miss.
+    vi.mocked(searchCatalogForAddFlow).mockResolvedValue({
+      success: true,
+      data: [OMEGA],
+    })
+
+    render(<SearchEntry {...BASE_PROPS} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'speed' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    await act(async () => { await Promise.resolve() })
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    const footer = screen.getByRole('button', { name: /Not finding it\? Add manually/i })
+    // After the fix (Task 3), the footer button MUST NOT be inside the listbox.
+    // Before the fix, this assertion will FAIL (footer IS inside Combobox.List → IS inside listbox).
+    expect(footer.closest('[role="listbox"]')).toBeNull()
+  })
+
+  it('(SRCH-03b) clicking "Not finding it?" footer button mounts StructuredEntryPanel (behavioral regression)', async () => {
+    // This test is jsdom-tolerant (click works either way in jsdom). Its job is
+    // to provide behavioral regression coverage for the click handler after the
+    // structural relocation fix in Task 3.
+    vi.mocked(searchCatalogForAddFlow).mockResolvedValue({
+      success: true,
+      data: [OMEGA],
+    })
+
+    render(<SearchEntry {...BASE_PROPS} />)
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'speed' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    await act(async () => { await Promise.resolve() })
+
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+
+    expect(screen.queryByTestId('structured-panel-mock')).not.toBeInTheDocument()
+
+    const footer = screen.getByRole('button', { name: /Not finding it\? Add manually/i })
+    fireEvent.click(footer)
+
+    expect(screen.getByTestId('structured-panel-mock')).toBeInTheDocument()
   })
 })
 
