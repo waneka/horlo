@@ -51,16 +51,14 @@ Explicitly excluded from v8.1 to prevent scope creep:
 
 ## Requirement-to-Phase Traceability
 
-Filled by the roadmap step. Each REQ-ID maps to exactly one phase.
-
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| SRCH-01 | TBD | Pending |
-| SRCH-02 | TBD | Pending |
-| SRCH-03 | TBD | Pending |
-| ROUTE-01 | TBD | Pending |
-| DUPE-04 | TBD | Pending |
-| MOB-01 | TBD | Pending |
+| SRCH-01 | Phase 72 | Pending |
+| SRCH-02 | Phase 72 | Pending |
+| SRCH-03 | Phase 72 | Pending |
+| ROUTE-01 | Phase 73 | Pending |
+| DUPE-04 | Phase 74 | Pending |
+| MOB-01 | Phase 74 | Pending |
 
 ---
 

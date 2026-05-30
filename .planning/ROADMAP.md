@@ -13,6 +13,7 @@
 - ✅ **v6.0 Social Interaction** — Phases 53-58 + 56A + 57.1 (shipped 2026-05-24) — [archive](milestones/v6.0-ROADMAP.md)
 - ✅ **v7.0 Watch Photos & Detail Redesign** — Phases 59-65 (shipped 2026-05-28) — [archive](milestones/v7.0-ROADMAP.md)
 - ✅ **v8.0 Add-Watch Redesign** — Phases 66-71 (shipped 2026-05-29) — [archive](milestones/v8.0-ROADMAP.md)
+- 🔄 **v8.1 Add-Watch Polish** — Phases 72-74 (in progress)
 - 💤 **Catalog Expansion** — unscheduled; catalog strategy under review (SEED-009)
 - 💤 **Market Value** — future, after v8.0 (SEED-005; needs the SEED-007 pricing spike first)
 
@@ -210,15 +211,62 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 
 </details>
 
+<details open>
+<summary>🔄 v8.1 Add-Watch Polish (Phases 72-74) — IN PROGRESS</summary>
+
+- [ ] **Phase 72: Search Composition Fixes** — SRCH-01, SRCH-02, SRCH-03
+- [ ] **Phase 73: Owned-Redirect Route Fix** — ROUTE-01
+- [ ] **Phase 74: DupeBanner Gate Refinement + Mobile Polish** — DUPE-04, MOB-01
+
+**Milestone constraints:**
+- `npm run build` (exit 0) is the gate — not `tsc --noEmit` (pre-existing test-file errors) and not `vitest run` (pre-existing CommentGateLocked font-medium failure)
+- `workflow.use_worktrees = false` permanently (build-gated project; `.env.local` unavailable in worktrees)
+- Each phase ships its own targeted regression test alongside the fix
+
+</details>
+
+## Phase Details
+
+### Phase 72: Search Composition Fixes
+**Goal**: Users can find watches using multi-token queries and navigate search results with the keyboard or footer affordance
+**Depends on**: Nothing
+**Requirements**: SRCH-01, SRCH-02, SRCH-03
+**Success Criteria** (what must be TRUE):
+  1. Typing "Brut Datejust" or "Timex Weekender" returns the matching catalog row (same row that appears when typing "Brut" or "Timex" alone)
+  2. Pressing Down/Up arrow keys in the combobox moves visual focus through result rows one at a time; pressing Enter on a focused row fires `onPick` (same as clicking that row)
+  3. Clicking the "Not finding it? Add manually" footer row — when results are present — expands the inline StructuredEntryPanel with brand/model/reference pre-seeded from the current query
+  4. Keyboard navigation does not trap focus; Tab and Escape exit the popup cleanly
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 73: Owned-Redirect Route Fix
+**Goal**: Users can navigate to an owned watch from the search results and arrive at a working watch detail page
+**Depends on**: Nothing
+**Requirements**: ROUTE-01
+**Success Criteria** (what must be TRUE):
+  1. Clicking an "In collection" result in the search combobox navigates to `/w/[ref]` and the watch detail page renders (not a 404)
+  2. The redirect works for any owned watch regardless of whether its catalog row has a non-empty reference field (edge case: null/empty ref handled gracefully — either navigates to the collection or surfaces a recoverable error, not a blank 404)
+  3. No change to the redirect behavior for non-owned results (confirm screen still appears for new additions)
+**Plans**: TBD
+
+### Phase 74: DupeBanner Gate Refinement + Mobile Polish
+**Goal**: Users understand why the ConfirmStep CTA is unavailable when a DupeBanner is shown, and iOS Safari does not auto-zoom inputs across the app
+**Depends on**: Nothing
+**Requirements**: DUPE-04, MOB-01
+**Success Criteria** (what must be TRUE):
+  1. When DupeBanner is mounted on the confirm screen, the ConfirmStep primary CTA is either hidden entirely or renders copy that clearly communicates "use the banner above" — not "Saving..."
+  2. Focusing any input field (search box, form fields, comment composer, etc.) on iOS Safari does not auto-zoom the page
+  3. Intentional pinch-zoom still works after the fix — `maximum-scale=1` is NOT used in the viewport meta tag
+  4. The font-size fix does not introduce visual regressions in other form contexts (WatchForm, comment composer, filters)
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 66. API Route Extension | 2/2 | Complete    | 2026-05-28 |
-| 67. Server Action + DAL Extensions | 3/3 | Complete    | 2026-05-29 |
-| 68. ConfirmStep Component | 1/1 | Complete    | 2026-05-29 |
-| 69. SearchEntry + StructuredEntryPanel + Cache Hygiene | 6/6 | Complete   | 2026-05-29 |
-| 70. AddWatchFlow State Machine Rewrite + DUPE Wiring | 8/8 | Complete    | 2026-05-29 |
-| 71. Dead Code Cleanup + Static Guards | 2/2 | Complete    | 2026-05-29 |
+| 72. Search Composition Fixes | 0/? | Not started | - |
+| 73. Owned-Redirect Route Fix | 0/? | Not started | - |
+| 74. DupeBanner Gate Refinement + Mobile Polish | 0/? | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

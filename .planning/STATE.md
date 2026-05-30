@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-05-30T02:43:32.442Z"
 last_activity: 2026-05-30
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,17 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 71 — dead-code-cleanup-static-guards
+**Current focus:** v8.1 roadmap defined — Phase 72 is next
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap defined, planning begins)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-30 — Milestone v8.1 started
+Status: Roadmap defined — ready for /gsd-plan-phase 72
+Last activity: 2026-05-30 — v8.1 roadmap written (3 phases: 72/73/74)
+
+```
+v8.1 Progress [                              ] 0% (0/3 phases)
+```
 
 ## Performance Metrics
 
+- v8.0: 6 phases (66-71), 22 plans, 2 days, 150 commits, 39/39 reqs
 - v7.0: 7 phases (59-65), 29 plans, 4 days, 244 commits
 - 34/34 v7.0 requirements shipped (ROUTE 6, PHOTO 9, WPIC 6, GRID 5, PAGE 4, FOLL 4)
 - src/ +5,057 / −628 LOC across 65 files; tests/ +3,982 / −502 LOC across 33 files
@@ -127,7 +132,7 @@ None.
 
 ### Blockers/Concerns
 
-None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves), prod migration applied + verified.
+None.
 
 ## Deferred Items
 
@@ -165,8 +170,8 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 | seed | SEED-016-watch-detail-redesign | dormant (shipped — Phases 64+65 — re-classify) |
 
 **Total deferred:** 28 (2 debug, 1 false-positive UAT, 2 verification_gaps now in v8.1 scope, 10 quick-task backlog, 13 seeds).
-**v8.1 polish scope (formal):** 6 defects captured in `.planning/phases/69-.../69-UAT.md` + `.planning/phases/70-.../70-UAT.md` — SRCH-01 (multi-token search), SRCH-02 (combobox keyboard), SRCH-03 (footer click no-op), ROUTE-01 (/w/[ref] 404), DUPE-04 (Saving... copy), MOB-01 (iOS input zoom). v8.1 milestone opens immediately after this close.
-**Notes:** Quick-task backlog has rolled past v5.2, v6.0, v7.0, and now v8.0 closes — most were superseded by later phases. `260421-rdb-fix-404-on-watch-detail-pages-for-watche` is conceptually adjacent to ROUTE-01 from this milestone's UAT; the v8.1 ROUTE-01 plan should consider it too. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
+**v8.1 polish scope (formal):** 6 defects — SRCH-01 (multi-token search), SRCH-02 (combobox keyboard), SRCH-03 (footer click no-op), ROUTE-01 (/w/[ref] 404), DUPE-04 (Saving... copy), MOB-01 (iOS input zoom). 3 phases: 72/73/74.
+**Notes:** Quick-task backlog has rolled past v5.2, v6.0, v7.0, and now v8.0 closes — most were superseded by later phases. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
 | Phase 66 P01 | 4 | 3 tasks | 4 files |
 | Phase 66 P02 | 10 | 3 tasks | 3 files |
 | Phase 68 P01 | 429 | 2 tasks | 2 files |
@@ -186,9 +191,9 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 
 ## Session Continuity
 
-Last activity: 2026-05-29 — Phase 70 gap closure trilogy (Plans 06/07/08) COMPLETE. All 8 plans landed; VERIFICATION gaps[0..2] (CR-01, CR-02, WR-01, WR-02) all close at the code level. 12 visual UAT items bundled for Phase 71 prod push.
-Next action: `/gsd-verify-phase 70` for re-verification (expected flip 4/6 → 6/6, `gaps_found` → `passed`), then `/gsd-plan-phase 71` for the final Dead Code Cleanup + Static Guards phase. Phase 71 push deploys with bundled visual UAT.
+Last activity: 2026-05-30 — v8.1 roadmap written. 3 phases defined (72/73/74), 6/6 requirements mapped, all files written.
+Next action: `/gsd-plan-phase 72` — Search Composition Fixes (SRCH-01, SRCH-02, SRCH-03)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run /gsd-plan-phase 72 to begin Phase 72: Search Composition Fixes
