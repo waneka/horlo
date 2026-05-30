@@ -149,45 +149,17 @@ export function AddWatchFlow({
   // D-05 / D-06 / DUPE-01 / DUPE-03 entry — search-pick branch.
   const handleSearchPick = useCallback(
     async (result: SearchCatalogWatchResult) => {
-      // D-05 — owned + non-null reference → /w/[ref] redirect.
-      if (result.viewerState === 'owned' && result.reference) {
-        router.push(`/w/${encodeURIComponent(result.reference)}`)
-        return
-      }
-      // D-06 — owned + null reference → confirm with owned-banner.
+      // Phase 73 ROUTE-01 (D-01 + D-04) — both owned branches collapse to a
+      // single early-return redirect. `result.catalogId` is always a UUID and
+      // always present per the SearchCatalogWatchResult contract, so the
+      // `/w/[ref]` UUID guard at `src/app/w/[ref]/page.tsx:151` passes →
+      // Branch 2 finds the viewer's row via `findViewerWatchByCatalogId` →
+      // in-place D-06 owned render at page.tsx:472 (no client-side
+      // round-trip needed; D-03 rejects the round-trip). D-05 preserves
+      // encodeURIComponent for defense-in-depth even though catalogId is a
+      // plain UUID with no reserved chars.
       if (result.viewerState === 'owned') {
-        console.warn('[Phase 70] dupeContext: owned existing → confirm-with-banner (null reference fallback)')
-        const dupeRow = await resolveDupeContext(result.catalogId)
-        // WR-02 fix (gap plan 08): the search projection pre-signals
-        // viewerState='owned' so we KNOW a dupe exists. If the resolver returns
-        // null (transient findViewerWatchByCatalogIdAction failure), do NOT
-        // silently fall through to confirm-without-banner — surface toast.error
-        // and stay on search-idle so the user retries.
-        if (!dupeRow) {
-          toast.error("Couldn't check your collection — try again")
-          return
-        }
-        const dupeContext: DupeContext = {
-          existingWatchId: dupeRow.id,
-          existingStatus: dupeRow.status,
-          existingReference: dupeRow.reference,
-        }
-        const extracted = searchResultToExtracted(result)
-        setConfirmStatus('owned')
-        setConfirmReference(result.reference ?? '')
-        setConfirmYear(undefined)
-        setConfirmPrice(undefined)
-        setState({
-          kind: 'confirming',
-          catalogId: result.catalogId,
-          extracted,
-          pickedResult: result,
-          dupeContext,
-          pending: false,
-          // Search-pick has no inline photo affordance — the photo step happens
-          // later in WatchPhotoStep (D-17 owned gate). photoBlob stays null.
-          photoBlob: null,
-        })
+        router.push(`/w/${encodeURIComponent(result.catalogId)}`)
         return
       }
       // wishlist branch — DUPE-03 entry; pre-known dupe must succeed to mount banner.
