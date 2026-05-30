@@ -1,6 +1,21 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+// Phase 75 D-19 invariant — any new mutation action in this file that affects
+// the actor's collection state (add / move / edit / remove / status flip /
+// catalog re-link) MUST call `updateTag(`viewer:${user.id}:recs`)` to
+// invalidate the home "From collectors like you" rail. The rail registers
+// the matching cacheTag in src/components/home/CollectorsLikeYou.tsx; without
+// this update the rail goes stale until the 1hr cacheLife('minutes') expire
+// window. Per Phase 75 D-02 / D-03 the read-your-own-write contract requires
+// IMMEDIATE invalidation, NOT stale-while-revalidate. In Next 16, the
+// canonical primitive for read-your-own-writes from Server Actions is
+// `updateTag` (single arg). The single-arg form `revalidateTag(tag)` is
+// deprecated per node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md;
+// the Next 16 docs explicitly direct read-your-own-writes use cases to
+// `updateTag` (see node_modules/next/dist/docs/.../functions/updateTag.md).
+// Cross-user fan-out call sites in this file keep `revalidateTag(tag, 'max')`
+// for stale-while-revalidate semantics — that pattern is unchanged.
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@/db'
@@ -318,6 +333,11 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     }
 
     revalidatePath('/')
+    // Phase 75 D-02/D-03 — per-viewer home rec rail invalidation. updateTag
+    // is the Next 16 read-your-own-writes primitive for Server Actions
+    // (single-arg form of revalidateTag is deprecated; see header comment).
+    // Matches the cacheTag registered in src/components/home/CollectorsLikeYou.tsx.
+    updateTag(`viewer:${user.id}:recs`)
     revalidatePath('/u/[username]', 'layout')
 
     // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so the
@@ -506,6 +526,10 @@ export async function moveWishlistToCollection(
 
     // ── Cache invalidation matrix (mirrors addWatch:319-341 verbatim) ──
     revalidatePath('/')
+    // Phase 75 D-02/D-03 — per-viewer home rec rail invalidation. updateTag
+    // is the Next 16 read-your-own-writes primitive for Server Actions
+    // (single-arg form of revalidateTag is deprecated; see header comment).
+    updateTag(`viewer:${user.id}:recs`)
     revalidatePath('/u/[username]', 'layout')
     const ownerProfile = await getProfileById(user.id)
     if (ownerProfile?.username) {
@@ -646,6 +670,10 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
 
     const watch = updatedWatch
     revalidatePath('/')
+    // Phase 75 D-02/D-03 — per-viewer home rec rail invalidation. updateTag
+    // is the Next 16 read-your-own-writes primitive for Server Actions
+    // (single-arg form of revalidateTag is deprecated; see header comment).
+    updateTag(`viewer:${user.id}:recs`)
     revalidatePath('/u/[username]', 'layout')
 
     // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so the
@@ -694,6 +722,10 @@ export async function removeWatch(watchId: string): Promise<ActionResult<void>> 
 
     await watchDAL.deleteWatch(user.id, watchId)
     revalidatePath('/')
+    // Phase 75 D-02/D-03 — per-viewer home rec rail invalidation. updateTag
+    // is the Next 16 read-your-own-writes primitive for Server Actions
+    // (single-arg form of revalidateTag is deprecated; see header comment).
+    updateTag(`viewer:${user.id}:recs`)
 
     // Phase 39c D-39c-04 — invalidate the owner's cached profile shell so the
     // next /u/{owner} render reflects the new watch count, taste tags, and
