@@ -261,7 +261,9 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
   2. Focusing any input field (search box, form fields, comment composer, etc.) on iOS Safari does not auto-zoom the page
   3. Intentional pinch-zoom still works after the fix — `maximum-scale=1` is NOT used in the viewport meta tag
   4. The font-size fix does not introduce visual regressions in other form contexts (WatchForm, comment composer, filters)
-**Plans**: TBD
+**Plans**: 2 plans (wave 1 parallel — zero file overlap between DUPE-04 and MOB-01)
+- [ ] 74-01-PLAN.md — DUPE-04: ConfirmStep hides Section 6 primary CTA when DupeBanner is mounted (additive bannerActive prop + AddWatchFlow revert + 3 pivoted WR-01 tests + 1 new Test D)
+- [ ] 74-02-PLAN.md — MOB-01: global @layer base font-size floor (input/textarea/select) + 3 className rewrites (text-sm → text-base md:text-sm) + 2 fs-walking static guards (viewport meta + native-form-control className)
 **UI hint**: yes
 
 ## Progress
