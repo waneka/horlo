@@ -1,9 +1,9 @@
 import 'server-only'
 
-import { and, eq, ne } from 'drizzle-orm'
+import { and, asc, desc, eq, ne } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { profiles, profileSettings } from '@/db/schema'
+import { profiles, profileSettings, watchesCatalog } from '@/db/schema'
 import { getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
 import { getAllWearEventsByUser } from '@/data/wearEvents'
@@ -14,10 +14,38 @@ import type { Recommendation } from '@/lib/discoveryTypes'
 import type { Watch } from '@/lib/types'
 
 /**
- * Top-N similar collectors sampled per recommendation request (CONTEXT.md C-01).
- * At MVP scale (<500 public collectors) a single-pass scan is acceptable.
+ * Pool of top similar collectors from which we deterministically sample
+ * SAMPLED_SEED_SIZE per 6h window (Phase 75 D-06). Bumped from 15 → 30 to
+ * double the rotation surface area; Postgres cost is unchanged because the
+ * dominant cost is the per-public-profile overlap loop (linear in public-
+ * collector count), not the slice size.
  */
-const SEED_POOL_SIZE = 15
+const SEED_POOL_SIZE = 30
+
+/**
+ * Post-shuffle take count — the actual number of seed collectors whose owned
+ * watches feed the candidate-map build (Phase 75 D-09). Mirrors the legacy
+ * pre-rotation SEED_POOL_SIZE so the candidate-pool size for a typical render
+ * is unchanged.
+ */
+const SAMPLED_SEED_SIZE = 15
+
+/**
+ * 6-hour rotation window — rail rotates 4× per day (Phase 75 D-07).
+ * Same window → same seed → same shuffled order → same recs (cache-stable
+ * within `cacheLife('minutes')` 1hr expire). Next window → different recs.
+ * Faster (e.g., 1h) would defeat the cache; slower (24h) feels stale.
+ */
+const ROTATION_WINDOW_MS = 6 * 60 * 60 * 1000
+
+/**
+ * Sparse-pool guard — if post-exclusion `candidateMap.size` falls below this
+ * threshold, `topUpFromCatalogPopularity()` appends synthetic catalog-
+ * popularity recs until the rail has at least this many cards (Phase 75 D-10).
+ * Below 8 the home rail "From Collectors Like You" feels broken — operator
+ * observation 2026-05-30.
+ */
+const SPARSE_POOL_THRESHOLD = 8
 
 /** Maximum cards surfaced in the UI (CONTEXT.md C-04: "cap ~12"). */
 const REC_CAP = 12
@@ -120,10 +148,23 @@ export async function getRecommendationsForViewer(
     }),
   )
 
-  // 5. Top SEED_POOL_SIZE.
-  const seeds = overlapScores
+  // 5. Top SEED_POOL_SIZE (30 per D-06), then deterministically sample
+  //    SAMPLED_SEED_SIZE (15) per 6h window per D-07/D-08/D-09 — Fisher-Yates
+  //    shuffle of the top-30 using mulberry32(seedFor(viewerId, windowBucket))
+  //    then take the first SAMPLED_SEED_SIZE. Highest-overlap collectors still
+  //    bias toward selection because the shuffle is uniform over 30 entries
+  //    (the top-15 by rank hit ~50% of the post-shuffle first-15 on average).
+  const rankedTop30 = overlapScores
     .sort((a, b) => b.score - a.score)
     .slice(0, SEED_POOL_SIZE)
+  const windowBucket = Math.floor(Date.now() / ROTATION_WINDOW_MS)
+  const rng = mulberry32(seedFor(viewerId, windowBucket))
+  // Fisher-Yates shuffle in-place using the seeded PRNG.
+  for (let i = rankedTop30.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[rankedTop30[i], rankedTop30[j]] = [rankedTop30[j], rankedTop30[i]]
+  }
+  const seeds = rankedTop30.slice(0, SAMPLED_SEED_SIZE)
 
   // 6. Build candidate pool. Exclude viewer's owned/wishlist/grail (C-02 +
   //    normalized-dedupe per C-07: .trim().toLowerCase()).
@@ -139,7 +180,12 @@ export async function getRecommendationsForViewer(
   interface CandidateRow {
     key: string
     watch: Watch
-    ownerId: string
+    /**
+     * Owner id of the representative instance, or `null` for synthetic catalog-
+     * popularity top-up rows appended by `topUpFromCatalogPopularity()` per
+     * Phase 75 D-12 — those rows have no single owner.
+     */
+    ownerId: string | null
     count: number
   }
   const candidateMap = new Map<string, CandidateRow>()
@@ -160,6 +206,21 @@ export async function getRecommendationsForViewer(
         })
       }
     }
+  }
+
+  // 6b. Sparse-pool top-up (Phase 75 D-10/D-11/D-12/D-13/D-14). When viewer
+  //     exclusion collapses the candidate pool below SPARSE_POOL_THRESHOLD,
+  //     append synthetic catalog-popularity rows (ordered by
+  //     watches_catalog.ownersCount DESC, brand ASC) until the rail can render
+  //     at least SPARSE_POOL_THRESHOLD cards. Synthetic rows carry
+  //     `ownerId: null` (D-12) + `count: 0`, which routes them through the
+  //     existing community-fallback rationale "Popular in the community"
+  //     (D-13 — no new rationale template). Determinism within the 6h window
+  //     is guaranteed by the daily pg_cron refresh of ownersCount (D-14), so
+  //     the top-up does not need PRNG seeding.
+  if (candidateMap.size < SPARSE_POOL_THRESHOLD) {
+    const needed = SPARSE_POOL_THRESHOLD - candidateMap.size
+    await topUpFromCatalogPopularity(candidateMap, excluded, needed)
   }
 
   // 7. Score + rationale per candidate.
@@ -190,4 +251,123 @@ export async function getRecommendationsForViewer(
   return recs
     .sort((a, b) => b.score - a.score || a.brand.localeCompare(b.brand))
     .slice(0, REC_CAP)
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase 75 D-08/D-09 — deterministic-per-6h-window sampling helpers.
+//
+// `seedFor` + `mulberry32` are EXPORTED so the unit test suite at
+// `src/data/__tests__/recommendations.test.ts` (Phase 75 D-16) can exercise
+// them directly without DB mocks.
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cheap deterministic 32-bit hash combining `viewerId` with a 6h windowBucket.
+ * Same (viewerId, windowBucket) → same output; different input → different
+ * output (with the usual djb2-style avalanche). Pure, no external deps.
+ *
+ * Used by `getRecommendationsForViewer` to seed the per-window PRNG that
+ * shuffles the top-30 collector pool before taking the first 15 (D-09).
+ */
+export function seedFor(viewerId: string, windowBucket: number): number {
+  let h = windowBucket >>> 0
+  for (let i = 0; i < viewerId.length; i++) {
+    h = ((h << 5) - h + viewerId.charCodeAt(i)) >>> 0
+  }
+  return h
+}
+
+/**
+ * mulberry32 — fast, well-distributed 32-bit PRNG. Pure (no state outside the
+ * returned closure), deterministic for a given seed, no external dependency
+ * (~5 lines). Used by `getRecommendationsForViewer` for the Fisher-Yates
+ * shuffle of the top-30 collector pool (D-08).
+ *
+ * Not cryptographically secure — and intentionally so (T-75-02-02): the PRNG
+ * controls UX rotation, not authorization.
+ */
+export function mulberry32(seed: number): () => number {
+  let s = seed >>> 0
+  return function () {
+    s = (s + 0x6d2b79f5) >>> 0
+    let t = s
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Phase 75 D-10/D-11/D-14 — sparse-pool catalog-popularity top-up.
+ *
+ * Mutates `candidateMap` in place by appending up to `needed` synthetic
+ * catalog rows ordered by `(watches_catalog.ownersCount DESC, brand ASC)`,
+ * skipping any row whose normalized (brand|model) key is already present in
+ * `candidateMap` or in `excluded` (viewer's owned/wishlist/grail set).
+ *
+ * Synthetic rows carry:
+ *   - `ownerId: null` (D-12 — no single owner; surfaces as
+ *     `representativeOwnerId: null` on the resulting Recommendation)
+ *   - `count: 0` (routes through community-fallback rationale per D-13)
+ *   - a synthetic Watch shape sufficient for the existing map step to render
+ *     a Recommendation (id = catalog row id; tag arrays empty so no rule-
+ *     template fires)
+ *
+ * Determinism within the 6h window is provided by the daily pg_cron refresh
+ * of `watches_catalog.ownersCount` at 03:00 UTC (D-14) — no PRNG needed.
+ *
+ * Per D-11 the query uses `ownersCount` ONLY (NOT `ownersCount + wishlist`
+ * + Count) because ownership is the semantic match for the rail title
+ * "collectors LIKE YOU own."
+ */
+export async function topUpFromCatalogPopularity(
+  candidateMap: Map<
+    string,
+    { key: string; watch: Watch; ownerId: string | null; count: number }
+  >,
+  excluded: Set<string>,
+  needed: number,
+): Promise<void> {
+  if (needed <= 0) return
+
+  const rows = await db
+    .select({
+      id: watchesCatalog.id,
+      brand: watchesCatalog.brand,
+      model: watchesCatalog.model,
+      reference: watchesCatalog.reference,
+      imageUrl: watchesCatalog.imageUrl,
+      ownersCount: watchesCatalog.ownersCount,
+    })
+    .from(watchesCatalog)
+    .orderBy(desc(watchesCatalog.ownersCount), asc(watchesCatalog.brand))
+    .limit(20)
+
+  let appended = 0
+  for (const row of rows) {
+    if (appended >= needed) break
+    const key = `${row.brand.trim().toLowerCase()}|${row.model.trim().toLowerCase()}`
+    if (excluded.has(key)) continue
+    if (candidateMap.has(key)) continue
+    // Synthetic Watch shape — only the fields downstream consumers read.
+    const syntheticWatch: Watch = {
+      id: row.id,
+      brand: row.brand,
+      model: row.model,
+      status: 'owned',
+      movement: 'auto',
+      complications: [],
+      styleTags: [],
+      designTraits: [],
+      roleTags: [],
+      imageUrl: row.imageUrl ?? undefined,
+    }
+    candidateMap.set(key, {
+      key,
+      watch: syntheticWatch,
+      ownerId: null,
+      count: 0,
+    })
+    appended++
+  }
 }
