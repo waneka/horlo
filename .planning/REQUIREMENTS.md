@@ -1,0 +1,42 @@
+# Requirements: v8.2 Discovery Freshness
+
+**Milestone:** v8.2 Discovery Freshness
+**Started:** 2026-05-30
+**Source:** SEED-017 (planted 2026-05-30 from operator observation that the home "From Collectors Like You" rail surfaces the same ~2 watches across collection changes despite being the largest above-the-fold content slot)
+**Pattern:** Surgical defect-fix milestone (mirrors v4.1 / v5.1 / v5.2 / v8.1 polish-milestone shape — small N of req-IDs, all UAT-verified on prod, bundled deploy)
+
+## Goal
+
+The home page's "From Collectors Like You" rail responds to collection changes (read-your-own-write) and visibly rotates across sessions even when the candidate pool is sparse.
+
+## v1 Requirements (this milestone)
+
+### Discovery (DISC-RECS)
+
+- [ ] **DISC-RECS-CACHE**: The "From Collectors Like You" home rail refreshes on the next home-page render whenever the viewer's collection changes — no stale-up-to-1-hour gap. Specifically: after `addWatch`, `editWatch`, `removeWatch`, or `moveWishlistToCollection`, the rail re-computes from current state on the user's next render. Implementation: `CollectorsLikeYou.tsx` registers `cacheTag('viewer:${viewerId}:recs')`; the 4 watch mutation actions in `src/app/actions/watches.ts` call `revalidateTag('viewer:${user.id}:recs')` with default (non-`'max'`) semantics so the change is read-your-own-write, not stale-while-revalidate. Cross-user cache-key safety (Pitfall 7 from v2.0 Phase 10) preserved — `viewerId` stays in the cache key.
+
+- [ ] **DISC-RECS-VARIATION**: The "From Collectors Like You" home rail visibly rotates across sessions ≥6 hours apart (no collection change between) — at least 30% of cards are distinct between renders. When the post-viewer-exclusion candidate pool is genuinely <8, the rail tops up from `watches_catalog.count` popularity so the rail always renders multiple cards (never 1-2). Implementation: bump `SEED_POOL_SIZE` 15→30 in `src/data/recommendations.ts`; add deterministic-per-time-window sampling (PRNG seeded by `(viewerId, floor(Date.now() / 6h))` — same window = same recs = cache-stable; next window = different recs = rail rotates 4× daily); add `topUpFromCatalogPopularity` helper invoked when `candidateMap.size < 8` after the viewer-owned/wishlist/grail exclusion sweep. Rule-based rationale templates in `src/lib/recommendations.ts` unchanged (no LLM — hybrid recommender is SEED-002 future work).
+
+## Out of Scope (intentional — folds into SEED-002 hybrid recommender if pursued later)
+
+- LLM-based rationale generation — rule-based stays rule-based per v2.0 CONTEXT C-03
+- Collaborative filtering, content-based, or graph recommendation layers
+- Persistent recommendation history beyond the lightweight 6h-window stability (no `viewer_rec_history` table this milestone)
+- Cross-device user-state sync for "seen recs"
+- Personal Insights freshness audit — separate component, likely same cache-tag pattern but verify per-component (open question for SEED-017's discuss-phase if pursued)
+- Suggested Collectors freshness audit — separate DAL + LoadMore state machine, scope intentionally narrowed to recs rail only this milestone
+- New UI surface — the rail's visual shape, copy, and layout are unchanged
+- Catalog content changes — v9.0 Catalog Expansion handles catalog growth; this milestone works against the catalog as-it-is
+
+## Future Requirements (deferred to v9.0+ or SEED-002)
+
+- Hybrid recommender (CF + content + graph) — SEED-002, future paid-feature candidate per `project_monetization_stance_2026_05_06` (built free per v6.0+ stance)
+- Onboarding cold-start flow — SEED-003, dormant
+- Catalog expansion (richer candidate pool, makes the candidate-pool-floor top-up unnecessary) — v9.0 next milestone, SEED-009
+
+## Traceability
+
+| REQ-ID | Description | Phase | Status |
+|--------|-------------|-------|--------|
+| DISC-RECS-CACHE | Rail refreshes on collection mutation (read-your-own-write) | Phase 75 (TBD by roadmapper) | Not started |
+| DISC-RECS-VARIATION | Rail rotates across 6h+ sessions + sparse-pool top-up | Phase 75 (TBD by roadmapper) | Not started |
