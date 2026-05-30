@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: verifying
-last_updated: "2026-05-30T18:09:30.900Z"
+status: executing
+last_updated: "2026-05-30T20:31:51.403Z"
 last_activity: 2026-05-30
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -20,18 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 73 — owned-redirect-route-fix
+**Current focus:** Phase 74 — DupeBanner Gate Refinement + Mobile Polish
 
 ## Current Position
 
-Phase: 73 (owned-redirect-route-fix) — CODE COMPLETE, READY FOR VERIFICATION
-Plan: 1 of 1 (complete)
-Status: Phase 73 code-side complete; ready for /gsd-verify-phase 73; prod click-through human_needed (bundles with Phase 74 deploy if same session per CONTEXT.md D-09 step 3)
-Next: /gsd-verify-phase 73  →  /gsd-plan-phase 74  →  /gsd-execute-phase 74  →  prod push (bundled)
-Last activity: 2026-05-30 — Phase 73 execution complete (3 tasks, 2 files, build exit 0, 27/27 vitest green)
+Phase: 74 (DupeBanner Gate Refinement + Mobile Polish) — EXECUTING
+Plan: 2 of 2
+Status: Executing Phase 74 Plan 02 (MOB-01 — global font-size floor + className rewrites + 2 static guards)
+Next: /gsd-execute-phase 74 (Plan 02)  →  bundled prod push (Phases 72+73+74)
+Last activity: 2026-05-30 — Phase 74 Plan 01 execution complete (DUPE-04 closed structurally: ConfirmStep primary CTA now hidden entirely under DupeBanner via additive bannerActive?: boolean prop; 4 WR-01 tests green incl. new Test D)
 
 ```
-v8.1 Progress [██████████                    ] 33% (1/3 phases)
+v8.1 Progress [█████████████████████████     ] 80% (4/5 plans across 3 phases — Phase 72 done, Phase 73 done, Phase 74 Plan 01 done; Plan 02 next)
 ```
 
 **STATE.md hand-correction (recurrence-5 of `project_phase_complete_999_1_misset`):** `gsd-sdk query phase.complete 72` returned `next_phase: null` + `is_last_phase: true` and rewrote frontmatter to `status: milestone_complete / completed_phases: 2 / percent: 200`. ROADMAP is fine (Phase 72 marked Complete, 73+74 Not started). STATE.md hand-fixed back to the real next phase.
@@ -49,6 +49,12 @@ v8.1 Progress [██████████                    ] 33% (1/3 phas
 ## Accumulated Context
 
 ### Key Decisions
+
+- **Phase 74 D-01/D-02 — DUPE-04 hide-CTA-entirely via additive bannerActive prop** (Phase 74 Plan 01) — when DupeBanner is mounted (`state.dupeContext != null`), the ConfirmStep primary CTA (`Section 6` at `ConfirmStep.tsx:311-325`) is NOT rendered at all — no "Saving..." copy, no disabled stub, no placeholder. ConfirmStepProps gains additive optional `bannerActive?: boolean` (default false) per Phase 68 D-03 additive-extension contract; Section 6 wrapped in `{!bannerActive && (<Button ...>...</Button>)}`. AddWatchFlow.tsx:694 reverts `pending={state.pending || state.dupeContext != null}` → `pending={state.pending}` (Phase 68 D-03 pending-semantic purity restored — pending = real async work only) + new adjacent `bannerActive={state.dupeContext != null}` prop. Phase 70 D-11 DupeBanner sibling pattern UNCHANGED.
+- **Phase 74 D-03 — ghost row stays mounted while bannerActive=true** (Phase 74 Plan 01) — "Edit details" and "Start over" Section 5 ghost buttons (`ConfirmStep.tsx:289-308`) remain mounted and clickable while the banner is active; price/reference/year inputs remain editable. ONLY Section 6's primary `<Button>` is removed from the DOM. Pending revert (D-02) means ghost buttons remain enabled while `state.pending === false` (the default when no real async work is in flight) regardless of bannerActive.
+- **Phase 74 D-04 + D-10 — disappearance-paired assertion pivot for 3 WR-01 tests + new Test D** (Phase 74 Plan 01) — the 3 existing Phase 70 gap-plan-08 WR-01 tests in `AddWatchFlow.test.tsx` pivot from `toBeDisabled()` assertions to disappearance assertions (`queryByText('Confirm primary').not.toBeInTheDocument()`) PAIRED with banner-appears assertions on `data-testid='dupe-banner-{owned|wishlist}'`. Triple-assertion pattern per `feedback_test_assert_disappearance_too` (recurrence-3 — first shipped Phase 72 SRCH-03b, second Phase 73 ROUTE-01). New WR-01 Test D added: pure absence-by-construction — `bannerActive=true` → CTA absent → addWatch never called; closes DUPE-04 SC#1.
+- **Phase 74 ConfirmStep mock honors bannerActive in test file** (Phase 74 Plan 01) — vi.mock for `@/components/watch/ConfirmStep` in `AddWatchFlow.test.tsx` updated to destructure `bannerActive` and OMIT the `<button onClick={onPrimary}>Confirm primary</button>` when `bannerActive===true` (Start over + Edit details ghost buttons stay rendered, mirrors D-03). Without the mock update, jsdom would not observe the disappearance and the disappearance-pair pattern would be silently bypassed. New durable lesson: when production conditionally renders DOM under a prop, the test mock MUST honor the same prop or the structural-absence contract is unverifiable.
+- **Phase 74 JSDoc-prose grep-collision (recurrence-4) preempted** (Phase 74 Plan 01) — the new ConfirmStep `bannerActive?` JSDoc initially referenced "Section 6 primary CTA" verbatim, which doubled `grep -c 'Section 6' ConfirmStep.tsx` (JSDoc + actual `{/* Section 6 ... */}` block comment). Reworded JSDoc to "the primary CTA in the final section" — single source of truth restored. Recurrence-4 of the JSDoc-as-grep-target pattern documented in Phase 64 (CommentThread), Phase 69 (StructuredEntryPanel quartet), and Phase 70 Plan 04 (RailEntry/VerdictBundle). Future plans: prefer paraphrased prose for any literal token that an AC grep targets.
 
 - **Phase 73 D-01 — search-pick owned redirect uses catalogId UUID, not reference model number** (Phase 73 Plan 01) — `handleSearchPick` owned branch now pushes `/w/${encodeURIComponent(result.catalogId)}` (UUID, always present per `SearchCatalogWatchResult` contract) instead of `result.reference` (a brand-supplied model number string like `REF-001` that failed the `/w/[ref]` UUID regex at `src/app/w/[ref]/page.tsx:151` → 404). The new slug passes the guard → Branch 2 `findViewerWatchByCatalogId` at page.tsx:439 resolves ownership server-side → in-place D-06 owned render at page.tsx:472. Phase 59 D-04 UUID-only invariant preserved (D-02 — route handler untouched). No client-side round-trip added (D-03). encodeURIComponent preserved for defense-in-depth (D-05).
 - **Phase 73 D-04 — both owned search-pick branches collapsed to single early-return push** (Phase 73 Plan 01) — the Phase 70 D-06 "owned + null reference → confirm-with-banner" branch ceases to exist on the search-pick path (catalogId is always present, so the null-reference case is mooted). Removed: `resolveDupeContext` round-trip, `toast.error` path, `setConfirmStatus('owned')` setup, and the entire `setState({ kind: 'confirming', ... })` transition for the owned-null-ref search-pick case. The D-06 "confirm-with-banner" pattern remains in use on `handleStructuredSubmit` and `handleUrlBackup` branches — untouched. Both Pick owned + Pick owned no-ref test buttons now redirect identically.
@@ -199,6 +205,7 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 | Phase 72-search-composition-fixes P01 | 3min | 2 tasks | 2 files |
 | Phase 72-search-composition-fixes P02 | 15min | 3 tasks | 2 files |
 | Phase 73 P01 | 4min | 3 tasks | 2 files |
+| Phase 74 P01 | 6min | 3 tasks | 3 files |
 
 ## Quick Tasks Completed
 
@@ -208,8 +215,8 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 
 ## Session Continuity
 
-Last activity: 2026-05-30 — Phase 73 Plan 01 execution complete. ROUTE-01 fixed: handleSearchPick owned branches collapsed to single early-return router.push catalogId; T-70-01 + T-70-02 + WR-02 Test D push targets swapped to /w/cat-owned[-noref]; WR-02 Test A deleted; WR-01 Test B pivoted to structured-submit. 27/27 vitest green. npm run build exit 0.
-Next action: /gsd-verify-phase 73 → plan Phase 74 → execute → bundle prod push.
+Last activity: 2026-05-30 — Phase 74 Plan 01 execution complete. DUPE-04 closed structurally: ConfirmStep gains additive bannerActive?: boolean prop (default false; Phase 68 D-03 additive-extension contract); Section 6 primary CTA wrapped in `{!bannerActive && (...)}` early-return null; AddWatchFlow.tsx:694 reverts pending OR-gate to pending={state.pending} + new bannerActive={state.dupeContext != null}; 3 WR-01 tests pivoted to disappearance-paired assertions + new Test D (pure absence-by-construction) added — 28/28 targeted vitest green (was 27 + 1 new); npm run build exit 0; font-medium guardrail intact (0 in both modified files).
+Next action: /gsd-execute-phase 74 Plan 02 (MOB-01 — global font-size floor + 3 className rewrites + 2 static guards) → bundled prod push (Phases 72+73+74 single deploy walk per CONTEXT D-15).
 
 ## Operator Next Steps
 

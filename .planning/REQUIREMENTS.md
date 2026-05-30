@@ -23,7 +23,7 @@ Each defect from v8.0's prod UAT walk is captured as a user-centric requirement.
 
 ### DupeBanner UX (1 requirement)
 
-- [ ] **DUPE-04**: User sees a clear, non-ambiguous reason why the ConfirmStep primary CTA is disabled when DupeBanner is mounted — the CTA either hides entirely while the banner is active (verifier's "alternative fix" per 70-VERIFICATION.md WR-01), or differentiates "gated by banner" from "saving in progress" via distinct copy. The current "Saving..." copy on a stuck button does not satisfy this requirement.
+- [x] **DUPE-04**: User sees a clear, non-ambiguous reason why the ConfirmStep primary CTA is disabled when DupeBanner is mounted — the CTA either hides entirely while the banner is active (verifier's "alternative fix" per 70-VERIFICATION.md WR-01), or differentiates "gated by banner" from "saving in progress" via distinct copy. The current "Saving..." copy on a stuck button does not satisfy this requirement.
 
 ### Mobile (1 requirement)
 
@@ -57,7 +57,7 @@ Explicitly excluded from v8.1 to prevent scope creep:
 | SRCH-02 | Phase 72 | Complete |
 | SRCH-03 | Phase 72 | Complete |
 | ROUTE-01 | Phase 73 | Complete |
-| DUPE-04 | Phase 74 | Pending |
+| DUPE-04 | Phase 74 | Complete |
 | MOB-01 | Phase 74 | Pending |
 
 ---
