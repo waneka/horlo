@@ -1,5 +1,43 @@
 # Milestones
 
+## v8.0 Add-Watch Redesign (Shipped: 2026-05-29)
+
+**Phases completed:** 6 phases (66, 67, 68, 69, 70, 71), 22 plans
+**Timeline:** 2 days (2026-05-28 → 2026-05-29)
+**Scope:** 63 files changed, +7,894 / −2,226 LOC across src/ and tests/
+**Git range:** 150 commits (`b201ada8` → `8b6a405d`)
+**Requirements:** 39/39 v8.0 requirements shipped (EXTR 8, SRCH 10, CONF 11, DUPE 3, CLNP 7)
+
+**Key accomplishments:**
+
+1. **Search-first add-watch flow** — Replaced the verdict-driven add path with an Omega-style typeahead → confirm/redirect orchestrator. `/watch/new` now opens with `SearchEntry` (`@base-ui/react/combobox` 1.3.0); typing ≥2 chars after a 250ms debounce hits `searchCatalogForAddFlow` Server Action; results render brand/model/reference/cover-photo rows with "In collection" / "On wishlist" viewer-state badges (Phases 67 + 69 + 70).
+2. **DUPE-01/02/03 wired end-to-end** — Owned `viewerState` auto-redirects to `/w/[ref]` (no confirm shown); "Add another copy" affordance for legitimate duplicates; `moveWishlistToCollection` UPDATE-not-INSERT for wishlist → owned status flip with activity-feed + cross-user overlap notification fan-out (Phase 70 Plans 02 + 03 + 05; Phase 67 Plan 01 DAL).
+3. **Module-scope cache hygiene** — All four caches (`useCatalogSearchCache`, `useStructuredExtractCache`, `useUrlExtractCache`, `useWatchSearchVerdictCache`) now reset on user-switch via shared `lastUserId` guard; CLNP-07 closes the pre-existing `useWatchSearchVerdictCache` tech debt in the same change (Phase 69 Plans 02 + 03 + 06).
+4. **ConfirmStep + DupeBanner + StructuredEntryPanel** — Three pure-presenter components for the new flow: status-picker with grail option, status-gated price field, 3-tier image fallback (ConfirmStep); "View existing" / "Add another copy" / "Move to Collection" affordances above ConfirmStep (DupeBanner); 4-field inline-mounted entry form with EXIF-cleaned photo blob forwarded through commit (StructuredEntryPanel) (Phases 68 + 70 Plan 02 + Plan 06).
+5. **`/api/extract-watch` structured mode** — New `mode: 'structured'` discriminator short-circuits HTML scraping; `llm-structured.ts` sibling Anthropic strict-tool-use extractor; `validateAndCleanData` promoted to public surface for cross-mode reuse (Phase 66).
+6. **Dead-code subtraction + structural guards** — `VerdictStep`, `WishlistRationalePanel`, `PasteSection`, `RecentlyEvaluatedRail` (+ test files) deleted; ~926 LOC removed; `flowTypes.ts` pruned 93 → 64 lines; `AddWatchFlow.tsx`'s 10 rail/setRail/railRef sites swept; 2 new `// @vitest-environment node` static guards prevent reintroduction; Vercel prebuild widened to full `tests/static/` directory; 8 pre-existing fs-walking guards retrofitted with the directive to close the Phase 59 landmine class structurally (Phase 71).
+
+**Known deferred (formally v8.1 polish scope):**
+
+6 defects captured via post-deploy human UAT on prod (`418f0515`):
+
+- **SRCH-01** (blocker): Multi-token search (`Brut Datejust`, `Timex Weekender`) returns zero matches when brand alone matches
+- **SRCH-02** (major): Combobox keyboard navigation broken — Up/Down/Enter all dead
+- **SRCH-03** (major): "Not finding it?" footer click is a no-op
+- **ROUTE-01** (blocker): Owned-redirect `/w/[ref]` resolves 404
+- **DUPE-04** (major): WR-01 gate surfaces as misleading "Saving..." copy
+- **MOB-01** (minor): iOS Safari input zoom on focus (whole app)
+
+Phase 70's 8 + Phase 69's 4 human_verification items walked: 9 pass / 0 partial / 6 distinct defects across 3 issue tests. v8.1 polish milestone opens next.
+
+**Notable engineering work:**
+
+- 70-VERIFICATION.md required manual re-verification after Plans 70-06/07/08 closed CR-01 (StructuredEntryPanel photo blob), CR-02 (`movement: 'auto'` data corruption), WR-01 (ConfirmStep dupe-gate), WR-02 (silent dupe fallthrough) — `phase.complete` flow doesn't re-run the verifier automatically. Score flipped `gaps_found` (4/6) → `passed` (6/6).
+- Phase 70's `gaps_found` was almost missed during /gsd-progress audit — VERIFICATION.md frozen at pre-fix timestamp; surfaced + re-verified inline during milestone close.
+- `phase.complete` SDK verb mis-archived (phase dirs not migrated, extractor garbage in accomplishments, CLNP-01..04 checkboxes not flipped) — all hand-corrected at close. 4th recurrence of the extractor pattern (v6.0, v7.0, v8.0).
+
+---
+
 ## v7.0 Watch Photos & Detail Redesign (Shipped: 2026-05-28)
 
 **Phases completed:** 7 phases (59, 60, 61, 62, 63, 64, 65), 29 plans

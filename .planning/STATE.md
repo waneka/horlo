@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Add-Watch Redesign
-status: milestone_complete
-last_updated: "2026-05-29T19:29:33.935Z"
-last_activity: 2026-05-29
+status: Awaiting next milestone
+last_updated: "2026-05-30T01:11:56.863Z"
+last_activity: 2026-05-30 — Milestone v8.0 completed and archived
 progress:
   total_phases: 6
   completed_phases: 6
@@ -24,11 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 ## Current Position
 
-Phase: 71
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-05-29
-Resume file: .planning/phases/71-dead-code-cleanup-static-guards/71-CONTEXT.md
+Phase: Milestone v8.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-30 — Milestone v8.0 completed and archived
 
 ## Performance Metrics
 
@@ -132,17 +131,17 @@ None. Phase 60 COMPLETE — all 4 plans, verification passed (10/10 must-haves),
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
+Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 
 | Category | Item | Status |
 |----------|------|--------|
-| debug_session | knowledge-base | unknown (empty/stale) |
-| debug_session | mobile-title-above-fold | diagnosed (resolved by Phase 64-05) |
-| uat_gap | Phase 59 — 59-HUMAN-UAT.md | passed (false-positive — 0 pending) |
-| uat_gap | Phase 62 — 62-UAT.md | resolved (false-positive — 0 pending) |
-| verification_gap | Phase 61 — 61-VERIFICATION.md | human_needed (false-positive — phase prod-verified 2026-05-26, see project_phase_61_complete memory) |
+| debug_session | knowledge-base | unknown (empty/stale — pre-existing, not v8.0-related) |
+| debug_session | mobile-title-above-fold | diagnosed (resolved by Phase 64-05 — pre-existing) |
+| uat_gap | Phase 66 — 66-HUMAN-UAT.md | resolved (0 pending — false positive in audit-open scan) |
+| verification_gap | Phase 66 — 66-VERIFICATION.md | human_needed (UAT walked + resolved separately; verifier never re-flipped status) |
+| verification_gap | Phase 69 — 69-VERIFICATION.md | human_needed (UAT walked 2026-05-29 → 69-UAT.md captured SRCH-02 + SRCH-03; **promoted to v8.1 scope**) |
 | quick_task | 260413-qp3-price-prominence-and-filter-collapse | missing |
-| quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | missing |
+| quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | missing (related to ROUTE-01 captured in 70-UAT.md — **rolls into v8.1 scope**) |
 | quick_task | 260421-srx-wrap-follower-following-counts-in-link-o | missing |
 | quick_task | 260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl | missing |
 | quick_task | 260513-hvu-hotfix-search-watches-tab-returns-empty- | missing |
@@ -155,18 +154,19 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 | seed | SEED-002-hybrid-recommender | dormant |
 | seed | SEED-003-onboarding-cold-start-flow | dormant |
 | seed | SEED-004-v5-discovery-north-star | dormant (shipped — re-classify) |
-| seed | SEED-005-v6-market-value | dormant (planted for future post-v8) |
+| seed | SEED-005-v6-market-value | dormant (planted for post-v8.1) |
 | seed | SEED-007-market-pricing-api-spike | dormant |
 | seed | SEED-008-v5.1-explore-redesign | active (shipped — re-classify) |
-| seed | SEED-010-v5.3-add-watch-redesign | dormant (planted for v8.0) |
+| seed | SEED-010-v5.3-add-watch-redesign | shipped this milestone (v8.0 was built on this) — re-classify |
 | seed | SEED-012-v6.0-social-interaction | active (shipped — re-classify) |
-| seed | SEED-013-v7.0-watch-photos | dormant (shipped this milestone — re-classify) |
+| seed | SEED-013-v7.0-watch-photos | dormant (shipped v7.0 — re-classify) |
 | seed | SEED-014-cache-components-canonical-sweep | dormant |
 | seed | SEED-015-inline-grid-engagement | dormant (shipped — Phase 63 — re-classify) |
 | seed | SEED-016-watch-detail-redesign | dormant (shipped — Phases 64+65 — re-classify) |
 
-**Total deferred:** 28 (2 debug, 3 false-positive UAT/verification, 10 quick-task backlog, 13 seeds).
-**Notes:** Quick-task backlog has rolled past v5.2, v6.0, and now v7.0 closes — most were superseded by later phases. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
+**Total deferred:** 28 (2 debug, 1 false-positive UAT, 2 verification_gaps now in v8.1 scope, 10 quick-task backlog, 13 seeds).
+**v8.1 polish scope (formal):** 6 defects captured in `.planning/phases/69-.../69-UAT.md` + `.planning/phases/70-.../70-UAT.md` — SRCH-01 (multi-token search), SRCH-02 (combobox keyboard), SRCH-03 (footer click no-op), ROUTE-01 (/w/[ref] 404), DUPE-04 (Saving... copy), MOB-01 (iOS input zoom). v8.1 milestone opens immediately after this close.
+**Notes:** Quick-task backlog has rolled past v5.2, v6.0, v7.0, and now v8.0 closes — most were superseded by later phases. `260421-rdb-fix-404-on-watch-detail-pages-for-watche` is conceptually adjacent to ROUTE-01 from this milestone's UAT; the v8.1 ROUTE-01 plan should consider it too. Seeds marked "shipped" should be promoted/closed by `/gsd-new-milestone` housekeeping or a one-off seeds audit.
 | Phase 66 P01 | 4 | 3 tasks | 4 files |
 | Phase 66 P02 | 10 | 3 tasks | 3 files |
 | Phase 68 P01 | 429 | 2 tasks | 2 files |
@@ -188,3 +188,7 @@ Items acknowledged and deferred at milestone close on 2026-05-28 (v7.0):
 
 Last activity: 2026-05-29 — Phase 70 gap closure trilogy (Plans 06/07/08) COMPLETE. All 8 plans landed; VERIFICATION gaps[0..2] (CR-01, CR-02, WR-01, WR-02) all close at the code level. 12 visual UAT items bundled for Phase 71 prod push.
 Next action: `/gsd-verify-phase 70` for re-verification (expected flip 4/6 → 6/6, `gaps_found` → `passed`), then `/gsd-plan-phase 71` for the final Dead Code Cleanup + Static Guards phase. Phase 71 push deploys with bundled visual UAT.
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
