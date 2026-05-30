@@ -38,5 +38,5 @@ The home page's "From Collectors Like You" rail responds to collection changes (
 
 | REQ-ID | Description | Phase | Status |
 |--------|-------------|-------|--------|
-| DISC-RECS-CACHE | Rail refreshes on collection mutation (read-your-own-write) | Phase 75 (TBD by roadmapper) | Not started |
-| DISC-RECS-VARIATION | Rail rotates across 6h+ sessions + sparse-pool top-up | Phase 75 (TBD by roadmapper) | Not started |
+| DISC-RECS-CACHE | Rail refreshes on collection mutation (read-your-own-write) | Phase 75 | Not started |
+| DISC-RECS-VARIATION | Rail rotates across 6h+ sessions + sparse-pool top-up | Phase 75 | Not started |
