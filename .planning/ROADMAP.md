@@ -236,7 +236,9 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
   2. Pressing Down/Up arrow keys in the combobox moves visual focus through result rows one at a time; pressing Enter on a focused row fires `onPick` (same as clicking that row)
   3. Clicking the "Not finding it? Add manually" footer row — when results are present — expands the inline StructuredEntryPanel with brand/model/reference pre-seeded from the current query
   4. Keyboard navigation does not trap focus; Tab and Escape exit the popup cleanly
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 72-01-PLAN.md — SRCH-01 DAL token-AND fix + regression test (catalog.ts + new catalog-search-tokens.test.ts)
+- [ ] 72-02-PLAN.md — SRCH-02 isItemEqualToValue + SRCH-03 footer relocation + regression tests (SearchEntry.tsx + SearchEntry.test.tsx)
 **UI hint**: yes
 
 ### Phase 73: Owned-Redirect Route Fix
@@ -265,7 +267,7 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 72. Search Composition Fixes | 0/? | Not started | - |
+| 72. Search Composition Fixes | 0/2 | Not started | - |
 | 73. Owned-Redirect Route Fix | 0/? | Not started | - |
 | 74. DupeBanner Gate Refinement + Mobile Polish | 0/? | Not started | - |
 
