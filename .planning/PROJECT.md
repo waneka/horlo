@@ -36,11 +36,27 @@ See `.planning/MILESTONES.md` and `.planning/milestones/v7.0-ROADMAP.md` for ful
 
 **Post-v5.2 hotfix — Phase 52 (2026-05-21):** Eliminated the recurrence-4/5 React #419 + 404 bug on authenticated `/u/[username]/[tab]` navigation. Durable fix: canonical Next 16 Cache Components structural pattern (sync `layout.tsx` + `<Suspense>` + async `profile-chrome.tsx`; sync outer `ProfileTabPage` + inner async `ProfileTabContent` inside `<Suspense>`); route exports `unstable_instant = false` PERMANENTLY. **v7.0 Phase 61 closed the related #419 family on `/w/[ref]` and `/wear/[id]`** with a complementary fix: `await connection()` ABOVE the page/layout Suspense opts out of the prerendered static shell that aborts on soft-nav resume (admin-client cover-URL signing also required). Static guard `tests/static/ppr-dynamic-before-use-cache.test.ts` (`@vitest-environment node`) locks the ordering. SEED-014 (broader Cache Components canonical sweep) remains future work.
 
-**Next milestone goals:** **v9.0 Catalog Expansion** (SEED-009 — promoted from unscheduled per operator decision 2026-05-28). After that: Market Value (SEED-005, needs the SEED-007 pricing API spike first). The 2 active seeds in the deferred backlog (SEED-008 v5.1 Explore Redesign, SEED-012 v6.0 Social Interaction) are misclassified — both shipped in earlier milestones and need re-marking at `/gsd-new-milestone`. No paywall in any near milestone (SEED-006 resolved 2026-05-06). Other dormant seeds (SEED-010 v5.3 Add-Watch already shipped as v8.0 + v8.1; SEED-013 v7.0 Watch Photos already shipped as v7.0; SEED-014 Cache Components canonical sweep still future; SEED-015/016 already shipped in v7.0) similarly need re-classification.
+**Next milestone goals:** **v8.2 STARTED 2026-05-30** (this milestone — Discovery Freshness polish; see Current Milestone below). After v8.2: **v9.0 Catalog Expansion** (SEED-009 — promoted from unscheduled per operator decision 2026-05-28), then Market Value (SEED-005, needs the SEED-007 pricing API spike first). No paywall in any near milestone (SEED-006 resolved 2026-05-06). Note: a handful of dormant seeds in `.planning/seeds/` need re-classification — SEED-008/010/012/013/015/016 all shipped in earlier milestones; SEED-014 (Cache Components canonical sweep) still future.
 
-## Between milestones — v8.1 closed, awaiting v9.0 kickoff
+## Current Milestone: v8.2 Discovery Freshness
 
-v8.1 shipped 2026-05-30. Next: `/gsd-new-milestone` for v9.0 Catalog Expansion (SEED-009) or another seed. Per `feedback_milestone_close_phase_dir_archival_miss` the v8.1 phase dirs (72/73/74) have been `git mv`'d to `.planning/milestones/v8.1-phases/` BEFORE `/gsd-new-milestone`'s `phases.clear --confirm` runs.
+**Goal:** The home page's "From Collectors Like You" rail responds to collection changes (read-your-own-write) and visibly rotates across sessions even when the candidate pool is sparse.
+
+**Source:** SEED-017 (planted 2026-05-30 from operator observation that the rail surfaces the same ~2 watches across collection changes despite being the largest above-the-fold content slot).
+
+**Target features (defects → fixes):**
+
+- **DISC-RECS-CACHE: rail refreshes when the viewer's collection changes** — Wire `cacheTag('viewer:${viewerId}:recs')` to `CollectorsLikeYou.tsx` + `revalidateTag('viewer:${user.id}:recs')` into the 4 watch mutation actions (`addWatch` / `editWatch` / `removeWatch` / `moveWishlistToCollection`) so adding/editing/removing/moving-to-collection refreshes the rail on the next home-page render. Pattern mirrors the existing `viewer:${id}:counts` tag in `src/app/actions/comments.ts:167`. Default `revalidateTag` semantics (not `'max'`) — read-your-own-write semantics; the user who just mutated wants to see the rec change THIS render.
+
+- **DISC-RECS-VARIATION: rail visibly rotates across sessions even when sparse** — Bump `SEED_POOL_SIZE` 15→30, add deterministic-per-time-window sampling (PRNG seeded by `(viewerId, floor(Date.now() / 6h))` — same window = same recs = cache-stable; next window = different recs = rail rotates 4× daily); add candidate-pool-floor top-up from `watches_catalog.count` (v4.0 pg_cron-maintained) when post-exclusion pool <8 cards so the rail never looks broken with 1-2 cards. Rule-based template family unchanged (no LLM, per v2.0 CONTEXT C-03 — hybrid recommender is SEED-002 future work).
+
+**Key context:**
+- **Single-phase milestone** — Phase 75 (continuing v8.1's numbering, no `--reset-phase-numbers`). 2 wave-1-parallel plans (cache wiring + algorithm variation — different files, no overlap).
+- **No new UI surface** — algorithm + cache wiring only. The rail's visual shape (`src/components/home/CollectorsLikeYou.tsx`) is unchanged.
+- **Build-gated project** — `npm run build` (exit 0) is the gate. `workflow.use_worktrees=false` permanent.
+- **Estimated cycle:** 1 day. Mirrors v8.1's polish-milestone shape (smaller than v8.1's 3 phases).
+- **Out of scope (folds into SEED-002 hybrid recommender if pursued later):** LLM-based rationale, collaborative filtering / content / graph layers, persistent recommendation history beyond the lightweight 6h-window stability, Personal Insights / Suggested Collectors freshness audits (separate ask — likely same cache-tag pattern but verify per-component; open question in SEED-017).
+- **Recurring milestone-close costs to budget for:** 5th-recurrence-and-counting `phase.complete` STATE corruption (per `project_phase_complete_999_1_misset` — Bug 2 progress-counter fires even on `is_last_phase: true`); milestone.complete extractor garbage (5 milestones running — hand-rewrite MILESTONES.md entry at close).
 
 ## Requirements
 
