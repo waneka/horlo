@@ -527,17 +527,29 @@ export async function searchCatalogWatches({
  * `(reference_normalized = queryNormalized) DESC` above the popularity sort so
  * exact-reference matches bubble to the top (D-04/D-05).
  *
- * D-03: no facet predicates — WHERE is ILIKE OR over brand/model/ref normalized only.
+ * Phase 72 SRCH-01 fix (D-02/D-03): WHERE is AND-of-ORs over per-token ILIKE patterns.
+ * Each whitespace-split token must independently match at least one of
+ * (brand_normalized, model_normalized, reference_normalized), so multi-token queries
+ * like "Brut Datejust" correctly return rows where brand="Brut" and model contains
+ * "Datejust" — no single column needs to contain the full multi-token substring.
+ *
+ * D-03: no facet predicates — WHERE is per-token ILIKE AND-of-ORs over
+ * brand/model/ref normalized only.
  * D-02: viewerId is always required (viewer-state hydration needs session identity).
  *
- * Pitfall 1 (empty queryNormalized): when the normalized query is empty, substitute
- * sql`false` for the boolean-DESC tier so no rows receive a false exact-ref bump.
+ * Pitfall 1 (empty refToken per token): when a token's alphanumeric-stripped form is
+ * empty, substitute sql`false` for the reference branch so no unintended rows match.
+ *
+ * Pitfall 2 (empty token list): defensive `if (tokens.length === 0) return []` after
+ * tokenization (impossible after the upstream early-return, but belt-and-suspenders per D-03).
  *
  * Pitfall 4 (empty inArray): topIds.length === 0 short-circuits before the inArray
  * call to avoid degenerate WHERE catalog_id IN () SQL.
  *
  * All `q` interpolations use Drizzle parameterized template binds — never
  * string-concatenated into SQL text (T-67-02-01 mitigation).
+ * D-04: pattern construction (`%${token}%`) happens in TypeScript; the resulting
+ * string is a bind parameter in the generated SQL — never injected SQL text.
  */
 export async function searchCatalogForAddFlow({
   q,
@@ -551,11 +563,15 @@ export async function searchCatalogForAddFlow({
   const qTrimmed = q.trim()
   if (qTrimmed.length < SEARCH_ADD_FLOW_TRIM_MIN_LEN) return []
 
-  const lowerQ = qTrimmed.toLowerCase()
-  const pattern = `%${lowerQ}%`
-  const queryNormalized = lowerQ.replace(/[^a-z0-9]+/g, '')
-  // Pitfall 1 guard: when normalized query is empty, use sql`false` so no rows
-  // receive a false exact-ref bump (mirrors searchCatalogWatches refPattern guard).
+  // D-03: tokenize on whitespace; each token must independently match a column.
+  const tokens = qTrimmed.toLowerCase().split(/\s+/).filter(Boolean)
+  // Pitfall 2: defensive guard — impossible after early-return above, but
+  // static analyzers cannot prove it; belt-and-suspenders per D-03.
+  if (tokens.length === 0) return []
+
+  const queryNormalized = qTrimmed.toLowerCase().replace(/[^a-z0-9]+/g, '')
+  // Pitfall 1 guard (ORDER BY tier): when normalized query is empty, use sql`false`
+  // so no rows receive a false exact-ref bump (mirrors searchCatalogWatches refPattern guard).
   // D-05: DESC NULLS LAST — under PostgreSQL's default DESC = NULLS FIRST,
   // rows with reference_normalized IS NULL would sort ABOVE non-matching rows.
   // Emit the NULLS LAST modifier as raw SQL since Drizzle's desc() helper does not.
@@ -563,6 +579,23 @@ export async function searchCatalogForAddFlow({
     queryNormalized.length > 0
       ? sql`(${watchesCatalog.referenceNormalized} = ${queryNormalized}) DESC NULLS LAST`
       : sql`false DESC NULLS LAST`
+
+  // D-02 + D-04: AND-of-ORs per token. Each token is lowercased and bound via
+  // Drizzle ilike() — the pattern string is a TypeScript value, not SQL text.
+  // The reference branch normalizes each token (strip non-alphanumeric) to match
+  // the reference_normalized column format, mirroring the queryNormalized lane above.
+  const tokenClauses = tokens.map((token) => {
+    const colPattern = `%${token}%`
+    const refToken = token.replace(/[^a-z0-9]+/g, '')
+    return or(
+      ilike(watchesCatalog.brandNormalized, colPattern),
+      ilike(watchesCatalog.modelNormalized, colPattern),
+      // Pitfall 1 (per-token): only run reference branch when stripped token is non-empty.
+      refToken.length > 0
+        ? ilike(watchesCatalog.referenceNormalized, `%${refToken}%`)
+        : sql`false`,
+    )
+  })
 
   const candidates = await db
     .select({
@@ -576,15 +609,8 @@ export async function searchCatalogForAddFlow({
     })
     .from(watchesCatalog)
     .where(
-      // D-03: ILIKE OR only — no facets (no movement/size/style/brand/era predicates)
-      or(
-        ilike(watchesCatalog.brandNormalized, pattern),
-        ilike(watchesCatalog.modelNormalized, pattern),
-        // Pitfall 1: only run reference branch when stripped query is non-empty.
-        queryNormalized.length > 0
-          ? ilike(watchesCatalog.referenceNormalized, `%${queryNormalized}%`)
-          : sql`false`,
-      ),
+      // D-02: AND of per-token OR-groups — no facets (no movement/size/style/brand/era predicates)
+      and(...tokenClauses),
     )
     .orderBy(
       // D-04/D-05 tier 1: exact-reference bump — true sorts first under DESC
