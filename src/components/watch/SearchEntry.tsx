@@ -326,7 +326,7 @@ export function SearchEntry({
             {!isLoading && results.length > 0 && (
               <button
                 type="button"
-                onClick={() => setShowPanel(true)}
+                onClick={() => { setShowPanel(true); setIsPopupOpen(false); }}
                 className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[44px]"
               >
                 Not finding it? Add manually
