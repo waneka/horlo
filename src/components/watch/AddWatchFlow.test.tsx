@@ -189,18 +189,26 @@ vi.mock('@/components/watch/ConfirmStep', () => ({
     onStartOver,
     onEditDetails,
     pending,
+    bannerActive,
     status,
   }: {
     onPrimary: () => void
     onStartOver: () => void
     onEditDetails: () => void
     pending?: boolean
+    bannerActive?: boolean
     status: string
   }) => (
+    // Phase 74 D-02: when bannerActive=true, mirror production's Section 6 early-return null —
+    // the Confirm primary button is OMITTED from the DOM entirely so jsdom can observe the
+    // disappearance per feedback_test_assert_disappearance_too (recurrence-3). Ghost row stays
+    // (Phase 74 D-03).
     <div data-testid="confirm-step" data-status={status}>
-      <button onClick={onPrimary} disabled={pending}>
-        Confirm primary
-      </button>
+      {!bannerActive && (
+        <button onClick={onPrimary} disabled={pending}>
+          Confirm primary
+        </button>
+      )}
       <button onClick={onStartOver}>Start over</button>
       <button onClick={onEditDetails}>Edit details</button>
     </div>
@@ -745,8 +753,10 @@ describe('Phase 70 gap plan 08 — WR-01 ConfirmStep gating when DupeBanner moun
     })
   })
 
-  // WR-01 Test A — wishlist dupeContext set → ConfirmStep primary is disabled.
-  it('WR-01 — ConfirmStep primary CTA is disabled when wishlist dupeContext is set', async () => {
+  // WR-01 Test A (Phase 74 DUPE-04 pivot) — wishlist dupeContext set → ConfirmStep primary
+  // is NOT rendered (was: disabled). Disappearance-paired with banner-appears per
+  // feedback_test_assert_disappearance_too (recurrence-3).
+  it('WR-01 — ConfirmStep primary CTA is NOT rendered when wishlist dupeContext is set', async () => {
     vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
       success: true,
       data: { id: 'wish-id-001', status: 'wishlist', reference: 'REF-001' },
@@ -754,15 +764,16 @@ describe('Phase 70 gap plan 08 — WR-01 ConfirmStep gating when DupeBanner moun
     renderFlow()
     fireEvent.click(screen.getByText('Pick wishlist'))
     expect(await screen.findByTestId('dupe-banner-wishlist')).toBeInTheDocument()
-    expect(screen.getByText('Confirm primary')).toBeDisabled()
+    expect(screen.queryByText('Confirm primary')).not.toBeInTheDocument()
   })
 
-  // WR-01 Test B (Phase 73 ROUTE-01 pivot) — owned dupeContext set via structured-submit
-  // (the search-pick owned-null-ref path no longer mounts the banner after Phase 73's
-  // D-04 collapse; structured-submit is now the only remaining owned-banner producer).
-  // The invariant under test is unchanged: ConfirmStep primary is disabled; clicking
-  // the disabled CTA does NOT call addWatch.
-  it('WR-01 — ConfirmStep primary CTA is disabled when owned dupeContext is set (via structured-submit); clicking does NOT call addWatch', async () => {
+  // WR-01 Test B (Phase 73 ROUTE-01 pivot + Phase 74 DUPE-04 pivot) — owned dupeContext
+  // set via structured-submit (the search-pick owned-null-ref path no longer mounts the
+  // banner after Phase 73's D-04 collapse; structured-submit is now the only remaining
+  // owned-banner producer). Phase 74 D-01 invariant: ConfirmStep primary is NOT rendered;
+  // because the button is absent by construction, clicking it is impossible and addWatch
+  // cannot fire from this surface.
+  it('WR-01 — ConfirmStep primary CTA is NOT rendered when owned dupeContext is set (via structured-submit); addWatch is never called', async () => {
     vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
       success: true,
       data: { id: 'existing-owned-id', status: 'owned', reference: 'REF-OWNED' },
@@ -770,18 +781,17 @@ describe('Phase 70 gap plan 08 — WR-01 ConfirmStep gating when DupeBanner moun
     renderFlow()
     fireEvent.click(screen.getByText('Submit structured'))
     expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
-    expect(screen.getByText('Confirm primary')).toBeDisabled()
+    expect(screen.queryByText('Confirm primary')).not.toBeInTheDocument()
 
-    // Attempt to click the disabled CTA — addWatch must not fire.
-    fireEvent.click(screen.getByText('Confirm primary'))
-    // Allow any pending microtasks to flush.
+    // Absence-by-construction makes a CTA click impossible (no button in DOM);
+    // assert addWatch was not invoked from any other path during this code flow.
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(vi.mocked(addWatch)).not.toHaveBeenCalled()
   })
 
-  // WR-01 Test C — "Add another copy" clears dupeContext and re-enables ConfirmStep primary
-  // (the gate releases correctly; clicking the now-enabled CTA calls addWatch).
-  it('WR-01 — clicking "Add another copy" clears dupeContext + re-enables ConfirmStep primary; subsequent click calls addWatch', async () => {
+  // WR-01 Test C (Phase 74 DUPE-04 pivot) — "Add another copy" clears dupeContext and
+  // RE-MOUNTS ConfirmStep primary (was: re-enables). Round-trips the appearance pair.
+  it('WR-01 — clicking "Add another copy" clears dupeContext + re-mounts ConfirmStep primary; subsequent click calls addWatch', async () => {
     vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
       success: true,
       data: { id: 'existing-owned-id', status: 'owned', reference: 'REF-OWNED' },
@@ -789,21 +799,39 @@ describe('Phase 70 gap plan 08 — WR-01 ConfirmStep gating when DupeBanner moun
     renderFlow()
     fireEvent.click(screen.getByText('Submit structured'))
     expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
-    // Gate engaged before the click.
-    expect(screen.getByText('Confirm primary')).toBeDisabled()
+    // Gate engaged: CTA absent before the click.
+    expect(screen.queryByText('Confirm primary')).not.toBeInTheDocument()
 
-    // Add another copy clears dupeContext → banner unmounts → CTA re-enables.
+    // Add another copy clears dupeContext → banner unmounts → CTA re-mounts.
     fireEvent.click(screen.getByText('Add another copy'))
     await waitFor(() => {
       expect(screen.queryByTestId('dupe-banner-owned')).not.toBeInTheDocument()
     })
-    expect(screen.getByText('Confirm primary')).not.toBeDisabled()
+    expect(screen.getByText('Confirm primary')).toBeInTheDocument()
 
     // Clicking now actually fires addWatch — proves the gate released correctly.
     fireEvent.click(screen.getByText('Confirm primary'))
     await waitFor(() => {
       expect(vi.mocked(addWatch)).toHaveBeenCalled()
     })
+  })
+
+  // WR-01 Test D (Phase 74 DUPE-04 absence-by-construction) — closes DUPE-04 SC#1 with a
+  // pure-absence assertion: bannerActive flips true → ConfirmStep Section 6 primary CTA
+  // is not in the DOM → no click possible → addWatch was never called. Distinct from
+  // Test B in that it does NOT attempt to click the missing CTA — confirms the absence
+  // is the contract itself.
+  it('WR-01 (DUPE-04) — bannerActive absence-by-construction: ConfirmStep primary is not in the DOM and addWatch is never called', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'existing-owned-id', status: 'owned', reference: 'REF-OWNED' },
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Submit structured'))
+    expect(await screen.findByTestId('dupe-banner-owned')).toBeInTheDocument()
+    expect(screen.queryByText('Confirm primary')).not.toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(vi.mocked(addWatch)).not.toHaveBeenCalled()
   })
 })
 
