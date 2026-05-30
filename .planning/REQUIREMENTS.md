@@ -27,7 +27,7 @@ Each defect from v8.0's prod UAT walk is captured as a user-centric requirement.
 
 ### Mobile (1 requirement)
 
-- [ ] **MOB-01**: User can focus an input field on iOS Safari (mobile) without the page auto-zooming. Applies app-wide, not just to add-watch — the fix is a global CSS rule on `input, textarea, select` ensuring font-size ≥ 16px. Verify that intentional zoom (pinch-zoom) still works for users who need it; do NOT use `maximum-scale=1` on the viewport meta as a workaround (accessibility regression).
+- [x] **MOB-01**: User can focus an input field on iOS Safari (mobile) without the page auto-zooming. Applies app-wide, not just to add-watch — the fix is a global CSS rule on `input, textarea, select` ensuring font-size ≥ 16px. Verify that intentional zoom (pinch-zoom) still works for users who need it; do NOT use `maximum-scale=1` on the viewport meta as a workaround (accessibility regression).
 
 ## Future Requirements (Deferred)
 
@@ -58,7 +58,7 @@ Explicitly excluded from v8.1 to prevent scope creep:
 | SRCH-03 | Phase 72 | Complete |
 | ROUTE-01 | Phase 73 | Complete |
 | DUPE-04 | Phase 74 | Complete |
-| MOB-01 | Phase 74 | Pending |
+| MOB-01 | Phase 74 | Complete |
 
 ---
 

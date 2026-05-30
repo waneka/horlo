@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: executing
-last_updated: "2026-05-30T20:31:51.403Z"
-last_activity: 2026-05-30
+status: verifying
+last_updated: "2026-05-30T20:42:52.591Z"
+last_activity: "2026-05-30 — Phase 74 Plan 02 execution complete (MOB-01 closed structurally: globals.css @layer base font-size 1rem floor + 3 user-facing className rewrites text-sm → text-base md:text-sm + 2 fs-walking static guards locking viewport meta + text-sm-on-native-form-controls invariants)"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -24,14 +24,14 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 ## Current Position
 
-Phase: 74 (DupeBanner Gate Refinement + Mobile Polish) — EXECUTING
-Plan: 2 of 2
-Status: Executing Phase 74 Plan 02 (MOB-01 — global font-size floor + className rewrites + 2 static guards)
-Next: /gsd-execute-phase 74 (Plan 02)  →  bundled prod push (Phases 72+73+74)
-Last activity: 2026-05-30 — Phase 74 Plan 01 execution complete (DUPE-04 closed structurally: ConfirmStep primary CTA now hidden entirely under DupeBanner via additive bannerActive?: boolean prop; 4 WR-01 tests green incl. new Test D)
+Phase: 74 (DupeBanner Gate Refinement + Mobile Polish) — READY FOR VERIFICATION
+Plan: 2 of 2 — COMPLETE
+Status: Phase complete — ready for verification
+Next: /gsd-verify-phase 74  →  bundled prod push (Phases 72+73+74 single deploy + UAT walk per CONTEXT D-15)
+Last activity: 2026-05-30 — Phase 74 Plan 02 execution complete (MOB-01 closed structurally: globals.css @layer base font-size 1rem floor + 3 user-facing className rewrites text-sm → text-base md:text-sm + 2 fs-walking static guards locking viewport meta + text-sm-on-native-form-controls invariants)
 
 ```
-v8.1 Progress [█████████████████████████     ] 80% (4/5 plans across 3 phases — Phase 72 done, Phase 73 done, Phase 74 Plan 01 done; Plan 02 next)
+v8.1 Progress [██████████████████████████████] 100% (5/5 plans across 3 phases — Phase 72 done, Phase 73 done, Phase 74 done; verify + bundled prod push next)
 ```
 
 **STATE.md hand-correction (recurrence-5 of `project_phase_complete_999_1_misset`):** `gsd-sdk query phase.complete 72` returned `next_phase: null` + `is_last_phase: true` and rewrote frontmatter to `status: milestone_complete / completed_phases: 2 / percent: 200`. ROADMAP is fine (Phase 72 marked Complete, 73+74 Not started). STATE.md hand-fixed back to the real next phase.
@@ -49,6 +49,10 @@ v8.1 Progress [█████████████████████�
 ## Accumulated Context
 
 ### Key Decisions
+
+- **Phase 74 D-06/D-07 — MOB-01 @layer base font-size floor + responsive text-sm rewrites** (Phase 74 Plan 02) — `src/app/globals.css` gains a new `@layer base { input,textarea,select { font-size: 1rem; } }` block (16px DOM-default; specificity 0,0,1 — utilities still win; no `!important`). The 3 user-facing offenders flip bare `text-sm` → `text-base md:text-sm` (16px mobile, 14px desktop — mirrors shadcn `Input` + `Textarea` primitives at `src/components/ui/input.tsx:12` + `src/components/ui/textarea.tsx:10`): `CommentCompose.tsx:60` raw textarea, `CommentItem.tsx:170` raw edit-comment textarea, `SearchEntry.tsx:242` Combobox.Input. Out of scope per CONTEXT D-07 (verified untouched via empty `git diff --stat`): shadcn primitives, `src/components/admin/*` (admin tooling — out of v8.1 user-facing scope), `src/app/layout.tsx` viewport export (D-08 — no `maximumScale`/`userScalable`/`minimumScale`; pinch-zoom preserved per ROADMAP SC#3). Phase 72 LOCKED Combobox composition is NOT altered — only the className string on the one element changes.
+- **Phase 74 D-11/D-12 — two fs-walking static guards lock the MOB-01 invariants** (Phase 74 Plan 02) — `tests/static/no-iOS-zoom-viewport.test.ts` (7 tests, all pass) parses `src/app/layout.tsx` `viewport` export with a regex and asserts the body does NOT contain `maximumScale`, `userScalable`, or `minimumScale`; also rejects raw `maximum-scale=` / `user-scalable=` HTML smuggled via `dangerouslySetInnerHTML`. `tests/static/no-text-sm-on-native-form-controls.test.ts` (2 tests, all pass) walks `src/components/comment/` + `src/components/watch/SearchEntry.tsx` (scope deliberately limited per D-12 — admin/* + the rest of src/ NOT walked); for every `<textarea|<input|<select|<Combobox.Input` opening tag with `className` containing bare `text-sm`, asserts the same className ALSO contains `md:text-sm`. Both files declare `// @vitest-environment node` on line 1 per `project_vitest_static_node_env` — without the pragma vite externalizes node:fs, `readdirSync`/`readFileSync` become undefined, and the guards silently pass on Vercel prebuild (Phase 59 prod-deploy failure history). MOB-01 pinch-zoom + actual auto-zoom verification is prod UAT only per D-09 (jsdom + Tailwind compilation is not in test harness — D-13 rejected).
+- **JSDoc-prose grep-collision recurrence-4 preempted again in Phase 74 Plan 02** — initial D-12 guard's SCOPE LIMIT comment cited `src/components/admin/*` verbatim to explain the deliberate exclusion; the literal token tripped the AC `grep -c "src/components/admin" tests/...test.ts` returns 0 criterion. Reworded to "Admin-only components (the admin/ subtree) are NOT walked …" — preserves documentation intent; grep returns 0. 4th documented recurrence (Phase 64 WatchDetailTrailing → Phase 69 quartet → Phase 70 RailEntry → Phase 74-01 ConfirmStep → Phase 74-02 D-12 guard). Durable lesson re-confirmed: any AC grep targeting a literal token will false-positive on JSDoc-prose using that token; paraphrase in prose, keep the literal in code/strings only.
 
 - **Phase 74 D-01/D-02 — DUPE-04 hide-CTA-entirely via additive bannerActive prop** (Phase 74 Plan 01) — when DupeBanner is mounted (`state.dupeContext != null`), the ConfirmStep primary CTA (`Section 6` at `ConfirmStep.tsx:311-325`) is NOT rendered at all — no "Saving..." copy, no disabled stub, no placeholder. ConfirmStepProps gains additive optional `bannerActive?: boolean` (default false) per Phase 68 D-03 additive-extension contract; Section 6 wrapped in `{!bannerActive && (<Button ...>...</Button>)}`. AddWatchFlow.tsx:694 reverts `pending={state.pending || state.dupeContext != null}` → `pending={state.pending}` (Phase 68 D-03 pending-semantic purity restored — pending = real async work only) + new adjacent `bannerActive={state.dupeContext != null}` prop. Phase 70 D-11 DupeBanner sibling pattern UNCHANGED.
 - **Phase 74 D-03 — ghost row stays mounted while bannerActive=true** (Phase 74 Plan 01) — "Edit details" and "Start over" Section 5 ghost buttons (`ConfirmStep.tsx:289-308`) remain mounted and clickable while the banner is active; price/reference/year inputs remain editable. ONLY Section 6's primary `<Button>` is removed from the DOM. Pending revert (D-02) means ghost buttons remain enabled while `state.pending === false` (the default when no real async work is in flight) regardless of bannerActive.
@@ -206,6 +210,7 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 | Phase 72-search-composition-fixes P02 | 15min | 3 tasks | 2 files |
 | Phase 73 P01 | 4min | 3 tasks | 2 files |
 | Phase 74 P01 | 6min | 3 tasks | 3 files |
+| Phase 74 P02 | 4min | 3 tasks | 6 files |
 
 ## Quick Tasks Completed
 
@@ -215,11 +220,12 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 
 ## Session Continuity
 
-Last activity: 2026-05-30 — Phase 74 Plan 01 execution complete. DUPE-04 closed structurally: ConfirmStep gains additive bannerActive?: boolean prop (default false; Phase 68 D-03 additive-extension contract); Section 6 primary CTA wrapped in `{!bannerActive && (...)}` early-return null; AddWatchFlow.tsx:694 reverts pending OR-gate to pending={state.pending} + new bannerActive={state.dupeContext != null}; 3 WR-01 tests pivoted to disappearance-paired assertions + new Test D (pure absence-by-construction) added — 28/28 targeted vitest green (was 27 + 1 new); npm run build exit 0; font-medium guardrail intact (0 in both modified files).
-Next action: /gsd-execute-phase 74 Plan 02 (MOB-01 — global font-size floor + 3 className rewrites + 2 static guards) → bundled prod push (Phases 72+73+74 single deploy walk per CONTEXT D-15).
+Last activity: 2026-05-30 — Phase 74 Plan 02 execution complete. MOB-01 closed structurally: src/app/globals.css gains a new @layer base block setting font-size 1rem on input/textarea/select (DOM-default 16px floor; specificity 0,0,1 — utilities still win; no !important); CommentCompose.tsx:60 + CommentItem.tsx:170 + SearchEntry.tsx:242 flip bare text-sm → text-base md:text-sm (mirrors shadcn primitives); 2 new fs-walking static guards added with `// @vitest-environment node` pragma on line 1: no-iOS-zoom-viewport.test.ts (7 tests, locks viewport export against maximumScale/userScalable/minimumScale + raw HTML meta forms) and no-text-sm-on-native-form-controls.test.ts (2 tests, scope-limited to comment/* + SearchEntry.tsx). Acceptance criteria all green; npm run build exit 0; font-medium guardrail intact (0 new introductions). JSDoc-prose grep-collision recurrence-4 preempted in D-12 guard SCOPE LIMIT comment (reworded `src/components/admin/*` → "the admin/ subtree" to clear the AC grep-returns-0 check).
+Next action: /gsd-verify-phase 74 (expect MOB-01 + DUPE-04 automated checks pass; prod walk human_needed) → bundled v8.1 prod push (Phases 72 + 73 + 74 single deploy + single UAT walk per CONTEXT D-15 covering all 6 items: SRCH-01/02/03 + ROUTE-01 + DUPE-04 + MOB-01).
 
 ## Operator Next Steps
 
-- /gsd-verify-phase 73 (expect ROUTE-01 automated checks pass; prod walk human_needed)
-- Plan + execute Phase 74 (remaining v8.1 polish defects: DUPE-04, MOB-01 + any rollover from 72/73)
-- Bundle prod push for Phase 72 SRCH-03 footer click + Phase 73 ROUTE-01 owned redirect + Phase 74 — single deploy, single UAT walk per CONTEXT.md D-09 step 3
+- /gsd-verify-phase 74 (expect DUPE-04 + MOB-01 automated checks pass; prod walk human_needed)
+- Bundle prod push for Phase 72 SRCH-03 footer + Phase 73 ROUTE-01 + Phase 74 DUPE-04/MOB-01 — single deploy, single UAT walk per CONTEXT D-15 covering all 6 v8.1 items
+- /gsd-complete-milestone v8.1 after prod UAT passes (Phase 74 is last phase of v8.1) — remember to archive .planning/phases/72-*, 73-*, 74-* dirs into .planning/milestones/v8.1-phases/ per `feedback_milestone_close_phase_dir_archival_miss` (or /gsd-new-milestone's phases.clear --confirm will DELETE the un-archived work)
+- Per `project_phase_complete_999_1_misset` recurrence: after `gsd-sdk query phase.complete 74` (run during verify or close), hand-correct STATE.md `next_phase` + `progress` fields if they drift

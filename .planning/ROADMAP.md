@@ -263,7 +263,7 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
   4. The font-size fix does not introduce visual regressions in other form contexts (WatchForm, comment composer, filters)
 **Plans**: 2 plans (wave 1 parallel — zero file overlap between DUPE-04 and MOB-01)
 - [x] 74-01-PLAN.md — DUPE-04: ConfirmStep hides Section 6 primary CTA when DupeBanner is mounted (additive bannerActive prop + AddWatchFlow revert + 3 pivoted WR-01 tests + 1 new Test D)
-- [ ] 74-02-PLAN.md — MOB-01: global @layer base font-size floor (input/textarea/select) + 3 className rewrites (text-sm → text-base md:text-sm) + 2 fs-walking static guards (viewport meta + native-form-control className)
+- [x] 74-02-PLAN.md — MOB-01: global @layer base font-size floor (input/textarea/select) + 3 className rewrites (text-sm → text-base md:text-sm) + 2 fs-walking static guards (viewport meta + native-form-control className)
 **UI hint**: yes
 
 ## Progress
@@ -272,6 +272,6 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 |-------|----------------|--------|-----------|
 | 72. Search Composition Fixes | 2/2 | Complete    | 2026-05-30 |
 | 73. Owned-Redirect Route Fix | 1/1 | Complete   | 2026-05-30 |
-| 74. DupeBanner Gate Refinement + Mobile Polish | 1/2 | In progress | - |
+| 74. DupeBanner Gate Refinement + Mobile Polish | 2/2 | Complete   | 2026-05-30 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
