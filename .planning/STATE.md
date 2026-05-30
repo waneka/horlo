@@ -2,15 +2,14 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: planning
-last_updated: "2026-05-30T02:43:32.442Z"
-last_activity: 2026-05-30
+status: Roadmap defined — ready for /gsd-plan-phase 72
+last_updated: "2026-05-30T05:32:12.533Z"
+last_activity: "2026-05-30 — v8.1 roadmap written (3 phases: 72/73/74)"
 progress:
-  total_phases: 3
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
