@@ -252,13 +252,13 @@ See [v8.1-ROADMAP.md](milestones/v8.1-ROADMAP.md) for full phase details.
   5. No cross-user cache-key leakage is introduced — `viewerId` stays in the cache key (Pitfall 7 from v2.0 Phase 10 remains intact)
 **Plans**: 2 plans (wave 1 parallel — zero file overlap between cache wiring and algorithm variation)
 - [x] 75-01-PLAN.md — DISC-RECS-CACHE: add `cacheTag('viewer:${viewerId}:recs')` to `CollectorsLikeYou.tsx`; wire `revalidateTag('viewer:${user.id}:recs')` (default semantics, not `'max'`) into the 4 watch mutation actions in `src/app/actions/watches.ts` (`addWatch`, `editWatch`, `removeWatch`, `moveWishlistToCollection`); regression test in `tests/app/actions/` asserts the tag fires on each mutation path
-- [ ] 75-02-PLAN.md — DISC-RECS-VARIATION: bump `SEED_POOL_SIZE` 15→30 in `src/data/recommendations.ts`; add deterministic-per-time-window sampling (PRNG seeded by `(viewerId, floor(Date.now() / 6h))`); add `topUpFromCatalogPopularity` helper invoked when post-exclusion `candidateMap.size < 8`; rationale templates unchanged; unit tests cover small-pool top-up, time-window rotation, within-window determinism, and viewer-owned exclusion
+- [x] 75-02-PLAN.md — DISC-RECS-VARIATION: bump `SEED_POOL_SIZE` 15→30 in `src/data/recommendations.ts`; add deterministic-per-time-window sampling (PRNG seeded by `(viewerId, floor(Date.now() / 6h))`); add `topUpFromCatalogPopularity` helper invoked when post-exclusion `candidateMap.size < 8`; rationale templates unchanged; unit tests cover small-pool top-up, time-window rotation, within-window determinism, and viewer-owned exclusion
 **UI hint**: no
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 75. Recommendations Freshness | 1/2 | In Progress|  |
+| 75. Recommendations Freshness | 2/2 | Complete   | 2026-05-30 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

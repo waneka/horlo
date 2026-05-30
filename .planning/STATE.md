@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.2
 milestone_name: Discovery Freshness
-status: executing
-last_updated: "2026-05-30T23:45:47.501Z"
+status: verifying
+last_updated: "2026-05-30T23:58:19.282Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-30 — v8.2 Discovery Freshness START
 
 Phase: 75 (Recommendations Freshness) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-30
 
 ## Deferred Items
@@ -84,6 +84,9 @@ Total: 27 items (2 debug + 11 quick_task + 13 seed + 1 UAT-audit false-positive)
 - **v8.2 scope is exactly 2 reqs, 1 phase, 2 parallel plans** — Phase 75 covers DISC-RECS-CACHE (cache-tag wiring) + DISC-RECS-VARIATION (algorithm rotation + sparse-pool top-up). Plans are wave-1-parallel because cache wiring touches `src/components/home/CollectorsLikeYou.tsx` + `src/app/actions/watches.ts` while algorithm variation touches `src/data/recommendations.ts` — zero file overlap.
 - **`revalidateTag` semantics = default, NOT `'max'`** — DISC-RECS-CACHE wants read-your-own-write (the user who just mutated wants to see the rec change THIS render); per-viewer tag `viewer:${user.id}:recs` keyed per-viewer (mirrors `viewer:${id}:counts` pattern at `src/app/actions/comments.ts:167`) — no cross-user over-invalidation.
 - **6h time window for algorithm rotation** — rail rotates 4× daily; balances "feels alive" with cache hit rate. PRNG = inline `mulberry32` (no new dependency). Top-up source = `watches_catalog.count` (v4.0 pg_cron-maintained — no extra query).
+- **Phase 75 P02 D-06/07/08/09**: `SEED_POOL_SIZE 15→30`; new `ROTATION_WINDOW_MS = 6 * 60 * 60 * 1000`; exported `seedFor` (djb2-style 32-bit) + `mulberry32` (5-line PRNG); Fisher-Yates shuffle of top-30 → take first `SAMPLED_SEED_SIZE` (15). Cache-stable within window; rotates next window.
+- **Phase 75 P02 D-10/D-11/D-14**: `topUpFromCatalogPopularity()` (exported) fires when `candidateMap.size < SPARSE_POOL_THRESHOLD` (8); queries `watches_catalog` ordered by `(ownersCount DESC, brand ASC) LIMIT 20`; uses `ownersCount` ONLY (no `wishlistCount`); determinism comes from daily pg_cron refresh — no PRNG needed for top-up.
+- **Phase 75 P02 D-12/D-13**: `Recommendation.representativeOwnerId` widened to `string | null`; synthetic top-up rows emit `null` + route through existing community-fallback rationale `"Popular in the community"` — no new rationale template or copy surface. `RecommendationCard.tsx` already does not dereference the field — non-breaking widening.
 
 ### Pending Todos
 
@@ -99,11 +102,12 @@ None.
 |---------------|-------------|---------|------|
 | 260530-e55 | SRCH-03 followup: composite footer onClick closes combobox popup + mounts StructuredEntryPanel | 6070c5cc, 17d5bc0f | 2026-05-30 |
 | Phase 75 P01 | 25m | 3 tasks | 3 files |
+| Phase 75 P02 | 8min | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last activity: 2026-05-30 — v8.2 ROADMAP.md written. Single phase (Phase 75) maps both v8.2 requirements (DISC-RECS-CACHE + DISC-RECS-VARIATION). Coverage 2/2. Mirrors v8.1's polish-milestone shape: build-gated, no-worktrees, bundled prod push + single UAT walk after Phase 75 lands. Phase 75 plans are wave-1-parallel (cache wiring + algorithm variation — zero file overlap).
-Next action: `/gsd-plan-phase 75` to generate Phase 75 plans (01-cache-invalidation + 02-algorithm-variation).
+Last activity: 2026-05-30 — Phase 75 Plan 02 COMPLETE (DISC-RECS-VARIATION). Both Phase 75 plans now done in parallel (P01 cache-invalidation + P02 algorithm-variation, zero file overlap). Code surface: `src/data/recommendations.ts` (rotation + sparse-pool top-up), `src/lib/discoveryTypes.ts` (representativeOwnerId widened to nullable), new test file `src/data/__tests__/recommendations.test.ts` (10 tests, 4 D-16 cases + 6 pure-function smoke tests). All verify chains PASS (build + targeted vitest + grep markers + no font-medium + no destructive git). Coverage 2/2 plans complete; v8.2 Phase 75 ready for verification + UAT scaffolding.
+Next action: `/gsd-verify-phase 75` to run the phase verifier; then bundle the v8.2 prod push (single Vercel deploy on top of v8.1 commit `cdd2db16`) and the single UAT walk covering DISC-RECS-CACHE (1 walk — add a watch and assert rail re-computes) + DISC-RECS-VARIATION (2 walks ≥6h apart) + sparse-pool top-up (1 walk on a fresh test account). Per `feedback_ppr_cache_fill_no_longer_call_out` do NOT layer #419 / cache-fill checks into the UAT script. Per `project_phase_complete_999_1_misset` hand-correct STATE.md `completed_phases` + `percent` after `gsd-sdk query phase.complete 75` (Bug 2 fires even when `is_last_phase: true`).
 
 ## Operator Next Steps
 
