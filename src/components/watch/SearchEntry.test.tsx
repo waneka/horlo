@@ -869,6 +869,7 @@ describe('SearchEntry — footer placement (SRCH-03)', () => {
     fireEvent.click(footer)
 
     expect(screen.getByTestId('structured-panel-mock')).toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   }, 10000)
 })
 
