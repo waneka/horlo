@@ -1,14 +1,14 @@
 ---
-status: partial
+status: passed
 phase: 72-search-composition-fixes
 source: [72-VERIFICATION.md]
 started: 2026-05-30T03:30:00Z
-updated: 2026-05-30T04:00:00Z
+updated: 2026-05-30T17:30:00Z
 ---
 
 ## Current Test
 
-[SRCH-03 follow-up — footer click pre-seeds StructuredEntryPanel BEHIND the still-open combobox popup; visually appears broken to user. One-line fix required (also close popup on click). Bumps Phase 72 to gap-closure.]
+[all 3 pass on prod after quick-260530-e55 composite handler fix shipped + UAT re-confirmed]
 
 ## Tests
 
@@ -25,33 +25,35 @@ result: pass
 ### 3. "Not finding it? Add manually" footer click expands the inline panel on prod
 
 expected: With results visible in the dropdown, clicking the footer button mounts `<StructuredEntryPanel>` inline below the search input with brand/model/reference pre-seeded from the current query. SRCH-03a structural jsdom test proves the button is a sibling of (not child of) the listbox; prod verifies a real browser delivers the click to the handler (the prod bug was specifically that listbox event routing swallowed the click in real browsers).
-result: issue — pre-seed works but combobox popup does NOT close, so the inline StructuredEntryPanel mounts behind the still-open popup. To the user it looks like the click did nothing. Footer handler must also close the popup (`setIsPopupOpen(false)`) in addition to `setShowPanel(true)`.
+result: pass (after quick-260530-e55 — see Gaps section for fix path). Footer click now collapses the popup AND reveals the inline StructuredEntryPanel with pre-seeded brand/model.
 
 ## Summary
 
 total: 3
-passed: 2
-issues: 1
+passed: 3
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-### SRCH-03-followup — footer click leaves combobox popup open
+### SRCH-03-followup — footer click leaves combobox popup open [RESOLVED]
 
-**Symptom:** Clicking "Not finding it? Add manually" pre-seeds StructuredEntryPanel below the search input, but the combobox popup remains open on top, hiding the panel. To the user, nothing visibly happens.
+**Symptom:** Clicking "Not finding it? Add manually" pre-seeded StructuredEntryPanel below the search input, but the combobox popup remained open on top, hiding the panel. To the user, nothing visibly happened.
 
-**Root cause:** `SearchEntry.tsx:329` — `onClick={() => setShowPanel(true)}` only triggers the panel; it does not close the popup. `isPopupOpen` stays true, the popup is z-stacked above the panel.
+**Root cause:** `SearchEntry.tsx:329` — `onClick={() => setShowPanel(true)}` only triggered the panel; it did not close the popup. `isPopupOpen` stayed true, the popup was z-stacked above the panel.
 
 **Fix (one composite handler):**
 ```tsx
 onClick={() => { setShowPanel(true); setIsPopupOpen(false); }}
 ```
 
-**Test gap (why jsdom missed this):** SRCH-03b asserts the panel mounts; it never asserted the listbox unmounts. Add `expect(screen.queryByRole('listbox')).not.toBeInTheDocument()` after the click (or new SRCH-03c).
+**Test gap addressed:** SRCH-03b extended with `expect(screen.queryByRole('listbox')).not.toBeInTheDocument()` after the click — regression-guards the popup-close behavior.
 
-**Phase status:** human_needed → gaps_found. Run `/gsd-plan-phase 72 --gaps` or `/gsd-quick` to close.
+**Resolution path:** `/gsd-quick` → `260530-e55-srch-03-followup-popup-stay-open-fix` (RED test commit `6070c5cc`, GREEN fix commit `17d5bc0f`, SUMMARY `4441a978`, plan artifact `d9c1d97e`). Prod UAT re-confirmed pass 2026-05-30.
 
-debug_session: none (root cause confirmed by inspection)
-status: failed
+**Durable learning:** [[feedback_test_assert_disappearance_too]] — when a click both mounts a panel AND should dismiss an overlapping popup, assert BOTH directions in jsdom.
+
+debug_session: none (root cause confirmed by inspection; closed via /gsd-quick)
+status: resolved
