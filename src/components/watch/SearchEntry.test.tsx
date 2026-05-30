@@ -736,11 +736,10 @@ describe('SearchEntry — pure-presenter discipline (counter-assert)', () => {
 })
 
 describe('SearchEntry — keyboard arrow-key navigation (SRCH-02)', () => {
-  // Use fake timers throughout (for debounce advance). Pass `advanceTimers` to
-  // userEvent.setup() so its internal scheduling uses vi.advanceTimersByTime,
-  // avoiding the deadlock described in RESEARCH.md Pitfall 6.
+  // Real timers: avoids fake-timer/rAF interaction with base-ui's AnimationFrame.
+  // Debounce is advanced via real-time await (260ms).
   beforeEach(() => {
-    vi.useFakeTimers()
+    vi.useRealTimers()
     vi.mocked(searchCatalogForAddFlow).mockReset()
     vi.mocked(useCatalogSearchCache).mockReturnValue({
       get: vi.fn(() => undefined),
@@ -749,14 +748,7 @@ describe('SearchEntry — keyboard arrow-key navigation (SRCH-02)', () => {
     BASE_PROPS.onPick.mockReset()
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('(SRCH-02a) ArrowDown highlights first result; second ArrowDown moves to second; ArrowUp returns to first; Enter fires onPick', async () => {
-    // delay: null disables userEvent's internal inter-event delays so keyboard
-    // events resolve synchronously without requiring real-time advances
-    // (avoids the deadlock described in RESEARCH.md Pitfall 6).
     const user = userEvent.setup({ delay: null })
     vi.mocked(searchCatalogForAddFlow).mockResolvedValue({
       success: true,
@@ -766,34 +758,34 @@ describe('SearchEntry — keyboard arrow-key navigation (SRCH-02)', () => {
     render(<SearchEntry {...BASE_PROPS} />)
     const input = screen.getByRole('combobox')
 
-    // Type a multi-char query; advance fake timers past debounce; flush microtask.
+    // Type query and wait for real debounce (250ms) + microtask flush.
     fireEvent.change(input, { target: { value: 'speed' } })
-    await act(async () => { vi.advanceTimersByTime(250) })
+    await new Promise(r => setTimeout(r, 260))
     await act(async () => { await Promise.resolve() })
 
     // Popup should be open with results.
     expect(screen.getByRole('listbox')).toBeInTheDocument()
 
-    input.focus()
+    await act(async () => { input.focus() })
 
     // First ArrowDown — first option should be highlighted.
-    await user.keyboard('{ArrowDown}')
+    await act(async () => { await user.keyboard('{ArrowDown}') })
     const options = screen.getAllByRole('option')
-    expect(options[0]).toHaveAttribute('data-highlighted', '')
+    await waitFor(() => expect(options[0]).toHaveAttribute('data-highlighted', ''), { timeout: 5000 })
 
     // Second ArrowDown — second option should be highlighted.
-    await user.keyboard('{ArrowDown}')
-    expect(options[1]).toHaveAttribute('data-highlighted', '')
+    await act(async () => { await user.keyboard('{ArrowDown}') })
+    await waitFor(() => expect(options[1]).toHaveAttribute('data-highlighted', ''))
 
     // ArrowUp — first option highlighted again.
-    await user.keyboard('{ArrowUp}')
-    expect(options[0]).toHaveAttribute('data-highlighted', '')
+    await act(async () => { await user.keyboard('{ArrowUp}') })
+    await waitFor(() => expect(options[0]).toHaveAttribute('data-highlighted', ''))
 
     // Enter — fires onPick with the first row (OMEGA).
-    await user.keyboard('{Enter}')
+    await act(async () => { await user.keyboard('{Enter}') })
     expect(BASE_PROPS.onPick).toHaveBeenCalledTimes(1)
     expect(BASE_PROPS.onPick).toHaveBeenCalledWith(OMEGA)
-  })
+  }, 10000)
 
   it('(SRCH-02b) Escape closes the popup', async () => {
     const user = userEvent.setup({ delay: null })
@@ -806,34 +798,30 @@ describe('SearchEntry — keyboard arrow-key navigation (SRCH-02)', () => {
     const input = screen.getByRole('combobox')
 
     fireEvent.change(input, { target: { value: 'speed' } })
-    await act(async () => { vi.advanceTimersByTime(250) })
+    await new Promise(r => setTimeout(r, 260))
     await act(async () => { await Promise.resolve() })
 
     expect(screen.getByRole('listbox')).toBeInTheDocument()
-    input.focus()
+    await act(async () => { input.focus() })
 
-    await user.keyboard('{Escape}')
+    await act(async () => { await user.keyboard('{Escape}') })
 
     await waitFor(() =>
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument(),
     )
-  })
+  }, 10000)
 })
 
 describe('SearchEntry — footer placement (SRCH-03)', () => {
-  // Fake timers for debounce advance (same pattern as other describe blocks).
+  // Real timers to avoid fake-timer/rAF interaction with base-ui.
   beforeEach(() => {
-    vi.useFakeTimers()
+    vi.useRealTimers()
     vi.mocked(searchCatalogForAddFlow).mockReset()
     vi.mocked(useCatalogSearchCache).mockReturnValue({
       get: vi.fn(() => undefined),
       set: vi.fn(),
     })
     BASE_PROPS.onPick.mockReset()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
   })
 
   it('(SRCH-03a) footer button is NOT a descendant of the listbox element (structural regression guard)', async () => {
@@ -848,7 +836,7 @@ describe('SearchEntry — footer placement (SRCH-03)', () => {
 
     render(<SearchEntry {...BASE_PROPS} />)
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'speed' } })
-    await act(async () => { vi.advanceTimersByTime(250) })
+    await new Promise(r => setTimeout(r, 260))
     await act(async () => { await Promise.resolve() })
 
     expect(screen.getByRole('listbox')).toBeInTheDocument()
@@ -857,7 +845,7 @@ describe('SearchEntry — footer placement (SRCH-03)', () => {
     // After the fix (Task 3), the footer button MUST NOT be inside the listbox.
     // Before the fix, this assertion will FAIL (footer IS inside Combobox.List → IS inside listbox).
     expect(footer.closest('[role="listbox"]')).toBeNull()
-  })
+  }, 10000)
 
   it('(SRCH-03b) clicking "Not finding it?" footer button mounts StructuredEntryPanel (behavioral regression)', async () => {
     // This test is jsdom-tolerant (click works either way in jsdom). Its job is
@@ -870,7 +858,7 @@ describe('SearchEntry — footer placement (SRCH-03)', () => {
 
     render(<SearchEntry {...BASE_PROPS} />)
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'speed' } })
-    await act(async () => { vi.advanceTimersByTime(250) })
+    await new Promise(r => setTimeout(r, 260))
     await act(async () => { await Promise.resolve() })
 
     expect(screen.getByRole('listbox')).toBeInTheDocument()
@@ -881,7 +869,7 @@ describe('SearchEntry — footer placement (SRCH-03)', () => {
     fireEvent.click(footer)
 
     expect(screen.getByTestId('structured-panel-mock')).toBeInTheDocument()
-  })
+  }, 10000)
 })
 
 describe('Phase 70 gap plan 06 — onSubmitStructured photoBlob pass-through (CR-01 closure)', () => {

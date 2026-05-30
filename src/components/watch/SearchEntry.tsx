@@ -220,6 +220,7 @@ export function SearchEntry({
         filter={null}
         itemToStringLabel={(r) => `${r.brand} ${r.model}`}
         itemToStringValue={(r) => r.catalogId}
+        isItemEqualToValue={(a, b) => a.catalogId === b.catalogId}
         onValueChange={(picked) => {
           if (picked) onPick(picked)
         }}
@@ -254,11 +255,10 @@ export function SearchEntry({
 
             {!isLoading && results.length > 0 && (
               <Combobox.List className="max-h-[60vh] overflow-y-auto p-1">
-                {results.map((r, i) => (
+                {results.map((r) => (
                   <Combobox.Item
                     key={r.catalogId}
                     value={r}
-                    index={i}
                     className="group flex items-center gap-4 min-w-0 rounded-md pl-2 pr-3 py-2 cursor-default data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
                   >
                     {/* Cover-photo circle — mirrors WatchSearchRow.tsx:34 byte-for-byte */}
