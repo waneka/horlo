@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: milestone_complete
-last_updated: "2026-05-30T20:42:52.591Z"
-last_activity: "2026-05-30 — Phase 74 Plan 02 execution complete (MOB-01 closed structurally: globals.css @layer base font-size 1rem floor + 3 user-facing className rewrites text-sm → text-base md:text-sm + 2 fs-walking static guards locking viewport meta + text-sm-on-native-form-controls invariants)"
+status: Awaiting next milestone
+last_updated: "2026-05-30T21:34:15.589Z"
+last_activity: 2026-05-30 — Milestone v8.1 completed and archived
 progress:
   total_phases: 3
   completed_phases: 3
@@ -24,17 +24,45 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 ## Current Position
 
-Phase: 74
-Plan: Not started
-Status: Milestone complete
-Next: /gsd-verify-phase 74  →  bundled prod push (Phases 72+73+74 single deploy + UAT walk per CONTEXT D-15)
-Last activity: 2026-05-30
+Phase: Milestone v8.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-05-30 — Milestone v8.1 completed and archived
 
-```
-v8.1 Progress [██████████████████████████████] 100% (5/5 plans across 3 phases — Phase 72 done, Phase 73 done, Phase 74 done; verify + bundled prod push next)
-```
+## Deferred Items
 
-**STATE.md hand-correction (recurrence-5 of `project_phase_complete_999_1_misset`):** `gsd-sdk query phase.complete 72` returned `next_phase: null` + `is_last_phase: true` and rewrote frontmatter to `status: milestone_complete / completed_phases: 2 / percent: 200`. ROADMAP is fine (Phase 72 marked Complete, 73+74 Not started). STATE.md hand-fixed back to the real next phase.
+Items acknowledged and deferred at v8.1 milestone close on 2026-05-30:
+
+| Category | Item | Status |
+|----------|------|--------|
+| debug | knowledge-base | unknown |
+| debug | mobile-title-above-fold | diagnosed |
+| quick_task | 260413-qp3-price-prominence-and-filter-collapse | missing |
+| quick_task | 260421-rdb-fix-404-on-watch-detail-pages-for-watche | missing |
+| quick_task | 260421-srx-wrap-follower-following-counts-in-link-o | missing |
+| quick_task | 260424-nk2-fix-phase-15-uat-bug-wywt-rail-and-overl | missing |
+| quick_task | 260513-hvu-hotfix-search-watches-tab-returns-empty- | missing |
+| quick_task | 260513-m31-fix-otherownersroster-count-label-always | missing |
+| quick_task | 260519-08p-fix-next-js-image-aspect-ratio-console-w | missing |
+| quick_task | 260519-d69-fix-4-collection-path-ui-issues-in-pathc | missing |
+| quick_task | 260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch | missing |
+| quick_task | 260519-ga9-fu-01-expose-brand-era-genre-archetype-f | missing |
+| quick_task | 260530-e55-srch-03-followup-popup-stay-open-fix | missing |
+| seed | SEED-001-catalog-hierarchy-and-attributes | dormant |
+| seed | SEED-002-hybrid-recommender | dormant |
+| seed | SEED-003-onboarding-cold-start-flow | dormant |
+| seed | SEED-004-v5-discovery-north-star | dormant |
+| seed | SEED-005-v6-market-value | dormant |
+| seed | SEED-007-market-pricing-api-spike | dormant |
+| seed | SEED-008-v5.1-explore-redesign | active |
+| seed | SEED-010-v5.3-add-watch-redesign | dormant |
+| seed | SEED-012-v6.0-social-interaction | active |
+| seed | SEED-013-v7.0-watch-photos | dormant |
+| seed | SEED-014-cache-components-canonical-sweep | dormant |
+| seed | SEED-015-inline-grid-engagement | dormant |
+| seed | SEED-016-watch-detail-redesign | dormant |
+
+Total: 27 items (2 debug + 11 quick_task + 13 seed + 1 UAT-audit false-positive). The 3 v8.1 UAT files (72/73/74) were flagged as gaps but all are `status: passed` with 0 pending — false positive in the audit. The 12 dormant seeds + 2 active seeds represent the forward roadmap, not operational debt; promoted via `/gsd-new-milestone`. Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 closes.
 
 ## Performance Metrics
 
@@ -225,7 +253,4 @@ Next action: /gsd-verify-phase 74 (expect MOB-01 + DUPE-04 automated checks pass
 
 ## Operator Next Steps
 
-- /gsd-verify-phase 74 (expect DUPE-04 + MOB-01 automated checks pass; prod walk human_needed)
-- Bundle prod push for Phase 72 SRCH-03 footer + Phase 73 ROUTE-01 + Phase 74 DUPE-04/MOB-01 — single deploy, single UAT walk per CONTEXT D-15 covering all 6 v8.1 items
-- /gsd-complete-milestone v8.1 after prod UAT passes (Phase 74 is last phase of v8.1) — remember to archive .planning/phases/72-*, 73-*, 74-* dirs into .planning/milestones/v8.1-phases/ per `feedback_milestone_close_phase_dir_archival_miss` (or /gsd-new-milestone's phases.clear --confirm will DELETE the un-archived work)
-- Per `project_phase_complete_999_1_misset` recurrence: after `gsd-sdk query phase.complete 74` (run during verify or close), hand-correct STATE.md `next_phase` + `progress` fields if they drift
+- Start the next milestone with /gsd-new-milestone

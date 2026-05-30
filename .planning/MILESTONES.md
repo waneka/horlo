@@ -1,5 +1,44 @@
 # Milestones
 
+## v8.1 Add-Watch Polish (Shipped: 2026-05-30)
+
+**Phases completed:** 3 phases (72, 73, 74), 5 plans, 11 tasks
+**Timeline:** 1 day (2026-05-29 → 2026-05-30), 47 commits since v8.0 close (5 feat, 3 fix, 8 test, 28 docs, 3 chore)
+**Code:** 12 src/+tests/ files changed (+730 / −146 LOC); 2 new fs-walking static guards
+**Source:** v8.0 post-deploy human UAT on prod (`418f0515`) — 6 defects captured (SRCH-01/02/03 + ROUTE-01 + DUPE-04 + MOB-01) all closed here
+**Pattern:** Pure subtraction-of-defects against shipped v8.0 code — no new features, each phase ships its own targeted regression test, single bundled prod push + single iPhone UAT walk (per Phase 74 CONTEXT D-15)
+**Verification:** All 5 plans automated-verified (build exit 0 + targeted vitest green); 6/6 bundled prod UAT items passed on horlo.app 2026-05-30
+
+**Key accomplishments:**
+
+1. **SRCH-01 multi-token search match** (Phase 72 Plan 01) — `searchCatalogForAddFlow` WHERE clause rewritten from single-substring OR to AND-of-ORs per whitespace-split token; "Brut Datejust" and "Timex Weekender" now match brand-only-overlap rows. DAL-only fix; tokenizer + parameter binding tested with mocked Postgres.
+
+2. **SRCH-02 keyboard nav + SRCH-03 footer click** (Phase 72 Plan 02) — Combobox.Up/Down/Enter restored via two surgical edits to SearchEntry: `isItemEqualToValue` prop on the Combobox root (base-ui requires it for highlight tracking) + removal of `index={i}` from Combobox.Item (the prop overrode internal item ordering and broke keyboard sequencing). Footer "What I'm looking for isn't here" button relocated outside `Combobox.List` as a Popup-sibling so the click survives base-ui's list-blur close; LOCKED composition slots from Phase 72 D-05..D-08.
+
+3. **ROUTE-01 owned-redirect fix** (Phase 73 Plan 01) — `handleSearchPick` owned branches swapped slug source from `result.reference` (model number; failed `/w/[ref]` UUID guard → 404) to `result.catalogId` (UUID always present in search results). Both owned branches collapsed to a single early-return `router.push(/w/${catalogId})`; receiver route untouched. Test scaffolding pivoted from URL-mode owned (T-70-01) and reference-mode owned (T-70-02) to a single catalogId target; WR-02 Test A deleted (rendered unreachable); WR-01 Test B pivoted to structured-submit.
+
+4. **DUPE-04 hide-CTA-entirely under DupeBanner** (Phase 74 Plan 01) — ConfirmStep Section 6 primary CTA (`Saving...` button on non-saving state, surfaced from Phase 70 gap-plan-08 WR-01 OR-gate) NOT rendered at all when DupeBanner is mounted. Implemented via additive optional `bannerActive?: boolean` on ConfirmStep (Phase 68 D-03 additive-extension contract preserved); AddWatchFlow.tsx:694 reverted from `pending={state.pending || state.dupeContext != null}` to `pending={state.pending}` (Phase 68 D-03 pending-semantic purity restored) + new adjacent `bannerActive={state.dupeContext != null}`. The banner IS the choice surface; absence is structural, not a disabled stub. Phase 70 D-11 DupeBanner sibling pattern UNCHANGED.
+
+5. **MOB-01 global iOS auto-zoom floor + 3 className rewrites** (Phase 74 Plan 02) — Global `@layer base { input, textarea, select { font-size: 1rem; } }` in `src/app/globals.css` catches DOM-default native elements (specificity 0,0,1 — utilities still win; no `!important`). Three user-facing offenders flip bare `text-sm` → `text-base md:text-sm` (16px mobile, 14px desktop — mirrors shadcn `Input` + `Textarea` primitives): `CommentCompose.tsx:60`, `CommentItem.tsx:170`, `SearchEntry.tsx:242` (Combobox.Input). Out of scope: shadcn primitives (already correct), `src/components/admin/*` (out of v8.1 user-facing scope), `src/app/layout.tsx` viewport export (no `maximumScale`/`userScalable` per ROADMAP SC#3; pinch-zoom preserved).
+
+6. **2 fs-walking static guards lock the MOB-01 invariants** (Phase 74 Plan 02) — `tests/static/no-iOS-zoom-viewport.test.ts` parses `src/app/layout.tsx` viewport export and asserts body does NOT contain `maximumScale`/`userScalable`/`minimumScale` (also rejects raw HTML `maximum-scale=` smuggled via `dangerouslySetInnerHTML`). `tests/static/no-text-sm-on-native-form-controls.test.ts` walks `src/components/comment/` + `src/components/watch/SearchEntry.tsx` (scope deliberately limited) and asserts every `<textarea|<input|<select|<Combobox.Input` with bare `text-sm` ALSO has `md:text-sm`. Both files declare `// @vitest-environment node` on line 1 per `project_vitest_static_node_env` (without the pragma vite externalizes node:fs → readdirSync undefined → guards silently pass on Vercel prebuild → false-negative regression).
+
+**Notable engineering work:**
+
+- **5th recurrence of JSDoc-prose grep-collision pattern** preempted in Phase 74 Plan 02 D-12 guard. Initial SCOPE LIMIT comment cited `src/components/admin/*` verbatim and would have tripped the AC `grep -c "src/components/admin" returns 0`. Reworded to "the admin/ subtree" — preserves intent, clears the grep. 5 documented recurrences across Phases 64/69/70/74-01/74-02. Durable lesson reinforced: AC greps targeting literal tokens false-positive on JSDoc-prose using that token; paraphrase in prose, keep the literal in code/strings only.
+
+- **Disappearance-paired assertion pattern** (per `feedback_test_assert_disappearance_too` recurrence-3) carried forward in DUPE-04 test pivot. 3 existing WR-01 tests (A/B/C) flipped from `toBeDisabled()` to `not.toBeInTheDocument()` paired with `getByTestId('dupe-banner-{owned|wishlist}').toBeInTheDocument()`; new WR-01 Test D asserts absence-by-construction (banner mounted → CTA absent → addWatch never callable).
+
+- **Extractor garbage hit again on milestone.complete** — 5th milestone (after v6.0/v7.0/v8.0). Final accomplishment bullet was `"1. [Rule 1 — Bug-preemption] JSDoc-prose grep-collision recurrence-4 preempted in D-12 guard"` lifted from a SUMMARY.md numbered list and mangled. Hand-rewrote this entry per the operator pattern documented in `project_v7_0_complete`.
+
+- **STATE.md progress recurrence-5 of `project_phase_complete_999_1_misset`** — Phase 74 `phase.complete` returned `is_last_phase: true` (correct, no `next_phase` corruption this time) but still inflated `completed_phases` to 4 against `total_phases: 3` → 133%. Hand-corrected to 3/3 / 100% before milestone close. Recurrence confirms the progress-counter bug is independent of the next-phase-id bug.
+
+**Known deferred (29 items acknowledged at close):**
+
+27 acknowledged items recorded in STATE.md `## Deferred Items`: 2 debug sessions (pre-existing), 11 quick tasks (oldest from April 2026 — long-tail backlog), 14 unimplemented seeds (12 dormant + 2 active — represents the forward roadmap, not operational debt; promoted via `/gsd-new-milestone`). The 3 v8.1 UAT files (72/73/74) flagged by audit are false positives — all `status: passed` with 0 pending. Consistent with `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 closes.
+
+---
+
 ## v8.0 Add-Watch Redesign (Shipped: 2026-05-29)
 
 **Phases completed:** 6 phases (66, 67, 68, 69, 70, 71), 22 plans
