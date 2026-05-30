@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
 status: executing
-last_updated: "2026-05-30T07:12:47.052Z"
-last_activity: 2026-05-30 -- Phase 72 planning complete
+last_updated: "2026-05-30T07:14:13.970Z"
+last_activity: 2026-05-30 -- Phase 72 execution started
 progress:
   total_phases: 1
   completed_phases: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTED)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v8.1 roadmap defined — Phase 72 is next
+**Current focus:** Phase 72 — Search Composition Fixes
 
 ## Current Position
 
-Phase: Not started (roadmap defined, planning begins)
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-30 -- Phase 72 planning complete
+Phase: 72 (Search Composition Fixes) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 72
+Last activity: 2026-05-30 -- Phase 72 execution started
 
 ```
 v8.1 Progress [                              ] 0% (0/3 phases)
