@@ -249,7 +249,8 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
   1. Clicking an "In collection" result in the search combobox navigates to `/w/[ref]` and the watch detail page renders (not a 404)
   2. The redirect works for any owned watch regardless of whether its catalog row has a non-empty reference field (edge case: null/empty ref handled gracefully — either navigates to the collection or surfaces a recoverable error, not a blank 404)
   3. No change to the redirect behavior for non-owned results (confirm screen still appears for new additions)
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 73-01-PLAN.md — Collapse handleSearchPick owned branches to single catalogId redirect; update T-70-01/T-70-02/WR-02 Test D push targets; delete WR-02 Test A (dead-path); pivot WR-01 Test B to structured-submit
 
 ### Phase 74: DupeBanner Gate Refinement + Mobile Polish
 **Goal**: Users understand why the ConfirmStep CTA is unavailable when a DupeBanner is shown, and iOS Safari does not auto-zoom inputs across the app
@@ -268,7 +269,7 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 72. Search Composition Fixes | 2/2 | Complete    | 2026-05-30 |
-| 73. Owned-Redirect Route Fix | 0/? | Not started | - |
+| 73. Owned-Redirect Route Fix | 0/1 | Not started | - |
 | 74. DupeBanner Gate Refinement + Mobile Polish | 0/? | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
