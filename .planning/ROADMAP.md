@@ -238,7 +238,7 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
   4. Keyboard navigation does not trap focus; Tab and Escape exit the popup cleanly
 **Plans**: 2 plans
 - [x] 72-01-PLAN.md — SRCH-01 DAL token-AND fix + regression test (catalog.ts + new catalog-search-tokens.test.ts)
-- [ ] 72-02-PLAN.md — SRCH-02 isItemEqualToValue + SRCH-03 footer relocation + regression tests (SearchEntry.tsx + SearchEntry.test.tsx)
+- [x] 72-02-PLAN.md — SRCH-02 isItemEqualToValue + SRCH-03 footer relocation + regression tests (SearchEntry.tsx + SearchEntry.test.tsx)
 **UI hint**: yes
 
 ### Phase 73: Owned-Redirect Route Fix
@@ -267,7 +267,7 @@ See [v8.0-ROADMAP.md](milestones/v8.0-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 72. Search Composition Fixes | 1/2 | In Progress|  |
+| 72. Search Composition Fixes | 2/2 | Complete   | 2026-05-30 |
 | 73. Owned-Redirect Route Fix | 0/? | Not started | - |
 | 74. DupeBanner Gate Refinement + Mobile Polish | 0/? | Not started | - |
 

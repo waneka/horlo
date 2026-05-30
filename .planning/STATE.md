@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.1
 milestone_name: Add-Watch Polish
-status: executing
-last_updated: "2026-05-30T07:19:48.069Z"
+status: verifying
+last_updated: "2026-05-30T10:16:18.966Z"
 last_activity: 2026-05-30
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-05-28 — v8.0 Add-Watch Redesign STARTE
 
 Phase: 72 (Search Composition Fixes) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-05-30
 
 ```
@@ -189,6 +189,7 @@ Items acknowledged and deferred at milestone close on 2026-05-29 (v8.0):
 | Phase 70 P07 | 9min | 2 tasks | 3 files |
 | Phase 70 P08 | ~12min | 2 tasks | 2 files |
 | Phase 72-search-composition-fixes P01 | 3min | 2 tasks | 2 files |
+| Phase 72-search-composition-fixes P02 | 15min | 3 tasks | 2 files |
 
 ## Session Continuity
 

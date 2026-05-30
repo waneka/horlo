@@ -14,8 +14,8 @@ Each defect from v8.0's prod UAT walk is captured as a user-centric requirement.
 ### Search (3 requirements)
 
 - [x] **SRCH-01**: User can search for a watch using brand + model tokens (e.g. "Brut Datejust", "Timex Weekender") and receive matching catalog results — multi-token queries return the same coverage as single-token brand queries when the catalog has the row
-- [ ] **SRCH-02**: User can navigate search results with the keyboard — Up/Down arrows move focus through result rows, Enter selects the focused row to fire `onPick` (advances flow per Phase 70 owned-redirect / confirm branching)
-- [ ] **SRCH-03**: User can click the "Not finding it? Add manually" footer row when search results are present and have the inline `StructuredEntryPanel` expand with the parsed query pre-seeded (same behavior as the no-match auto-mount path)
+- [x] **SRCH-02**: User can navigate search results with the keyboard — Up/Down arrows move focus through result rows, Enter selects the focused row to fire `onPick` (advances flow per Phase 70 owned-redirect / confirm branching)
+- [x] **SRCH-03**: User can click the "Not finding it? Add manually" footer row when search results are present and have the inline `StructuredEntryPanel` expand with the parsed query pre-seeded (same behavior as the no-match auto-mount path)
 
 ### Routing (1 requirement)
 
@@ -54,8 +54,8 @@ Explicitly excluded from v8.1 to prevent scope creep:
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | SRCH-01 | Phase 72 | Complete |
-| SRCH-02 | Phase 72 | Pending |
-| SRCH-03 | Phase 72 | Pending |
+| SRCH-02 | Phase 72 | Complete |
+| SRCH-03 | Phase 72 | Complete |
 | ROUTE-01 | Phase 73 | Pending |
 | DUPE-04 | Phase 74 | Pending |
 | MOB-01 | Phase 74 | Pending |
