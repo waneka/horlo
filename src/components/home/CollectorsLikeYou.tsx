@@ -1,4 +1,4 @@
-import { cacheLife } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 
 import { getRecommendationsForViewer } from '@/data/recommendations'
 import { RecommendationCard } from '@/components/home/RecommendationCard'
@@ -23,6 +23,7 @@ import { RecommendationCard } from '@/components/home/RecommendationCard'
 export async function CollectorsLikeYou({ viewerId }: { viewerId: string }) {
   'use cache'
   cacheLife('minutes')
+  cacheTag(`viewer:${viewerId}:recs`)
 
   const recs = await getRecommendationsForViewer(viewerId)
   if (recs.length === 0) return null
