@@ -150,3 +150,23 @@
     }
   }
 }
+
+/*
+ * MOB-01 (Phase 74 D-06): native form-control font-size floor.
+ *
+ * iOS Safari triggers auto-zoom on focus when an input/textarea/select has a
+ * computed font-size below 16px. Setting the DOM-default font-size to 1rem
+ * (16px) on these elements prevents the zoom for any raw native element that
+ * lacks an explicit Tailwind override.
+ *
+ * Specificity is 0,0,1 — beaten by any utility class (0,1,0) — so components
+ * that legitimately want a different size CAN still set one. This rule is the
+ * floor, not a ceiling. No `!important`.
+ */
+@layer base {
+  input,
+  textarea,
+  select {
+    font-size: 1rem; /* 16px — prevents iOS Safari auto-zoom on focus */
+  }
+}
