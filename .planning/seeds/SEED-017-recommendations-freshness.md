@@ -1,11 +1,13 @@
 ---
 id: SEED-017
-status: active
+status: shipped
+shipped_in: v8.2
+shipped: 2026-06-09
 planted: 2026-05-30
 planted_during: Between v8.1 and v9.0 — operator observation that "From Collectors Like You" home rail surfaces the same 2 watches across collection changes
 trigger_when: as soon as the recurrence is operator-confirmed visually OR as a slot-in polish phase under v9.0 Catalog Expansion (cheap; sits well above the catalog work). Could also justify a small **v8.2 Discovery Freshness** polish milestone of its own.
 scope: small (1 phase, 2 plans)
-related_phases: [v2.0 Phase 10 Plan 04 + Plan 07 (current CollectorsLikeYou DAL + Server Component), v6.0 Phase 55 (revalidateTag pattern), v7.0 Phase 63 (viewer:counts tag pattern), SEED-002 (future hybrid recommender — this seed is the lightweight precursor)]
+related_phases: [v2.0 Phase 10 Plan 04 + Plan 07 (current CollectorsLikeYou DAL + Server Component), v6.0 Phase 55 (revalidateTag pattern), v7.0 Phase 63 (viewer:counts tag pattern), SEED-002 (future hybrid recommender — this seed is the lightweight precursor), v8.2 Phase 75 (SHIPPED)]
 ---
 
 # SEED-017: Recommendations Freshness — Cache Invalidation + Algorithm Variation

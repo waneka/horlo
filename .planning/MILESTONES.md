@@ -1,5 +1,46 @@
 # Milestones
 
+## v8.2 Discovery Freshness (Shipped: 2026-06-10)
+
+**Phases completed:** 1 phase (75), 2 plans, 6 tasks
+**Timeline:** ~2 hours of code work on 2026-05-30 (close held open until 2026-06-09); 14 commits since v8.1 close
+**Code:** 6 src/+tests/ files changed (+874 / −11 LOC) — 2 new test files (228 + 413 LOC); zero existing-test churn
+**Source:** SEED-017 (planted 2026-05-30 from operator observation that the home "From Collectors Like You" rail surfaces the same ~2 watches across collection changes despite being the largest above-the-fold content slot)
+**Pattern:** Single-phase polish milestone (mirrors v4.1 / v5.1 / v5.2 / v8.1 shape — small N of req-IDs, 2 wave-1-parallel plans, no new UI surface)
+**Verification:** Both plans automated-verified (build exit 0 + targeted vitest green); D-16 4-case rotation/top-up cases + 4-case mutation-invalidation regression cases all pass. Closed without `/gsd-audit-milestone` (mirrors v5.0/v5.1/v7.0/v8.0/v8.1 close decisions for polish milestones).
+
+**Key accomplishments:**
+
+1. **DISC-RECS-CACHE: read-your-own-writes invalidation for the home recs rail** (Phase 75 Plan 01) — `CollectorsLikeYou.tsx` now registers `cacheTag(`viewer:${viewerId}:recs`)` inside its `'use cache'` scope, on the line immediately after the existing `cacheLife('minutes')`. All four watch-mutation Server Actions in `src/app/actions/watches.ts` (`addWatch`, `editWatch`, `removeWatch`, `moveWishlistToCollection`) call `updateTag(`viewer:${user.id}:recs`)` immediately after their existing `revalidatePath('/')`. Read-your-own-writes semantics (per-viewer, scoped) — the user who just mutated sees the rec change THIS render; cross-user cache-key safety (Pitfall 7 from v2.0 Phase 10) preserved. Mirrors the v7.0 Phase 63 `viewer:${id}:counts` tag shape.
+
+2. **`updateTag` (not single-arg `revalidateTag`) per Next 16 deprecation** (Phase 75 Plan 01 D-02) — Plan originally spec'd `revalidateTag(tag)` single-arg form which is deprecated in Next 16 (signature is now `(tag, profile)` and the single-arg form doesn't type-check cleanly). Executor migrated all 4 call sites + test assertions to `updateTag(tag)` — the named Next 16 primitive for read-your-own-write. Documented in MEMORY as `project_next16_revalidatetag_deprecated`. Pre-existing `notifications.ts` `viewer:${id}:counts` site was the first canonical caller; this is the second.
+
+3. **DISC-RECS-VARIATION: 6h-window deterministic rotation** (Phase 75 Plan 02 D-06/07/08/09) — `SEED_POOL_SIZE` bumped 15→30 in `src/data/recommendations.ts`. New `ROTATION_WINDOW_MS = 6 * 60 * 60 * 1000` constant. Exported `seedFor` (djb2-style 32-bit hash of `viewerId` + `floor(Date.now() / ROTATION_WINDOW_MS)`) + `mulberry32` (inline 5-LOC PRNG, no external dep). Fisher-Yates shuffle of the top-30 pool → take first `SAMPLED_SEED_SIZE` (15). Same window = same shuffle = cache-stable; next window = different shuffle = rail rotates 4× daily.
+
+4. **DISC-RECS-VARIATION: sparse-pool catalog-popularity top-up** (Phase 75 Plan 02 D-10/D-11/D-14) — New exported `topUpFromCatalogPopularity()` helper fires when post-viewer-exclusion `candidateMap.size < SPARSE_POOL_THRESHOLD` (8). Queries `watches_catalog` ordered by `(ownersCount DESC, brand ASC) LIMIT 20`. Uses `ownersCount` only (not + `wishlistCount`) — ownership matches the rail title "From Collectors Like You." Determinism comes from the daily pg_cron refresh of `ownersCount` (03:00 UTC) — no PRNG needed for top-up. The rail never looks broken with 1-2 cards even on a fresh small user base.
+
+5. **`Recommendation.representativeOwnerId` widened to `string | null`** (Phase 75 Plan 02 D-12/D-13) — Synthetic top-up rows emit `null` ownerId (no real owner to attribute) and route through the existing community-fallback rationale `"Popular in the community"` — no new rationale template or copy surface. `RecommendationCard.tsx` inspection-verified non-dereferencing of the field — non-breaking type widening. Locked the synthetic-row marker through to UI consumers via JSDoc on the type.
+
+6. **Mutation-invalidation regression suite + pure-function smoke tests** — `tests/app/actions/watches-recs-invalidation.test.ts` (Phase 75 Plan 01 D-15, 4 cases asserting each mutation action fires `updateTag(viewer:${user.id}:recs)` exactly once per call — catches future mutation actions that forget to invalidate). Plus `src/data/__tests__/recommendations.test.ts` (Phase 75 Plan 02 D-16, 4 rotation/top-up cases + 6 pure-function smoke tests for `seedFor` / `mulberry32` / Fisher-Yates determinism — 10 total).
+
+**Notable engineering work:**
+
+- **`project_next16_revalidatetag_deprecated` memory durable lesson** — first project encounter with the Next 16 cache-API signature drift. Future plans specifying read-your-own-write should call out `updateTag` directly, not the legacy single-arg `revalidateTag` form. Cross-user stale-while-revalidate (`revalidateTag(tag, 'max')`) is still correct in its proper place.
+
+- **No code-side changes between code-complete (2026-05-30) and close (2026-06-09)** — the milestone was code-complete in ~2 hours on May 30 but the close was held open for 10 days. STATE.md `status: verifying` correctly reflected the gap; no drift in the working tree (clean) and no follow-up commits required at close. Mirrors `feedback_mobile_ui_verify_on_prod` patience for prod UAT (DISC-RECS-VARIATION specifically needs ≥6h between sessions to observe rotation — a 10-day window comfortably clears it).
+
+- **6th recurrence of `gsd-sdk milestone.complete` extractor garbage** — auto-generated accomplishments at close were "1. [Rule 3 — Blocking issue] Plan's `revalidateTag(tag)` single-arg form is deprecated in Next 16 → migrated to `updateTag(tag)`" (a fragment lifted from 75-01 SUMMARY's "What Changed From Plan" numbered list) and "Files exist:" (a section header from 75-02 SUMMARY). Hand-rewrote this entry per the operator pattern documented in `project_v7_0_complete` / `project_v8_1_complete`. Confirmed across v6.0 / v7.0 / v8.0 / v8.1 / v8.2 — 6 consecutive milestones.
+
+- **3rd recurrence of phase-dir archival miss** — `gsd-sdk milestone.complete` returned `"archived": {"phases": false}`; the CLI archives top-level docs but does NOT archive `.planning/phases/` directories. Hand-archived `.planning/phases/75-recommendations-freshness/` → `.planning/milestones/v8.2-phases/` inline per `feedback_milestone_close_phase_dir_archival_miss`.
+
+- **`audit-open` surfaced SEED-017 as still-active** at close — even though Phase 75 shipped SEED-017's exact scope. Hand-patched the seed's frontmatter (`status: active` → `status: shipped` + `shipped_in: v8.2` + `shipped: 2026-06-09`) before close so it stops appearing as forward roadmap. The audit doesn't know which seed a milestone implements; the operator does.
+
+**Known deferred (27 items acknowledged at close):**
+
+27 items recorded in STATE.md `## Deferred Items`: 2 debug sessions (pre-existing — `knowledge-base`, `mobile-title-above-fold`), 11 quick tasks (oldest from April 2026 — long-tail backlog carried from v8.1 unchanged), 14 unimplemented seeds. Of the 14 seeds, 6 are genuine future work (SEED-001/002/003/005/007/014) and 6 are already-shipped seeds still flagged as `status: active|dormant` and need their seed-file `status:` field flipped to `shipped:` (SEED-008 / 010 / 012 / 013 / 015 / 016). SEED-017 was dropped from the deferred list because it shipped THIS milestone. Consistent with `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 closes.
+
+---
+
 ## v8.1 Add-Watch Polish (Shipped: 2026-05-30)
 
 **Phases completed:** 3 phases (72, 73, 74), 5 plans, 11 tasks
