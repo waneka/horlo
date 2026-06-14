@@ -77,17 +77,18 @@ async function main() {
       LIMIT 50
     `
 
-    // 3. Per-family roll-up (only where family is populated)
+    // 3. Per-family roll-up (joins watch_families via family_id; only rows where family is populated)
     console.log('[inventory] Querying per-family roll-up...')
     const familyRollup = await sql<{ family: string; brand: string; count: number }[]>`
       SELECT
-        family,
-        brand,
+        wf.name AS family,
+        wc.brand,
         count(*)::int AS count
-      FROM public.watches_catalog
-      WHERE family IS NOT NULL
-      GROUP BY family, brand
-      ORDER BY family ASC, brand ASC
+      FROM public.watches_catalog wc
+      JOIN public.watch_families wf ON wf.id = wc.family_id
+      WHERE wc.family_id IS NOT NULL
+      GROUP BY wf.name, wc.brand
+      ORDER BY wf.name ASC, wc.brand ASC
     `
 
     // 4. Watches already used in curated_list_items or collection_path_nodes
