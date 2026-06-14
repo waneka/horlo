@@ -22,7 +22,10 @@
     "db:seed-lineage": "tsx --env-file=.env.local scripts/seed-lineage.ts",
     "db:factual-propose": "tsx --env-file=.env.local scripts/factual-propose.ts",
     "db:factual-apply": "tsx --env-file=.env.local scripts/factual-apply.ts",
-    "db:verify-catalog-coverage": "tsx --env-file=.env.local scripts/verify-catalog-coverage.ts"
+    "db:verify-catalog-coverage": "tsx --env-file=.env.local scripts/verify-catalog-coverage.ts",
+    "explore:inventory": "tsx scripts/inventory-explore-catalog.ts",
+    "explore:covers": "tsx --env-file=.env.local scripts/generate-explore-covers.ts",
+    "explore:gen-migration": "tsx --env-file=.env.local scripts/generate-explore-migration.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
@@ -32,6 +35,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
+    "ai": "^5.0.202",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
