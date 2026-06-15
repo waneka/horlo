@@ -220,7 +220,7 @@ cover_prompt_summary: Abstract warm tone suggesting "first chapter, new beginnin
 ---
 
 ## tool-watch-purist
-title: Tool Watch Purist's Top 8
+title: The Essential Tool Watch List
 slug: tool-watch-purist
 curator_name: Horlo Editorial
 sort_order: 50
