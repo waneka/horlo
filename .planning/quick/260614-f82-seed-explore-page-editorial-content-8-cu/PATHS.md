@@ -1,5 +1,7 @@
 <!-- PATHS.md — 8 collection paths for /explore editorial seed -->
-<!-- All brand/model/reference triples verified against INVENTORY.md (prod, 2026-06-14) -->
+<!-- Editorial-ideal picks pass applied 2026-06-14: see known_issues_to_fix audit -->
+<!-- needs_catalog_add: true  = definitely missing, add via /api/extract-watch -->
+<!-- needs_catalog_verify: true = family confirmed in prod rollup; exact ref may differ -->
 <!-- Exactly 2 of each path_type: Going Deeper / Branching Out / Trading Up / Filling a Gap -->
 <!-- Each path: 1 seed + exactly 3 follow-on nodes at sort_order 0, 1, 2 -->
 
@@ -11,6 +13,7 @@ seed:
   brand: Seiko
   model: SKX007
   reference: SKX007
+  needs_catalog_verify: true   # SKX family has 2 in prod
 rationale: |
   The SKX007 is where most dive collecting begins. This path follows the depth:
   same tool-watch philosophy, progressively more sophisticated execution. Every
@@ -20,16 +23,19 @@ nodes:
   - brand: Tudor
     model: Black Bay 58
     reference: 79030N
+    needs_catalog_verify: true   # Black Bay family has 5 in prod
     rationale: In-house movement, tighter case size, better bracelet — the first meaningful upgrade that still respects the tool ethos.
     sort_order: 0
   - brand: Omega
     model: Seamaster Diver 300M
     reference: 210.30.42.20.01.001
+    needs_catalog_verify: true   # Seamaster Diver 300M family has 3 in prod
     rationale: Co-Axial Master Chronometer with a ceramic bezel — where dive-watch engineering becomes genuinely impressive.
     sort_order: 1
   - brand: Rolex
     model: Submariner No-Date
     reference: 124060
+    needs_catalog_verify: true   # Submariner family has 8 in prod
     rationale: The endpoint: Oystersteel case, Oyster bracelet, 300m — the benchmark every dive watch is implicitly measured against.
     sort_order: 2
 
@@ -42,7 +48,7 @@ sort_order: 20
 seed:
   brand: Omega
   model: Speedmaster Professional
-  reference: 3570.50
+  reference: 3590.50
 rationale: |
   The pre-Co-Axial Moonwatch is the first chapter of a deep chronograph story.
   This path follows the Speedmaster lineage backward through its own history —
@@ -52,16 +58,19 @@ nodes:
   - brand: Omega
     model: Speedmaster Moonwatch
     reference: 311.30.42.30.01.005
+    needs_catalog_verify: true   # Speedmaster Moonwatch family has 8 in prod
     rationale: The modern Co-Axial Moonwatch — updated movement geometry, same sapphire-and-hesalite case philosophy.
     sort_order: 0
   - brand: Omega
     model: Speedmaster
     reference: CK2998
+    needs_catalog_add: true      # vintage pre-moon ref; Speedmaster Moonwatch family (8) skews modern
     rationale: The first Speedmaster reference — asymmetric case, pump pushers, born for a different kind of mission than the moon.
     sort_order: 1
   - brand: Rolex
     model: Cosmograph Daytona
     reference: 116500LN
+    needs_catalog_verify: true   # Daytona family has 5 in prod
     rationale: The alternative apex: ceramic bezel, in-house 4130 caliber — a different answer to what a chronograph at this level should be.
     sort_order: 2
 
@@ -75,6 +84,7 @@ seed:
   brand: Rolex
   model: Submariner Date
   reference: 126610LN
+  needs_catalog_verify: true   # Submariner family has 8 in prod
 rationale: |
   The Submariner Date is a natural starting point — it is the default answer
   to "what dive watch" for most collectors. This path branches laterally:
@@ -86,17 +96,18 @@ nodes:
   - brand: Tudor
     model: Pelagos 39
     reference: 25407N
+    needs_catalog_verify: true   # Pelagos family has 2 in prod; 25407N likely one of those
     rationale: Titanium case, 500m, in-house movement — branches from steel Rolex toward a more technical, less polished direction.
     sort_order: 0
   - brand: Longines
     model: HYDROCONQUEST
     reference: L3.781.4.06.6
-    commentary: Branches toward accessible Swiss value — same dive function, fraction of the cost, honest manufacture.
     rationale: Branches toward accessible Swiss value — same dive function, fraction of the cost, honest manufacture.
     sort_order: 1
   - brand: Grand Seiko
     model: Snowflake
     reference: SBGA211
+    needs_catalog_verify: true   # Elegance family has 2 in prod; SBGM221 confirmed, SBGA211 likely the other
     rationale: The genre pivot: Spring-Drive precision in an artistic dial — the branch that questions whether "dive watch" should be the destination at all.
     sort_order: 2
 
@@ -110,6 +121,7 @@ seed:
   brand: Omega
   model: Speedmaster Moonwatch
   reference: 311.30.42.30.01.005
+  needs_catalog_verify: true   # Speedmaster Moonwatch family has 8 in prod
 rationale: |
   A chronograph collector who starts with the Moonwatch will eventually want to
   understand what else the genre offers. This path branches from space-program
@@ -119,6 +131,7 @@ nodes:
   - brand: Tudor
     model: Black Bay Chrono
     reference: 79360N
+    needs_catalog_verify: true   # Black Bay family has 5 in prod; 79360N plausible
     rationale: In-house movement, column-wheel, vertical clutch — branches toward the contemporary integrated-bracelet chronograph.
     sort_order: 0
   - brand: Hanhart
@@ -129,6 +142,7 @@ nodes:
   - brand: Rolex
     model: Cosmograph Daytona
     reference: 126500LN
+    needs_catalog_verify: true   # Daytona family has 5 in prod
     rationale: The genre benchmark: ceramic-bezel Daytona with the 4130 caliber — the branch toward prestige and permanence.
     sort_order: 2
 
@@ -142,6 +156,7 @@ seed:
   brand: Seiko
   model: 5 Sports
   reference: SRPD51
+  needs_catalog_verify: true   # 5 Sports family has 2 in prod
 rationale: |
   The 5 Sports is a legitimate entry into automatic watch ownership — not a
   placeholder. This trading-up path respects that and builds on it: each step
@@ -151,16 +166,19 @@ nodes:
   - brand: Seiko
     model: Alpinist
     reference: SPB121
+    needs_catalog_verify: true   # Alpinist family has 2 in prod; SPB121 likely the modern entry (SARB017 is the other)
     rationale: Next tier of Seiko: better finishing, tighter movement tolerances, compass bezel — the 5 Sports' more considered sibling.
     sort_order: 0
   - brand: Tudor
     model: Black Bay
     reference: 79230N
+    needs_catalog_verify: true   # Black Bay family has 5 in prod; 79230N (standard BB) plausible
     rationale: Swiss manufacture, in-house movement, proper bracelet — the first tier where "entry level" stops being the frame.
     sort_order: 1
   - brand: Omega
     model: Seamaster Diver 300M
     reference: 212.30.41.20.01.003
+    needs_catalog_verify: true   # Seamaster Diver 300M family has 3 in prod
     rationale: Master Chronometer certification, Co-Axial movement — the tier where documentation of precision becomes a selling point.
     sort_order: 2
 
@@ -183,16 +201,19 @@ nodes:
   - brand: Tudor
     model: Black Bay 58
     reference: 79030N
-    rationale: In-house movement, tudor heritage, 200m — the next bracket where build quality becomes visceral rather than theoretical.
+    needs_catalog_verify: true   # Black Bay family has 5 in prod
+    rationale: In-house movement, Tudor heritage, 200m — the next bracket where build quality becomes visceral rather than theoretical.
     sort_order: 0
   - brand: Omega
     model: Seamaster Diver 300M
     reference: 210.30.42.20.01.001
+    needs_catalog_verify: true   # Seamaster Diver 300M family has 3 in prod
     rationale: Ceramic, Co-Axial, Master Chronometer — where the certification stack starts to matter as much as the watch.
     sort_order: 1
   - brand: Rolex
     model: Submariner Date
     reference: 126610LN
+    needs_catalog_verify: true   # Submariner family has 8 in prod
     rationale: The trade-up endpoint: Oystersteel, in-house 3235, the bracelet that defines the category — and the resale graph to match.
     sort_order: 2
 
@@ -206,6 +227,7 @@ seed:
   brand: Rolex
   model: Submariner No-Date
   reference: 124060
+  needs_catalog_verify: true   # Submariner family has 8 in prod
 rationale: |
   A collector who owns the no-date Submariner has the diver covered. But a
   single excellent diver leaves gaps: no dress watch, no chronograph, no
@@ -220,11 +242,13 @@ nodes:
   - brand: Seiko
     model: Alpinist
     reference: SARB017
+    needs_catalog_verify: true   # Alpinist family has 2 in prod
     rationale: Smaller, lighter, casually wearable field watch — fills the "weekend beater with character" slot the Submariner is too precious for.
     sort_order: 1
   - brand: Tudor
     model: Black Bay Chrono
     reference: 79360N
+    needs_catalog_verify: true   # Black Bay family has 5 in prod; 79360N plausible
     rationale: In-house chronograph adds the timing complication the Sub lacks — same family, new function.
     sort_order: 2
 
@@ -238,6 +262,7 @@ seed:
   brand: Grand Seiko
   model: Snowflake
   reference: SBGA211
+  needs_catalog_verify: true   # Elegance family has 2 in prod; SBGM221 confirmed, SBGA211 likely the other
 rationale: |
   The Snowflake is a destination watch — a dressy, Spring-Drive statement piece
   that handles one role extremely well. This path fills the gaps around it:
@@ -247,15 +272,17 @@ nodes:
   - brand: Seiko
     model: Prospex Turtle
     reference: SRP777
+    needs_catalog_verify: true   # Prospex Turtle family has 3 in prod
     rationale: Affordable tool watch for the days the Snowflake should stay home — fills the "wear it everywhere" role without guilt.
     sort_order: 0
   - brand: Omega
     model: Speedmaster Professional
-    reference: 3570.50
+    reference: 3590.50
     rationale: Chronograph fills the event-timing role the Snowflake was never built for — hand-wound, heritage-rich, indestructible.
     sort_order: 1
   - brand: Tudor
     model: Black Bay GMT
     reference: 79830RB
+    needs_catalog_verify: true   # Black Bay family has 5 in prod
     rationale: GMT complication fills the last major gap — track a second time zone without touching the Snowflake's wrist slot.
     sort_order: 2
