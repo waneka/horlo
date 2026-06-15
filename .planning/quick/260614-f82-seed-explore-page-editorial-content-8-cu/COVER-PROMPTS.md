@@ -1,4 +1,4 @@
-<!-- COVER-PROMPTS.md — 8 abstract/mood-based cover prompts for /explore editorial seed -->
+<!-- COVER-PROMPTS.md — 6 abstract/mood-based cover prompts for /explore editorial seed -->
 <!-- One prompt per list slug. Slugs match LISTS.md exactly. -->
 <!-- Target: openai/gpt-image-1 at 1536×1024 -->
 <!-- Rule: NO watches, dials, crowns, hands, or watch-shaped objects as subjects. -->
@@ -104,39 +104,3 @@ prompt: |
   Mood: independent craft, direct intention, no marketing.
   NO text, NO logos, NO watches, NO dials, NO crowns, NO hands.
   Photographic, editorial, warm artisan aesthetic, 1536×1024.
-
----
-
-## tropical-dial
-slug: tropical-dial
-title: Tropical Dial Tour
-prompt: |
-  Editorial wide-format aged-texture still life, 1536×1024, photographic quality.
-  An arrangement on warm aged oak: a folded section of antique nautical chart
-  with depth soundings in faded ink, a small glass bottle of amber liquid
-  catching the light, a single dried maple leaf in deep orange-brown beside it,
-  and a strip of worn leather strap material with a worn buckle hole.
-  The light comes from a single warm source at the right — candle-quality warmth,
-  long golden shadows to the left.
-  Palette: deep amber, chocolate brown, aged cream, warm gold, weathered olive.
-  Mood: time passing, unintended beauty, the long decade.
-  NO text, NO logos, NO watches, NO dials, NO crowns, NO hands.
-  Photographic, editorial, warm vintage atmospheric, 1536×1024.
-
----
-
-## trading-up
-slug: trading-up
-title: Trading Up Without Trading Out
-prompt: |
-  Editorial wide-format ascending composition, 1536×1024, photographic quality.
-  Four river stones of increasing size arranged in a gentle ascending diagonal
-  from the lower-left to the upper-right of the frame, each resting on a surface
-  of smooth white marble. The stones are smooth, grey-blue, each slightly larger
-  and more polished than the last. A thin shaft of window light crosses the
-  composition from the upper right, highlighting the topmost stone most brightly.
-  Negative space fills the upper-left corner.
-  Palette: cool grey, white marble, soft blue-grey stone, pale cool light.
-  Mood: progression, measured ascent, each step earned.
-  NO text, NO logos, NO watches, NO dials, NO crowns, NO hands.
-  Photographic, editorial, minimal and contemplative, 1536×1024.
