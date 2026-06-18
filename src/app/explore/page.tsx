@@ -48,8 +48,14 @@ export default async function ExplorePage() {
         <BrowseModule />
         {/* Phase-47 slots: CuratedListsRail returns null until Plan 02 wires it */}
         <CuratedListsRail />
-        {/* Phase-47: WhereCollectionsGo wired in Plan 03 (this plan) */}
-        <WhereCollectionsGo weekIndex={weekIndex} />
+        {/* Phase-47: WhereCollectionsGo wired in Plan 03 (this plan).
+            Promoted to md:col-span-2 in quick-260614-f82 so 5-node paths
+            (seed + 4 follow-ons) render comfortably on desktop. PathCard
+            nodes are flex-1 max-w-[208px]; col-span-1 cramps 5 nodes to
+            ~77px each within the 2-col grid. */}
+        <div className="md:col-span-2">
+          <WhereCollectionsGo weekIndex={weekIndex} />
+        </div>
       </div>
     </main>
   )
