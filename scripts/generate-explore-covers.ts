@@ -115,10 +115,22 @@ function headUrl(url: string): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  // Validate env
+  // Validate env. PROD_-prefixed vars take priority so the script targets the
+  // prod cms-covers bucket regardless of what NEXT_PUBLIC_SUPABASE_URL points
+  // at locally (it is almost always 127.0.0.1:54321 during dev).
   const aiGatewayKey = requireEnv('AI_GATEWAY_API_KEY')
-  const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
-  const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+  const supabaseUrl = process.env.PROD_SUPABASE_URL ?? requireEnv('NEXT_PUBLIC_SUPABASE_URL')
+  const serviceRoleKey =
+    process.env.PROD_SUPABASE_SERVICE_ROLE_KEY ?? requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+
+  // Warn loudly when uploading to a localhost URL — almost always wrong for
+  // this script (covers must land in prod cms-covers).
+  if (/127\.0\.0\.1|localhost/.test(supabaseUrl)) {
+    console.warn(
+      `[covers] WARNING: Supabase URL points at localhost (${supabaseUrl}).\n` +
+        '  Set PROD_SUPABASE_URL + PROD_SUPABASE_SERVICE_ROLE_KEY to target prod cms-covers.',
+    )
+  }
 
   // Check COVER-PROMPTS.md exists
   if (!fs.existsSync(COVER_PROMPTS_FILE)) {
