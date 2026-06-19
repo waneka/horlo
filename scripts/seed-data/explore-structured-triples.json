@@ -1,0 +1,212 @@
+[
+  {
+    "brand": "A. Lange & Söhne",
+    "model": "1815",
+    "reference": "233.026",
+    "label": "quiet-luxury"
+  },
+  {
+    "brand": "A. Lange & Söhne",
+    "model": "Saxonia Thin",
+    "reference": "211.027",
+    "label": "going-deeper-2"
+  },
+  {
+    "brand": "A. Lange & Söhne",
+    "model": "Odysseus",
+    "reference": "363.179",
+    "label": "trading-up-1"
+  },
+  {
+    "brand": "anOrdain",
+    "model": "Model 2",
+    "reference": "anOrdain-Model-2",
+    "label": "microbrand-picks"
+  },
+  {
+    "brand": "Baume & Mercier",
+    "model": "Riviera",
+    "reference": "10728",
+    "label": "trading-up-2"
+  },
+  {
+    "brand": "Christopher Ward",
+    "model": "The Twelve 40mm",
+    "reference": "C12-40A-S00K0-S00B0-K",
+    "label": "first-real-watch"
+  },
+  {
+    "brand": "Jaeger-LeCoultre",
+    "model": "Master Ultra Thin Small Seconds",
+    "reference": "Q1218420",
+    "label": "going-deeper-2"
+  },
+  {
+    "brand": "Jaeger-LeCoultre",
+    "model": "Master Ultra Thin",
+    "reference": "Q1342520",
+    "label": "trading-up-3"
+  },
+  {
+    "brand": "Jaeger-LeCoultre",
+    "model": "Polaris Date",
+    "reference": "Q9068681",
+    "label": "branching-out-2"
+  },
+  {
+    "brand": "Sinn",
+    "model": "856 UTC",
+    "reference": "856.010",
+    "label": "tool-watch-purist"
+  },
+  {
+    "brand": "Vacheron Constantin",
+    "model": "Overseas",
+    "reference": "4500V/110A-B128",
+    "label": "trading-up-2"
+  },
+  {
+    "brand": "Zenith",
+    "model": "Defy Skyline",
+    "reference": "03.9300.3620/01.I001",
+    "label": "branching-out-2"
+  },
+  {
+    "brand": "Rolex",
+    "model": "Datejust 41",
+    "reference": "126334",
+    "label": "trading-up-1"
+  },
+  {
+    "brand": "Rolex",
+    "model": "Explorer 40",
+    "reference": "224270",
+    "label": "branching-out-2"
+  },
+  {
+    "brand": "Tudor",
+    "model": "Black Bay 58 GMT",
+    "reference": "7939G1A0NRU",
+    "label": "bezel-math"
+  },
+  {
+    "brand": "Baltic",
+    "model": "Aquascaphe Classic",
+    "reference": "Aquascaphe-Classic-Blue",
+    "label": "first-real-watch"
+  },
+  {
+    "brand": "Baltic",
+    "model": "MR01",
+    "reference": "MR01-Salmon",
+    "label": "trading-up-3"
+  },
+  {
+    "brand": "Blancpain",
+    "model": "Fifty Fathoms",
+    "reference": "5015-1130-71S",
+    "label": "trading-up-4"
+  },
+  {
+    "brand": "Formex",
+    "model": "Essence ThirtyNine Automatic Chronometer",
+    "reference": "0333.1.6611.101",
+    "label": "microbrand-picks"
+  },
+  {
+    "brand": "Furlan Marri",
+    "model": "Chronograph Salmon Sector-Dial",
+    "reference": "Furlan-Marri-Chronograph",
+    "label": "microbrand-picks"
+  },
+  {
+    "brand": "Nomos Glashütte",
+    "model": "Tangente 38",
+    "reference": "165",
+    "label": "first-real-watch"
+  },
+  {
+    "brand": "Nomos Glashütte",
+    "model": "Tangente",
+    "reference": "139",
+    "label": "going-deeper-2"
+  },
+  {
+    "brand": "Nomos Glashütte",
+    "model": "Tangente neomatik 41",
+    "reference": "180",
+    "label": "branching-out-1"
+  },
+  {
+    "brand": "Orient",
+    "model": "Bambino Version 7",
+    "reference": "FAC0000DD0",
+    "label": "trading-up-3"
+  },
+  {
+    "brand": "Patek Philippe",
+    "model": "Calatrava",
+    "reference": "5227G-001",
+    "label": "trading-up-3"
+  },
+  {
+    "brand": "Seiko",
+    "model": "Prospex 1965 62MAS",
+    "reference": "SPB239",
+    "label": "going-deeper-1"
+  },
+  {
+    "brand": "Serica",
+    "model": "8315 GMT",
+    "reference": "8315-BLACK-3H",
+    "label": "microbrand-picks"
+  },
+  {
+    "brand": "Squale",
+    "model": "SUB-37 Legend",
+    "reference": "Sub-37-Legend",
+    "label": "trading-up-4"
+  },
+  {
+    "brand": "Wren",
+    "model": "Diver 38 Aqua",
+    "reference": "Wren-Diver-38-Aqua",
+    "label": "microbrand-picks"
+  },
+  {
+    "brand": "Grand Seiko",
+    "model": "SBGW231",
+    "reference": "SBGW231",
+    "label": "going-deeper-2"
+  },
+  {
+    "brand": "Grand Seiko",
+    "model": "SBGR253",
+    "reference": "SBGR253",
+    "label": "trading-up-1"
+  },
+  {
+    "brand": "Grand Seiko",
+    "model": "Spring Drive GMT",
+    "reference": "SBGE285",
+    "label": "branching-out-2"
+  },
+  {
+    "brand": "Seiko",
+    "model": "5 Sports GMT",
+    "reference": "SSK001",
+    "label": "bezel-math"
+  },
+  {
+    "brand": "Seiko",
+    "model": "5 Sports SRPE51",
+    "reference": "SRPE51",
+    "label": "trading-up-1"
+  },
+  {
+    "brand": "Seiko",
+    "model": "Prospex Alpinist",
+    "reference": "SPB507",
+    "label": "first-real-watch"
+  }
+]
