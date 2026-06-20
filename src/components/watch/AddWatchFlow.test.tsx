@@ -40,6 +40,8 @@ vi.mock('@/app/actions/watches', () => ({
   // Phase 70 — Server Action wrapper around watchDAL.findViewerWatchByCatalogId.
   // Default: returns { success: true, data: null } (no dupe).
   findViewerWatchByCatalogIdAction: vi.fn().mockResolvedValue({ success: true, data: null }),
+  // SEED-018 — catalog-only save path. Default: success.
+  saveCatalogOnlyFromExtract: vi.fn().mockResolvedValue({ success: true, data: { catalogId: 'cat-123' } }),
 }))
 
 // Phase 70 gap plan 08 — sonner mock so WR-02 tests can assert toast.error.
@@ -188,25 +190,36 @@ vi.mock('@/components/watch/ConfirmStep', () => ({
     onPrimary,
     onStartOver,
     onEditDetails,
+    onStatusChange,
     pending,
     bannerActive,
     status,
+    isAdmin,
   }: {
     onPrimary: () => void
     onStartOver: () => void
     onEditDetails: () => void
+    onStatusChange?: (next: string) => void
     pending?: boolean
     bannerActive?: boolean
     status: string
+    isAdmin?: boolean
   }) => (
     // Phase 74 D-02: when bannerActive=true, mirror production's Section 6 early-return null —
     // the Confirm primary button is OMITTED from the DOM entirely so jsdom can observe the
     // disappearance per feedback_test_assert_disappearance_too (recurrence-3). Ghost row stays
     // (Phase 74 D-03).
+    // SEED-018: expose catalog-only affordance when isAdmin=true so orchestrator tests can
+    // switch to catalog-only status and assert the saveCatalogOnlyFromExtract branch.
     <div data-testid="confirm-step" data-status={status}>
       {!bannerActive && (
         <button onClick={onPrimary} disabled={pending}>
           Confirm primary
+        </button>
+      )}
+      {isAdmin && (
+        <button onClick={() => onStatusChange?.('catalog-only')}>
+          Select catalog-only
         </button>
       )}
       <button onClick={onStartOver}>Start over</button>
@@ -285,6 +298,7 @@ import {
   addWatch,
   moveWishlistToCollection,
   findViewerWatchByCatalogIdAction,
+  saveCatalogOnlyFromExtract,
 } from '@/app/actions/watches'
 import { uploadCatalogSourcePhoto } from '@/lib/storage/catalogSourcePhotos'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -308,6 +322,7 @@ function renderFlow(overrides?: Partial<AddWatchFlowProps>) {
     viewerUsername: 'tester',
     viewerUserId: 'user-a',
     catalogBrands: [],
+    isAdmin: false,
   }
   return render(<AddWatchFlow {...defaults} {...overrides} />)
 }
@@ -1031,6 +1046,88 @@ describe('Phase 69 — cache hygiene integration (CLNP-07)', () => {
     expect(bStructured.get(structuredKey)).toBeUndefined()
     expect(bUrl.get(urlKey)).toBeUndefined()
     expect(bVerdict.get(verdictKey)).toBeUndefined()
+  })
+})
+
+// =============================================================================
+// SEED-018 Task 2 — Admin-gated catalog-only save path (AddWatchFlow orchestrator)
+// =============================================================================
+
+describe('SEED-018 — catalog-only save path (AddWatchFlow orchestrator)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    pushSpy.mockClear()
+    global.fetch = vi.fn() as unknown as typeof fetch
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    __resetUrlExtractCacheForTests()
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({ success: true, data: null })
+    vi.mocked(uploadCatalogSourcePhoto).mockResolvedValue({ path: 'user-id-1/pending/abc.jpg' })
+    vi.mocked(createSupabaseBrowserClient).mockReturnValue({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: 'user-id-1' } }, error: null }),
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    vi.mocked(addWatch).mockResolvedValue({
+      success: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { id: 'new-watch-id', status: 'wishlist' } as any,
+    })
+    vi.mocked(saveCatalogOnlyFromExtract).mockResolvedValue({
+      success: true,
+      data: { catalogId: 'cat-123' },
+    })
+  })
+
+  // isAdmin=true → ConfirmStep receives isAdmin=true → mock exposes catalog-only button.
+  it('isAdmin=true → catalog-only option rendered in confirming state', async () => {
+    renderFlow({ isAdmin: true })
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Select catalog-only' })).toBeInTheDocument()
+  })
+
+  // isAdmin=false → catalog-only option is NOT rendered.
+  it('isAdmin=false → catalog-only option is NOT rendered in confirming state', async () => {
+    renderFlow({ isAdmin: false })
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Select catalog-only' })).not.toBeInTheDocument()
+  })
+
+  // Selecting catalog-only + Confirm primary → saveCatalogOnlyFromExtract called; addWatch NOT called.
+  it('catalog-only status + Confirm primary → calls saveCatalogOnlyFromExtract, NOT addWatch', async () => {
+    renderFlow({ isAdmin: true })
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+
+    // Select catalog-only status via mock affordance.
+    fireEvent.click(screen.getByRole('button', { name: 'Select catalog-only' }))
+    // Confirm primary fires the catalog-only branch.
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm primary' }))
+
+    await waitFor(() => {
+      expect(saveCatalogOnlyFromExtract).toHaveBeenCalled()
+    })
+    expect(vi.mocked(addWatch)).not.toHaveBeenCalled()
+  })
+
+  // After catalog-only success → toast.success + returns to search-idle (no router.push).
+  it('catalog-only success → toast.success, returns to search-idle, router.push NOT called', async () => {
+    renderFlow({ isAdmin: true })
+    fireEvent.click(screen.getByText('Pick null'))
+    expect(await screen.findByTestId('confirm-step')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select catalog-only' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm primary' }))
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Saved to catalog')
+    })
+    // Returns to search-idle: SearchEntry is back; ConfirmStep is gone.
+    expect(await screen.findByTestId('search-entry')).toBeInTheDocument()
+    expect(screen.queryByTestId('confirm-step')).not.toBeInTheDocument()
+    expect(pushSpy).not.toHaveBeenCalled()
   })
 })
 

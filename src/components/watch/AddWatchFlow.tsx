@@ -16,6 +16,7 @@ import {
   addWatch,
   moveWishlistToCollection,
   findViewerWatchByCatalogIdAction,
+  saveCatalogOnlyFromExtract,
 } from '@/app/actions/watches'
 import { defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 import { Button } from '@/components/ui/button'
@@ -72,6 +73,8 @@ interface AddWatchFlowProps {
   viewerUserId: string
   /** Phase 69 D-13 — SSR-fetched catalog brand list for SearchEntry / parseSearchQuery SRCH-26 pre-seed. */
   catalogBrands: string[]
+  /** SEED-018 — resolved server-side from profiles.is_admin; gates the catalog-only save option. */
+  isAdmin: boolean
 }
 
 export function AddWatchFlow({
@@ -85,6 +88,7 @@ export function AddWatchFlow({
   viewerUsername,
   viewerUserId,
   catalogBrands,
+  isAdmin,
 }: AddWatchFlowProps) {
   const router = useRouter()
 
@@ -105,7 +109,8 @@ export function AddWatchFlow({
 
   // ConfirmStep-controlled fields (Phase 68 D-03 LOCKED contract — orchestrator owns the state).
   // D-21 default status: initialStatus ?? 'wishlist'.
-  const [confirmStatus, setConfirmStatus] = useState<'owned' | 'wishlist' | 'grail'>(
+  // SEED-018: widened to include 'catalog-only' for the admin-gated save path.
+  const [confirmStatus, setConfirmStatus] = useState<'owned' | 'wishlist' | 'grail' | 'catalog-only'>(
     initialStatus ?? 'wishlist',
   )
   const [confirmReference, setConfirmReference] = useState<string>('')
@@ -413,6 +418,39 @@ export function AddWatchFlow({
     const captured = state
     setState({ ...captured, pending: true })
 
+    // SEED-018: catalog-only branch — upsert catalog row WITHOUT writing a watches row.
+    // Short-circuits before any payload assembly; admin gate is enforced server-side.
+    if (confirmStatus === 'catalog-only') {
+      const catalogResult = await saveCatalogOnlyFromExtract({
+        brand: captured.extracted.brand ?? '',
+        model: captured.extracted.model ?? '',
+        reference: captured.extracted.reference ?? null,
+        movementType: captured.extracted.movement ?? null,
+        caseSizeMm: captured.extracted.caseSizeMm ?? null,
+        lugToLugMm: captured.extracted.lugToLugMm ?? null,
+        waterResistanceM: captured.extracted.waterResistanceM ?? null,
+        crystalType: captured.extracted.crystalType ?? null,
+        dialColor: captured.extracted.dialColor ?? null,
+        isChronometer: captured.extracted.isChronometer ?? null,
+        productionYear: confirmYear ?? null,
+        imageUrl: captured.extracted.imageUrl ?? null,
+        imageSourceUrl: null,
+        styleTags: captured.extracted.styleTags ?? [],
+        designTraits: captured.extracted.designTraits ?? [],
+        complications: captured.extracted.complications ?? [],
+      })
+      if (!catalogResult.success) {
+        toast.error(catalogResult.error)
+        setState({ ...captured, pending: false })
+        return
+      }
+      toast.success('Saved to catalog')
+      setUrl('')
+      setState({ kind: 'search-idle' })
+      // Admin stays on /watch/new to add more catalog rows — no router.push.
+      return
+    }
+
     // Build payload. catalogId branch (Phase 67 D-10) server-overrides brand/model/reference.
     const payload: Record<string, unknown> = {
       brand: captured.extracted.brand ?? '',
@@ -478,7 +516,9 @@ export function AddWatchFlow({
 
     const watchId = result.data.id
     // D-18 / D-17 — destination matrix.
-    const dest = initialReturnTo ?? defaultDestinationForStatus(confirmStatus, viewerUsername)
+    // catalog-only short-circuited above; confirmStatus is guaranteed non-catalog-only here.
+    const nonCatalogStatus = confirmStatus as 'owned' | 'wishlist' | 'grail'
+    const dest = initialReturnTo ?? defaultDestinationForStatus(nonCatalogStatus, viewerUsername)
     if (confirmStatus === 'owned') {
       setState({ kind: 'photos-pending', watchId, destination: dest })
     } else {
@@ -704,6 +744,8 @@ export function AddWatchFlow({
             movement={state.extracted.movement ?? null}
             caseSizeMm={state.extracted.caseSizeMm ?? null}
             dialColor={state.extracted.dialColor ?? null}
+            // SEED-018 — admin prop forwarded for catalog-only option.
+            isAdmin={isAdmin}
           />
         </div>
       )}

@@ -23,7 +23,7 @@ import { divestments, watches } from '@/db/schema'
 import * as watchDAL from '@/data/watches'
 import * as catalogDAL from '@/data/catalog'
 import { logActivity } from '@/data/activities'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, assertOwner } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { purgeWatchPhotos } from '@/app/actions/account'
 import { logNotification } from '@/lib/notifications/logger'
@@ -769,6 +769,95 @@ export async function removeWatch(watchId: string): Promise<ActionResult<void>> 
  * Status whitelist: the caller passes ['owned', 'wishlist'] for Phase 70 DUPE
  * resolution; the action accepts only that union to prevent surface widening.
  */
+// ---------------------------------------------------------------------------
+// SEED-018 — saveCatalogOnlyFromExtract
+// ---------------------------------------------------------------------------
+
+/**
+ * Admin-gated Server Action that upserts a catalog row from URL-extracted data
+ * WITHOUT writing a user-side `watches` row.
+ *
+ * Security: `assertOwner()` is the SOLE enforced write gate (CMS pattern — the
+ * catalog DAL bypasses RLS via Drizzle direct connection). A non-admin hitting
+ * this action receives `{ success: false, error: 'Not an admin' }`.
+ *
+ * Three-block pattern mirrors src/app/actions/cms/catalogPicker.ts:
+ *   1. assertOwner — throw UnauthorizedError on non-admin.
+ *   2. Zod-parse input — reject missing brand/model.
+ *   3. upsertCatalogFromExtractedUrl (idempotent COALESCE) + revalidateTag.
+ */
+const saveCatalogOnlySchema = z.object({
+  brand: z.string().min(1, 'brand required'),
+  model: z.string().min(1, 'model required'),
+  reference: z.string().nullable().optional(),
+  movementType: z.enum(['auto', 'manual', 'quartz', 'spring_drive']).nullable().optional(),
+  caseSizeMm: z.number().nullable().optional(),
+  lugToLugMm: z.number().nullable().optional(),
+  waterResistanceM: z.number().nullable().optional(),
+  crystalType: z.string().nullable().optional(),
+  dialColor: z.string().nullable().optional(),
+  isChronometer: z.boolean().nullable().optional(),
+  productionYear: z.number().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
+  imageSourceUrl: z.string().nullable().optional(),
+  styleTags: z.array(z.string()).optional(),
+  designTraits: z.array(z.string()).optional(),
+  complications: z.array(z.string()).optional(),
+})
+
+export async function saveCatalogOnlyFromExtract(
+  input: unknown,
+): Promise<ActionResult<{ catalogId: string }>> {
+  // Step 1: assertOwner — the SOLE enforced admin gate.
+  try {
+    await assertOwner()
+  } catch {
+    return { success: false, error: 'Not an admin' }
+  }
+
+  // Step 2: Zod parse.
+  const parsed = saveCatalogOnlySchema.safeParse(input)
+  if (!parsed.success) {
+    const fieldErrors = parsed.error.flatten().fieldErrors
+    const firstMessage = Object.entries(fieldErrors)
+      .map(([field, errors]) => `${field}: ${(errors ?? []).join(', ')}`)
+      .join('; ')
+    return { success: false, error: firstMessage || 'Invalid input' }
+  }
+
+  // Step 3: Catalog upsert (idempotent COALESCE) + cache invalidation.
+  try {
+    const catalogId = await catalogDAL.upsertCatalogFromExtractedUrl({
+      brand: parsed.data.brand,
+      model: parsed.data.model,
+      reference: parsed.data.reference ?? null,
+      movementType: parsed.data.movementType ?? null,
+      caseSizeMm: parsed.data.caseSizeMm ?? null,
+      lugToLugMm: parsed.data.lugToLugMm ?? null,
+      waterResistanceM: parsed.data.waterResistanceM ?? null,
+      crystalType: parsed.data.crystalType ?? null,
+      dialColor: parsed.data.dialColor ?? null,
+      isChronometer: parsed.data.isChronometer ?? null,
+      productionYear: parsed.data.productionYear ?? null,
+      imageUrl: parsed.data.imageUrl ?? null,
+      imageSourceUrl: parsed.data.imageSourceUrl ?? null,
+      styleTags: parsed.data.styleTags ?? [],
+      designTraits: parsed.data.designTraits ?? [],
+      complications: parsed.data.complications ?? [],
+    })
+    if (!catalogId) {
+      return { success: false, error: 'Catalog upsert failed — brand and model required' }
+    }
+    // Mirror Phase 18 DISC-05/DISC-06 explore tag invalidation (same as addWatch/editWatch).
+    // Cross-user stale-while-revalidate semantics — revalidateTag(tag, 'max') (not updateTag).
+    revalidateTag('explore', 'max')
+    return { success: true, data: { catalogId } }
+  } catch (err) {
+    console.error('[saveCatalogOnlyFromExtract] unexpected error:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
 export async function findViewerWatchByCatalogIdAction(
   catalogId: string,
   statuses: ('owned' | 'wishlist')[],

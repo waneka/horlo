@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getWatchesByUser } from '@/data/watches'
 import { getCatalogById, listCatalogBrands } from '@/data/catalog'
 import { getProfileById } from '@/data/profiles'
@@ -87,13 +88,20 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
   // At v4.0+ every authenticated user has a username via the signup trigger,
   // so null here is a soft alarm — the flow falls back to "no toast" + "/"
   // default destination.
-  const [collection, catalogPrefill, viewerProfile, catalogBrands] = await Promise.all([
-    getWatchesByUser(user.id),
-    catalogId ? hydrateCatalogPrefill(catalogId) : Promise.resolve(null),
-    getProfileById(user.id),
-    listCatalogBrands(),
-  ])
+  // SEED-018: resolve isAdmin server-side for the catalog-only save path.
+  // Mirrors the assertOwner select pattern (src/lib/auth.ts:73-77).
+  // Defensive: a fetch error or missing row collapses to isAdmin=false (fail-closed).
+  const supabase = await createSupabaseServerClient()
+  const [collection, catalogPrefill, viewerProfile, catalogBrands, profileAdminRow] =
+    await Promise.all([
+      getWatchesByUser(user.id),
+      catalogId ? hydrateCatalogPrefill(catalogId) : Promise.resolve(null),
+      getProfileById(user.id),
+      listCatalogBrands(),
+      supabase.from('profiles').select('is_admin').eq('id', user.id).single(),
+    ])
   const viewerUsername = viewerProfile?.username ?? null
+  const isAdmin = Boolean(profileAdminRow?.data?.is_admin)
 
   // Phase 61 debug (gap #9 root-cause fix): the former FORM-04
   // `key={crypto.randomUUID()}` nonce on <AddWatchFlow> is REMOVED.
@@ -134,6 +142,8 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         // Public-read RLS on watches_catalog already allows this without viewer identity.
         // Phase 70 mounts SearchEntry which consumes this list.
         catalogBrands={catalogBrands}
+        // SEED-018 — admin-gated catalog-only save path.
+        isAdmin={isAdmin}
       />
     </div>
   )

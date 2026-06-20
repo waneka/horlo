@@ -310,6 +310,58 @@ describe("ConfirmStep — action affordances (CONF-07/09)", () => {
   })
 })
 
+describe('SEED-018 — ConfirmStep catalog-only admin gate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // (i) isAdmin=false renders exactly 3 options; no Catalog only anywhere.
+  it('isAdmin=false → exactly 3 options; "Catalog only" radio is NOT in the DOM (not disabled, not aria-hidden — absent)', () => {
+    render(<ConfirmStep {...BASE_PROPS} isAdmin={false} />)
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(screen.queryByRole('radio', { name: /catalog only/i })).not.toBeInTheDocument()
+    // Also assert no aria-disabled marker anywhere in the group.
+    const radiogroup = screen.getByRole('radiogroup')
+    expect(radiogroup.querySelectorAll('[aria-disabled]')).toHaveLength(0)
+  })
+
+  // (ii) isAdmin=true renders 4 options including "Catalog only".
+  it('isAdmin=true → 4 options including "Catalog only" radio', () => {
+    render(<ConfirmStep {...BASE_PROPS} isAdmin={true} status="wishlist" />)
+    expect(screen.getAllByRole('radio')).toHaveLength(4)
+    expect(screen.getByRole('radio', { name: /catalog only/i })).toBeInTheDocument()
+  })
+
+  // (iii) status='catalog-only' → CTA copy is "Save to Catalog".
+  it('status="catalog-only" → CTA label is "Save to Catalog"', () => {
+    render(
+      <ConfirmStep
+        {...BASE_PROPS}
+        isAdmin={true}
+        status="catalog-only"
+        onStatusChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Save to Catalog' })).toBeInTheDocument()
+  })
+
+  // (iv) status='catalog-only' → price field is hidden.
+  it('status="catalog-only" → price field (label+input) is NOT in the DOM', () => {
+    render(
+      <ConfirmStep
+        {...BASE_PROPS}
+        isAdmin={true}
+        status="catalog-only"
+        onStatusChange={vi.fn()}
+      />,
+    )
+    // Price label absent.
+    expect(screen.queryByLabelText(/price/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Price paid')).not.toBeInTheDocument()
+    expect(screen.queryByText('Target price')).not.toBeInTheDocument()
+  })
+})
+
 describe("ConfirmStep — pending state", () => {
   beforeEach(() => {
     vi.clearAllMocks()

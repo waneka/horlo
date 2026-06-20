@@ -42,6 +42,7 @@ const CTA_LABELS = {
   owned: 'Add to Collection',
   wishlist: 'Add to Wishlist',
   grail: 'Save as Grail',
+  'catalog-only': 'Save to Catalog',
 } as const
 
 const OPTIONS: Array<{ value: 'owned' | 'wishlist' | 'grail'; label: string }> = [
@@ -49,6 +50,9 @@ const OPTIONS: Array<{ value: 'owned' | 'wishlist' | 'grail'; label: string }> =
   { value: 'wishlist', label: 'Wishlist' },
   { value: 'grail', label: 'Grail' },
 ]
+
+/** SEED-018 — admin-only fourth option; appended to OPTIONS for admin viewers. */
+const CATALOG_ONLY_OPTION = { value: 'catalog-only' as const, label: 'Catalog only' }
 
 // ---- Prop interface (D-03 locked contract — DO NOT modify shape or names) ----
 
@@ -77,9 +81,13 @@ interface ConfirmStepProps {
    */
   productionYear: number | undefined
   onProductionYearChange: (value: number | undefined) => void
-  /** Status picker controlled value. Restricted union excludes 'sold' (CONF-03). */
-  status: 'owned' | 'wishlist' | 'grail'
-  onStatusChange: (next: 'owned' | 'wishlist' | 'grail') => void
+  /**
+   * Status picker controlled value. Restricted union excludes 'sold' (CONF-03).
+   * SEED-018: widened to include 'catalog-only' for admin-gated path; only rendered
+   * when isAdmin=true (additive; backward compat preserved via isAdmin default false).
+   */
+  status: 'owned' | 'wishlist' | 'grail' | 'catalog-only'
+  onStatusChange: (next: 'owned' | 'wishlist' | 'grail' | 'catalog-only') => void
   /** Status-gated price (CONF-06). Single numeric prop; the label flips with status. */
   price: number | undefined
   onPriceChange: (value: number | undefined) => void
@@ -98,6 +106,12 @@ interface ConfirmStepProps {
    * per Phase 68 D-03 prop contract. Default false preserves backward compat.
    */
   bannerActive?: boolean
+  /**
+   * SEED-018 — when true, a fourth "Catalog only" radio is rendered; arrow-key nav cycles 4 options.
+   * When false (default), the option is NOT rendered at all (not disabled, not aria-hidden — absent).
+   * Additive per Phase 68 D-03 prop contract; default false preserves backward compat.
+   */
+  isAdmin?: boolean
   // Optional spec props per 68-UI-SPEC §SpecHeadline Helper (recommendation (a))
   movement?: MovementType | null
   caseSizeMm?: number | null
@@ -124,13 +138,18 @@ export function ConfirmStep({
   onStartOver,
   pending = false,
   bannerActive = false,
+  isAdmin = false,
   movement,
   caseSizeMm,
   dialColor,
 }: ConfirmStepProps) {
   const brandModel = [brand, model].filter(Boolean).join(' ') || 'Watch'
   const isOwned = status === 'owned'
+  const isCatalogOnly = status === 'catalog-only'
   const coverUrl = catalogImageUrl ?? extractedImageUrl ?? null
+
+  // SEED-018 — OPTIONS_FOR_VIEWER: append 'Catalog only' for admins; absent entirely for non-admins.
+  const OPTIONS_FOR_VIEWER = isAdmin ? [...OPTIONS, CATALOG_ONLY_OPTION] : OPTIONS
 
   // Ref on the radiogroup container — used to move DOM focus after status change (CR-01)
   const groupRef = useRef<HTMLDivElement>(null)
@@ -139,8 +158,10 @@ export function ConfirmStep({
   // After calling onStatusChange, imperatively move focus to the newly selected button so
   // the browser does not leave keyboard cursor on the old button (now tabIndex=-1). Focus
   // is dispatched via requestAnimationFrame so it runs after React commits the new tabIndex.
+  // SEED-018: values derived dynamically from OPTIONS_FOR_VIEWER so arrow-key nav cycles
+  // 4 options for admins and 3 for non-admins.
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    const values = ['owned', 'wishlist', 'grail'] as const
+    const values = OPTIONS_FOR_VIEWER.map(o => o.value)
     const idx = values.indexOf(status)
     let next: typeof values[number] | null = null
 
@@ -248,7 +269,7 @@ export function ConfirmStep({
           className="flex gap-2"
           onKeyDown={handleKeyDown}
         >
-          {OPTIONS.map(({ value, label }) => (
+          {OPTIONS_FOR_VIEWER.map(({ value, label }) => (
             <Button
               key={value}
               type="button"
@@ -276,22 +297,25 @@ export function ConfirmStep({
         </div>
       </div>
 
-      {/* Section 4: Status-gated price field */}
-      <div className="space-y-2">
-        <Label htmlFor="confirm-price">
-          {isOwned ? 'Price paid' : 'Target price'}
-        </Label>
-        <Input
-          id="confirm-price"
-          type="number"
-          value={price ?? ''}
-          onChange={(e) =>
-            onPriceChange(e.target.value ? Number(e.target.value) : undefined)
-          }
-          placeholder="$"
-          disabled={pending}
-        />
-      </div>
+      {/* Section 4: Status-gated price field.
+          SEED-018: hidden entirely on catalog-only (no user-side watches row). */}
+      {!isCatalogOnly && (
+        <div className="space-y-2">
+          <Label htmlFor="confirm-price">
+            {isOwned ? 'Price paid' : 'Target price'}
+          </Label>
+          <Input
+            id="confirm-price"
+            type="number"
+            value={price ?? ''}
+            onChange={(e) =>
+              onPriceChange(e.target.value ? Number(e.target.value) : undefined)
+            }
+            placeholder="$"
+            disabled={pending}
+          />
+        </div>
+      )}
 
       {/* Section 5: Ghost escape affordances (above primary CTA per 68-UI-SPEC §Container rationale) */}
       <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
