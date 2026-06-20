@@ -54,7 +54,9 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
   const { pathType, seedCatalogId, nodes, seedWatch } = pathWithNodes
 
   // Build ordered node list: seed watch first (node #1), then follow-ons sorted by sortOrder
-  // Seed watch needs a synthetic id/catalogId for the key and link
+  // Seed watch needs a synthetic id/catalogId for the key and link.
+  // The path-level rationale now renders as a card-level blurb below the chip
+  // (not attached to the seed) — so seed's per-node rationale is null.
   const seedNode: PathNode | null = seedWatch
     ? {
         id: `${pathWithNodes.id}-seed`,
@@ -62,7 +64,7 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
         brand: seedWatch.brand,
         model: seedWatch.model,
         reference: seedWatch.reference,
-        rationale: pathWithNodes.rationale ?? null, // seed carries the PATH-level curator rationale
+        rationale: null,
         imageUrl: seedWatch.imageUrl,
         sortOrder: -1, // renders before follow-ons
       }
@@ -78,6 +80,13 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
         {pathType}
       </Badge>
 
+      {/* Path-level editorial blurb — relocated from the seed node so it reads
+          as a card subtitle rather than node-1 caption. WR-01 plain-text rule
+          applies: escaped JSX child, no dangerouslySetInnerHTML. */}
+      {pathWithNodes.rationale && (
+        <p className="text-sm text-muted-foreground">{pathWithNodes.rationale}</p>
+      )}
+
       {/* D-11: Mobile — numbered vertical stack (md:hidden) */}
       <div className="flex flex-col gap-3 md:hidden">
         {allNodes.map((node, i) => (
@@ -92,8 +101,22 @@ export function PathCard({ pathWithNodes }: PathCardProps) {
                 <div className="w-px flex-1 bg-border min-h-[24px]" />
               )}
             </div>
+            {/* Thumbnail — 64px square, same CSS chain as desktop card image */}
+            <Link
+              href={`/w/${node.catalogId}`}
+              className="size-16 shrink-0 rounded-md bg-muted overflow-hidden"
+            >
+              {node.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={node.imageUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : null}
+            </Link>
             {/* Right column: watch brand+model link + rationale */}
-            <div className="flex-1 pb-2">
+            <div className="flex-1 min-w-0 pb-2">
               <Link href={`/w/${node.catalogId}`}>
                 <p className="text-sm font-semibold text-foreground">
                   {node.brand} {node.model}
