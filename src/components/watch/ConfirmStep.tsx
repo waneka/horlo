@@ -280,7 +280,8 @@ export function ConfirmStep({
               variant="outline"
               className={cn(
                 'min-h-[44px]',
-                status === value && 'border-primary bg-primary/10',
+                status === value &&
+                  'border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
               )}
               onClick={() => onStatusChange(value)}
             >
