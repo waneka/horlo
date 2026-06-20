@@ -645,14 +645,14 @@ export function AddWatchFlow({
           <button
             type="button"
             onClick={handleSwitchToUrl}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
+            className="block text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
           >
             Add from URL
           </button>
           <button
             type="button"
             onClick={handleSkipSearch}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
+            className="block text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
           >
             Skip search — enter manually
           </button>
