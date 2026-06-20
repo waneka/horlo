@@ -46,8 +46,11 @@ export default async function ExplorePage() {
         <CollectorArchetypes />
         {/* md:col-span-1 right — live in Phase 46 */}
         <BrowseModule />
-        {/* Phase-47 slots: CuratedListsRail returns null until Plan 02 wires it */}
-        <CuratedListsRail />
+        {/* Phase-47: CuratedListsRail is a horizontal-scroll rail — md:col-span-2
+            so cards have room to scroll. md:col-span-1 cramped it on desktop. */}
+        <div className="md:col-span-2">
+          <CuratedListsRail />
+        </div>
         {/* Phase-47: WhereCollectionsGo wired in Plan 03 (this plan).
             Promoted to md:col-span-2 in quick-260614-f82 so 5-node paths
             (seed + 4 follow-ons) render comfortably on desktop. PathCard
