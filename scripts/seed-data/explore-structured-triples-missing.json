@@ -1,0 +1,19 @@
+[
+  { "brand": "Certina", "model": "DS Action GMT Powermatic 80", "reference": "C032.929.11.051.00", "label": "starter-five-recover" },
+  { "brand": "Hamilton Watch", "model": "Khaki Field Mechanical", "reference": "H69399930", "label": "starter-five-recover" },
+  { "brand": "Hamilton Watch", "model": "Khaki Field Murph", "reference": "H70605731", "label": "first-real-watch-recover" },
+  { "brand": "Hamilton Watch", "model": "American Classic Intra-Matic Auto Chrono", "reference": "H38416711", "label": "starter-five-recover" },
+  { "brand": "Héron Watches", "model": "Marinor - Atlantic Blue", "reference": "3001-A", "label": "microbrand-picks-recover" },
+  { "brand": "Mido", "model": "Ocean Star GMT", "reference": "M026.629.11.041.00", "label": "bezel-math-recover" },
+  { "brand": "Mido", "model": "Multifort M", "reference": "M038.430.11.051.00", "label": "trading-up-1-recover" },
+  { "brand": "Girard-Perregaux", "model": "Laureato", "reference": "81010-11-431-11A", "label": "trading-up-2-recover" },
+  { "brand": "Omega", "model": "Seamaster Aqua Terra 150M Worldtimer GMT", "reference": "220.10.43.22.03.001", "label": "bezel-math-recover" },
+  { "brand": "Omega", "model": "Seamaster 300", "reference": "234.30.41.21.03.001", "label": "trading-up-4-recover" },
+  { "brand": "Oris", "model": "Big Crown Pointer Date", "reference": "01 754 7741 4065-07 5 20 63", "label": "first-real-watch-recover" },
+  { "brand": "Oris", "model": "Divers Sixty-Five", "reference": "01 733 7707 4053-07 5 20 89", "label": "branching-out-1-recover" },
+  { "brand": "Tissot", "model": "Le Locle 39.3mm", "reference": "T006.407.16.033.00", "label": "starter-five-recover" },
+  { "brand": "Tissot", "model": "PRX Powermatic 80", "reference": "T137.407.11.041.00", "label": "first-real-watch-recover" },
+  { "brand": "Longines", "model": "LONGINES SPIRIT ZULU TIME", "reference": "L3.802.4.63.6", "label": "branching-out-1-recover" },
+  { "brand": "Longines", "model": "LONGINES SPIRIT ZULU TIME", "reference": "L3.812.4.53.6", "label": "bezel-math-recover" },
+  { "brand": "Longines", "model": "LONGINES LEGEND DIVER 59", "reference": "L3.795.4.59.9", "label": "trading-up-4-recover" }
+]

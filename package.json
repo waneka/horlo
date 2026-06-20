@@ -27,7 +27,8 @@
     "explore:catalog-add": "tsx scripts/seed-explore-catalog.ts",
     "explore:catalog-add-structured": "tsx scripts/seed-explore-catalog-structured.ts",
     "explore:covers": "tsx --env-file=.env.local scripts/generate-explore-covers.ts",
-    "explore:gen-migration": "tsx --env-file=.env.local scripts/generate-explore-migration.ts"
+    "explore:gen-migration": "tsx --env-file=.env.local scripts/generate-explore-migration.ts",
+    "explore:photo-backfill": "tsx --env-file=.env.local scripts/backfill-explore-catalog-photos.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
