@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 Phase: Between milestones — v8.2 archived
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-10 — Milestone v8.2 completed and archived
+Last activity: 2026-06-20 — Quick task 260620-gk9: backfilled 18 prod `watches_catalog.image_url` rows + deleted rogue test/test row (now 0/193 missing). Lesson: post-flight assertions must use a different predicate than the WHERE clause they validate, or they silently inherit the bug.
 
 ## Deferred Items
 
@@ -103,6 +103,7 @@ None.
 | Quick Task ID | Description | Commits | Date |
 |---------------|-------------|---------|------|
 | 260530-e55 | SRCH-03 followup: composite footer onClick closes combobox popup + mounts StructuredEntryPanel | 6070c5cc, 17d5bc0f | 2026-05-30 |
+| 260620-gk9 | Backfill 18 prod `watches_catalog.image_url` rows + delete rogue test/test row (now 0/193 missing) | daf3e03c, b8b2af2d | 2026-06-20 |
 
 ## Session Continuity
 
