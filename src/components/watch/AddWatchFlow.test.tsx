@@ -1034,6 +1034,45 @@ describe('Phase 69 — cache hygiene integration (CLNP-07)', () => {
   })
 })
 
+// =============================================================================
+// SEED-018 Task 1 — "Add from URL" affordance on search-idle landing
+// =============================================================================
+
+describe('SEED-018 — "Add from URL" URL-surface affordance', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    pushSpy.mockClear()
+    global.fetch = vi.fn() as unknown as typeof fetch
+    const { __resetUrlExtractCacheForTests } = await import('./useUrlExtractCache')
+    __resetUrlExtractCacheForTests()
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValue({ success: true, data: null })
+  })
+
+  // Asserts the button is rendered alongside SearchEntry and the skip-search link.
+  it('search-idle renders "Add from URL" button between SearchEntry and skip-search link', () => {
+    renderFlow()
+    expect(screen.getByTestId('search-entry')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add from URL' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Skip search — enter manually' })).toBeInTheDocument()
+  })
+
+  // Clicking "Add from URL" transitions to extracting-url; prior affordances disappear.
+  it('clicking "Add from URL" transitions to extracting-url; SearchEntry + affordances unmount', async () => {
+    renderFlow()
+    fireEvent.click(screen.getByRole('button', { name: 'Add from URL' }))
+
+    // Appearance: URL input is now in the document (paired assertion per feedback_test_assert_disappearance_too).
+    const urlInput = await screen.findByLabelText('Watch page URL')
+    expect(urlInput).toBeInTheDocument()
+    expect(screen.getByText('← Back to search')).toBeInTheDocument()
+
+    // Disappearance: search-idle affordances are gone.
+    expect(screen.queryByTestId('search-entry')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add from URL' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skip search — enter manually' })).not.toBeInTheDocument()
+  })
+})
+
 // Cleanup so the afterEach does not leak state between describe blocks.
 afterEach(() => {
   vi.restoreAllMocks()

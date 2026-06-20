@@ -601,6 +601,14 @@ export function AddWatchFlow({
             onSubmitStructured={handleStructuredSubmit}
             onSwitchToUrl={handleSwitchToUrl}
           />
+          {/* SEED-018 URL surface: one-tap entry point to the extracting-url branch. */}
+          <button
+            type="button"
+            onClick={handleSwitchToUrl}
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline hover:text-foreground"
+          >
+            Add from URL
+          </button>
           <button
             type="button"
             onClick={handleSkipSearch}
