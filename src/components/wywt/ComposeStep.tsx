@@ -109,6 +109,13 @@ export function ComposeStep({
     null,
   )
   const photoUploaderRef = useRef<PhotoUploaderHandle | null>(null)
+  // Progressive disclosure for the note field — start collapsed unless the
+  // user already has draft content (D-05 preserves note across Change → back).
+  const [noteOpen, setNoteOpen] = useState(note.length > 0)
+  const noteRef = useRef<HTMLTextAreaElement | null>(null)
+  useEffect(() => {
+    if (noteOpen) noteRef.current?.focus()
+  }, [noteOpen])
   // WR-04: ref-based re-entrance guard for handleTapCamera. Cannot use
   // useState here because the React state update would land on the
   // microtask queue AFTER the awaited getUserMedia resolves, leaving a
@@ -296,7 +303,7 @@ export function ComposeStep({
           DialogRoot — production wraps ComposeStep in DialogContent (which
           is itself inside DialogRoot) so accessibility is already covered
           by the outer container's role=dialog semantics. */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pr-10">
         <h2 className="font-heading text-base leading-none font-semibold">
           Log a wear
         </h2>
@@ -440,28 +447,41 @@ export function ComposeStep({
         />
       </div>
 
-      {/* Note (D-11) — 0/200 counter, destructive at 200 */}
-      <div>
-        <Textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={200}
-          placeholder="Add a note…"
+      {/* Note (D-11) — collapsed by default to save space; expands on tap.
+          0/200 counter remains destructive at 200 once expanded. */}
+      {noteOpen ? (
+        <div>
+          <Textarea
+            ref={noteRef}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={200}
+            placeholder="Add a note…"
+            disabled={pending}
+            className="resize-none text-sm"
+            aria-label="Wear note"
+          />
+          <p
+            className={cn(
+              'mt-1 text-right text-xs',
+              counterAt200
+                ? 'text-destructive font-semibold'
+                : 'text-muted-foreground font-normal',
+            )}
+          >
+            {note.length}/200
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setNoteOpen(true)}
           disabled={pending}
-          className="resize-none text-sm"
-          aria-label="Wear note"
-        />
-        <p
-          className={cn(
-            'mt-1 text-right text-xs',
-            counterAt200
-              ? 'text-destructive font-semibold'
-              : 'text-muted-foreground font-normal',
-          )}
+          className="text-xs font-semibold text-accent underline underline-offset-2"
         >
-          {note.length}/200
-        </p>
-      </div>
+          + Add a note
+        </button>
+      )}
 
       {/* Visibility (D-12) */}
       <VisibilitySegmentedControl

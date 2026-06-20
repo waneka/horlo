@@ -561,6 +561,8 @@ describe('ComposeStep — Task 3 core flow + photo submit order + toast', () => 
 
   it('Test 13 (WYWT-07) — note counter: 0/200 → 5/200 → destructive at 200; maxLength 200', () => {
     renderCompose()
+    // Note field is collapsed by default — tap "Add a note" to expand.
+    fireEvent.click(screen.getByRole('button', { name: /Add a note/i }))
     const textarea = screen.getByLabelText('Wear note') as HTMLTextAreaElement
     expect(textarea.maxLength).toBe(200)
     expect(screen.getByText('0/200')).toBeTruthy()
@@ -570,6 +572,13 @@ describe('ComposeStep — Task 3 core flow + photo submit order + toast', () => 
     fireEvent.change(textarea, { target: { value: big } })
     const counter = screen.getByText('200/200')
     expect(counter.className).toMatch(/text-destructive/)
+  })
+
+  it('note field starts collapsed; "Add a note" link expands the textarea', () => {
+    renderCompose()
+    expect(screen.queryByLabelText('Wear note')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Add a note/i }))
+    expect(screen.getByLabelText('Wear note')).toBeTruthy()
   })
 
   it('Test 14 (WYWT-08) — change visibility to followers; submit forwards value', async () => {
