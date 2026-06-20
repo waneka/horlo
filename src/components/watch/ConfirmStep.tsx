@@ -281,7 +281,7 @@ export function ConfirmStep({
               className={cn(
                 'min-h-[44px]',
                 status === value &&
-                  'border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
+                  'border-accent bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground',
               )}
               onClick={() => onStatusChange(value)}
             >
