@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 Phase: Between milestones — v8.2 archived
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-20 — Quick task 260620-gk9: backfilled 18 prod `watches_catalog.image_url` rows + deleted rogue test/test row (now 0/193 missing). Lesson: post-flight assertions must use a different predicate than the WHERE clause they validate, or they silently inherit the bug.
+Last activity: 2026-06-20 — Quick task 260620-lbn: SEED-018 surgical slice — "Add from URL" one-tap affordance on Add-Watch landing + admin-gated `saveCatalogOnlyFromExtract` Server Action (catalog-only save path without polluting admin's own collection). 2 tasks / 6 files / 2 commits.
 
 ## Deferred Items
 
@@ -104,6 +104,7 @@ None.
 |---------------|-------------|---------|------|
 | 260530-e55 | SRCH-03 followup: composite footer onClick closes combobox popup + mounts StructuredEntryPanel | 6070c5cc, 17d5bc0f | 2026-05-30 |
 | 260620-gk9 | Backfill 18 prod `watches_catalog.image_url` rows + delete rogue test/test row (now 0/193 missing) | daf3e03c, b8b2af2d | 2026-06-20 |
+| 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
 
 ## Session Continuity
 
