@@ -144,6 +144,7 @@ export function CameraCaptureView({
           variant="outline"
           onClick={onCancel}
           disabled={disabled || busy}
+          className="min-h-11"
         >
           Cancel
         </Button>
