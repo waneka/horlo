@@ -13,7 +13,7 @@ export interface WristOverlaySvgProps {
 export function WristOverlaySvg({ className }: WristOverlaySvgProps) {
   return (
     <Image
-      src="/watch-on-arm-transparent.png"
+      src="/watch.png"
       alt=""
       aria-hidden="true"
       fill

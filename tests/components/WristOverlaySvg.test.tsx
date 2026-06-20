@@ -14,7 +14,7 @@ describe('WristOverlaySvg', () => {
     expect(img).toBeTruthy()
     expect(img?.getAttribute('alt')).toBe('')
     expect(img?.getAttribute('aria-hidden')).toBe('true')
-    expect(img?.getAttribute('src') ?? '').toContain('watch-on-arm-transparent')
+    expect(img?.getAttribute('src') ?? '').toContain('watch')
   })
 
   it('applies object-contain so the framing guide stays fully visible', () => {
