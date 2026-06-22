@@ -10,6 +10,24 @@ Shipped as a cloud-backed, authenticated web app at [horlo.app](https://horlo.ap
 
 A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
 
+## Current Milestone: v8.3 WYWT Video
+
+**Goal:** Extend WYWT (worn-watch) posts to support a tiny 3-second wrist-rotation video alongside the existing photo path — either-or per post, displayed as a static poster in feed/rail tiles that taps into a full-frame autoplay-muted-loop view at `/wear/{id}`.
+
+**Target features:**
+- WYWT compose flow gains a "Record video" affordance alongside "Take photo"
+- iOS Safari MediaRecorder capture: tap-to-start, on-screen countdown, auto-stop at 3.0s, no audio
+- Client-side poster frame extraction at 3/4 through clip (canvas → JPEG)
+- Upload to existing `wear-photos` Supabase Storage bucket (mp4 + poster.jpg paths)
+- Schema extension: `wear_events.media_type` (`'photo' | 'video'`), `media_path`, `poster_path`
+- Rail/feed tiles render the poster JPEG with a "play" icon overlay
+- `/wear/{id}` renders the mp4 with autoplay-muted-loop + `playsInline`
+- Threat-model coverage matches Phase 15 (server-side Storage probes, IDOR defense, ~5 MB size cap)
+
+**Inputs:** [`SEED-020`](./seeds/SEED-020-wywt-video-3s.md) (D-01..D-09 locked decisions) + [`Spike 001`](./spikes/001-mr-ios-capture/README.md) (VALIDATED 2026-06-22 — iOS 26 records mp4/avc1, autoplay-muted-loop+playsinline works, canvas poster extraction works, ~3.6 MB / 3s 720p file size).
+
+**Supersedes:** v9.0 Catalog Expansion (SEED-009) — deferred to follow per operator decision 2026-06-22.
+
 ## Current State
 
 **Shipped:** v8.2 Discovery Freshness (2026-06-10)

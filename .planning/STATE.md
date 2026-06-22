@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.2
-milestone_name: Discovery Freshness
-status: Awaiting next milestone
-last_updated: "2026-06-10T02:05:36.725Z"
-last_activity: 2026-06-10 — Milestone v8.2 completed and archived
+milestone: v8.3
+milestone_name: WYWT Video
+status: planning
+last_updated: "2026-06-22T22:03:31.565Z"
+last_activity: 2026-06-22
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPPED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Awaiting next milestone — `/gsd-new-milestone` for v9.0 Catalog Expansion (SEED-009) or another seed.
+**Current focus:** v8.3 WYWT Video — extend WYWT posts with optional 3-second wrist-rotation video capture (SEED-020, Spike 001 VALIDATED). Either-or per post (one photo OR one video); static poster in feed/rail tiles tapping into full-frame autoplay-muted-loop view at `/wear/{id}`. v9.0 Catalog Expansion deferred per operator decision 2026-06-22.
 
 ## Current Position
 
-Phase: Between milestones — v8.2 archived
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-22 — Quick task 260622-exo: fixed wear-event "Already logged this watch today" false positive across UTC midnight by threading the client's local `today` into `markAsWorn` + `logWearWithPhoto` Server Actions. 2 atomic commits / 7 src files + 1 integration test. Build exit 0.
+Status: Defining requirements
+Last activity: 2026-06-22 — Milestone v8.3 started
 
 ## Deferred Items
 
