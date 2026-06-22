@@ -15,7 +15,8 @@
 - ✅ **v8.0 Add-Watch Redesign** — Phases 66-71 (shipped 2026-05-29) — [archive](milestones/v8.0-ROADMAP.md)
 - ✅ **v8.1 Add-Watch Polish** — Phases 72-74 (shipped 2026-05-30) — [archive](milestones/v8.1-ROADMAP.md)
 - ✅ **v8.2 Discovery Freshness** — Phase 75 (shipped 2026-06-10) — [archive](milestones/v8.2-ROADMAP.md)
-- 💤 **v9.0 Catalog Expansion** — next milestone candidate (SEED-009)
+- 🔨 **v8.3 WYWT Video** — Phases 76-77 (in progress — SEED-020 + Spike 001 VALIDATED)
+- 💤 **v9.0 Catalog Expansion** — deferred; next milestone after v8.3 ships (SEED-009)
 - 💤 **Market Value** — future, after v9.0 (SEED-005; needs the SEED-007 pricing spike first)
 
 ## Phases
@@ -237,5 +238,50 @@ Notable: first project encounter with Next 16's `revalidateTag` signature drift 
 See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 
 </details>
+
+<details open>
+<summary>🔨 v8.3 WYWT Video (Phases 76-77) — IN PROGRESS</summary>
+
+- [ ] **Phase 76: Video Schema, Storage Paths + Server Action** — VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16
+- [ ] **Phase 77: Video Capture + Display UI** — VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15
+
+16/16 v8.3 requirements pending. Two-phase feature milestone: backend (schema + storage probes + Server Action + IDOR guard) lands first, then UI (ComposeStep video-capture mode + poster tiles + `/wear/{id}` player). Spike 001 VALIDATED 2026-06-22 — iOS 26 mp4/avc1 + autoplay-muted-loop + canvas poster confirmed.
+
+</details>
+
+## Phase Details
+
+### Phase 76: Video Schema, Storage Paths + Server Action
+**Goal**: The server can safely accept a wear-event video upload — schema extended, storage paths enforced, upload capped, and cross-user writes blocked.
+**Depends on**: Phase 75 (v8.2 shipped; v8.3 starts here)
+**Requirements**: VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16
+**Success Criteria** (what must be TRUE):
+  1. A wear event created with `media_type='video'` persists in the database with both `media_path` and `poster_path` non-NULL; a wear event created with `media_type='photo'` continues to work exactly as before (VID-11, VID-12, VID-15 foundation)
+  2. The Server Action rejects any video upload over 5 MB with an error the client can display; it also warns at ~4 MB before the upload attempt (VID-09)
+  3. The Server Action constructs storage paths from `getCurrentUser().id` + a server-issued `wearEventId`; a client-supplied path is never trusted (VID-16, VID-07 — mirrors Phase 15 T-15-17)
+  4. The Server Action probes both the `.mp4` and `-poster.jpg` Storage objects for existence before inserting the `wear_events` row; if the INSERT fails, both objects are best-effort removed (VID-08, VID-10 — mirrors Phase 15 T-15-04 / T-15-18)
+  5. Pre-existing photo wear rows are unchanged by the migration — all existing `photo_url` values remain readable (VID-11 non-destructive migration requirement)
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 77: Video Capture + Display UI
+**Goal**: A collector can record a 3-second wrist-rotation video in the WYWT compose flow and see it rendered as a poster tile in feed/rail and as an autoplaying player on the wear-event detail page.
+**Depends on**: Phase 76
+**Requirements**: VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15
+**Success Criteria** (what must be TRUE):
+  1. User can switch between "Take photo" and "Record video" modes in the WYWT compose flow and switch back before submitting; submitting creates either a photo or a video wear event, never both (VID-01, VID-06)
+  2. User taps "Record 3s" and the camera records for exactly 3.0 seconds with an on-screen countdown, then auto-stops; user can discard the clip and re-record without leaving the compose flow (VID-02, VID-03)
+  3. The captured clip is stored as `video/mp4;codecs=avc1` when the browser supports it (iOS Safari, Chrome 121+); a webm fallback is used only on browsers that do not support mp4 MediaRecorder (VID-04)
+  4. A poster JPEG is extracted client-side at 3/4 through the clip via canvas (no server transcoding); the poster is visible to the user in the compose flow before they submit (VID-05)
+  5. Video posts appear as static poster images with a play-icon overlay in every feed/rail/profile-grid surface; tapping navigates to `/wear/{id}` which autoplays the video muted-looped with `playsInline` (no fullscreen takeover on iOS); existing photo posts are visually unchanged on every surface (VID-13, VID-14, VID-15)
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress Table
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 76. Video Schema, Storage Paths + Server Action | 0/TBD | Not started | - |
+| 77. Video Capture + Display UI | 0/TBD | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

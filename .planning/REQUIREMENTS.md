@@ -84,32 +84,32 @@ Explicitly excluded from v8.3:
 
 ## Traceability
 
-Filled by roadmap creation in the next step.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VID-01 | TBD | Pending |
-| VID-02 | TBD | Pending |
-| VID-03 | TBD | Pending |
-| VID-04 | TBD | Pending |
-| VID-05 | TBD | Pending |
-| VID-06 | TBD | Pending |
-| VID-07 | TBD | Pending |
-| VID-08 | TBD | Pending |
-| VID-09 | TBD | Pending |
-| VID-10 | TBD | Pending |
-| VID-11 | TBD | Pending |
-| VID-12 | TBD | Pending |
-| VID-13 | TBD | Pending |
-| VID-14 | TBD | Pending |
-| VID-15 | TBD | Pending |
-| VID-16 | TBD | Pending |
+| VID-01 | Phase 77 | Pending |
+| VID-02 | Phase 77 | Pending |
+| VID-03 | Phase 77 | Pending |
+| VID-04 | Phase 77 | Pending |
+| VID-05 | Phase 77 | Pending |
+| VID-06 | Phase 77 | Pending |
+| VID-07 | Phase 76 | Pending |
+| VID-08 | Phase 76 | Pending |
+| VID-09 | Phase 76 | Pending |
+| VID-10 | Phase 76 | Pending |
+| VID-11 | Phase 76 | Pending |
+| VID-12 | Phase 76 | Pending |
+| VID-13 | Phase 77 | Pending |
+| VID-14 | Phase 77 | Pending |
+| VID-15 | Phase 77 | Pending |
+| VID-16 | Phase 76 | Pending |
 
 **Coverage:**
 - v8.3 requirements: 16 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 16
+- Mapped to phases: 16/16
+- Phase 76: 7 requirements (VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16)
+- Phase 77: 9 requirements (VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-22*
-*Last updated: 2026-06-22 — initial draft from SEED-020 + Spike 001*
+*Last updated: 2026-06-22 — traceability filled (roadmap created; 2 phases: 76 + 77)*

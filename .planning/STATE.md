@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-06-22T22:03:31.565Z"
 last_activity: 2026-06-22
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 76 (next to start)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-22 — Milestone v8.3 started
+Status: Roadmap created; ready to plan Phase 76
+Last activity: 2026-06-22 — Roadmap created (2 phases: 76 Schema/Storage/Server-Action, 77 Capture/Display UI)
 
 ## Deferred Items
 
@@ -66,6 +66,7 @@ Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-f
 
 ## Performance Metrics
 
+- v8.2: 1 phase (75), 2 plans, ~2h code, 14 commits, 2/2 reqs (close held 10 days for DISC-RECS-VARIATION rotation observation)
 - v8.1: 3 phases (72-74), 5 plans, 1 day, 47 commits, 6/6 reqs (all bundled prod UAT items passed)
 - v8.0: 6 phases (66-71), 22 plans, 2 days, 150 commits, 39/39 reqs
 - v7.0: 7 phases (59-65), 29 plans, 4 days, 244 commits
@@ -79,14 +80,22 @@ Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-f
 
 ### Key Decisions
 
-(carried over from v8.1 close — see PROJECT.md and prior-milestone archives for v8.1/v8.0/v7.0/v6.0 decision history. v8.2 starts with no Phase 75 decisions yet.)
+**v8.3 WYWT Video — locked decisions from SEED-020 + Spike 001:**
 
-- **v8.2 scope is exactly 2 reqs, 1 phase, 2 parallel plans** — Phase 75 covers DISC-RECS-CACHE (cache-tag wiring) + DISC-RECS-VARIATION (algorithm rotation + sparse-pool top-up). Plans are wave-1-parallel because cache wiring touches `src/components/home/CollectorsLikeYou.tsx` + `src/app/actions/watches.ts` while algorithm variation touches `src/data/recommendations.ts` — zero file overlap.
-- **`revalidateTag` semantics = default, NOT `'max'`** — DISC-RECS-CACHE wants read-your-own-write (the user who just mutated wants to see the rec change THIS render); per-viewer tag `viewer:${user.id}:recs` keyed per-viewer (mirrors `viewer:${id}:counts` pattern at `src/app/actions/comments.ts:167`) — no cross-user over-invalidation.
-- **6h time window for algorithm rotation** — rail rotates 4× daily; balances "feels alive" with cache hit rate. PRNG = inline `mulberry32` (no new dependency). Top-up source = `watches_catalog.count` (v4.0 pg_cron-maintained — no extra query).
-- **Phase 75 P02 D-06/07/08/09**: `SEED_POOL_SIZE 15→30`; new `ROTATION_WINDOW_MS = 6 * 60 * 60 * 1000`; exported `seedFor` (djb2-style 32-bit) + `mulberry32` (5-line PRNG); Fisher-Yates shuffle of top-30 → take first `SAMPLED_SEED_SIZE` (15). Cache-stable within window; rotates next window.
-- **Phase 75 P02 D-10/D-11/D-14**: `topUpFromCatalogPopularity()` (exported) fires when `candidateMap.size < SPARSE_POOL_THRESHOLD` (8); queries `watches_catalog` ordered by `(ownersCount DESC, brand ASC) LIMIT 20`; uses `ownersCount` ONLY (no `wishlistCount`); determinism comes from daily pg_cron refresh — no PRNG needed for top-up.
-- **Phase 75 P02 D-12/D-13**: `Recommendation.representativeOwnerId` widened to `string | null`; synthetic top-up rows emit `null` + route through existing community-fallback rationale `"Popular in the community"` — no new rationale template or copy surface. `RecommendationCard.tsx` already does not dereference the field — non-breaking widening.
+- **D-01 (SEED-020)**: Wrist-rotation is linear motion — NOT a boomerang. Accept a visible loop snap on `/wear/{id}` autoplay-muted-loop; no ping-pong post-processing.
+- **D-02 (SEED-020)**: Static poster + play-icon overlay in all feed/rail surfaces; tap navigates to `/wear/{id}` which autoplays inline. No in-feed autoplay.
+- **D-03 (SEED-020)**: Either-or per post — `media_type: 'photo' | 'video'` column on `wear_events`; never both.
+- **D-04 (SEED-020)**: Hard 3-second cap; auto-stop via `setTimeout(stop, 3000)` client-side + ~5 MB server-side size cap.
+- **D-05 (SEED-020)**: Audio disabled — `MediaRecorder` configured with `audio: false`.
+- **D-06 (SEED-020)**: WYWT-only in v8.3; watch-detail-page carousel (`/w/[ref]`) stays photo-only.
+- **D-07 (SEED-020)**: Storage paths: `{userId}/{wearEventId}.mp4` + `{userId}/{wearEventId}-poster.jpg` in existing `wear-photos` bucket. Server constructs paths — client never supplies them (Phase 15 T-15-17 pattern).
+- **D-08 (SEED-020 + Spike 001)**: Poster frame default = `currentTime = video.duration * 0.75` (3/4 through clip = "completed angle" moment for wrist rotation). User-pick scrubber deferred to v2.
+- **D-09 (SEED-020 + Spike 001)**: Codec = H.264 mp4 (`video/mp4;codecs=avc1`). Force mp4 on Chrome 121+ via mimeType; webm fallback only if mp4 MediaRecorder unsupported. Storage extension `.mp4` always.
+- **Spike 001 empirical results**: iOS 26.6 Safari — `mp4+avc1: true`; clip = `video/mp4; codecs=avc1.42000a` (Baseline Profile L1.0); auto-stop at 3010ms (10ms overshoot — within tolerance); poster canvas JPEG = 169KB at 720×1280; file size = 3.6 MB for 3s 720p portrait; autoplay-muted-loop+playsInline confirmed inline (no fullscreen takeover).
+- **`playsInline` is mandatory**: MUST be set on every `<video>` rendering wear-event videos — in feed/rail tiles AND on `/wear/{id}` — or iOS goes fullscreen on play.
+- **Phase 76 is DB-touching**: `workflow.use_worktrees=false` already set globally (per `project_next_clear_operational_debt`); applies here. Migration uses `supabase db push --linked` for prod (per `project_drizzle_supabase_db_mismatch`).
+- **Phase 15 threat-model analogs**: T-15-04 (probe both Storage objects before INSERT) → VID-08; T-15-17 (server-constructed path only) → VID-16; T-15-18 (best-effort delete on INSERT failure) → VID-10.
+- **Spike cleanup**: `src/app/spike-mr-capture/` must be deleted in Phase 77 (or earlier — throwaway code per Spike 001 README cleanup instructions).
 
 ### Pending Todos
 
@@ -109,9 +118,10 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-06-22 — Quick task 260622-exo: fixed wear-event "Already logged this watch today" false positive across UTC midnight. Root cause: `todayLocalISO()` on Vercel server returns UTC (not the user's local zone). Fix: thread the client's local `today` into `markAsWorn` + `logWearWithPhoto` (zod-validated `/^\d{4}-\d{2}-\d{2}$/`), drop server-side `todayLocalISO()` calls, update doc warning. 2 commits / 8 files (7 src + 1 integration test). Build exit 0. Push + UAT pending. Code was complete 2026-05-30 (Phase 75 / 2 plans / 6 tasks / 14 commits); close held open until 2026-06-09 — the 10-day gap exercised the DISC-RECS-VARIATION ≥6h rotation window organically. ROADMAP/REQUIREMENTS archived to `.planning/milestones/v8.2-*`; Phase 75 directory `git mv`'d to `.planning/milestones/v8.2-phases/` inline (3rd recurrence of archival miss caught + fixed). MILESTONES.md entry hand-rewritten (6th recurrence of extractor garbage). SEED-017 frontmatter flipped `active → shipped+shipped_in:v8.2+shipped:2026-06-09`. 27 audit items acknowledged as deferred. Closed without `/gsd-audit-milestone` (mirrors v5.0/v5.1/v7.0/v8.0/v8.1 polish-milestone pattern). Tag `v8.2` created locally (push pending operator decision).
-Next action: `/gsd-new-milestone` for v9.0 Catalog Expansion (SEED-009) — promoted per operator decision 2026-05-28. Pre-kickoff housekeeping: 6 already-shipped seeds (SEED-008/010/012/013/015/016) still mis-classified in audit-open and should have their seed-file `status:` flipped to `shipped:` before next milestone close (4 milestones running with this same noise). Verify `.planning/phases/` is empty before `/gsd-new-milestone`'s `phases.clear --confirm` runs (per `feedback_milestone_close_phase_dir_archival_miss` — already moved in this close).
+Last activity: 2026-06-22 — Roadmap created for v8.3 WYWT Video. 2 phases defined (76: Schema/Storage/Server Action, 77: Capture/Display UI). 16/16 VID-NN requirements mapped. REQUIREMENTS.md traceability filled. STATE.md total_phases set to 2.
+
+Next action: `/gsd-plan-phase 76` to plan Phase 76 (Video Schema, Storage Paths + Server Action — DB-touching phase; run with use_worktrees=false which is already the global default).
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 76 with /gsd-plan-phase 76
