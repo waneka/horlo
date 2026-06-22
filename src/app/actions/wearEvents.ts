@@ -10,16 +10,23 @@ import { logActivity } from '@/data/activities'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { WearVisibility } from '@/lib/wearVisibility'
-import { todayLocalISO } from '@/lib/wear'
 
-const watchIdSchema = z.string().uuid()
+const markAsWornSchema = z.object({
+  watchId: z.string().uuid(),
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
 
-export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
+export async function markAsWorn(
+  watchId: string,
+  today: string,
+): Promise<ActionResult<void>> {
   let user
   try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
 
-  // CR-01: validate input shape early so non-UUID values cannot reach the DAL.
-  const parsed = watchIdSchema.safeParse(watchId)
+  // CR-01: validate input shape early so non-UUID values or malformed dates
+  // cannot reach the DAL. Returns the same 'Watch not found' copy as the
+  // IDOR-defense branch (T-X-03: no additional info leak).
+  const parsed = markAsWornSchema.safeParse({ watchId, today })
   if (!parsed.success) {
     return { success: false, error: 'Watch not found' }
   }
@@ -29,22 +36,22 @@ export async function markAsWorn(watchId: string): Promise<ActionResult<void>> {
   // does not block cross-user watchIds because the insert row carries the
   // caller's user_id. Use the same generic 'Watch not found' message the notes
   // IDOR mitigation uses so existence is not leaked.
-  const watch = await watchDAL.getWatchById(user.id, parsed.data)
+  const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
   if (!watch) {
     return { success: false, error: 'Watch not found' }
   }
 
-  // WR-02: use the user's local calendar day. The Server Action runs in the
-  // user's request context (no compute job / cron offset concern), so the
-  // process clock matches the actor. Avoids the UTC-boundary duplicate-day
-  // false positive documented in src/lib/wear.ts:todayLocalISO.
-  const today = todayLocalISO()
+  // WR-02 (2026-06-22 fix): client supplies `today` as their local calendar
+  // day (computed by the browser-side wear helper). The server MUST NOT compute
+  // `today` itself — on Vercel the process zone is UTC, which diverges from the
+  // user's local day near the boundary (T-X-01 / T-X-02: regex-validated;
+  // DB UNIQUE(user_id, watch_id, worn_date) is the canonical duplicate gate).
 
   try {
-    await wearEventDAL.logWearEvent(user.id, parsed.data, today)
+    await wearEventDAL.logWearEvent(user.id, parsed.data.watchId, parsed.data.today)
     // Activity logging (D-05) — fire and forget
     try {
-      await logActivity(user.id, 'watch_worn', parsed.data, {
+      await logActivity(user.id, 'watch_worn', parsed.data.watchId, {
         brand: watch.brand,
         model: watch.model,
         imageUrl: watch.imageUrl ?? null,
@@ -87,6 +94,7 @@ const logWearWithPhotoSchema = z.object({
   note: z.string().max(200).nullable(),
   visibility: z.enum(['public', 'followers', 'private']),
   hasPhoto: z.boolean(),
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
 
 const preflightSchema = z.object({
@@ -121,6 +129,7 @@ export async function logWearWithPhoto(input: {
   note: string | null
   visibility: WearVisibility
   hasPhoto: boolean
+  today: string
 }): Promise<ActionResult<{ wearEventId: string }>> {
   // Auth FIRST — zod after auth so unauthenticated callers never reach
   // validation (matches markAsWorn ordering).
@@ -164,12 +173,11 @@ export async function logWearWithPhoto(input: {
     }
   }
 
-  // WR-02: local calendar day — see src/lib/wear.ts:todayLocalISO. Client
-  // (WywtPostDialog preflight) AND server MUST agree on the same calendar
-  // boundary or the picker's "Worn today" hint and the DB UNIQUE
-  // (user_id, watch_id, worn_date) constraint will diverge across the UTC
-  // day boundary.
-  const today = todayLocalISO()
+  // WR-02 (2026-06-22 fix): client supplies `today` as their local calendar
+  // day (computed by the browser-side wear helper). The server MUST NOT compute
+  // `today` itself — on Vercel the process zone is UTC, which diverges from the
+  // user's local day near the boundary (T-X-01 / T-X-02: regex-validated;
+  // DB UNIQUE(user_id, watch_id, worn_date) is the canonical duplicate gate).
   const note = parsed.data.note?.trim() ? parsed.data.note.trim() : null
 
   try {
@@ -177,7 +185,7 @@ export async function logWearWithPhoto(input: {
       id: parsed.data.wearEventId,
       userId: user.id,
       watchId: parsed.data.watchId,
-      wornDate: today,
+      wornDate: parsed.data.today,
       note,
       photoUrl: parsed.data.hasPhoto ? photoPath : null,
       visibility: parsed.data.visibility,

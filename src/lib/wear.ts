@@ -28,6 +28,16 @@ export function daysSince(dateStr?: string): number | null {
  *
  * Returns a string matching `^\d{4}-\d{2}-\d{2}$` — kept compatible with
  * the zod schema in `src/app/actions/wearEvents.ts` (`preflightSchema`).
+ *
+ * WARNING: do NOT call this helper inside a Server Action body. Server
+ * Actions run on the Vercel runtime where the process zone is UTC, so the
+ * returned value will be UTC — NOT the user's local calendar day. Server-side
+ * callers MUST receive `today` from the client (browser) and validate it
+ * server-side with the regex `/^\d{4}-\d{2}-\d{2}$/` (see
+ * `src/app/actions/wearEvents.ts`). The 2026-06-22 incident behind this
+ * warning: a wear logged 11:55 PM PT and the NEXT night at 12:05 AM PT
+ * tripped `UNIQUE(user_id, watch_id, worn_date)` because both serialized to
+ * the same UTC date.
  */
 export function todayLocalISO(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0')
