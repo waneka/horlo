@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { markAsWorn } from '@/app/actions/wearEvents'
+import { todayLocalISO } from '@/lib/wear'
 import type { Watch } from '@/lib/types'
 
 /**
@@ -114,7 +115,8 @@ export function WatchPickerDialog({
     }
     setError(null)
     startTransition(async () => {
-      const result = await markAsWorn(selectedId)
+      const today = todayLocalISO()
+      const result = await markAsWorn(selectedId, today)
       if (!result.success) {
         setError("Couldn't log that wear.")
         return

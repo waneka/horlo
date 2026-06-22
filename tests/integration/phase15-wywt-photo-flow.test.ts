@@ -400,6 +400,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: 'nice',
           visibility: 'public',
           hasPhoto: false,
+          today: isoToday(),
         })
         expect(result).toEqual({ success: true, data: { wearEventId } })
       })
@@ -434,6 +435,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'followers',
           hasPhoto: true,
+          today: isoToday(),
         })
         expect(result).toEqual({ success: true, data: { wearEventId } })
       })
@@ -462,6 +464,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'public',
           hasPhoto: true,
+          today: isoToday(),
         })
         expect(result.success).toBe(false)
         if (!result.success) {
@@ -506,6 +509,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'public',
           hasPhoto: true,
+          today: date,
         })
         expect(result.success).toBe(false)
         if (!result.success) {
@@ -537,31 +541,20 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
 
       await withMockedAuth(userA.id, async () => {
         const { logWearWithPhoto } = await loadActions()
-        // Stub today() so the Server Action uses `date` instead of the
-        // current day. The Server Action computes `today` via
-        // `todayLocalISO()` (WR-02 — local calendar day), so we pin the
-        // system clock to the LOCAL noon of `date`. T12:00:00 in the
-        // runner's local zone keeps the local calendar day equal to
-        // `date` regardless of host timezone — the seeded row's `wornDate`
-        // (also produced by the local-date `isoToday` helper above) and
-        // the Server Action's `today` agree, triggering the unique
-        // (user_id, watch_id, worn_date) collision.
-        vi.useFakeTimers()
-        vi.setSystemTime(new Date(`${date}T12:00:00`))
-        try {
-          const result = await logWearWithPhoto({
-            wearEventId: secondEventId,
-            watchId: watchA2,
-            note: null,
-            visibility: 'public',
-            hasPhoto: false,
-          })
-          expect(result.success).toBe(false)
-          if (!result.success) {
-            expect(result.error).toBe('Already logged this watch today')
-          }
-        } finally {
-          vi.useRealTimers()
+        // Pass `today: date` explicitly — the Server Action no longer reads
+        // its own clock (WR-02 2026-06-22 fix). The collision is triggered by
+        // the client-supplied `today` matching the seeded row's `wornDate`.
+        const result = await logWearWithPhoto({
+          wearEventId: secondEventId,
+          watchId: watchA2,
+          note: null,
+          visibility: 'public',
+          hasPhoto: false,
+          today: date,
+        })
+        expect(result.success).toBe(false)
+        if (!result.success) {
+          expect(result.error).toBe('Already logged this watch today')
         }
       })
 
@@ -577,6 +570,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'public',
           hasPhoto: false,
+          today: isoToday(),
         })
         expect(result).toEqual({ success: false, error: 'Not authenticated' })
       })
@@ -592,6 +586,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'public',
           hasPhoto: false,
+          today: isoToday(),
         })
         expect(result).toEqual({ success: false, error: 'Watch not found' })
       })
@@ -606,6 +601,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'public',
           hasPhoto: false,
+          today: isoToday(),
         })
         expect(result).toEqual({ success: false, error: 'Invalid input' })
       })
@@ -708,6 +704,7 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
           note: null,
           visibility: 'public',
           hasPhoto: true,
+          today: isoToday(),
         })
         expect(result.success).toBe(false)
         if (!result.success) {

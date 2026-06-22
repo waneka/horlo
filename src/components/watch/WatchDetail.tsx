@@ -29,7 +29,7 @@ import type { SignedWearPic } from '@/components/watch/WatchPhotoSection'
 import type { CommentAuthor } from '@/components/comment/types'
 import { MOVEMENT_LABELS } from '@/lib/constants'
 import { computeGapFill } from '@/lib/gapFill'
-import { daysSince } from '@/lib/wear'
+import { daysSince, todayLocalISO } from '@/lib/wear'
 import type { Watch, UserPreferences } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 
@@ -148,7 +148,8 @@ export function WatchDetail({ watch, collection, preferences, lastWornDate, view
 
   const handleMarkAsWorn = () => {
     startTransition(async () => {
-      const result = await markAsWorn(watch.id)
+      const today = todayLocalISO()
+      const result = await markAsWorn(watch.id, today)
       if (result.success) {
         // Inline mutation (no navigation) — explicit refresh re-fetches Server Component data.
         router.refresh()

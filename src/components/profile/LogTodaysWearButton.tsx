@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { markAsWorn } from '@/app/actions/wearEvents'
+import { todayLocalISO } from '@/lib/wear'
 
 interface WatchSummary {
   id: string
@@ -35,7 +36,8 @@ export function LogTodaysWearButton({ watches }: { watches: WatchSummary[] }) {
     if (!selected) return
     setError(null)
     startTransition(async () => {
-      const result = await markAsWorn(selected)
+      const today = todayLocalISO()
+      const result = await markAsWorn(selected, today)
       if (!result.success) {
         setError(result.error)
         return

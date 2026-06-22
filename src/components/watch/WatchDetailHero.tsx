@@ -25,7 +25,7 @@ import { markAsWorn } from '@/app/actions/wearEvents'
 import { WatchPhotoSection } from '@/components/watch/WatchPhotoSection'
 import type { SignedWearPic } from '@/components/watch/WatchPhotoSection'
 import type { CommentAuthor } from '@/components/comment/types'
-import { daysSince } from '@/lib/wear'
+import { daysSince, todayLocalISO } from '@/lib/wear'
 import type { Watch } from '@/lib/types'
 import type { VerdictBundle } from '@/lib/verdict/types'
 import { SpecsSublabel } from '@/components/watch/SpecsSublabel'
@@ -152,7 +152,8 @@ export function WatchDetailHero({
 
   const handleMarkAsWorn = () => {
     startTransition(async () => {
-      const result = await markAsWorn(watch.id)
+      const today = todayLocalISO()
+      const result = await markAsWorn(watch.id, today)
       if (result.success) {
         router.refresh()
       }

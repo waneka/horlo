@@ -18,6 +18,7 @@ import { CameraCaptureView } from './CameraCaptureView'
 import { VisibilitySegmentedControl } from './VisibilitySegmentedControl'
 import { uploadWearPhoto } from '@/lib/storage/wearPhotos'
 import { logWearWithPhoto } from '@/app/actions/wearEvents'
+import { todayLocalISO } from '@/lib/wear'
 import { cn } from '@/lib/utils'
 import type { Watch } from '@/lib/types'
 import type { WearVisibility } from '@/lib/wearVisibility'
@@ -265,12 +266,14 @@ export function ComposeStep({
             return
           }
         }
+        const today = todayLocalISO()
         const result = await logWearWithPhoto({
           wearEventId,
           watchId: watch.id,
           note: note.trim().length > 0 ? note.trim() : null,
           visibility,
           hasPhoto: !!photoBlob,
+          today,
         })
         if (!result.success) {
           setError(result.error)
