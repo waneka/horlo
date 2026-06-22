@@ -261,7 +261,11 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
   3. The Server Action constructs storage paths from `getCurrentUser().id` + a server-issued `wearEventId`; a client-supplied path is never trusted (VID-16, VID-07 — mirrors Phase 15 T-15-17)
   4. The Server Action probes both the `.mp4` and `-poster.jpg` Storage objects for existence before inserting the `wear_events` row; if the INSERT fails, both objects are best-effort removed (VID-08, VID-10 — mirrors Phase 15 T-15-04 / T-15-18)
   5. Pre-existing photo wear rows are unchanged by the migration — all existing `photo_url` values remain readable (VID-11 non-destructive migration requirement)
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 76-01-PLAN.md — Drizzle schema + Supabase migration + integration test (VID-11, VID-12); BLOCKING local `drizzle-kit push` (autonomous:false)
+  - [ ] 76-02-PLAN.md — Client-side path builders `buildWearVideoPath` + `buildWearPosterPath` + 6 unit tests (VID-07, VID-16)
+  - [ ] 76-03-PLAN.md — DAL helper `logWearEventWithVideo` + Server Action `logWearWithVideo` + 9 unit tests (VID-07, VID-08, VID-09, VID-10, VID-16)
+  - [ ] 76-04-PLAN.md — Full Phase 76 verification + `76-POST-DEPLOY.md` runbook + human prod `supabase db push --linked` (autonomous:false)
 **UI hint**: no
 
 ### Phase 77: Video Capture + Display UI
@@ -281,7 +285,7 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 76. Video Schema, Storage Paths + Server Action | 0/TBD | Not started | - |
+| 76. Video Schema, Storage Paths + Server Action | 0/4 | Planned (not started) | - |
 | 77. Video Capture + Display UI | 0/TBD | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
