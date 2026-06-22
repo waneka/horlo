@@ -18,5 +18,5 @@ Locked decisions from SEED-020 carried into the build (do not contradict in spik
 
 | #   | Name                   | Type     | Validates                                                                                                | Verdict | Tags                                |
 | --- | ---------------------- | -------- | -------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------- |
-| 001 | mr-ios-capture         | standard | iOS Safari MediaRecorder can record a clean 3s mp4 + poster JPEG extractable client-side + inline playback works | PENDING | media-recorder, ios-safari, video, wywt |
-| 002 | mr-roundtrip-supabase  | standard | Cross-browser codec matrix + Supabase Storage `wear-photos` accepts mp4/webm upload + signed-URL playback autoplay-muted-loops on iOS | DEFERRED (only fires if 001 passes) | media-recorder, supabase-storage, video, wywt |
+| 001 | mr-ios-capture         | standard | iOS Safari MediaRecorder can record a clean 3s mp4 + poster JPEG extractable client-side + inline playback works | ✓ VALIDATED (2026-06-22) | media-recorder, ios-safari, video, wywt |
+| 002 | mr-roundtrip-supabase  | standard | Supabase Storage `wear-photos` accepts mp4 upload + signed-URL playback autoplay-muted-loops on iOS | OPTIONAL (Phase 15 photo upload pattern already proves browser→Storage works; mp4 is just a different Content-Type) | media-recorder, supabase-storage, video, wywt |
