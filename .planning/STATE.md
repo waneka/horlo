@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 Phase: Between milestones — v8.2 archived
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-20 — Quick task 260620-lbn: SEED-018 surgical slice — "Add from URL" one-tap affordance on Add-Watch landing + admin-gated `saveCatalogOnlyFromExtract` Server Action (catalog-only save path without polluting admin's own collection). 2 tasks / 6 files / 2 commits.
+Last activity: 2026-06-22 — Quick task 260622-exo: fixed wear-event "Already logged this watch today" false positive across UTC midnight by threading the client's local `today` into `markAsWorn` + `logWearWithPhoto` Server Actions. 2 atomic commits / 7 src files + 1 integration test. Build exit 0.
 
 ## Deferred Items
 
@@ -105,10 +105,11 @@ None.
 | 260530-e55 | SRCH-03 followup: composite footer onClick closes combobox popup + mounts StructuredEntryPanel | 6070c5cc, 17d5bc0f | 2026-05-30 |
 | 260620-gk9 | Backfill 18 prod `watches_catalog.image_url` rows + delete rogue test/test row (now 0/193 missing) | daf3e03c, b8b2af2d | 2026-06-20 |
 | 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
+| 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
 
 ## Session Continuity
 
-Last activity: 2026-06-10 — Milestone v8.2 Discovery Freshness SHIPPED via `/gsd-complete-milestone`. Code was complete 2026-05-30 (Phase 75 / 2 plans / 6 tasks / 14 commits); close held open until 2026-06-09 — the 10-day gap exercised the DISC-RECS-VARIATION ≥6h rotation window organically. ROADMAP/REQUIREMENTS archived to `.planning/milestones/v8.2-*`; Phase 75 directory `git mv`'d to `.planning/milestones/v8.2-phases/` inline (3rd recurrence of archival miss caught + fixed). MILESTONES.md entry hand-rewritten (6th recurrence of extractor garbage). SEED-017 frontmatter flipped `active → shipped+shipped_in:v8.2+shipped:2026-06-09`. 27 audit items acknowledged as deferred. Closed without `/gsd-audit-milestone` (mirrors v5.0/v5.1/v7.0/v8.0/v8.1 polish-milestone pattern). Tag `v8.2` created locally (push pending operator decision).
+Last activity: 2026-06-22 — Quick task 260622-exo: fixed wear-event "Already logged this watch today" false positive across UTC midnight. Root cause: `todayLocalISO()` on Vercel server returns UTC (not the user's local zone). Fix: thread the client's local `today` into `markAsWorn` + `logWearWithPhoto` (zod-validated `/^\d{4}-\d{2}-\d{2}$/`), drop server-side `todayLocalISO()` calls, update doc warning. 2 commits / 8 files (7 src + 1 integration test). Build exit 0. Push + UAT pending. Code was complete 2026-05-30 (Phase 75 / 2 plans / 6 tasks / 14 commits); close held open until 2026-06-09 — the 10-day gap exercised the DISC-RECS-VARIATION ≥6h rotation window organically. ROADMAP/REQUIREMENTS archived to `.planning/milestones/v8.2-*`; Phase 75 directory `git mv`'d to `.planning/milestones/v8.2-phases/` inline (3rd recurrence of archival miss caught + fixed). MILESTONES.md entry hand-rewritten (6th recurrence of extractor garbage). SEED-017 frontmatter flipped `active → shipped+shipped_in:v8.2+shipped:2026-06-09`. 27 audit items acknowledged as deferred. Closed without `/gsd-audit-milestone` (mirrors v5.0/v5.1/v7.0/v8.0/v8.1 polish-milestone pattern). Tag `v8.2` created locally (push pending operator decision).
 Next action: `/gsd-new-milestone` for v9.0 Catalog Expansion (SEED-009) — promoted per operator decision 2026-05-28. Pre-kickoff housekeeping: 6 already-shipped seeds (SEED-008/010/012/013/015/016) still mis-classified in audit-open and should have their seed-file `status:` flipped to `shipped:` before next milestone close (4 milestones running with this same noise). Verify `.planning/phases/` is empty before `/gsd-new-milestone`'s `phases.clear --confirm` runs (per `feedback_milestone_close_phase_dir_archival_miss` — already moved in this close).
 
 ## Operator Next Steps
