@@ -653,7 +653,7 @@ Integration tests require `DATABASE_URL` to be set; they use the `maybe = proces
 
 ---
 
-## Open Questions for Planner
+## Open Questions for Planner (RESOLVED — see plan decisions)
 
 1. **`photo_url` vs `media_path` for NEW photo posts (post-Phase 77)**
    - When Phase 77 lands, should new photo posts write `media_path` instead of `photo_url`, or continue writing `photo_url`?
