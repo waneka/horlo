@@ -34,8 +34,8 @@ Video + poster reach Supabase Storage safely.
 
 Database accommodates the new media type without breaking existing photo wears.
 
-- [ ] **VID-11**: Migration adds `wear_events.media_type` (enum `'photo' | 'video' NOT NULL DEFAULT 'photo'`), `media_path TEXT`, `poster_path TEXT`; pre-existing rows default to `'photo'` with their existing `photo_url` migrated into `media_path` (or `photo_url` retained as alias — phase planning decision)
-- [ ] **VID-12**: DB CHECK constraint enforces that `media_type='video'` rows have both `media_path` and `poster_path` non-NULL
+- [x] **VID-11**: Migration adds `wear_events.media_type` (enum `'photo' | 'video' NOT NULL DEFAULT 'photo'`), `media_path TEXT`, `poster_path TEXT`; pre-existing rows default to `'photo'` with their existing `photo_url` migrated into `media_path` (or `photo_url` retained as alias — phase planning decision)
+- [x] **VID-12**: DB CHECK constraint enforces that `media_type='video'` rows have both `media_path` and `poster_path` non-NULL
 
 ### Display (DSP)
 
@@ -96,8 +96,8 @@ Explicitly excluded from v8.3:
 | VID-08 | Phase 76 | Pending |
 | VID-09 | Phase 76 | Pending |
 | VID-10 | Phase 76 | Pending |
-| VID-11 | Phase 76 | Pending |
-| VID-12 | Phase 76 | Pending |
+| VID-11 | Phase 76 | Complete |
+| VID-12 | Phase 76 | Complete |
 | VID-13 | Phase 77 | Pending |
 | VID-14 | Phase 77 | Pending |
 | VID-15 | Phase 77 | Pending |

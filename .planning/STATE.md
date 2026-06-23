@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
-status: planning
-last_updated: "2026-06-22T22:03:31.565Z"
-last_activity: 2026-06-22
+status: executing
+last_updated: "2026-06-23T00:19:02.770Z"
+last_activity: 2026-06-23
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPPED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v8.3 WYWT Video — extend WYWT posts with optional 3-second wrist-rotation video capture (SEED-020, Spike 001 VALIDATED). Either-or per post (one photo OR one video); static poster in feed/rail tiles tapping into full-frame autoplay-muted-loop view at `/wear/{id}`. v9.0 Catalog Expansion deferred per operator decision 2026-06-22.
+**Current focus:** Phase 76 — Video Schema, Storage Paths + Server Action
 
 ## Current Position
 
-Phase: 76 (next to start)
-Plan: —
-Status: Roadmap created; ready to plan Phase 76
-Last activity: 2026-06-22 — Roadmap created (2 phases: 76 Schema/Storage/Server-Action, 77 Capture/Display UI)
+Phase: 76 (Video Schema, Storage Paths + Server Action) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-23
 
 ## Deferred Items
 
@@ -115,6 +115,7 @@ None.
 | 260620-gk9 | Backfill 18 prod `watches_catalog.image_url` rows + delete rogue test/test row (now 0/193 missing) | daf3e03c, b8b2af2d | 2026-06-20 |
 | 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
+| Phase 76 P01 | 35min | 4 tasks | 4 files |
 
 ## Session Continuity
 
