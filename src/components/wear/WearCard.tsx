@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { MessageCircle } from 'lucide-react'
 
 import { WearPhotoClient } from '@/components/wear/WearPhotoClient'
+import { WearVideoClient } from '@/components/wear/WearVideoClient'
 import { WearDetailHero } from '@/components/wear/WearDetailHero'
 import { LikeButton } from '@/components/shared/LikeButton'
 import { WearCommentHost } from '@/components/wear/WearCommentHost'
@@ -52,6 +53,13 @@ interface WearCardProps {
   viewerAuthor: CommentAuthor | null
   /** CMNT-09: comment count badge — hidden at zero in both engagement rows */
   commentCount: number
+
+  // Phase 77: video render branch (VID-13, VID-14) — strictly optional;
+  // existing call sites that omit these props are byte-identical (VID-15
+  // regression gate).
+  mediaType?: 'photo' | 'video'
+  signedVideoUrl?: string | null
+  signedPosterUrl?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +108,9 @@ export function WearCard({
   ownerUsername,
   viewerAuthor,
   commentCount,
+  mediaType,
+  signedVideoUrl = null,
+  signedPosterUrl = null,
 }: WearCardProps) {
   // Bottom-sheet variant: WearCard owns the open state and exposes it for swipe-pause.
   const [commentOpen, setCommentOpen] = useState(false)
@@ -127,7 +138,21 @@ export function WearCard({
     <div className="w-full">
       {/* Photo layer + overflow menu anchor */}
       <div className="relative w-full">
-        {signedUrl !== null ? (
+        {mediaType === 'video' ? (
+          <WearVideoClient
+            signedVideoUrl={signedVideoUrl ?? null}
+            signedPosterUrl={signedPosterUrl ?? null}
+            altText={altText}
+            watchImageUrl={watchImageUrl}
+            brand={brand}
+            model={model}
+            username={username}
+            displayName={displayName}
+            avatarUrl={avatarUrl}
+            createdAt={createdAt}
+            watchId={watchId}
+          />
+        ) : signedUrl !== null ? (
           <WearPhotoClient
             signedUrl={signedUrl}
             altText={altText}
