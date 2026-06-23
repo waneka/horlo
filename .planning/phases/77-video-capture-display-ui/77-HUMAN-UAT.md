@@ -12,9 +12,9 @@ updated: 2026-06-23
 
 ## Tests
 
-### 1. iOS Safari live capture — getUserMedia + 3s record + playsInline (VID-02, VID-04)
-expected: On prod iPhone Safari, open `/` → tap "What are you wearing?" → pick a watch → tap "Record video" → grant camera → tap "Record 3s" → ring fills clockwise over ~3s → auto-stops at 3.0s → inline `<video>` preview plays muted-looped without fullscreen takeover → submit → `/wear/{id}` shows autoplay-muted-loop without fullscreen.
-result: [pending]
+### 1. iOS Safari live capture — getUserMedia + 4s record + playsInline (VID-02, VID-04)
+expected: On prod iPhone Safari, open `/` → tap "What are you wearing?" → pick a watch → tap "Record video" → grant camera → tap "Record 4s" → 40px ring overlay (top-left of camera, red dot centered) fills clockwise over ~4s → auto-stops at 4.0s → inline `<video>` preview plays muted-looped without fullscreen takeover → submit → `/wear/{id}` shows autoplay-muted-loop without fullscreen.
+result: pass-with-followup-fix — first walk uncovered two design issues (low ring visibility on button + 3s too short). Resolved in commit `6cbd3dc4`: ring relocated to camera top-left as a 40px overlay with red dot centered inside; clip duration bumped to 4s; MediaRecorder bitrate set to 6 Mbps (~3 MB for 4s portrait-720p, comfortable margin under 5 MB cap). Re-walk required to confirm.
 
 ### 2. Tile poster + VideoPlayBadge visual weight across rail / lane / detail (VID-13, VID-14)
 expected: After prod deploy, on a profile with at least one video wear, visit home rail and stories lane → confirm `<Play>` icon visually centered, backdrop visible on bright and dark posters, weight uniform across surface sizes.
