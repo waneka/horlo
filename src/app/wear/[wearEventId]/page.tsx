@@ -86,6 +86,9 @@ export default async function WearDetailPage({
       <Suspense fallback={<PhotoSkeleton />}>
         <WearPhotoStreamed
           photoUrl={wear.photoUrl}
+          mediaType={wear.mediaType ?? undefined}
+          mediaPath={wear.mediaPath ?? null}
+          posterPath={wear.posterPath ?? null}
           watchImageUrl={wear.watchImageUrl}
           brand={wear.brand}
           model={wear.model}
@@ -125,6 +128,9 @@ export default async function WearDetailPage({
  */
 async function WearPhotoStreamed({
   photoUrl,
+  mediaType,
+  mediaPath,
+  posterPath,
   watchImageUrl,
   brand,
   model,
@@ -144,6 +150,9 @@ async function WearPhotoStreamed({
   ownerUsername,
 }: {
   photoUrl: string | null
+  mediaType?: 'photo' | 'video'
+  mediaPath: string | null
+  posterPath: string | null
   watchImageUrl: string | null
   brand: string
   model: string
@@ -162,8 +171,25 @@ async function WearPhotoStreamed({
   ownerUserId: string
   ownerUsername: string
 }) {
+  // Phase 77 (VID-14, T-77-03): admin client mints signed URLs for both
+  // video paths in parallel when this is a video wear; otherwise the
+  // existing photo mint runs unchanged (VID-15 invariant).
   let signedUrl: string | null = null
-  if (photoUrl) {
+  let signedVideoUrl: string | null = null
+  let signedPosterUrl: string | null = null
+  if (mediaType === 'video') {
+    const supabase = await createSupabaseServerClient()
+    const [videoResult, posterResult] = await Promise.all([
+      mediaPath
+        ? supabase.storage.from('wear-photos').createSignedUrl(mediaPath, 60 * 60)
+        : Promise.resolve({ data: null }),
+      posterPath
+        ? supabase.storage.from('wear-photos').createSignedUrl(posterPath, 60 * 60)
+        : Promise.resolve({ data: null }),
+    ])
+    signedVideoUrl = videoResult.data?.signedUrl ?? null
+    signedPosterUrl = posterResult.data?.signedUrl ?? null
+  } else if (photoUrl) {
     const supabase = await createSupabaseServerClient()
     const { data } = await supabase.storage
       .from('wear-photos')
@@ -201,6 +227,9 @@ async function WearPhotoStreamed({
   return (
     <WearCard
       signedUrl={signedUrl}
+      mediaType={mediaType}
+      signedVideoUrl={signedVideoUrl}
+      signedPosterUrl={signedPosterUrl}
       watchImageUrl={watchImageUrl}
       altText={altText}
       username={username}

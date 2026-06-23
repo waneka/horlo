@@ -47,6 +47,10 @@ export interface WearSlide {
   ownerUsername: string
   viewerAuthor: CommentAuthor | null
   commentCount: number
+  // Phase 77: video slide support (VID-14)
+  mediaType?: 'photo' | 'video'
+  signedVideoUrl?: string | null
+  signedPosterUrl?: string | null
 }
 
 // ---------------------------------------------------------------------------

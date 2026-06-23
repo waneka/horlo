@@ -47,22 +47,48 @@ export default async function Home() {
   // correct (a cached signed URL would either leak across users or expire
   // mid-render). Deliberately NOT wrapped in `cache()` / `'use cache'`.
   const tilesWithPhotos = railData.tiles.filter((t) => t.photoUrl)
-  if (tilesWithPhotos.length > 0) {
+  // Phase 77 (VID-13, T-77-03): mint poster signed URLs for video tiles in
+  // parallel with the existing photo mint. Same admin client, same 60-min TTL.
+  const tilesWithVideos = railData.tiles.filter(
+    (t) => t.mediaType === 'video' && t.posterPath,
+  )
+  if (tilesWithPhotos.length > 0 || tilesWithVideos.length > 0) {
     const supabase = await createSupabaseServerClient()
-    const signed = await Promise.all(
-      tilesWithPhotos.map(async (t) => {
-        const { data } = await supabase.storage
-          .from('wear-photos')
-          .createSignedUrl(t.photoUrl as string, 60 * 60)
-        return { wearEventId: t.wearEventId, signedUrl: data?.signedUrl ?? null }
-      }),
+    const [photoSigned, videoPosterSigned] = await Promise.all([
+      Promise.all(
+        tilesWithPhotos.map(async (t) => {
+          const { data } = await supabase.storage
+            .from('wear-photos')
+            .createSignedUrl(t.photoUrl as string, 60 * 60)
+          return { wearEventId: t.wearEventId, signedUrl: data?.signedUrl ?? null }
+        }),
+      ),
+      Promise.all(
+        tilesWithVideos.map(async (t) => {
+          const { data } = await supabase.storage
+            .from('wear-photos')
+            .createSignedUrl(t.posterPath as string, 60 * 60)
+          return {
+            wearEventId: t.wearEventId,
+            signedPosterUrl: data?.signedUrl ?? null,
+          }
+        }),
+      ),
+    ])
+    const byId = new Map(photoSigned.map((s) => [s.wearEventId, s.signedUrl]))
+    const posterById = new Map(
+      videoPosterSigned.map((s) => [s.wearEventId, s.signedPosterUrl]),
     )
-    const byId = new Map(signed.map((s) => [s.wearEventId, s.signedUrl]))
     railData = {
       ...railData,
-      tiles: railData.tiles.map((t) =>
-        t.photoUrl ? { ...t, photoUrl: byId.get(t.wearEventId) ?? null } : t,
-      ),
+      tiles: railData.tiles.map((t) => {
+        const next = { ...t }
+        if (t.photoUrl) next.photoUrl = byId.get(t.wearEventId) ?? null
+        if (t.mediaType === 'video') {
+          next.signedPosterUrl = posterById.get(t.wearEventId) ?? null
+        }
+        return next
+      }),
     }
   }
 

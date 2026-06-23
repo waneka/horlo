@@ -51,6 +51,14 @@ export interface WywtTile {
   // Phase 77: video wear tile support (VID-13 / VID-14 — additive; defaults to undefined for legacy photo tiles per VID-15)
   mediaType?: 'photo' | 'video'
   posterPath?: string | null
+  /**
+   * Phase 77: per-request signed URL for the poster image (60-min TTL).
+   * Populated by the home page Server Component (src/app/page.tsx) after the
+   * admin client mints from `posterPath`. NEVER persisted; never returned by
+   * the DAL. Same lifecycle as `photoUrl` becoming a signed URL at the page
+   * boundary.
+   */
+  signedPosterUrl?: string | null
 }
 
 /**

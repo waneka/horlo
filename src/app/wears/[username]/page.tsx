@@ -127,14 +127,39 @@ export default async function WearsPage({
 
   // Per-wear signed URLs (Pitfall F-2) — minted per-request at page level.
   // Mirrors src/app/page.tsx lines 36-63 (bulk Promise.all sign pattern).
+  // Phase 77 (VID-14, T-77-03): for video wears, mint BOTH mediaPath and
+  // posterPath in parallel; for photo wears, the existing photoUrl mint runs
+  // unchanged (VID-15 invariant). signedVideoUrls / signedPosterUrls remain
+  // null for photo slides.
   const supabase = await createSupabaseServerClient()
-  const signedUrls = await Promise.all(
+  const signedTriples = await Promise.all(
     wears.map(async (w) => {
-      if (!w.photoUrl) return null
+      if (w.mediaType === 'video') {
+        const [videoResult, posterResult] = await Promise.all([
+          w.mediaPath
+            ? supabase.storage.from('wear-photos').createSignedUrl(w.mediaPath, 60 * 60)
+            : Promise.resolve({ data: null }),
+          w.posterPath
+            ? supabase.storage.from('wear-photos').createSignedUrl(w.posterPath, 60 * 60)
+            : Promise.resolve({ data: null }),
+        ])
+        return {
+          signedUrl: null,
+          signedVideoUrl: videoResult.data?.signedUrl ?? null,
+          signedPosterUrl: posterResult.data?.signedUrl ?? null,
+        }
+      }
+      if (!w.photoUrl) {
+        return { signedUrl: null, signedVideoUrl: null, signedPosterUrl: null }
+      }
       const { data } = await supabase.storage
         .from('wear-photos')
-        .createSignedUrl(w.photoUrl, 60 * 60) // 60-min TTL, Pitfall F-2
-      return data?.signedUrl ?? null
+        .createSignedUrl(w.photoUrl, 60 * 60)
+      return {
+        signedUrl: data?.signedUrl ?? null,
+        signedVideoUrl: null,
+        signedPosterUrl: null,
+      }
     }),
   )
 
@@ -173,7 +198,12 @@ export default async function WearsPage({
 
     return {
       wearEventId: w.id,
-      signedUrl: signedUrls[i],
+      signedUrl: signedTriples[i].signedUrl,
+      // Phase 77 (VID-14): video fields are null for photo slides; populated
+      // for video slides by the signedTriples mint above.
+      mediaType: w.mediaType ?? undefined,
+      signedVideoUrl: signedTriples[i].signedVideoUrl,
+      signedPosterUrl: signedTriples[i].signedPosterUrl,
       watchImageUrl: w.watchImageUrl,
       altText,
       username: w.username,

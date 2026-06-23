@@ -94,6 +94,8 @@ export function WywtRail({
               isSelfPlaceholder={entry.isSelfPlaceholder}
               viewedIds={viewed}
               hydrated={hydrated}
+              mediaType={entry.tile?.mediaType}
+              signedPosterUrl={entry.tile?.signedPosterUrl ?? null}
               onOpen={() => {
                 if (entry.tile) openAt(entry.tile)
               }}

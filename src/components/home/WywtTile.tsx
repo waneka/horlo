@@ -5,6 +5,7 @@ import { Plus, Watch as WatchIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { timeAgo } from '@/lib/timeAgo'
+import { VideoPlayBadge } from '@/components/wear/VideoPlayBadge'
 import type { WywtTile as WywtTileData } from '@/lib/wywtTypes'
 
 /**
@@ -38,6 +39,9 @@ interface Props {
   onOpen: () => void
   /** Self-placeholder tap: opens the WatchPickerDialog. */
   onOpenPicker: () => void
+  // Phase 77: video tile support (VID-13)
+  mediaType?: 'photo' | 'video'
+  signedPosterUrl?: string | null
 }
 
 export function WywtTile({
@@ -47,6 +51,8 @@ export function WywtTile({
   hydrated,
   onOpen,
   onOpenPicker,
+  mediaType,
+  signedPosterUrl = null,
 }: Props) {
   if (isSelfPlaceholder) {
     return (
@@ -94,7 +100,18 @@ export function WywtTile({
           minted per-request in src/app/page.tsx) over the watch catalog
           imageUrl. Falls back to catalog when photo_url is null (no-photo
           posts and pre-Phase-15 backfilled events). */}
-      {(tile.photoUrl ?? tile.imageUrl) ? (
+      {mediaType === 'video' && signedPosterUrl ? (
+        // Phase 77 (VID-13): video tile poster — same Image element as photo
+        // tiles so the underlying surface stays identical; VideoPlayBadge
+        // sits over the top.
+        <Image
+          src={signedPosterUrl}
+          alt=""
+          fill
+          className="object-cover"
+          unoptimized
+        />
+      ) : (tile.photoUrl ?? tile.imageUrl) ? (
         <Image
           src={tile.photoUrl ?? tile.imageUrl ?? ''}
           alt=""
@@ -107,6 +124,10 @@ export function WywtTile({
           <WatchIcon className="text-muted-foreground" aria-hidden />
         </div>
       )}
+      {/* Phase 77 (VID-13): centered Play overlay for video tiles only. Placed
+          between the image and the bottom gradient so it stays clipped by
+          overflow-hidden and never covers the username/time text. */}
+      {mediaType === 'video' && <VideoPlayBadge />}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-left">
         <p className="text-xs font-semibold text-white truncate">
           {tile.username}
