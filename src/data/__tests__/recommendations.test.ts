@@ -45,6 +45,7 @@ let catalogTopUpResolver: () => Promise<
     reference: string | null
     imageUrl: string | null
     ownersCount: number
+    styleTags: string[]
   }>
 > = async () => []
 
@@ -118,6 +119,7 @@ vi.mock('@/db/schema', () => ({
     reference: { __col: 'watchesCatalog.reference' },
     imageUrl: { __col: 'watchesCatalog.imageUrl' },
     ownersCount: { __col: 'watchesCatalog.ownersCount' },
+    styleTags: { __col: 'watchesCatalog.styleTags' },
   },
 }))
 
@@ -136,11 +138,24 @@ vi.mock('@/data/watches', () => ({
 }))
 
 vi.mock('@/data/preferences', () => ({
+  // Minimal UserPreferences shape — analyzeSimilarity dereferences
+  // preferredStyles / dislikedStyles / preferredComplications /
+  // complicationExceptions / preferredDialColors / dislikedDialColors /
+  // preferredDesignTraits / dislikedDesignTraits / overlapTolerance.
+  // The viewer fixture in Case 3 (quick task 260623-mn3) has populated
+  // styleTags so .some() enters the inner callback and the empty-array
+  // fallbacks from the prior shape were undefined → fixed by returning
+  // a fully-formed UserPreferences object here.
   getPreferencesByUser: vi.fn(async () => ({
-    movementPreferences: [],
-    styleTolerance: 0.5,
-    sizeTolerance: 0.5,
-    rolePriorities: [],
+    preferredStyles: [],
+    dislikedStyles: [],
+    preferredDesignTraits: [],
+    dislikedDesignTraits: [],
+    preferredComplications: [],
+    complicationExceptions: [],
+    preferredDialColors: [],
+    dislikedDialColors: [],
+    overlapTolerance: 'medium' as const,
   })),
 }))
 
@@ -339,24 +354,42 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
   })
 
   // ──────────────────────────────────────────────────────────────────────
-  // Case 3: sparse-pool top-up activates — candidateMap.size<8 →
-  // synthetic catalog-popularity rows appended with representativeOwnerId:null
+  // Case 3: sparse-pool top-up — brand-match outranks style-match outranks
+  // pure-popularity, AND real catalog styleTags project onto synthetic rows
+  // so rationale templates fire (quick task 260623-mn3).
   // ──────────────────────────────────────────────────────────────────────
-  it('sparse-pool top-up: <8 peer candidates triggers catalog popularity append; ≥1 rec has representativeOwnerId:null', async () => {
-    // 2 peers, each owns 1 watch -> candidateMap.size = 2 after exclusion.
+  it('sparse-pool top-up: brand-match outranks style-match outranks pure-popularity, and real styleTags project onto synthetic rows so rationale templates fire', async () => {
+    // 2 peers seed the pool (peer-0 + peer-1 each own 1 unrelated watch).
+    // candidateMap.size = 2 after exclusion -> top-up needs 6 more rows to
+    // reach SPARSE_POOL_THRESHOLD = 8.
     const profiles = buildSeedPool(2)
     publicProfilesResolver = async () => profiles
 
-    // Catalog top-up returns 6 popular rows. Need 8 - 2 = 6 to reach
-    // the SPARSE_POOL_THRESHOLD.
+    // Override the viewer fixture: viewer owns THREE Rolex watches all
+    // tagged 'sport'. topBrandOf -> 'Rolex'; dominantStyleOf -> { label:
+    // 'sport', share: 1.0 } > 0.5 (the dominant-style rationale template
+    // requires share > 0.5 to fire — see src/lib/recommendations.ts:79).
+    watchesByUser.set('viewer-1', [
+      mkWatch({ id: 'v-1', brand: 'Rolex', model: 'Submariner', styleTags: ['sport'] }),
+      mkWatch({ id: 'v-2', brand: 'Rolex', model: 'Explorer',   styleTags: ['sport'] }),
+      mkWatch({ id: 'v-3', brand: 'Rolex', model: 'GMT',        styleTags: ['sport'] }),
+    ])
+
+    // Catalog rows returned in SHUFFLED fetch order — the test asserts
+    // SCORE wins, not fetch order.
+    //   Rolex Datejust  -> brand-match  -> 100 + 0  + 0.005 = 100.005
+    //   Seiko SKX007    -> style-match  -> 0   + 50 + 0.099 = 50.099
+    //   Omega Speedy    -> pure-pop     -> 0   + 0  + 0.080 = 0.080
+    //   Cartier Tank    -> pure-pop     -> 0   + 0  + 0.060 = 0.060  (alpha-first)
+    //   Filler-1/2      -> pure-pop     -> small popularity, no signal
     catalogTopUpResolver = async () => [
-      { id: 'cat-1', brand: 'Rolex', model: 'Submariner', reference: '126610', imageUrl: 'https://x/1.jpg', ownersCount: 99 },
-      { id: 'cat-2', brand: 'Omega', model: 'Speedmaster', reference: '310', imageUrl: null, ownersCount: 80 },
-      { id: 'cat-3', brand: 'Seiko', model: 'SKX007', reference: 'SKX', imageUrl: null, ownersCount: 75 },
-      { id: 'cat-4', brand: 'Tudor', model: 'Black Bay', reference: '79230', imageUrl: null, ownersCount: 70 },
-      { id: 'cat-5', brand: 'Cartier', model: 'Tank', reference: 'WSTA', imageUrl: null, ownersCount: 60 },
-      { id: 'cat-6', brand: 'IWC', model: 'Mark XVIII', reference: 'IW327', imageUrl: null, ownersCount: 55 },
-      { id: 'cat-7', brand: 'Patek', model: 'Nautilus', reference: '5711', imageUrl: null, ownersCount: 50 },
+      // Deliberately interleaved so fetch-order != score-order.
+      { id: 'cat-omega', brand: 'Omega', model: 'Speedmaster', reference: '310', imageUrl: null, ownersCount: 80, styleTags: ['casual'] },
+      { id: 'cat-rolex', brand: 'Rolex', model: 'Datejust',    reference: '126200', imageUrl: null, ownersCount: 5, styleTags: ['dress'] },
+      { id: 'cat-cartier', brand: 'Cartier', model: 'Tank',    reference: 'WSTA',   imageUrl: null, ownersCount: 60, styleTags: ['dress'] },
+      { id: 'cat-seiko', brand: 'Seiko', model: 'SKX007',      reference: 'SKX',    imageUrl: null, ownersCount: 99, styleTags: ['sport'] },
+      { id: 'cat-filler1', brand: 'Zenith', model: 'Defy',     reference: 'DEFY',   imageUrl: null, ownersCount: 10, styleTags: ['casual'] },
+      { id: 'cat-filler2', brand: 'Yema', model: 'Superman',   reference: 'SUP',    imageUrl: null, ownersCount: 8,  styleTags: ['casual'] },
     ]
 
     setBucket(100)
@@ -365,14 +398,48 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     // SPARSE_POOL_THRESHOLD = 8 → final pool size must be at least 8.
     expect(recs.length).toBeGreaterThanOrEqual(8)
 
-    // ≥1 rec must carry the synthetic marker representativeOwnerId === null.
-    const nullOwnerRecs = recs.filter((r) => r.representativeOwnerId === null)
-    expect(nullOwnerRecs.length).toBeGreaterThan(0)
+    // Filter to synthetic top-up rows (representativeOwnerId === null per D-12).
+    const synthetics = recs.filter((r) => r.representativeOwnerId === null)
+    expect(synthetics.length).toBeGreaterThan(0)
 
-    // Synthetic rows route through community-fallback rationale (D-13).
-    for (const r of nullOwnerRecs) {
-      expect(r.rationale).toBe('Popular in the community')
-    }
+    const idx = (brand: string, model: string) =>
+      synthetics.findIndex((r) => r.brand === brand && r.model === model)
+
+    // 1. Brand-match (Rolex Datejust) ranks ahead of style-match (Seiko SKX007).
+    expect(idx('Rolex', 'Datejust')).toBeGreaterThanOrEqual(0)
+    expect(idx('Seiko', 'SKX007')).toBeGreaterThanOrEqual(0)
+    expect(idx('Rolex', 'Datejust')).toBeLessThan(idx('Seiko', 'SKX007'))
+
+    // 2. Style-match (Seiko SKX007) ranks ahead of both pure-popularity rows.
+    expect(idx('Seiko', 'SKX007')).toBeLessThan(idx('Omega', 'Speedmaster'))
+    expect(idx('Seiko', 'SKX007')).toBeLessThan(idx('Cartier', 'Tank'))
+
+    // 3. Within the community-fallback bucket, Cartier alphabetically precedes
+    //    Omega. The top-up function itself uses an ownersCount/1000 additive
+    //    that distinguishes 0.080 (Omega) from 0.060 (Cartier), so Omega
+    //    leaves the top-up first; but the OUTER getRecommendationsForViewer
+    //    re-sort (line ~251) re-ranks everything by `count*100 + RULE_MATCH_BONUS`
+    //    where the community-fallback bucket all collapses to score=0, leaving
+    //    the alphabetical brand tiebreaker to decide — Cartier < Omega.
+    //    (This pins the two-level sort semantics: top-up's score is internal
+    //    to the top-up; the outer re-sort flattens community-fallback rows
+    //    back to alpha order.)
+    expect(idx('Cartier', 'Tank')).toBeLessThan(idx('Omega', 'Speedmaster'))
+
+    // 4. Rationale-projection: brand-match template fires on the Rolex top-up row.
+    const rolexRec = synthetics.find((r) => r.brand === 'Rolex' && r.model === 'Datejust')
+    expect(rolexRec?.rationale).toBe('Fans of Rolex love this')
+
+    // 5. Rationale-projection: dominant-style template fires on the Seiko row
+    //    (requires viewer's 'sport' share > 0.5, which the 3/3 fixture gives).
+    const seikoRec = synthetics.find((r) => r.brand === 'Seiko' && r.model === 'SKX007')
+    expect(seikoRec?.rationale).toBe('Matches your sport collection')
+
+    // 6. Community-fallback still fires for rows that match neither signal.
+    const omegaRec = synthetics.find((r) => r.brand === 'Omega' && r.model === 'Speedmaster')
+    expect(omegaRec?.rationale).toBe('Popular in the community')
+    const cartierRec = synthetics.find((r) => r.brand === 'Cartier' && r.model === 'Tank')
+    expect(cartierRec?.rationale).toBe('Popular in the community')
   })
 
   // ──────────────────────────────────────────────────────────────────────
