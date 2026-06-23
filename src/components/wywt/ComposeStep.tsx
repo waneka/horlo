@@ -338,10 +338,21 @@ export function ComposeStep({
           const videoPath = buildWearVideoPath(viewerId, wearEventId)
           const posterPath = buildWearPosterPath(viewerId, wearEventId)
           const supabase = createSupabaseBrowserClient()
+          // WR-05 fix: bucket allowed_mime_types strict-matches 'video/mp4'
+          // and 'video/webm' (no codec parameters). The MediaRecorder Blob
+          // carries the full `video/mp4;codecs=avc1` form on iOS — strip the
+          // codec suffix so Android Chrome (stricter MIME parser) also
+          // accepts the upload.
+          const blobType = mediaState.videoBlob.type
+          const contentType = blobType.startsWith('video/mp4')
+            ? 'video/mp4'
+            : blobType.startsWith('video/webm')
+              ? 'video/webm'
+              : blobType
           const { error: videoError } = await supabase.storage
             .from('wear-photos')
             .upload(videoPath, mediaState.videoBlob, {
-              contentType: mediaState.videoBlob.type,
+              contentType,
               upsert: false,
             })
           if (videoError) {

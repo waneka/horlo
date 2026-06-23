@@ -126,8 +126,10 @@ export function WywtTile({
       )}
       {/* Phase 77 (VID-13): centered Play overlay for video tiles only. Placed
           between the image and the bottom gradient so it stays clipped by
-          overflow-hidden and never covers the username/time text. */}
-      {mediaType === 'video' && <VideoPlayBadge />}
+          overflow-hidden and never covers the username/time text.
+          CR-03 fix: gated on signedPosterUrl so the badge does NOT appear on
+          top of the catalog imageUrl fallback when the poster mint fails. */}
+      {mediaType === 'video' && signedPosterUrl && <VideoPlayBadge />}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-left">
         <p className="text-xs font-semibold text-white truncate">
           {tile.username}
