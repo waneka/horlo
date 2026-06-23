@@ -77,6 +77,52 @@ export async function logWearEventWithPhoto(input: {
   })
 }
 
+/**
+ * Video-bearing wear event insert (Phase 76 — VID-07 / VID-08 / VID-10, SEED-020 D-07).
+ *
+ * Parallel to logWearEventWithPhoto. Mirrors its shape but writes
+ * `mediaType = 'video'` + both Storage paths (`mediaPath` for the .mp4,
+ * `posterPath` for the -poster.jpg). `photoUrl` is intentionally NOT
+ * passed — the column defaults to NULL for video rows. The DB CHECK
+ * `wear_events_video_paths_required` (Plan 01) is the last-line gate
+ * that rejects any video row with a NULL path (PG 23514).
+ *
+ * The Server Action caller (`logWearWithVideo`) has ALREADY probed both
+ * Storage objects exist at `{userId}/{wearEventId}.mp4` and
+ * `{userId}/{wearEventId}-poster.jpg` via `Promise.all` BEFORE calling this
+ * helper (T-15-04 / VID-08 mitigation). Hence both `mediaPath` and
+ * `posterPath` are non-nullable in the input type.
+ *
+ * Like logWearEventWithPhoto, this helper does NOT use `onConflictDoNothing`
+ * — the caller catches PG 23505 explicitly so it can (a) return the
+ * duplicate-day error to the client and (b) clean up BOTH orphan Storage
+ * objects via `.remove([videoPath, posterPath])` (T-15-18 / VID-10).
+ * Silently swallowing the conflict would leave both objects orphaned in
+ * Storage AND leave the client thinking the insert succeeded.
+ */
+export async function logWearEventWithVideo(input: {
+  id: string
+  userId: string
+  watchId: string
+  wornDate: string
+  note: string | null
+  mediaPath: string
+  posterPath: string
+  visibility: WearVisibility
+}): Promise<void> {
+  await db.insert(wearEvents).values({
+    id: input.id,
+    userId: input.userId,
+    watchId: input.watchId,
+    wornDate: input.wornDate,
+    note: input.note,
+    mediaType: 'video' as const,
+    mediaPath: input.mediaPath,
+    posterPath: input.posterPath,
+    visibility: input.visibility,
+  })
+}
+
 export async function getMostRecentWearDate(
   userId: string,
   watchId: string
