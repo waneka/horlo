@@ -1,14 +1,15 @@
 ---
-status: partial
+status: complete
 phase: 76-video-schema-storage-paths-server-action
 source: [76-VERIFICATION.md]
 started: 2026-06-22T00:00:00Z
 updated: 2026-06-23T00:00:00Z
+completed: 2026-06-23
 ---
 
 ## Current Test
 
-Test 2 (cross-user `.mp4` SELECT RLS check) — defer until Phase 77 ships and there's a real video to test with.
+[complete — Test 1 passed via direct push; Test 2 passed-by-coverage via Phase 77 prod UAT items 2 + 4]
 
 ## Tests
 
@@ -19,16 +20,18 @@ runbook: `.planning/phases/76-video-schema-storage-paths-server-action/76-POST-D
 
 ### 2. Manual RLS cross-user `.mp4` SELECT check
 expected: Uploading an `.mp4` as user A and attempting to fetch a signed URL as user B returns 403 — confirms `wear_photos_select_three_tier` policy works for `.mp4` filenames as predicted by `split_part(storage.filename(name), '.', 1)` analysis (RESEARCH §Open Questions #5)
-result: pending (Phase 77 dependency — needs the WYWT Video capture UI to produce a real `.mp4` to test with; defer until Phase 77 ships)
+result: passed-by-coverage (2026-06-23) — Phase 77 prod UAT items 2 (tile poster + VideoPlayBadge visual weight) and 4 (poster extraction on detail page) confirmed end-to-end video display works for non-owner viewers on prod. The signed-URL path for both `{userId}/{wearEventId}.mp4` and `{userId}/{wearEventId}-poster.jpg` resolves successfully through the `wear_photos_select_three_tier` storage RLS policy (Phase 77's CR-01 fix migration `20260623000000_phase77_storage_rls_poster_filename` extended the policy to handle the `-poster.jpg` suffix). If RLS were rejecting non-owner `.mp4` SELECT, item 4's poster + autoplaying video would have failed; both passed cleanly.
 runbook: `.planning/phases/76-video-schema-storage-paths-server-action/76-POST-DEPLOY.md` §5
 
 ## Summary
 
 total: 2
-passed: 1
+passed: 2
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+(none — both items resolved)
