@@ -15,13 +15,21 @@ import { Textarea } from '@/components/ui/textarea'
 import { PhotoUploader } from './PhotoUploader'
 import type { PhotoUploaderHandle } from './PhotoUploader'
 import { CameraCaptureView } from './CameraCaptureView'
+import { VideoCaptureView } from './VideoCaptureView'
 import { VisibilitySegmentedControl } from './VisibilitySegmentedControl'
-import { uploadWearPhoto } from '@/lib/storage/wearPhotos'
-import { logWearWithPhoto } from '@/app/actions/wearEvents'
+import {
+  uploadWearPhoto,
+  buildWearVideoPath,
+  buildWearPosterPath,
+} from '@/lib/storage/wearPhotos'
+import { logWearWithPhoto, logWearWithVideo } from '@/app/actions/wearEvents'
+import { useMediaCapability } from '@/hooks/useMediaCapability'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { todayLocalISO } from '@/lib/wear'
 import { cn } from '@/lib/utils'
 import type { Watch } from '@/lib/types'
 import type { WearVisibility } from '@/lib/wearVisibility'
+import type { MediaState } from '@/lib/wywtTypes'
 
 /**
  * ComposeStep — Phase 15 Plan 03b Step 2 form (D-05, D-06, D-07, D-11, D-12,
@@ -46,10 +54,10 @@ import type { WearVisibility } from '@/lib/wearVisibility'
  *     pre-capture chooser re-renders from EITHER source.
  *   - "Retake" (camera path only) → handleRetake → clears blob, re-invokes
  *     getUserMedia to acquire a FRESH MediaStream → returns directly to live
- *     camera preview. photoSource stays 'camera'.
+ *     camera preview. mediaSource stays 'camera'.
  *   - "Choose another" (upload path only) → handleChooseAnother → clears blob,
  *     calls photoUploaderRef.current?.openPicker() to programmatically re-open
- *     the native file picker. photoSource stays 'upload'.
+ *     the native file picker. mediaSource stays 'upload'.
  *   Clicking different elements MUST produce different behavior — do not wire
  *   all three to a single handler.
  *
@@ -81,8 +89,8 @@ export function ComposeStep({
   watch,
   viewerId,
   wearEventId,
-  photoBlob,
-  setPhotoBlob,
+  mediaState,
+  setMediaState,
   note,
   setNote,
   visibility,
@@ -93,8 +101,8 @@ export function ComposeStep({
   watch: Watch
   viewerId: string
   wearEventId: string
-  photoBlob: Blob | null
-  setPhotoBlob: (b: Blob | null) => void
+  mediaState: MediaState
+  setMediaState: (s: MediaState) => void
   note: string
   setNote: (s: string) => void
   visibility: WearVisibility
@@ -104,11 +112,14 @@ export function ComposeStep({
 }) {
   const [pending, startTransition] = useTransition()
   const router = useRouter()
+  const { supportsVideoCapture, preferredMimeType } = useMediaCapability()
   const [error, setError] = useState<string | null>(null)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
-  const [photoSource, setPhotoSource] = useState<'camera' | 'upload' | null>(
-    null,
-  )
+  const [mediaSource, setMediaSource] = useState<
+    'camera' | 'video' | 'upload' | null
+  >(null)
+  // Convenience accessor for the photo blob narrowed out of mediaState.
+  const photoBlob = mediaState.kind === 'photo' ? mediaState.blob : null
   const photoUploaderRef = useRef<PhotoUploaderHandle | null>(null)
   // Progressive disclosure for the note field — start collapsed unless the
   // user already has draft content (D-05 preserves note across Change → back).
@@ -176,7 +187,32 @@ export function ComposeStep({
         audio: false,
       })
       setCameraStream(stream)
-      setPhotoSource('camera')
+      setMediaSource('camera')
+    } catch (err) {
+      if (err instanceof Error && err.name === 'NotAllowedError') {
+        setError('Camera access denied — use Upload photo instead.')
+      } else {
+        setError('Camera unavailable — use Upload photo instead.')
+      }
+    } finally {
+      cameraOpeningRef.current = false
+    }
+  }
+
+  // Phase 77 (VID-01, T-77-04): video-camera tap handler mirrors handleTapCamera
+  // VERBATIM up to the await — synchronous cameraOpeningRef write BEFORE the
+  // getUserMedia call is the first await, preserving iOS gesture context.
+  const handleTapVideoCamera = async () => {
+    if (cameraOpeningRef.current || cameraStream) return
+    cameraOpeningRef.current = true
+    setError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      })
+      setCameraStream(stream)
+      setMediaSource('video')
     } catch (err) {
       if (err instanceof Error && err.name === 'NotAllowedError') {
         setError('Camera access denied — use Upload photo instead.')
@@ -191,7 +227,7 @@ export function ComposeStep({
   // Common callback from PhotoUploader / CameraCaptureView when a processed
   // JPEG blob is ready. Stops any active camera stream, stores the blob.
   const handlePhotoReady = (jpeg: Blob) => {
-    setPhotoBlob(jpeg)
+    setMediaState({ kind: 'photo', blob: jpeg })
     if (cameraStream) {
       cameraStream.getTracks().forEach((t) => t.stop())
       setCameraStream(null)
@@ -199,12 +235,12 @@ export function ComposeStep({
   }
 
   const handleCameraPhotoReady = (jpeg: Blob) => {
-    setPhotoSource('camera')
+    setMediaSource('camera')
     handlePhotoReady(jpeg)
   }
 
   const handleUploadReady = (jpeg: Blob) => {
-    setPhotoSource('upload')
+    setMediaSource('upload')
     handlePhotoReady(jpeg)
   }
 
@@ -212,8 +248,8 @@ export function ComposeStep({
   // the pre-capture chooser regardless of source. Stops any active stream as
   // a defensive no-op (cameraStream is normally already null on the preview).
   const handleRemovePhoto = () => {
-    setPhotoBlob(null)
-    setPhotoSource(null)
+    setMediaState({ kind: 'none' })
+    setMediaSource(null)
     if (cameraStream) {
       cameraStream.getTracks().forEach((t) => t.stop())
       setCameraStream(null)
@@ -222,19 +258,19 @@ export function ComposeStep({
 
   // D-07 handler #2: Retake link (camera path only) → discard current photo
   // and re-acquire a fresh MediaStream, returning directly to the live
-  // camera preview. photoSource remains 'camera'. Re-uses handleTapCamera
+  // camera preview. mediaSource remains 'camera'. Re-uses handleTapCamera
   // for the getUserMedia call (link tap IS a gesture; iOS requirement met).
   const handleRetake = async () => {
-    setPhotoBlob(null)
+    setMediaState({ kind: 'none' })
     await handleTapCamera()
   }
 
   // D-07 handler #3: Choose another link (upload path only) → discard current
   // photo and programmatically re-open the native file picker via the
-  // PhotoUploader ref. photoSource remains 'upload' so the UI stays on the
+  // PhotoUploader ref. mediaSource remains 'upload' so the UI stays on the
   // upload branch if the user cancels the file picker.
   const handleChooseAnother = () => {
-    setPhotoBlob(null)
+    setMediaState({ kind: 'none' })
     photoUploaderRef.current?.openPicker()
   }
 
@@ -245,13 +281,104 @@ export function ComposeStep({
       cameraStream.getTracks().forEach((t) => t.stop())
       setCameraStream(null)
     }
-    setPhotoSource(null)
+    setMediaSource(null)
   }
+
+  // Phase 77 (VID-02 onstop result): video + poster blobs ready. Lift into
+  // mediaState as { kind: 'video', ... } and tear down the live stream — the
+  // post-capture preview uses an object URL on the videoBlob.
+  const handleVideoReady = (result: { videoBlob: Blob; posterBlob: Blob }) => {
+    setMediaState({
+      kind: 'video',
+      videoBlob: result.videoBlob,
+      posterBlob: result.posterBlob,
+    })
+    cameraStream?.getTracks().forEach((t) => t.stop())
+    setCameraStream(null)
+    setMediaSource(null)
+  }
+
+  // Phase 77 (VID-03 post-capture): Discard the recorded clip and return to
+  // the pre-capture chooser. cameraStream was already torn down by
+  // handleVideoReady — user re-acquires via tapping 'Record video' again.
+  const handleDiscardVideo = () => {
+    setMediaState({ kind: 'none' })
+    setMediaSource(null)
+  }
+
+  // Phase 77 (VID-03 mid-recording): Cancel from VideoCaptureView before the
+  // user-stop / 3.0s auto-stop fires. Tear down the live stream.
+  const handleCancelVideoCamera = () => {
+    cameraStream?.getTracks().forEach((t) => t.stop())
+    setCameraStream(null)
+    setMediaSource(null)
+  }
+
+  // Phase 77: video preview object URL — mirrors photoPreviewUrl pattern;
+  // revoked on mediaState change / unmount.
+  const videoPreviewUrl = useMemo(
+    () =>
+      mediaState.kind === 'video' ? URL.createObjectURL(mediaState.videoBlob) : null,
+    [mediaState],
+  )
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl)
+    }
+  }, [videoPreviewUrl])
 
   const handleSubmit = () => {
     setError(null)
     startTransition(async () => {
       try {
+        // Phase 77 (VID-01, VID-06): video submit branch. Runs FIRST and
+        // returns early — the photo branch only executes when
+        // mediaState.kind !== 'video'.
+        if (mediaState.kind === 'video') {
+          const videoPath = buildWearVideoPath(viewerId, wearEventId)
+          const posterPath = buildWearPosterPath(viewerId, wearEventId)
+          const supabase = createSupabaseBrowserClient()
+          const { error: videoError } = await supabase.storage
+            .from('wear-photos')
+            .upload(videoPath, mediaState.videoBlob, {
+              contentType: mediaState.videoBlob.type,
+              upsert: false,
+            })
+          if (videoError) {
+            setError('Video upload failed — please try again.')
+            return
+          }
+          const { error: posterError } = await supabase.storage
+            .from('wear-photos')
+            .upload(posterPath, mediaState.posterBlob, {
+              contentType: 'image/jpeg',
+              upsert: false,
+            })
+          if (posterError) {
+            // Compensating cleanup: video already uploaded but the action
+            // will never insert the DB row.
+            await supabase.storage.from('wear-photos').remove([videoPath])
+            setError('Poster upload failed — please try again.')
+            return
+          }
+          const videoResult = await logWearWithVideo({
+            wearEventId,
+            watchId: watch.id,
+            note: note.trim().length > 0 ? note.trim() : null,
+            visibility,
+            videoBytes: mediaState.videoBlob.size,
+            today: todayLocalISO(),
+          })
+          if (!videoResult.success) {
+            setError(videoResult.error)
+            return
+          }
+          router.push(`/wear/${wearEventId}`)
+          onSubmitted()
+          return
+        }
+
+        // Photo submit branch (VID-15 invariant — byte-identical to pre-77).
         // Upload photo if present. WR-01: do NOT re-run stripAndResize here —
         // PhotoUploader (line 118 in PhotoUploader.tsx) and CameraCaptureView
         // (line 91 in CameraCaptureView.tsx) already pipe their blob through
@@ -346,7 +473,46 @@ export function ComposeStep({
           photoUploaderRef.current.openPicker() — if PhotoUploader were only
           rendered inside the chooser branch, the ref would be null by the
           time the user clicked the link. */}
-      {photoBlob ? (
+      {mediaState.kind === 'video' ? (
+        /* VIDEO POST-CAPTURE PREVIEW (Phase 77 — VID-03 / D-16) */
+        <div className="relative">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            src={videoPreviewUrl ?? ''}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full rounded-md object-cover"
+          />
+          <button
+            type="button"
+            onClick={handleDiscardVideo}
+            disabled={pending}
+            className="mt-2 text-xs font-semibold text-accent underline"
+          >
+            Discard
+          </button>
+          {mediaState.videoBlob.size > 4 * 1024 * 1024 && (
+            <p className="text-xs text-muted-foreground">
+              Clip is large — upload may be slow.
+            </p>
+          )}
+        </div>
+      ) : cameraStream && mediaSource === 'video' ? (
+        /* VIDEO LIVE CAPTURE (Phase 77 — VID-02) */
+        <VideoCaptureView
+          stream={cameraStream}
+          preferredMimeType={preferredMimeType ?? 'video/mp4;codecs=avc1'}
+          onVideoReady={handleVideoReady}
+          onError={(m) => {
+            setError(m)
+            handleCancelVideoCamera()
+          }}
+          onCancel={handleCancelVideoCamera}
+          disabled={pending}
+        />
+      ) : photoBlob ? (
         /* POST-CAPTURE PREVIEW */
         <div className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -366,7 +532,7 @@ export function ComposeStep({
             <X className="size-4" aria-hidden />
           </button>
           {/* D-07 #2 / #3: Retake (camera) OR Choose another (upload) */}
-          {photoSource === 'camera' ? (
+          {mediaSource === 'camera' ? (
             <button
               type="button"
               onClick={handleRetake}
@@ -409,7 +575,7 @@ export function ComposeStep({
             stable across state transitions for the D-07 "Choose another"
             re-open path. */
         <div className="flex flex-col items-center gap-2 py-8 border-2 border-dashed border-border rounded-md bg-muted/30">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -419,6 +585,17 @@ export function ComposeStep({
             >
               Take wrist shot
             </Button>
+            {supportsVideoCapture && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTapVideoCamera}
+                disabled={pending}
+                className="min-h-11"
+              >
+                Record video
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"

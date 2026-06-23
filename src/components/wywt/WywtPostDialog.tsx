@@ -9,6 +9,7 @@ import { getWornTodayIdsForUserAction } from '@/app/actions/wearEvents'
 import { todayLocalISO } from '@/lib/wear'
 import type { Watch } from '@/lib/types'
 import type { WearVisibility } from '@/lib/wearVisibility'
+import type { MediaState } from '@/lib/wywtTypes'
 
 /**
  * WywtPostDialog — Phase 15 Plan 03b orchestrator for the WYWT photo post flow.
@@ -65,7 +66,7 @@ export function WywtPostDialog({
     () => (open ? crypto.randomUUID() : ''),
     [open],
   )
-  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
+  const [mediaState, setMediaState] = useState<MediaState>({ kind: 'none' })
   const [note, setNote] = useState('')
   const [visibility, setVisibility] = useState<WearVisibility>('public')
   const [wornTodayIds, setWornTodayIds] = useState<
@@ -108,7 +109,7 @@ export function WywtPostDialog({
     if (!next) {
       setStep('picker')
       setSelectedWatchId(null)
-      setPhotoBlob(null)
+      setMediaState({ kind: 'none' })
       setNote('')
       setVisibility('public')
       setWornTodayIds(undefined)
@@ -130,7 +131,7 @@ export function WywtPostDialog({
     if (!open) {
       setStep('picker')
       setSelectedWatchId(null)
-      setPhotoBlob(null)
+      setMediaState({ kind: 'none' })
       setNote('')
       setVisibility('public')
       setWornTodayIds(undefined)
@@ -178,8 +179,8 @@ export function WywtPostDialog({
           watch={selectedWatch}
           viewerId={viewerId}
           wearEventId={wearEventId}
-          photoBlob={photoBlob}
-          setPhotoBlob={setPhotoBlob}
+          mediaState={mediaState}
+          setMediaState={setMediaState}
           note={note}
           setNote={setNote}
           visibility={visibility}
