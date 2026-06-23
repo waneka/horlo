@@ -1,6 +1,8 @@
 ---
 id: SEED-020
-status: active
+status: shipped
+shipped_in: v8.3
+shipped_at: 2026-06-23
 priority: next
 planted: 2026-06-22
 planted_during: /gsd-explore session 2026-06-22 — operator request to add short videos to WYWT

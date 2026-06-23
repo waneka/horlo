@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
-status: milestone_complete
-last_updated: "2026-06-23T16:57:31.685Z"
-last_activity: 2026-06-23
+status: Awaiting next milestone
+last_updated: "2026-06-23T18:33:46.618Z"
+last_activity: 2026-06-23 — Milestone v8.3 completed and archived
 progress:
   total_phases: 2
   completed_phases: 2
@@ -17,21 +17,21 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPPED; see §Current State)
+See: .planning/PROJECT.md (updated 2026-06-23 — v8.3 WYWT Video SHIPPED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 77 — video-capture-display-ui
+**Current focus:** Between milestones — v8.3 shipped 2026-06-23; next is v9.0 Catalog Expansion (SEED-009)
 
 ## Current Position
 
-Phase: 77
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-06-23
+Phase: Milestone v8.3 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-23 — Milestone v8.3 completed and archived
 
 ## Deferred Items
 
-Items acknowledged and deferred at v8.2 milestone close on 2026-06-09 (carries forward v8.1's list — SEED-017 dropped because it shipped THIS milestone; SEED-008/012/013/015/016 re-classification still pending separately):
+Items acknowledged and deferred at v8.3 milestone close on 2026-06-23 (carries forward v8.2's list — SEED-020 dropped because it shipped THIS milestone; 5 new quick_tasks + 1 todo added since v8.2; SEED-008/012/013/015/016 re-classification still pending separately):
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -48,8 +48,14 @@ Items acknowledged and deferred at v8.2 milestone close on 2026-06-09 (carries f
 | quick_task | 260519-g4v-fu-02-fix-explore-brands-a-z-letter-anch | missing |
 | quick_task | 260519-ga9-fu-01-expose-brand-era-genre-archetype-f | missing |
 | quick_task | 260530-e55-srch-03-followup-popup-stay-open-fix | missing |
+| quick_task | 260614-f82-seed-explore-page-editorial-content-8-cu | missing (new since v8.2) |
+| quick_task | 260620-gk9-backfill-18-catalog-image-urls-delete-te | missing (new since v8.2) |
+| quick_task | 260620-lbn-seed-018-surgical-slice-surface-url-extr | missing (new since v8.2) |
+| quick_task | 260622-exo-fix-wear-duplicate-day-across-utc-midnig | missing (new since v8.2) |
+| quick_task | 260622-lcd-audit-missing-on-local-supabase-migrations | missing (new since v8.2) |
+| todo | drizzle-kit-pg-net-introspection-bug | medium priority (new since v8.2) |
 | seed | SEED-001-catalog-hierarchy-and-attributes | dormant |
-| seed | SEED-002-hybrid-recommender | dormant (v8.2 SEED-017 was its lightweight precursor; still dormant as a future paid-feature candidate per `project_monetization_stance_2026_05_06`) |
+| seed | SEED-002-hybrid-recommender | dormant (future paid-feature candidate per `project_monetization_stance_2026_05_06`) |
 | seed | SEED-003-onboarding-cold-start-flow | dormant |
 | seed | SEED-004-v5-discovery-north-star | dormant (v5.0 shipped) |
 | seed | SEED-005-v6-market-value | dormant (next post-v9.0 candidate; needs SEED-007 spike first) |
@@ -58,11 +64,11 @@ Items acknowledged and deferred at v8.2 milestone close on 2026-06-09 (carries f
 | seed | SEED-010-v5.3-add-watch-redesign | dormant — flagged for re-classification (v8.0 shipped this) |
 | seed | SEED-012-v6.0-social-interaction | active — flagged for re-classification (v6.0 shipped) |
 | seed | SEED-013-v7.0-watch-photos | dormant — flagged for re-classification (v7.0 shipped) |
-| seed | SEED-014-cache-components-canonical-sweep | dormant — still future work; v7.0 Phase 61 + Phase 52 only covered specific routes |
+| seed | SEED-014-cache-components-canonical-sweep | dormant — still future work |
 | seed | SEED-015-inline-grid-engagement | dormant — flagged for re-classification (v7.0 Phase 63 shipped) |
 | seed | SEED-016-watch-detail-redesign | dormant — flagged for re-classification (v7.0 Phase 64 shipped) |
 
-Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-freshness) is the one v8.2 just shipped — marked `status: shipped, shipped_in: v8.2` in `.planning/seeds/SEED-017-recommendations-freshness.md` and excluded from this list. The 14 seeds represent the forward roadmap + re-classification backlog, not operational debt; SEED-001/002/003/005/007/014 are genuine future work; SEED-008/010/012/013/015/016 are already shipped and need their seed-file `status:` field flipped to `shipped:`. Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 closes.
+Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-video-3s) is the one v8.3 just shipped — marked `status: shipped, shipped_in: v8.3` in `.planning/seeds/SEED-020-wywt-video-3s.md` and excluded from this list. The 14 seeds represent the forward roadmap + re-classification backlog, not operational debt; SEED-001/002/003/005/007/014 are genuine future work; SEED-008/010/012/013/015/016 are already shipped and need their seed-file `status:` field flipped to `shipped:`. Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 / v8.2 closes.
 
 ## Performance Metrics
 
@@ -139,4 +145,4 @@ Next action: Execute Plan 02 (Wave 1 — types + capability + DAL) per `.plannin
 
 ## Operator Next Steps
 
-- **Plan 04 Task 3 — HUMAN-ACTION (operator-gated):** After Phase 76 PR merges to `main` and Vercel deploy succeeds, follow `.planning/phases/76-video-schema-storage-paths-server-action/76-POST-DEPLOY.md` Sections 1–5 to apply the migration to prod Supabase. The runbook includes the exact `supabase db push --linked` command + the 2-user Manual RLS check that empirically confirms cross-user `.mp4` SELECT returns 403. Resume signal: `prod-migration-applied`.
+- Start the next milestone with /gsd-new-milestone

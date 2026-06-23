@@ -1,5 +1,28 @@
 # Milestones
 
+## v8.3 WYWT Video (Shipped: 2026-06-23)
+
+**Phases completed:** 2 phases (76 + 77), 12 plans, ~80 commits over 2 days
+
+**Key accomplishments:**
+
+- **4-second wrist-rotation video capture** — `MediaRecorder`-based live capture surface (`VideoCaptureView`) records portrait clips with a clockwise progress-ring overlay and red recording dot, auto-stops via `setTimeout`, extracts a 3/4-through-clip poster JPEG via off-screen canvas, and hands both blobs back to the parent. Stream-as-prop architecture makes iOS gesture-context discipline impossible to violate from the component (closes T-77-04).
+- **Either-or per post enforced at three layers** — `MediaState` discriminated union (compile time), `logWearWithVideo` Server Action with Zod + IDOR + 5 MB byte cap (request time), and `wear_events_video_paths_required` CHECK constraint with PG 23514 fail-closed (database). Photo path preserved byte-for-byte through `mediaState.kind === 'photo'` narrowing (VID-15 regression invariant).
+- **Storage RLS extended to handle dash-suffix filenames** — Phase 11's `wear_photos_select_three_tier` policy now strips `-poster.` via `regexp_replace` before the UUID cast, so non-owner viewers can SELECT both `{uuid}.mp4` and `{uuid}-poster.jpg` files through the same three-tier visibility predicate (CR-01 fix, prod-pushed 2026-06-23).
+- **End-to-end video display across 3 surfaces** — home rail tile (`<WywtTile>` with `<VideoPlayBadge>` over the signed poster), `/wear/[id]` detail page (`<WearVideoClient>` with autoplay-muted-loop, `playsInline`, tap-to-pause, and onError poster fallback), and `/wears/[username]` stories lane (`<WearsLane>` slides flow through `<WearCard>`'s discriminator branch).
+- **iOS UAT-driven polish round** — recording indicator relocated from a 44px ring around the Record button (hidden under the user's thumb) to a 40px overlay on the camera preview top-left with the red dot centered inside, clip duration bumped 3s → 4s, `videoBitsPerSecond: 6_000_000` keeps 4s clips around 3 MB (comfortable under the 5 MB server cap), Retake link added alongside Discard on the post-capture preview, and `WristOverlaySvg` dimmed to 80% opacity.
+- **Prod UAT: 5/5 pass** — iOS live capture, tile poster + badge visual weight, lane-no-onEnded, poster extraction, and either-or DB CHECK all walked successfully on prod iPhone Safari after two polish redeploys. Operator-blocked `supabase db push --linked` ran cleanly for both Phase 76 + Phase 77 migrations.
+
+**Known deferred items at close:** 33 (see STATE.md Deferred Items). All pre-existing operational backlog; no v8.3 regressions or unresolved gaps.
+
+**Durable lessons captured:**
+- iOS gesture-context discipline via stream-as-prop architecture — applies to any future MediaStream-consuming component
+- jsdom `URL.createObjectURL` shim pattern via `beforeAll` `Object.defineProperty` — needed by any component that creates blob URLs
+- `milestone.complete` extractor garbage continues (6th recurrence — hand-rewritten this entry)
+- Phase dir archival still requires manual `git mv` (durable `feedback_milestone_close_phase_dir_archival_miss` — handled here)
+
+---
+
 ## v8.2 Discovery Freshness (Shipped: 2026-06-10)
 
 **Phases completed:** 1 phase (75), 2 plans, 6 tasks

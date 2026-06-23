@@ -656,6 +656,52 @@ The smallest milestone since v1.0 — a single phase / 2 wave-1-parallel plans t
 
 ---
 
+## Milestone: v8.3 — WYWT Video
+
+**Shipped:** 2026-06-23
+**Phases:** 2 (76, 77) | **Plans:** 12
+
+### What Was Built
+
+A 4-second wrist-rotation video capture flow paralleling the existing WYWT photo path. `MediaRecorder`-based live capture surface (`VideoCaptureView`) records portrait clips with a clockwise progress-ring overlay and red recording dot, auto-stops via `setTimeout`, extracts a 3/4-through-clip poster JPEG via off-screen canvas, and hands both blobs back to the parent. Either-or per post enforced at three layers: `MediaState` discriminated union (compile time), `logWearWithVideo` Server Action with Zod + IDOR + 5 MB byte cap (request time), and a `wear_events_video_paths_required` CHECK constraint with PG 23514 fail-closed (database). End-to-end video display landed across home rail tile + `/wear/[id]` detail page + `/wears/[username]` stories lane.
+
+### What Worked
+
+- **Wave 0 RED stub seeding** — Plan 01 deleted the production spike route and pre-created 11 vitest stub files. Every Wave 1-4 implementation knew exactly which file to flip from `it.todo` → real assertion (Nyquist sampling contract). 20 of 20 stubs flipped green during execution.
+- **Stream-as-prop architecture as a structural T-77-04 mitigation** — VideoCaptureView CANNOT call `getUserMedia` itself because the MediaStream arrives as a prop. The iOS gesture-context discipline (Pitfall 1) becomes architecturally enforced rather than a discipline reminder. Grep-verified `navigator.mediaDevices.getUserMedia` count = 0 in the file.
+- **Additive-discriminator pattern in WearCard** — the new outer ternary `mediaType === 'video' ? <WearVideoClient> : signedUrl !== null ? <WearPhotoClient> : <WearDetailHero>` wraps the existing photo logic byte-for-byte. VID-15 regression invariant enforced by zero edits to `WearPhotoClient.tsx` + `WearDetailHero.tsx` and a regression test (`<video> === null` when `mediaType` absent). Existing photo suite passed throughout.
+- **Pre-walk fix-pass from code review** — gsd-code-reviewer surfaced CR-01 (RLS storage policy can't parse `-poster.jpg` filename), CR-03 (badge over catalog fallback), WR-05 (strict-MIME bucket). All three landed as one fix-pass commit + a new migration before the UAT walk. The CR-01 fix was operator-blocking (`supabase db push --linked`) but the runbook (`77-POST-DEPLOY.md`) made the dependency explicit to the UAT walker.
+- **Disappearance assertions** — every "X appears when Y" test paired with a "X absent when not-Y" sibling. Caught CR-03's natural manifestation (Play badge over catalog photo) before it could ship to prod.
+
+### What Was Inefficient
+
+- **Three consecutive Sonnet 5xx errors on Wave 2 executor spawn** — forced switch to inline orchestrator execution for Plans 77-02 through 77-08. Orchestrator (Opus 4.7, 1M context) ran the plans directly with the same atomic-commit discipline. Worked but consumed more context window than typical wave parallelization. No durable fix; transient API capacity issue.
+- **UAT-1 surfaced 4 design fixes mid-walk** — recording indicator visibility (44px ring around the Record button was hidden under the user's thumb), 3s clip duration ("just barely not long enough"), default bitrate (Spike 001's 3.6 MB for 3s = ~9.6 Mbps, extrapolated to ~4.8 MB for 4s = tight margin to 5 MB cap), and a missing Retake affordance on the post-capture preview. Two redeploys before items 2-5 could walk. The Spike 001 validation didn't surface the "3s feels too short" UX read — design checks should explicitly include perceived-duration polls, not just empirical-success-on-target-frame validation.
+- **`milestone.complete` extractor garbage 6th recurrence** — the CLI generated 12 verbose duplicate accomplishment lines lifted from raw SUMMARY one-liners (incl. inline JSDoc with backtick-heavy filename references). Hand-rewrote MILESTONES.md to 6 distilled paragraphs. Pattern is now durable across v7.0/v8.0/v8.1/v8.2/v8.3.
+
+### Patterns Established
+
+- **Stream-as-prop video/camera capture component** — parallel to v3.0's `CameraCaptureView` pattern. Parent owns `navigator.mediaDevices.getUserMedia` call (synchronous first await after user gesture); component takes resolved MediaStream as prop. Makes iOS gesture-context discipline impossible to violate from the component side.
+- **jsdom `URL.createObjectURL` shim via `beforeAll` `Object.defineProperty`** — needed by any test that renders a component creating blob URLs (used in `posterExtraction.test.ts` and `ComposeStep.submit.video.test.tsx`).
+- **Render-time-only signed-URL field on transit types** — `WywtTile.signedPosterUrl` is populated by page.tsx after the admin client mints from `posterPath`. Never persisted, never returned by the DAL. Mirrors `photoUrl` becoming a signed URL at the page boundary.
+- **Storage RLS `regexp_replace` before UUID cast** — `split_part(regexp_replace(filename, '-suffix\.', '.'), '.', 1)::uuid` extends a UUID-cast filename policy to handle suffix variants without forking the policy. Applies to any future filename-discriminated storage path.
+
+### Key Lessons
+
+- **iOS UAT happens on prod, not local** — `feedback_mobile_ui_verify_on_prod` continues to hold. Local jsdom can't simulate real camera permission + WebKit codec path + autoplay-muted-loop + playsInline fullscreen behavior. The 5-item UAT walk surfaced 4 design fixes that no automated test could catch.
+- **MediaRecorder default bitrate is generous** — Spike 001's 3.6 MB for 3s portrait-720p H.264 = ~9.6 Mbps. The 5 MB server cap is tight at default. Explicit `videoBitsPerSecond: 6_000_000` brings 4s clips to ~3 MB with imperceptible quality drop for wrist-rotation content (mostly static watch + slow rotation = H.264 compresses efficiently).
+- **Storage RLS poster-filename mismatch** — Phase 76 locked `{wearEventId}-poster.jpg` as the poster filename (SEED-020 D-07) without checking how Phase 11's `split_part('.', 1)::uuid` extraction would handle the dash suffix. Caught by Phase 77 code review post-execution; fixed with a new migration. **For any future filename pattern that doesn't match `{uuid}.{ext}`, verify the storage RLS policy can parse it.**
+- **API capacity is real** — three consecutive 5xx on Sonnet agent spawn during Wave 2 wasn't an isolated event. Have a clear fallback (inline orchestrator execution) ready when wave-based parallelization can't dispatch.
+
+### Cost Observations
+
+- **Model mix:** Opus 4.7 (1M context) was the orchestrator; intended ~60% Sonnet/40% Opus split via gsd-executor agents was inverted to ~5% Sonnet / 95% Opus when Wave 2's three consecutive 5xx forced inline execution.
+- **Timeline:** 2 days (Phase 76 + spike + plan, then Phase 77 execute + UAT + close). ~80 commits.
+- **Polish redeploys:** 2 mid-UAT (recording-indicator + bitrate + 4s + Retake + opacity). Cheap; build + targeted vitest gates kept the cycle fast.
+- **Notable:** Phase 76 + 77 together had FOUR `supabase db push --linked` operator-blocked dependencies (Phase 76 schema + Phase 77 RLS migration). Both pushed cleanly without operator backtracking — runbooks (`76-POST-DEPLOY.md` + `77-POST-DEPLOY.md`) paid for themselves.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
