@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
 status: executing
-last_updated: "2026-06-23T00:19:02.770Z"
+last_updated: "2026-06-23T00:24:10.181Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 ## Current Position
 
 Phase: 76 (Video Schema, Storage Paths + Server Action) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-23
 
@@ -66,6 +66,8 @@ Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-f
 
 ## Performance Metrics
 
+- Phase 76 P02: ~10min, 2 tasks, 2 files (1 modified, 1 created), 2/2 reqs (VID-07, VID-16); no deviations
+- Phase 76 P01: ~35min, 4 tasks, 4 files (1 modified, 3 created), 2/2 reqs (VID-11, VID-12); 1 auto-fix (drizzle .cause.code unwrap pattern documented)
 - v8.2: 1 phase (75), 2 plans, ~2h code, 14 commits, 2/2 reqs (close held 10 days for DISC-RECS-VARIATION rotation observation)
 - v8.1: 3 phases (72-74), 5 plans, 1 day, 47 commits, 6/6 reqs (all bundled prod UAT items passed)
 - v8.0: 6 phases (66-71), 22 plans, 2 days, 150 commits, 39/39 reqs
@@ -115,14 +117,15 @@ None.
 | 260620-gk9 | Backfill 18 prod `watches_catalog.image_url` rows + delete rogue test/test row (now 0/193 missing) | daf3e03c, b8b2af2d | 2026-06-20 |
 | 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
-| Phase 76 P01 | 35min | 4 tasks | 4 files |
+
+(Phase 76 P01 + P02 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 
 ## Session Continuity
 
-Last activity: 2026-06-22 — Roadmap created for v8.3 WYWT Video. 2 phases defined (76: Schema/Storage/Server Action, 77: Capture/Display UI). 16/16 VID-NN requirements mapped. REQUIREMENTS.md traceability filled. STATE.md total_phases set to 2.
+Last activity: 2026-06-23 — Phase 76 Plan 02 SHIPPED. Two client-side Storage path builders (`buildWearVideoPath`, `buildWearPosterPath`) appended to `src/lib/storage/wearPhotos.ts` reusing existing `UUID_RE` constant; 6 unit tests pass (`tests/unit/buildWearVideoPath.test.ts`); build green. VID-07 + VID-16 closed. Plan 01 (schema/migration) + Plan 02 (path helpers) done — both no-dep wave-1 work is wave-2 still has Plan 03 (logWearEventWithVideo Server Action) and Plan 04 (verification + prod migration push) remaining.
 
-Next action: `/gsd-plan-phase 76` to plan Phase 76 (Video Schema, Storage Paths + Server Action — DB-touching phase; run with use_worktrees=false which is already the global default).
+Next action: `/gsd-execute-phase 76` to continue Phase 76 with Plan 03 (Server Action — depends on Plan 01 schema + Plan 02 path helpers).
 
 ## Operator Next Steps
 
-- Plan Phase 76 with /gsd-plan-phase 76
+- Execute Phase 76 Plan 03 with `/gsd-execute-phase 76` (continues from Plan 3 of 4)
