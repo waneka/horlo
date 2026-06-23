@@ -18,7 +18,7 @@ export function WristOverlaySvg({ className }: WristOverlaySvgProps) {
       aria-hidden="true"
       fill
       sizes="(max-width: 768px) 100vw, 600px"
-      className={`object-contain scale-[1.15] ${className ?? ''}`}
+      className={`object-contain scale-[1.15] opacity-80 ${className ?? ''}`}
     />
   )
 }

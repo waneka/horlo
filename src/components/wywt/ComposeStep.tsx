@@ -306,6 +306,16 @@ export function ComposeStep({
     setMediaSource(null)
   }
 
+  // Phase 77 (UAT-1 polish): Retake — discard the recorded clip AND
+  // re-acquire a fresh MediaStream, returning directly to the live capture
+  // surface. Mirrors handleRetake on the photo path (link tap IS a user
+  // gesture; iOS gesture-context requirement satisfied via
+  // handleTapVideoCamera's first-await discipline).
+  const handleRetakeVideo = async () => {
+    setMediaState({ kind: 'none' })
+    await handleTapVideoCamera()
+  }
+
   // Phase 77 (VID-03 mid-recording): Cancel from VideoCaptureView before the
   // user-stop / 3.0s auto-stop fires. Tear down the live stream.
   const handleCancelVideoCamera = () => {
@@ -496,14 +506,24 @@ export function ComposeStep({
             playsInline
             className="w-full rounded-md object-cover"
           />
-          <button
-            type="button"
-            onClick={handleDiscardVideo}
-            disabled={pending}
-            className="mt-2 text-xs font-semibold text-accent underline"
-          >
-            Discard
-          </button>
+          <div className="mt-2 flex gap-4">
+            <button
+              type="button"
+              onClick={handleDiscardVideo}
+              disabled={pending}
+              className="text-xs font-semibold text-accent underline"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={handleRetakeVideo}
+              disabled={pending}
+              className="text-xs font-semibold text-accent underline"
+            >
+              Retake
+            </button>
+          </div>
           {mediaState.videoBlob.size > 4 * 1024 * 1024 && (
             <p className="text-xs text-muted-foreground">
               Clip is large — upload may be slow.
