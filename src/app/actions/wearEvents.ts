@@ -97,6 +97,19 @@ const logWearWithPhotoSchema = z.object({
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
 
+// Phase 76 (VID-07/08/09/10/16) — video variant. Same shape as
+// logWearWithPhotoSchema except `hasPhoto: z.boolean()` is replaced with
+// `videoBytes: z.number().int().positive()` so the 5 MB server gate has
+// the actual byte length to check (VID-09).
+const logWearWithVideoSchema = z.object({
+  wearEventId: z.string().uuid(),
+  watchId: z.string().uuid(),
+  note: z.string().max(200).nullable(),
+  visibility: z.enum(['public', 'followers', 'private']),
+  videoBytes: z.number().int().positive(),
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
 const preflightSchema = z.object({
   userId: z.string().uuid(),
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -247,6 +260,180 @@ export async function logWearWithPhoto(input: {
   // wear-event aggregates (most-worn / WornCalendar / WornTabContent) inside
   // <ProfileShellResolver/> recompute. Cross-user fan-out: although caller IS
   // owner, other viewers may have stale cached entries — SWR via revalidateTag(tag, 'max').
+  const ownerProfile = await profilesDAL.getProfileById(user.id)
+  if (ownerProfile?.username) {
+    revalidateTag(`profile:${ownerProfile.username}`, 'max')
+  }
+  return { success: true, data: { wearEventId: parsed.data.wearEventId } }
+}
+
+/**
+ * Video-bearing WYWT post (Phase 76 — VID-07/08/09/10/16, SEED-020 D-07).
+ *
+ * Direct structural parallel to logWearWithPhoto with 7 documented divergences:
+ *  1. Schema field videoBytes (int positive) replaces hasPhoto (bool) — VID-09 gate
+ *     needs the actual byte length.
+ *  2. NEW 5 MB server gate AFTER Zod parse, BEFORE IDOR / Storage / DAL (VID-09).
+ *  3. Server constructs TWO paths: `${userId}/${wearEventId}.mp4` + `-poster.jpg`
+ *     (VID-07 / VID-16). Action input has NO videoPath / posterPath fields —
+ *     tampered client cannot poison the DB row's paths (T-15-17 analog).
+ *  4. TWO `.list()` probes via `Promise.all` (VID-08) — one per Storage object;
+ *     each result checked with exact-match `.some(f => f.name === ...)` (NOT prefix
+ *     match — Pitfall 1). Either miss returns uniform 'Video upload failed' (no
+ *     leak of which file is missing). NO hasPhoto guard (video always required).
+ *  5. DAL call uses `wearEventDAL.logWearEventWithVideo` with `mediaPath` +
+ *     `posterPath` — `photoUrl` is NOT passed (column defaults to NULL).
+ *  6. Catch-block cleanup runs `.remove([videoPath, posterPath])` (2-element
+ *     array) — NO hasPhoto guard; cleanup fires on BOTH 23505 and non-23505
+ *     paths (T-15-18 / VID-10). Best-effort: cleanup error is console.error'd
+ *     and never escalated; original DAL error propagates.
+ *  7. All console.error log prefixes use `[logWearWithVideo]`.
+ *
+ * Cache invalidation matches logWearWithPhoto verbatim: `revalidatePath('/')`
+ * + `revalidateTag(`profile:${username}`, 'max')` — the 'max' second arg is
+ * the Next 16 SWR cross-user fan-out form (per durable memory
+ * `project_next16_revalidatetag_deprecated`). This is NOT a read-your-own-write
+ * case — do NOT downgrade to single-arg form or migrate to `updateTag`.
+ */
+export async function logWearWithVideo(input: {
+  wearEventId: string
+  watchId: string
+  note: string | null
+  visibility: WearVisibility
+  videoBytes: number
+  today: string
+}): Promise<ActionResult<{ wearEventId: string }>> {
+  // (1) Auth FIRST — Zod after auth so unauthenticated callers never reach
+  // validation (matches markAsWorn / logWearWithPhoto ordering).
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  // (2) Zod parse — non-UUID wearEventId / watchId, oversize note, bad
+  // visibility enum, non-positive videoBytes, malformed today all rejected.
+  const parsed = logWearWithVideoSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid input' }
+  }
+
+  // (3) VID-09 5 MB server-side gate — runs BEFORE IDOR / Storage / DAL.
+  // Server is authoritative; client-side pre-warn at 4 MB (Phase 77) is UX
+  // only and never trusted. Defense in depth: Supabase bucket file_size_limit
+  // = 5242880 also rejects at the Storage layer.
+  if (parsed.data.videoBytes > 5 * 1024 * 1024) {
+    return { success: false, error: 'Video too large — maximum 5 MB' }
+  }
+
+  // (4) IDOR defense (matches logWearWithPhoto L151-154): scope the watch
+  // lookup to the caller; return uniform 'Watch not found' for cross-user
+  // watch IDs so existence is not leaked.
+  const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
+  if (!watch) {
+    return { success: false, error: 'Watch not found' }
+  }
+
+  // (5) Server-constructed paths — never trust a client-supplied path
+  // (T-15-17 / VID-16). The action input type has no videoPath / posterPath
+  // fields, so a tampered client cannot reach this line with foreign IDs.
+  const videoPath = `${user.id}/${parsed.data.wearEventId}.mp4`
+  const posterPath = `${user.id}/${parsed.data.wearEventId}-poster.jpg`
+  const supabase = await createSupabaseServerClient()
+
+  // (6) VID-08: probe BOTH Storage objects in parallel BEFORE inserting the
+  // DB row. Exact-match `.some(f => f.name === ...)` avoids prefix-match
+  // false positives — `.list({search: 'abc.mp4'})` may return `abc.mp4` AND
+  // `abc-poster.jpg` since it's a prefix search (Pitfall 1). Either miss
+  // returns the uniform 'Video upload failed' string — no leak of which
+  // file was missing.
+  const [videoList, posterList] = await Promise.all([
+    supabase.storage
+      .from('wear-photos')
+      .list(user.id, { search: `${parsed.data.wearEventId}.mp4` }),
+    supabase.storage
+      .from('wear-photos')
+      .list(user.id, { search: `${parsed.data.wearEventId}-poster.jpg` }),
+  ])
+  const videoFound =
+    !videoList.error &&
+    (videoList.data ?? []).some(
+      (f) => f.name === `${parsed.data.wearEventId}.mp4`,
+    )
+  const posterFound =
+    !posterList.error &&
+    (posterList.data ?? []).some(
+      (f) => f.name === `${parsed.data.wearEventId}-poster.jpg`,
+    )
+  if (!videoFound || !posterFound) {
+    return { success: false, error: 'Video upload failed — please try again' }
+  }
+
+  // (7) Note normalization — same shape as logWearWithPhoto L181.
+  const note = parsed.data.note?.trim() ? parsed.data.note.trim() : null
+
+  // (8) DAL insert. NO photoUrl field — leaves it NULL via column default.
+  // wornDate uses client-supplied `today` (WR-02 / 2026-06-22 fix — server
+  // process zone is UTC on Vercel; client owns calendar-day computation).
+  try {
+    await wearEventDAL.logWearEventWithVideo({
+      id: parsed.data.wearEventId,
+      userId: user.id,
+      watchId: parsed.data.watchId,
+      wornDate: parsed.data.today,
+      note,
+      mediaPath: videoPath,
+      posterPath,
+      visibility: parsed.data.visibility,
+    })
+  } catch (err) {
+    // (9) Compensating delete — best-effort cleanup of BOTH orphan Storage
+    // objects on ANY DAL insert failure (T-15-18 / VID-10). NO hasPhoto
+    // guard; the video path always has both objects. Cleanup error is
+    // logged and never escalated — the original DAL error propagates.
+    try {
+      const cleanup = await supabase.storage
+        .from('wear-photos')
+        .remove([videoPath, posterPath])
+      console.error(
+        '[logWearWithVideo] insert failed; orphan cleanup:',
+        cleanup.error ?? 'ok',
+      )
+    } catch (cleanupErr) {
+      console.error('[logWearWithVideo] orphan cleanup threw:', cleanupErr)
+    }
+
+    const code = (err as { code?: string } | null)?.code
+    if (code === '23505') {
+      return { success: false, error: 'Already logged this watch today' }
+    }
+    console.error('[logWearWithVideo] insert failed:', err)
+    return {
+      success: false,
+      error: 'Could not log that wear. Please try again.',
+    }
+  }
+
+  // (10) Activity logging — fire-and-forget (D-10 / WR-05 snapshot semantics:
+  // brand/model/imageUrl captured from `watch` row fetched at the ownership
+  // check above). Same shape as logWearWithPhoto L234-243.
+  try {
+    await logActivity(user.id, 'watch_worn', parsed.data.watchId, {
+      brand: watch.brand,
+      model: watch.model,
+      imageUrl: watch.imageUrl ?? null,
+      visibility: parsed.data.visibility,
+    })
+  } catch (err) {
+    console.error('[logWearWithVideo] activity log failed (non-fatal):', err)
+  }
+
+  // (11) Cache invalidation — matches logWearWithPhoto L245-253 verbatim.
+  // revalidateTag(tag, 'max') is the Next 16 SWR cross-user fan-out form
+  // (per durable memory `project_next16_revalidatetag_deprecated` and
+  // node_modules/next/dist/docs/01-app/03-api-reference/04-functions/revalidateTag.md).
+  revalidatePath('/')
   const ownerProfile = await profilesDAL.getProfileById(user.id)
   if (ownerProfile?.username) {
     revalidateTag(`profile:${ownerProfile.username}`, 'max')
