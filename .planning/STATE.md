@@ -133,13 +133,14 @@ None.
 | 260620-gk9 | Backfill 18 prod `watches_catalog.image_url` rows + delete rogue test/test row (now 0/193 missing) | daf3e03c, b8b2af2d | 2026-06-20 |
 | 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
+| 260623-mn3 | Taste-aware sparse-pool top-up for collectors-like-you recommendations | cd3c2efb, 9f754300 | 2026-06-23 |
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-23 — Phase 77 Plan 01 (Wave 0 foundation) COMPLETE. T-77-01 (HIGH unauthenticated `/spike-mr-capture` prod route) closed via `git rm` (commit `75b00386`). 11 RED Vitest stub files seeded under tests/hooks/, tests/unit/, tests/components/wywt/, tests/components/wear/, tests/components/home/ at the exact paths in 77-VALIDATION.md §Wave 0 Requirements (commit `b0cdd52c`). 77-VALIDATION.md `wave_0_complete: false → true`. `npm run build` exit 0 after both commits. Vitest on the 11 stubs: 11 passed | 32 todo | 0 failed. Plan-level metadata commit pending.
+Last activity: 2026-06-23 — Completed quick task 260623-mn3: taste-aware sparse-pool top-up for "From Collectors Like You" home rail. Rewrote `topUpFromCatalogPopularity` in `src/data/recommendations.ts` with brand-match (+100) + style-overlap (+50) scoring against viewer's `topBrandOf`/`dominantStyleOf` (exported from `src/lib/recommendations.ts`); projected real `styleTags` onto synthetic Watch rows so existing rationale loop fires "Fans of {brand} love this" / "Matches your {style} collection" on top-up cards instead of always falling through to community-fallback. Extended Case 3 in `recommendations.test.ts` (10/10 pass). `npm run build` exit 0. Commits cd3c2efb (RED), 9f754300 (GREEN). Role-based scoring and designMotifs Jaccard deferred (catalog `role_tags` is 0%-populated). Prior activity: Phase 77 Plan 01 (Wave 0 foundation) COMPLETE — see commits `75b00386`, `b0cdd52c`; 77-VALIDATION.md `wave_0_complete: true`; Vitest 11 passed / 32 todo / 0 failed.
 
 Next action: Execute Plan 02 (Wave 1 — types + capability + DAL) per `.planning/phases/77-video-capture-display-ui/77-02-PLAN.md`. Phase 76 is also still CODE-COMPLETE on `main` awaiting operator prod migration push (`supabase db push --linked` per 76-POST-DEPLOY.md); Phase 77 development can continue against documented Phase 76 contracts in parallel — only Phase 77's runtime ship-to-prod is gated on that operator push.
 
