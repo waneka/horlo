@@ -26,9 +26,9 @@ User can record a 3-second wrist-rotation video inside the WYWT compose flow.
 Video + poster reach Supabase Storage safely.
 
 - [x] **VID-07**: Video and poster upload to the existing `wear-photos` bucket at IDOR-safe server-constructed paths (`{userId}/{wearEventId}.mp4` + `{userId}/{wearEventId}-poster.jpg`); client never provides the path
-- [ ] **VID-08**: Server probes both Storage objects exist (`storage.list()`) before inserting the `wear_events` row — mirrors Phase 15 T-15-04 mitigation
-- [ ] **VID-09**: Server rejects video uploads over 5 MB (client warns at ~4 MB; server is the gate)
-- [ ] **VID-10**: On `wear_events` INSERT failure, BOTH Storage objects (video + poster) are best-effort removed — mirrors Phase 15 T-15-18
+- [x] **VID-08**: Server probes both Storage objects exist (`storage.list()`) before inserting the `wear_events` row — mirrors Phase 15 T-15-04 mitigation
+- [x] **VID-09**: Server rejects video uploads over 5 MB (client warns at ~4 MB; server is the gate)
+- [x] **VID-10**: On `wear_events` INSERT failure, BOTH Storage objects (video + poster) are best-effort removed — mirrors Phase 15 T-15-18
 
 ### Schema (SCH)
 
@@ -93,9 +93,9 @@ Explicitly excluded from v8.3:
 | VID-05 | Phase 77 | Pending |
 | VID-06 | Phase 77 | Pending |
 | VID-07 | Phase 76 | Complete |
-| VID-08 | Phase 76 | Pending |
-| VID-09 | Phase 76 | Pending |
-| VID-10 | Phase 76 | Pending |
+| VID-08 | Phase 76 | Complete |
+| VID-09 | Phase 76 | Complete |
+| VID-10 | Phase 76 | Complete |
 | VID-11 | Phase 76 | Complete |
 | VID-12 | Phase 76 | Complete |
 | VID-13 | Phase 77 | Pending |

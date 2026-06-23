@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
 status: executing
-last_updated: "2026-06-23T00:24:10.181Z"
+last_updated: "2026-06-23T00:33:16.616Z"
 last_activity: 2026-06-23
 progress:
-  total_phases: 2
+  total_phases: 1
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 ## Current Position
 
 Phase: 76 (Video Schema, Storage Paths + Server Action) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-23
 
@@ -66,6 +66,7 @@ Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-f
 
 ## Performance Metrics
 
+- Phase 76 P03: ~20min, 3 tasks, 3 files (2 modified, 1 created), 5/5 reqs (VID-07, VID-08, VID-09, VID-10, VID-16 — VID-07 + VID-16 were already complete from P02 but the Server Action enforces them server-side); 1 auto-fix (mockStorage `.list()` two-arg signature)
 - Phase 76 P02: ~10min, 2 tasks, 2 files (1 modified, 1 created), 2/2 reqs (VID-07, VID-16); no deviations
 - Phase 76 P01: ~35min, 4 tasks, 4 files (1 modified, 3 created), 2/2 reqs (VID-11, VID-12); 1 auto-fix (drizzle .cause.code unwrap pattern documented)
 - v8.2: 1 phase (75), 2 plans, ~2h code, 14 commits, 2/2 reqs (close held 10 days for DISC-RECS-VARIATION rotation observation)
@@ -118,14 +119,14 @@ None.
 | 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
 
-(Phase 76 P01 + P02 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
+(Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 
 ## Session Continuity
 
-Last activity: 2026-06-23 — Phase 76 Plan 02 SHIPPED. Two client-side Storage path builders (`buildWearVideoPath`, `buildWearPosterPath`) appended to `src/lib/storage/wearPhotos.ts` reusing existing `UUID_RE` constant; 6 unit tests pass (`tests/unit/buildWearVideoPath.test.ts`); build green. VID-07 + VID-16 closed. Plan 01 (schema/migration) + Plan 02 (path helpers) done — both no-dep wave-1 work is wave-2 still has Plan 03 (logWearEventWithVideo Server Action) and Plan 04 (verification + prod migration push) remaining.
+Last activity: 2026-06-23 — Phase 76 Plan 03 SHIPPED. `logWearWithVideo` Server Action + `logWearEventWithVideo` DAL helper added as direct structural parallel to the Phase 15 photo path (7 documented divergences); 9 unit tests pass (`tests/actions/wearEventsVideo.test.ts`) covering VID-07/08/09/10/16; build green. logWearWithPhoto preserved byte-for-byte (VID-15 regression guard). Only 1 auto-fix needed: mockStorage `.list()` helper destructured the wrong positional arg (Supabase `.list(path, opts)` is 2-arg). Plan 04 (verification + prod migration push) remaining.
 
-Next action: `/gsd-execute-phase 76` to continue Phase 76 with Plan 03 (Server Action — depends on Plan 01 schema + Plan 02 path helpers).
+Next action: `/gsd-execute-phase 76` to continue Phase 76 with Plan 04 (verification + prod-side `supabase db push --linked`).
 
 ## Operator Next Steps
 
-- Execute Phase 76 Plan 03 with `/gsd-execute-phase 76` (continues from Plan 3 of 4)
+- Execute Phase 76 Plan 04 with `/gsd-execute-phase 76` (continues from Plan 4 of 4 — final plan)
