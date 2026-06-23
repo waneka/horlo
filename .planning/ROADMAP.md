@@ -295,6 +295,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
-| 77. Video Capture + Display UI | 8/8 | Complete   | 2026-06-23 |
+| 77. Video Capture + Display UI | 8/8 | Complete    | 2026-06-23 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
