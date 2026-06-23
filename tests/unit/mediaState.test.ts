@@ -1,19 +1,30 @@
 // Wave 0 RED stub — Phase 77 / 77-01-PLAN.md
-//
-// Stub for MediaState discriminated union (VID-06).
-// NOTE: the MediaState type is introduced in Plan 02. Importing it here would
-// crash file-level resolution today, so the import is intentionally commented
-// out. Plan 02's task list includes uncommenting it and replacing the single
-// `it.todo` below with the 3 cases from 77-PATTERNS.md §mediaState.test.ts.
+// Plan 02: upgraded from todo to assertions (VID-06)
 
 import { describe, it, expect } from 'vitest'
-
-// TODO Plan 02: import type { MediaState } from '@/lib/wywtTypes'
+import type { MediaState } from '@/lib/wywtTypes'
 
 describe('MediaState — discriminated union (VID-06)', () => {
-  it.todo('VID-06: MediaState discriminated union has kind:none|photo|video — uncomment after Plan 02')
+  it('kind:none has no blob fields', () => {
+    const s: MediaState = { kind: 'none' }
+    expect(s.kind).toBe('none')
+  })
 
-  it('stub: vitest module discovery + import resolution', () => {
-    expect(true).toBe(true)
+  it('kind:photo carries a blob', () => {
+    const blob = new Blob(['x'])
+    const s: MediaState = { kind: 'photo', blob }
+    expect(s.kind).toBe('photo')
+    if (s.kind === 'photo') expect(s.blob).toBeInstanceOf(Blob)
+  })
+
+  it('kind:video carries videoBlob + posterBlob', () => {
+    const vb = new Blob(['v'])
+    const pb = new Blob(['p'])
+    const s: MediaState = { kind: 'video', videoBlob: vb, posterBlob: pb }
+    expect(s.kind).toBe('video')
+    if (s.kind === 'video') {
+      expect(s.videoBlob).toBeInstanceOf(Blob)
+      expect(s.posterBlob).toBeInstanceOf(Blob)
+    }
   })
 })
