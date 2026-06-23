@@ -26,6 +26,9 @@ export const wearVisibilityEnum = pgEnum('wear_visibility', [
   'private',
 ])
 
+// ----- Phase 76: media_type enum (VID-11) -----
+export const mediaTypeEnum = pgEnum('media_type', ['photo', 'video'] as const)
+
 // ----- Phase 11: notification_type enum (NOTIF-01, D-09) -----
 // Narrowed to 2 values in Phase 24 (DEBT-05) after prod migration applied.
 // Stub values with no write-path removed (see Phase 24 migration for history).
@@ -306,6 +309,10 @@ export const wearEvents = pgTable(
     // This is NOT a visibility change — 'hide from detail' is a separate persistent state
     // on wear_events that does not affect the rail or profile worn tab.
     hiddenFromDetail: boolean('hidden_from_detail').notNull().default(false),
+    // Phase 76 additions (VID-11):
+    mediaType: mediaTypeEnum('media_type').notNull().default('photo'),
+    mediaPath: text('media_path'),
+    posterPath: text('poster_path'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
