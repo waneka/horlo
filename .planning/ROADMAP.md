@@ -242,10 +242,10 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 <details open>
 <summary>🔨 v8.3 WYWT Video (Phases 76-77) — IN PROGRESS</summary>
 
-- [ ] **Phase 76: Video Schema, Storage Paths + Server Action** — VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16
+- [x] **Phase 76: Video Schema, Storage Paths + Server Action** — VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16 (shipped 2026-06-23; operator runs `supabase db push --linked` post-merge per 76-POST-DEPLOY.md)
 - [ ] **Phase 77: Video Capture + Display UI** — VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15
 
-16/16 v8.3 requirements pending. Two-phase feature milestone: backend (schema + storage probes + Server Action + IDOR guard) lands first, then UI (ComposeStep video-capture mode + poster tiles + `/wear/{id}` player). Spike 001 VALIDATED 2026-06-22 — iOS 26 mp4/avc1 + autoplay-muted-loop + canvas poster confirmed.
+7/16 v8.3 requirements complete (Phase 76); 9/16 remaining (Phase 77). Two-phase feature milestone: backend (schema + storage probes + Server Action + IDOR guard) shipped; UI (ComposeStep video-capture mode + poster tiles + `/wear/{id}` player) next. Spike 001 VALIDATED 2026-06-22 — iOS 26 mp4/avc1 + autoplay-muted-loop + canvas poster confirmed.
 
 </details>
 
@@ -265,7 +265,7 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
   - [x] 76-01-PLAN.md — Drizzle schema + Supabase migration + integration test (VID-11, VID-12); BLOCKING local `drizzle-kit push` (autonomous:false)
   - [x] 76-02-PLAN.md — Client-side path builders `buildWearVideoPath` + `buildWearPosterPath` + 6 unit tests (VID-07, VID-16)
   - [x] 76-03-PLAN.md — DAL helper `logWearEventWithVideo` + Server Action `logWearWithVideo` + 9 unit tests (VID-07, VID-08, VID-09, VID-10, VID-16)
-  - [ ] 76-04-PLAN.md — Full Phase 76 verification + `76-POST-DEPLOY.md` runbook + human prod `supabase db push --linked` (autonomous:false)
+  - [x] 76-04-PLAN.md — Full Phase 76 verification + `76-POST-DEPLOY.md` runbook + human prod `supabase db push --linked` (autonomous:false) (completed 2026-06-23)
 **UI hint**: no
 
 ### Phase 77: Video Capture + Display UI
@@ -285,7 +285,7 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 76. Video Schema, Storage Paths + Server Action | 3/4 | In Progress|  |
+| 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
 | 77. Video Capture + Display UI | 0/TBD | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._

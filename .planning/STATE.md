@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
-status: executing
+status: in_progress
 last_updated: "2026-06-23T00:43:00.000Z"
 last_activity: 2026-06-23
 progress:
-  total_phases: 1
-  completed_phases: 0
+  total_phases: 2
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
-  notes: "Plan 04 executor portion (Tasks 1+2) complete; operator-blocked on Task 3 (`supabase db push --linked` post-merge). See 76-POST-DEPLOY.md."
+  completed_plans: 4
+  percent: 50
+  notes: "Phase 76 code-complete and shipped (commits land on main). Operator-deferred items in 76-HUMAN-UAT.md: (1) `supabase db push --linked` post-merge per 76-POST-DEPLOY.md; (2) manual cross-user RLS .mp4 SELECT verification. CR-01 fix (replaced .list() paginated probes with createSignedUrl HEAD probes in both logWearWithVideo and logWearWithPhoto) landed in-phase. Phase 77 UI work is unblocked against the merged contracts."
 ---
 
 # Project State
@@ -21,13 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPPED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 76 — Video Schema, Storage Paths + Server Action
+**Current focus:** Phase 77 — Video Capture + Display UI (v8.3 final phase; user-facing record + playback)
 
 ## Current Position
 
-Phase: 76 (Video Schema, Storage Paths + Server Action) — EXECUTING (operator-gated)
-Plan: 4 of 4
-Status: Executor portion COMPLETE (Tasks 1+2: verification PASS + 76-POST-DEPLOY.md runbook written). Operator-blocked on Task 3: `supabase db push --linked` to prod, run AFTER PR merge to main. Resume signal: `prod-migration-applied`.
+Phase: 77 (next to start)
+Plan: —
+Status: Phase 76 SHIPPED (code-complete; operator runs `supabase db push --linked` post-merge per 76-POST-DEPLOY.md). Ready to discuss/plan Phase 77.
+Last activity: 2026-06-23 — Phase 76 verified, CR-01 fix applied in-phase, local-dev followups planted
 Last activity: 2026-06-23
 
 ## Deferred Items
