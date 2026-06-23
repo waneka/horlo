@@ -175,6 +175,7 @@ export async function getMostRecentWearDates(
  * Calendar views; PROJECT.md caps users at <500 watches so this is bounded.
  */
 export async function getAllWearEventsByUser(userId: string) {
+  // Phase 77 WR-02: select-all returns mediaType/mediaPath/posterPath automatically (added in Phase 76 Plan 01 schema)
   return db
     .select()
     .from(wearEvents)
@@ -249,6 +250,10 @@ export async function getWearEventsForViewer(
       wornDate: wearEvents.wornDate,
       note: wearEvents.note,
       photoUrl: wearEvents.photoUrl,
+      // Phase 77 WR-02: video metadata columns (additive — photo readers stay unchanged)
+      mediaType: wearEvents.mediaType,
+      mediaPath: wearEvents.mediaPath,
+      posterPath: wearEvents.posterPath,
       visibility: wearEvents.visibility,
       createdAt: wearEvents.createdAt,
     })
@@ -301,6 +306,10 @@ export async function getWearEventByIdForViewer(
       wornDate: wearEvents.wornDate,
       note: wearEvents.note,
       photoUrl: wearEvents.photoUrl,
+      // Phase 77 WR-02: video metadata columns (additive — photo readers stay unchanged)
+      mediaType: wearEvents.mediaType,
+      mediaPath: wearEvents.mediaPath,
+      posterPath: wearEvents.posterPath,
       visibility: wearEvents.visibility,
       createdAt: wearEvents.createdAt,
       // JOINed metadata for the detail page
@@ -386,6 +395,10 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
       wornDate: wearEvents.wornDate,
       note: wearEvents.note,
       photoUrl: wearEvents.photoUrl, // Phase 15 UAT: raw Storage path; page.tsx signs it
+      // Phase 77 WR-02: video metadata columns (additive — photo readers stay unchanged)
+      mediaType: wearEvents.mediaType,
+      mediaPath: wearEvents.mediaPath,
+      posterPath: wearEvents.posterPath,
       createdAt: wearEvents.createdAt,
       visibility: wearEvents.visibility, // Phase 12: tile carries tier
       username: profiles.username,
@@ -461,6 +474,9 @@ export async function getWearRailForViewer(viewerId: string): Promise<WywtRailDa
     note: r.note,
     visibility: r.visibility as WearVisibility, // Phase 12: tile carries tier
     isSelf: r.userId === viewerId,
+    // Phase 77 WR-02: video metadata propagated to tile (per Plan 02 additive fields)
+    mediaType: r.mediaType,
+    posterPath: r.posterPath,
   }))
 
   return { tiles, viewerId }
@@ -516,6 +532,10 @@ export async function getActiveWearsForUser(
         wornDate: wearEvents.wornDate,
         note: wearEvents.note,
         photoUrl: wearEvents.photoUrl, // raw Storage path — Pitfall F-2
+        // Phase 77 WR-02: video metadata columns (additive — photo readers stay unchanged)
+        mediaType: wearEvents.mediaType,
+        mediaPath: wearEvents.mediaPath,
+        posterPath: wearEvents.posterPath,
         visibility: wearEvents.visibility,
         createdAt: wearEvents.createdAt,
         username: profiles.username,
@@ -575,6 +595,10 @@ export async function getActiveWearsForUser(
       wornDate: wearEvents.wornDate,
       note: wearEvents.note,
       photoUrl: wearEvents.photoUrl, // raw Storage path — Pitfall F-2
+      // Phase 77 WR-02: video metadata columns (additive — photo readers stay unchanged)
+      mediaType: wearEvents.mediaType,
+      mediaPath: wearEvents.mediaPath,
+      posterPath: wearEvents.posterPath,
       visibility: wearEvents.visibility,
       createdAt: wearEvents.createdAt,
       username: profiles.username,
