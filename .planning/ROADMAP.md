@@ -283,7 +283,7 @@ Plans:
 - [x] 77-01-PLAN.md — Wave 0 foundation: delete `src/app/spike-mr-capture/` (T-77-01 mitigation) + seed 11 RED Vitest stub files (wave 1)
 - [x] 77-02-PLAN.md — Types + MediaState discriminated union in `src/lib/wywtTypes.ts` (VID-06; wave 1)
 - [x] 77-03-PLAN.md — DAL WR-02 column widening across 4 readers in `src/data/wearEvents.ts` (WR-02; wave 1)
-- [ ] 77-04-PLAN.md — `useMediaCapability` hook + `extractPosterBlob` lib (VID-04, VID-05; wave 1)
+- [x] 77-04-PLAN.md — `useMediaCapability` hook + `extractPosterBlob` lib (VID-04, VID-05; wave 1)
 - [ ] 77-05-PLAN.md — `VideoCaptureView` component + ring-fill keyframes (VID-02, VID-03; wave 2)
 - [ ] 77-06-PLAN.md — `ComposeStep` 3-button chooser + MediaState migration + video submit pipeline (VID-01, VID-06; wave 2)
 - [ ] 77-07-PLAN.md — `VideoPlayBadge` + `WearVideoClient` + `WearCard` discriminator branch (VID-13, VID-14, VID-15; wave 3)
@@ -295,6 +295,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
-| 77. Video Capture + Display UI | 3/8 | In Progress|  |
+| 77. Video Capture + Display UI | 4/8 | In Progress|  |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
