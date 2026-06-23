@@ -47,6 +47,10 @@ export interface WywtTile {
   visibility: WearVisibility
   /** True when this tile is the viewer's own (renders as self-tile with edit affordance). */
   isSelf: boolean
+
+  // Phase 77: video wear tile support (VID-13 / VID-14 — additive; defaults to undefined for legacy photo tiles per VID-15)
+  mediaType?: 'photo' | 'video'
+  posterPath?: string | null
 }
 
 /**
@@ -58,3 +62,18 @@ export interface WywtRailData {
   tiles: WywtTile[]
   viewerId: string
 }
+
+/**
+ * Phase 77: discriminated union for WYWT compose media — either photo OR video,
+ * never both. The DB CHECK wear_events_video_paths_required (Phase 76 schema) is
+ * the DB-layer gate; this union is the compile-time + runtime gate (VID-06).
+ *
+ * Used by `ComposeStep` and `WywtPostDialog` to replace the legacy
+ * `photoBlob: Blob | null` prop pair. `setMediaState({ kind: 'video', videoBlob, posterBlob })`
+ * is the only way to construct a video state — TypeScript narrowing in the submit
+ * handler's `switch (mediaState.kind)` makes co-existing photo+video unconstructable.
+ */
+export type MediaState =
+  | { kind: 'none' }
+  | { kind: 'photo'; blob: Blob }
+  | { kind: 'video'; videoBlob: Blob; posterBlob: Blob }
