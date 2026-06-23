@@ -93,7 +93,7 @@ export function rationaleFor(ctx: RationaleContext): string {
 
 // -------- helpers --------
 
-function topBrandOf(watches: readonly Watch[]): string | null {
+export function topBrandOf(watches: readonly Watch[]): string | null {
   const owned = watches.filter((w) => w.status === 'owned')
   if (owned.length === 0) return null
   const counts = new Map<string, number>()
@@ -105,7 +105,7 @@ function topBrandOf(watches: readonly Watch[]): string | null {
   return sorted[0]?.[0] ?? null
 }
 
-function dominantStyleOf(
+export function dominantStyleOf(
   watches: readonly Watch[],
 ): { label: string; share: number } | null {
   const owned = watches.filter((w) => w.status === 'owned')

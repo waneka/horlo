@@ -9,7 +9,7 @@ import { getPreferencesByUser } from '@/data/preferences'
 import { getAllWearEventsByUser } from '@/data/wearEvents'
 import { computeTasteTags } from '@/lib/tasteTags'
 import { computeTasteOverlap } from '@/lib/tasteOverlap'
-import { rationaleFor } from '@/lib/recommendations'
+import { rationaleFor, topBrandOf, dominantStyleOf } from '@/lib/recommendations'
 import type { Recommendation } from '@/lib/discoveryTypes'
 import type { Watch } from '@/lib/types'
 
@@ -91,6 +91,16 @@ export async function getRecommendationsForViewer(
   // 2. Empty collection → no seed base. Return empty; UI hides per L-02.
   const viewerOwned = viewerWatches.filter((w) => w.status === 'owned')
   if (viewerOwned.length === 0) return []
+
+  // Derive viewer taste signals ONCE here so the sparse-pool top-up can score
+  // catalog rows by brand/style match without re-deriving per call (quick task
+  // 260623-mn3). Both helpers return null on an empty owned-collection; in the
+  // (already-excluded) empty case the sparse top-up degrades to popularity
+  // ordering — back-compat with the prior behavior. These same values are
+  // also derived per-candidate inside rationaleFor below; that loop is left
+  // alone (this change only avoids redundant derivation inside the top-up).
+  const viewerTopBrand = topBrandOf(viewerWatches)
+  const viewerDominantStyleLabel = dominantStyleOf(viewerWatches)?.label ?? null
 
   // 3. Candidate public collectors (T-10-04-01: require BOTH profile_public
   //    AND collection_public to sample their owned watches).
@@ -220,7 +230,13 @@ export async function getRecommendationsForViewer(
   //     the top-up does not need PRNG seeding.
   if (candidateMap.size < SPARSE_POOL_THRESHOLD) {
     const needed = SPARSE_POOL_THRESHOLD - candidateMap.size
-    await topUpFromCatalogPopularity(candidateMap, excluded, needed)
+    await topUpFromCatalogPopularity(
+      candidateMap,
+      excluded,
+      needed,
+      viewerTopBrand,
+      viewerDominantStyleLabel,
+    )
   }
 
   // 7. Score + rationale per candidate.
@@ -298,27 +314,60 @@ export function mulberry32(seed: number): () => number {
 }
 
 /**
- * Phase 75 D-10/D-11/D-14 — sparse-pool catalog-popularity top-up.
+ * Phase 75 D-10/D-11/D-12/D-13/D-14 + quick-260623-mn3 — sparse-pool
+ * catalog-popularity top-up with TASTE-AWARE ranking.
  *
  * Mutates `candidateMap` in place by appending up to `needed` synthetic
- * catalog rows ordered by `(watches_catalog.ownersCount DESC, brand ASC)`,
+ * catalog rows ranked by viewer taste signals (top brand + dominant style),
  * skipping any row whose normalized (brand|model) key is already present in
  * `candidateMap` or in `excluded` (viewer's owned/wishlist/grail set).
+ *
+ * Scoring (in-memory, after a broader catalog fetch):
+ *   score = (brand-match ? 100 : 0)
+ *         + (style-overlap ? 50 : 0)
+ *         + ownersCount / 1000
+ *
+ * The +100 / +50 weights mirror the existing `RULE_MATCH_BONUS = 50` and
+ * `c.count * 100` pattern used in `getRecommendationsForViewer`'s final
+ * sort. The `ownersCount / 1000` term is a sub-1 additive that lets
+ * popularity bias ordering WITHIN the same +50 bucket without ever
+ * crossing a brand/style step. Brand + style matches are case-insensitive
+ * (mirrors `rationaleFor`'s brand-match casing convention).
+ *
+ * Tiebreaker (when score is identical): brand ASC, then model ASC —
+ * deterministic, never PRNG, so the 6h rotation-window determinism
+ * property is preserved end-to-end.
  *
  * Synthetic rows carry:
  *   - `ownerId: null` (D-12 — no single owner; surfaces as
  *     `representativeOwnerId: null` on the resulting Recommendation)
- *   - `count: 0` (routes through community-fallback rationale per D-13)
- *   - a synthetic Watch shape sufficient for the existing map step to render
- *     a Recommendation (id = catalog row id; tag arrays empty so no rule-
- *     template fires)
+ *   - `count: 0` (so the score path in the outer function does NOT add
+ *     RULE_MATCH_BONUS — the synthetic ordering is fully decided here)
+ *   - a synthetic Watch shape carrying the catalog row's REAL `styleTags`
+ *     (was `[]` pre-260623-mn3) — this is the key rationale-projection
+ *     side-effect: the existing rule loop in `getRecommendationsForViewer`
+ *     can now fire `Fans of {brand} love this` (brand-match template) and
+ *     `Matches your {style} collection` (dominant-style template, when
+ *     viewer's style share > 0.5) on top-up cards instead of always
+ *     falling through to `Popular in the community`
  *
  * Determinism within the 6h window is provided by the daily pg_cron refresh
- * of `watches_catalog.ownersCount` at 03:00 UTC (D-14) — no PRNG needed.
+ * of `watches_catalog.ownersCount` at 03:00 UTC (D-14) plus the deterministic
+ * sort comparator — no PRNG needed.
  *
- * Per D-11 the query uses `ownersCount` ONLY (NOT `ownersCount + wishlist`
- * + Count) because ownership is the semantic match for the rail title
- * "collectors LIKE YOU own."
+ * Per D-11 the underlying popularity signal uses `ownersCount` ONLY (NOT
+ * `ownersCount + wishlistCount`) because ownership is the semantic match
+ * for the rail title "collectors LIKE YOU own."
+ *
+ * DEFERRED:
+ *   - Role-based scoring (would parallel the brand/style components against
+ *     viewer's top role) is intentionally OMITTED here because
+ *     `watches_catalog.role_tags` is empirically 0%-populated locally;
+ *     scoring on it would be dead-on-arrival until a future catalog-
+ *     enrichment phase backfills role_tags from the watches table.
+ *   - `designMotifs` Jaccard against viewer's aggregated motifs is also
+ *     deferred — adds a DB join + computation not justified at this rail's
+ *     cost ceiling. Re-evaluate when SEED-002 hybrid recommender lands.
  */
 export async function topUpFromCatalogPopularity(
   candidateMap: Map<
@@ -327,9 +376,18 @@ export async function topUpFromCatalogPopularity(
   >,
   excluded: Set<string>,
   needed: number,
+  viewerTopBrand: string | null,
+  viewerDominantStyleLabel: string | null,
 ): Promise<void> {
   if (needed <= 0) return
 
+  // LIMIT 60 (was 20 pre-260623-mn3) — broader candidate pool so the
+  // in-memory scoring step has enough brand/style-bearing rows to pick
+  // from. 60 is 3× the prior cap and well within the daily-cron'd
+  // watches_catalog size (~200 rows on prod, ~160 locally). Trade-off:
+  // bigger fetch = better matches but slightly more DB read; the cost
+  // is amortized by the outer `'use cache'` boundary in Plan 07's
+  // Server Component wrapping.
   const rows = await db
     .select({
       id: watchesCatalog.id,
@@ -338,18 +396,50 @@ export async function topUpFromCatalogPopularity(
       reference: watchesCatalog.reference,
       imageUrl: watchesCatalog.imageUrl,
       ownersCount: watchesCatalog.ownersCount,
+      // Projected so the synthetic Watch can carry real styleTags →
+      // the rule loop in getRecommendationsForViewer fires the
+      // dominant-style rationale template on top-up rows when the
+      // viewer's dominant style overlaps the catalog row's styleTags.
+      styleTags: watchesCatalog.styleTags,
     })
     .from(watchesCatalog)
     .orderBy(desc(watchesCatalog.ownersCount), asc(watchesCatalog.brand))
-    .limit(20)
+    .limit(60)
+
+  // Score each row by viewer taste signal, then sort score DESC with
+  // alpha-stable tiebreak. Brand + style match are case-insensitive.
+  const topBrandLower = viewerTopBrand?.toLowerCase() ?? null
+  const styleLabelLower = viewerDominantStyleLabel?.toLowerCase() ?? null
+  const scored = rows.map((row) => {
+    const brandMatch =
+      topBrandLower !== null && row.brand.toLowerCase() === topBrandLower
+    const styleMatch =
+      styleLabelLower !== null &&
+      (row.styleTags ?? []).some((s) => s.toLowerCase() === styleLabelLower)
+    const score =
+      (brandMatch ? 100 : 0) +
+      (styleMatch ? 50 : 0) +
+      (row.ownersCount ?? 0) / 1000
+    return { row, score }
+  })
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.row.brand.localeCompare(b.row.brand) ||
+      a.row.model.localeCompare(b.row.model),
+  )
 
   let appended = 0
-  for (const row of rows) {
+  for (const { row } of scored) {
     if (appended >= needed) break
     const key = `${row.brand.trim().toLowerCase()}|${row.model.trim().toLowerCase()}`
     if (excluded.has(key)) continue
     if (candidateMap.has(key)) continue
     // Synthetic Watch shape — only the fields downstream consumers read.
+    // styleTags PROJECTED from the catalog row so the rule loop can fire
+    // its dominant-style template on this row (per 260623-mn3). roleTags
+    // STAYS empty because watches_catalog.role_tags is empirically 0%-
+    // populated (deferred to a future catalog-enrichment phase).
     const syntheticWatch: Watch = {
       id: row.id,
       brand: row.brand,
@@ -357,7 +447,7 @@ export async function topUpFromCatalogPopularity(
       status: 'owned',
       movement: 'auto',
       complications: [],
-      styleTags: [],
+      styleTags: row.styleTags ?? [],
       designTraits: [],
       roleTags: [],
       imageUrl: row.imageUrl ?? undefined,
