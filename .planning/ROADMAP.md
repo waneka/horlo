@@ -287,7 +287,7 @@ Plans:
 - [x] 77-05-PLAN.md — `VideoCaptureView` component + ring-fill keyframes (VID-02, VID-03; wave 2)
 - [x] 77-06-PLAN.md — `ComposeStep` 3-button chooser + MediaState migration + video submit pipeline (VID-01, VID-06; wave 2)
 - [x] 77-07-PLAN.md — `VideoPlayBadge` + `WearVideoClient` + `WearCard` discriminator branch (VID-13, VID-14, VID-15; wave 3)
-- [ ] 77-08-PLAN.md — `WywtTile` video branch + WearsLane WearSlide widening + signed-URL minting in 3 Server Components (VID-13, VID-14; wave 3)
+- [x] 77-08-PLAN.md — `WywtTile` video branch + WearsLane WearSlide widening + signed-URL minting in 3 Server Components (VID-13, VID-14; wave 3)
 **UI hint**: yes
 
 ## Progress Table
@@ -295,6 +295,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
-| 77. Video Capture + Display UI | 7/8 | In Progress|  |
+| 77. Video Capture + Display UI | 8/8 | Complete   | 2026-06-23 |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
