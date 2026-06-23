@@ -175,17 +175,18 @@
  * Phase 77: video capture progress ring (VID-02 D-09).
  *
  * Animates an SVG circle's stroke-dashoffset from full circumference to 0
- * over exactly 3.0s — the wall-clock duration of MediaRecorder's
- * setTimeout auto-stop in VideoCaptureView. Default circumference 138
- * (≈ 2π × 22 for a 44px ring); components may override via the
- * --ring-circumference custom property if they ship a different ring size.
+ * over exactly 4.0s — the wall-clock duration of MediaRecorder's
+ * setTimeout auto-stop in VideoCaptureView. Default circumference 107
+ * (≈ 2π × 17 for a 40px ring overlay on the camera preview); components
+ * may override via the --ring-circumference custom property if they ship
+ * a different ring size.
  *
  * Respects prefers-reduced-motion: when reduced, the ring shows as full
  * instantly (no animation) — the recording timer still runs.
  */
 @keyframes ring-fill {
   from {
-    stroke-dashoffset: var(--ring-circumference, 138);
+    stroke-dashoffset: var(--ring-circumference, 107);
   }
   to {
     stroke-dashoffset: 0;
@@ -193,7 +194,7 @@
 }
 
 .ring-fill-animation {
-  animation: ring-fill 3s linear forwards;
+  animation: ring-fill 4s linear forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

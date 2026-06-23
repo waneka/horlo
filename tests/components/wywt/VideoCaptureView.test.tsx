@@ -34,7 +34,7 @@ describe('VideoCaptureView — stream-as-prop video capture (VID-02, VID-03)', (
     vi.stubGlobal('MediaRecorder', MockMediaRecorder)
   })
 
-  it('renders Cancel + Record 3s buttons in pre-recording state', () => {
+  it('renders Cancel + Record 4s buttons in pre-recording state', () => {
     render(
       <VideoCaptureView
         stream={mkStream()}

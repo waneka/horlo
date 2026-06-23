@@ -74,7 +74,7 @@ export function VideoCaptureView({
     }
   }, [stream])
 
-  // Unmount cleanup: clear any pending 3s timer + stop recorder if active.
+  // Unmount cleanup: clear any pending 4s timer + stop recorder if active.
   useEffect(
     () => () => {
       if (stopTimerRef.current) clearTimeout(stopTimerRef.current)
@@ -87,7 +87,14 @@ export function VideoCaptureView({
   function handleStartRecording() {
     cancelledRef.current = false
     chunksRef.current = []
-    const recorder = new MediaRecorder(stream, { mimeType: preferredMimeType })
+    // 6 Mbps bitrate keeps 4s portrait-720p clips at ~3 MB — comfortable
+    // margin under the 5 MB server cap (Phase 76 VID-09). Quality drop is
+    // visually imperceptible for wrist-rotation content (mostly static
+    // watch + moderate rotation); H.264 compresses this regime efficiently.
+    const recorder = new MediaRecorder(stream, {
+      mimeType: preferredMimeType,
+      videoBitsPerSecond: 6_000_000,
+    })
     recorderRef.current = recorder
 
     recorder.ondataavailable = (e: BlobEvent) => {
@@ -115,7 +122,7 @@ export function VideoCaptureView({
 
     recorder.start()
     setRecording(true)
-    stopTimerRef.current = setTimeout(() => recorder.stop(), 3000)
+    stopTimerRef.current = setTimeout(() => recorder.stop(), 4000)
   }
 
   function handleCancelRecording() {
@@ -156,8 +163,39 @@ export function VideoCaptureView({
           <div
             role="status"
             aria-label="Recording in progress"
-            className="absolute top-3 left-3 z-20 size-3 rounded-full bg-destructive dark:bg-destructive animate-pulse"
-          />
+            className="absolute top-3 left-3 z-20"
+            style={{ width: 40, height: 40 }}
+          >
+            {/* Progress ring — 40px outer, 3px stroke, fills clockwise over the
+                recording window. Circumference = 2π × 17 ≈ 107 (radius 17 keeps
+                the stroke inside the 40px box without clipping). */}
+            <svg
+              aria-hidden="true"
+              className="absolute inset-0 pointer-events-none"
+              viewBox="0 0 40 40"
+              width="40"
+              height="40"
+              style={{ transform: 'rotate(-90deg)' }}
+            >
+              <circle
+                cx="20"
+                cy="20"
+                r="17"
+                fill="none"
+                stroke="white"
+                strokeWidth="3"
+                className="ring-fill-animation"
+                strokeDasharray="107"
+                strokeDashoffset="107"
+                style={{ ['--ring-circumference' as string]: 107 }}
+              />
+            </svg>
+            {/* Red dot centered inside the ring */}
+            <span
+              aria-hidden="true"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-3 rounded-full bg-destructive dark:bg-destructive animate-pulse"
+            />
+          </div>
         )}
         <span className="sr-only" aria-live="polite">
           {recording ? 'Recording started' : extracting ? 'Recording complete' : ''}
@@ -173,38 +211,15 @@ export function VideoCaptureView({
         >
           Cancel
         </Button>
-        <div className="relative">
-          <Button
-            type="button"
-            onClick={handleStartRecording}
-            disabled={disabled || recording || extracting}
-            aria-label="Record video"
-            className="min-h-11"
-          >
-            {extracting ? 'Processing…' : recording ? 'Recording…' : 'Record 3s'}
-          </Button>
-          {recording && (
-            <svg
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none"
-              viewBox="0 0 44 44"
-              width="44"
-              height="44"
-            >
-              <circle
-                cx="22"
-                cy="22"
-                r="22"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                className="ring-fill-animation"
-                strokeDasharray="138"
-                strokeDashoffset="138"
-              />
-            </svg>
-          )}
-        </div>
+        <Button
+          type="button"
+          onClick={handleStartRecording}
+          disabled={disabled || recording || extracting}
+          aria-label="Record video"
+          className="min-h-11"
+        >
+          {extracting ? 'Processing…' : recording ? 'Recording…' : 'Record 4s'}
+        </Button>
       </div>
     </div>
   )

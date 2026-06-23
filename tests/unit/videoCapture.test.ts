@@ -1,7 +1,7 @@
 // Wave 0 RED stub — Phase 77 / 77-01-PLAN.md
 // Plan 05: upgraded from todo to assertions (VID-02, VID-03)
 //
-// Unit tests for the MediaRecorder 3s timer + cancel guard semantics. These
+// Unit tests for the MediaRecorder 4s timer + cancel guard semantics. These
 // tests do not import the component — they exercise the same sequence the
 // component performs (setTimeout → stop; clearTimeout → no stop;
 // ondataavailable → chunks → onstop assembles Blob), so a future refactor
@@ -9,26 +9,26 @@
 
 import { describe, it, expect, vi } from 'vitest'
 
-describe('videoCapture — MediaRecorder 3s timer + cancel guard (VID-02, VID-03)', () => {
-  it('VID-02: setTimeout fires the stop callback at exactly 3000ms', () => {
+describe('videoCapture — MediaRecorder 4s timer + cancel guard (VID-02, VID-03)', () => {
+  it('VID-02: setTimeout fires the stop callback at exactly 4000ms', () => {
     vi.useFakeTimers()
     const stopFn = vi.fn()
-    setTimeout(() => stopFn(), 3000)
-    vi.advanceTimersByTime(2999)
+    setTimeout(() => stopFn(), 4000)
+    vi.advanceTimersByTime(3999)
     expect(stopFn).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
     expect(stopFn).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
   })
 
-  it('VID-03: cancel before 3000ms clears the timer so stop does not auto-fire', () => {
+  it('VID-03: cancel before 4000ms clears the timer so stop does not auto-fire', () => {
     vi.useFakeTimers()
     const autoStop = vi.fn()
-    const timer = setTimeout(() => autoStop(), 3000)
+    const timer = setTimeout(() => autoStop(), 4000)
     // Cancel path: clearTimeout fires THE timer; the recorder.stop() in
     // handleCancelRecording is a separate synchronous call (not via timer).
     clearTimeout(timer)
-    vi.advanceTimersByTime(3500)
+    vi.advanceTimersByTime(4500)
     expect(autoStop).not.toHaveBeenCalled()
     vi.useRealTimers()
   })
