@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
 status: executing
-last_updated: "2026-06-23T00:33:16.616Z"
+last_updated: "2026-06-23T00:43:00.000Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 1
@@ -11,6 +11,7 @@ progress:
   total_plans: 4
   completed_plans: 3
   percent: 75
+  notes: "Plan 04 executor portion (Tasks 1+2) complete; operator-blocked on Task 3 (`supabase db push --linked` post-merge). See 76-POST-DEPLOY.md."
 ---
 
 # Project State
@@ -24,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPP
 
 ## Current Position
 
-Phase: 76 (Video Schema, Storage Paths + Server Action) — EXECUTING
+Phase: 76 (Video Schema, Storage Paths + Server Action) — EXECUTING (operator-gated)
 Plan: 4 of 4
-Status: Ready to execute
+Status: Executor portion COMPLETE (Tasks 1+2: verification PASS + 76-POST-DEPLOY.md runbook written). Operator-blocked on Task 3: `supabase db push --linked` to prod, run AFTER PR merge to main. Resume signal: `prod-migration-applied`.
 Last activity: 2026-06-23
 
 ## Deferred Items
@@ -66,6 +67,7 @@ Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-f
 
 ## Performance Metrics
 
+- Phase 76 P04: ~8min executor portion, 2 of 3 tasks complete (Task 3 operator-blocked), 3 files (1 created `76-POST-DEPLOY.md`, 1 created `76-04-SUMMARY.md`, 1 modified `76-VALIDATION.md`), 7/7 phase reqs verified green (VID-07/08/09/10/11/12/16); no deviations. `npm run build` ✓ in 5.5s; 4 targeted vitest invocations all green (2 env-skipped, 2 pass — 15/15 tests pass for the run ones); 2 grep-based VID-15 regression guards = 1.
 - Phase 76 P03: ~20min, 3 tasks, 3 files (2 modified, 1 created), 5/5 reqs (VID-07, VID-08, VID-09, VID-10, VID-16 — VID-07 + VID-16 were already complete from P02 but the Server Action enforces them server-side); 1 auto-fix (mockStorage `.list()` two-arg signature)
 - Phase 76 P02: ~10min, 2 tasks, 2 files (1 modified, 1 created), 2/2 reqs (VID-07, VID-16); no deviations
 - Phase 76 P01: ~35min, 4 tasks, 4 files (1 modified, 3 created), 2/2 reqs (VID-11, VID-12); 1 auto-fix (drizzle .cause.code unwrap pattern documented)
@@ -123,10 +125,10 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-06-23 — Phase 76 Plan 03 SHIPPED. `logWearWithVideo` Server Action + `logWearEventWithVideo` DAL helper added as direct structural parallel to the Phase 15 photo path (7 documented divergences); 9 unit tests pass (`tests/actions/wearEventsVideo.test.ts`) covering VID-07/08/09/10/16; build green. logWearWithPhoto preserved byte-for-byte (VID-15 regression guard). Only 1 auto-fix needed: mockStorage `.list()` helper destructured the wrong positional arg (Supabase `.list(path, opts)` is 2-arg). Plan 04 (verification + prod migration push) remaining.
+Last activity: 2026-06-23 — Phase 76 Plan 04 executor portion COMPLETE. Verification pipeline 6/6 green (4 targeted vitest invocations + `npm run build` exit 0 + 2 VID-15 regression grep guards = 1). `76-POST-DEPLOY.md` operator runbook written (170 lines, 6 sections). `76-VALIDATION.md` `nyquist_compliant: true` flipped. Phase 76 is CODE-COMPLETE on `main` and ready for PR merge + post-merge prod migration push via `supabase db push --linked` (Plan 04 Task 3 — operator-gated; see `76-POST-DEPLOY.md` Sections 1-5 for the exact runbook and Manual RLS check).
 
-Next action: `/gsd-execute-phase 76` to continue Phase 76 with Plan 04 (verification + prod-side `supabase db push --linked`).
+Next action: (1) Merge Phase 76 PR to main; (2) Vercel deploy succeeds; (3) Operator runs `supabase db push --linked` per `76-POST-DEPLOY.md`; (4) Operator runs the Manual RLS check (Section 5); (5) Resume with signal `prod-migration-applied` to mark Plan 04 complete and Phase 76 shipped. Phase 77 (Video Capture + Display UI) can begin development against the documented Phase 76 contracts in parallel — only its runtime ship-to-prod is gated on the operator push.
 
 ## Operator Next Steps
 
-- Execute Phase 76 Plan 04 with `/gsd-execute-phase 76` (continues from Plan 4 of 4 — final plan)
+- **Plan 04 Task 3 — HUMAN-ACTION (operator-gated):** After Phase 76 PR merges to `main` and Vercel deploy succeeds, follow `.planning/phases/76-video-schema-storage-paths-server-action/76-POST-DEPLOY.md` Sections 1–5 to apply the migration to prod Supabase. The runbook includes the exact `supabase db push --linked` command + the 2-user Manual RLS check that empirically confirms cross-user `.mp4` SELECT returns 403. Resume signal: `prod-migration-applied`.
