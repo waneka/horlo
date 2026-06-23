@@ -243,7 +243,7 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 <summary>🔨 v8.3 WYWT Video (Phases 76-77) — IN PROGRESS</summary>
 
 - [x] **Phase 76: Video Schema, Storage Paths + Server Action** — VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16 (shipped 2026-06-23; operator runs `supabase db push --linked` post-merge per 76-POST-DEPLOY.md)
-- [ ] **Phase 77: Video Capture + Display UI** — VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15
+- [ ] **Phase 77: Video Capture + Display UI** — VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15 (planned 2026-06-23; 8 plans across 3 waves)
 
 7/16 v8.3 requirements complete (Phase 76); 9/16 remaining (Phase 77). Two-phase feature milestone: backend (schema + storage probes + Server Action + IDOR guard) shipped; UI (ComposeStep video-capture mode + poster tiles + `/wear/{id}` player) next. Spike 001 VALIDATED 2026-06-22 — iOS 26 mp4/avc1 + autoplay-muted-loop + canvas poster confirmed.
 
@@ -271,14 +271,23 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 ### Phase 77: Video Capture + Display UI
 **Goal**: A collector can record a 3-second wrist-rotation video in the WYWT compose flow and see it rendered as a poster tile in feed/rail and as an autoplaying player on the wear-event detail page.
 **Depends on**: Phase 76
-**Requirements**: VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15
+**Requirements**: VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15 (+ WR-02 fold-in from Phase 76 review)
 **Success Criteria** (what must be TRUE):
   1. User can switch between "Take photo" and "Record video" modes in the WYWT compose flow and switch back before submitting; submitting creates either a photo or a video wear event, never both (VID-01, VID-06)
   2. User taps "Record 3s" and the camera records for exactly 3.0 seconds with an on-screen countdown, then auto-stops; user can discard the clip and re-record without leaving the compose flow (VID-02, VID-03)
   3. The captured clip is stored as `video/mp4;codecs=avc1` when the browser supports it (iOS Safari, Chrome 121+); a webm fallback is used only on browsers that do not support mp4 MediaRecorder (VID-04)
   4. A poster JPEG is extracted client-side at 3/4 through the clip via canvas (no server transcoding); the poster is visible to the user in the compose flow before they submit (VID-05)
   5. Video posts appear as static poster images with a play-icon overlay in every feed/rail/profile-grid surface; tapping navigates to `/wear/{id}` which autoplays the video muted-looped with `playsInline` (no fullscreen takeover on iOS); existing photo posts are visually unchanged on every surface (VID-13, VID-14, VID-15)
-**Plans**: TBD
+**Plans**: 8 plans across 3 waves
+Plans:
+- [ ] 77-01-PLAN.md — Wave 0 foundation: delete `src/app/spike-mr-capture/` (T-77-01 mitigation) + seed 11 RED Vitest stub files (wave 1)
+- [ ] 77-02-PLAN.md — Types + MediaState discriminated union in `src/lib/wywtTypes.ts` (VID-06; wave 1)
+- [ ] 77-03-PLAN.md — DAL WR-02 column widening across 4 readers in `src/data/wearEvents.ts` (WR-02; wave 1)
+- [ ] 77-04-PLAN.md — `useMediaCapability` hook + `extractPosterBlob` lib (VID-04, VID-05; wave 1)
+- [ ] 77-05-PLAN.md — `VideoCaptureView` component + ring-fill keyframes (VID-02, VID-03; wave 2)
+- [ ] 77-06-PLAN.md — `ComposeStep` 3-button chooser + MediaState migration + video submit pipeline (VID-01, VID-06; wave 2)
+- [ ] 77-07-PLAN.md — `VideoPlayBadge` + `WearVideoClient` + `WearCard` discriminator branch (VID-13, VID-14, VID-15; wave 3)
+- [ ] 77-08-PLAN.md — `WywtTile` video branch + WearsLane WearSlide widening + signed-URL minting in 3 Server Components (VID-13, VID-14; wave 3)
 **UI hint**: yes
 
 ## Progress Table
@@ -286,6 +295,6 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
-| 77. Video Capture + Display UI | 0/TBD | Not started | - |
+| 77. Video Capture + Display UI | 0/8 | Not started | - |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
