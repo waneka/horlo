@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
-status: in_progress
-last_updated: "2026-06-23T00:43:00.000Z"
-last_activity: 2026-06-23
+status: executing
+last_updated: "2026-06-23T14:03:54.780Z"
+last_activity: 2026-06-23 -- Phase 77 Plan 01 (Wave 0 foundation) COMPLETE
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 50
-  notes: "Phase 76 code-complete and shipped (commits land on main). Operator-deferred items in 76-HUMAN-UAT.md: (1) `supabase db push --linked` post-merge per 76-POST-DEPLOY.md; (2) manual cross-user RLS .mp4 SELECT verification. CR-01 fix (replaced .list() paginated probes with createSignedUrl HEAD probes in both logWearWithVideo and logWearWithPhoto) landed in-phase. Phase 77 UI work is unblocked against the merged contracts."
+  total_plans: 12
+  completed_plans: 5
+  percent: 42
 ---
 
 # Project State
@@ -21,15 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-10 — v8.2 Discovery Freshness SHIPPED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 77 — Video Capture + Display UI (v8.3 final phase; user-facing record + playback)
+**Current focus:** Phase 77 — video-capture-display-ui
 
 ## Current Position
 
-Phase: 77 (next to start)
-Plan: —
-Status: Phase 76 SHIPPED (code-complete; operator runs `supabase db push --linked` post-merge per 76-POST-DEPLOY.md). Ready to discuss/plan Phase 77.
-Last activity: 2026-06-23 — Phase 76 verified, CR-01 fix applied in-phase, local-dev followups planted
-Last activity: 2026-06-23
+Phase: 77 (video-capture-display-ui) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute Plan 02 (Wave 1 — types + capability + DAL)
+Last activity: 2026-06-23 -- Phase 77 Plan 01 (Wave 0 foundation) COMPLETE
 
 ## Deferred Items
 
@@ -103,6 +101,14 @@ Total: 27 items (2 debug + 11 quick_task + 14 seed). SEED-017 (recommendations-f
 - **Phase 15 threat-model analogs**: T-15-04 (probe both Storage objects before INSERT) → VID-08; T-15-17 (server-constructed path only) → VID-16; T-15-18 (best-effort delete on INSERT failure) → VID-10.
 - **Spike cleanup**: `src/app/spike-mr-capture/` must be deleted in Phase 77 (or earlier — throwaway code per Spike 001 README cleanup instructions).
 
+**Phase 77 Plan 01 (Wave 0 foundation) outcomes — 2026-06-23:**
+
+- **T-77-01 closed**: `src/app/spike-mr-capture/` (367-line throwaway page from Spike 001) removed via `git rm` (commit `75b00386`). No redirect / replacement — 404 is the correct end state for a never-user-facing spike route. Vercel's next deploy publishes 404 for `/spike-mr-capture`.
+- **Wave 0 RED stub convention**: every Wave 0 stub uses `// Wave 0 RED stub — Phase 77 / 77-01-PLAN.md` as its first-line marker + vitest imports + `describe()` + `it.todo()` callsites + one sanity `it()` so vitest discovery returns a positive 1-passed signal per file (suite total: 11 passed | 32 todo | 0 failed across the 11 stubs).
+- **`it.todo` not `it.skip`**: Vitest 3 reports `it.todo(...)` as `↓ todo` rather than `× failed`, keeping the red/green signal pristine for downstream feedback loops.
+- **Commented-import escape hatch**: `tests/unit/mediaState.test.ts` keeps the `MediaState` import COMMENTED out (`// TODO Plan 02: import type { MediaState } from '@/lib/wywtTypes'`) so Wave 0 does not depend on Plan 02 (would block its own preconditions). Plan 02's task list literal-greps for this comment to perform the uncomment step.
+- **`wave_0_complete: true`**: 77-VALIDATION.md frontmatter flag flipped — gate for Plan 02+ satisfied (commit `b0cdd52c`).
+
 ### Pending Todos
 
 None.
@@ -123,12 +129,13 @@ None.
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
+| Phase 77 P01 | 8min | 2 tasks | 13 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-23 — Phase 76 Plan 04 executor portion COMPLETE. Verification pipeline 6/6 green (4 targeted vitest invocations + `npm run build` exit 0 + 2 VID-15 regression grep guards = 1). `76-POST-DEPLOY.md` operator runbook written (170 lines, 6 sections). `76-VALIDATION.md` `nyquist_compliant: true` flipped. Phase 76 is CODE-COMPLETE on `main` and ready for PR merge + post-merge prod migration push via `supabase db push --linked` (Plan 04 Task 3 — operator-gated; see `76-POST-DEPLOY.md` Sections 1-5 for the exact runbook and Manual RLS check).
+Last activity: 2026-06-23 — Phase 77 Plan 01 (Wave 0 foundation) COMPLETE. T-77-01 (HIGH unauthenticated `/spike-mr-capture` prod route) closed via `git rm` (commit `75b00386`). 11 RED Vitest stub files seeded under tests/hooks/, tests/unit/, tests/components/wywt/, tests/components/wear/, tests/components/home/ at the exact paths in 77-VALIDATION.md §Wave 0 Requirements (commit `b0cdd52c`). 77-VALIDATION.md `wave_0_complete: false → true`. `npm run build` exit 0 after both commits. Vitest on the 11 stubs: 11 passed | 32 todo | 0 failed. Plan-level metadata commit pending.
 
-Next action: (1) Merge Phase 76 PR to main; (2) Vercel deploy succeeds; (3) Operator runs `supabase db push --linked` per `76-POST-DEPLOY.md`; (4) Operator runs the Manual RLS check (Section 5); (5) Resume with signal `prod-migration-applied` to mark Plan 04 complete and Phase 76 shipped. Phase 77 (Video Capture + Display UI) can begin development against the documented Phase 76 contracts in parallel — only its runtime ship-to-prod is gated on the operator push.
+Next action: Execute Plan 02 (Wave 1 — types + capability + DAL) per `.planning/phases/77-video-capture-display-ui/77-02-PLAN.md`. Phase 76 is also still CODE-COMPLETE on `main` awaiting operator prod migration push (`supabase db push --linked` per 76-POST-DEPLOY.md); Phase 77 development can continue against documented Phase 76 contracts in parallel — only Phase 77's runtime ship-to-prod is gated on that operator push.
 
 ## Operator Next Steps
 

@@ -280,7 +280,7 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
   5. Video posts appear as static poster images with a play-icon overlay in every feed/rail/profile-grid surface; tapping navigates to `/wear/{id}` which autoplays the video muted-looped with `playsInline` (no fullscreen takeover on iOS); existing photo posts are visually unchanged on every surface (VID-13, VID-14, VID-15)
 **Plans**: 8 plans across 3 waves
 Plans:
-- [ ] 77-01-PLAN.md — Wave 0 foundation: delete `src/app/spike-mr-capture/` (T-77-01 mitigation) + seed 11 RED Vitest stub files (wave 1)
+- [x] 77-01-PLAN.md — Wave 0 foundation: delete `src/app/spike-mr-capture/` (T-77-01 mitigation) + seed 11 RED Vitest stub files (wave 1)
 - [ ] 77-02-PLAN.md — Types + MediaState discriminated union in `src/lib/wywtTypes.ts` (VID-06; wave 1)
 - [ ] 77-03-PLAN.md — DAL WR-02 column widening across 4 readers in `src/data/wearEvents.ts` (WR-02; wave 1)
 - [ ] 77-04-PLAN.md — `useMediaCapability` hook + `extractPosterBlob` lib (VID-04, VID-05; wave 1)
@@ -295,6 +295,6 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
-| 77. Video Capture + Display UI | 0/8 | Not started | - |
+| 77. Video Capture + Display UI | 1/8 | In Progress|  |
 
 _Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
