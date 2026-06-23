@@ -45,10 +45,10 @@ blocked: 0
 
 (none yet — populated as UAT progresses)
 
-## Pre-flight follow-ups (from 77-REVIEW.md)
+## Fix-pass shipped (commits 3474a781, 774d4f25)
 
-These are NOT phase-blocking but will hit the UAT walker immediately on a non-owner video tile. Strongly recommend bundling a fix-pass before walking:
+The three pre-flight follow-ups from 77-REVIEW.md were bundled into a fix-pass before this UAT walk:
 
-- **CR-01 (Critical):** Phase 11 storage RLS policy uses `split_part(storage.filename(name), '.', 1)` which cannot parse `{wearEventId}-poster.jpg` (returns `{wearEventId}-poster` — not a valid UUID). Non-owner viewers cannot SELECT posters → home-rail video tiles render `(catalog imageUrl) + VideoPlayBadge` (CR-03 manifestation); detail/lane shows "Video unavailable". Fix: new RLS migration that strips `-poster` suffix before the UUID cast. Operator-blocking (`supabase db push --linked`).
-- **CR-03 (Critical):** WywtTile renders VideoPlayBadge unconditionally for `mediaType === 'video'` regardless of whether `signedPosterUrl` resolved. Fix: gate the badge on `signedPosterUrl != null` (or omit the badge entirely when the catalog fallback fires).
-- **WR-05 (Warning):** Bucket `allowed_mime_types` strict-matches `'video/mp4'`. Client uploads with `contentType: mediaState.videoBlob.type` which is `'video/mp4;codecs=avc1'` on iOS — works by coincidence (Supabase storage parses the prefix). Android Chrome would 400. Fix: pass `contentType: 'video/mp4'` explicitly when the chosen MIME is mp4-family.
+- **CR-01 (Critical):** New migration `20260623000000_phase77_storage_rls_poster_filename.sql` extends the Phase 11 `wear_photos_select_three_tier` policy with a `regexp_replace(filename, '-poster\.', '.')` step so the UUID cast succeeds for both `{uuid}.{ext}` and `{uuid}-poster.{ext}` filenames. **Requires `supabase db push --linked` post-merge — see `77-POST-DEPLOY.md`.** UAT items 1, 2, 4 below depend on this push landing.
+- **CR-03 (Critical):** `WywtTile` now gates `<VideoPlayBadge />` on `signedPosterUrl != null`. The badge no longer renders over the catalog imageUrl fallback when the poster mint fails.
+- **WR-05 (Warning):** `ComposeStep` strips the codec suffix from the upload `Content-Type` so Android Chrome's strict MIME parser accepts the upload (`video/mp4;codecs=avc1` → `video/mp4`).
