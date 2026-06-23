@@ -39,6 +39,42 @@ export function buildWearPhotoPath(
 }
 
 /**
+ * Build the Storage path for a wear-event video.
+ *
+ * @throws TypeError when userId is falsy or wearEventId is not a UUID.
+ */
+export function buildWearVideoPath(
+  userId: string,
+  wearEventId: string,
+): string {
+  if (!userId) {
+    throw new TypeError('userId required')
+  }
+  if (!UUID_RE.test(wearEventId)) {
+    throw new TypeError('wearEventId must be a UUID')
+  }
+  return `${userId}/${wearEventId}.mp4`
+}
+
+/**
+ * Build the Storage path for a wear-event poster (frame extracted from video).
+ *
+ * @throws TypeError when userId is falsy or wearEventId is not a UUID.
+ */
+export function buildWearPosterPath(
+  userId: string,
+  wearEventId: string,
+): string {
+  if (!userId) {
+    throw new TypeError('userId required')
+  }
+  if (!UUID_RE.test(wearEventId)) {
+    throw new TypeError('wearEventId must be a UUID')
+  }
+  return `${userId}/${wearEventId}-poster.jpg`
+}
+
+/**
  * Upload a JPEG blob to the wear-photos bucket using the user's session-
  * scoped Supabase client. RLS enforces the folder boundary.
  *
