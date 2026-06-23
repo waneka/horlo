@@ -171,14 +171,20 @@ export async function logWearWithPhoto(input: {
   const supabase = await createSupabaseServerClient()
 
   // If client asserts hasPhoto, verify the object exists under the caller's
-  // folder BEFORE inserting the DB row (T-15-04 mitigation).
+  // folder BEFORE inserting the DB row (T-15-04 mitigation). Use createSignedUrl
+  // as an O(1) existence probe — `.list({search})` is paginated (~100 cap), so
+  // a user with >100 photos would silently false-fail (CR-01 / WR-03 fix).
   if (parsed.data.hasPhoto) {
-    const { data: listed, error: listErr } = await supabase.storage
+    const { error: probeErr } = await supabase.storage
       .from('wear-photos')
-      .list(user.id, { search: `${parsed.data.wearEventId}.jpg` })
-    const found =
-      !listErr && (listed ?? []).some((f) => f.name === `${parsed.data.wearEventId}.jpg`)
-    if (!found) {
+      .createSignedUrl(photoPath, 1)
+    if (probeErr) {
+      console.error('[logWearWithPhoto] storage probe failed:', probeErr)
+      try {
+        await supabase.storage.from('wear-photos').remove([photoPath])
+      } catch {
+        // best-effort orphan cleanup; never escalate
+      }
       return {
         success: false,
         error: 'Photo upload failed — please try again',
@@ -343,30 +349,31 @@ export async function logWearWithVideo(input: {
   const supabase = await createSupabaseServerClient()
 
   // (6) VID-08: probe BOTH Storage objects in parallel BEFORE inserting the
-  // DB row. Exact-match `.some(f => f.name === ...)` avoids prefix-match
-  // false positives — `.list({search: 'abc.mp4'})` may return `abc.mp4` AND
-  // `abc-poster.jpg` since it's a prefix search (Pitfall 1). Either miss
-  // returns the uniform 'Video upload failed' string — no leak of which
-  // file was missing.
-  const [videoList, posterList] = await Promise.all([
-    supabase.storage
-      .from('wear-photos')
-      .list(user.id, { search: `${parsed.data.wearEventId}.mp4` }),
-    supabase.storage
-      .from('wear-photos')
-      .list(user.id, { search: `${parsed.data.wearEventId}-poster.jpg` }),
+  // DB row. createSignedUrl is an O(1) HEAD-style existence check — returns
+  // an error if the object is missing, without enumerating the folder. The
+  // prior `.list({search})` probe was paginated (~100 cap) so a user with
+  // >100 wear photos would silently false-fail (CR-01 fix). Either miss
+  // returns the uniform 'Video upload failed' string — no leak of which file
+  // was missing.
+  const [videoProbe, posterProbe] = await Promise.all([
+    supabase.storage.from('wear-photos').createSignedUrl(videoPath, 1),
+    supabase.storage.from('wear-photos').createSignedUrl(posterPath, 1),
   ])
-  const videoFound =
-    !videoList.error &&
-    (videoList.data ?? []).some(
-      (f) => f.name === `${parsed.data.wearEventId}.mp4`,
-    )
-  const posterFound =
-    !posterList.error &&
-    (posterList.data ?? []).some(
-      (f) => f.name === `${parsed.data.wearEventId}-poster.jpg`,
-    )
-  if (!videoFound || !posterFound) {
+  if (videoProbe.error || posterProbe.error) {
+    if (videoProbe.error || posterProbe.error) {
+      console.error(
+        '[logWearWithVideo] storage probe failed:',
+        videoProbe.error ?? 'ok',
+        posterProbe.error ?? 'ok',
+      )
+    }
+    try {
+      await supabase.storage
+        .from('wear-photos')
+        .remove([videoPath, posterPath])
+    } catch {
+      // best-effort orphan cleanup; never escalate
+    }
     return { success: false, error: 'Video upload failed — please try again' }
   }
 

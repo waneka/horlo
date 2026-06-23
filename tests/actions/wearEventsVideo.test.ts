@@ -106,10 +106,13 @@ function mkInput(overrides: Partial<ValidInput> = {}): ValidInput {
   }
 }
 
-// Build a Supabase-storage stub whose `.list({ search })` returns a found/empty
-// result per object kind (video .mp4 vs poster -poster.jpg), and whose
-// `.remove()` returns the configured error or null. Each test that reaches
-// Storage stages the stub via `(createSupabaseServerClient as Mock).mockResolvedValueOnce(stub)`.
+// Build a Supabase-storage stub whose `.createSignedUrl(path, expiresIn)`
+// returns a success/error per object kind (video .mp4 vs poster -poster.jpg)
+// and whose `.remove()` returns the configured error or null. The action uses
+// createSignedUrl as an O(1) existence probe (CR-01 fix — replaced paginated
+// .list({search}) which capped at ~100 objects per folder). Each test that
+// reaches Storage stages the stub via
+// `(createSupabaseServerClient as Mock).mockResolvedValueOnce(stub)`.
 function mockStorage(opts: {
   videoFound?: boolean
   posterFound?: boolean
@@ -118,27 +121,33 @@ function mockStorage(opts: {
   const removeMock = vi.fn(() =>
     Promise.resolve({ data: null, error: opts.removeError ?? null }),
   )
-  // .list signature is (path, { search }) — two positional args. The path is
-  // the user.id folder; we key the found/empty result off `search` since that
-  // is the per-object filename being probed.
-  const listMock = vi.fn((_path: string, opts2: { search: string }) => {
-    const search = opts2.search
-    const isVideo = search.endsWith('.mp4')
+  // createSignedUrl signature is (path, expiresIn). Path is
+  // `${user.id}/${wearEventId}.mp4` or `${user.id}/${wearEventId}-poster.jpg`.
+  // Returns { data: { signedUrl }, error: null } when the object exists, or
+  // { data: null, error: { message } } when missing.
+  const createSignedUrlMock = vi.fn((path: string, _expiresIn: number) => {
+    const isVideo = path.endsWith('.mp4')
     const found = isVideo ? (opts.videoFound ?? true) : (opts.posterFound ?? true)
+    if (!found) {
+      return Promise.resolve({
+        data: null,
+        error: { message: 'Object not found' },
+      })
+    }
     return Promise.resolve({
-      data: found ? [{ name: search }] : [],
+      data: { signedUrl: `https://signed.example/${path}` },
       error: null,
     })
   })
   // Single bucket-stub instance so `.remove` calls land on the same Mock
   // regardless of how many times `.from()` is invoked inside the action.
-  const bucketStub = { list: listMock, remove: removeMock }
+  const bucketStub = { createSignedUrl: createSignedUrlMock, remove: removeMock }
   const fromMock = vi.fn(() => bucketStub)
   return {
     storage: { from: fromMock },
     _bucketStub: bucketStub,
     _fromMock: fromMock,
-    _listMock: listMock,
+    _createSignedUrlMock: createSignedUrlMock,
     _removeMock: removeMock,
   }
 }
