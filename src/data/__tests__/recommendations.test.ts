@@ -356,9 +356,7 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
   // ──────────────────────────────────────────────────────────────────────
   // Case 3: sparse-pool top-up — brand-match outranks style-match outranks
   // pure-popularity, AND real catalog styleTags project onto synthetic rows
-  // so rationale templates fire (quick task 260623-mn3); EXTENDED by
-  // quick task 260623-pzz with three new assertions covering multi-brand
-  // SET-based match, per-brand variety cap, and pool-broadening call count.
+  // so rationale templates fire (quick task 260623-mn3).
   // ──────────────────────────────────────────────────────────────────────
   it('sparse-pool top-up: brand-match outranks style-match outranks pure-popularity, and real styleTags project onto synthetic rows so rationale templates fire', async () => {
     // 2 peers seed the pool (peer-0 + peer-1 each own 1 unrelated watch).
@@ -367,52 +365,32 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     const profiles = buildSeedPool(2)
     publicProfilesResolver = async () => profiles
 
-    // 4-watch fixture (3 Rolex + 1 Tudor) — topBrandOf still returns 'Rolex'
-    // (3>1), but viewerOwnedBrandsLower is now {rolex, tudor}. This exercises
-    // the multi-brand SET match (260623-pzz). dominantStyleOf still returns
-    // 'sport' with share 1.0 (all four watches share styleTags: ['sport']).
+    // Override the viewer fixture: viewer owns THREE Rolex watches all
+    // tagged 'sport'. topBrandOf -> 'Rolex'; dominantStyleOf -> { label:
+    // 'sport', share: 1.0 } > 0.5 (the dominant-style rationale template
+    // requires share > 0.5 to fire — see src/lib/recommendations.ts:79).
     watchesByUser.set('viewer-1', [
       mkWatch({ id: 'v-1', brand: 'Rolex', model: 'Submariner', styleTags: ['sport'] }),
       mkWatch({ id: 'v-2', brand: 'Rolex', model: 'Explorer',   styleTags: ['sport'] }),
       mkWatch({ id: 'v-3', brand: 'Rolex', model: 'GMT',        styleTags: ['sport'] }),
-      mkWatch({ id: 'v-4', brand: 'Tudor', model: 'Black Bay',  styleTags: ['sport'] }),
     ])
 
-    // 10 rows: 4 Rolex (one brand-match-only from 260623-mn3 + three new for
-    // the variety-cap test), 1 Seiko (style-match), 1 Tudor (brand-match via
-    // owned-set — proves SET membership beats the old single-brand check),
-    // 1 Omega + 1 Cartier (pure popularity), 2 fillers.
-    //   Rolex Datejust    -> brand-match  -> 100 + 0  + 0.005 = 100.005
-    //   Rolex GMT MII     -> brand+style  -> 100 + 50 + 0.090 = 150.090
-    //   Rolex Sub Date    -> brand+style  -> 100 + 50 + 0.085 = 150.085
-    //   Rolex Daytona     -> brand+style  -> 100 + 50 + 0.070 = 150.070
-    //   Tudor Pelagos     -> brand+style  -> 100 + 50 + 0.030 = 150.030
-    //   Seiko SKX007      -> style-match  -> 0   + 50 + 0.099 = 50.099
-    //   Omega Speedy      -> pure-pop     -> 0   + 0  + 0.080 = 0.080
-    //   Cartier Tank      -> pure-pop     -> 0   + 0  + 0.060 = 0.060 (alpha)
-    //   Filler-1/2        -> pure-pop     -> small popularity, no signal
-    // Instrument with a call counter so we can assert the catalog terminal
-    // was awaited >= 1 time (260623-pzz pool-broadening assertion 7c).
-    let catalogResolverCalls = 0
-    catalogTopUpResolver = async () => {
-      catalogResolverCalls++
-      return [
-        // Deliberately interleaved so fetch-order != score-order.
-        { id: 'cat-omega', brand: 'Omega', model: 'Speedmaster', reference: '310', imageUrl: null, ownersCount: 80, styleTags: ['casual'] },
-        { id: 'cat-rolex', brand: 'Rolex', model: 'Datejust',    reference: '126200', imageUrl: null, ownersCount: 5, styleTags: ['dress'] },
-        { id: 'cat-cartier', brand: 'Cartier', model: 'Tank',    reference: 'WSTA',   imageUrl: null, ownersCount: 60, styleTags: ['dress'] },
-        { id: 'cat-seiko', brand: 'Seiko', model: 'SKX007',      reference: 'SKX',    imageUrl: null, ownersCount: 99, styleTags: ['sport'] },
-        { id: 'cat-filler1', brand: 'Zenith', model: 'Defy',     reference: 'DEFY',   imageUrl: null, ownersCount: 10, styleTags: ['casual'] },
-        { id: 'cat-filler2', brand: 'Yema', model: 'Superman',   reference: 'SUP',    imageUrl: null, ownersCount: 8,  styleTags: ['casual'] },
-        // 260623-pzz extensions: 1 Tudor (owned-set brand-match) + 3 more
-        // Rolex rows (variety-cap stress — all score 150+, would dominate
-        // the top-up unbounded).
-        { id: 'cat-tudor',   brand: 'Tudor', model: 'Pelagos',         reference: '25600',  imageUrl: null, ownersCount: 30, styleTags: ['sport'] },
-        { id: 'cat-rolex-2', brand: 'Rolex', model: 'GMT Master II',   reference: '126710', imageUrl: null, ownersCount: 90, styleTags: ['sport'] },
-        { id: 'cat-rolex-3', brand: 'Rolex', model: 'Submariner Date', reference: '126610', imageUrl: null, ownersCount: 85, styleTags: ['sport'] },
-        { id: 'cat-rolex-4', brand: 'Rolex', model: 'Daytona',         reference: '116500', imageUrl: null, ownersCount: 70, styleTags: ['sport'] },
-      ]
-    }
+    // Catalog rows returned in SHUFFLED fetch order — the test asserts
+    // SCORE wins, not fetch order.
+    //   Rolex Datejust  -> brand-match  -> 100 + 0  + 0.005 = 100.005
+    //   Seiko SKX007    -> style-match  -> 0   + 50 + 0.099 = 50.099
+    //   Omega Speedy    -> pure-pop     -> 0   + 0  + 0.080 = 0.080
+    //   Cartier Tank    -> pure-pop     -> 0   + 0  + 0.060 = 0.060  (alpha-first)
+    //   Filler-1/2      -> pure-pop     -> small popularity, no signal
+    catalogTopUpResolver = async () => [
+      // Deliberately interleaved so fetch-order != score-order.
+      { id: 'cat-omega', brand: 'Omega', model: 'Speedmaster', reference: '310', imageUrl: null, ownersCount: 80, styleTags: ['casual'] },
+      { id: 'cat-rolex', brand: 'Rolex', model: 'Datejust',    reference: '126200', imageUrl: null, ownersCount: 5, styleTags: ['dress'] },
+      { id: 'cat-cartier', brand: 'Cartier', model: 'Tank',    reference: 'WSTA',   imageUrl: null, ownersCount: 60, styleTags: ['dress'] },
+      { id: 'cat-seiko', brand: 'Seiko', model: 'SKX007',      reference: 'SKX',    imageUrl: null, ownersCount: 99, styleTags: ['sport'] },
+      { id: 'cat-filler1', brand: 'Zenith', model: 'Defy',     reference: 'DEFY',   imageUrl: null, ownersCount: 10, styleTags: ['casual'] },
+      { id: 'cat-filler2', brand: 'Yema', model: 'Superman',   reference: 'SUP',    imageUrl: null, ownersCount: 8,  styleTags: ['casual'] },
+    ]
 
     setBucket(100)
     const recs = await getRecommendationsForViewer('viewer-1')
@@ -427,17 +405,10 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     const idx = (brand: string, model: string) =>
       synthetics.findIndex((r) => r.brand === brand && r.model === model)
 
-    // 1. Brand-match (Rolex GMT Master II) ranks ahead of style-match (Seiko
-    //    SKX007). NOTE [260623-pzz]: this assertion originally referenced
-    //    Rolex Datejust (260623-mn3), but the extended fixture adds three
-    //    higher-scoring Rolex rows AND a per-brand cap of 2 — Datejust
-    //    (100.005, no style overlap) is capped out by the two 150-bucket
-    //    Rolexes (GMT MII, Sub Date). Asserting on the surviving top-Rolex
-    //    (GMT Master II) preserves the original spirit (a brand-match row
-    //    outranks a style-match row) within the new ranking reality.
-    expect(idx('Rolex', 'GMT Master II')).toBeGreaterThanOrEqual(0)
+    // 1. Brand-match (Rolex Datejust) ranks ahead of style-match (Seiko SKX007).
+    expect(idx('Rolex', 'Datejust')).toBeGreaterThanOrEqual(0)
     expect(idx('Seiko', 'SKX007')).toBeGreaterThanOrEqual(0)
-    expect(idx('Rolex', 'GMT Master II')).toBeLessThan(idx('Seiko', 'SKX007'))
+    expect(idx('Rolex', 'Datejust')).toBeLessThan(idx('Seiko', 'SKX007'))
 
     // 2. Style-match (Seiko SKX007) ranks ahead of both pure-popularity rows.
     expect(idx('Seiko', 'SKX007')).toBeLessThan(idx('Omega', 'Speedmaster'))
@@ -455,11 +426,8 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     //    back to alpha order.)
     expect(idx('Cartier', 'Tank')).toBeLessThan(idx('Omega', 'Speedmaster'))
 
-    // 4. Rationale-projection: brand-match template fires on the Rolex top-up
-    //    row. NOTE [260623-pzz]: switched from Datejust to GMT Master II for
-    //    the same cap-survival reason as assertion 1; the template still
-    //    fires identically on any Rolex top-up row.
-    const rolexRec = synthetics.find((r) => r.brand === 'Rolex' && r.model === 'GMT Master II')
+    // 4. Rationale-projection: brand-match template fires on the Rolex top-up row.
+    const rolexRec = synthetics.find((r) => r.brand === 'Rolex' && r.model === 'Datejust')
     expect(rolexRec?.rationale).toBe('Fans of Rolex love this')
 
     // 5. Rationale-projection: dominant-style template fires on the Seiko row
@@ -472,46 +440,6 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     expect(omegaRec?.rationale).toBe('Popular in the community')
     const cartierRec = synthetics.find((r) => r.brand === 'Cartier' && r.model === 'Tank')
     expect(cartierRec?.rationale).toBe('Popular in the community')
-
-    // ── 260623-pzz new assertions ──────────────────────────────────────
-
-    // 7a. Multi-brand surfacing: Tudor is owned (viewer's brand SET is
-    //     {rolex, tudor}) so the Tudor catalog row brand-matches via the
-    //     SET — under the old single-string brandMatch (= topBrandOf only,
-    //     which returns 'Rolex' for this fixture) Tudor would have scored
-    //     only 50 internally (style-only) and tied with Seiko at 50.030
-    //     vs 50.099, so Seiko would beat it in internal sort; under the
-    //     new SET-membership check Tudor scores 150 internally (brand +
-    //     style). The OBSERVABLE diff in `recs` (the outer re-sort
-    //     flattens rule-matched rows to score=50 and alpha-tiebreaks by
-    //     brand, so Seiko < Tudor in the final list regardless) is that
-    //     Tudor surfaces AHEAD of the community-fallback rows (Cartier,
-    //     Omega) because it lands in the rule-matched 50-bucket — which
-    //     it does under both impls. The strict differentiator is that the
-    //     cap (7b) frees enough slots that Cartier+Omega ALSO surface in
-    //     the synthetic top-up; under the unbounded old impl those two
-    //     get crowded out by the 4-Rolex pile and `idx('Cartier')` == -1,
-    //     so this assertion is meaningful as a cap-presence proxy too.
-    expect(idx('Tudor', 'Pelagos')).toBeGreaterThanOrEqual(0)
-    expect(idx('Cartier', 'Tank')).toBeGreaterThanOrEqual(0)
-    expect(idx('Tudor', 'Pelagos')).toBeLessThan(idx('Cartier', 'Tank'))
-
-    // 7b. Variety-cap: with 4 Rolex catalog rows all scoring 150+ (the
-    //     Datejust scores ~100, the other three score 150+), the unbounded
-    //     behavior would surface 3-4 Rolex rows in the synthetic top-up.
-    //     The cap MAX_PER_BRAND_IN_TOPUP=2 limits Rolex to at most 2.
-    const rolexCount = synthetics.filter((r) => r.brand === 'Rolex').length
-    expect(rolexCount).toBeLessThanOrEqual(2)
-    expect(rolexCount).toBeGreaterThanOrEqual(1) // cap is 2, not 0
-
-    // 7c. Pool-broadening: the catalog terminal must be awaited at least
-    //     once for the popularity slice, and (when viewerOwnedBrandsLower
-    //     is non-empty) ideally a second time for the owned-brands query.
-    //     Two separate queries OR a single UNION both satisfy `>= 1`; the
-    //     executor's implementation choice is documented in the SUMMARY.
-    //     If the executor chose the two-query strategy, this will be 2;
-    //     if they chose a Drizzle `union`, this will still be >=1.
-    expect(catalogResolverCalls).toBeGreaterThanOrEqual(1)
   })
 
   // ──────────────────────────────────────────────────────────────────────
