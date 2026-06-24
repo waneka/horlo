@@ -19,38 +19,50 @@ BEGIN;
 
 -- ── 4 dev users via auth.users (trigger mirrors to public.users) ─────
 -- bcrypt-hashed "password123" via pgcrypto's crypt() + gen_salt('bf').
+-- Token columns (confirmation_token, recovery_token, etc.) must be
+-- empty strings, NOT NULL — gotrue (Supabase Auth) compares them with
+-- `= ''` during sign-in and a NULL silently fails the comparison,
+-- producing "Invalid email or password". The DEFAULT for these columns
+-- is NULL even though gotrue assumes empty string, so be explicit.
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_user_meta_data, raw_app_meta_data,
-  created_at, updated_at
+  created_at, updated_at,
+  confirmation_token, recovery_token, email_change, email_change_token_new,
+  email_change_token_current, phone_change, phone_change_token,
+  reauthentication_token
 ) VALUES
   (
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
     'viewer@horlo.test', crypt('password123', gen_salt('bf')),
     NOW(), '{}', '{"provider":"email","providers":["email"]}',
-    NOW(), NOW()
+    NOW(), NOW(),
+    '', '', '', '', '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000002',
     '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
     'vintage-anna@horlo.test', crypt('password123', gen_salt('bf')),
     NOW(), '{}', '{"provider":"email","providers":["email"]}',
-    NOW(), NOW()
+    NOW(), NOW(),
+    '', '', '', '', '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000003',
     '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
     'modern-mike@horlo.test', crypt('password123', gen_salt('bf')),
     NOW(), '{}', '{"provider":"email","providers":["email"]}',
-    NOW(), NOW()
+    NOW(), NOW(),
+    '', '', '', '', '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000004',
     '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
     'dress-dan@horlo.test', crypt('password123', gen_salt('bf')),
     NOW(), '{}', '{"provider":"email","providers":["email"]}',
-    NOW(), NOW()
+    NOW(), NOW(),
+    '', '', '', '', '', '', '', ''
   )
 ON CONFLICT (id) DO NOTHING;
 
