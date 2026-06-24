@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { and, asc, desc, eq, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, isNotNull, ne, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { profiles, profileSettings, watchesCatalog } from '@/db/schema'
@@ -400,6 +400,14 @@ export async function topUpFromCatalogPopularity(
 ): Promise<void> {
   if (needed <= 0) return
 
+  // Filter rows without an image — placeholder cards in the rail look broken.
+  // Catalog coverage is high (~72% locally) so the filter rarely starves the
+  // pool, and the LIMIT 60 + multi-brand union backstop covers thin spots.
+  const hasImage = and(
+    isNotNull(watchesCatalog.imageUrl),
+    ne(watchesCatalog.imageUrl, ''),
+  )
+
   const popularityRows = await db
     .select({
       id: watchesCatalog.id,
@@ -411,6 +419,7 @@ export async function topUpFromCatalogPopularity(
       styleTags: watchesCatalog.styleTags,
     })
     .from(watchesCatalog)
+    .where(hasImage)
     .orderBy(desc(watchesCatalog.ownersCount), asc(watchesCatalog.brand))
     .limit(60)
 
@@ -440,10 +449,13 @@ export async function topUpFromCatalogPopularity(
       })
       .from(watchesCatalog)
       .where(
-        sql`lower(trim(${watchesCatalog.brand})) IN (${sql.join(
-          brandArr.map((b) => sql`${b}`),
-          sql`, `,
-        )})`,
+        and(
+          hasImage,
+          sql`lower(trim(${watchesCatalog.brand})) IN (${sql.join(
+            brandArr.map((b) => sql`${b}`),
+            sql`, `,
+          )})`,
+        ),
       )
   }
 
