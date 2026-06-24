@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v8.3
 milestone_name: WYWT Video
 status: Awaiting next milestone
-last_updated: "2026-06-23T18:33:46.618Z"
-last_activity: 2026-06-23 — Milestone v8.3 completed and archived
+last_updated: "2026-06-24T05:30:00.000Z"
+last_activity: 2026-06-24 — Quick task 260623-uua shipped (search ergonomics: multi-token + unaccent + pg_trgm fuzzy fallback); awaiting operator prod push
 progress:
   total_phases: 2
   completed_phases: 2
@@ -135,15 +135,16 @@ None.
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
 | 260623-mn3 | Taste-aware sparse-pool top-up for collectors-like-you recommendations | cd3c2efb, 9f754300 | 2026-06-23 |
 | 260623-pzz | Multi-brand match + per-brand variety cap for collectors-like-you sparse-pool top-up (initial deploy CRASHED prod home with Postgres 42809 / digest 2193629549 — Drizzle `sql\`= ANY(${arr})\`` emitted ROW literal not array; reverted f4967cb9 + cf9c942b; forward-fixed in 81f78084 using `IN (sql.join(...))`. See `project_drizzle_sql_any_array_pitfall.md` memory.) | 95ab7301, 0d842731, f4967cb9, cf9c942b, 81f78084 | 2026-06-23 |
+| 260623-uua | Search ergonomics — multi-token AND-of-ORs, `unaccent` diacritic fold, `pg_trgm` `word_similarity > 0.2` fuzzy fallback. Fixes "omega seamaster" / "Heron" / "Jaeger la" / "Jeager" failing queries on /search Watches + Collections tabs. Read-path only — SEED-021 brand canonicalization explicitly deferred. Local UAT 12/12 pass; awaiting `git push` + `supabase db push --linked` for prod. | 81e21fb3, ac89ad1f, 50621739, 99172df2 | 2026-06-24 |
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-23 — Forward-fix `81f78084` for 260623-pzz prod home crash. Initial 260623-pzz deploy (`0d842731`) crashed `/` with Postgres 42809 / Vercel digest 2193629549 because Drizzle's `sql\`= ANY(${arr})\`` tagged template emits a Postgres ROW literal `($1,...)` not an array. Reverted in `f4967cb9` + `cf9c942b`, then re-shipped multi-brand match + pool broadening + MAX_PER_BRAND_IN_TOPUP=2 cap using correct `IN (sql.join(arr.map(b => sql\`${b}\`), sql\`, \`))` syntax. SQL pattern verified against local Supabase before push (the gate that was missing — DAL test mock doesn't exercise SQL syntax, build doesn't run queries). Vitest test extensions from 260623-pzz NOT restored on main — fix-forward shipped without the RED→GREEN test pair to minimize re-deploy risk; tests are deferred to a follow-up. Durable lesson saved to `project_drizzle_sql_any_array_pitfall.md`. Prior activity: 260623-mn3 shipped earlier today (cd3c2efb, 9f754300); Phase 77 Plan 01 (Wave 0 foundation) COMPLETE — see commits `75b00386`, `b0cdd52c`; 77-VALIDATION.md `wave_0_complete: true`.
+Last activity: 2026-06-24 — Quick task 260623-uua shipped: search ergonomics fix (multi-token AND-of-ORs + `unaccent` diacritic fold + `pg_trgm word_similarity > 0.2` fuzzy fallback) across `searchCatalogWatches` (`/search` Watches tab) and `searchCollections` (`/search` Collections tab). 4 commits (81e21fb3, ac89ad1f, 50621739, 99172df2); local UAT 12/12 pass (`omega seamaster`, `Heron`, `Jaeger la`, `Jeager` typo, facet+text composition, baseline regressions, Collections privacy gates). One auto-fix mid-flight: swapped `similarity > 0.3` → `word_similarity > 0.2` because plain similarity scored "jeager" vs "jaeger-lecoultre" at only 0.143 (suffix dilution). SEED-021 brand canonicalization explicitly DEFERRED — not in this scope. Prior activity: 260623-pzz forward-fix `81f78084` for prod home crash.
 
-Next action: Execute Plan 02 (Wave 1 — types + capability + DAL) per `.planning/phases/77-video-capture-display-ui/77-02-PLAN.md`. Phase 76 is also still CODE-COMPLETE on `main` awaiting operator prod migration push (`supabase db push --linked` per 76-POST-DEPLOY.md); Phase 77 development can continue against documented Phase 76 contracts in parallel — only Phase 77's runtime ship-to-prod is gated on that operator push.
+Next action: Operator prod push for 260623-uua: `git push` + `supabase db push --linked` (deploys unaccent + pg_trgm migration `20260623200000_quick_260623_uua_search_unaccent_trgm.sql`). Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md; can be batched with this push.
 
 ## Operator Next Steps
 
