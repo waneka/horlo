@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 type Call = { op: string; args: unknown[] }
 
-let candidateRows: Array<{
+type CandRow = {
   id: string
   brand: string
   model: string
@@ -23,42 +23,46 @@ let candidateRows: Array<{
   imageUrl: string | null
   ownersCount: number
   wishlistCount: number
-}> = []
+}
+
+let candidateRows: CandRow[] = []
+// 260623-uua: fuzzy fallback tier — when strict returns empty AND trimmed.length >= 3
+// AND tokens.length > 0, a second candidate-shaped select runs. fallbackRows
+// supplies its rows.
+let fallbackRows: CandRow[] = []
 let stateRows: Array<{ catalogId: string | null; status: string }> = []
 let calls: Call[] = []
 let selectCount = 0
 
-function makeCandidateChain() {
+// Polymorphic chain — supports BOTH the state-shaped (from→where) and
+// candidate-shaped (from→where→orderBy→limit) chains in a single object.
+// The `op` prefix is supplied by the caller so call-site assertions can
+// distinguish strict/fallback/state/brand by op name. The terminal method
+// (.where for state, .limit for candidate) returns the appropriate Promise
+// based on the caller's intent (signaled by which method the DAL invokes).
+function makePolyChain(opPrefix: string, terminalRows: () => unknown[]) {
   const chain: Record<string, (...args: unknown[]) => unknown> = {
     from: (...args: unknown[]) => {
-      calls.push({ op: 'cand.from', args })
+      calls.push({ op: `${opPrefix}.from`, args })
       return chain
     },
     where: (...args: unknown[]) => {
-      calls.push({ op: 'cand.where', args })
-      return chain
+      calls.push({ op: `${opPrefix}.where`, args })
+      // For state-shaped chains, .where is the terminal. We return a
+      // thenable that ALSO behaves like a chain — so a DAL that calls
+      // .orderBy().limit() after .where() still works (the chain object
+      // exposes orderBy + limit), but if the caller awaits the .where
+      // result directly (state-hydration shape) they get the rows.
+      const thenable = Object.assign(Promise.resolve(terminalRows()), chain)
+      return thenable
     },
     orderBy: (...args: unknown[]) => {
-      calls.push({ op: 'cand.orderBy', args })
+      calls.push({ op: `${opPrefix}.orderBy`, args })
       return chain
     },
     limit: (...args: unknown[]) => {
-      calls.push({ op: 'cand.limit', args })
-      return Promise.resolve(candidateRows)
-    },
-  } as never
-  return chain
-}
-
-function makeStateChain() {
-  const chain: Record<string, (...args: unknown[]) => unknown> = {
-    from: (...args: unknown[]) => {
-      calls.push({ op: 'state.from', args })
-      return chain
-    },
-    where: (...args: unknown[]) => {
-      calls.push({ op: 'state.where', args })
-      return Promise.resolve(stateRows)
+      calls.push({ op: `${opPrefix}.limit`, args })
+      return Promise.resolve(terminalRows())
     },
   } as never
   return chain
@@ -68,8 +72,15 @@ vi.mock('@/db', () => ({
   db: {
     select: vi.fn(() => {
       selectCount += 1
-      // 1st select = candidates query; 2nd select = viewer-state hydration.
-      return selectCount === 1 ? makeCandidateChain() : makeStateChain()
+      // Order of selects (no filters.brand path exercised by these tests):
+      //   #1 = strict candidate; #2 = (state if strict had rows) OR (fallback
+      //   if strict empty); #3 = state when fallback fired AND returned rows.
+      if (selectCount === 1) return makePolyChain('cand', () => candidateRows)
+      if (selectCount === 2) {
+        if (candidateRows.length > 0) return makePolyChain('state', () => stateRows)
+        return makePolyChain('fallback', () => fallbackRows)
+      }
+      return makePolyChain('state', () => stateRows)
     }),
   },
 }))
@@ -94,6 +105,7 @@ function safeStringify(value: unknown): string {
 beforeEach(() => {
   calls = []
   candidateRows = []
+  fallbackRows = []
   stateRows = []
   selectCount = 0
 })
@@ -126,19 +138,23 @@ describe('searchCatalogWatches (SRCH-09, SRCH-10, D-01..D-06)', () => {
     expect(orderJson).toContain('model_normalized')
   })
 
-  it('Test 3 + 4: WHERE is ILIKE OR across 3 normalized cols (D-01, D-02)', async () => {
+  it('Test 3 + 4: WHERE references all 3 normalized cols + uses ILIKE on the unaccent fold (D-01, D-02 / 260623-uua)', async () => {
     candidateRows = []
     await searchCatalogWatches({ q: 'rolex', viewerId: VIEWER })
     const whereCall = calls.find((c) => c.op === 'cand.where')
     expect(whereCall).toBeDefined()
     const json = safeStringify(whereCall!.args)
-    // ILIKE OR across the three normalized columns
+    // ILIKE OR across the three normalized columns — column identifiers still present.
     expect(json).toContain('brand_normalized')
     expect(json).toContain('model_normalized')
     expect(json).toContain('reference_normalized')
-    // ilike operator chunks for ALL three normalized columns
-    const ilikeOpMatches = json.match(/" ilike "/g) ?? []
-    expect(ilikeOpMatches.length).toBeGreaterThanOrEqual(3)
+    // 260623-uua: brand+model now wrapped in lower(public.f_unaccent(...)) on
+    // both sides of an ILIKE; reference still uses the Drizzle ilike() helper
+    // (its generated column already strips diacritics).
+    expect(json).toContain('lower(public.f_unaccent(')
+    expect(json).toContain('ILIKE')
+    // Reference branch still emits the Drizzle ilike() helper chunk.
+    expect(json).toMatch(/" ilike "/)
   })
 
   it('Test 5: reference normalization (Pitfall 1) — alphanumeric-stripping bind shape', async () => {
@@ -172,12 +188,16 @@ describe('searchCatalogWatches (SRCH-09, SRCH-10, D-01..D-06)', () => {
     expect(stateFromCalls.length).toBe(1)
   })
 
-  it('Test 7: empty candidates short-circuits before inArray (Pitfall 4)', async () => {
+  it('Test 7: empty candidates short-circuits before inArray (Pitfall 4) — 260623-uua: even when fuzzy fallback ALSO returns 0', async () => {
     candidateRows = []
+    fallbackRows = []
     const out = await searchCatalogWatches({ q: 'rolex', viewerId: VIEWER })
     expect(out).toEqual([])
-    expect(selectCount).toBe(1)
+    // Pitfall 4 invariant preserved: NO state-hydration query fires when the
+    // final candidate set is empty (strict tier + fuzzy fallback both empty).
     expect(calls.filter((c) => c.op === 'state.from').length).toBe(0)
+    // 260623-uua: strict + fallback select fire (2), but state does NOT (3rd never reached).
+    expect(selectCount).toBe(2)
   })
 
   it('Test 8: D-05 owned wins over wishlist for the same catalogId', async () => {
@@ -308,5 +328,160 @@ describe('searchCatalogWatches (SRCH-09, SRCH-10, D-01..D-06)', () => {
     expect(whereCall).toBeDefined()
     const whereJson = safeStringify(whereCall!.args)
     expect(whereJson).not.toContain('0.5')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 260623-uua: multi-token + unaccent + pg_trgm fuzzy fallback contract tests.
+// Per `project_drizzle_sql_any_array_pitfall` + CLAUDE.md `## Local-First
+// Development`: the DAL test mock does NOT execute SQL; these tests assert
+// generated SQL shape and code-path branching. Manual UAT against local
+// Supabase (Task 4 in plan) is the authoritative row-count gate.
+// ---------------------------------------------------------------------------
+
+describe('260623-uua tokenization (D-01 multi-token AND-of-ORs)', () => {
+  it('multi-token query — both tokens appear as parameterized binds in WHERE', async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'omega seamaster', viewerId: VIEWER })
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    expect(whereCall).toBeDefined()
+    const json = safeStringify(whereCall!.args)
+    // Each token is bound as a %token% pattern (Drizzle parameterizes per-call).
+    // We expect the literal token strings in the serialized SQL because they
+    // appear in bind parameter values.
+    expect(json).toContain('omega')
+    expect(json).toContain('seamaster')
+  })
+
+  it("'jaeger la' — 2 tokens both lowercased and bound (matches across hyphenated 'jaeger-lecoultre' per token-wise substring)", async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'Jaeger la', viewerId: VIEWER })
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    const json = safeStringify(whereCall!.args)
+    // Tokens are lowercased before binding (lowerQ in the DAL).
+    expect(json).toContain('jaeger')
+    // 'la' is 2 chars; appears as bound pattern `%la%`.
+    expect(json).toMatch(/%la%/)
+  })
+
+  it('whitespace inside q produces N>1 token-clauses (AND-composed)', async () => {
+    candidateRows = []
+    fallbackRows = []
+    // 3 tokens — each must produce its own f_unaccent ILIKE OR-group.
+    await searchCatalogWatches({ q: 'rolex sub date', viewerId: VIEWER })
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    const json = safeStringify(whereCall!.args)
+    // The Drizzle ilike() helper for the reference branch fires once per token.
+    // Count operator-chunk occurrences as a proxy for token-clause count.
+    const ilikeOpMatches = json.match(/" ilike "/g) ?? []
+    // At minimum each of the 3 tokens contributes ONE reference branch ilike.
+    expect(ilikeOpMatches.length).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('260623-uua unaccent fold (D-02 diacritic folding)', () => {
+  it("'Héron' query — WHERE contains lower(public.f_unaccent(...)) fold expression", async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'Héron', viewerId: VIEWER })
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    const json = safeStringify(whereCall!.args)
+    expect(json).toContain('lower(public.f_unaccent(')
+    // The query string preserves the original character on the bind side; the
+    // unaccent() runs in Postgres at execution time, not in TypeScript.
+    expect(json).toMatch(/%[Hh]éron%/)
+  })
+
+  it("'Heron' (no accent) — emits the SAME f_unaccent wrap structure as 'Héron'", async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'Heron', viewerId: VIEWER })
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    const json = safeStringify(whereCall!.args)
+    expect(json).toContain('lower(public.f_unaccent(')
+    // The fold is applied to BOTH sides of the ILIKE — column AND pattern.
+    // The pattern bind is `%heron%`.
+    expect(json).toMatch(/%heron%/)
+  })
+
+  it("reference branch is NOT wrapped in f_unaccent (reference_normalized already strips diacritics)", async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'rolex', viewerId: VIEWER })
+    const whereCall = calls.find((c) => c.op === 'cand.where')
+    const json = safeStringify(whereCall!.args)
+    // reference_normalized appears via the Drizzle ilike() helper, NOT under
+    // a f_unaccent wrap. There should be a reference_normalized substring that
+    // is NOT immediately preceded by 'f_unaccent('.
+    expect(json).toContain('reference_normalized')
+    // Negative: the substring 'f_unaccent(' should never wrap reference_normalized.
+    expect(json).not.toMatch(/f_unaccent\([^)]*reference_normalized/)
+  })
+})
+
+describe('260623-uua pg_trgm fuzzy fallback tier (D-04)', () => {
+  it('strict empty AND trimmed.length >= 3 → fallback select fires; trim_unaccent + similarity() in WHERE', async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'Jeager', viewerId: VIEWER })
+    // strict select #1 fires, returns []; fallback select #2 fires.
+    expect(selectCount).toBe(2)
+    const fallbackWhere = calls.find((c) => c.op === 'fallback.where')
+    expect(fallbackWhere).toBeDefined()
+    const json = safeStringify(fallbackWhere!.args)
+    // similarity() over the WHOLE query, both columns, both folded.
+    expect(json).toContain('similarity(')
+    expect(json).toContain('lower(public.f_unaccent(')
+    // Threshold > 0.3 is bound into the SQL text.
+    expect(json).toContain('0.3')
+  })
+
+  it('strict empty AND trimmed.length < 3 → fallback does NOT fire', async () => {
+    candidateRows = []
+    fallbackRows = []
+    // '/-' trims to '/-' (2 chars). Strict tier runs, returns []. Fallback
+    // guard (trimmed.length >= 3) blocks the 2nd select.
+    await searchCatalogWatches({ q: '/-', viewerId: VIEWER })
+    expect(selectCount).toBe(1)
+    expect(calls.filter((c) => c.op === 'fallback.from').length).toBe(0)
+  })
+
+  it('strict had rows → fallback does NOT fire (substitute, not union)', async () => {
+    candidateRows = [
+      { id: 'c1', brand: 'Omega', model: 'Speedmaster', reference: null, imageUrl: null, ownersCount: 5, wishlistCount: 0 },
+    ]
+    stateRows = []
+    await searchCatalogWatches({ q: 'omega', viewerId: VIEWER })
+    expect(calls.filter((c) => c.op === 'fallback.from').length).toBe(0)
+    // strict (1) + state (2) selects only — no fallback.
+    expect(selectCount).toBe(2)
+  })
+
+  it('fallback ORDER BY ranks by similarity DESC (best fuzzy first)', async () => {
+    candidateRows = []
+    fallbackRows = []
+    await searchCatalogWatches({ q: 'jeager', viewerId: VIEWER })
+    const fallbackOrder = calls.find((c) => c.op === 'fallback.orderBy')
+    expect(fallbackOrder).toBeDefined()
+    const json = safeStringify(fallbackOrder!.args)
+    // GREATEST(similarity(brand, q), similarity(model, q)) DESC is the primary tier.
+    expect(json).toContain('GREATEST')
+    expect(json).toContain('similarity(')
+  })
+
+  it('fallback rows hydrated by state query (when fallback produces hits)', async () => {
+    candidateRows = []
+    fallbackRows = [
+      { id: 'cf1', brand: 'Jaeger-LeCoultre', model: 'Reverso', reference: null, imageUrl: null, ownersCount: 1, wishlistCount: 0 },
+    ]
+    stateRows = []
+    const out = await searchCatalogWatches({ q: 'Jeager', viewerId: VIEWER })
+    expect(out.length).toBe(1)
+    expect(out[0].catalogId).toBe('cf1')
+    expect(out[0].brand).toBe('Jaeger-LeCoultre')
+    // strict (1) + fallback (2) + state (3) selects fired.
+    expect(selectCount).toBe(3)
   })
 })

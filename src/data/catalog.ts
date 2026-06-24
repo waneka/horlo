@@ -306,12 +306,32 @@ const SIZE_BAND_MAP: Record<NonNullable<CatalogSearchFilters['size']>, [number, 
 }
 
 /**
- * Phase 19 Watches tab DAL (SRCH-09).
+ * Phase 19 Watches tab DAL (SRCH-09) — rewired by quick task 260623-uua.
  *
- * Adds an ILIKE OR predicate over the trending body of getTrendingCatalogWatches:
- *   - brand_normalized ILIKE %lowerQ%
- *   - model_normalized ILIKE %lowerQ%
- *   - reference_normalized ILIKE %refQ%   (refQ = lowerQ stripped of non-alphanumerics)
+ * Multi-token search behavior (260623-uua / D-01):
+ *   - Query is tokenized on whitespace (mirrors searchCatalogForAddFlow at L587).
+ *   - WHERE is AND-of-ORs over per-token ILIKE patterns: each token must
+ *     independently match at least one of brand_normalized / model_normalized
+ *     / reference_normalized. So `omega seamaster` matches a row where
+ *     brand_normalized = 'omega' AND model_normalized = 'seamaster'.
+ *
+ * Diacritic folding (260623-uua / D-02):
+ *   - brand_normalized + model_normalized are wrapped in
+ *     lower(public.f_unaccent(...)) on BOTH sides of the ILIKE so 'Heron'
+ *     matches 'Héron Watches'. reference_normalized is NOT wrapped — its
+ *     generated expression already strips non-alphanumerics (subsumes diacritics).
+ *   - public.f_unaccent is the IMMUTABLE wrapper around unaccent() installed
+ *     by migration 20260623200000; functional gin trigram indexes back it.
+ *
+ * pg_trgm fuzzy fallback tier (260623-uua / D-04):
+ *   - Fires ONLY when the strict (token+unaccent ILIKE) tier returns 0 rows
+ *     AND trimmed.length >= 3 (avoid noise on 2-char queries).
+ *   - Uses similarity() over the WHOLE query (not per-token) so 'Jeager'
+ *     fuzzy-matches 'Jaeger' as a single unit; threshold > 0.3.
+ *   - AND-composes with the SAME facet predicates as the strict tier so
+ *     fuzzy hits still respect movement/size/style/brand/era narrowing.
+ *   - Strict matches automatically rank ABOVE fuzzy matches because we
+ *     SUBSTITUTE fuzzy for strict (not union).
  *
  * Popularity-DESC + alphabetical tie-break in ORDER BY (D-02 / Phase 18 idiom).
  * 260513-hvu hotfix: WHERE no longer AND-gates by (owners_count + 0.5 * wishlist_count) > 0
@@ -323,10 +343,9 @@ const SIZE_BAND_MAP: Record<NonNullable<CatalogSearchFilters['size']>, [number, 
  * inArray(watches.catalogId, topIds) keyed by viewerId — never per-row. 'owned'
  * wins over 'wishlist' for the same catalogId; 'sold' + 'grail' are NOT badged.
  *
- * Pitfall 1 (reference normalization): query string is lower(trim()) +
- * regexp-stripped to match the generated reference_normalized column. If
- * the stripped form is empty (e.g. q = '/-'), the reference branch falls
- * back to sql`false` so the OR predicate stays valid (no ILIKE %% match).
+ * Pitfall 1 (reference normalization, per-token): each token's reference branch
+ * normalizes via regex-strip; if the stripped form is empty the branch falls
+ * back to sql`false` so the OR predicate stays valid.
  *
  * Pitfall 4 (empty inArray): topIds.length === 0 short-circuits before
  * the inArray call.
@@ -361,9 +380,9 @@ export async function searchCatalogWatches({
   if (trimmed.length < SEARCH_WATCHES_TRIM_MIN_LEN && !hasActiveFacet) return []
 
   const lowerQ = trimmed.toLowerCase()
-  const pattern = `%${lowerQ}%`
-  const refNormalized = lowerQ.replace(/[^a-z0-9]+/g, '')
-  const refPattern = refNormalized.length > 0 ? `%${refNormalized}%` : null
+  // 260623-uua / D-01: tokenize on whitespace, AND-of-ORs over per-token patterns
+  // (mirrors searchCatalogForAddFlow L567/L587 from Phase 72 SRCH-01).
+  const tokens = lowerQ.split(/\s+/).filter(Boolean)
 
   // Phase 46 WR-04: resolve the brand slug → brands.id explicitly BEFORE
   // building the candidate query. Previously the brand predicate ran an inline
@@ -384,7 +403,67 @@ export async function searchCatalogWatches({
     resolvedBrandId = brandRow.id
   }
 
-  const candidates = await db
+  // 260623-uua / D-05: factor facet predicates into a reusable builder so the
+  // strict (token+unaccent) tier AND the fuzzy fallback tier compose with the
+  // SAME facet narrowing. Returns an array of predicates that callers AND
+  // together (alongside their own text-predicate).
+  const buildFacetPredicates = () => {
+    const predicates = []
+
+    // Movement Type facet — D-03/D-08: eq on pgEnum + isNotNull for NULL exclusion.
+    if (filters?.movement) {
+      predicates.push(isNotNull(watchesCatalog.movementType)!)
+      predicates.push(eq(watchesCatalog.movementType, filters.movement)!)
+    }
+
+    // Case Size facet — D-05/D-08: between() on numeric column + isNotNull.
+    if (filters?.size) {
+      const [min, max] = SIZE_BAND_MAP[filters.size]
+      predicates.push(isNotNull(watchesCatalog.caseSizeMm)!)
+      predicates.push(between(watchesCatalog.caseSizeMm, min, max)!)
+    }
+
+    // Style facet — D-07/D-08: arrayOverlaps (OR-logic within facet).
+    if (filters?.style?.length) {
+      predicates.push(arrayOverlaps(watchesCatalog.styleTags, filters.style)!)
+    }
+
+    // Phase 46 D-12: Era facet — eraSignal text column.
+    if (filters?.era) {
+      predicates.push(isNotNull(watchesCatalog.eraSignal)!)
+      predicates.push(eq(watchesCatalog.eraSignal, filters.era)!)
+    }
+
+    // Phase 46 D-12: Brand facet — URL carries brands.slug, not brands.id.
+    if (resolvedBrandId) {
+      predicates.push(eq(watchesCatalog.brandId, resolvedBrandId)!)
+    }
+
+    return predicates
+  }
+
+  // 260623-uua / D-01 + D-02: per-token AND-of-ORs. Each token must match
+  // at least one of (brand_normalized, model_normalized, reference_normalized)
+  // — brand+model wrapped in lower(public.f_unaccent(...)) on BOTH sides so
+  // 'heron' matches 'héron'. reference_normalized is NOT folded (it already
+  // strips non-alphanumerics including diacritics in its generated expression).
+  const buildTokenPredicates = () => {
+    if (tokens.length === 0) return []
+    return tokens.map((token) => {
+      const colPattern = `%${token}%`
+      const refToken = token.replace(/[^a-z0-9]+/g, '')
+      return or(
+        sql`lower(public.f_unaccent(${watchesCatalog.brandNormalized})) ILIKE lower(public.f_unaccent(${colPattern}))`,
+        sql`lower(public.f_unaccent(${watchesCatalog.modelNormalized})) ILIKE lower(public.f_unaccent(${colPattern}))`,
+        // Pitfall 1 (per-token): only run reference branch when stripped token is non-empty.
+        refToken.length > 0
+          ? ilike(watchesCatalog.referenceNormalized, `%${refToken}%`)
+          : sql`false`,
+      )!
+    })
+  }
+
+  let candidates = await db
     .select({
       id: watchesCatalog.id,
       brand: watchesCatalog.brand,
@@ -402,61 +481,22 @@ export async function searchCatalogWatches({
     // ORDER BY (below) preserves the identical popularity expression so popular
     // rows still rank ahead of zero-popularity name-matches.
     //
-    // Phase 40 predicate composition: build a predicates array and AND-compose.
-    // Pitfall 1 guard: and(...predicates) with empty array → undefined → no WHERE.
+    // Phase 40 + 260623-uua predicate composition: AND-compose token-OR
+    // groups with facet predicates. Empty token list (no q) + active facet
+    // is the Phase 40 D-01 browse-mode path.
     .where((() => {
       const predicates = []
 
-      // ILIKE OR for text query — only when trimmed query is long enough.
+      // 260623-uua / D-01 + D-02: per-token AND-of-ORs over the unaccent fold.
       if (trimmed.length >= SEARCH_WATCHES_TRIM_MIN_LEN) {
-        predicates.push(
-          or(
-            ilike(watchesCatalog.brandNormalized, pattern),
-            ilike(watchesCatalog.modelNormalized, pattern),
-            // Pitfall 1: only run reference branch when stripped query is non-empty.
-            refPattern
-              ? ilike(watchesCatalog.referenceNormalized, refPattern)
-              : sql`false`,
-          )!,
-        )
+        const tokenClauses = buildTokenPredicates()
+        if (tokenClauses.length > 0) {
+          predicates.push(and(...tokenClauses)!)
+        }
       }
 
-      // Movement Type facet — D-03/D-08: eq on pgEnum + isNotNull for NULL exclusion.
-      if (filters?.movement) {
-        predicates.push(isNotNull(watchesCatalog.movementType)!)
-        predicates.push(eq(watchesCatalog.movementType, filters.movement)!)
-      }
-
-      // Case Size facet — D-05/D-08: between() on numeric column + isNotNull.
-      if (filters?.size) {
-        const [min, max] = SIZE_BAND_MAP[filters.size]
-        predicates.push(isNotNull(watchesCatalog.caseSizeMm)!)
-        predicates.push(between(watchesCatalog.caseSizeMm, min, max)!)
-      }
-
-      // Style facet — D-07/D-08: arrayOverlaps (OR-logic within facet).
-      // No isNotNull needed: styleTags is notNull with default '{}' (D-08).
-      if (filters?.style?.length) {
-        predicates.push(arrayOverlaps(watchesCatalog.styleTags, filters.style)!)
-      }
-
-      // Phase 46 D-12: Era facet — eraSignal text column.
-      if (filters?.era) {
-        predicates.push(isNotNull(watchesCatalog.eraSignal)!)
-        predicates.push(eq(watchesCatalog.eraSignal, filters.era)!)
-      }
-
-      // Phase 49.1 D-SCOPE-01f — Genre/Archetype facet block removed (the
-      // primary_archetype column is being dropped in Plans 07/08). The
-      // archetype-wins tiebreaker is gone with the predicate.
-
-      // Phase 46 D-12: Brand facet — URL carries brands.slug, not brands.id.
-      // Phase 46 WR-04: brand id is resolved up-front (resolvedBrandId); an
-      // unresolved slug already short-circuited the whole function to [] above,
-      // so reaching here with filters.brand set guarantees resolvedBrandId.
-      if (resolvedBrandId) {
-        predicates.push(eq(watchesCatalog.brandId, resolvedBrandId)!)
-      }
+      // 260623-uua / D-05: facet predicates compose unchanged.
+      predicates.push(...buildFacetPredicates())
 
       // Pitfall 1: and() with 0 args → undefined → Drizzle omits WHERE clause.
       return predicates.length > 0 ? and(...predicates) : undefined
@@ -467,6 +507,49 @@ export async function searchCatalogWatches({
       asc(watchesCatalog.modelNormalized),
     )
     .limit(SEARCH_WATCHES_CANDIDATE_CAP)
+
+  // 260623-uua / D-04: pg_trgm fuzzy fallback tier. Fires only when:
+  //   - strict tier returned 0 rows
+  //   - trimmed.length >= 3 (avoid noise on 2-char queries)
+  //   - tokens.length > 0 (defensive — facet-only path stays in the strict tier)
+  // Uses similarity() over the WHOLE query (not per-token) so 'Jeager' matches
+  // 'Jaeger' as a single fuzzy unit; threshold > 0.3. Facets AND-compose so
+  // movement/size/style/brand/era still narrow fuzzy hits (D-05).
+  // Strict matches automatically rank above fuzzy because we SUBSTITUTE
+  // (reassign candidates) rather than UNION.
+  if (candidates.length === 0 && trimmed.length >= 3 && tokens.length > 0) {
+    const fallbackCandidates = await db
+      .select({
+        id: watchesCatalog.id,
+        brand: watchesCatalog.brand,
+        model: watchesCatalog.model,
+        reference: watchesCatalog.reference,
+        imageUrl: watchesCatalog.imageUrl,
+        ownersCount: watchesCatalog.ownersCount,
+        wishlistCount: watchesCatalog.wishlistCount,
+      })
+      .from(watchesCatalog)
+      .where((() => {
+        const predicates = []
+        predicates.push(
+          sql`(similarity(lower(public.f_unaccent(${watchesCatalog.brand})), lower(public.f_unaccent(${lowerQ}))) > 0.3
+               OR similarity(lower(public.f_unaccent(${watchesCatalog.model})), lower(public.f_unaccent(${lowerQ}))) > 0.3)`,
+        )
+        predicates.push(...buildFacetPredicates())
+        return and(...predicates)
+      })())
+      .orderBy(
+        desc(sql`GREATEST(
+          similarity(lower(public.f_unaccent(${watchesCatalog.brand})), lower(public.f_unaccent(${lowerQ}))),
+          similarity(lower(public.f_unaccent(${watchesCatalog.model})), lower(public.f_unaccent(${lowerQ})))
+        )`),
+        desc(sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount})`),
+        asc(watchesCatalog.brandNormalized),
+        asc(watchesCatalog.modelNormalized),
+      )
+      .limit(SEARCH_WATCHES_CANDIDATE_CAP)
+    candidates = fallbackCandidates
+  }
 
   if (candidates.length === 0) return []
 
