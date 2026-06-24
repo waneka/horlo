@@ -182,25 +182,46 @@ const SEARCH_COLLECTIONS_CANDIDATE_CAP = 50
 const SEARCH_COLLECTIONS_DEFAULT_LIMIT = 20
 
 /**
- * Phase 19 Collections tab DAL (SRCH-11, SRCH-12, D-09..D-12, D-16).
+ * Phase 19 Collections tab DAL (SRCH-11, SRCH-12, D-09..D-12, D-16) —
+ * rewired by quick task 260623-uua.
  *
- * Two-layer privacy (SRCH-12 / Pitfall 6): WHERE ps.profile_public = true
- * AND ps.collection_public = true AND p.id != viewerId. Both privacy AND
- * clauses are explicit — copy-paste from searchProfiles only enforces
- * profilePublic, which would leak collectors with private collections.
+ * Multi-token + unaccent fold (260623-uua / D-01 + D-02 + D-06):
+ *   - q is whitespace-tokenized; the CTE WHERE is AND-of-ORs over per-token
+ *     OR-groups so 'omega seamaster' matches collectors who own a watch with
+ *     brand='omega' AND model contains 'seamaster' (a single pattern across
+ *     w.brand was previously missing this).
+ *   - Every column/tag expression on BOTH sides of the ILIKE is wrapped in
+ *     lower(public.f_unaccent(...)) so 'heron' matches 'héron watches'
+ *     (D-02). public.f_unaccent is the IMMUTABLE wrapper installed by
+ *     migration 20260623200000; functional gin trigram indexes on
+ *     watches(brand|model) back it.
+ *   - NO pg_trgm fuzzy fallback here per D-07 — the CTE shape + JS overlap
+ *     scoring is more complex than the catalog tier and the user's reported
+ *     failing examples are all catalog-side. Add later if Collections-side
+ *     fuzzy demand surfaces.
+ *
+ * Two-layer privacy (SRCH-12 / Pitfall 6 / D-06): WHERE ps.profile_public = true
+ * AND ps.collection_public = true AND p.id != viewerId. Both privacy AND clauses
+ * are PRESERVED VERBATIM from the original implementation — only the text
+ * predicates inside the CTE were rewired.
  *
  * Match paths (D-09 / D-10): a collector matches if ANY of their watches
  * matches via brand ILIKE, model ILIKE, or
- * EXISTS(SELECT 1 FROM unnest(style_tags|role_tags|complications) ILIKE %q%).
- * design_traits is INTENTIONALLY EXCLUDED per D-09 — only style_tags + role_tags
- * + complications + brand/model are searched.
+ * EXISTS(SELECT 1 FROM unnest(style_tags|role_tags|complications) ILIKE %token%).
+ * design_traits is INTENTIONALLY EXCLUDED per D-09.
  *
  * Sort (D-16): SQL pre-sort is matchCount DESC, username ASC; JS post-sort
  * adds tasteOverlap DESC as the secondary tie-break. Pre-LIMIT 50 candidates,
  * final slice to 20 (D-04).
  *
- * All q + viewerId interpolations use Drizzle template binds — never string
- * concatenated into SQL text (T-19-01-02 mitigation).
+ * SQL parameterization (T-19-01-02 + `project_drizzle_sql_any_array_pitfall`):
+ *   - Token patterns and viewerId are Drizzle template binds — never string-
+ *     concatenated into SQL text.
+ *   - List-shaped SQL (the ANY(ARRAY[...]) pattern array for match_path +
+ *     matched_tag_elements) is emitted via
+ *     `sql.join(arr.map(v => sql\`\${v}\`), sql\`, \`)`. The naive
+ *     `= ANY(${arr})` tagged-template form emits a Postgres ROW literal
+ *     (42809 at runtime); see the 260623-pzz prod incident.
  */
 export async function searchCollections({
   q,
@@ -214,11 +235,58 @@ export async function searchCollections({
   const trimmed = q.trim()
   if (trimmed.length < SEARCH_COLLECTIONS_TRIM_MIN_LEN) return []
 
-  const pattern = `%${trimmed}%`
+  // 260623-uua / D-01: tokenize on whitespace; each token is bound as its own
+  // %token% pattern. Empty token list defensive return (impossible after the
+  // trimmed-length gate above, but belt-and-suspenders).
+  const tokens = trimmed.toLowerCase().split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return []
+
+  const tokenPatterns = tokens.map((t) => `%${t}%`)
+
+  // 260623-uua / D-01 + D-06: per-token OR-group over the 5 search columns
+  // (brand, model, unnest(style_tags|role_tags|complications)). Each branch
+  // is wrapped in lower(public.f_unaccent(...)) on BOTH sides of the ILIKE.
+  // The outer WHERE AND-composes the N per-token groups.
+  const tokenWhereGroups = tokens.map((_token, idx) => {
+    const p = tokenPatterns[idx]
+    return sql`(
+      lower(public.f_unaccent(w.brand)) ILIKE lower(public.f_unaccent(${p}))
+      OR lower(public.f_unaccent(w.model)) ILIKE lower(public.f_unaccent(${p}))
+      OR EXISTS (SELECT 1 FROM unnest(w.style_tags) t WHERE lower(public.f_unaccent(t)) ILIKE lower(public.f_unaccent(${p})))
+      OR EXISTS (SELECT 1 FROM unnest(w.role_tags) t WHERE lower(public.f_unaccent(t)) ILIKE lower(public.f_unaccent(${p})))
+      OR EXISTS (SELECT 1 FROM unnest(w.complications) t WHERE lower(public.f_unaccent(t)) ILIKE lower(public.f_unaccent(${p})))
+    )`
+  })
+  const tokenWhereCombined = sql.join(tokenWhereGroups, sql` AND `)
+
+  // 260623-uua / D-06: match_path CASE — emit 'name' when ALL tokens are
+  // satisfied by JUST brand|model (per-token AND-of-ORs over brand|model
+  // only); otherwise 'tag'. This preserves the original categorical output.
+  const namePathGroups = tokens.map((_token, idx) => {
+    const p = tokenPatterns[idx]
+    return sql`(
+      lower(public.f_unaccent(w.brand)) ILIKE lower(public.f_unaccent(${p}))
+      OR lower(public.f_unaccent(w.model)) ILIKE lower(public.f_unaccent(${p}))
+    )`
+  })
+  const namePathCombined = sql.join(namePathGroups, sql` AND `)
+
+  // 260623-uua / D-06 + `project_drizzle_sql_any_array_pitfall`: matched_tag_elements
+  // uses ANY(ARRAY[...patterns...]) so a tag matches if it hits ANY token (OR,
+  // not AND — matches user expectation of "seamaster" surfacing in matched_tags
+  // when query was "omega seamaster"). Each pattern is a parameterized bind via
+  // sql.join — NOT `= ANY(${arr})` (which would emit a Postgres ROW literal
+  // and crash with 42809 per the 260623-pzz prod incident).
+  const patternBinds = sql.join(
+    tokenPatterns.map((p) => sql`${p}`),
+    sql`, `,
+  )
 
   // Single CTE-shaped query: every (profileId, watchId) pair where the watch
-  // matches the query AND the profile passes two-layer privacy. GROUP BY
-  // profile_id, count, aggregate matched watches into a JSON array.
+  // matches ALL tokens (each token via one of 5 branches) AND the profile
+  // passes two-layer privacy. GROUP BY profile_id, count, aggregate matched
+  // watches into a JSON array. CTE shape + GROUP BY + jsonb_agg + ORDER BY
+  // + LIMIT all UNCHANGED from the pre-260623-uua implementation (D-06).
   const rows = await db.execute<{
     user_id: string
     username: string
@@ -243,13 +311,13 @@ export async function searchCollections({
         -- Phase 60: watches.image_url column dropped; resolve cover via watch_photos correlated subquery
         (SELECT wp.storage_path FROM watch_photos wp WHERE wp.watch_id = w.id ORDER BY wp.sort_order ASC LIMIT 1) AS image_url,
         CASE
-          WHEN w.brand ILIKE ${pattern} OR w.model ILIKE ${pattern}
+          WHEN ${namePathCombined}
           THEN 'name'
           ELSE 'tag'
         END AS match_path,
         ARRAY(
           SELECT t FROM unnest(w.style_tags || w.role_tags || w.complications) t
-           WHERE t ILIKE ${pattern}
+           WHERE lower(public.f_unaccent(t)) ILIKE ANY(ARRAY[${patternBinds}]::text[])
         ) AS matched_tag_elements
       FROM watches w
       INNER JOIN profile_settings ps ON ps.user_id = w.user_id
@@ -258,13 +326,7 @@ export async function searchCollections({
         ps.profile_public = true
         AND ps.collection_public = true
         AND p.id != ${viewerId}
-        AND (
-          w.brand ILIKE ${pattern}
-          OR w.model ILIKE ${pattern}
-          OR EXISTS (SELECT 1 FROM unnest(w.style_tags) t WHERE t ILIKE ${pattern})
-          OR EXISTS (SELECT 1 FROM unnest(w.role_tags) t WHERE t ILIKE ${pattern})
-          OR EXISTS (SELECT 1 FROM unnest(w.complications) t WHERE t ILIKE ${pattern})
-        )
+        AND (${tokenWhereCombined})
     )
     SELECT
       p.id AS user_id,

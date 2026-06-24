@@ -279,3 +279,147 @@ describe('searchCollections (SRCH-11, SRCH-12, D-09..D-12, D-16)', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// 260623-uua: multi-token + unaccent CTE WHERE contract tests.
+// Per `project_drizzle_sql_any_array_pitfall` + CLAUDE.md `## Local-First
+// Development`: the DAL test mock does NOT execute SQL; these tests assert
+// generated SQL shape only. Manual UAT against local Supabase (Task 4 in
+// plan) is the authoritative row-count gate.
+// ---------------------------------------------------------------------------
+
+describe('260623-uua tokenization (D-01 multi-token CTE WHERE)', () => {
+  it("multi-token query emits N AND-grouped per-token OR-blocks in the CTE WHERE", async () => {
+    executeResult = []
+    await searchCollections({ q: 'omega seamaster', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    // Both tokens bound as %omega% / %seamaster% patterns somewhere in the SQL.
+    expect(sqlText).toContain('%omega%')
+    expect(sqlText).toContain('%seamaster%')
+    // The 5 search-column expressions each appear at least once PER token (5 × 2
+    // = 10 branches minimum). Use unnest count as a proxy: 3 unnest expressions
+    // (style_tags, role_tags, complications) × 2 tokens = at least 6 unnest
+    // mentions in the CTE WHERE block (plus 1 in matched_tag_elements).
+    const unnestMatches = sqlText.match(/unnest/g) ?? []
+    expect(unnestMatches.length).toBeGreaterThanOrEqual(7)
+  })
+
+  it("3 tokens — 3 AND-composed OR-groups", async () => {
+    executeResult = []
+    await searchCollections({ q: 'rolex sub date', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    expect(sqlText).toContain('%rolex%')
+    expect(sqlText).toContain('%sub%')
+    expect(sqlText).toContain('%date%')
+  })
+
+  it("empty token list after whitespace-only q is impossible past the trimmed gate (defensive guard exists)", async () => {
+    executeResult = []
+    const out = await searchCollections({ q: '   ', viewerId: VIEWER })
+    expect(out).toEqual([])
+    // The trimmed.length < 2 gate fires first; no DB call.
+    expect(executeCalls.length).toBe(0)
+  })
+})
+
+describe('260623-uua unaccent fold (D-02 diacritic folding)', () => {
+  it("'Héron' query — CTE WHERE contains lower(public.f_unaccent(...)) fold expression", async () => {
+    executeResult = []
+    await searchCollections({ q: 'Héron', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    expect(sqlText).toContain('lower(public.f_unaccent(')
+    // Column-side fold: w.brand wrapped.
+    expect(sqlText).toMatch(/lower\(public\.f_unaccent\(w\.brand\)\)/)
+    expect(sqlText).toMatch(/lower\(public\.f_unaccent\(w\.model\)\)/)
+    // Tag-side fold: tags wrapped via `t WHERE lower(public.f_unaccent(t))`.
+    expect(sqlText).toMatch(/lower\(public\.f_unaccent\(t\)\)/)
+  })
+
+  it("'Heron' (no accent) — emits the SAME f_unaccent wrap structure as 'Héron'", async () => {
+    executeResult = []
+    await searchCollections({ q: 'Heron', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    expect(sqlText).toContain('lower(public.f_unaccent(')
+    // The lowercased token is bound as %heron% (tokens are lowercased before pattern construction).
+    expect(sqlText).toContain('%heron%')
+  })
+
+  it('matched_tag_elements uses lower(f_unaccent(t)) ILIKE ANY(ARRAY[...]) (OR across tokens)', async () => {
+    executeResult = []
+    await searchCollections({ q: 'omega seamaster', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    // ANY(ARRAY[...]) is the OR-across-tokens construct for the tag aggregation.
+    expect(sqlText).toContain('ANY(ARRAY[')
+    // Tag fold appears on the tag-side of ILIKE.
+    expect(sqlText).toMatch(/lower\(public\.f_unaccent\(t\)\) ILIKE/)
+  })
+})
+
+describe('260623-uua privacy + shape preservation (D-06 verbatim)', () => {
+  it('two-layer privacy clauses still appear verbatim after rewrite', async () => {
+    executeResult = []
+    await searchCollections({ q: 'rolex', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    // Three privacy gates preserved verbatim.
+    expect(sqlText).toContain('ps.profile_public = true')
+    expect(sqlText).toContain('ps.collection_public = true')
+    // viewerId bound via the `!=` predicate.
+    expect(sqlText).toMatch(/!=/)
+    expect(sqlText).toContain(VIEWER)
+  })
+
+  it('CTE outer shape unchanged — jsonb_agg, GROUP BY, ORDER BY, LIMIT preserved', async () => {
+    executeResult = []
+    await searchCollections({ q: 'rolex', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    expect(sqlText).toContain('jsonb_agg')
+    expect(sqlText).toContain('GROUP BY p.id, p.username, p.display_name, p.avatar_url')
+    expect(sqlText).toContain('ORDER BY match_count DESC, p.username ASC')
+    // matched_tag_elements wrapped in ARRAY(SELECT ...) — the original shape.
+    expect(sqlText).toContain('matched_tag_elements')
+  })
+
+  it('match_path CASE still yields the two categorical values', async () => {
+    executeResult = []
+    await searchCollections({ q: 'rolex sub', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    // The CASE still resolves to 'name' or 'tag'.
+    expect(sqlText).toContain("'name'")
+    expect(sqlText).toContain("'tag'")
+    expect(sqlText).toContain('CASE')
+  })
+
+  it('design_traits is STILL intentionally excluded (D-09 preserved)', async () => {
+    executeResult = []
+    await searchCollections({ q: 'tool', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    expect(sqlText).not.toContain('design_traits')
+  })
+})
+
+describe('260623-uua SQL parameterization (project_drizzle_sql_any_array_pitfall)', () => {
+  it('ANY(ARRAY[...]) emits per-pattern parameterized binds via sql.join (not ROW literal)', async () => {
+    executeResult = []
+    await searchCollections({ q: 'omega seamaster', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    // Each pattern is bound as a Param value (visible in the serialized
+    // Drizzle SQL object); the SQL queryChunks should NOT contain a
+    // literal "%omega%" interpolated as text after ANY(.
+    // The patterns appear as Param.value entries — substring check confirms
+    // they're present somewhere in the bind chain.
+    expect(sqlText).toContain('%omega%')
+    expect(sqlText).toContain('%seamaster%')
+    // Negative: no inline `= ANY('{...}')` ROW-literal form would appear if a
+    // pattern were string-concatenated. We assert ANY(ARRAY[ pattern bind list
+    // shape was used, not the broken `= ANY(${arr})` shape.
+    expect(sqlText).not.toMatch(/= ANY\('?\{/)
+  })
+
+  it('per-token pattern is bound, never inlined as ILIKE \'%token%\' literal text', async () => {
+    executeResult = []
+    await searchCollections({ q: 'rolex', viewerId: VIEWER })
+    const sqlText = safeStringify(executeCalls[0].sqlObj)
+    // Drizzle binds keep %rolex% as a Param value, not as inline SQL text.
+    expect(sqlText).not.toMatch(/ILIKE '%rolex%'/i)
+  })
+})
