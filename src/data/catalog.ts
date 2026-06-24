@@ -512,11 +512,25 @@ export async function searchCatalogWatches({
   //   - strict tier returned 0 rows
   //   - trimmed.length >= 3 (avoid noise on 2-char queries)
   //   - tokens.length > 0 (defensive — facet-only path stays in the strict tier)
-  // Uses similarity() over the WHOLE query (not per-token) so 'Jeager' matches
-  // 'Jaeger' as a single fuzzy unit; threshold > 0.3. Facets AND-compose so
-  // movement/size/style/brand/era still narrow fuzzy hits (D-05).
-  // Strict matches automatically rank above fuzzy because we SUBSTITUTE
-  // (reassign candidates) rather than UNION.
+  //
+  // Uses word_similarity() over the WHOLE query (not per-token) so 'Jeager'
+  // matches 'Jaeger-LeCoultre' as a single fuzzy unit.
+  //
+  // Why word_similarity (not plain similarity): plain similarity() compares
+  // the trigrams of the WHOLE column value against the WHOLE query — for
+  // long column values like 'jaeger-lecoultre' (~16 chars) the trigrams of
+  // the suffix '-lecoultre' dilute the score against a 6-char query 'jeager'
+  // (verified empirically against local Supabase: similarity = 0.143, below
+  // any reasonable threshold). word_similarity() finds the BEST contiguous
+  // substring match and scores against THAT substring — exactly the "user
+  // typed a typo of the brand" semantic we want. At threshold 0.2:
+  //   - word_similarity('jeager', 'jaeger-lecoultre') = 0.286 → match
+  //   - word_similarity('omeg', 'omega') = 0.8 → match
+  //   - 'rolex' (strict tier finds it, fallback never fires) — moot
+  //
+  // Facets AND-compose so movement/size/style/brand/era still narrow fuzzy
+  // hits (D-05). Strict matches automatically rank above fuzzy because we
+  // SUBSTITUTE (reassign candidates) rather than UNION.
   if (candidates.length === 0 && trimmed.length >= 3 && tokens.length > 0) {
     const fallbackCandidates = await db
       .select({
@@ -532,16 +546,16 @@ export async function searchCatalogWatches({
       .where((() => {
         const predicates = []
         predicates.push(
-          sql`(similarity(lower(public.f_unaccent(${watchesCatalog.brand})), lower(public.f_unaccent(${lowerQ}))) > 0.3
-               OR similarity(lower(public.f_unaccent(${watchesCatalog.model})), lower(public.f_unaccent(${lowerQ}))) > 0.3)`,
+          sql`(word_similarity(lower(public.f_unaccent(${lowerQ})), lower(public.f_unaccent(${watchesCatalog.brand}))) > 0.2
+               OR word_similarity(lower(public.f_unaccent(${lowerQ})), lower(public.f_unaccent(${watchesCatalog.model}))) > 0.2)`,
         )
         predicates.push(...buildFacetPredicates())
         return and(...predicates)
       })())
       .orderBy(
         desc(sql`GREATEST(
-          similarity(lower(public.f_unaccent(${watchesCatalog.brand})), lower(public.f_unaccent(${lowerQ}))),
-          similarity(lower(public.f_unaccent(${watchesCatalog.model})), lower(public.f_unaccent(${lowerQ})))
+          word_similarity(lower(public.f_unaccent(${lowerQ})), lower(public.f_unaccent(${watchesCatalog.brand}))),
+          word_similarity(lower(public.f_unaccent(${lowerQ})), lower(public.f_unaccent(${watchesCatalog.model})))
         )`),
         desc(sql`(${watchesCatalog.ownersCount} + 0.5 * ${watchesCatalog.wishlistCount})`),
         asc(watchesCatalog.brandNormalized),

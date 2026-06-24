@@ -422,7 +422,7 @@ describe('260623-uua unaccent fold (D-02 diacritic folding)', () => {
 })
 
 describe('260623-uua pg_trgm fuzzy fallback tier (D-04)', () => {
-  it('strict empty AND trimmed.length >= 3 → fallback select fires; trim_unaccent + similarity() in WHERE', async () => {
+  it('strict empty AND trimmed.length >= 3 → fallback select fires; word_similarity + f_unaccent in WHERE', async () => {
     candidateRows = []
     fallbackRows = []
     await searchCatalogWatches({ q: 'Jeager', viewerId: VIEWER })
@@ -431,11 +431,13 @@ describe('260623-uua pg_trgm fuzzy fallback tier (D-04)', () => {
     const fallbackWhere = calls.find((c) => c.op === 'fallback.where')
     expect(fallbackWhere).toBeDefined()
     const json = safeStringify(fallbackWhere!.args)
-    // similarity() over the WHOLE query, both columns, both folded.
-    expect(json).toContain('similarity(')
+    // word_similarity (NOT plain similarity) over the WHOLE query, both
+    // columns, both folded. Empirical: plain similarity('jaeger-lecoultre',
+    // 'jeager') = 0.143; word_similarity = 0.286 → matchable at 0.2 threshold.
+    expect(json).toContain('word_similarity(')
     expect(json).toContain('lower(public.f_unaccent(')
-    // Threshold > 0.3 is bound into the SQL text.
-    expect(json).toContain('0.3')
+    // Threshold > 0.2 is bound into the SQL text.
+    expect(json).toContain('0.2')
   })
 
   it('strict empty AND trimmed.length < 3 → fallback does NOT fire', async () => {
@@ -459,16 +461,16 @@ describe('260623-uua pg_trgm fuzzy fallback tier (D-04)', () => {
     expect(selectCount).toBe(2)
   })
 
-  it('fallback ORDER BY ranks by similarity DESC (best fuzzy first)', async () => {
+  it('fallback ORDER BY ranks by GREATEST(brand_word_sim, model_word_sim) DESC (best fuzzy first)', async () => {
     candidateRows = []
     fallbackRows = []
     await searchCatalogWatches({ q: 'jeager', viewerId: VIEWER })
     const fallbackOrder = calls.find((c) => c.op === 'fallback.orderBy')
     expect(fallbackOrder).toBeDefined()
     const json = safeStringify(fallbackOrder!.args)
-    // GREATEST(similarity(brand, q), similarity(model, q)) DESC is the primary tier.
+    // GREATEST(word_similarity(q, brand), word_similarity(q, model)) DESC
     expect(json).toContain('GREATEST')
-    expect(json).toContain('similarity(')
+    expect(json).toContain('word_similarity(')
   })
 
   it('fallback rows hydrated by state query (when fallback produces hits)', async () => {
