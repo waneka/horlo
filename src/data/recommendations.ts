@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { and, asc, desc, eq, ne } from 'drizzle-orm'
+import { and, asc, desc, eq, ne, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { profiles, profileSettings, watchesCatalog } from '@/db/schema'
@@ -46,6 +46,15 @@ const ROTATION_WINDOW_MS = 6 * 60 * 60 * 1000
  * observation 2026-05-30.
  */
 const SPARSE_POOL_THRESHOLD = 8
+
+/**
+ * Per-brand variety cap inside the sparse-pool top-up (quick task post-260623-pzz
+ * forward-fix). Without this, viewers whose top brand has many catalog rows
+ * (e.g. Seiko) see the rail collapse to 8 cards of the same brand. Cap counts
+ * BOTH peer-pool entries already in candidateMap and top-up entries added
+ * here, so the limit applies across the full rendered rail.
+ */
+const MAX_PER_BRAND_IN_TOPUP = 2
 
 /** Maximum cards surfaced in the UI (CONTEXT.md C-04: "cap ~12"). */
 const REC_CAP = 12
@@ -101,6 +110,14 @@ export async function getRecommendationsForViewer(
   // alone (this change only avoids redundant derivation inside the top-up).
   const viewerTopBrand = topBrandOf(viewerWatches)
   const viewerDominantStyleLabel = dominantStyleOf(viewerWatches)?.label ?? null
+  // Set of ALL owned brand strings (lowercased, trimmed) — used by the top-up
+  // to score ANY owned brand match, not just `topBrandOf`'s alphabetical winner.
+  // Fixes the single-brand-bias surfaced by live walk after 260623-mn3 shipped.
+  const viewerOwnedBrandsLower = new Set(
+    viewerWatches
+      .filter((w) => w.status === 'owned')
+      .map((w) => w.brand.trim().toLowerCase()),
+  )
 
   // 3. Candidate public collectors (T-10-04-01: require BOTH profile_public
   //    AND collection_public to sample their owned watches).
@@ -236,6 +253,7 @@ export async function getRecommendationsForViewer(
       needed,
       viewerTopBrand,
       viewerDominantStyleLabel,
+      viewerOwnedBrandsLower,
     )
   }
 
@@ -378,17 +396,11 @@ export async function topUpFromCatalogPopularity(
   needed: number,
   viewerTopBrand: string | null,
   viewerDominantStyleLabel: string | null,
+  viewerOwnedBrandsLower: Set<string>,
 ): Promise<void> {
   if (needed <= 0) return
 
-  // LIMIT 60 (was 20 pre-260623-mn3) — broader candidate pool so the
-  // in-memory scoring step has enough brand/style-bearing rows to pick
-  // from. 60 is 3× the prior cap and well within the daily-cron'd
-  // watches_catalog size (~200 rows on prod, ~160 locally). Trade-off:
-  // bigger fetch = better matches but slightly more DB read; the cost
-  // is amortized by the outer `'use cache'` boundary in Plan 07's
-  // Server Component wrapping.
-  const rows = await db
+  const popularityRows = await db
     .select({
       id: watchesCatalog.id,
       brand: watchesCatalog.brand,
@@ -396,23 +408,60 @@ export async function topUpFromCatalogPopularity(
       reference: watchesCatalog.reference,
       imageUrl: watchesCatalog.imageUrl,
       ownersCount: watchesCatalog.ownersCount,
-      // Projected so the synthetic Watch can carry real styleTags →
-      // the rule loop in getRecommendationsForViewer fires the
-      // dominant-style rationale template on top-up rows when the
-      // viewer's dominant style overlaps the catalog row's styleTags.
       styleTags: watchesCatalog.styleTags,
     })
     .from(watchesCatalog)
     .orderBy(desc(watchesCatalog.ownersCount), asc(watchesCatalog.brand))
     .limit(60)
 
-  // Score each row by viewer taste signal, then sort score DESC with
-  // alpha-stable tiebreak. Brand + style match are case-insensitive.
-  const topBrandLower = viewerTopBrand?.toLowerCase() ?? null
+  // Second query: ALL catalog rows whose brand matches any owned brand
+  // (case-insensitive). Guarantees owned brands surface even when their
+  // alphabetical position pushes them outside the popularity LIMIT 60.
+  // Skipped when viewer owns nothing (degenerate but valid signature).
+  //
+  // SQL gotcha (post-260623-pzz revert): Drizzle's `sql\`= ANY(${array})\``
+  // emits a Postgres ROW literal `($1,$2,...)`, NOT an array — Postgres
+  // rejects with `42809: op ANY/ALL (array) requires array on right side`.
+  // Use `IN (sql.join(arr.map(b => sql\`${b}\`), sql\`, \`))` instead — it
+  // emits correct `IN ($1,$2,...)` syntax. Verified against local Supabase
+  // before commit.
+  let ownedBrandRows: typeof popularityRows = []
+  if (viewerOwnedBrandsLower.size > 0) {
+    const brandArr = [...viewerOwnedBrandsLower]
+    ownedBrandRows = await db
+      .select({
+        id: watchesCatalog.id,
+        brand: watchesCatalog.brand,
+        model: watchesCatalog.model,
+        reference: watchesCatalog.reference,
+        imageUrl: watchesCatalog.imageUrl,
+        ownersCount: watchesCatalog.ownersCount,
+        styleTags: watchesCatalog.styleTags,
+      })
+      .from(watchesCatalog)
+      .where(
+        sql`lower(trim(${watchesCatalog.brand})) IN (${sql.join(
+          brandArr.map((b) => sql`${b}`),
+          sql`, `,
+        )})`,
+      )
+  }
+
+  // Merge by id (popularity-AND-owned rows would otherwise double-count).
+  const seenIds = new Set<string>()
+  const rows: typeof popularityRows = []
+  for (const r of [...popularityRows, ...ownedBrandRows]) {
+    if (seenIds.has(r.id)) continue
+    seenIds.add(r.id)
+    rows.push(r)
+  }
+
+  // Score each row by viewer taste signal. Brand match fires for ANY owned
+  // brand (not just topBrandOf winner), case-insensitive. Style match
+  // unchanged from 260623-mn3.
   const styleLabelLower = viewerDominantStyleLabel?.toLowerCase() ?? null
   const scored = rows.map((row) => {
-    const brandMatch =
-      topBrandLower !== null && row.brand.toLowerCase() === topBrandLower
+    const brandMatch = viewerOwnedBrandsLower.has(row.brand.trim().toLowerCase())
     const styleMatch =
       styleLabelLower !== null &&
       (row.styleTags ?? []).some((s) => s.toLowerCase() === styleLabelLower)
@@ -429,17 +478,22 @@ export async function topUpFromCatalogPopularity(
       a.row.model.localeCompare(b.row.model),
   )
 
+  // Pre-seed brand counts from peer-pool entries already in candidateMap
+  // so the variety cap applies across the FULL rail, not just top-up rows.
+  const brandCount = new Map<string, number>()
+  for (const c of candidateMap.values()) {
+    const bk = c.watch.brand.trim().toLowerCase()
+    brandCount.set(bk, (brandCount.get(bk) ?? 0) + 1)
+  }
+
   let appended = 0
   for (const { row } of scored) {
     if (appended >= needed) break
     const key = `${row.brand.trim().toLowerCase()}|${row.model.trim().toLowerCase()}`
     if (excluded.has(key)) continue
     if (candidateMap.has(key)) continue
-    // Synthetic Watch shape — only the fields downstream consumers read.
-    // styleTags PROJECTED from the catalog row so the rule loop can fire
-    // its dominant-style template on this row (per 260623-mn3). roleTags
-    // STAYS empty because watches_catalog.role_tags is empirically 0%-
-    // populated (deferred to a future catalog-enrichment phase).
+    const brandKey = row.brand.trim().toLowerCase()
+    if ((brandCount.get(brandKey) ?? 0) >= MAX_PER_BRAND_IN_TOPUP) continue
     const syntheticWatch: Watch = {
       id: row.id,
       brand: row.brand,
@@ -458,6 +512,10 @@ export async function topUpFromCatalogPopularity(
       ownerId: null,
       count: 0,
     })
+    brandCount.set(brandKey, (brandCount.get(brandKey) ?? 0) + 1)
     appended++
   }
+  // viewerTopBrand intentionally unused inside this function — caller still
+  // derives it for the rationaleFor rule loop on peer-pool watches.
+  void viewerTopBrand
 }
