@@ -83,6 +83,13 @@ vi.mock('@/db', () => {
             publicProfilesResolver().then(resolve),
         }
       }
+      // Catalog: support BOTH the popularity-path chain (.where().orderBy().limit())
+      // AND the broadening-path terminal (.where() alone, no orderBy/limit).
+      // Attach .then so an immediate await fires catalogTopUpResolver; subsequent
+      // .orderBy()/.limit() calls continue down the chain as before (popularity
+      // path) and .limit() returns its own thenable that supersedes this one.
+      chain.then = (resolve: (v: unknown[]) => unknown) =>
+        catalogTopUpResolver().then(resolve)
       return chain
     }
     chain.orderBy = passthrough
@@ -123,13 +130,25 @@ vi.mock('@/db/schema', () => ({
   },
 }))
 
-vi.mock('drizzle-orm', () => ({
-  and: (..._a: unknown[]) => ({ __op: 'and' }),
-  eq: (..._a: unknown[]) => ({ __op: 'eq' }),
-  ne: (..._a: unknown[]) => ({ __op: 'ne' }),
-  asc: (_a: unknown) => ({ __op: 'asc' }),
-  desc: (_a: unknown) => ({ __op: 'desc' }),
-}))
+vi.mock('drizzle-orm', () => {
+  // Tagged-template `sql\`...\`` stub. The impl uses sql for the
+  // broadening query's `IN (sql.join(arr.map(b => sql\`${b}\`), sql\`, \`))`
+  // — we don't care what it emits, just that the call doesn't throw and
+  // the result is something the chain's `.where()` accepts.
+  const sqlFn = (..._args: unknown[]) => ({ __op: 'sql' })
+  ;(sqlFn as unknown as { join: (..._a: unknown[]) => unknown }).join = (
+    ..._a: unknown[]
+  ) => ({ __op: 'sql.join' })
+  return {
+    and: (..._a: unknown[]) => ({ __op: 'and' }),
+    eq: (..._a: unknown[]) => ({ __op: 'eq' }),
+    ne: (..._a: unknown[]) => ({ __op: 'ne' }),
+    asc: (_a: unknown) => ({ __op: 'asc' }),
+    desc: (_a: unknown) => ({ __op: 'desc' }),
+    isNotNull: (_a: unknown) => ({ __op: 'isNotNull' }),
+    sql: sqlFn,
+  }
+})
 
 vi.mock('@/data/watches', () => ({
   getWatchesByUser: vi.fn(async (userId: string) => {
