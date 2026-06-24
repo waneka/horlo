@@ -134,13 +134,14 @@ None.
 | 260620-lbn | SEED-018 surgical slice: "Add from URL" affordance + admin-gated catalog-only save path | b1c20ddd, 9e0ee504 | 2026-06-20 |
 | 260622-exo | Fix wear-event duplicate-day false positive across UTC midnight — thread client `today` into markAsWorn + logWearWithPhoto Server Actions | 25708a84, edf204f6 | 2026-06-22 |
 | 260623-mn3 | Taste-aware sparse-pool top-up for collectors-like-you recommendations | cd3c2efb, 9f754300 | 2026-06-23 |
+| 260623-pzz | Multi-brand match + per-brand variety cap for collectors-like-you sparse-pool top-up | 95ab7301, 0d842731 | 2026-06-23 |
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-23 — Completed quick task 260623-mn3: taste-aware sparse-pool top-up for "From Collectors Like You" home rail. Rewrote `topUpFromCatalogPopularity` in `src/data/recommendations.ts` with brand-match (+100) + style-overlap (+50) scoring against viewer's `topBrandOf`/`dominantStyleOf` (exported from `src/lib/recommendations.ts`); projected real `styleTags` onto synthetic Watch rows so existing rationale loop fires "Fans of {brand} love this" / "Matches your {style} collection" on top-up cards instead of always falling through to community-fallback. Extended Case 3 in `recommendations.test.ts` (10/10 pass). `npm run build` exit 0. Commits cd3c2efb (RED), 9f754300 (GREEN). Role-based scoring and designMotifs Jaccard deferred (catalog `role_tags` is 0%-populated). Prior activity: Phase 77 Plan 01 (Wave 0 foundation) COMPLETE — see commits `75b00386`, `b0cdd52c`; 77-VALIDATION.md `wave_0_complete: true`; Vitest 11 passed / 32 todo / 0 failed.
+Last activity: 2026-06-23 — Completed quick task 260623-pzz: multi-brand match + per-brand variety cap for the collectors-like-you sparse-pool top-up. Caller now derives `viewerOwnedBrandsLower: Set<string>` and passes it to `topUpFromCatalogPopularity`; any owned brand earns the +100 (not just `topBrandOf` winner). Pool broadened via second in-memory query using `sql\`lower(trim(brand)) = ANY(${array})\`` so owned brands outside the alphabetical-first-60 still surface. Post-sort `MAX_PER_BRAND_IN_TOPUP = 2` cap kills "all-Seiko" bunching. All 260623-mn3 contracts preserved (styleTags projection, rationale templates, exports). Extended Case 3 in `recommendations.test.ts` (10/10 pass). `npm run build` exit 0. Commits 95ab7301 (RED), 0d842731 (GREEN). Prior activity: 260623-mn3 shipped earlier today (cd3c2efb, 9f754300); Phase 77 Plan 01 (Wave 0 foundation) COMPLETE — see commits `75b00386`, `b0cdd52c`; 77-VALIDATION.md `wave_0_complete: true`.
 
 Next action: Execute Plan 02 (Wave 1 — types + capability + DAL) per `.planning/phases/77-video-capture-display-ui/77-02-PLAN.md`. Phase 76 is also still CODE-COMPLETE on `main` awaiting operator prod migration push (`supabase db push --linked` per 76-POST-DEPLOY.md); Phase 77 development can continue against documented Phase 76 contracts in parallel — only Phase 77's runtime ship-to-prod is gated on that operator push.
 
