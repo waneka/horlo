@@ -171,6 +171,25 @@ Use these entry points:
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
 <!-- GSD:workflow-end -->
 
+## Local-First Development
+
+Verify in `npm run dev` against local Supabase **before** pushing to prod.
+
+`npm run build` and `vitest` are not sufficient runtime gates. DAL test mocks don't execute SQL and the build doesn't run queries — a Drizzle `sql\`= ANY(${arr})\`` template once passed both gates and crashed prod home on first deploy (digest `2193629549`).
+
+For any change that touches runtime behavior (DAL, Server Actions, Server Components, API routes, UI):
+
+1. Make the change.
+2. Run it in `npm run dev` against local Supabase. The local DB is seeded with realistic data — 4 test users (`viewer@horlo.test`, `vintage-anna@horlo.test`, `modern-mike@horlo.test`, `dress-dan@horlo.test`, all password `password123`) plus ~205 catalog rows. Re-seed via `supabase/seed.sql` + `scripts/import-prod-catalog.sh` if needed. Sign in as a seeded user and exercise the actual code path you changed.
+3. Then commit and push.
+
+Local env setup: `.env.development.local` (gitignored) overrides `.env.local` for `npm run dev` only — points `DATABASE_URL` + `NEXT_PUBLIC_SUPABASE_*` at `127.0.0.1:54321`/`54322`. `next build` still uses `.env.local` (prod) so SSG works.
+
+Exceptions:
+- Pure documentation / planning-artifact changes — no runtime risk.
+- Mobile-Safari behavior — still verified on prod (pointing a real mobile browser at localhost is painful; see `feedback_mobile_ui_verify_on_prod.md` for the existing pattern).
+- Explicit user request to skip local verification (e.g., incident recovery where reverting and re-deploying is the right move).
+
 <!-- GSD:profile-start -->
 ## Developer Profile
 
