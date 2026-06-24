@@ -83,21 +83,6 @@ vi.mock('@/db', () => {
             publicProfilesResolver().then(resolve),
         }
       }
-      // Catalog terminal via .where (260623-pzz pool-broadening second
-      // query — `.where(sql\`lower(trim(brand)) = ANY(...)\`)` with NO
-      // `.limit()` after). Routes to the same catalog resolver as the
-      // popularity slice — in production these two queries return different
-      // rows, but the test-environment simplification (same resolver fires
-      // for both) is acceptable because the test asserts scoring + cap +
-      // dedup behavior on a single row set; the EXPLICIT call-count
-      // assertion (`catalogResolverCalls >= 1`) is what pins pool-
-      // broadening, not row content.
-      if (routedTo === 'catalog') {
-        return {
-          then: (resolve: (v: unknown[]) => unknown) =>
-            catalogTopUpResolver().then(resolve),
-        }
-      }
       return chain
     }
     chain.orderBy = passthrough
@@ -144,12 +129,6 @@ vi.mock('drizzle-orm', () => ({
   ne: (..._a: unknown[]) => ({ __op: 'ne' }),
   asc: (_a: unknown) => ({ __op: 'asc' }),
   desc: (_a: unknown) => ({ __op: 'desc' }),
-  // 260623-pzz: pool-broadening's second query uses `sql\`lower(trim(...))
-  // = ANY(${array})\``. The mock is a tagged stub — the chain factory does
-  // not inspect the where()-arg contents, only routes by table identity.
-  sql: (_strings: TemplateStringsArray, ..._values: unknown[]) => ({
-    __op: 'sql',
-  }),
 }))
 
 vi.mock('@/data/watches', () => ({
