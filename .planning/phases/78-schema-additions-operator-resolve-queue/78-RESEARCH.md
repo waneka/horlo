@@ -693,17 +693,28 @@ async function mergeForward(existingPath: string, fresh: typeof rows): Promise<s
 
 **If this table is left as-is:** A3 is the one to verify before planning — drop a one-liner `psql` check into the plan's Wave 0.
 
-## Open Questions (none blocking)
+## Open Questions (RESOLVED)
+
+### Cross-References for Plans (R-FIND labels)
+
+The planners cite `R-FIND-01..R-FIND-04` shorthand in their `<action>` blocks; map them as follows:
+
+- **R-FIND-01** — "Phase 78 migration does NOT reference any extension function" → Q2 (line 862) and Pattern 1 Note (line 310). Consequence: no `f_unaccent` wrapper, no `SET search_path` work in the migration; portability reduces to filename + ordering + additive ADD COLUMN shape.
+- **R-FIND-02** — "Script must schema-qualify as `extensions.word_similarity(...)`" → Q4 (line 890) and Pitfall 1 (line 539). Consequence: the dry-run script SQL prefixes `word_similarity` with `extensions.`; failure mode is runtime `42883`.
+- **R-FIND-03** — "GIN perf claim is aspirational pre-backfill" → Pitfall 2 (line 545) and Q1 (line 854). Consequence: verification asserts index EXISTS, NOT that the planner picks it; `<50ms` is verified end-to-end (seqscan included).
+- **R-FIND-04** — "Local catalog has ~46 distinct brands; expect ~3-6 needs-review" → Q9 (line 953). Consequence: artifact-size sanity check + SEED-021 case-coverage expectation.
 
 1. **Should `.planning/v8.4-brand-merge-decisions.md` be gitignored or committed?**
    - What we know: `.planning/` IS committed (every prior PLAN.md, RESEARCH.md, CONTEXT.md is in git).
    - What's unclear: this file has an operator-written status column that will be modified between runs — committing makes the operator's edits a phase-79 input traceable in git; gitignoring keeps the file local-only and treats the file as a transient artifact.
    - Recommendation: **commit** — Phase 79's `--apply` will reference the exact file in PR/commits anyway, and the diff-history is useful for "why did the operator pick `merge:<uuid>` for Brand X" forensics.
+   - **RESOLVED:** Commit to git; Plan 03 Task 3 includes `git add` + commit of the artifact.
 
 2. **Should the dry-run script create an `npm` script entry?**
    - What we know: existing precedent is `package.json` L13-31 has entries for every DB-touching script (`db:backfill-catalog-brands`, `db:factual-propose`, etc.).
    - What's unclear: Phase 78's script needs the env override pattern (`DATABASE_URL=... npm run db:v8.4-brand-canon`) — the standard `--env-file=.env.local` works for LOCAL; prod runs override.
    - Recommendation: Yes — add `"db:v8.4-brand-canon": "tsx --env-file=.env.local scripts/v8.4-brand-canonicalization.ts"`. Document the prod-override invocation in the script header (per `scripts/backfill-catalog-brands.ts:18-21`).
+   - **RESOLVED:** Added npm script `db:v8.4-brand-canon`; Plan 03 Task 1 adds the package.json entry.
 
 ## Environment Availability
 

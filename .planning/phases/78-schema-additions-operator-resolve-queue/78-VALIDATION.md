@@ -38,7 +38,7 @@ created: 2026-06-24
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 78-01-01 | 01 | 1 | CANON-03 / CANON-04 | — | additive schema, no data loss | static | `npm run test -- tests/static/schema-78-columns.test.ts` | ❌ W0 | ⬜ pending |
+| 78-01-01 | 01 | 1 | CANON-03 / CANON-04 | — | additive schema, no data loss | static | `npm run test -- tests/static/phase78-schema-shape.test.ts` | ❌ W0 | ⬜ pending |
 | 78-01-02 | 01 | 1 | CANON-03 | — | GIN index exists on `watch_families.aliases` | integration (psql) | `npm run test -- tests/integration/migrations/78-gin-index.test.ts` | ❌ W0 | ⬜ pending |
 | 78-01-03 | 01 | 1 | CANON-03 / CANON-04 | — | additive migration runs cleanly on local Supabase | manual | `supabase db push` (local) + `psql -c "\d brands"` + `psql -c "\d watch_families"` introspection | ❌ W0 | ⬜ pending |
 | 78-02-01 | 02 | 2 | MIG-01 | — | dry-run reads `watches_catalog`, writes `.md` artifact, mutates no rows | integration | `npm run test -- tests/integration/scripts/v8.4-brand-canonicalization.test.ts` | ❌ W0 | ⬜ pending |
@@ -53,7 +53,7 @@ created: 2026-06-24
 
 ## Wave 0 Requirements
 
-- [ ] `tests/static/schema-78-columns.test.ts` — fs-walking guard with `// @vitest-environment node` asserting `aliases` + `needs_review` columns declared in `src/db/schema.ts` (covers `[[vitest-static-node-env]]`)
+- [ ] `tests/static/phase78-schema-shape.test.ts` — fs-walking guard with `// @vitest-environment node` asserting `aliases` + `needs_review` columns declared in `src/db/schema.ts` (covers `[[vitest-static-node-env]]`)
 - [ ] `tests/integration/migrations/78-gin-index.test.ts` — psql introspection asserting `pg_indexes` contains a GIN index on `watch_families(aliases)`
 - [ ] `tests/integration/scripts/v8.4-brand-canonicalization.test.ts` — end-to-end: connect to local Supabase, run dry-run, assert `.md` written + non-empty
 - [ ] `tests/unit/scripts/v8.4-md-artifact-schema.test.ts` — parse output `.md`, assert GFM table has exact columns and at least N rows for N distinct brand strings

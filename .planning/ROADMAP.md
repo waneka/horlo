@@ -269,11 +269,16 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 **Depends on**: Phase 77 (v8.3 shipped; v8.4 starts here)
 **Requirements**: CANON-03, CANON-04, MIG-01
 **Success Criteria** (what must be TRUE):
-  1. `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column exists with a GIN containment index that returns rows in <50ms on the seeded local catalog for `aliases @> ARRAY['datejust']` queries (CANON-03)
+  1. `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column exists with a GIN containment index that returns rows in <50ms on the seeded local catalog for `aliases @> ARRAY['datejust']` queries (CANON-03) — note: per RESEARCH R-FIND-03, aliases are EMPTY in Phase 78 (D-78-08) so the `<50ms` claim is satisfied trivially by a seqscan on the ~205-row local table; the index EXISTS and is correctness-verifiable via `pg_indexes`; the perf-on-populated-data test is post-Phase-79.
   2. `brands.needs_review boolean NOT NULL DEFAULT false` and `watch_families.needs_review boolean NOT NULL DEFAULT false` columns exist; existing rows backfill to `false`; new INSERT-from-ingest paths can set `true` (CANON-04)
-  3. Running `scripts/v8.4-brand-canonicalization.ts` (no `--apply` flag) writes `.planning/v8.4-brand-merge-decisions.md` listing every distinct `lower(trim(watches_catalog.brand))` value with either an auto-resolved `brands.id` or a `needs operator decision` marker for ambiguous cases — without touching any row in any table (MIG-01)
-  4. The migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` — uses `extensions.unaccent` with pinned `SET search_path` on any helper functions, and the `supabase/migrations/*.sql` filename + ordering follow project convention (MIG-05 portability foundation; full MIG-05 closes in Phase 79)
-**Plans**: TBD
+  3. Running `scripts/v8.4-brand-canonicalization.ts` (no `--apply` flag) writes `.planning/v8.4-brand-merge-decisions.md` listing every distinct `lower(trim(watches_catalog.brand))` value with either an auto-resolved `brands.id` or a `needs-review` marker for ambiguous cases — without touching any row in any table (MIG-01)
+  4. The migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` — filename ordering and additive ADD COLUMN shape verified. Per RESEARCH R-FIND-01: this Phase 78 migration does NOT define new helper functions and therefore does NOT need `extensions.unaccent` / pinned `SET search_path` on any function (the pinned-search-path rule applies to the dry-run SCRIPT's `extensions.word_similarity` calls, not the SQL migration). Full MIG-05 closure deferred to Phase 79's larger migration.
+**Plans**: 4 plans
+Plans:
+- [ ] 78-01-PLAN.md — Wave 0 RED test stubs (7 test files; static schema-shape, GIN index introspection, script integration + units; `it.todo` per Phase 77 convention)
+- [ ] 78-02-PLAN.md — Schema additions migration (edit `src/db/schema.ts` + hand-write `supabase/migrations/20260624000000_phase78_aliases_needs_review.sql` + drizzle mirror + apply locally + green 2 Wave 0 stubs)
+- [ ] 78-03-PLAN.md — Dry-run script (`scripts/v8.4-brand-canonicalization.ts` Stages 1-4: distinct catalog brands, exact-only auto-resolve per D-78-04, top 3 fuzzy candidates ≥0.5 via `extensions.word_similarity`, GFM emission; refuse-to-overwrite + `--regenerate` merge-forward per D-78-07; npm script entry; green remaining 5 Wave 0 stubs)
+- [ ] 78-04-PLAN.md — Prod push handoff (operator-facing `78-POST-DEPLOY.md`; `supabase db push --linked`; verification SQL checklist; sign-off — autonomous: false)
 **UI hint**: no
 
 ### Phase 79: Backfill Migration + Display Hydration
@@ -366,7 +371,7 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Schema Additions + Operator-Resolve Queue | 0/? | Not started | — |
+| 78. Schema Additions + Operator-Resolve Queue | 0/4 | Planned | — |
 | 79. Backfill Migration + Display Hydration | 0/? | Not started | — |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
