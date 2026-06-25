@@ -22,6 +22,7 @@
     "db:seed-lineage": "tsx --env-file=.env.local scripts/seed-lineage.ts",
     "db:factual-propose": "tsx --env-file=.env.local scripts/factual-propose.ts",
     "db:factual-apply": "tsx --env-file=.env.local scripts/factual-apply.ts",
+    "db:v8.4-brand-canon": "tsx --env-file=.env.local scripts/v8.4-brand-canonicalization.ts",
     "db:verify-catalog-coverage": "tsx --env-file=.env.local scripts/verify-catalog-coverage.ts",
     "explore:inventory": "tsx scripts/inventory-explore-catalog.ts",
     "explore:catalog-add": "tsx scripts/seed-explore-catalog.ts",
