@@ -254,7 +254,7 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 
 ### 🚧 v8.4 Catalog Brand+Model Canonicalization (Phases 78-82) — ACTIVE
 
-- [ ] **Phase 78: Schema Additions + Operator-Resolve Queue** — CANON-03, CANON-04, MIG-01
+- [x] **Phase 78: Schema Additions + Operator-Resolve Queue** — CANON-03, CANON-04, MIG-01 (completed 2026-06-25)
 - [ ] **Phase 79: Backfill Migration + Display Hydration** — MIG-02, MIG-03, MIG-04, MIG-05, DISP-03
 - [ ] **Phase 80: NOT NULL Flip + Ingest Hardening** — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04
 - [ ] **Phase 81: Recommender + Display Server Action Swap** — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02
@@ -283,7 +283,7 @@ Plans:
 - [x] 78-03-PLAN.md — Dry-run script (`scripts/v8.4-brand-canonicalization.ts` Stages 1-4: distinct catalog brands, exact-only auto-resolve per D-78-04, top 3 fuzzy candidates ≥0.5 via `extensions.word_similarity`, GFM emission; refuse-to-overwrite + `--regenerate` merge-forward per D-78-07; npm script entry; green remaining 5 Wave 0 stubs)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 78-04-PLAN.md — Prod push handoff (operator-facing `78-POST-DEPLOY.md`; `supabase db push --linked`; verification SQL checklist; sign-off — autonomous: false)
+- [x] 78-04-PLAN.md — Prod push handoff (operator-facing `78-POST-DEPLOY.md`; `supabase db push --linked`; verification SQL checklist; sign-off — autonomous: false)
 **UI hint**: no
 
 ### Phase 79: Backfill Migration + Display Hydration
@@ -376,7 +376,7 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Schema Additions + Operator-Resolve Queue | 3/4 | In Progress|  |
+| 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 0/? | Not started | — |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
