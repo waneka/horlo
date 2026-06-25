@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-25T04:05:02.925Z"
-last_activity: 2026-06-25 -- Phase 78 planning complete
+last_updated: "2026-06-25T04:15:47.744Z"
+last_activity: 2026-06-25
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v8.4 Catalog Brand+Model Canonicalization (SEED-021) — wire `brand_id` FK as canonical identity across every `watches` + `watches_catalog` row before v9.0 Catalog Expansion (SEED-009) doubles the catalog volume.
+**Current focus:** Phase 78 — Schema Additions + Operator-Resolve Queue
 
 ## Current Position
 
-Phase: 78 — Schema Additions + Operator-Resolve Queue
-Plan: —
-Status: Ready to execute
-Last activity: 2026-06-25 -- Phase 78 planning complete
+Phase: 78 (Schema Additions + Operator-Resolve Queue) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute (Plan 01 complete; Plan 02 = Wave 1 schema migration)
+Last activity: 2026-06-25 -- Phase 78 Plan 01 complete (Wave 0 RED stubs)
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 
@@ -136,6 +136,15 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 - **Commented-import escape hatch**: `tests/unit/mediaState.test.ts` keeps the `MediaState` import COMMENTED out (`// TODO Plan 02: import type { MediaState } from '@/lib/wywtTypes'`) so Wave 0 does not depend on Plan 02 (would block its own preconditions). Plan 02's task list literal-greps for this comment to perform the uncomment step.
 - **`wave_0_complete: true`**: 77-VALIDATION.md frontmatter flag flipped — gate for Plan 02+ satisfied (commit `b0cdd52c`).
 
+**Phase 78 Plan 01 (Wave 0 RED stubs) outcomes — 2026-06-25:**
+
+- **7 Wave 0 RED stub files seeded** under `tests/static/`, `tests/integration/migrations/`, `tests/integration/scripts/`, `tests/unit/scripts/` per `78-VALIDATION.md` §Wave 0 Requirements (commits `d0ea806b` Task 1 / `15b2e19e` Task 2 / `e1d26133` Task 3).
+- **Convention generalizes beyond components**: Phase 77's Wave 0 RED stub pattern (`// Wave 0 RED stub — Phase X / X-01-PLAN.md` first-line marker + sanity `it()` + `it.todo()` callsites) applies cleanly to non-component domains — DB schema-shape static fs-guards + DB introspection integration stubs + tsx-script unit + integration tests all use the same shape.
+- **DATABASE_URL-gated suites use `describe.skip` for positive discovery signal**: 3 of 7 stubs (78-gin-index, v8.4-brand-canonicalization, v8.4-readonly) use `const maybe = process.env.DATABASE_URL ? describe : describe.skip` so vitest reports the suite as `↓ skipped`, not failed, when env is unset. Full Wave 0 suite run: 4 passed | 3 skipped | 29 todo | 0 failed.
+- **Decision-ID citation pattern**: every `it.todo` literal cites the relevant D-78-XX or B-78-01 in the assertion string for downstream verifier traceability (D-78-04 in SEED-021 golden, D-78-05 in readonly, D-78-07 in regenerate-merge).
+- **78-VALIDATION.md**: `wave_0_complete: false → true`, `nyquist_compliant: false → true`; "File Exists" column flipped `❌ W0 → ✅ W0` on 7 stub-backed rows (78-01-01, 78-01-02, 78-02-01..05); row 78-01-03 stays `❌ W0` (manual `supabase db push` step has no stub file mapping).
+- **No deviations** — Plan 01 executed exactly as written.
+
 ### Pending Todos
 
 None.
@@ -160,11 +169,12 @@ None.
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
+| Phase 78 P01 | ~6min | 3 tasks | 8 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-25 — v8.4 Catalog Brand+Model Canonicalization roadmap drafted: 5 phases (78 Schema Additions + Operator-Resolve Queue, 79 Backfill Migration + Display Hydration, 80 NOT NULL Flip + Ingest Hardening, 81 Recommender + Display Server Action Swap, 82 Add-Watch UI + Operator Admin). 25/25 v8.4 requirements mapped across the 5 phases (P78: 3, P79: 5, P80: 6, P81: 6, P82: 5); CANON 4 + MIG 5 + INGEST 4 + RECO 4 + DISP 3 + UI 3 + OPS 2 = 25. Coverage table written to ROADMAP.md; REQUIREMENTS.md Traceability section filled with phase numbers (replaced 25 TBD placeholders). Sequencing locked: schema (P78) → backfill (P79) → NOT NULL+ingest in same push (P80) → recommender+display swap (P81) → UI+admin (P82). Prior activity: 260623-uua shipped (search ergonomics — multi-token AND-of-ORs + `unaccent` + `pg_trgm word_similarity > 0.2`).
+Last activity: 2026-06-25 — Phase 78 Plan 01 (Wave 0 RED stubs) complete. 7 vitest stub files seeded under tests/static/, tests/integration/migrations/, tests/integration/scripts/, tests/unit/scripts/; full Wave 0 suite reports 4 passed | 3 skipped (DATABASE_URL unset) | 29 todo | 0 failed. 78-VALIDATION.md frontmatter flipped (`wave_0_complete: true` + `nyquist_compliant: true`); Wave 0 gate satisfied for Plans 02 (Wave 1 — schema migration + GIN index) and 03 (Wave 2 — dry-run script). Commits: d0ea806b (Task 1, static + GIN-index stubs), 15b2e19e (Task 2, 5 dry-run script stubs), e1d26133 (Task 3, VALIDATION.md flip). Prior activity: v8.4 Catalog Brand+Model Canonicalization roadmap drafted (5 phases 78-82, 25/25 reqs mapped).
 
-Next action: `/gsd-plan-phase 78` to break Phase 78 into executable plans. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md — these can be batched with the first v8.4 migration push (Phase 78 will produce a new `supabase/migrations/*.sql` file for the `aliases` + `needs_review` columns).
+Next action: `/gsd-plan-phase 78` → Plan 02 (Wave 1) — write supabase/migrations/{timestamp}_phase78_aliases_needs_review.sql for the additive schema columns (CANON-03/04) + green the static + GIN-index stubs. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md — these can be batched with the first v8.4 migration push (Plan 02 produces the new `supabase/migrations/*.sql` file).
 
 ## Operator Next Steps

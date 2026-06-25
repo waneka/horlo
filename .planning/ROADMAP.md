@@ -276,7 +276,7 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 **Plans**: 4 plans
 Plans:
 **Wave 1**
-- [ ] 78-01-PLAN.md — Wave 0 RED test stubs (7 test files; static schema-shape, GIN index introspection, script integration + units; `it.todo` per Phase 77 convention)
+- [x] 78-01-PLAN.md — Wave 0 RED test stubs (7 test files; static schema-shape, GIN index introspection, script integration + units; `it.todo` per Phase 77 convention)
 - [ ] 78-02-PLAN.md — Schema additions migration (edit `src/db/schema.ts` + hand-write `supabase/migrations/20260624000000_phase78_aliases_needs_review.sql` + drizzle mirror + apply locally + green 2 Wave 0 stubs)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -376,7 +376,7 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 78. Schema Additions + Operator-Resolve Queue | 0/4 | Planned | — |
+| 78. Schema Additions + Operator-Resolve Queue | 1/4 | In Progress|  |
 | 79. Backfill Migration + Display Hydration | 0/? | Not started | — |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
