@@ -1,33 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.3
-milestone_name: WYWT Video
-status: Awaiting next milestone
-last_updated: "2026-06-24T05:30:00.000Z"
-last_activity: 2026-06-24 — Quick task 260623-uua shipped (search ergonomics: multi-token + unaccent + pg_trgm fuzzy fallback); awaiting operator prod push
+milestone: v8.4
+milestone_name: Catalog Brand+Model Canonicalization
+status: planning
+last_updated: "2026-06-25T00:48:33.119Z"
+last_activity: 2026-06-25
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-23 — v8.3 WYWT Video SHIPPED; see §Current State)
+See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Between milestones — v8.3 shipped 2026-06-23; next is v9.0 Catalog Expansion (SEED-009)
+**Current focus:** v8.4 Catalog Brand+Model Canonicalization (SEED-021) — wire `brand_id` FK as canonical identity across every `watches` + `watches_catalog` row before v9.0 Catalog Expansion (SEED-009) doubles the catalog volume.
 
 ## Current Position
 
-Phase: Milestone v8.3 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-23 — Milestone v8.3 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-25 — Milestone v8.4 started
 
 ## Deferred Items
 
