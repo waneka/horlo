@@ -308,7 +308,7 @@ Plans:
 - [x] 79-03-PLAN.md — Family dry-run + apply scaffold (--mode=families artifact emission + buildFamilyMap + applyFamilyPath with idempotent alias-append + extended strict gate; greens Plan 01 family-build-decisions + family strict-gate cases) — MIG-03
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 79-04-PLAN.md — Atomic 6-step transaction wiring + hydration UPDATE FROM JOIN + post-flight assertion with predicate divergence + renderPostDeployMarkdown auto-generator; greens all Plan 01 integration stubs — MIG-04, DISP-03
+- [x] 79-04-PLAN.md — Atomic 6-step transaction wiring + hydration UPDATE FROM JOIN + post-flight assertion with predicate divergence + renderPostDeployMarkdown auto-generator; greens all Plan 01 integration stubs — MIG-04, DISP-03
 
 **Wave 5** *(blocked on Wave 4 completion — autonomous: false; operator checkpoint)*
 - [ ] 79-05-PLAN.md — Local-first verification (13 steps) + prod apply with interactive yes-prompt + 6 sign-off SQL queries against prod + ROADMAP/STATE/REQUIREMENTS update; MIG-05 full closure + final DISP-03 prod verification
@@ -392,7 +392,7 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
-| 79. Backfill Migration + Display Hydration | 3/5 | In Progress|  |
+| 79. Backfill Migration + Display Hydration | 4/5 | In Progress|  |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |

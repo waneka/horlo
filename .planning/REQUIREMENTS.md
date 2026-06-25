@@ -39,7 +39,7 @@ Data migration backfills every existing watch and catalog row to canonical brand
 - [x] **MIG-01**: Backfill script (`scripts/v8.4-brand-canonicalization.ts`) generates a proposed mapping for every distinct `lower(trim(watches_catalog.brand))` value → existing `brands.id` (exact match) OR a "needs operator decision" marker (ambiguous). Output written to `.planning/v8.4-brand-merge-decisions.md` for operator review BEFORE any UPDATE runs.
 - [x] **MIG-02**: After operator approves the `.md` artifact (writes decisions inline as YAML frontmatter or per-row markers), running `scripts/v8.4-brand-canonicalization.ts --apply` executes the data UPDATE atomically: `watches_catalog.brand_id` populated, ambiguous cases resolved per operator decision, new `brands` rows created where needed.
 - [x] **MIG-03**: Equivalent `--apply` path for `watch_families` backfill — distinct `watches_catalog.model` strings mapped to `watch_families.id` (with brand-scoped uniqueness via existing `watch_families_brand_name_unique` constraint); typo cases routed into the new `aliases` column.
-- [ ] **MIG-04**: Post-flight assertion (NOT reusing the same WHERE-clause as the operation — per `project_post_flight_assertion_predicate_divergence`) verifies zero rows with `brand_id IS NULL` AND zero rows with `family_id IS NULL` on `watches_catalog` AFTER the migration completes.
+- [x] **MIG-04**: Post-flight assertion (NOT reusing the same WHERE-clause as the operation — per `project_post_flight_assertion_predicate_divergence`) verifies zero rows with `brand_id IS NULL` AND zero rows with `family_id IS NULL` on `watches_catalog` AFTER the migration completes.
 - [ ] **MIG-05**: Migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` rules — uses `extensions.unaccent` / `extensions.similarity` with pinned `SET search_path` on any functions, and the migration filename + ordering follow the project's `supabase/migrations/` naming convention.
 
 ### Ingest (INGEST)
@@ -66,7 +66,7 @@ Personal `watches` rows show canonical brand + model on every read, even for leg
 
 - [ ] **DISP-01**: `addWatch` Server Action auto-overwrites the persisted `watches.brand` and `watches.model` with `brands.name` and `watch_families.name` (resolved via the canonical `catalogId`) before INSERT, regardless of what the user typed.
 - [ ] **DISP-02**: `editWatch` Server Action runs the same auto-overwrite path on UPDATE — if the user edits brand/model in the WatchForm, the resolved canonical name wins on save.
-- [ ] **DISP-03**: Existing `watches` rows that already point to a canonical `catalogId` get their `brand` / `model` columns auto-overwritten in a one-shot data migration alongside MIG-02/MIG-03 — no UI surface still renders stale free-text variants after v8.4 ships.
+- [x] **DISP-03**: Existing `watches` rows that already point to a canonical `catalogId` get their `brand` / `model` columns auto-overwritten in a one-shot data migration alongside MIG-02/MIG-03 — no UI surface still renders stale free-text variants after v8.4 ships.
 
 ### UI (UI)
 
@@ -118,7 +118,7 @@ Explicitly excluded from v8.4:
 | MIG-01 | Phase 78 | Complete |
 | MIG-02 | Phase 79 | Complete |
 | MIG-03 | Phase 79 | Complete |
-| MIG-04 | Phase 79 | Pending |
+| MIG-04 | Phase 79 | Complete |
 | MIG-05 | Phase 79 | Pending |
 | INGEST-01 | Phase 80 | Pending |
 | INGEST-02 | Phase 80 | Pending |
@@ -130,7 +130,7 @@ Explicitly excluded from v8.4:
 | RECO-04 | Phase 81 | Pending |
 | DISP-01 | Phase 81 | Pending |
 | DISP-02 | Phase 81 | Pending |
-| DISP-03 | Phase 79 | Pending |
+| DISP-03 | Phase 79 | Complete |
 | UI-01 | Phase 82 | Pending |
 | UI-02 | Phase 82 | Pending |
 | UI-03 | Phase 82 | Pending |

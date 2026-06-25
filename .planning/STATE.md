@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-25T07:45:07.187Z"
+last_updated: "2026-06-25T08:15:03.194Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 ## Current Position
 
 Phase: 79 (backfill-migration-display-hydration) — EXECUTING
-Plan: 4 of 5
-Status: Ready to execute
+Plan: 5 of 5
+Status: Ready to execute (Plan 04 atomic transaction complete + local-first end-to-end verified; Plan 05 is the prod-push gate)
 Last activity: 2026-06-25
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
@@ -193,6 +193,24 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 - **2 Rule 1 deviations** documented in 79-03-SUMMARY.md: (1) dedup-by-UUID-not-norm-string bug caught at local smoke; (2) comment-rephrase to keep `= ANY(` grep at 0 (recurrence of Plan 02 Rule 1 deviation #4).
 - **Full test sweep:** 7 unit-script files / 43 passed / 7 todo / 0 failed; readonly integration 5/5 against local DB.
 
+**Phase 79 Plan 04 (Wave 3 unified atomic apply transaction + post-flight + POST-DEPLOY auto-generation) outcomes — 2026-06-25:**
+
+- **`scripts/v8.4-brand-canonicalization.ts` extended 1643 → 2125 LOC** (commits `ac69a781` Task 1 / `f2652cf2` Task 2 / `d732d996` Task 3). NEW exports: `ApplyCounts`, `PostDeployArgs`, `renderPostDeployMarkdown`. NEW non-exported helpers: `applyHydration` (DISP-03 Step 4.6), `postFlightAssertion` (MIG-04 Step 4.7), `writePostDeployArtifact` (D-79-10 wrapper). NEW constant `POST_DEPLOY_PATH`.
+- **D-79-03 atomic 6-step transaction wired end-to-end.** Plan 02's transient brand-only `sql.begin` block DELETED; replaced with ONE outer `sql.begin` callback wrapping applyBrandPath + applyFamilyPath + applyHydration + postFlightAssertion. Any throw inside → automatic ROLLBACK. 5-stage flow: idempotent gate → strict gate → confirmIfProd → atomic transaction → post-success POST-DEPLOY write. Verified live: 1 actual `sql.begin(` call site in apply path.
+- **D-79-08 hydration UNCONDITIONAL.** UPDATE FROM JOIN with NO WHERE-clause filter on watches.brand/model text — JOIN naturally skips watches.catalog_id IS NULL orphans per Pitfall 5. Touches `brand` + `model` columns ONLY; preserves notes/serial/reference (verified byte-identical pre vs post in integration test).
+- **D-79-10 POST-DEPLOY auto-generated via pure renderer + thin wrapper.** `renderPostDeployMarkdown(args)` is a pure exported function (testable in vitest without I/O); `writePostDeployArtifact` wraps with mkdir + writeFile AFTER the sql.begin commits. 6 operator sign-off SQL queries inline; Hamilton merge canonical UUID `20969364-...` verbatim.
+- **MIG-04 post-flight assertion uses POSITIVE predicate** `IS DISTINCT FROM NULL` per `[[post-flight-assertion-predicate-divergence]]`. Throw inside callback when resolved != total → ROLLBACK. Verified by source-grep in unit test + by structural review.
+- **Local DB end-to-end APPLY ran successfully.** Integration test against `127.0.0.1:54322` brought local DB to fully post-apply state: 205/205 catalog rows resolved (brand_id + family_id); 16 user watches hydrated; Hamilton + Hamilton Watch BOTH resolve to canonical UUID `20969364-...`; zero `watches.brand = 'Hamilton Watch'` rows post-apply; 33 new brands + 143 new families created (all needs_review=false per D-79-09).
+- **2 Rule 1 deviations** caught + auto-fixed during integration test development:
+  - (1) `strictPreflightGate` family-triple decided-set was keyed by RAW brand_norm but the family file is deduped by CANONICAL BRAND UUID identity per Plan 03 D-79-07. Live `hamilton watch|khaki field mechanical bronze` would never match decided `hamilton|...`. Fix: build brandMap inline + key BOTH sides by canonical UUID identity (mirror familyDryRun Stage 2 logic verbatim).
+  - (2) `applyFamilyPath` Step 4.3 INSERT failed with `22P02 invalid input syntax for type uuid: "a. lange & söhne"` because buildFamilyMap captured `brandUuid` at parse time when brandMap entries were still kind='new' with synthetic keys. applyBrandPath Step 4.1 reified brandMap to kind='existing' with real UUIDs but familyMap still held synthetics. Fix: applyFamilyPath gains optional `brandMap` param + re-resolves brandUuid at INSERT time via the now-reified brandMap; call site in main() passes brandMap.
+- **Plan 01 stub greens (final):** v8.4-post-deploy-template (8 it() + 1 sanity / 9 pass / 0 todo / 0 failed); v8.4-apply-atomic (10 it() + 1 sanity / DATABASE_URL set → 11 pass; unset → 1 pass + 10 skip); v8.4-apply-idempotent (3 it() + 1 sanity / DATABASE_URL set → 4 pass; unset → 1 pass + 3 skip). ALL 6 Phase 79 stub files now fully green.
+- **Forward armor preserved:** 0 `= ANY(` patterns; 0 `process.exit()` inside any sql.begin callback (Pitfall 2 verified — 7 actual exits all outside the transaction); 1 actual `sql.begin(` call (the unified outer atomic transaction); 6 `IS DISTINCT FROM NULL` occurrences (1 in postFlightAssertion + 1 in postFlightQuery template + 4 in operator sign-off SQL); 1 export of `renderPostDeployMarkdown`.
+- **MIG-02 + MIG-04 + DISP-03 marked complete** (full integration verification end-to-end). Plan 05 inherits a fully-functional script that has been run against local DB with all post-flight invariants green — Plan 05 is gate execution only (operator runs prod push, reviews auto-generated 79-POST-DEPLOY.md, runs 6 operator sign-off queries, commits with sign-off).
+- **Spec drift noted (not substantive):** Plan verify `grep -c 'process.exit' -le 6` is too narrow — counts comment refs too; actual code count is 7, all OUTSIDE the sql.begin callback. The substantive Pitfall 2 contract is met.
+- **POST-DEPLOY artifact NOT committed in this plan.** The local-generated 79-POST-DEPLOY.md was cleaned up after verification because the prod-version (PROD target) is Plan 05's deliverable.
+- **Full test sweep:** 9 test files passing / 65 tests passing / 0 todo / 0 failed when running just the Plan 04 stubs (parallel-vitest race with v8.4-brand-canonicalization.test.ts when running ALL integration tests at once — mitigated by apply-atomic restoring brand file from `git show HEAD:...` if missing).
+
 ### Pending Todos
 
 None.
@@ -223,11 +241,12 @@ None.
 | Phase 79 P01 | 12min | 3 tasks | 7 files |
 | Phase 79 P02 | 10 | 3 tasks | 2 files |
 | Phase 79 P03 | 14min | 3 tasks | 2 files |
+| Phase 79 P04 | 17min | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-25 — Phase 79 Plan 03 (Wave 2 family dry-run + applyFamilyPath definition) complete. `scripts/v8.4-brand-canonicalization.ts` extended 873 → 1643 LOC with FamilyDecisionMap shape + buildFamilyMap + parseFamilyDecisionsTable + parseCompositeKey + familyDryRun + applyFamilyPath + strictPreflightGate family extension (4 new refuse cases). `--mode=families` dry-run writes `.planning/v8.4-family-merge-decisions.md` via in-memory brand→family chain (D-79-07 Option 2). applyFamilyPath defined but NOT wired into main() (Plan 04 owns the call inside the unified outer sql.begin per D-79-03). MIG-03 requirement marked complete. Forward armor preserved: 0 `= ANY(` patterns (re-applied Plan 02 comment-rephrase); 0 `process.exit` inside sql.begin; npm run build exit 0. Phase 78 readonly invariant still passes (5/5 against local DB). Local smoke caught a Rule 1 bug — canonical-brand-identity dedup must key on UUID not brand_norm string because BrandDecisionMap merge entries carry source-raw not target-canonical name. Post-fix smoke: 0 `Hamilton Watch` rows + 8 `Hamilton` rows in family file (164 rows / 21 auto-resolved / 143 needs-review). Plan 01 stub greens: family-build-decisions 6/0/0; strict-gate 9/0/0 (+1 NEW combined PASS test). Commits: `4c7a7f4b` (Task 1 family types + buildFamilyMap), `21b3a753` (Task 2 family dry-run + family refuse cases), `66820328` (Task 3 applyFamilyPath definition). 2 Rule 1 deviations documented in 79-03-SUMMARY.md.
+Last activity: 2026-06-25 — Phase 79 Plan 04 (Wave 3 unified atomic apply transaction + post-flight assertion + auto-generated POST-DEPLOY artifact) complete. `scripts/v8.4-brand-canonicalization.ts` extended 1643 → 2125 LOC with applyHydration (DISP-03 / D-79-08 unconditional UPDATE FROM JOIN) + postFlightAssertion (MIG-04 / positive `IS DISTINCT FROM NULL` predicate) + renderPostDeployMarkdown (pure exported function) + writePostDeployArtifact (FS wrapper). main() `--apply --mode=both` branch fully wired with 5-stage flow + ONE outer `sql.begin` callback containing 6 mutation steps + 1 post-flight assertion per D-79-03 (Plan 02's transient brand-only sql.begin DELETED; Plan 02 "Plan 03/04" throw at the families/both gate DELETED). Local DB end-to-end smoke ran successfully: 205/205 catalog rows resolved + 33 new brands + 143 new families + 16 user watches hydrated; Hamilton + Hamilton Watch BOTH resolve to canonical UUID `20969364-...`; zero `watches.brand = 'Hamilton Watch'` rows post-apply; D-79-04 idempotent re-run gate verified (re-apply exits 0 with "Already applied"); D-79-06 alias cardinality stable across re-runs. 2 Rule 1 deviations auto-fixed: (1) strictPreflightGate family-triple keying must use canonical brand UUID identity not raw brand_norm; (2) applyFamilyPath needs optional brandMap param to re-resolve brandUuid at INSERT time since buildFamilyMap captures stale synthetic keys before applyBrandPath reifies brandMap. Plan 01 stub greens (ALL 6 Phase 79 stub files now green): v8.4-post-deploy-template 9/0/0; v8.4-apply-atomic 11/0/0 (DATABASE_URL set); v8.4-apply-idempotent 4/0/0 (DATABASE_URL set). Forward armor: 0 `= ANY(` patterns; 0 process.exit inside sql.begin callback; 1 actual sql.begin call site; 6 `IS DISTINCT FROM NULL` occurrences; npm run build exit 0. Commits: `ac69a781` (Task 1 helpers + unit test green), `f2652cf2` (Task 2 atomic-transaction wiring), `d732d996` (Task 3 integration tests + 2 Rule 1 deviations). MIG-02 + MIG-04 + DISP-03 marked complete.
 
-Next action: `/gsd-execute-phase 79` → Plan 04 (Wave 3 — unified atomic apply transaction + post-flight assertion + auto-generated 79-POST-DEPLOY.md). Plan 04 RESTRUCTURES Plan 02's transient brand-only `sql.begin` at scripts/v8.4-brand-canonicalization.ts L1540 into ONE outer transaction wrapping applyBrandPath + applyFamilyPath + hydration (Step 4.6) + post-flight assertion (Step 4.7) per D-79-03; deletes the Plan 02 main() throw at L1115 ("Plan 03/04" diagnostic); wires `--apply --mode=both` end-to-end; auto-emits `.planning/phases/79-backfill-migration-display-hydration/79-POST-DEPLOY.md` per D-79-10. Greens integration stubs `v8.4-apply-atomic.test.ts` + `v8.4-apply-idempotent.test.ts`. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
+Next action: `/gsd-execute-phase 79` → Plan 05 (Wave 4 — local-first verification gate + prod push). Plan 05 is gate execution only (no new code): operator runs final local-first verification (`npm run dev` smoke against the post-apply local DB to confirm display strings render canonical), THEN runs the script against prod via `tsx scripts/v8.4-brand-canonicalization.ts --apply --mode=both` with a prod DATABASE_URL inline (D-79-02 prompts for `yes`); reviews the auto-generated 79-POST-DEPLOY.md; runs the 6 operator sign-off SQL queries in the Supabase SQL editor; commits the file with sign-off. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md (both unblocked by Plan 05's prod migration push window).
 
 ## Operator Next Steps
