@@ -675,24 +675,33 @@ export function buildFamilyMap(
 }
 
 /**
- * D-79-01 — strict pre-flight gate (brand-only scope in Plan 02; Plan 03 extends
- * with the parallel family checks). Refuses on any drift between the operator-
- * edited decisions file and the live catalog state:
+ * D-79-01 — strict pre-flight gate. Plan 02 landed the brand-only refuse
+ * cases; Plan 03 extends with the parallel family refuse cases (per
+ * 79-CONTEXT.md L44-49). Refuses on any drift between the operator-edited
+ * decisions files and the live catalog state:
  *
- *   (a) any row with status='needs-review' (operator didn't finish)
- *   (b) any row with an unknown status token (per D-78-02 grammar)
- *   (c) any merge:<uuid> brand target missing from brands.id
- *   (d) any live catalog brand absent from the decisions file
+ *   BRAND SCOPE:
+ *   (a) any brand row with status='needs-review' (operator didn't finish)
+ *   (b) any brand row with an unknown status token (per D-78-02 grammar)
+ *   (c) any brand merge:<uuid> target missing from brands.id
+ *   (d) any live catalog brand absent from the brand decisions file
  *
- * The `existingBrandIdsFn` is dependency-injected so unit tests can stub the
- * DB existence check without a live connection (per PATTERNS L361-370).
+ *   FAMILY SCOPE (Plan 03):
+ *   (a-family) any family row with status='needs-review'
+ *   (b-family) any family row with an unknown status token
+ *   (c-family) any family merge:<uuid> target missing from watch_families.id
+ *   (d-family) any live catalog (brand_norm, model_norm) triple absent from
+ *               the family decisions file
+ *
+ * Both existence-check fns are dependency-injected so unit tests can stub
+ * the DB existence checks without a live connection (per PATTERNS L361-370).
  *
  * Per 79-RESEARCH § Pitfall 3 + [[drizzle-sql-any-array-pitfall]]: the
- * live-catalog DISTINCT query interpolates ONLY string scalars; no array goes
- * into any template literal. The existence-check DB query lives behind
- * `existingBrandIdsFn` so the SQL syntax there is the caller's responsibility
- * (the brand-apply main() callsite uses the postgres-lib `sql(uuids)` helper
- * form, NOT the array-spread anti-pattern flagged by
+ * live-catalog DISTINCT queries interpolate ONLY string scalars; no array
+ * goes into any template literal. The existence-check DB queries live
+ * behind their respective fn parameters so the SQL syntax there is the
+ * caller's responsibility (main() callsites use the postgres-lib `sql(uuids)`
+ * helper form, NOT the array-spread anti-pattern flagged by
  * [[drizzle-sql-any-array-pitfall]]).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -701,12 +710,22 @@ type SqlTagBrandNormalized = (
   ...values: unknown[]
 ) => Promise<Array<{ brand_normalized: string }>>
 
+// Family-side live-catalog SELECT returns (brand_norm, model_norm) pairs.
+type SqlTagFamilyTriple = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Array<{ brand_normalized: string; model_normalized: string }>>
+
 export async function strictPreflightGate(
   sql: SqlTagBrandNormalized,
   brandRows: BrandDecisionRow[],
   existingBrandIdsFn: (uuids: string[]) => Promise<Set<string>>,
+  familyRows: FamilyDecisionRow[] = [],
+  existingFamilyIdsFn: (uuids: string[]) => Promise<Set<string>> = async () =>
+    new Set<string>(),
 ): Promise<void> {
-  // (a) + (b) — every row must be terminal + grammar-valid.
+  // ----- BRAND SCOPE -----
+  // (a) + (b) — every brand row must be terminal + grammar-valid.
   for (const row of brandRows) {
     if (row.status === 'needs-review') {
       throw new Error(
@@ -724,7 +743,7 @@ export async function strictPreflightGate(
     }
   }
 
-  // (c) — every merge:<uuid> brand target must exist in brands.id.
+  // (c) — every brand merge:<uuid> target must exist in brands.id.
   const brandMergeUuids = brandRows
     .filter((r) => MERGE_RE.test(r.status))
     .map((r) => r.status.slice('merge:'.length))
@@ -750,6 +769,69 @@ export async function strictPreflightGate(
       throw new Error(
         `[v8.4-brand-canon] STRICT GATE: catalog has brand "${live.brand_normalized}" not present in decisions file. ` +
           `Re-run --regenerate to merge-forward the new brand row, edit it to a terminal status, then re-try --apply.`,
+      )
+    }
+  }
+
+  // ----- FAMILY SCOPE (Plan 03) -----
+  // Skip if no family rows were supplied (Plan 02 brand-only callsite path).
+  if (familyRows.length === 0) return
+
+  // (a-family) + (b-family) — every family row must be terminal + grammar-valid.
+  for (const row of familyRows) {
+    if (row.status === 'needs-review') {
+      throw new Error(
+        `[v8.4-brand-canon] STRICT GATE: family "${row.brand_raw} / ${row.family_raw}" has status=needs-review. ` +
+          `Edit .planning/v8.4-family-merge-decisions.md to lock a terminal status ` +
+          `(auto-resolved | merge:<uuid> | new), then re-run --apply.`,
+      )
+    }
+    if (!VALID_FAMILY_STATUSES.has(row.status) && !MERGE_RE.test(row.status)) {
+      throw new Error(
+        `[v8.4-brand-canon] STRICT GATE: family "${row.brand_raw} / ${row.family_raw}" has unknown status "${row.status}". ` +
+          `Expected one of: auto-resolved | merge:<uuid> | new. ` +
+          `Edit .planning/v8.4-family-merge-decisions.md and re-run --apply.`,
+      )
+    }
+  }
+
+  // (c-family) — every family merge:<uuid> target must exist in watch_families.id.
+  const familyMergeUuids = familyRows
+    .filter((r) => MERGE_RE.test(r.status))
+    .map((r) => r.status.slice('merge:'.length))
+  if (familyMergeUuids.length > 0) {
+    const existingFamilySet = await existingFamilyIdsFn(familyMergeUuids)
+    for (const uuid of familyMergeUuids) {
+      if (!existingFamilySet.has(uuid)) {
+        throw new Error(
+          `[v8.4-brand-canon] STRICT GATE: family merge:${uuid} target not found in watch_families table. ` +
+            `Edit the family decision file to point at a valid family id, or change the row's status to 'new'.`,
+        )
+      }
+    }
+  }
+
+  // (d-family) — live catalog (brand_norm, model_norm) triples must all appear
+  // in the family decisions file. Compose the live-triple set via a single
+  // DISTINCT SELECT; compose decided-triple set via in-memory map over
+  // familyRows. Composite key for both: `${brand_norm}|${model_norm}`.
+  const liveTriples = await (sql as unknown as SqlTagFamilyTriple)`
+    SELECT DISTINCT
+      lower(trim(c.brand)) AS brand_normalized,
+      lower(trim(c.model)) AS model_normalized
+    FROM watches_catalog c
+  `
+  const decidedTriples = new Set(
+    familyRows.map(
+      (r) => `${r.brand_raw.toLowerCase().trim()}|${r.family_normalized}`,
+    ),
+  )
+  for (const live of liveTriples) {
+    const key = `${live.brand_normalized}|${live.model_normalized}`
+    if (!decidedTriples.has(key)) {
+      throw new Error(
+        `[v8.4-brand-canon] STRICT GATE: catalog has (brand, model) family triple "${key}" not present in family decisions file. ` +
+          `Re-run --regenerate --mode=families to merge-forward the new family row, edit it to a terminal status, then re-try --apply.`,
       )
     }
   }
@@ -900,6 +982,269 @@ function buildHeader(): string {
   ].join('\n')
 }
 
+/**
+ * Phase 79 Plan 03 — family-side artifact header (symmetric with buildHeader).
+ * Cites --mode=families generation + --apply --mode=both consumption per
+ * 79-PATTERNS L555-564.
+ */
+function buildFamilyHeader(): string {
+  const now = new Date().toISOString().slice(0, 10)
+  return [
+    `# v8.4 Family Merge Decisions`,
+    ``,
+    `> Generated ${now} by scripts/v8.4-brand-canonicalization.ts --mode=families — READ-ONLY.`,
+    `> Edit \`status\` cells to lock decisions: auto-resolved | merge:<uuid> | new | skip | needs-review`,
+    `> Phase 79's --apply --mode=both consumes this file. Unknown status values cause Phase 79 to refuse the run.`,
+    `>`,
+    `> DO NOT remove this file between runs. Use --regenerate --mode=families to merge operator`,
+    `> decisions forward; the script preserves any row whose status is not \`needs-review\` verbatim.`,
+    ``,
+    ``,
+  ].join('\n')
+}
+
+/**
+ * Phase 79 Plan 03 — internal helper: parse the family file's preserved rows
+ * (operator-edited; status != needs-review) so --regenerate can merge-forward.
+ * Returns Map<compositeKey, raw_line>. Mirror of parseExistingPreserved L252-268.
+ */
+function parseExistingFamilyPreserved(content: string): Map<string, string> {
+  const preserved = new Map<string, string>()
+  for (const line of content.split('\n')) {
+    if (!line.startsWith('|')) continue
+    if (line.startsWith('| ---')) continue
+    if (line.startsWith('| brand ')) continue
+    if (line.startsWith('| brand_raw')) continue
+    const cells = line.split('|').map((c) => c.trim())
+    const brandRaw = cells[1]
+    const familyNormalized = cells[3]
+    const status = cells[5]
+    if (brandRaw && familyNormalized && status && status !== 'needs-review') {
+      const key = `${brandRaw.toLowerCase().trim()}|${familyNormalized}`
+      preserved.set(key, line)
+    }
+  }
+  return preserved
+}
+
+/**
+ * Phase 79 Plan 03 — --mode=families dry-run path (D-79-05 + D-79-07 read-only
+ * invariant). Reads the operator-edited brand decisions file in-memory (no
+ * brand --apply required per D-79-07 Option 2), queries the live catalog
+ * scoped through the canonical brand identity from BrandDecisionMap, runs
+ * word_similarity fuzzy candidates for unresolved family rows, and emits the
+ * GFM table at `.planning/v8.4-family-merge-decisions.md`.
+ *
+ * Issues only SELECT statements (D-79-05). Verified by Phase 78
+ * v8.4-readonly.test.ts (which spawns the script with --force — but the
+ * default --mode=brands path; the family read-only invariant is identical
+ * by construction since this function uses the same SELECT-only idiom).
+ *
+ * Per [[pg-trgm-word-similarity-for-brand-typos]] + R-FIND-02 search_path
+ * workaround: word_similarity is unqualified; the apply-time SET search_path
+ * resolves it across local (public) and prod (extensions). Uses
+ * public.f_unaccent for diacritic folding.
+ */
+type SqlTagFamilyDryRun = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<
+  Array<{
+    brand_raw: string
+    family_raw: string
+    brand_normalized: string
+    family_normalized: string
+    proposed_target_id: string | null
+    parent_brand_id: string | null
+  }>
+>
+
+async function familyDryRun(
+  sql: SqlTagFamilyDryRun,
+  brandMap: BrandDecisionMap,
+  args: ParsedArgs,
+): Promise<void> {
+  // Refuse-to-overwrite gate on FAMILY_OUTPUT_FILE (mirror buildHeader gate).
+  if (existsSync(FAMILY_OUTPUT_FILE) && !args.regenerate && !args.force) {
+    console.error(
+      `[v8.4-brand-canon] ERROR: ${FAMILY_OUTPUT_FILE} already exists.\n` +
+        `Pass --regenerate --mode=families to merge operator decisions forward, or --force to overwrite from scratch.\n` +
+        `DO NOT remove the file manually — --regenerate is the safe recovery path.`,
+    )
+    process.exit(1)
+  }
+
+  // Stage 1 — distinct catalog (brand_raw, model_raw, brand_norm, model_norm)
+  // LEFT JOIN brands LEFT JOIN watch_families. Brand-side dedup: the JOIN
+  // scopes through the canonical brand_id, so Hamilton + Hamilton Watch
+  // catalog rows resolve through the SAME brands.id and produce ONE family
+  // row per (canonical_brand_id, model_normalized) tuple.
+  const rows = await sql`
+    SELECT DISTINCT
+      c.brand AS brand_raw,
+      c.model AS family_raw,
+      c.brand_normalized,
+      c.model_normalized AS family_normalized,
+      wf.id AS proposed_target_id,
+      b.id AS parent_brand_id
+    FROM public.watches_catalog c
+    LEFT JOIN public.brands b ON b.name_normalized = c.brand_normalized
+    LEFT JOIN public.watch_families wf
+      ON wf.brand_id = b.id AND wf.name_normalized = c.model_normalized
+    ORDER BY c.brand_normalized, c.model_normalized, c.brand, c.model
+  `
+
+  // Stage 2 — collapse cross-brand-raw duplicates via BrandDecisionMap.
+  // Multiple catalog brand_raws that resolve to the SAME canonical brand
+  // (e.g. Hamilton + Hamilton Watch via brandMap) produce ONE family row per
+  // (canonical_brand_id, model_normalized) tuple. We key dedup by canonical
+  // brand IDENTITY (UUID when known, synthetic name otherwise) rather than
+  // brand_norm string — because a `merge:<uuid>` entry's brand_raw is the
+  // SOURCE name (e.g. 'Hamilton Watch'), not the target canonical name. Two
+  // rows with the same target UUID + same model_normalized collapse to ONE
+  // emitted family row per D-79-07.
+  //
+  // To present a stable canonical brand name in the artifact's leading
+  // column, we also look up the canonical name from the FIRST 'existing' row
+  // we see for each canonical UUID (the merge's brand_raw is the source name,
+  // not the target name).
+  const canonicalNameByUuid = new Map<string, string>()
+  for (const [brandNorm, resolved] of brandMap.entries()) {
+    if (resolved.kind === 'existing') {
+      // The 'existing' (auto-resolved) row's canonicalName IS the canonical
+      // brand name — Hamilton, not Hamilton Watch.
+      canonicalNameByUuid.set(resolved.uuid, resolved.canonicalName)
+    } else if (resolved.kind === 'new') {
+      // Synthetic identity: use the raw name as canonical display. Synthetic
+      // identifier as the dedup ID.
+      canonicalNameByUuid.set(`synthetic:${brandNorm}`, resolved.rawName)
+    }
+    // 'merge' entries do NOT contribute a canonical name (their canonicalName
+    // is the source raw, not the target canonical). They share the same UUID
+    // as an 'existing' entry, which DOES contribute the canonical name above.
+  }
+
+  type FamilyDedupKey = string
+  const dedup = new Map<FamilyDedupKey, FamilyRow>()
+  for (const r of rows) {
+    const brandNorm = r.brand_normalized
+    const resolvedBrand = brandMap.get(brandNorm)
+    // Canonical brand identity for dedup: real UUID for existing/merge, synthetic
+    // marker for 'new' (apply time reifies to a real UUID).
+    let canonicalBrandId: string
+    let canonicalBrandName: string
+    if (resolvedBrand && resolvedBrand.kind !== 'new') {
+      canonicalBrandId = resolvedBrand.uuid
+      canonicalBrandName =
+        canonicalNameByUuid.get(resolvedBrand.uuid) ?? resolvedBrand.canonicalName
+    } else if (resolvedBrand && resolvedBrand.kind === 'new') {
+      canonicalBrandId = `synthetic:${brandNorm}`
+      canonicalBrandName = resolvedBrand.rawName
+    } else {
+      // Brand-side drift (not in brandMap) — the strict gate refuses before
+      // --apply, but during the family dry-run we still emit the row so the
+      // operator sees what's outstanding. Use the raw brand string as identity.
+      canonicalBrandId = `unknown:${brandNorm}`
+      canonicalBrandName = r.brand_raw
+    }
+    const dedupKey: FamilyDedupKey = `${canonicalBrandId}|${r.family_normalized}`
+    if (dedup.has(dedupKey)) continue
+    dedup.set(dedupKey, {
+      brand_raw: canonicalBrandName,
+      family_raw: r.family_raw,
+      family_normalized: r.family_normalized,
+      proposed_target_id: r.proposed_target_id,
+      candidates: [],
+    })
+  }
+  const familyRows = Array.from(dedup.values())
+
+  // Stage 3 — fuzzy candidate suggestions for unresolved family rows. Per row,
+  // query watch_families scoped to the canonical brand_id (looked up via
+  // brandMap). Uses word_similarity > FUZZY_THRESHOLD with public.f_unaccent
+  // diacritic folding per [[pg-trgm-word-similarity-for-brand-typos]].
+  for (const row of familyRows) {
+    if (row.proposed_target_id) continue
+    const resolvedBrand = brandMap.get(row.brand_raw.toLowerCase().trim())
+    // Skip fuzzy lookup if the resolved brand is 'new' (the brand isn't in
+    // brands yet, so it can have no families — no candidates exist).
+    if (!resolvedBrand || resolvedBrand.kind === 'new') continue
+    const brandUuid = resolvedBrand.uuid
+    const cands = await (sql as unknown as (
+      strings: TemplateStringsArray,
+      ...values: unknown[]
+    ) => Promise<Array<{ name_normalized: string; score: number }>>)`
+      SELECT
+        name_normalized,
+        word_similarity(
+          lower(public.f_unaccent(${row.family_normalized})),
+          lower(public.f_unaccent(name_normalized))
+        ) AS score
+      FROM public.watch_families
+      WHERE brand_id = ${brandUuid}
+        AND word_similarity(
+              lower(public.f_unaccent(${row.family_normalized})),
+              lower(public.f_unaccent(name_normalized))
+            ) > ${FUZZY_THRESHOLD}
+      ORDER BY score DESC
+      LIMIT ${TOP_K}
+    `
+    row.candidates = cands.map((c) => ({
+      name: c.name_normalized,
+      score: Number(c.score),
+    }))
+  }
+
+  // Stage 4 — compose artifact. --regenerate path preserves operator-edited
+  // rows verbatim; default path emits fresh.
+  let tableLines: string[]
+  const freshDecisionRows: FamilyDecisionRow[] = familyRows.map((r) => ({
+    ...r,
+    status: r.proposed_target_id ? 'auto-resolved' : 'needs-review',
+  }))
+  if (args.regenerate && existsSync(FAMILY_OUTPUT_FILE)) {
+    const existing = await readFile(FAMILY_OUTPUT_FILE, 'utf8')
+    const preserved = parseExistingFamilyPreserved(existing)
+    const seenInFresh = new Set<string>()
+    const lines: string[] = [GFM_FAMILY_HEADER, GFM_FAMILY_SEPARATOR]
+    for (const r of freshDecisionRows) {
+      const key = `${r.brand_raw.toLowerCase().trim()}|${r.family_normalized}`
+      seenInFresh.add(key)
+      const preservedLine = preserved.get(key)
+      if (preservedLine) {
+        lines.push(preservedLine)
+      } else {
+        lines.push(buildFamilyRow(r, r.status))
+      }
+    }
+    // Edge case (mirror brand mergeForward): preserved rows whose composite key
+    // is no longer in the fresh result set — keep them in place so operator
+    // decisions aren't silently dropped.
+    for (const [key, line] of preserved) {
+      if (!seenInFresh.has(key)) {
+        lines.push(line)
+      }
+    }
+    tableLines = lines
+  } else {
+    tableLines = buildFamilyTableRows(freshDecisionRows)
+  }
+
+  await mkdir(path.dirname(FAMILY_OUTPUT_FILE), { recursive: true })
+  await writeFile(
+    FAMILY_OUTPUT_FILE,
+    buildFamilyHeader() + tableLines.join('\n') + '\n',
+    'utf8',
+  )
+
+  const autoResolvedCount = familyRows.filter((r) => r.proposed_target_id).length
+  const needsReviewCount = familyRows.length - autoResolvedCount
+  console.log(
+    `[v8.4-brand-canon] wrote ${FAMILY_OUTPUT_FILE} (${familyRows.length} family rows, ` +
+      `${autoResolvedCount} auto-resolved, ${needsReviewCount} needs-review)`,
+  )
+}
+
 async function main() {
   const args = parseArgs()
 
@@ -915,10 +1260,17 @@ async function main() {
     process.exit(1)
   }
 
-  // D-78-07: refuse-to-overwrite when artifact exists and operator didn't pass
-  // --regenerate or --force. SKIPPED on --apply (the apply path READS the
-  // existing file; refuse-to-overwrite makes no sense there).
-  if (!args.apply && existsSync(OUTPUT_FILE) && !args.regenerate && !args.force) {
+  // D-78-07: refuse-to-overwrite when the brand artifact exists and operator
+  // didn't pass --regenerate or --force. SKIPPED on --apply (the apply path
+  // READS the existing file) AND SKIPPED on --mode=families (which has its
+  // own refuse-to-overwrite gate inside familyDryRun for FAMILY_OUTPUT_FILE).
+  if (
+    !args.apply &&
+    args.mode === 'brands' &&
+    existsSync(OUTPUT_FILE) &&
+    !args.regenerate &&
+    !args.force
+  ) {
     console.error(
       `[v8.4-brand-canon] ERROR: ${OUTPUT_FILE} already exists.\n` +
         `Pass --regenerate to merge operator decisions forward, or --force to overwrite from scratch.\n` +
@@ -947,6 +1299,33 @@ async function main() {
     // below would fail with `42883 function does not exist` on the env where
     // pg_trgm is NOT in the default search_path. R-FIND-02.
     await sql.unsafe(`SET search_path = public, extensions, pg_catalog`)
+
+    // ====================================================================
+    // Phase 79 Plan 03 — --mode=families dry-run dispatch (D-79-05 + D-79-07).
+    // Read-only: emits .planning/v8.4-family-merge-decisions.md from the
+    // operator-edited brand decisions file + live catalog. Does NOT require
+    // brand --apply to have run first (Option 2 — in-memory brand→family
+    // chain per D-79-07). Hard-error if brand file is missing.
+    // ====================================================================
+    if (!args.apply && args.mode === 'families') {
+      if (!existsSync(OUTPUT_FILE)) {
+        console.error(
+          `[v8.4-brand-canon] ERROR: brand decisions file not found at ${OUTPUT_FILE}.\n` +
+            `Run \`npm run db:v8.4-brand-canon\` (--mode=brands default) first to generate it, ` +
+            `then re-run --mode=families.`,
+        )
+        process.exit(1)
+      }
+      const brandContent = await readFile(OUTPUT_FILE, 'utf8')
+      const brandRows = parseDecisionsTable(brandContent)
+      const brandMap = buildBrandMap(brandRows)
+      await familyDryRun(
+        sql as unknown as Parameters<typeof familyDryRun>[0],
+        brandMap,
+        args,
+      )
+      return
+    }
 
     // ====================================================================
     // Phase 79 apply-path dispatch (Plan 02 lands brand-only scope; Plans
