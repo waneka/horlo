@@ -11,8 +11,10 @@
 --
 --   Tasks 2 + 3 of the quick task rewrite the DAL to tokenize the query,
 --   wrap each column ILIKE in lower(public.f_unaccent(...)) for diacritic
---   folding, and fall back to pg_trgm `similarity()` when the strict tier
---   returns nothing (catalog side only; D-07 keeps Collections strict).
+--   folding, and fall back to pg_trgm `word_similarity() > 0.2` when the
+--   strict tier returns nothing (catalog side only; D-07 keeps Collections
+--   strict). `word_similarity` not `similarity` — see memory
+--   `project_pg_trgm_word_similarity_for_brand_typos`.
 --
 --   This migration adds the SQL primitives those rewrites depend on:
 --     - the unaccent extension (diacritic folding)
@@ -45,12 +47,35 @@
 --   counts are small (~205 local, similar order prod) so the AccessExclusive
 --   lock is sub-second and acceptable. Do not re-litigate this tradeoff
 --   without measuring catalog row count first.
+--
+-- PORTABILITY: the first push of this migration to prod failed because
+--   Supabase prod installs pg_trgm into the `extensions` schema (not on the
+--   default search_path during a migration), so unqualified `gin_trgm_ops`
+--   could not be resolved. Local Supabase, by contrast, has pg_trgm in
+--   `public`. The cross-environment-portable pattern is to extend the
+--   session search_path to include both schemas and use unqualified names:
+--   Postgres resolves `gin_trgm_ops` and `unaccent` to whichever schema has
+--   them, and the resolved OIDs are baked into the function/index plans at
+--   creation time, so later sessions don't need extensions in search_path.
+--   See `project_drizzle_supabase_db_mismatch` memory (extension-schema is
+--   one of the 4 prod-push gotchas).
 
--- 1. Diacritic-folding extension. Idempotent.
-CREATE EXTENSION IF NOT EXISTS unaccent;
+-- 0. Make extensions schema reachable for the rest of this migration.
+--    SET LOCAL scopes only to the current transaction (Supabase wraps each
+--    migration in BEGIN/COMMIT). Listing `extensions` AFTER `public` keeps
+--    the existing project convention that public objects take precedence
+--    when both schemas have a name collision.
+SET LOCAL search_path = public, extensions;
 
--- 2. Trigram similarity extension. Idempotent.
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- 1. Diacritic-folding extension. Idempotent. WITH SCHEMA extensions matches
+--    Supabase guidance (passes advisor lint 0015_extension_in_public) when
+--    the extension is being newly installed; if it's already installed
+--    elsewhere (e.g., local has it in public), IF NOT EXISTS skips the
+--    create and the existing-schema location is left as-is.
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA extensions;
+
+-- 2. Trigram similarity extension. Idempotent. Same rationale.
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 
 -- 3. IMMUTABLE wrapper around unaccent() so the fold is usable in a functional
 --    index. The default unaccent(text) overload is marked STABLE because the
@@ -59,19 +84,33 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 --    in practice, and an IMMUTABLE label tells Postgres it can be used in an
 --    index expression.
 --
+--    The `unaccent` regdictionary reference is unqualified — Postgres resolves
+--    it via the search_path PINNED ON THE FUNCTION (not just the session)
+--    via the SET clause below. This matters because INDEX BUILD inlines SQL
+--    functions and re-resolves names in the index-build context, which has
+--    a DIFFERENT search_path than the user session. Pinning the path on the
+--    function itself ensures it finds the dictionary in either `extensions`
+--    (Supabase prod) or `public` (local Supabase CLI) regardless of caller.
+--    Caught during the first prod-push attempt: session-level SET LOCAL was
+--    not enough; index-build re-resolved with default search_path and failed
+--    with "text search dictionary 'unaccent' does not exist".
+--
 --    Standard Postgres workaround documented in the unaccent extension docs.
 CREATE OR REPLACE FUNCTION public.f_unaccent(text)
   RETURNS text
   LANGUAGE sql
   IMMUTABLE
   PARALLEL SAFE
+  SET search_path = public, extensions, pg_catalog
 AS $$
-  SELECT public.unaccent('public.unaccent', $1)
+  SELECT unaccent('unaccent'::regdictionary, $1)
 $$;
 
 -- 4. Functional gin trigram indexes on watches_catalog. Both ILIKE on the
---    fold AND similarity() on the fold use these (gin_trgm_ops supports
---    both operator classes).
+--    fold AND similarity() / word_similarity() on the fold use these
+--    (gin_trgm_ops supports both operator classes).
+--
+--    `gin_trgm_ops` is unqualified per the search_path strategy above.
 CREATE INDEX IF NOT EXISTS watches_catalog_brand_unaccent_trgm_idx
   ON watches_catalog
   USING gin (lower(public.f_unaccent(brand)) gin_trgm_ops);
