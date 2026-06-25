@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: planning
-last_updated: "2026-06-25T00:48:33.119Z"
+last_updated: "2026-06-25T01:00:00.000Z"
 last_activity: 2026-06-25
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,10 +24,16 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 78 — Schema Additions + Operator-Resolve Queue
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-25 — Milestone v8.4 started
+Status: Ready to plan (roadmap drafted; awaiting `/gsd-plan-phase 78`)
+Last activity: 2026-06-25 — Roadmap drafted for v8.4: 5 phases (78-82), 25/25 requirements mapped; ROADMAP.md + REQUIREMENTS.md traceability updated
+
+**Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
+- CANON-03: `watch_families.aliases text[] NOT NULL DEFAULT '{}'` + GIN containment index
+- CANON-04: `brands.needs_review` + `watch_families.needs_review` boolean columns
+- MIG-01: `scripts/v8.4-brand-canonicalization.ts` dry-run → writes `.planning/v8.4-brand-merge-decisions.md`
+- MIG-05 (portability foundation): `extensions.unaccent` + pinned `SET search_path` per `project_drizzle_supabase_db_mismatch`; full MIG-05 closes in Phase 79
 
 ## Deferred Items
 
@@ -90,6 +96,20 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 
 ### Key Decisions
 
+**v8.4 Catalog Brand+Model Canonicalization — locked decisions from SEED-021 + kickoff:**
+
+- **D-01 (v8.4)**: `brands.name` is the canonical brand string; `watch_families.name` is the canonical model/family string. `watches_catalog.brand|model` and `watches.brand|model` become denormalized display copies, auto-overwritten from FK targets on every write.
+- **D-02 (v8.4)**: On every `addWatch` / `editWatch` / catalog upsert, denormalized brand+model strings are auto-overwritten from resolved canonical names. No free-text drift on display surfaces.
+- **D-03 (v8.4)**: Wire `watch_families.id` FK on `watches_catalog` + add `watch_families.aliases text[]` for typo/abbreviation cases (`Brut Date` → `Brut Datejust`). NO new `models` table — `watch_families` already plays that role (Phase 34 D-01). SEED-001 Variant + Individual layers remain future work.
+- **D-04 (v8.4)**: Backfill conflict resolution via operator-resolve queue at `.planning/v8.4-brand-merge-decisions.md`. Auto-map exact-normalized matches; ambiguous cases (`Hamilton` vs `Hamilton Watch`, `Omega` vs `OMEGA`, `Héron` vs `Héron Watches`) queued for manual operator decision BEFORE the data migration runs.
+- **D-05 (v8.4)**: Ingest fuzzy-match-then-create — `/api/extract-watch` looks up exact match first, then `pg_trgm` `similarity > 0.6` fuzzy, then auto-creates new row with `needs_review: true`. Same path for `watch_families` (including `aliases` containment check).
+- **D-06 (v8.4)**: Recommender reads `brand_id` via JOIN through `watches.catalogId → watches_catalog.brand_id`. No new column on `watches` (CANON-V2-01 denormalization deferred — JOIN cost acceptable per Phase 19.1 baselines). Rationale templates read canonical `brands.name`, not free-text.
+- **D-07 (v8.4)**: Operator-review queue surfaces in `/admin/brands` + `/admin/families` views (reusing v5.1 admin CMS pattern from Phase 47). Confirm / rename / merge-into-existing actions. No CLI required.
+- **D-08 (v8.4)**: Backfill migration is reversible in dry-run mode (writes proposed mappings to `.md` artifact for operator review BEFORE the data UPDATE runs). Post-flight assertion uses a DIFFERENT predicate from the UPDATE's WHERE-clause (per `project_post_flight_assertion_predicate_divergence`).
+- **Phases 78-80 are DB-touching**: `workflow.use_worktrees=false` already set globally (per `project_next_clear_operational_debt`); migration push pattern is local `drizzle-kit push` for `npm run dev` verification + hand-written `supabase/migrations/*.sql` + `supabase db push --linked` for prod (per `project_drizzle_supabase_db_mismatch`).
+- **Phase 79 is the high-risk phase**: data-write backfill on production catalog. The MIG-04 post-flight assertion + the MIG-01 dry-run `.md` artifact are the two safety nets; both are required.
+- **Phase 80 sequencing is non-negotiable**: ingest hardening (INGEST-01..04) must land in the SAME migration push as the NOT NULL flip (CANON-01/02), or the first post-flip extract will crash with a 23502 not-null violation.
+
 **v8.3 WYWT Video — locked decisions from SEED-020 + Spike 001:**
 
 - **D-01 (SEED-020)**: Wrist-rotation is linear motion — NOT a boomerang. Accept a visible loop snap on `/wear/{id}` autoplay-muted-loop; no ping-pong post-processing.
@@ -142,10 +162,8 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-06-24 — Quick task 260623-uua shipped: search ergonomics fix (multi-token AND-of-ORs + `unaccent` diacritic fold + `pg_trgm word_similarity > 0.2` fuzzy fallback) across `searchCatalogWatches` (`/search` Watches tab) and `searchCollections` (`/search` Collections tab). 4 commits (81e21fb3, ac89ad1f, 50621739, 99172df2); local UAT 12/12 pass (`omega seamaster`, `Heron`, `Jaeger la`, `Jeager` typo, facet+text composition, baseline regressions, Collections privacy gates). One auto-fix mid-flight: swapped `similarity > 0.3` → `word_similarity > 0.2` because plain similarity scored "jeager" vs "jaeger-lecoultre" at only 0.143 (suffix dilution). SEED-021 brand canonicalization explicitly DEFERRED — not in this scope. Prior activity: 260623-pzz forward-fix `81f78084` for prod home crash.
+Last activity: 2026-06-25 — v8.4 Catalog Brand+Model Canonicalization roadmap drafted: 5 phases (78 Schema Additions + Operator-Resolve Queue, 79 Backfill Migration + Display Hydration, 80 NOT NULL Flip + Ingest Hardening, 81 Recommender + Display Server Action Swap, 82 Add-Watch UI + Operator Admin). 25/25 v8.4 requirements mapped across the 5 phases (P78: 3, P79: 5, P80: 6, P81: 6, P82: 5); CANON 4 + MIG 5 + INGEST 4 + RECO 4 + DISP 3 + UI 3 + OPS 2 = 25. Coverage table written to ROADMAP.md; REQUIREMENTS.md Traceability section filled with phase numbers (replaced 25 TBD placeholders). Sequencing locked: schema (P78) → backfill (P79) → NOT NULL+ingest in same push (P80) → recommender+display swap (P81) → UI+admin (P82). Prior activity: 260623-uua shipped (search ergonomics — multi-token AND-of-ORs + `unaccent` + `pg_trgm word_similarity > 0.2`).
 
-Next action: Operator prod push for 260623-uua: `git push` + `supabase db push --linked` (deploys unaccent + pg_trgm migration `20260623200000_quick_260623_uua_search_unaccent_trgm.sql`). Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md; can be batched with this push.
+Next action: `/gsd-plan-phase 78` to break Phase 78 into executable plans. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md — these can be batched with the first v8.4 migration push (Phase 78 will produce a new `supabase/migrations/*.sql` file for the `aliases` + `needs_review` columns).
 
 ## Operator Next Steps
-
-- Start the next milestone with /gsd-new-milestone

@@ -111,37 +111,38 @@ Explicitly excluded from v8.4:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CANON-01 | TBD | Pending |
-| CANON-02 | TBD | Pending |
-| CANON-03 | TBD | Pending |
-| CANON-04 | TBD | Pending |
-| MIG-01 | TBD | Pending |
-| MIG-02 | TBD | Pending |
-| MIG-03 | TBD | Pending |
-| MIG-04 | TBD | Pending |
-| MIG-05 | TBD | Pending |
-| INGEST-01 | TBD | Pending |
-| INGEST-02 | TBD | Pending |
-| INGEST-03 | TBD | Pending |
-| INGEST-04 | TBD | Pending |
-| RECO-01 | TBD | Pending |
-| RECO-02 | TBD | Pending |
-| RECO-03 | TBD | Pending |
-| RECO-04 | TBD | Pending |
-| DISP-01 | TBD | Pending |
-| DISP-02 | TBD | Pending |
-| DISP-03 | TBD | Pending |
-| UI-01 | TBD | Pending |
-| UI-02 | TBD | Pending |
-| UI-03 | TBD | Pending |
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
+| CANON-01 | Phase 80 | Pending |
+| CANON-02 | Phase 80 | Pending |
+| CANON-03 | Phase 78 | Pending |
+| CANON-04 | Phase 78 | Pending |
+| MIG-01 | Phase 78 | Pending |
+| MIG-02 | Phase 79 | Pending |
+| MIG-03 | Phase 79 | Pending |
+| MIG-04 | Phase 79 | Pending |
+| MIG-05 | Phase 79 | Pending |
+| INGEST-01 | Phase 80 | Pending |
+| INGEST-02 | Phase 80 | Pending |
+| INGEST-03 | Phase 80 | Pending |
+| INGEST-04 | Phase 80 | Pending |
+| RECO-01 | Phase 81 | Pending |
+| RECO-02 | Phase 81 | Pending |
+| RECO-03 | Phase 81 | Pending |
+| RECO-04 | Phase 81 | Pending |
+| DISP-01 | Phase 81 | Pending |
+| DISP-02 | Phase 81 | Pending |
+| DISP-03 | Phase 79 | Pending |
+| UI-01 | Phase 82 | Pending |
+| UI-02 | Phase 82 | Pending |
+| UI-03 | Phase 82 | Pending |
+| OPS-01 | Phase 82 | Pending |
+| OPS-02 | Phase 82 | Pending |
 
 **Coverage:**
 - v8.4 requirements: 25 total
-- Mapped to phases: TBD (filled by roadmapper)
-- Unmapped: TBD
+- Mapped to phases: 25 (100%)
+- Unmapped: 0
+- Phase distribution: P78 (3), P79 (5), P80 (6), P81 (6), P82 (5)
 
 ---
 *Requirements defined: 2026-06-24*
-*Last updated: 2026-06-24 — initial draft; traceability pending roadmap*
+*Last updated: 2026-06-25 — traceability filled by roadmapper; 25/25 requirements mapped across Phases 78-82*

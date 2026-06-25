@@ -16,7 +16,8 @@
 - ✅ **v8.1 Add-Watch Polish** — Phases 72-74 (shipped 2026-05-30) — [archive](milestones/v8.1-ROADMAP.md)
 - ✅ **v8.2 Discovery Freshness** — Phase 75 (shipped 2026-06-10) — [archive](milestones/v8.2-ROADMAP.md)
 - ✅ **v8.3 WYWT Video** — Phases 76-77 (shipped 2026-06-23) — [archive](milestones/v8.3-ROADMAP.md)
-- 💤 **v9.0 Catalog Expansion** — next milestone target (SEED-009)
+- 🚧 **v8.4 Catalog Brand+Model Canonicalization** — Phases 78-82 (active; SEED-021 — promoted ahead of v9.0)
+- 💤 **v9.0 Catalog Expansion** — next milestone target (SEED-009; lands on v8.4's canonical foundation)
 - 💤 **Market Value** — future, after v9.0 (SEED-005; needs the SEED-007 pricing spike first)
 
 ## Phases
@@ -242,8 +243,8 @@ See [v8.2-ROADMAP.md](milestones/v8.2-ROADMAP.md) for full phase details.
 <details>
 <summary>✅ v8.3 WYWT Video (Phases 76-77) — SHIPPED 2026-06-23</summary>
 
-- [x] **Phase 76: Video Schema, Storage Paths + Server Action** — VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16 (shipped 2026-06-23)
-- [x] **Phase 77: Video Capture + Display UI** — VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15 (shipped 2026-06-23; 8 plans across 4 waves)
+- [x] Phase 76: Video Schema, Storage Paths + Server Action (4/4 plans) — VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16
+- [x] Phase 77: Video Capture + Display UI (8/8 plans) — VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15
 
 16/16 v8.3 requirements shipped. Two-phase feature milestone: backend (schema + storage probes + Server Action + IDOR guard) + UI (ComposeStep video-capture mode + poster tiles + `/wear/{id}` player + stories lane video slides). 5/5 prod iOS UAT pass after two polish redeploys.
 
@@ -251,52 +252,122 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 
 </details>
 
+### 🚧 v8.4 Catalog Brand+Model Canonicalization (Phases 78-82) — ACTIVE
+
+- [ ] **Phase 78: Schema Additions + Operator-Resolve Queue** — CANON-03, CANON-04, MIG-01
+- [ ] **Phase 79: Backfill Migration + Display Hydration** — MIG-02, MIG-03, MIG-04, MIG-05, DISP-03
+- [ ] **Phase 80: NOT NULL Flip + Ingest Hardening** — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04
+- [ ] **Phase 81: Recommender + Display Server Action Swap** — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02
+- [ ] **Phase 82: Add-Watch UI + Operator Admin** — UI-01, UI-02, UI-03, OPS-01, OPS-02
+
+25/25 v8.4 requirements mapped across 5 phases (CANON 4, MIG 5, INGEST 4, RECO 4, DISP 3, UI 3, OPS 2). Sequencing: schema → backfill → NOT NULL+ingest → recommender+display → UI+admin. Each phase delivers a coherent, prod-verifiable capability with the next phase resting on the previous one's invariants. Phases 78-80 are DB-touching (`workflow.use_worktrees=false` already globally set per `project_next_clear_operational_debt`).
+
 ## Phase Details
 
-### Phase 76: Video Schema, Storage Paths + Server Action
-**Goal**: The server can safely accept a wear-event video upload — schema extended, storage paths enforced, upload capped, and cross-user writes blocked.
-**Depends on**: Phase 75 (v8.2 shipped; v8.3 starts here)
-**Requirements**: VID-07, VID-08, VID-09, VID-10, VID-11, VID-12, VID-16
+### Phase 78: Schema Additions + Operator-Resolve Queue
+**Goal**: The schema can carry alias data and a needs-review flag, and a dry-run script proposes brand+family mappings for operator approval — no data UPDATE runs yet.
+**Depends on**: Phase 77 (v8.3 shipped; v8.4 starts here)
+**Requirements**: CANON-03, CANON-04, MIG-01
 **Success Criteria** (what must be TRUE):
-  1. A wear event created with `media_type='video'` persists in the database with both `media_path` and `poster_path` non-NULL; a wear event created with `media_type='photo'` continues to work exactly as before (VID-11, VID-12, VID-15 foundation)
-  2. The Server Action rejects any video upload over 5 MB with an error the client can display; it also warns at ~4 MB before the upload attempt (VID-09)
-  3. The Server Action constructs storage paths from `getCurrentUser().id` + a server-issued `wearEventId`; a client-supplied path is never trusted (VID-16, VID-07 — mirrors Phase 15 T-15-17)
-  4. The Server Action probes both the `.mp4` and `-poster.jpg` Storage objects for existence before inserting the `wear_events` row; if the INSERT fails, both objects are best-effort removed (VID-08, VID-10 — mirrors Phase 15 T-15-04 / T-15-18)
-  5. Pre-existing photo wear rows are unchanged by the migration — all existing `photo_url` values remain readable (VID-11 non-destructive migration requirement)
-**Plans**: 4 plans
-  - [x] 76-01-PLAN.md — Drizzle schema + Supabase migration + integration test (VID-11, VID-12); BLOCKING local `drizzle-kit push` (autonomous:false)
-  - [x] 76-02-PLAN.md — Client-side path builders `buildWearVideoPath` + `buildWearPosterPath` + 6 unit tests (VID-07, VID-16)
-  - [x] 76-03-PLAN.md — DAL helper `logWearEventWithVideo` + Server Action `logWearWithVideo` + 9 unit tests (VID-07, VID-08, VID-09, VID-10, VID-16)
-  - [x] 76-04-PLAN.md — Full Phase 76 verification + `76-POST-DEPLOY.md` runbook + human prod `supabase db push --linked` (autonomous:false) (completed 2026-06-23)
+  1. `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column exists with a GIN containment index that returns rows in <50ms on the seeded local catalog for `aliases @> ARRAY['datejust']` queries (CANON-03)
+  2. `brands.needs_review boolean NOT NULL DEFAULT false` and `watch_families.needs_review boolean NOT NULL DEFAULT false` columns exist; existing rows backfill to `false`; new INSERT-from-ingest paths can set `true` (CANON-04)
+  3. Running `scripts/v8.4-brand-canonicalization.ts` (no `--apply` flag) writes `.planning/v8.4-brand-merge-decisions.md` listing every distinct `lower(trim(watches_catalog.brand))` value with either an auto-resolved `brands.id` or a `needs operator decision` marker for ambiguous cases — without touching any row in any table (MIG-01)
+  4. The migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` — uses `extensions.unaccent` with pinned `SET search_path` on any helper functions, and the `supabase/migrations/*.sql` filename + ordering follow project convention (MIG-05 portability foundation; full MIG-05 closes in Phase 79)
+**Plans**: TBD
 **UI hint**: no
 
-### Phase 77: Video Capture + Display UI
-**Goal**: A collector can record a 3-second wrist-rotation video in the WYWT compose flow and see it rendered as a poster tile in feed/rail and as an autoplaying player on the wear-event detail page.
-**Depends on**: Phase 76
-**Requirements**: VID-01, VID-02, VID-03, VID-04, VID-05, VID-06, VID-13, VID-14, VID-15 (+ WR-02 fold-in from Phase 76 review)
+### Phase 79: Backfill Migration + Display Hydration
+**Goal**: Every existing `watches_catalog` row resolves to a canonical `brand_id` and `family_id`; every existing `watches` row whose `catalogId` is set has its display strings hydrated from the canonical names — and a post-flight assertion proves zero unresolved NULLs.
+**Depends on**: Phase 78 (needs the `aliases` + `needs_review` columns and an operator-approved decisions `.md` artifact)
+**Requirements**: MIG-02, MIG-03, MIG-04, MIG-05, DISP-03
 **Success Criteria** (what must be TRUE):
-  1. User can switch between "Take photo" and "Record video" modes in the WYWT compose flow and switch back before submitting; submitting creates either a photo or a video wear event, never both (VID-01, VID-06)
-  2. User taps "Record 3s" and the camera records for exactly 3.0 seconds with an on-screen countdown, then auto-stops; user can discard the clip and re-record without leaving the compose flow (VID-02, VID-03)
-  3. The captured clip is stored as `video/mp4;codecs=avc1` when the browser supports it (iOS Safari, Chrome 121+); a webm fallback is used only on browsers that do not support mp4 MediaRecorder (VID-04)
-  4. A poster JPEG is extracted client-side at 3/4 through the clip via canvas (no server transcoding); the poster is visible to the user in the compose flow before they submit (VID-05)
-  5. Video posts appear as static poster images with a play-icon overlay in every feed/rail/profile-grid surface; tapping navigates to `/wear/{id}` which autoplays the video muted-looped with `playsInline` (no fullscreen takeover on iOS); existing photo posts are visually unchanged on every surface (VID-13, VID-14, VID-15)
-**Plans**: 8 plans across 3 waves
-Plans:
-- [x] 77-01-PLAN.md — Wave 0 foundation: delete `src/app/spike-mr-capture/` (T-77-01 mitigation) + seed 11 RED Vitest stub files (wave 1)
-- [x] 77-02-PLAN.md — Types + MediaState discriminated union in `src/lib/wywtTypes.ts` (VID-06; wave 1)
-- [x] 77-03-PLAN.md — DAL WR-02 column widening across 4 readers in `src/data/wearEvents.ts` (WR-02; wave 1)
-- [x] 77-04-PLAN.md — `useMediaCapability` hook + `extractPosterBlob` lib (VID-04, VID-05; wave 1)
-- [x] 77-05-PLAN.md — `VideoCaptureView` component + ring-fill keyframes (VID-02, VID-03; wave 2)
-- [x] 77-06-PLAN.md — `ComposeStep` 3-button chooser + MediaState migration + video submit pipeline (VID-01, VID-06; wave 2)
-- [x] 77-07-PLAN.md — `VideoPlayBadge` + `WearVideoClient` + `WearCard` discriminator branch (VID-13, VID-14, VID-15; wave 3)
-- [x] 77-08-PLAN.md — `WywtTile` video branch + WearsLane WearSlide widening + signed-URL minting in 3 Server Components (VID-13, VID-14; wave 3)
+  1. Running `scripts/v8.4-brand-canonicalization.ts --apply` after operator approves the decisions `.md` artifact populates `watches_catalog.brand_id` for every row — auto-mapped exact matches use the existing brand row, operator-resolved ambiguous cases use the operator-chosen target, net-new brands get a new `brands` row with `needs_review: false` (operator-approved). Idempotent on re-run (MIG-02)
+  2. Running the same script for families populates `watches_catalog.family_id` for every row — typo cases (`Brut Date` → `Brut Datejust`) routed into the `aliases` array on the canonical family rather than creating a duplicate family row (MIG-03)
+  3. A post-flight assertion using a DIFFERENT predicate from the UPDATE's WHERE-clause (e.g. `COUNT(*) WHERE brand_id IS DISTINCT FROM NULL` vs the operation's `WHERE brand_id IS NULL`) verifies zero unresolved rows on `watches_catalog` AFTER the migration — per the post-flight-predicate divergence lesson from `project_post_flight_assertion_predicate_divergence` (MIG-04)
+  4. Every existing `watches` row whose `catalogId` is non-NULL has its `brand` and `model` columns overwritten with the canonical `brands.name` / `watch_families.name` resolved through that `catalogId` — no UI surface (collection grid, detail page, profile rail) still renders stale free-text variants like `Hamilton` vs `Hamilton Watch` (DISP-03)
+  5. The full migration pushes cleanly to prod via `supabase db push --linked` on the first attempt — no `extensions` schema portability surprises, no enum-bound dependent failures, no filename ordering issues (MIG-05 full closure)
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 80: NOT NULL Constraint Flip + Ingest Hardening
+**Goal**: The schema enforces that every `watches_catalog` row resolves to a brand and family, and `/api/extract-watch` cannot create new canonical drift after this phase — every extract attempt either matches an existing `brand_id` (exact or fuzzy) or auto-creates a `needs_review: true` row.
+**Depends on**: Phase 79 (needs backfill complete — cannot flip NOT NULL while NULLs exist; needs ingest fixed BEFORE constraint flip so the next extract doesn't crash on a NULL insert)
+**Requirements**: CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04
+**Success Criteria** (what must be TRUE):
+  1. `watches_catalog.brand_id` and `watches_catalog.family_id` are both `NOT NULL` after the constraint migration runs; attempting to INSERT a row with either column NULL fails at the database layer with a 23502 not-null violation (CANON-01, CANON-02)
+  2. Calling `/api/extract-watch` with a URL whose extracted brand exactly matches an existing `brands.name_normalized` attaches that `brand_id` on the upserted `watches_catalog` row (no fuzzy lookup, no new row created) (INGEST-01)
+  3. Calling `/api/extract-watch` with a URL whose extracted brand has no exact match but scores above 0.6 `pg_trgm` similarity against a single existing `brands.name_normalized` attaches that fuzzy-matched `brand_id` and emits a structured `fuzzy_brand_match` log event; user flow has no visible delay (INGEST-02)
+  4. Calling `/api/extract-watch` with a URL whose extracted brand has neither exact nor fuzzy match auto-creates a new `brands` row with `needs_review: true` and attaches its `brand_id` to the catalog row — user flow never blocks; operator can surface the row later via `/admin/brands` (INGEST-03)
+  5. The same exact-then-fuzzy-then-create resolution path applies to model → `watch_families` resolution, with the additional step of checking `watch_families.aliases` containment (`@>`) alongside `name_normalized` — so a future `/api/extract-watch` call for a `Brut Date` URL resolves to the canonical `Brut Datejust` family via the alias rather than creating a new family row (INGEST-04)
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 81: Recommender + Display Server Action Swap
+**Goal**: The home rail's exclusion key + multi-brand-match scoring + rationale templates read brand/family from canonical FKs (eliminating `Héron` vs `Héron Watches`-class drift in user-visible recs), and the `addWatch` / `editWatch` Server Actions auto-overwrite the stored display strings from the canonical FK targets on every write.
+**Depends on**: Phase 80 (recommender reads through `brand_id` JOIN — needs the FK populated AND NOT NULL so a single code path is safe; Server Actions write through the canonical name — needs ingest to have produced the canonical row first)
+**Requirements**: RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02
+**Success Criteria** (what must be TRUE):
+  1. The home "From Collectors Like You" rail no longer surfaces a user's own watch when that watch's free-text `brand`/`model` differs from the catalog's canonical strings — e.g. an owner of a `Brut Date` (catalog `Brut Datejust`) sees that family excluded from their rail; an owner of `Héron` (catalog `Héron Watches`) sees their brand excluded (RECO-01)
+  2. The multi-brand `+100` scoring fires for every owned brand regardless of the user's free-text spelling — `Hamilton` and `Hamilton Watch` both trigger the boost for the same canonical brand row (RECO-02, RECO-03)
+  3. Recommendation rationale strings render the canonical brand name from `brands.name` joined through `watches_catalog.brand_id` — `Fans of {brand} love this` shows `Hamilton Watch` (canonical) not `Hamilton` (user free-text) regardless of which user owns the source row (RECO-04)
+  4. Adding a new watch through the existing add-watch flow with a free-text brand string persists `watches.brand` as the canonical `brands.name` resolved through the eventual `catalogId` — not the user's typed string. Same on edit (DISP-01, DISP-02)
+  5. Existing recommendation tests + collection-rail tests still pass against the new JOIN-through path; no measurable p95 regression on the home rail (per Phase 19.1 baselines acknowledged in CANON-V2-01 defer rationale)
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 82: Add-Watch UI + Operator Admin
+**Goal**: The add-watch flow surfaces a brand-picker autocomplete that locks new entries to canonical brands (with a labeled escape hatch for net-new), the edit-watch form renders canonical strings as read-only, and an operator can walk the `needs_review` queue without dropping to CLI.
+**Depends on**: Phase 81 (needs the canonical-name auto-overwrite already wired so the picker's `brand_id` selection flows cleanly through addWatch; needs ingest's auto-create path live so the "couldn't find" affordance has a destination)
+**Requirements**: UI-01, UI-02, UI-03, OPS-01, OPS-02
+**Success Criteria** (what must be TRUE):
+  1. The `StructuredEntryPanel` Brand field renders as a typeahead autocomplete sourced from `brands.name` (via the existing `catalogBrands` SSR prop pipeline); typing surfaces matching brands as a dropdown; selecting one attaches `brand_id` to the eventual catalog upsert (UI-01)
+  2. If the user types a brand string that doesn't match any existing `brands.name` after typeahead settles, a "Couldn't find that brand — add as '{typed}'" affordance appears; clicking it routes through the INGEST-03 auto-create path with `needs_review: true` on submit and the user flow continues without operator gating (UI-02)
+  3. The `WatchForm` edit screen renders the canonical `brands.name` and `watch_families.name` resolved through `catalogId` as read-only display strings with an "Edit catalog mapping" admin link visible only to the watch owner — user cannot type a non-canonical string and persist it (UI-03)
+  4. `/admin/brands` lists all brands ordered by `needs_review DESC, name ASC`; each `needs_review: true` row exposes confirm-as-new / rename / merge-into-existing actions; merge UPDATEs every referencing `watches_catalog.brand_id` to the target and deletes the source row in a single transaction (OPS-01)
+  5. `/admin/families` mirrors OPS-01 for `watch_families` and adds an "Add alias" action that appends to the `aliases text[]` column — so the operator can route `Brut Date` → `Brut Datejust` from the queue UI rather than from a migration script (OPS-02)
+**Plans**: TBD
 **UI hint**: yes
+
+## Coverage
+
+All 25 v8.4 requirements mapped to exactly one phase. No orphans.
+
+| Requirement | Phase | Category |
+|-------------|-------|----------|
+| CANON-01 | Phase 80 | Schema (NOT NULL flip — after backfill) |
+| CANON-02 | Phase 80 | Schema (NOT NULL flip — after backfill) |
+| CANON-03 | Phase 78 | Schema (aliases column — foundation) |
+| CANON-04 | Phase 78 | Schema (needs_review column — foundation) |
+| MIG-01 | Phase 78 | Migration (dry-run script + decisions .md) |
+| MIG-02 | Phase 79 | Migration (brand backfill --apply) |
+| MIG-03 | Phase 79 | Migration (family backfill --apply) |
+| MIG-04 | Phase 79 | Migration (post-flight assertion) |
+| MIG-05 | Phase 79 | Migration (portability — closes in P79) |
+| INGEST-01 | Phase 80 | Ingest (exact match on extract) |
+| INGEST-02 | Phase 80 | Ingest (fuzzy match on extract) |
+| INGEST-03 | Phase 80 | Ingest (auto-create + needs_review) |
+| INGEST-04 | Phase 80 | Ingest (family lookup incl. aliases) |
+| RECO-01 | Phase 81 | Recommender (exclusion key swap) |
+| RECO-02 | Phase 81 | Recommender (multi-brand match swap) |
+| RECO-03 | Phase 81 | Recommender (topBrandOf canonical) |
+| RECO-04 | Phase 81 | Recommender (rationale templates) |
+| DISP-01 | Phase 81 | Display (addWatch auto-overwrite) |
+| DISP-02 | Phase 81 | Display (editWatch auto-overwrite) |
+| DISP-03 | Phase 79 | Display (one-shot hydration data migration) |
+| UI-01 | Phase 82 | UI (brand-picker autocomplete) |
+| UI-02 | Phase 82 | UI (couldn't-find affordance) |
+| UI-03 | Phase 82 | UI (WatchForm read-only canonical) |
+| OPS-01 | Phase 82 | Operator (/admin/brands queue) |
+| OPS-02 | Phase 82 | Operator (/admin/families queue) |
+
+**Coverage:** 25/25 mapped (100%). No requirement appears in more than one phase. No requirement is orphaned.
 
 ## Progress Table
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 76. Video Schema, Storage Paths + Server Action | 4/4 | Complete    | 2026-06-23 |
-| 77. Video Capture + Display UI | 8/8 | Complete    | 2026-06-23 |
-
-_Phases 51 (Profile Route PPR Opt-Out) + 52 (Cache Components canonical pattern — recurrence-4/5 React #419 fix) were post-v5.2 hotfix phases off main, not part of a numbered milestone; full record in `.planning/milestones/v6.0-phases/` (archived alongside v6.0) and PROJECT.md._
+| 78. Schema Additions + Operator-Resolve Queue | 0/? | Not started | — |
+| 79. Backfill Migration + Display Hydration | 0/? | Not started | — |
+| 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
+| 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
+| 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |
