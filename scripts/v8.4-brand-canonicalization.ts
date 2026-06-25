@@ -303,6 +303,226 @@ export function mergeForward(
   return lines
 }
 
+// ============================================================
+// Phase 79 — apply-path types + helpers (Plan 02 lands brand-only scope; Plans
+// 03 + 04 extend with family + hydration + post-flight).
+// ============================================================
+
+/**
+ * In-memory resolution state for a brand decision after the operator-edited
+ * file is parsed. 'new' is the placeholder shape that lives only between
+ * parse-time and Step 4.1 (INSERT new brands) — after Step 4.1 every entry is
+ * reified to 'existing'. The invariant check after Step 4.1 throws if any 'new'
+ * remains, per Pitfall 3.
+ */
+export type ResolvedBrand =
+  | { kind: 'existing'; uuid: string; canonicalName: string }
+  | { kind: 'merge'; uuid: string; canonicalName: string }
+  | { kind: 'new'; syntheticKey: string; rawName: string }
+
+/**
+ * Map: lower(trim(brand_raw)) → ResolvedBrand. Insertion order preserved (used
+ * for deterministic INSERT ordering in tests). Per RESEARCH Pattern 2 + D-79-07.
+ */
+export type BrandDecisionMap = Map<string, ResolvedBrand>
+
+/** Parsed row from `.planning/v8.4-brand-merge-decisions.md`. */
+export interface BrandDecisionRow {
+  brand_raw: string
+  brand_normalized: string
+  proposed_target_id: string | null
+  status: string
+}
+
+const MERGE_RE = /^merge:[0-9a-f-]{36}$/i
+const VALID_BRAND_STATUSES = new Set(['auto-resolved', 'new'])
+
+/**
+ * Parse the brand-merge-decisions.md file into BrandDecisionRow[]. Mirrors the
+ * `parseExistingPreserved` shape (L155-171) — ignores non-pipe lines, GFM
+ * separator (`| ---`), and the header (`| brand_raw`).
+ *
+ * Cell layout per the Phase 78 GFM artifact:
+ *   cells[1] = brand_raw
+ *   cells[2] = brand_normalized
+ *   cells[3] = proposed_target_id  (empty string → null)
+ *   cells[4] = status
+ *   cells[5] = candidates / notes  (ignored by parser; only the apply needs 1-4)
+ */
+export function parseDecisionsTable(content: string): BrandDecisionRow[] {
+  const rows: BrandDecisionRow[] = []
+  for (const line of content.split('\n')) {
+    if (!line.startsWith('|')) continue
+    if (line.startsWith('| ---')) continue
+    if (line.startsWith('| brand_raw')) continue
+    const cells = line.split('|').map((c) => c.trim())
+    const brandRaw = cells[1]
+    const brandNormalized = cells[2]
+    const proposedTargetIdRaw = cells[3]
+    const status = cells[4]
+    if (!brandRaw || !brandNormalized || !status) continue
+    rows.push({
+      brand_raw: brandRaw,
+      brand_normalized: brandNormalized,
+      proposed_target_id: proposedTargetIdRaw === '' ? null : proposedTargetIdRaw,
+      status,
+    })
+  }
+  return rows
+}
+
+/**
+ * Convert parsed BrandDecisionRow[] to the in-memory BrandDecisionMap consumed
+ * by the apply path. Status grammar (per D-78-02 + D-79-09):
+ *   auto-resolved          → kind:'existing' (uuid = proposed_target_id)
+ *   merge:<uuid>           → kind:'merge'    (uuid extracted from status)
+ *   new                    → kind:'new'      (syntheticKey = brand_normalized;
+ *                                              rawName = brand_raw)
+ *   skip / needs-review    → throw (not supported in Phase 79; operator must
+ *                                    resolve to one of the terminal statuses
+ *                                    before --apply)
+ */
+export function buildBrandMap(rows: BrandDecisionRow[]): BrandDecisionMap {
+  const map: BrandDecisionMap = new Map()
+  for (const row of rows) {
+    const key = row.brand_normalized
+    if (row.status === 'auto-resolved') {
+      if (!row.proposed_target_id) {
+        throw new Error(
+          `[v8.4-brand-canon] buildBrandMap: brand "${row.brand_raw}" status=auto-resolved but proposed_target_id is empty`,
+        )
+      }
+      map.set(key, {
+        kind: 'existing',
+        uuid: row.proposed_target_id,
+        canonicalName: row.brand_raw,
+      })
+    } else if (MERGE_RE.test(row.status)) {
+      const uuid = row.status.slice('merge:'.length)
+      map.set(key, { kind: 'merge', uuid, canonicalName: row.brand_raw })
+    } else if (row.status === 'new') {
+      map.set(key, {
+        kind: 'new',
+        syntheticKey: row.brand_normalized,
+        rawName: row.brand_raw,
+      })
+    } else {
+      throw new Error(
+        `[v8.4-brand-canon] buildBrandMap: brand "${row.brand_raw}" has unsupported status "${row.status}". ` +
+          `Resolve to one of: auto-resolved | merge:<uuid> | new`,
+      )
+    }
+  }
+  return map
+}
+
+/**
+ * D-79-01 — strict pre-flight gate (brand-only scope in Plan 02; Plan 03 extends
+ * with the parallel family checks). Refuses on any drift between the operator-
+ * edited decisions file and the live catalog state:
+ *
+ *   (a) any row with status='needs-review' (operator didn't finish)
+ *   (b) any row with an unknown status token (per D-78-02 grammar)
+ *   (c) any merge:<uuid> brand target missing from brands.id
+ *   (d) any live catalog brand absent from the decisions file
+ *
+ * The `existingBrandIdsFn` is dependency-injected so unit tests can stub the
+ * DB existence check without a live connection (per PATTERNS L361-370).
+ *
+ * Per 79-RESEARCH § Pitfall 3 + [[drizzle-sql-any-array-pitfall]]: the
+ * live-catalog DISTINCT query interpolates ONLY string scalars; no array goes
+ * into any template literal. The existence-check DB query lives behind
+ * `existingBrandIdsFn` so the SQL syntax there is the caller's responsibility
+ * (the brand-apply main() callsite uses the postgres-lib `sql(uuids)` helper
+ * form, NOT the array-spread anti-pattern flagged by
+ * [[drizzle-sql-any-array-pitfall]]).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SqlTagBrandNormalized = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Array<{ brand_normalized: string }>>
+
+export async function strictPreflightGate(
+  sql: SqlTagBrandNormalized,
+  brandRows: BrandDecisionRow[],
+  existingBrandIdsFn: (uuids: string[]) => Promise<Set<string>>,
+): Promise<void> {
+  // (a) + (b) — every row must be terminal + grammar-valid.
+  for (const row of brandRows) {
+    if (row.status === 'needs-review') {
+      throw new Error(
+        `[v8.4-brand-canon] STRICT GATE: brand "${row.brand_raw}" has status=needs-review. ` +
+          `Edit .planning/v8.4-brand-merge-decisions.md to lock a terminal status ` +
+          `(auto-resolved | merge:<uuid> | new), then re-run --apply.`,
+      )
+    }
+    if (!VALID_BRAND_STATUSES.has(row.status) && !MERGE_RE.test(row.status)) {
+      throw new Error(
+        `[v8.4-brand-canon] STRICT GATE: brand "${row.brand_raw}" has unresolved status "${row.status}". ` +
+          `Expected one of: auto-resolved | merge:<uuid> | new. ` +
+          `Edit .planning/v8.4-brand-merge-decisions.md and re-run --apply.`,
+      )
+    }
+  }
+
+  // (c) — every merge:<uuid> brand target must exist in brands.id.
+  const brandMergeUuids = brandRows
+    .filter((r) => MERGE_RE.test(r.status))
+    .map((r) => r.status.slice('merge:'.length))
+  if (brandMergeUuids.length > 0) {
+    const existingSet = await existingBrandIdsFn(brandMergeUuids)
+    for (const uuid of brandMergeUuids) {
+      if (!existingSet.has(uuid)) {
+        throw new Error(
+          `[v8.4-brand-canon] STRICT GATE: merge:${uuid} target not found in brands table. ` +
+            `Edit the decision file to point at a valid brand id, or change the row's status to 'new'.`,
+        )
+      }
+    }
+  }
+
+  // (d) — live catalog brand_normalized values must all appear in the decisions file.
+  const liveBrands = await sql`
+    SELECT DISTINCT lower(trim(brand)) AS brand_normalized FROM watches_catalog
+  `
+  const decidedBrands = new Set(brandRows.map((r) => r.brand_normalized))
+  for (const live of liveBrands) {
+    if (!decidedBrands.has(live.brand_normalized)) {
+      throw new Error(
+        `[v8.4-brand-canon] STRICT GATE: catalog has brand "${live.brand_normalized}" not present in decisions file. ` +
+          `Re-run --regenerate to merge-forward the new brand row, edit it to a terminal status, then re-try --apply.`,
+      )
+    }
+  }
+}
+
+/**
+ * D-79-04 — idempotent re-run gate. Fires BEFORE the strict gate (cheaper exit
+ * on no-op re-run). Returns 'already-applied' if every catalog row already has
+ * brand_id AND family_id resolved; else 'proceed'.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SqlTagCount = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Array<{ count: string }>>
+
+async function idempotentReRunGate(
+  sql: SqlTagCount,
+): Promise<'already-applied' | 'proceed'> {
+  const [row] = await sql`
+    SELECT count(*)::text AS count
+    FROM watches_catalog
+    WHERE brand_id IS NULL OR family_id IS NULL
+  `
+  if (Number(row.count) === 0) {
+    console.log('[v8.4-brand-canon] Already applied — nothing to do. Exiting.')
+    return 'already-applied'
+  }
+  return 'proceed'
+}
+
 function buildHeader(): string {
   const now = new Date().toISOString().slice(0, 10)
   return [
