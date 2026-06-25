@@ -966,6 +966,139 @@ async function applyBrandPath(
   return { brandsCreated, catalogRowsResolvedBrand }
 }
 
+/**
+ * Phase 79 Plan 03 — apply path family side. Defined here so Plan 04 can wire
+ * it into the unified outer `sql.begin` transaction (D-79-03) without further
+ * code-shape changes. Plan 03 ships the function definition + invariants;
+ * Plan 04 owns the call.
+ *
+ * Three-step sequence per RESEARCH § Code Examples L727-770:
+ *
+ * Step 4.3 — for each familyMap entry with kind='new':
+ *   INSERT INTO watch_families (brand_id, name, needs_review, aliases)
+ *     VALUES (brandUuid, rawName, false, '{}'::text[])  RETURNING id
+ *   needs_review=false per D-79-09 (operator marking 'new' IS the approval).
+ *   Reify the map entry to kind='existing' with the freshly-allocated UUID.
+ *   Pitfall 3 invariant: throw if any kind='new' remains after Step 4.3.
+ *
+ * Step 4.4 — for each entry with kind='merge':
+ *   UPDATE watch_families
+ *     SET aliases = aliases || ARRAY[sourceNorm]::text[]
+ *     WHERE id = targetUuid AND NOT (aliases @> ARRAY[sourceNorm]::text[])
+ *   sourceNorm = sourceModelRaw.toLowerCase().trim() per D-79-06. The
+ *   containment-check predicate is the SQL-layer idempotency gate (T-79-04
+ *   mitigation per PATTERNS L131-140 + RESEARCH § Pattern 4 L497-503).
+ *
+ * Step 4.5 — for each [compositeKey, resolved] of familyMap.entries():
+ *   UPDATE watches_catalog c SET family_id = resolved.uuid
+ *     FROM brands b
+ *    WHERE c.brand_id = b.id
+ *      AND b.name_normalized = brandNorm
+ *      AND c.model_normalized = modelNorm
+ *      AND (c.family_id IS NULL OR c.family_id <> resolved.uuid)
+ *   JOIN-scoped by brand_id + model_normalized per MIG-03. The trailing
+ *   predicate makes the UPDATE idempotent (re-run safety + T-79-04).
+ *
+ * Pitfall 4 (RESEARCH L646-651): Step 4.5 requires brand_id already populated
+ * on the catalog row — applyBrandPath Step 4.2 MUST have completed before this
+ * function fires. Plan 04's outer transaction enforces that ordering.
+ *
+ * NOTE: `tx` is the sql.begin callback parameter (postgres-lib's transaction-
+ * scoped sql tag). Throwing here triggers ROLLBACK; resolving COMMITs.
+ * NEVER call process.exit() inside this function — Pitfall 2.
+ *
+ * NO array-spread anti-pattern flagged by [[drizzle-sql-any-array-pitfall]]
+ * anywhere; per-row loops sidestep the IN-list pitfall entirely.
+ */
+async function applyFamilyPath(
+  tx: SqlTagBrandInsert,
+  familyMap: FamilyDecisionMap,
+): Promise<{
+  familiesCreated: number
+  aliasesAppended: number
+  catalogRowsResolvedFamily: number
+}> {
+  let familiesCreated = 0
+  let aliasesAppended = 0
+  let catalogRowsResolvedFamily = 0
+
+  // Step 4.3 — INSERT new families; reify map entries.
+  for (const [compositeKey, resolved] of familyMap.entries()) {
+    if (resolved.kind !== 'new') continue
+    const [row] = await tx`
+      INSERT INTO watch_families (brand_id, name, needs_review, aliases)
+      VALUES (${resolved.brandUuid}, ${resolved.rawName}, false, '{}'::text[])
+      RETURNING id
+    `
+    // Preserve the family_raw display string (resolved.rawName) as canonicalName
+    // — the apply-time hydration step (Plan 04 Step 4.6) writes b.name +
+    // f.name onto watches.brand + .model, so canonicalName here doesn't drive
+    // user-facing display; only the resolved.uuid is consumed downstream.
+    familyMap.set(compositeKey, {
+      kind: 'existing',
+      uuid: row.id,
+      canonicalName: resolved.rawName,
+    })
+    familiesCreated++
+  }
+
+  // Pitfall 3 invariant: every family map entry must now carry a UUID. If a
+  // 'new' remains, Step 4.5's UPDATE would interpolate `undefined` and the
+  // post-flight assertion (Plan 04 Step 4.7) would catch it as a row-count
+  // mismatch. Throw here with the clearer source-of-truth diagnostic.
+  for (const v of familyMap.values()) {
+    if (v.kind === 'new') {
+      throw new Error(
+        '[v8.4-brand-canon] applyFamilyPath: familyMap not reified after Step 4.3 ' +
+          '(one or more entries still carry kind=new). This is a bug.',
+      )
+    }
+  }
+
+  // Step 4.4 — UPDATE aliases idempotently per merge: decision (D-79-06).
+  // The NOT (aliases @> ARRAY[$src]) containment-check predicate is the
+  // SQL-layer idempotency gate (T-79-04 mitigation).
+  for (const [, resolved] of familyMap.entries()) {
+    if (resolved.kind !== 'merge') continue
+    const sourceNorm = resolved.sourceModelRaw.toLowerCase().trim()
+    const targetUuid = resolved.uuid
+    const result = (await tx`
+      UPDATE watch_families
+      SET aliases = aliases || ARRAY[${sourceNorm}]::text[]
+      WHERE id = ${targetUuid}
+        AND NOT (aliases @> ARRAY[${sourceNorm}]::text[])
+    `) as unknown as UpdateResult
+    aliasesAppended += result.count
+  }
+
+  // Step 4.5 — UPDATE watches_catalog.family_id JOIN-scoped by brand_id +
+  // model_normalized per MIG-03. Per-row loop because the ~200-row catalog
+  // scale doesn't merit bulk VALUES, and per-row sidesteps the
+  // [[drizzle-sql-any-array-pitfall]] entirely.
+  for (const [compositeKey, resolved] of familyMap.entries()) {
+    // Type-narrow: invariant above guarantees no kind='new' remains.
+    if (resolved.kind === 'new') {
+      throw new Error(
+        `[v8.4-brand-canon] applyFamilyPath Step 4.5: family "${compositeKey}" still kind=new after Step 4.3 invariant. This is a bug.`,
+      )
+    }
+    const { brandNorm, modelNorm } = parseCompositeKey(compositeKey)
+    const resolvedUuid = resolved.uuid
+    const result = (await tx`
+      UPDATE watches_catalog c
+      SET family_id = ${resolvedUuid}
+      FROM brands b
+      WHERE c.brand_id = b.id
+        AND b.name_normalized = ${brandNorm}
+        AND c.model_normalized = ${modelNorm}
+        AND (c.family_id IS NULL OR c.family_id <> ${resolvedUuid})
+    `) as unknown as UpdateResult
+    catalogRowsResolvedFamily += result.count
+  }
+
+  return { familiesCreated, aliasesAppended, catalogRowsResolvedFamily }
+}
+
 function buildHeader(): string {
   const now = new Date().toISOString().slice(0, 10)
   return [
