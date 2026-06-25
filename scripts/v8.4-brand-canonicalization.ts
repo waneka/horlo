@@ -58,6 +58,7 @@
 import { existsSync } from 'node:fs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import * as path from 'node:path'
+import * as readline from 'node:readline/promises'
 import postgres from 'postgres'
 
 const OUTPUT_FILE = path.join(
@@ -86,13 +87,109 @@ export interface Candidate {
 export interface ParsedArgs {
   regenerate: boolean
   force: boolean
+  // Phase 79 extensions (Plan 02 lands brand-only apply scaffold; Plans 03 + 04
+  // wire the family + hydration + post-flight steps inside one outer sql.begin).
+  apply: boolean
+  mode: 'brands' | 'families' | 'both'
 }
 
+const VALID_MODES = new Set<ParsedArgs['mode']>(['brands', 'families', 'both'])
+
 export function parseArgs(argv: string[] = process.argv.slice(2)): ParsedArgs {
-  const flags = new Set(argv.map((a) => a.replace(/^--/, '')))
+  // Flags = bare boolean switches like `--apply`. The `--mode=value` form is
+  // handled separately so we can extract its value.
+  const flags = new Set(
+    argv
+      .filter((a) => a.startsWith('--') && !a.includes('='))
+      .map((a) => a.replace(/^--/, '')),
+  )
+  const modeArg = argv.find((a) => a.startsWith('--mode='))
+  const modeValue = modeArg ? modeArg.slice('--mode='.length) : 'brands'
+  if (!VALID_MODES.has(modeValue as ParsedArgs['mode'])) {
+    throw new Error(
+      `[v8.4-brand-canon] invalid --mode=${modeValue}; expected one of brands|families|both`,
+    )
+  }
   return {
     regenerate: flags.has('regenerate'),
     force: flags.has('force'),
+    apply: flags.has('apply'),
+    mode: modeValue as ParsedArgs['mode'],
+  }
+}
+
+/**
+ * D-79-02 — local-vs-prod URL detection. Parses `DATABASE_URL` and returns true
+ * only for the canonical local Supabase Postgres host:port (127.0.0.1:54322 or
+ * localhost:54322). Any other host, alt-port, or unparseable string returns
+ * false — the interactive `yes` prompt fires before any write. Safety bias is
+ * intentional per Pitfall in 79-RESEARCH.md.
+ */
+export function isLocalDatabaseUrl(connStr: string): boolean {
+  try {
+    const url = new URL(connStr)
+    return url.host === '127.0.0.1:54322' || url.host === 'localhost:54322'
+  } catch {
+    // Unparseable URL (or empty string) — fail closed (treat as prod).
+    return false
+  }
+}
+
+/**
+ * Slug generator for new `brands.name` rows inserted by Phase 79's apply path.
+ * Matches the established slug shape in the existing `brands` table (53 rows
+ * inspected). 3 LOC per 79-PATTERNS.md L292-294.
+ */
+export function slugify(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+/**
+ * Apply-summary block printed to stdout before the prod confirmation prompt.
+ * Plan 02 only populates the brand fields; Plans 03 + 04 fill in family /
+ * hydration / alias counts.
+ */
+export interface ApplySummary {
+  brandsToCreate: number
+  catalogRowsToResolve: number
+  familiesToCreate: number
+  userWatchesToHydrate: number
+  aliasesToAppend: number
+}
+
+/**
+ * D-79-02 — interactive prod confirmation gate. Silent on local Supabase
+ * (isLocalDatabaseUrl === true). On any other host, prints the summary block
+ * and reads `yes` from stdin via node:readline/promises; declines exit 1.
+ *
+ * NOTE: this process.exit is OUTSIDE any sql.begin callback (the apply path
+ * calls confirmIfProd BEFORE opening the transaction). Pitfall 2 satisfied.
+ */
+async function confirmIfProd(connStr: string, summary: ApplySummary): Promise<void> {
+  if (isLocalDatabaseUrl(connStr)) return
+  let hostLabel = '(unparseable)'
+  try {
+    hostLabel = new URL(connStr).host
+  } catch {
+    /* fall through */
+  }
+  console.log(`
+[v8.4-brand-canon] APPLY against PROD detected (${hostLabel}). Summary:
+  - Brands to create:        ${summary.brandsToCreate}
+  - Catalog rows to resolve: ${summary.catalogRowsToResolve}
+  - Families to create:      ${summary.familiesToCreate}
+  - User watches to hydrate: ${summary.userWatchesToHydrate}
+  - Aliases to append:       ${summary.aliasesToAppend}
+`)
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  try {
+    const answer = await rl.question('Type "yes" to proceed: ')
+    if (answer.trim() !== 'yes') {
+      console.error('[v8.4-brand-canon] Operator declined. Exiting without write.')
+      process.exit(1)
+    }
+  } finally {
+    rl.close()
   }
 }
 
@@ -224,6 +321,18 @@ function buildHeader(): string {
 
 async function main() {
   const args = parseArgs()
+
+  // Phase 79 Pitfall 7: --apply REQUIRES --mode=both. Without the both gate,
+  // brands resolve but families don't; the post-flight assertion catches it
+  // (resolved_family !== total → rollback) but the diagnostic is confusing.
+  // Surface the mistake before any DB connection opens.
+  if (args.apply && args.mode !== 'both') {
+    console.error(
+      '[v8.4-brand-canon] ERROR: --apply requires --mode=both. ' +
+        `Got --mode=${args.mode}. Re-run with --apply --mode=both.`,
+    )
+    process.exit(1)
+  }
 
   // D-78-07: refuse-to-overwrite when artifact exists and operator didn't pass
   // --regenerate or --force.
