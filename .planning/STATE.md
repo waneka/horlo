@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-25T07:12:17.069Z"
+last_updated: "2026-06-25T07:27:30.671Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
-  percent: 56
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 ## Current Position
 
 Phase: 79 (backfill-migration-display-hydration) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -167,6 +167,18 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 - **Full Phase 78 + Phase 79 sweep**: 9 files passed / 25 tests passed / 8 skipped / 39 todo / 0 failed. `npm run build` exit 0.
 - **No deviations** — Plan 01 executed exactly as written.
 
+**Phase 79 Plan 02 (Wave 1 brand apply scaffold) outcomes — 2026-06-25:**
+
+- **`scripts/v8.4-brand-canonicalization.ts` extended 345 → 873 LOC** (commits `501d19db` Task 1 / `e10fbbb0` Task 2 / `1120fafd` Task 3). Lands isLocalDatabaseUrl + extended parseArgs (--apply, --mode=brands|families|both) + confirmIfProd + slugify + ApplySummary + ResolvedBrand discriminated union + BrandDecisionMap + BrandDecisionRow + parseDecisionsTable + buildBrandMap + strictPreflightGate (brand-only scope) + idempotentReRunGate + applyBrandPath. main() now dispatches on args.apply: --apply runs idempotentReRunGate → strict gate → confirmIfProd → applyBrandPath inside its OWN sql.begin (TRANSIENT — Plan 04 restructures into ONE outer sql.begin wrapping brand + family + alias + hydration + post-flight per D-79-03).
+- **Plan 02's sql.begin wrapper is INTENTIONALLY TRANSIENT.** Plan 04 will REPLACE it with one outer transaction containing all 6 apply steps. The seam is clearly commented in the code so the Plan 04 executor can find + restructure it without grep guessing.
+- **D-79-01 strict pre-flight gate brand-only scope landed.** 4 refuse cases + 1 PASS case green in `tests/unit/scripts/v8.4-strict-gate.test.ts` (6 brand + 1 sanity + 2 family it.todo for Plan 03). Family cases (d-family merge target check, f live-(brand,model) drift check) wait for the parallel FamilyDecisionMap shape in Plan 03.
+- **D-79-02 host-detect with fail-closed semantics.** All 7 cases green in `tests/unit/scripts/v8.4-host-detect.test.ts` (8 tests / 0 todo / 0 failed). Unparseable URLs + alt-port + empty string ALL return false (safety bias — prod confirmation prompt fires).
+- **D-79-04 idempotent re-run gate FIRES BEFORE the strict gate.** Cheaper exit on no-op re-run; the strict gate's catalog SELECT DISTINCT is more expensive than the simple count(*) the re-run gate does.
+- **Forward armor preserved end-to-end:** `grep -c "= ANY("` returns 0; the strict gate's lone DB existence check is dependency-injected (existingBrandIdsFn) and the main() callsite uses postgres-lib `sql(uuids)` helper form per `[[drizzle-sql-any-array-pitfall]]`. Documented in JSDoc with the pattern name (not the forbidden literal).
+- **Phase 78 dry-run path 100% backward-compatible.** `npm run db:v8.4-brand-canon -- --force` against local DB still emits 55 brand rows (operator file backup/restored around the smoke).
+- **4 deviations all Rule 1 (auto-fix):** (1) `export async function strictPreflightGate` doesn't match the plan's literal `export function` grep regex — substantive intent (3 new exported helpers) is met. (2) applyBrandPath Step 4.2 type-narrowing — TS flow analysis can't carry post-invariant narrowing across for-of; added explicit runtime guard. (3) postgres-lib UpdateResult `.count` cast — typed `Promise<Array<{id}>>` doesn't carry runtime `.count`; cast on consume. (4) Comment-removed `= ANY(${arr})` literal to keep forward-armor grep at 0. Documented in `79-02-SUMMARY.md`.
+- **Full test sweep:** 27 files / 507 passed / 14 todo / 0 failed (tests/unit/scripts + tests/static); `npm run build` exit 0.
+
 ### Pending Todos
 
 None.
@@ -195,11 +207,12 @@ None.
 | Phase 78 P02 | ~6min | 4 tasks | 6 files |
 | Phase 78 P03 | ~8min | 3 tasks | 9 files |
 | Phase 79 P01 | 12min | 3 tasks | 7 files |
+| Phase 79 P02 | 10 | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-25 — Phase 79 Plan 01 (Wave 0 RED stubs for v8.4 apply path) complete. 6 stub files seeded (4 unit + 2 integration) covering every Phase 79 testable behavior (MIG-02, MIG-03, MIG-04, DISP-03, D-79-01..10). DATABASE_URL-gated integration suites place the sanity `it()` callsite OUTSIDE the maybe wrapper so vitest reports positive discovery regardless of env. 79-VALIDATION.md flipped to `wave_0_complete: true` + `nyquist_compliant: true` with a fully populated 15-row Per-Task Verification Map. Full Phase 78 + Phase 79 sweep 25/25 tests pass + 8 skipped + 39 todo + 0 failed; npm run build exit 0. Commits: 9b0dca9c (Task 1, 4 unit stubs), 45190d5d (Task 2, 2 integration stubs), 8eb7750b (Task 3, VALIDATION fill). No deviations.
+Last activity: 2026-06-25 — Phase 79 Plan 02 (Wave 1 brand apply scaffold) complete. `scripts/v8.4-brand-canonicalization.ts` extended 345 → 873 LOC with isLocalDatabaseUrl + strictPreflightGate (brand-only) + idempotentReRunGate + buildBrandMap + applyBrandPath + main() apply dispatch on --apply + --mode. Plan 02's sql.begin wrapper is TRANSIENT — Plan 04 restructures into ONE outer sql.begin per D-79-03. All 7 D-79-02 host-detect cases green; 4 D-79-01 brand refuse cases + 1 brand PASS case green; 2 family cases stay it.todo for Plan 03. Forward armor: 0 `= ANY(` patterns; 0 `process.exit` inside sql.begin callbacks. Phase 78 dry-run backward-compat verified via local smoke (55 brand rows unchanged). Full sweep 27 files / 507 passed / 14 todo / 0 failed; `npm run build` exit 0. Commits: `501d19db` (Task 1 host-detect + parseArgs ext), `e10fbbb0` (Task 2 strict gate + decision map), `1120fafd` (Task 3 apply path + main dispatch). 4 Rule 1 deviations documented in 79-02-SUMMARY.md.
 
-Next action: `/gsd-execute-phase 79` → Plan 02 (Wave 1 — extend `scripts/v8.4-brand-canonicalization.ts` with `isLocalDatabaseUrl`, `strictPreflightGate`, `buildBrandMap`, and the brand-side of the `--apply` path; greens the host-detect + strict-gate unit stubs and the brand-side coverage in the integration stubs). Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
+Next action: `/gsd-execute-phase 79` → Plan 03 (Wave 2 — family dry-run path: extend script with FamilyDecisionMap shape + family-merge-decisions.md generator + family-side of strictPreflightGate; greens the family-build-decisions unit stub + 2 remaining family it.todo cases in strict-gate). Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
 
 ## Operator Next Steps
