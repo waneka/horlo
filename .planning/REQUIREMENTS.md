@@ -40,7 +40,7 @@ Data migration backfills every existing watch and catalog row to canonical brand
 - [x] **MIG-02**: After operator approves the `.md` artifact (writes decisions inline as YAML frontmatter or per-row markers), running `scripts/v8.4-brand-canonicalization.ts --apply` executes the data UPDATE atomically: `watches_catalog.brand_id` populated, ambiguous cases resolved per operator decision, new `brands` rows created where needed.
 - [x] **MIG-03**: Equivalent `--apply` path for `watch_families` backfill — distinct `watches_catalog.model` strings mapped to `watch_families.id` (with brand-scoped uniqueness via existing `watch_families_brand_name_unique` constraint); typo cases routed into the new `aliases` column.
 - [x] **MIG-04**: Post-flight assertion (NOT reusing the same WHERE-clause as the operation — per `project_post_flight_assertion_predicate_divergence`) verifies zero rows with `brand_id IS NULL` AND zero rows with `family_id IS NULL` on `watches_catalog` AFTER the migration completes.
-- [ ] **MIG-05**: Migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` rules — uses `extensions.unaccent` / `extensions.similarity` with pinned `SET search_path` on any functions, and the migration filename + ordering follow the project's `supabase/migrations/` naming convention.
+- [x] **MIG-05**: Migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` rules — uses `extensions.unaccent` / `extensions.similarity` with pinned `SET search_path` on any functions, and the migration filename + ordering follow the project's `supabase/migrations/` naming convention. (Phase 79 ships script-only — no SQL migration; the `tsx --apply` ran cleanly against prod on second attempt after operator regenerated decision files against prod per [[catalog-id-divergence]] extension.)
 
 ### Ingest (INGEST)
 
@@ -119,7 +119,7 @@ Explicitly excluded from v8.4:
 | MIG-02 | Phase 79 | Complete |
 | MIG-03 | Phase 79 | Complete |
 | MIG-04 | Phase 79 | Complete |
-| MIG-05 | Phase 79 | Pending |
+| MIG-05 | Phase 79 | Complete |
 | INGEST-01 | Phase 80 | Pending |
 | INGEST-02 | Phase 80 | Pending |
 | INGEST-03 | Phase 80 | Pending |
