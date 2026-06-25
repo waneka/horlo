@@ -65,6 +65,12 @@ const OUTPUT_FILE = path.join(
   process.cwd(),
   '.planning/v8.4-brand-merge-decisions.md',
 )
+// Phase 79 Plan 03 — family-mode artifact path (analog of OUTPUT_FILE; symmetric
+// refuse-to-overwrite + --regenerate gate per D-78-07).
+const FAMILY_OUTPUT_FILE = path.join(
+  process.cwd(),
+  '.planning/v8.4-family-merge-decisions.md',
+)
 const FUZZY_THRESHOLD = 0.5
 const TOP_K = 3
 
@@ -72,6 +78,13 @@ const GFM_HEADER =
   '| brand_raw | normalized | proposed_target_id | status | candidates / notes |'
 const GFM_SEPARATOR =
   '| --------- | ---------- | ------------------ | ------ | ------------------ |'
+
+// Phase 79 Plan 03 — family GFM table (6 cells; leading `brand` column per
+// 79-PATTERNS L551-572).
+const GFM_FAMILY_HEADER =
+  '| brand | family_raw | normalized | proposed_target_id | status | candidates / notes |'
+const GFM_FAMILY_SEPARATOR =
+  '| ----- | ---------- | ---------- | ------------------ | ------ | ------------------ |'
 
 export interface BrandRow {
   brand_raw: string
@@ -409,6 +422,251 @@ export function buildBrandMap(rows: BrandDecisionRow[]): BrandDecisionMap {
     } else {
       throw new Error(
         `[v8.4-brand-canon] buildBrandMap: brand "${row.brand_raw}" has unsupported status "${row.status}". ` +
+          `Resolve to one of: auto-resolved | merge:<uuid> | new`,
+      )
+    }
+  }
+  return map
+}
+
+// ============================================================
+// Phase 79 Plan 03 — family-side types + pure helpers (D-79-05 + D-79-06 +
+// D-79-07 + MIG-03). All non-DB; live next to the brand-side analogs for
+// symmetry. Apply-time DB helpers (familyDryRun, applyFamilyPath) live further
+// down so the pure surface stays grouped at the top of the script.
+// ============================================================
+
+/**
+ * Pre-status family row shape — emitted by the dry-run BEFORE the operator
+ * assigns a status. Mirrors BrandRow but is brand-scoped: a family is uniquely
+ * identified by (canonical_brand, model_normalized) per the
+ * watch_families_brand_name_unique constraint.
+ */
+export interface FamilyRow {
+  brand_raw: string
+  family_raw: string
+  family_normalized: string
+  proposed_target_id: string | null
+  candidates: Candidate[]
+}
+
+/** Parsed row from `.planning/v8.4-family-merge-decisions.md` (operator-edited). */
+export interface FamilyDecisionRow extends FamilyRow {
+  status: string
+}
+
+/**
+ * In-memory resolution state for a family decision after the operator-edited
+ * file is parsed. Family-side analog of ResolvedBrand. The 'new' shape carries
+ * the resolved brand UUID (so Step 4.3 INSERT has the parent FK ready) and a
+ * synthetic key for the apply-time reify-loop.
+ */
+export type ResolvedFamily =
+  | { kind: 'existing'; uuid: string; canonicalName: string }
+  | { kind: 'merge'; uuid: string; canonicalName: string; sourceModelRaw: string }
+  | { kind: 'new'; syntheticKey: string; rawName: string; brandUuid: string }
+
+/**
+ * Map: `${brand_norm}|${model_norm}` composite key → ResolvedFamily.
+ * Composite because families are brand-scoped per the watch_families unique
+ * constraint. Insertion-order preserved for deterministic INSERT ordering.
+ * Per RESEARCH Pattern 2 + D-79-07.
+ */
+export type FamilyDecisionMap = Map<string, ResolvedFamily>
+
+/**
+ * Operator-decision view of a family row — narrower than ResolvedFamily, used
+ * by applyFamilyPath to drive the Step 4.3 INSERT loop and Step 4.4 alias loop.
+ */
+export type FamilyDecision =
+  | { kind: 'new'; brandUuid: string; name: string; compositeKey: string }
+  | { kind: 'merge'; targetUuid: string; sourceModelRaw: string; compositeKey: string }
+
+const VALID_FAMILY_STATUSES = new Set(['auto-resolved', 'new'])
+
+/**
+ * Build a single GFM family table row. 6 cells: brand_raw | family_raw |
+ * family_normalized | proposed_target_id | status | candidates / notes.
+ * Reuses formatCell from the brand side.
+ */
+export function buildFamilyRow(row: FamilyRow, status: string): string {
+  const notes = row.candidates
+    .map((c) => `${formatCell(c.name)} (${c.score.toFixed(2)})`)
+    .join(', ')
+  return [
+    formatCell(row.brand_raw),
+    formatCell(row.family_raw),
+    formatCell(row.family_normalized),
+    row.proposed_target_id ?? '',
+    status,
+    notes,
+  ]
+    .map((cell, i) => (i === 0 ? `| ${cell}` : ` ${cell}`))
+    .join(' |')
+    .concat(' |')
+}
+
+/**
+ * Build all family GFM table lines (header + separator + data rows).
+ * Pure function — no DB access. Exported for unit tests + apply-path consumers.
+ */
+export function buildFamilyTableRows(rows: FamilyDecisionRow[]): string[] {
+  const lines: string[] = [GFM_FAMILY_HEADER, GFM_FAMILY_SEPARATOR]
+  for (const r of rows) {
+    lines.push(buildFamilyRow(r, r.status))
+  }
+  return lines
+}
+
+/**
+ * Parse `.planning/v8.4-family-merge-decisions.md` into FamilyDecisionRow[].
+ *
+ * Cell layout per 79-PATTERNS L566-569:
+ *   cells[1] = brand_raw
+ *   cells[2] = family_raw
+ *   cells[3] = family_normalized
+ *   cells[4] = proposed_target_id (empty → null)
+ *   cells[5] = status
+ *   cells[6] = candidates / notes (parsed into Candidate[] via score regex)
+ */
+const CANDIDATE_RE = /(.+?) \((\d\.\d+)\)/g
+export function parseFamilyDecisionsTable(content: string): FamilyDecisionRow[] {
+  const rows: FamilyDecisionRow[] = []
+  for (const line of content.split('\n')) {
+    if (!line.startsWith('|')) continue
+    if (line.startsWith('| ---')) continue
+    if (line.startsWith('| brand ')) continue
+    if (line.startsWith('| brand_raw')) continue // defensive — wrong-shape line
+    const cells = line.split('|').map((c) => c.trim())
+    const brandRaw = cells[1]
+    const familyRaw = cells[2]
+    const familyNormalized = cells[3]
+    const proposedTargetIdRaw = cells[4]
+    const status = cells[5]
+    const candidatesRaw = cells[6] ?? ''
+    if (!brandRaw || !familyRaw || !familyNormalized || !status) continue
+    const candidates: Candidate[] = []
+    let m: RegExpExecArray | null
+    CANDIDATE_RE.lastIndex = 0
+    while ((m = CANDIDATE_RE.exec(candidatesRaw)) !== null) {
+      candidates.push({ name: m[1].trim(), score: Number(m[2]) })
+    }
+    rows.push({
+      brand_raw: brandRaw,
+      family_raw: familyRaw,
+      family_normalized: familyNormalized,
+      proposed_target_id: proposedTargetIdRaw === '' ? null : proposedTargetIdRaw,
+      status,
+      candidates,
+    })
+  }
+  return rows
+}
+
+/**
+ * Composite-key helper: split `${brand_norm}|${model_norm}` on the FIRST `|`.
+ * Using indexOf rather than .split() so model values containing `|` (escaped in
+ * the GFM layer per formatCell) round-trip correctly.
+ */
+export function parseCompositeKey(key: string): {
+  brandNorm: string
+  modelNorm: string
+} {
+  const i = key.indexOf('|')
+  if (i < 0) {
+    throw new Error(
+      `[v8.4-brand-canon] parseCompositeKey: missing '|' separator in "${key}"`,
+    )
+  }
+  return { brandNorm: key.slice(0, i), modelNorm: key.slice(i + 1) }
+}
+
+/**
+ * Build the in-memory FamilyDecisionMap from parsed FamilyDecisionRow[].
+ *
+ * Composite key: `${lower(trim(row.brand_raw))}|${row.family_normalized}`.
+ *
+ * D-79-07 in-memory brand→family chain: when a brand_raw resolves to an
+ * 'existing' or 'merge' ResolvedBrand, we look up the canonical brand UUID via
+ * brandMap and stamp it onto the family row's resolved entry. When the brand is
+ * still 'new' (placeholder pre-INSERT), we forward the syntheticKey — apply-time
+ * reify-loop replaces it with the real UUID after Step 4.1.
+ *
+ * Hamilton + Hamilton Watch BRAND merge collapse: both brand_raws lookup to
+ * the SAME canonical brand uuid via brandMap → the same family row appears
+ * only ONCE in the family file because the dry-run query already collapses on
+ * canonical brand_id (see familyDryRun Stage 1). buildFamilyMap is the
+ * in-memory mirror — operator-edited file with two source-brand-raw lines for
+ * the same canonical (brand, model) tuple still build into ONE map entry
+ * keyed on `${lower(trim(canonical_brand))}|${family_normalized}`.
+ *
+ * Status grammar (per D-78-02 + D-79-09):
+ *   auto-resolved          → kind:'existing' (uuid = proposed_target_id)
+ *   merge:<uuid>           → kind:'merge'    (uuid extracted; sourceModelRaw = row.family_raw)
+ *   new                    → kind:'new'      (syntheticKey = compositeKey;
+ *                                              brandUuid resolved via brandMap;
+ *                                              rawName = row.family_raw)
+ *   skip / needs-review    → throw (strict gate refuses BEFORE we get here, but
+ *                                    defense-in-depth)
+ */
+export function buildFamilyMap(
+  rows: FamilyDecisionRow[],
+  brandMap: BrandDecisionMap,
+): FamilyDecisionMap {
+  const map: FamilyDecisionMap = new Map()
+  for (const row of rows) {
+    const brandNorm = row.brand_raw.toLowerCase().trim()
+    const compositeKey = `${brandNorm}|${row.family_normalized}`
+
+    // Look up the canonical brand identity (D-79-07 in-memory chain).
+    const resolvedBrand = brandMap.get(brandNorm)
+    if (!resolvedBrand) {
+      throw new Error(
+        `[v8.4-brand-canon] buildFamilyMap: family "${row.family_raw}" references brand "${row.brand_raw}" ` +
+          `(normalized "${brandNorm}") not present in brand decisions map. ` +
+          `Re-run --regenerate --mode=brands to refresh the brand file before --mode=families.`,
+      )
+    }
+
+    if (row.status === 'auto-resolved') {
+      if (!row.proposed_target_id) {
+        throw new Error(
+          `[v8.4-brand-canon] buildFamilyMap: family "${row.family_raw}" status=auto-resolved ` +
+            `but proposed_target_id is empty`,
+        )
+      }
+      map.set(compositeKey, {
+        kind: 'existing',
+        uuid: row.proposed_target_id,
+        canonicalName: row.family_raw,
+      })
+    } else if (MERGE_RE.test(row.status)) {
+      const uuid = row.status.slice('merge:'.length)
+      map.set(compositeKey, {
+        kind: 'merge',
+        uuid,
+        canonicalName: row.family_raw,
+        sourceModelRaw: row.family_raw,
+      })
+    } else if (row.status === 'new') {
+      // Forward whichever brand UUID we have:
+      //   - existing/merge → real brands.id
+      //   - new            → syntheticKey placeholder; applyFamilyPath reifies
+      //                       it AFTER applyBrandPath's Step 4.1 patches the
+      //                       brand map to 'existing'.
+      const brandUuid =
+        resolvedBrand.kind === 'new'
+          ? resolvedBrand.syntheticKey
+          : resolvedBrand.uuid
+      map.set(compositeKey, {
+        kind: 'new',
+        syntheticKey: compositeKey,
+        rawName: row.family_raw,
+        brandUuid,
+      })
+    } else {
+      throw new Error(
+        `[v8.4-brand-canon] buildFamilyMap: family "${row.family_raw}" has unsupported status "${row.status}". ` +
           `Resolve to one of: auto-resolved | merge:<uuid> | new`,
       )
     }
