@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-25T07:27:30.671Z"
+last_updated: "2026-06-25T07:45:07.187Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
-  percent: 67
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 ## Current Position
 
 Phase: 79 (backfill-migration-display-hydration) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-25
 
@@ -179,6 +179,20 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 - **4 deviations all Rule 1 (auto-fix):** (1) `export async function strictPreflightGate` doesn't match the plan's literal `export function` grep regex — substantive intent (3 new exported helpers) is met. (2) applyBrandPath Step 4.2 type-narrowing — TS flow analysis can't carry post-invariant narrowing across for-of; added explicit runtime guard. (3) postgres-lib UpdateResult `.count` cast — typed `Promise<Array<{id}>>` doesn't carry runtime `.count`; cast on consume. (4) Comment-removed `= ANY(${arr})` literal to keep forward-armor grep at 0. Documented in `79-02-SUMMARY.md`.
 - **Full test sweep:** 27 files / 507 passed / 14 todo / 0 failed (tests/unit/scripts + tests/static); `npm run build` exit 0.
 
+**Phase 79 Plan 03 (Wave 2 family dry-run + applyFamilyPath definition) outcomes — 2026-06-25:**
+
+- **`scripts/v8.4-brand-canonicalization.ts` extended 873 → 1643 LOC** (commits `4c7a7f4b` Task 1 / `21b3a753` Task 2 / `66820328` Task 3). NEW exports: FamilyRow, FamilyDecisionRow, ResolvedFamily, FamilyDecisionMap, FamilyDecision, buildFamilyRow, buildFamilyTableRows, parseFamilyDecisionsTable, parseCompositeKey, buildFamilyMap. NEW non-exported helpers: buildFamilyHeader, parseExistingFamilyPreserved, familyDryRun, applyFamilyPath.
+- **D-79-07 in-memory brand→family chain (Option 2) landed.** `--mode=families` dry-run reads `.planning/v8.4-brand-merge-decisions.md` in-memory, builds the BrandDecisionMap, then emits `.planning/v8.4-family-merge-decisions.md` deduped on canonical brand identity. Family dry-run does NOT require brand `--apply` to have run first.
+- **Canonical-brand-identity dedup must be keyed on UUID, NOT brand_norm string** (Rule 1 deviation caught at local smoke). The BrandDecisionMap's `merge` entries store `canonicalName = row.brand_raw` (source raw, not target canonical — there's no target-canonical name field available at parse time). With brand_norm-string keying, `Hamilton Watch` and `Hamilton` dedup'd separately. Fixed by switching to UUID identity keying + a separate `canonicalNameByUuid` map for display. Post-fix smoke: 0 `Hamilton Watch` rows + 8 `Hamilton` rows under canonical leading column in the emitted family file (out of 164 family rows / 21 auto-resolved / 143 needs-review against local catalog).
+- **D-79-05 family dry-run read-only invariant verified.** Phase 78 `v8.4-readonly.test.ts` still passes (5/5) against local DB — family dry-run is read-only by construction (SELECT-only).
+- **D-79-01 strict pre-flight gate extended with 4 family refuse cases** (Task 2). strictPreflightGate signature: brandRows + existingBrandIdsFn + (NEW) familyRows + existingFamilyIdsFn, both new params with safe defaults so Plan 02 brand-only callsites stay backward-compatible. Family refuse cases: needs-review, unknown token, merge:<uuid> family target missing from watch_families.id, live catalog (brand, model) triple absent from family decisions file.
+- **applyFamilyPath defined but NOT wired into main()** per spec (Task 3). 3-step shape per RESEARCH § Code Examples L727-770: Step 4.3 INSERT new families RETURNING id + reify map + Pitfall 3 invariant check; Step 4.4 idempotent alias-append via `WHERE NOT (aliases @> ARRAY[$src]::text[])` (D-79-06 / T-79-04 mitigation); Step 4.5 catalog family_id UPDATE JOIN-scoped by brand_id + model_normalized (MIG-03). Plan 04 wraps applyBrandPath + applyFamilyPath + hydration + post-flight in ONE outer sql.begin per D-79-03.
+- **Plan 01 stub greens:** v8.4-family-build-decisions.test.ts (5 it.todo → 5 it() / 6 pass / 0 todo / 0 failed); v8.4-strict-gate.test.ts (2 family it.todo → 2 it() + 1 NEW combined PASS test / 9 pass / 0 todo / 0 failed).
+- **Forward armor preserved:** `grep -c "= ANY("` returns 0 (re-applied Plan 02's comment-rephrase to applyFamilyPath JSDoc — Rule 1 deviation); 0 `process.exit` inside sql.begin callbacks; `npm run build` exit 0.
+- **MIG-03 marked complete** in REQUIREMENTS.md (family backfill function definition + dry-run end-to-end; full integration verification in Plan 04 + Plan 05).
+- **2 Rule 1 deviations** documented in 79-03-SUMMARY.md: (1) dedup-by-UUID-not-norm-string bug caught at local smoke; (2) comment-rephrase to keep `= ANY(` grep at 0 (recurrence of Plan 02 Rule 1 deviation #4).
+- **Full test sweep:** 7 unit-script files / 43 passed / 7 todo / 0 failed; readonly integration 5/5 against local DB.
+
 ### Pending Todos
 
 None.
@@ -208,11 +222,12 @@ None.
 | Phase 78 P03 | ~8min | 3 tasks | 9 files |
 | Phase 79 P01 | 12min | 3 tasks | 7 files |
 | Phase 79 P02 | 10 | 3 tasks | 2 files |
+| Phase 79 P03 | 14min | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-25 — Phase 79 Plan 02 (Wave 1 brand apply scaffold) complete. `scripts/v8.4-brand-canonicalization.ts` extended 345 → 873 LOC with isLocalDatabaseUrl + strictPreflightGate (brand-only) + idempotentReRunGate + buildBrandMap + applyBrandPath + main() apply dispatch on --apply + --mode. Plan 02's sql.begin wrapper is TRANSIENT — Plan 04 restructures into ONE outer sql.begin per D-79-03. All 7 D-79-02 host-detect cases green; 4 D-79-01 brand refuse cases + 1 brand PASS case green; 2 family cases stay it.todo for Plan 03. Forward armor: 0 `= ANY(` patterns; 0 `process.exit` inside sql.begin callbacks. Phase 78 dry-run backward-compat verified via local smoke (55 brand rows unchanged). Full sweep 27 files / 507 passed / 14 todo / 0 failed; `npm run build` exit 0. Commits: `501d19db` (Task 1 host-detect + parseArgs ext), `e10fbbb0` (Task 2 strict gate + decision map), `1120fafd` (Task 3 apply path + main dispatch). 4 Rule 1 deviations documented in 79-02-SUMMARY.md.
+Last activity: 2026-06-25 — Phase 79 Plan 03 (Wave 2 family dry-run + applyFamilyPath definition) complete. `scripts/v8.4-brand-canonicalization.ts` extended 873 → 1643 LOC with FamilyDecisionMap shape + buildFamilyMap + parseFamilyDecisionsTable + parseCompositeKey + familyDryRun + applyFamilyPath + strictPreflightGate family extension (4 new refuse cases). `--mode=families` dry-run writes `.planning/v8.4-family-merge-decisions.md` via in-memory brand→family chain (D-79-07 Option 2). applyFamilyPath defined but NOT wired into main() (Plan 04 owns the call inside the unified outer sql.begin per D-79-03). MIG-03 requirement marked complete. Forward armor preserved: 0 `= ANY(` patterns (re-applied Plan 02 comment-rephrase); 0 `process.exit` inside sql.begin; npm run build exit 0. Phase 78 readonly invariant still passes (5/5 against local DB). Local smoke caught a Rule 1 bug — canonical-brand-identity dedup must key on UUID not brand_norm string because BrandDecisionMap merge entries carry source-raw not target-canonical name. Post-fix smoke: 0 `Hamilton Watch` rows + 8 `Hamilton` rows in family file (164 rows / 21 auto-resolved / 143 needs-review). Plan 01 stub greens: family-build-decisions 6/0/0; strict-gate 9/0/0 (+1 NEW combined PASS test). Commits: `4c7a7f4b` (Task 1 family types + buildFamilyMap), `21b3a753` (Task 2 family dry-run + family refuse cases), `66820328` (Task 3 applyFamilyPath definition). 2 Rule 1 deviations documented in 79-03-SUMMARY.md.
 
-Next action: `/gsd-execute-phase 79` → Plan 03 (Wave 2 — family dry-run path: extend script with FamilyDecisionMap shape + family-merge-decisions.md generator + family-side of strictPreflightGate; greens the family-build-decisions unit stub + 2 remaining family it.todo cases in strict-gate). Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
+Next action: `/gsd-execute-phase 79` → Plan 04 (Wave 3 — unified atomic apply transaction + post-flight assertion + auto-generated 79-POST-DEPLOY.md). Plan 04 RESTRUCTURES Plan 02's transient brand-only `sql.begin` at scripts/v8.4-brand-canonicalization.ts L1540 into ONE outer transaction wrapping applyBrandPath + applyFamilyPath + hydration (Step 4.6) + post-flight assertion (Step 4.7) per D-79-03; deletes the Plan 02 main() throw at L1115 ("Plan 03/04" diagnostic); wires `--apply --mode=both` end-to-end; auto-emits `.planning/phases/79-backfill-migration-display-hydration/79-POST-DEPLOY.md` per D-79-10. Greens integration stubs `v8.4-apply-atomic.test.ts` + `v8.4-apply-idempotent.test.ts`. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
 
 ## Operator Next Steps
