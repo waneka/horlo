@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: planning
-last_updated: "2026-06-25T01:00:00.000Z"
-last_activity: 2026-06-25
+last_updated: "2026-06-25T01:31:17.027Z"
+last_activity: "2026-06-25 — Roadmap drafted for v8.4: 5 phases (78-82), 25/25 requirements mapped; ROADMAP.md + REQUIREMENTS.md traceability updated"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -26,10 +25,11 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 
 Phase: 78 — Schema Additions + Operator-Resolve Queue
 Plan: —
-Status: Ready to plan (roadmap drafted; awaiting `/gsd-plan-phase 78`)
-Last activity: 2026-06-25 — Roadmap drafted for v8.4: 5 phases (78-82), 25/25 requirements mapped; ROADMAP.md + REQUIREMENTS.md traceability updated
+Status: Context captured (`78-CONTEXT.md` committed `41120186`); ready for `/gsd-plan-phase 78`
+Last activity: 2026-06-24 — Phase 78 discuss completed: 4 gray areas locked (artifact format = GFM table + explicit prefix tokens; auto-resolve = exact-only + top 3 fuzzy candidates ≥0.5 in notes; script runtime = service-role + DATABASE_URL both envs, refuse-to-overwrite + `--regenerate` merge-forward; aliases = empty at P78, populated by P79 `--apply`). 8 D-78-NN decisions in CONTEXT.md.
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
+
 - CANON-03: `watch_families.aliases text[] NOT NULL DEFAULT '{}'` + GIN containment index
 - CANON-04: `brands.needs_review` + `watch_families.needs_review` boolean columns
 - MIG-01: `scripts/v8.4-brand-canonicalization.ts` dry-run → writes `.planning/v8.4-brand-merge-decisions.md`
