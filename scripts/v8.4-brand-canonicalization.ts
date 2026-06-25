@@ -821,9 +821,57 @@ export async function strictPreflightGate(
   }
 
   // (d-family) — live catalog (brand_norm, model_norm) triples must all appear
-  // in the family decisions file. Compose the live-triple set via a single
-  // DISTINCT SELECT; compose decided-triple set via in-memory map over
-  // familyRows. Composite key for both: `${brand_norm}|${model_norm}`.
+  // in the family decisions file. Composite key normalizes by CANONICAL brand
+  // identity (UUID) not raw brand_norm, because Plan 03's familyDryRun dedups
+  // the family file via canonical-brand-identity (D-79-07) — Hamilton +
+  // Hamilton Watch collapse to ONE bucket under the canonical Hamilton brand.
+  // Composing the live triple by raw `lower(trim(brand))` would produce
+  // `hamilton watch|...` which would never match the deduped family file's
+  // `Hamilton|...`. Key both sides by `${canonical_brand_uuid_or_synthetic}|
+  // ${model_norm}` per the same identity rule familyDryRun uses.
+  const brandMap = buildBrandMap(brandRows)
+  // canonicalIdentityForBrandNorm: brand_normalized → canonical identity used
+  // for triple keying. Mirrors familyDryRun Stage 2 logic verbatim so the
+  // strict gate and the dry-run agree on identity.
+  const canonicalIdentityForBrandNorm = (brandNorm: string): string => {
+    const resolved = brandMap.get(brandNorm)
+    if (resolved && resolved.kind !== 'new') return resolved.uuid
+    if (resolved && resolved.kind === 'new')
+      return `synthetic:${brandNorm}`
+    // Brand-side drift (live catalog brand not in brandRows). Mirror the
+    // dry-run's `unknown:${brandNorm}` identity so the triple-not-found error
+    // surfaces with the same shape; strict-gate (d) brand-side check above
+    // would have already caught this.
+    return `unknown:${brandNorm}`
+  }
+  // Build a brand_norm → display-canonical-name map for diagnostic messages.
+  const canonicalNameByBrandNorm = new Map<string, string>()
+  for (const [bn, resolved] of brandMap.entries()) {
+    if (resolved.kind === 'existing' || resolved.kind === 'merge') {
+      // For 'merge' entries, the canonical display name comes from the
+      // 'existing' entry that shares the same UUID — look it up.
+      if (resolved.kind === 'existing') {
+        canonicalNameByBrandNorm.set(bn, resolved.canonicalName)
+      }
+    } else if (resolved.kind === 'new') {
+      canonicalNameByBrandNorm.set(bn, resolved.rawName)
+    }
+  }
+  // Second pass: backfill 'merge' entries with the canonical name from the
+  // 'existing' sibling that owns the same UUID.
+  const canonicalNameByUuid = new Map<string, string>()
+  for (const resolved of brandMap.values()) {
+    if (resolved.kind === 'existing') {
+      canonicalNameByUuid.set(resolved.uuid, resolved.canonicalName)
+    }
+  }
+  for (const [bn, resolved] of brandMap.entries()) {
+    if (resolved.kind === 'merge') {
+      const canonical = canonicalNameByUuid.get(resolved.uuid)
+      if (canonical) canonicalNameByBrandNorm.set(bn, canonical)
+    }
+  }
+
   const liveTriples = await (sql as unknown as SqlTagFamilyTriple)`
     SELECT DISTINCT
       lower(trim(c.brand)) AS brand_normalized,
@@ -832,14 +880,20 @@ export async function strictPreflightGate(
   `
   const decidedTriples = new Set(
     familyRows.map(
-      (r) => `${r.brand_raw.toLowerCase().trim()}|${r.family_normalized}`,
+      (r) =>
+        `${canonicalIdentityForBrandNorm(r.brand_raw.toLowerCase().trim())}|${r.family_normalized}`,
     ),
   )
   for (const live of liveTriples) {
-    const key = `${live.brand_normalized}|${live.model_normalized}`
+    const canonicalId = canonicalIdentityForBrandNorm(live.brand_normalized)
+    const key = `${canonicalId}|${live.model_normalized}`
     if (!decidedTriples.has(key)) {
+      const canonicalDisplay =
+        canonicalNameByBrandNorm.get(live.brand_normalized) ??
+        live.brand_normalized
       throw new Error(
-        `[v8.4-brand-canon] STRICT GATE: catalog has (brand, model) family triple "${key}" not present in family decisions file. ` +
+        `[v8.4-brand-canon] STRICT GATE: catalog has (brand, model) family triple "${canonicalDisplay}|${live.model_normalized}" ` +
+          `(live brand_raw=${live.brand_normalized}) not present in family decisions file. ` +
           `Re-run --regenerate --mode=families to merge-forward the new family row, edit it to a terminal status, then re-try --apply.`,
       )
     }
@@ -1022,6 +1076,7 @@ async function applyBrandPath(
 async function applyFamilyPath(
   tx: SqlTagBrandInsert,
   familyMap: FamilyDecisionMap,
+  brandMap?: BrandDecisionMap,
 ): Promise<{
   familiesCreated: number
   aliasesAppended: number
@@ -1032,11 +1087,39 @@ async function applyFamilyPath(
   let catalogRowsResolvedFamily = 0
 
   // Step 4.3 — INSERT new families; reify map entries.
+  //
+  // Re-resolve brandUuid through brandMap (Plan 04 wiring). buildFamilyMap
+  // captured the brand UUID at parse time, BEFORE applyBrandPath ran. For
+  // family rows whose brand was kind='new' at parse time, the captured
+  // brandUuid is a synthetic key (e.g. "a. lange & söhne") — applyBrandPath
+  // has since reified the brandMap entry to kind='existing' with a real
+  // UUID, but the familyMap still carries the synthetic. Re-resolve at
+  // INSERT time so the new family points at the freshly-allocated brand.id.
+  // When brandMap is omitted (legacy callsite), fall back to the captured
+  // value (callers MUST pass brandMap if any brand row has kind='new').
+  const resolveBrandUuid = (compositeKey: string, capturedUuid: string): string => {
+    if (!brandMap) return capturedUuid
+    const brandNorm = compositeKey.split('|')[0]
+    const resolvedBrand = brandMap.get(brandNorm)
+    if (!resolvedBrand) return capturedUuid
+    if (resolvedBrand.kind === 'existing' || resolvedBrand.kind === 'merge') {
+      return resolvedBrand.uuid
+    }
+    // kind='new' should have been reified by applyBrandPath Step 4.1 + the
+    // brand-side invariant. If it slipped through, surface a clear error
+    // rather than passing the synthetic key into the INSERT.
+    throw new Error(
+      `[v8.4-brand-canon] applyFamilyPath: brand "${brandNorm}" still kind=new after applyBrandPath. ` +
+        `This indicates applyBrandPath did not run, or the brandMap was not the SAME object instance passed to both helpers.`,
+    )
+  }
+
   for (const [compositeKey, resolved] of familyMap.entries()) {
     if (resolved.kind !== 'new') continue
+    const brandUuid = resolveBrandUuid(compositeKey, resolved.brandUuid)
     const [row] = await tx`
       INSERT INTO watch_families (brand_id, name, needs_review, aliases)
-      VALUES (${resolved.brandUuid}, ${resolved.rawName}, false, '{}'::text[])
+      VALUES (${brandUuid}, ${resolved.rawName}, false, '{}'::text[])
       RETURNING id
     `
     // Preserve the family_raw display string (resolved.rawName) as canonicalName
@@ -1894,10 +1977,14 @@ async function main() {
           brandMap,
         )
         // 4.3 + 4.4 + 4.5 — family path (Plan 03 helper; not previously
-        // wired).
+        // wired). Pass brandMap so applyFamilyPath Step 4.3 can re-resolve
+        // brandUuid for kind='new' family rows whose brand was reified to
+        // 'existing' by applyBrandPath Step 4.1 (the buildFamilyMap-time
+        // capture is now stale).
         const familyRes = await applyFamilyPath(
           tx as unknown as SqlTagBrandInsert,
           familyMap,
+          brandMap,
         )
         // 4.6 — hydration (Plan 04 / DISP-03). Unconditional UPDATE FROM JOIN
         // per D-79-08.
