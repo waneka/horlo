@@ -526,6 +526,8 @@ export const brands = pgTable(
     ),
     slug: text('slug').notNull().unique(),
     countryOfOrigin: text('country_of_origin'),
+    // Phase 78 CANON-04 — operator review queue flag
+    needsReview: boolean('needs_review').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -546,6 +548,12 @@ export const watchFamilies = pgTable(
     ),
     // slug nullable per D-01a — global slug uniqueness not enforced for families.
     slug: text('slug'),
+    // Phase 78 CANON-03 — typo/abbreviation alias array (ships EMPTY per D-78-08)
+    // GIN index on aliases lives in supabase/migrations/20260624000000_phase78_aliases_needs_review.sql —
+    // Drizzle 0.45.2 indexUsing API does not cleanly express GIN(array_ops).
+    aliases: text('aliases').array().notNull().default(sql`'{}'::text[]`),
+    // Phase 78 CANON-04 — operator review queue flag
+    needsReview: boolean('needs_review').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
