@@ -275,9 +275,14 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
   4. The migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` — filename ordering and additive ADD COLUMN shape verified. Per RESEARCH R-FIND-01: this Phase 78 migration does NOT define new helper functions and therefore does NOT need `extensions.unaccent` / pinned `SET search_path` on any function (the pinned-search-path rule applies to the dry-run SCRIPT's `extensions.word_similarity` calls, not the SQL migration). Full MIG-05 closure deferred to Phase 79's larger migration.
 **Plans**: 4 plans
 Plans:
+**Wave 1**
 - [ ] 78-01-PLAN.md — Wave 0 RED test stubs (7 test files; static schema-shape, GIN index introspection, script integration + units; `it.todo` per Phase 77 convention)
 - [ ] 78-02-PLAN.md — Schema additions migration (edit `src/db/schema.ts` + hand-write `supabase/migrations/20260624000000_phase78_aliases_needs_review.sql` + drizzle mirror + apply locally + green 2 Wave 0 stubs)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 78-03-PLAN.md — Dry-run script (`scripts/v8.4-brand-canonicalization.ts` Stages 1-4: distinct catalog brands, exact-only auto-resolve per D-78-04, top 3 fuzzy candidates ≥0.5 via `extensions.word_similarity`, GFM emission; refuse-to-overwrite + `--regenerate` merge-forward per D-78-07; npm script entry; green remaining 5 Wave 0 stubs)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 78-04-PLAN.md — Prod push handoff (operator-facing `78-POST-DEPLOY.md`; `supabase db push --linked`; verification SQL checklist; sign-off — autonomous: false)
 **UI hint**: no
 
