@@ -296,7 +296,22 @@ Plans:
   3. A post-flight assertion using a DIFFERENT predicate from the UPDATE's WHERE-clause (e.g. `COUNT(*) WHERE brand_id IS DISTINCT FROM NULL` vs the operation's `WHERE brand_id IS NULL`) verifies zero unresolved rows on `watches_catalog` AFTER the migration — per the post-flight-predicate divergence lesson from `project_post_flight_assertion_predicate_divergence` (MIG-04)
   4. Every existing `watches` row whose `catalogId` is non-NULL has its `brand` and `model` columns overwritten with the canonical `brands.name` / `watch_families.name` resolved through that `catalogId` — no UI surface (collection grid, detail page, profile rail) still renders stale free-text variants like `Hamilton` vs `Hamilton Watch` (DISP-03)
   5. The full migration pushes cleanly to prod via `supabase db push --linked` on the first attempt — no `extensions` schema portability surprises, no enum-bound dependent failures, no filename ordering issues (MIG-05 full closure)
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1**
+- [ ] 79-01-PLAN.md — Wave 0 RED test stubs (4 unit + 2 integration; covers MIG-02/MIG-03/MIG-04/DISP-03 + D-79-01..10)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 79-02-PLAN.md — Brand apply scaffold (parseArgs --apply --mode + isLocalDatabaseUrl + strictPreflightGate brand-only + idempotentReRunGate + applyBrandPath in sql.begin; greens Plan 01 host-detect + strict-gate brand cases) — MIG-02
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 79-03-PLAN.md — Family dry-run + apply scaffold (--mode=families artifact emission + buildFamilyMap + applyFamilyPath with idempotent alias-append + extended strict gate; greens Plan 01 family-build-decisions + family strict-gate cases) — MIG-03
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 79-04-PLAN.md — Atomic 6-step transaction wiring + hydration UPDATE FROM JOIN + post-flight assertion with predicate divergence + renderPostDeployMarkdown auto-generator; greens all Plan 01 integration stubs — MIG-04, DISP-03
+
+**Wave 5** *(blocked on Wave 4 completion — autonomous: false; operator checkpoint)*
+- [ ] 79-05-PLAN.md — Local-first verification (13 steps) + prod apply with interactive yes-prompt + 6 sign-off SQL queries against prod + ROADMAP/STATE/REQUIREMENTS update; MIG-05 full closure + final DISP-03 prod verification
 **UI hint**: no
 
 ### Phase 80: NOT NULL Constraint Flip + Ingest Hardening
@@ -377,7 +392,7 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
-| 79. Backfill Migration + Display Hydration | 0/? | Not started | — |
+| 79. Backfill Migration + Display Hydration | 0/5 | Not started | — |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |
