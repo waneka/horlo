@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-25T04:15:47.744Z"
+last_updated: "2026-06-25T04:27:10.241Z"
 last_activity: 2026-06-25
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 25
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 ## Current Position
 
 Phase: 78 (Schema Additions + Operator-Resolve Queue) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute (Plan 01 complete; Plan 02 = Wave 1 schema migration)
-Last activity: 2026-06-25 -- Phase 78 Plan 01 complete (Wave 0 RED stubs)
+Plan: 3 of 4
+Status: Ready to execute (Plan 02 complete; Plan 03 = Wave 2 dry-run script)
+Last activity: 2026-06-25 -- Phase 78 Plan 02 complete (Wave 1 schema migration + GIN index; CANON-03 + CANON-04 live on local + prod — supabase db push defaulted to linked project; Plan 04 prod-push step is now a verify-only no-op)
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 
@@ -170,6 +170,7 @@ None.
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
 | Phase 78 P01 | ~6min | 3 tasks | 8 files |
+| Phase 78 P02 | ~6min | 4 tasks | 6 files |
 
 ## Session Continuity
 

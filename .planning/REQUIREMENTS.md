@@ -29,8 +29,8 @@ The brand + family FKs become canonical identity for every catalog row.
 
 - [ ] **CANON-01**: `watches_catalog.brand_id` is `NOT NULL` after the backfill data migration completes (was nullable since Phase 34).
 - [ ] **CANON-02**: `watches_catalog.family_id` is `NOT NULL` after the backfill data migration completes — every catalog row resolves to a family (one-row-per-family fallback for catalogs where no family exists yet; e.g. "Other Casio" pattern).
-- [ ] **CANON-03**: `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column added, indexed for GIN containment lookup, populated from the operator-resolve queue for known typo/abbreviation cases.
-- [ ] **CANON-04**: `brands.needs_review boolean NOT NULL DEFAULT false` and `watch_families.needs_review boolean NOT NULL DEFAULT false` columns added; INSERT-from-ingest sets `true`; operator confirms via `/admin/brands` and `/admin/families` flips to `false`.
+- [x] **CANON-03**: `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column added, indexed for GIN containment lookup, populated from the operator-resolve queue for known typo/abbreviation cases.
+- [x] **CANON-04**: `brands.needs_review boolean NOT NULL DEFAULT false` and `watch_families.needs_review boolean NOT NULL DEFAULT false` columns added; INSERT-from-ingest sets `true`; operator confirms via `/admin/brands` and `/admin/families` flips to `false`.
 
 ### Migration (MIG)
 
@@ -113,8 +113,8 @@ Explicitly excluded from v8.4:
 |-------------|-------|--------|
 | CANON-01 | Phase 80 | Pending |
 | CANON-02 | Phase 80 | Pending |
-| CANON-03 | Phase 78 | Pending |
-| CANON-04 | Phase 78 | Pending |
+| CANON-03 | Phase 78 | Complete |
+| CANON-04 | Phase 78 | Complete |
 | MIG-01 | Phase 78 | Pending |
 | MIG-02 | Phase 79 | Pending |
 | MIG-03 | Phase 79 | Pending |
