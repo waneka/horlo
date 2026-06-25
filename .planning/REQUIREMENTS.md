@@ -36,7 +36,7 @@ The brand + family FKs become canonical identity for every catalog row.
 
 Data migration backfills every existing watch and catalog row to canonical brand + family.
 
-- [ ] **MIG-01**: Backfill script (`scripts/v8.4-brand-canonicalization.ts`) generates a proposed mapping for every distinct `lower(trim(watches_catalog.brand))` value → existing `brands.id` (exact match) OR a "needs operator decision" marker (ambiguous). Output written to `.planning/v8.4-brand-merge-decisions.md` for operator review BEFORE any UPDATE runs.
+- [x] **MIG-01**: Backfill script (`scripts/v8.4-brand-canonicalization.ts`) generates a proposed mapping for every distinct `lower(trim(watches_catalog.brand))` value → existing `brands.id` (exact match) OR a "needs operator decision" marker (ambiguous). Output written to `.planning/v8.4-brand-merge-decisions.md` for operator review BEFORE any UPDATE runs.
 - [ ] **MIG-02**: After operator approves the `.md` artifact (writes decisions inline as YAML frontmatter or per-row markers), running `scripts/v8.4-brand-canonicalization.ts --apply` executes the data UPDATE atomically: `watches_catalog.brand_id` populated, ambiguous cases resolved per operator decision, new `brands` rows created where needed.
 - [ ] **MIG-03**: Equivalent `--apply` path for `watch_families` backfill — distinct `watches_catalog.model` strings mapped to `watch_families.id` (with brand-scoped uniqueness via existing `watch_families_brand_name_unique` constraint); typo cases routed into the new `aliases` column.
 - [ ] **MIG-04**: Post-flight assertion (NOT reusing the same WHERE-clause as the operation — per `project_post_flight_assertion_predicate_divergence`) verifies zero rows with `brand_id IS NULL` AND zero rows with `family_id IS NULL` on `watches_catalog` AFTER the migration completes.
@@ -115,7 +115,7 @@ Explicitly excluded from v8.4:
 | CANON-02 | Phase 80 | Pending |
 | CANON-03 | Phase 78 | Complete |
 | CANON-04 | Phase 78 | Complete |
-| MIG-01 | Phase 78 | Pending |
+| MIG-01 | Phase 78 | Complete |
 | MIG-02 | Phase 79 | Pending |
 | MIG-03 | Phase 79 | Pending |
 | MIG-04 | Phase 79 | Pending |
