@@ -71,6 +71,15 @@ const FAMILY_OUTPUT_FILE = path.join(
   process.cwd(),
   '.planning/v8.4-family-merge-decisions.md',
 )
+// Phase 79 Plan 04 — D-79-10 POST-DEPLOY artifact path. The script auto-writes
+// this file AFTER a successful --apply --mode=both transaction commits (post-
+// success only; never on rollback path). Lives under the phase-79 directory
+// per the operator-audit convention (mirror Phase 78's 78-POST-DEPLOY.md
+// location).
+const POST_DEPLOY_PATH = path.join(
+  process.cwd(),
+  '.planning/phases/79-backfill-migration-display-hydration/79-POST-DEPLOY.md',
+)
 const FUZZY_THRESHOLD = 0.5
 const TOP_K = 3
 
@@ -1097,6 +1106,298 @@ async function applyFamilyPath(
   }
 
   return { familiesCreated, aliasesAppended, catalogRowsResolvedFamily }
+}
+
+// ============================================================
+// PHASE 79 PLAN 04 — Step 4.6 (hydration / DISP-03), Step 4.7 (post-flight /
+// MIG-04), and D-79-10 POST-DEPLOY artifact renderer + writer.
+// ============================================================
+
+/**
+ * Phase 79 Plan 04 — apply-time counts returned from the atomic transaction.
+ * Consumed by renderPostDeployMarkdown for the auto-generated POST-DEPLOY
+ * artifact, and by the post-success stdout summary block.
+ */
+export interface ApplyCounts {
+  brandsCreated: number
+  catalogRowsResolvedBrand: number
+  familiesCreated: number
+  aliasesAppended: number
+  catalogRowsResolvedFamily: number
+  userWatchesHydrated: number
+}
+
+/**
+ * Phase 79 Plan 04 — input to the pure renderPostDeployMarkdown function. The
+ * `today` field is injectable for unit-test determinism (renderer must NOT
+ * call Date.now() when args.today is provided).
+ */
+export interface PostDeployArgs {
+  counts: ApplyCounts
+  postFlightQuery: string
+  postFlightResult: {
+    total: number
+    resolvedBrand: number
+    resolvedFamily: number
+  }
+  isLocal: boolean
+  today?: string
+}
+
+// Postgres-lib runtime: UPDATE FROM JOIN returns an Array<row> with a
+// runtime `.count` (rows affected) property. Cast on consume — mirrors the
+// applyBrandPath / applyFamilyPath idiom at L875-877.
+//
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SqlTagHydration = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+) => Promise<unknown>
+
+/**
+ * Phase 79 Plan 04 Step 4.6 — DISP-03 hydration. Single UPDATE FROM JOIN
+ * writes canonical brands.name + watch_families.name onto watches.brand +
+ * .model for every catalog-linked watches row. Per D-79-08 the UPDATE is
+ * UNCONDITIONAL: no WHERE-clause filter on watches.brand/model text — the
+ * JOIN naturally skips watches.catalog_id IS NULL orphans per Pitfall 5.
+ *
+ * Touches `brand` + `model` columns ONLY; notes / serial / reference / all
+ * other text columns stay untouched.
+ *
+ * NOTE: `tx` is the sql.begin callback parameter; throwing here triggers
+ * ROLLBACK of every prior step in Plan 04's outer transaction. NEVER call
+ * process.exit() inside this function — Pitfall 2.
+ */
+async function applyHydration(
+  tx: SqlTagHydration,
+): Promise<{ userWatchesHydrated: number }> {
+  const result = (await tx`
+    UPDATE watches w
+    SET brand = b.name,
+        model = f.name
+    FROM watches_catalog c
+    JOIN brands b ON c.brand_id = b.id
+    JOIN watch_families f ON c.family_id = f.id
+    WHERE w.catalog_id = c.id
+  `) as unknown as UpdateResult
+  return { userWatchesHydrated: result.count }
+}
+
+// Postgres-lib SELECT-typed sql-tag for the post-flight assertion. Returns a
+// single row with three text-coerced count columns. The ::text cast avoids
+// JS-side BigInt issues for large counts.
+type SqlTagPostFlight = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<
+  Array<{
+    total: string
+    resolved_brand: string
+    resolved_family: string
+  }>
+>
+
+/**
+ * Phase 79 Plan 04 Step 4.7 — MIG-04 post-flight assertion. Uses a POSITIVE
+ * predicate (`IS DISTINCT FROM NULL`) that is STRUCTURALLY DIFFERENT from any
+ * UPDATE WHERE clause in Steps 4.1-4.6 per [[post-flight-assertion-predicate-
+ * divergence]]. The Step 4.2 + 4.5 UPDATEs predicate on positive equality
+ * (`lower(trim(brand)) = ${brandNorm}`); none predicate on `WHERE brand_id IS
+ * NULL`. So the assertion's positive predicate cannot trivially-pass for the
+ * same reason any UPDATE was a no-op.
+ *
+ * Throws Error inside the sql.begin callback when resolvedBrand !== total or
+ * resolvedFamily !== total → automatic ROLLBACK of all 6 prior steps.
+ *
+ * NEVER call process.exit() inside this function — Pitfall 2.
+ */
+async function postFlightAssertion(
+  tx: SqlTagPostFlight,
+): Promise<{
+  total: number
+  resolvedBrand: number
+  resolvedFamily: number
+  postFlightQuery: string
+}> {
+  // Stash the textual form of the SQL for the POST-DEPLOY artifact (operator
+  // pastes it into the Supabase SQL editor for independent verification).
+  const postFlightQuery = `SELECT
+  (SELECT count(*) FROM watches_catalog) AS total,
+  (SELECT count(*) FROM watches_catalog WHERE brand_id IS DISTINCT FROM NULL) AS resolved_brand,
+  (SELECT count(*) FROM watches_catalog WHERE family_id IS DISTINCT FROM NULL) AS resolved_family;`
+
+  const [pf] = await tx`
+    SELECT
+      (SELECT count(*) FROM watches_catalog)::text AS total,
+      (SELECT count(*) FROM watches_catalog
+         WHERE brand_id IS DISTINCT FROM NULL)::text AS resolved_brand,
+      (SELECT count(*) FROM watches_catalog
+         WHERE family_id IS DISTINCT FROM NULL)::text AS resolved_family
+  `
+  const total = Number(pf.total)
+  const resolvedBrand = Number(pf.resolved_brand)
+  const resolvedFamily = Number(pf.resolved_family)
+  if (resolvedBrand !== total || resolvedFamily !== total) {
+    // Throwing inside the sql.begin callback triggers ROLLBACK of every prior
+    // step. The Database returns to its pre-apply state.
+    throw new Error(
+      `[v8.4-brand-canon] MIG-04 post-flight assertion FAILED: ` +
+        `total=${total} resolved_brand=${resolvedBrand} resolved_family=${resolvedFamily}. ` +
+        `Rolling back the entire transaction.`,
+    )
+  }
+  return { total, resolvedBrand, resolvedFamily, postFlightQuery }
+}
+
+/**
+ * Phase 79 Plan 04 — D-79-10 POST-DEPLOY artifact RENDERER. PURE function —
+ * no FS, no DB, no Date.now() when args.today is provided. The string output
+ * is consumed by writePostDeployArtifact which wraps it with mkdir + writeFile.
+ *
+ * Section structure mirrors Phase 78's 78-POST-DEPLOY.md verbatim (PATTERNS
+ * L516-525): frontmatter → Apply Summary GFM table → Post-Flight Assertion
+ * (MIG-04) → Operator Sign-Off Queries (6 SQL blocks) → Sign-off checklist →
+ * forward-armor "What this push does NOT do" → Deliverables Summary → Next
+ * Phase pointer.
+ *
+ * Sign-Off Query #2 references the canonical Hamilton uuid VERBATIM (per
+ * 79-CONTEXT specifics L147-151) — the end-to-end correctness check that the
+ * SEED-021 Hamilton/Hamilton Watch merge collapsed as expected.
+ */
+export function renderPostDeployMarkdown(args: PostDeployArgs): string {
+  const today = args.today ?? new Date().toISOString().slice(0, 10)
+  const target = args.isLocal ? 'LOCAL' : 'PROD'
+  return `# Phase 79 — ${target} Deployment Record
+
+**Date:** ${today}
+**Operator:** {operator-name-here}
+**Status:** Pending verification → fill in after operator runs sign-off queries
+**Script:** scripts/v8.4-brand-canonicalization.ts --apply --mode=both
+
+---
+
+## Apply Summary
+
+| Step | Count |
+|------|-------|
+| Brands created (new rows) | ${args.counts.brandsCreated} |
+| Catalog rows resolved (brand_id) | ${args.counts.catalogRowsResolvedBrand} |
+| Families created (new rows) | ${args.counts.familiesCreated} |
+| Aliases appended (merge decisions) | ${args.counts.aliasesAppended} |
+| Catalog rows resolved (family_id) | ${args.counts.catalogRowsResolvedFamily} |
+| User watches hydrated (brand+model overwritten) | ${args.counts.userWatchesHydrated} |
+
+## Post-Flight Assertion (MIG-04)
+
+\`\`\`sql
+${args.postFlightQuery}
+\`\`\`
+
+**Result:**
+- total: ${args.postFlightResult.total}
+- resolved_brand: ${args.postFlightResult.resolvedBrand}
+- resolved_family: ${args.postFlightResult.resolvedFamily}
+
+Both resolved counts equal total → zero unresolved rows (assertion held inside transaction).
+
+---
+
+## Operator Sign-Off Queries (paste into Supabase SQL editor)
+
+### 1. Zero NULL brand_id or family_id on catalog
+\`\`\`sql
+SELECT
+  (SELECT count(*) FROM watches_catalog WHERE brand_id IS NULL) AS brand_null,
+  (SELECT count(*) FROM watches_catalog WHERE family_id IS NULL) AS family_null;
+\`\`\`
+Expected: \`0 | 0\`
+
+### 2. Hamilton merge collapsed correctly
+\`\`\`sql
+SELECT
+  count(*) AS rows_pointing_at_canonical_hamilton
+FROM watches_catalog
+WHERE brand_id = '20969364-f3b1-4b1d-ab2f-e5d22e9ffabc';
+\`\`\`
+Expected: >= (the count of catalog rows where lower(trim(brand)) IN ('hamilton', 'hamilton watch')).
+
+### 3. New brand row count matches summary
+\`\`\`sql
+SELECT count(*) AS new_brand_count
+FROM brands
+WHERE created_at > now() - interval '1 hour';
+\`\`\`
+Expected: matches "Brands created" in summary (${args.counts.brandsCreated}).
+
+### 4. Aliases appended via merge decisions (where applicable)
+\`\`\`sql
+SELECT name, aliases
+FROM watch_families
+WHERE cardinality(aliases) > 0
+ORDER BY name;
+\`\`\`
+Expected: one entry per merge: decision in family-merge-decisions.md; e.g. \`Brut Datejust | {"brut date"}\`.
+
+### 5. Hydration of a known user watch
+\`\`\`sql
+SELECT u.email, w.brand, w.model
+FROM watches w
+JOIN users u ON w.user_id = u.id
+WHERE lower(w.brand) LIKE 'hamilton%'
+LIMIT 5;
+\`\`\`
+Expected: every row's brand reads \`Hamilton\` (canonical), NOT \`Hamilton Watch\`.
+
+### 6. Natural-key UNIQUE constraint survived (per [[local-catalog-natural-key-drift]])
+\`\`\`sql
+SELECT conname FROM pg_constraint WHERE conname = 'watches_catalog_natural_key';
+\`\`\`
+Expected: 1 row.
+
+---
+
+## Sign-off
+
+- [ ] All 6 verification queries returned expected results
+- [ ] No unexpected rollback or transaction abort
+- [ ] needs_review queue empty by default (Phase 82 will populate on ingest)
+
+## What this push does NOT do (forward-armor against scope creep)
+
+- Does NOT flip NOT NULL on \`watches_catalog.brand_id\` / \`.family_id\` (Phase 80 CANON-01/CANON-02)
+- Does NOT change \`/api/extract-watch\` behavior (Phase 80 INGEST-01..04)
+- Does NOT swap the recommender JOIN-through path (Phase 81 RECO-01..04)
+- Does NOT add auto-overwrite on \`addWatch\` / \`editWatch\` Server Actions (Phase 81 DISP-01/DISP-02)
+- Does NOT add admin UI surfaces (Phase 82 UI-01..03, OPS-01/OPS-02)
+
+## Phase 79 Deliverables Summary
+
+| Requirement | Status |
+|-------------|--------|
+| MIG-02 — brand backfill --apply, idempotent | ${args.counts.catalogRowsResolvedBrand} catalog rows resolved (brand_id) |
+| MIG-03 — family backfill --apply, aliases routing | ${args.counts.catalogRowsResolvedFamily} catalog rows resolved (family_id); ${args.counts.aliasesAppended} aliases appended |
+| MIG-04 — post-flight assertion (predicate divergence) | ${args.postFlightResult.resolvedBrand}/${args.postFlightResult.total} brand + ${args.postFlightResult.resolvedFamily}/${args.postFlightResult.total} family resolved |
+| MIG-05 — portability (prod push clean first try) | script-driven; no SQL migration in this phase |
+| DISP-03 — hydration via UPDATE FROM JOIN | ${args.counts.userWatchesHydrated} watches hydrated |
+
+## Next Phase
+
+Phase 80: NOT NULL Constraint Flip + Ingest Hardening — CANON-01/CANON-02 (flip NOT NULL on resolved FKs) + INGEST-01..04 (extract-watch resolves via brand/family FKs).
+`
+}
+
+/**
+ * Phase 79 Plan 04 — D-79-10 POST-DEPLOY artifact WRITER. Wraps the pure
+ * renderer with mkdir + writeFile. Runs AFTER sql.begin transaction commits
+ * (post-success only — never written if assertion rolls back). Non-exported
+ * because the FS side-effect is per-script; tests target renderPostDeployMarkdown.
+ */
+async function writePostDeployArtifact(args: PostDeployArgs): Promise<void> {
+  const content = renderPostDeployMarkdown(args)
+  await mkdir(path.dirname(POST_DEPLOY_PATH), { recursive: true })
+  await writeFile(POST_DEPLOY_PATH, content, 'utf8')
+  console.log(`[v8.4-brand-canon] wrote ${POST_DEPLOY_PATH}`)
 }
 
 function buildHeader(): string {
