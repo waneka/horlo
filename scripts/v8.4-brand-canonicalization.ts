@@ -523,6 +523,109 @@ async function idempotentReRunGate(
   return 'proceed'
 }
 
+// Postgres-lib runtime: every tagged-template call returns a thenable that
+// resolves to an array-like with a `.count` (rows affected) property. The
+// type below is wide enough to cover both INSERT ... RETURNING (Array<row>)
+// and UPDATE (Array<row> + count). We cast on the consuming side.
+type SqlTagBrandInsert = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Array<{ id: string }>>
+
+interface UpdateResult {
+  count: number
+}
+
+/**
+ * Phase 79 apply path — BRAND-ONLY scope (Plan 02). Plans 03 + 04 wire the
+ * family + alias + hydration + post-flight steps inside one outer sql.begin
+ * transaction; Plan 02 lands the brand-only scaffold here so the path can be
+ * verified end-to-end against a local DB before the full transaction lands.
+ *
+ * Step 4.1 — for each brandMap entry with kind='new', INSERT a row into
+ *            brands (name, slug, needs_review=false) RETURNING id and reify
+ *            the map entry to kind='existing' with the freshly-allocated UUID.
+ *            needs_review=false per D-79-09 — the operator marking the row
+ *            'new' IS the approval signal.
+ * Invariant: after Step 4.1, NO map entry may remain kind='new'. Throw a
+ *            clear diagnostic if one does (Pitfall 3 — the post-flight assertion
+ *            in Plan 04 would catch the downstream effect, but this invariant
+ *            gives the right error message at the source).
+ * Step 4.2 — for each [brandNorm, resolved] of brandMap.entries(), UPDATE
+ *            watches_catalog SET brand_id = resolved.uuid
+ *            WHERE lower(trim(brand)) = brandNorm
+ *              AND (brand_id IS NULL OR brand_id <> resolved.uuid).
+ *            The trailing predicate makes the UPDATE a no-op when brand_id is
+ *            already correct (re-run safety + threat T-79-04).
+ *
+ * Returns counts for the Plan 04 POST-DEPLOY summary artifact.
+ *
+ * NOTE: `tx` is the sql.begin callback parameter (postgres-lib's transaction-
+ * scoped sql tag). Throwing here triggers ROLLBACK; resolving COMMITs.
+ * NEVER call process.exit() inside this function — Pitfall 2.
+ */
+async function applyBrandPath(
+  tx: SqlTagBrandInsert,
+  brandMap: BrandDecisionMap,
+): Promise<{ brandsCreated: number; catalogRowsResolvedBrand: number }> {
+  let brandsCreated = 0
+  let catalogRowsResolvedBrand = 0
+
+  // Step 4.1 — INSERT new brands; reify map entries.
+  for (const [brandNorm, resolved] of brandMap.entries()) {
+    if (resolved.kind !== 'new') continue
+    const [row] = await tx`
+      INSERT INTO brands (name, slug, needs_review)
+      VALUES (${resolved.rawName}, ${slugify(resolved.rawName)}, false)
+      RETURNING id
+    `
+    brandMap.set(brandNorm, {
+      kind: 'existing',
+      uuid: row.id,
+      canonicalName: resolved.rawName,
+    })
+    brandsCreated++
+  }
+
+  // Pitfall 3 invariant: every map entry must now carry a UUID. If a 'new'
+  // remains, Step 4.2 would interpolate `undefined` into the UPDATE and the
+  // post-flight assertion downstream would catch it as a row-count mismatch.
+  // Throw here with the clearer source-of-truth diagnostic.
+  for (const v of brandMap.values()) {
+    if (v.kind === 'new') {
+      throw new Error(
+        '[v8.4-brand-canon] applyBrandPath: brandMap not reified after Step 4.1 ' +
+          '(one or more entries still carry kind=new). This is a bug.',
+      )
+    }
+  }
+
+  // Step 4.2 — UPDATE watches_catalog.brand_id. Per-row loop because the 53-row
+  // catalog scale doesn't merit bulk VALUES, and per-row sidesteps the
+  // [[drizzle-sql-any-array-pitfall]] entirely.
+  for (const [brandNorm, resolved] of brandMap.entries()) {
+    // Type-narrow: the invariant above guarantees no kind='new' remains, but
+    // TS flow analysis can't carry that through a for-of loop. The runtime
+    // guard makes the narrowing explicit and gives a clear error if the
+    // invariant somehow drifts.
+    if (resolved.kind === 'new') {
+      throw new Error(
+        `[v8.4-brand-canon] applyBrandPath Step 4.2: brand "${brandNorm}" still kind=new after Step 4.1 invariant. This is a bug.`,
+      )
+    }
+    const resolvedUuid = resolved.uuid
+    const result = (await tx`
+      UPDATE watches_catalog
+      SET brand_id = ${resolvedUuid}
+      WHERE lower(trim(brand)) = ${brandNorm}
+        AND (brand_id IS NULL OR brand_id <> ${resolvedUuid})
+    `) as unknown as UpdateResult
+    catalogRowsResolvedBrand += result.count
+  }
+
+  return { brandsCreated, catalogRowsResolvedBrand }
+}
+
 function buildHeader(): string {
   const now = new Date().toISOString().slice(0, 10)
   return [
@@ -555,8 +658,9 @@ async function main() {
   }
 
   // D-78-07: refuse-to-overwrite when artifact exists and operator didn't pass
-  // --regenerate or --force.
-  if (existsSync(OUTPUT_FILE) && !args.regenerate && !args.force) {
+  // --regenerate or --force. SKIPPED on --apply (the apply path READS the
+  // existing file; refuse-to-overwrite makes no sense there).
+  if (!args.apply && existsSync(OUTPUT_FILE) && !args.regenerate && !args.force) {
     console.error(
       `[v8.4-brand-canon] ERROR: ${OUTPUT_FILE} already exists.\n` +
         `Pass --regenerate to merge operator decisions forward, or --force to overwrite from scratch.\n` +
@@ -585,6 +689,101 @@ async function main() {
     // below would fail with `42883 function does not exist` on the env where
     // pg_trgm is NOT in the default search_path. R-FIND-02.
     await sql.unsafe(`SET search_path = public, extensions, pg_catalog`)
+
+    // ====================================================================
+    // Phase 79 apply-path dispatch (Plan 02 lands brand-only scope; Plans
+    // 03 + 04 extend with family + alias + hydration + post-flight inside
+    // one outer sql.begin per D-79-03). Falls through to the Phase 78
+    // dry-run path when --apply is not set, preserving 100% backward
+    // compatibility (npm run db:v8.4-brand-canon with no flags still works
+    // exactly as Phase 78 shipped).
+    // ====================================================================
+    if (args.apply) {
+      // D-79-04 idempotent re-run gate — fires BEFORE strict gate (cheaper
+      // exit on a no-op re-run). Re-running --apply after a successful apply
+      // logs "Already applied" and returns 0 without any DB writes.
+      const gateStatus = await idempotentReRunGate(
+        sql as unknown as SqlTagCount,
+      )
+      if (gateStatus === 'already-applied') {
+        return // sql.end() fires in finally; clean exit 0
+      }
+
+      // Read the operator-edited decisions file. Strict gate refuses on drift
+      // BEFORE the transaction opens, so any error here surfaces cleanly with
+      // no rollback needed.
+      const brandContent = await readFile(OUTPUT_FILE, 'utf8')
+      const brandRows = parseDecisionsTable(brandContent)
+
+      // D-79-01 strict pre-flight gate (brand-only scope in Plan 02; Plan 03
+      // adds the parallel family checks before the transaction opens).
+      const existingBrandIdsFn = async (uuids: string[]): Promise<Set<string>> => {
+        // Postgres-lib helper form: sql(uuids) expands the array as an IN-list
+        // parameter binding. Documented forward armor against
+        // [[drizzle-sql-any-array-pitfall]] — the array-spread anti-pattern
+        // is BANNED in this script.
+        const rows = await sql<{ id: string }[]>`
+          SELECT id FROM brands WHERE id IN ${sql(uuids)}
+        `
+        return new Set(rows.map((r) => r.id))
+      }
+      await strictPreflightGate(
+        sql as unknown as Parameters<typeof strictPreflightGate>[0],
+        brandRows,
+        existingBrandIdsFn,
+      )
+
+      // Build the in-memory BrandDecisionMap (D-79-07). Plan 03 will build the
+      // parallel FamilyDecisionMap from a NEW family-merge-decisions.md file.
+      const brandMap = buildBrandMap(brandRows)
+
+      // Plan 02 hard gate: only --mode=brands lands the brand-only apply
+      // scaffold. --mode=families and --mode=both throw a clear "implemented
+      // in Plan 03/04" error so an operator running the partial script gets
+      // a precise diagnostic instead of a partial/broken transaction.
+      if (args.mode === 'families' || args.mode === 'both') {
+        throw new Error(
+          `[v8.4-brand-canon] --mode=${args.mode} apply path lands in Plans 03 + 04. ` +
+            `Plan 02 implements --mode=brands only (the brand-only apply scaffold).`,
+        )
+      }
+
+      // D-79-02 interactive prod confirmation. Silent on local Supabase; reads
+      // 'yes' from stdin on any other host. Plan 02's summary only populates
+      // brand fields; Plans 03 + 04 fill in family / hydration / alias counts.
+      const newBrandsToCreate = Array.from(brandMap.values()).filter(
+        (v) => v.kind === 'new',
+      ).length
+      const distinctCatalogBrands = brandMap.size
+      await confirmIfProd(connStr, {
+        brandsToCreate: newBrandsToCreate,
+        catalogRowsToResolve: distinctCatalogBrands,
+        familiesToCreate: 0,
+        userWatchesToHydrate: 0,
+        aliasesToAppend: 0,
+      })
+
+      // Plan 02 scope — brand-only apply inside its OWN sql.begin. Plan 04
+      // RESTRUCTURES this to wrap brand + family + alias + hydration +
+      // post-flight in ONE outer sql.begin per D-79-03. Leave the seam clear:
+      // the brand-only transaction here is TRANSIENT and will be removed.
+      const counts = await sql.begin(async (tx) => {
+        return await applyBrandPath(
+          tx as unknown as SqlTagBrandInsert,
+          brandMap,
+        )
+      })
+
+      console.log(
+        `[v8.4-brand-canon] Plan 02 brand apply complete: ` +
+          `${counts.brandsCreated} brands created, ` +
+          `${counts.catalogRowsResolvedBrand} catalog rows resolved (brand_id).`,
+      )
+      return // skip the Phase 78 dry-run path below
+    }
+    // ====================================================================
+    // Phase 78 dry-run path (unchanged) — runs when --apply is NOT set.
+    // ====================================================================
 
     // Stage 1 + 2 — distinct catalog brands LEFT JOIN brands on exact normalized
     // match. wc.brand_normalized + b.name_normalized are both GENERATED via
