@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-25T07:03:13.302Z"
-last_activity: 2026-06-25 -- Phase 79 planning complete
+last_updated: "2026-06-25T07:12:17.069Z"
+last_activity: 2026-06-25
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 4
-  percent: 44
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 78 — Schema Additions + Operator-Resolve Queue
+**Current focus:** Phase 79 — backfill-migration-display-hydration
 
 ## Current Position
 
-Phase: 79
-Plan: Not started
+Phase: 79 (backfill-migration-display-hydration) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-06-25 -- Phase 79 planning complete
+Last activity: 2026-06-25
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 
@@ -157,6 +157,16 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 - **Full Phase 78 test sweep**: 7 files / 35 tests / 0 failed; `npm run build` exit 0.
 - **3 deviations** all Rule 1 (auto-fix): extensions.word_similarity portability, DISTINCT ON → DISTINCT, DELETE-as-English-verb grep collision. Documented in `78-03-SUMMARY.md`.
 
+**Phase 79 Plan 01 (Wave 0 RED stubs for v8.4 apply path) outcomes — 2026-06-25:**
+
+- **6 Wave 0 RED stub files seeded** under `tests/unit/scripts/` (4 files) and `tests/integration/scripts/` (2 files) per `79-VALIDATION.md` Per-Task Verification Map (commits `9b0dca9c` Task 1 / `45190d5d` Task 2 / `8eb7750b` Task 3).
+- **Convention generalizes cleanly to integration-tier**: Phase 78's Wave 0 RED stub pattern (first-line marker + sanity `it()` + decision-ID citations) extended to DATABASE_URL-gated integration suites by placing the sanity `it()` callsite OUTSIDE the `maybe(...)` wrapper. Vitest reports the integration files as `passed` regardless of env state (sanity test always runs); the `it.todo` callsites surface from the maybe-suite as `↓ skipped` (DATABASE_URL unset) or `↓ todo` (DATABASE_URL set).
+- **Commented-import escape hatch (Phase 77 → 78 → 79)**: 6/6 stubs reference Plan 02/03/04 NEW exports as `// TODO Plan NN: uncomment when X export lands` markers — Wave 0 does not depend on downstream exports landing first.
+- **Decision-ID citation pattern**: every `it.todo` literal cites the gating `D-79-NN` or `MIG-NN` / `DISP-NN` token in the assertion string; the 12-check grep-gate in 79-VALIDATION.md returns `PASS — all 12 checks present`.
+- **`79-VALIDATION.md`**: `wave_0_complete: false → true`, `nyquist_compliant: false → true`, `status: draft → ready-for-plan-02`; Per-Task Verification Map fully populated with 15 rows (one per REQ-ID / D-79-NN grouping per 79-RESEARCH.md L1191-1208); File-Exists column flipped to `✅ W0` on every row.
+- **Full Phase 78 + Phase 79 sweep**: 9 files passed / 25 tests passed / 8 skipped / 39 todo / 0 failed. `npm run build` exit 0.
+- **No deviations** — Plan 01 executed exactly as written.
+
 ### Pending Todos
 
 None.
@@ -184,11 +194,12 @@ None.
 | Phase 78 P01 | ~6min | 3 tasks | 8 files |
 | Phase 78 P02 | ~6min | 4 tasks | 6 files |
 | Phase 78 P03 | ~8min | 3 tasks | 9 files |
+| Phase 79 P01 | 12min | 3 tasks | 7 files |
 
 ## Session Continuity
 
-Last activity: 2026-06-25 — Phase 78 Plan 03 (Wave 2 dry-run script + first artifact) complete. `scripts/v8.4-brand-canonicalization.ts` ships MIG-01 — 4-stage read-only dry-run with refuse-to-overwrite + --regenerate merge-forward; emits `.planning/v8.4-brand-merge-decisions.md` as a GFM table per D-78-01. First artifact committed: 53 brand rows / 19 auto-resolved / 34 needs-review. Cross-env pg_trgm portability solved via `SET search_path = public, extensions` on connection bootstrap (extends `[[supabase-extension-schema-function-pin]]` to runtime). 5 Plan 01 Wave 0 stubs greened (27/27 tests pass). Full Phase 78 sweep 35/35 pass; npm run build exit 0. Commits: 31c24c92 (Task 1 script + npm entry), 2b78d51c (Task 2 green stubs), cf67b566 (Task 3 commit artifact). Three Rule 1 deviations documented (extensions.word_similarity portability, DISTINCT ON → DISTINCT for B-78-01, DELETE-as-English-verb grep collision).
+Last activity: 2026-06-25 — Phase 79 Plan 01 (Wave 0 RED stubs for v8.4 apply path) complete. 6 stub files seeded (4 unit + 2 integration) covering every Phase 79 testable behavior (MIG-02, MIG-03, MIG-04, DISP-03, D-79-01..10). DATABASE_URL-gated integration suites place the sanity `it()` callsite OUTSIDE the maybe wrapper so vitest reports positive discovery regardless of env. 79-VALIDATION.md flipped to `wave_0_complete: true` + `nyquist_compliant: true` with a fully populated 15-row Per-Task Verification Map. Full Phase 78 + Phase 79 sweep 25/25 tests pass + 8 skipped + 39 todo + 0 failed; npm run build exit 0. Commits: 9b0dca9c (Task 1, 4 unit stubs), 45190d5d (Task 2, 2 integration stubs), 8eb7750b (Task 3, VALIDATION fill). No deviations.
 
-Next action: `/gsd-execute-phase 78` → Plan 04 (operator prod-push step — effectively pre-completed per Plan 02 Deviations §1; expected to be a verification-only no-op confirming `supabase migration list --linked` shows `20260624000000` and that 5 introspection checks pass against prod). Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
+Next action: `/gsd-execute-phase 79` → Plan 02 (Wave 1 — extend `scripts/v8.4-brand-canonicalization.ts` with `isLocalDatabaseUrl`, `strictPreflightGate`, `buildBrandMap`, and the brand-side of the `--apply` path; greens the host-detect + strict-gate unit stubs and the brand-side coverage in the integration stubs). Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md.
 
 ## Operator Next Steps
