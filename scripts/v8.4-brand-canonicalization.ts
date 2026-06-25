@@ -1770,9 +1770,26 @@ async function main() {
     // exactly as Phase 78 shipped).
     // ====================================================================
     if (args.apply) {
-      // D-79-04 idempotent re-run gate — fires BEFORE strict gate (cheaper
-      // exit on a no-op re-run). Re-running --apply after a successful apply
-      // logs "Already applied" and returns 0 without any DB writes.
+      // ============================================================
+      // Phase 79 Plan 04 — `--apply --mode=both` full atomic transaction.
+      //
+      // 5-stage flow:
+      //   STAGE 1: D-79-04 idempotent re-run gate (cheaper exit on no-op
+      //            re-run; fires BEFORE strict gate)
+      //   STAGE 2: D-79-01 STRICTEST pre-flight gate (brand + family)
+      //   STAGE 3: D-79-02 confirmIfProd (silent local; interactive prod)
+      //   STAGE 4: ATOMIC TRANSACTION (D-79-03) wrapping Steps 4.1-4.7
+      //            inside ONE sql.begin callback
+      //   STAGE 5: D-79-10 post-success POST-DEPLOY artifact write
+      //
+      // Pitfall 7: --apply REQUIRES --mode=both (asserted at main() top).
+      // Pitfall 2: every failure inside the sql.begin callback uses `throw`,
+      //            never process.exit() — the callback's throw triggers
+      //            automatic ROLLBACK; the outer .catch handles process exit
+      //            AFTER rollback completes.
+      // ============================================================
+
+      // STAGE 1 — D-79-04 idempotent re-run gate.
       const gateStatus = await idempotentReRunGate(
         sql as unknown as SqlTagCount,
       )
@@ -1780,21 +1797,42 @@ async function main() {
         return // sql.end() fires in finally; clean exit 0
       }
 
-      // Read the operator-edited decisions file. Strict gate refuses on drift
-      // BEFORE the transaction opens, so any error here surfaces cleanly with
-      // no rollback needed.
+      // STAGE 2 — STRICTEST pre-flight gate (brand + family scope).
+      if (!existsSync(OUTPUT_FILE)) {
+        throw new Error(
+          `[v8.4-brand-canon] ERROR: brand decisions file not found at ${OUTPUT_FILE}.\n` +
+            `Run \`npm run db:v8.4-brand-canon\` (--mode=brands default) first, ` +
+            `then re-run --apply --mode=both.`,
+        )
+      }
+      if (!existsSync(FAMILY_OUTPUT_FILE)) {
+        throw new Error(
+          `[v8.4-brand-canon] ERROR: family decisions file not found at ${FAMILY_OUTPUT_FILE}.\n` +
+            `Run \`npx tsx scripts/v8.4-brand-canonicalization.ts --mode=families --force\` first, ` +
+            `then re-run --apply --mode=both.`,
+        )
+      }
       const brandContent = await readFile(OUTPUT_FILE, 'utf8')
+      const familyContent = await readFile(FAMILY_OUTPUT_FILE, 'utf8')
       const brandRows = parseDecisionsTable(brandContent)
+      const familyRows = parseFamilyDecisionsTable(familyContent)
 
-      // D-79-01 strict pre-flight gate (brand-only scope in Plan 02; Plan 03
-      // adds the parallel family checks before the transaction opens).
       const existingBrandIdsFn = async (uuids: string[]): Promise<Set<string>> => {
+        if (uuids.length === 0) return new Set<string>()
         // Postgres-lib helper form: sql(uuids) expands the array as an IN-list
-        // parameter binding. Documented forward armor against
-        // [[drizzle-sql-any-array-pitfall]] — the array-spread anti-pattern
-        // is BANNED in this script.
+        // parameter binding (NOT the array-spread anti-pattern flagged by
+        // [[drizzle-sql-any-array-pitfall]]).
         const rows = await sql<{ id: string }[]>`
           SELECT id FROM brands WHERE id IN ${sql(uuids)}
+        `
+        return new Set(rows.map((r) => r.id))
+      }
+      const existingFamilyIdsFn = async (
+        uuids: string[],
+      ): Promise<Set<string>> => {
+        if (uuids.length === 0) return new Set<string>()
+        const rows = await sql<{ id: string }[]>`
+          SELECT id FROM watch_families WHERE id IN ${sql(uuids)}
         `
         return new Set(rows.map((r) => r.id))
       }
@@ -1802,53 +1840,109 @@ async function main() {
         sql as unknown as Parameters<typeof strictPreflightGate>[0],
         brandRows,
         existingBrandIdsFn,
+        familyRows,
+        existingFamilyIdsFn,
       )
 
-      // Build the in-memory BrandDecisionMap (D-79-07). Plan 03 will build the
-      // parallel FamilyDecisionMap from a NEW family-merge-decisions.md file.
+      // Build the in-memory maps (D-79-07 — brand → family chain).
       const brandMap = buildBrandMap(brandRows)
+      const familyMap = buildFamilyMap(familyRows, brandMap)
 
-      // Plan 02 hard gate: only --mode=brands lands the brand-only apply
-      // scaffold. --mode=families and --mode=both throw a clear "implemented
-      // in Plan 03/04" error so an operator running the partial script gets
-      // a precise diagnostic instead of a partial/broken transaction.
-      if (args.mode === 'families' || args.mode === 'both') {
-        throw new Error(
-          `[v8.4-brand-canon] --mode=${args.mode} apply path lands in Plans 03 + 04. ` +
-            `Plan 02 implements --mode=brands only (the brand-only apply scaffold).`,
-        )
+      // Compute pre-transaction summary for the D-79-02 prod prompt. Catalog
+      // count is fetched once; the hydration target count is `watches WHERE
+      // catalog_id IS NOT NULL` (the JOIN's natural filter per Pitfall 5).
+      const [{ count: catalogCountText }] = await sql<{ count: string }[]>`
+        SELECT count(*)::text AS count FROM watches_catalog
+      `
+      const [{ count: hydrationCountText }] = await sql<{ count: string }[]>`
+        SELECT count(*)::text AS count FROM watches WHERE catalog_id IS NOT NULL
+      `
+      const summary: ApplySummary = {
+        brandsToCreate: Array.from(brandMap.values()).filter(
+          (v) => v.kind === 'new',
+        ).length,
+        catalogRowsToResolve: Number(catalogCountText),
+        familiesToCreate: Array.from(familyMap.values()).filter(
+          (v) => v.kind === 'new',
+        ).length,
+        userWatchesToHydrate: Number(hydrationCountText),
+        aliasesToAppend: Array.from(familyMap.values()).filter(
+          (v) => v.kind === 'merge',
+        ).length,
       }
 
-      // D-79-02 interactive prod confirmation. Silent on local Supabase; reads
-      // 'yes' from stdin on any other host. Plan 02's summary only populates
-      // brand fields; Plans 03 + 04 fill in family / hydration / alias counts.
-      const newBrandsToCreate = Array.from(brandMap.values()).filter(
-        (v) => v.kind === 'new',
-      ).length
-      const distinctCatalogBrands = brandMap.size
-      await confirmIfProd(connStr, {
-        brandsToCreate: newBrandsToCreate,
-        catalogRowsToResolve: distinctCatalogBrands,
-        familiesToCreate: 0,
-        userWatchesToHydrate: 0,
-        aliasesToAppend: 0,
-      })
+      // STAGE 3 — D-79-02 confirm gate (silent local; interactive prod).
+      await confirmIfProd(connStr, summary)
 
-      // Plan 02 scope — brand-only apply inside its OWN sql.begin. Plan 04
-      // RESTRUCTURES this to wrap brand + family + alias + hydration +
-      // post-flight in ONE outer sql.begin per D-79-03. Leave the seam clear:
-      // the brand-only transaction here is TRANSIENT and will be removed.
-      const counts = await sql.begin(async (tx) => {
-        return await applyBrandPath(
+      // STAGE 4 — ATOMIC TRANSACTION (D-79-03). One outer sql.begin wraps
+      // Steps 4.1-4.7. ANY throw inside the callback triggers ROLLBACK; the
+      // outer .catch in `main().catch(...)` exits non-zero AFTER rollback.
+      let counts!: ApplyCounts
+      let postFlight!: {
+        total: number
+        resolvedBrand: number
+        resolvedFamily: number
+        postFlightQuery: string
+      }
+
+      await sql.begin(async (tx) => {
+        // 4.1 + 4.2 — brand path (Plan 02 helper invoked here for the first
+        // time inside the unified outer transaction; the Plan 02 stand-alone
+        // sql.begin block was deleted in this same edit per D-79-03).
+        const brandRes = await applyBrandPath(
           tx as unknown as SqlTagBrandInsert,
           brandMap,
         )
+        // 4.3 + 4.4 + 4.5 — family path (Plan 03 helper; not previously
+        // wired).
+        const familyRes = await applyFamilyPath(
+          tx as unknown as SqlTagBrandInsert,
+          familyMap,
+        )
+        // 4.6 — hydration (Plan 04 / DISP-03). Unconditional UPDATE FROM JOIN
+        // per D-79-08.
+        const hydRes = await applyHydration(
+          tx as unknown as SqlTagHydration,
+        )
+        // 4.7 — post-flight assertion (Plan 04 / MIG-04). Positive predicate
+        // IS DISTINCT FROM NULL; throws on mismatch → ROLLBACK.
+        postFlight = await postFlightAssertion(
+          tx as unknown as SqlTagPostFlight,
+        )
+
+        counts = {
+          brandsCreated: brandRes.brandsCreated,
+          catalogRowsResolvedBrand: brandRes.catalogRowsResolvedBrand,
+          familiesCreated: familyRes.familiesCreated,
+          aliasesAppended: familyRes.aliasesAppended,
+          catalogRowsResolvedFamily: familyRes.catalogRowsResolvedFamily,
+          userWatchesHydrated: hydRes.userWatchesHydrated,
+        }
+      })
+
+      // STAGE 5 — D-79-10 post-success artifact write (post-commit only —
+      // never invoked on rollback path because the throw exits before this
+      // line).
+      await writePostDeployArtifact({
+        counts,
+        postFlightQuery: postFlight.postFlightQuery,
+        postFlightResult: {
+          total: postFlight.total,
+          resolvedBrand: postFlight.resolvedBrand,
+          resolvedFamily: postFlight.resolvedFamily,
+        },
+        isLocal: isLocalDatabaseUrl(connStr),
       })
 
       console.log(
-        `[v8.4-brand-canon] Plan 02 brand apply complete: ` +
-          `${counts.brandsCreated} brands created, ` +
-          `${counts.catalogRowsResolvedBrand} catalog rows resolved (brand_id).`,
+        `[v8.4-brand-canon] APPLY COMPLETE.\n` +
+          `  brandsCreated:               ${counts.brandsCreated}\n` +
+          `  catalogRowsResolvedBrand:    ${counts.catalogRowsResolvedBrand}\n` +
+          `  familiesCreated:             ${counts.familiesCreated}\n` +
+          `  aliasesAppended:             ${counts.aliasesAppended}\n` +
+          `  catalogRowsResolvedFamily:   ${counts.catalogRowsResolvedFamily}\n` +
+          `  userWatchesHydrated:         ${counts.userWatchesHydrated}\n` +
+          `  POST-DEPLOY artifact written: ${POST_DEPLOY_PATH}`,
       )
       return // skip the Phase 78 dry-run path below
     }
