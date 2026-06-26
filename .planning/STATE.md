@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-06-26T01:55:00.184Z"
-last_activity: 2026-06-26 -- Phase 80 planning complete
+last_updated: "2026-06-26T01:56:28.579Z"
+last_activity: 2026-06-26 -- Phase 80 execution started
 progress:
   total_phases: 5
   completed_phases: 2
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 79 — backfill-migration-display-hydration
+**Current focus:** Phase 80 — NOT NULL Constraint Flip + Ingest Hardening
 
 ## Current Position
 
-Phase: 79 — COMPLETE
-Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-06-26 -- Phase 80 planning complete
+Phase: 80 (NOT NULL Constraint Flip + Ingest Hardening) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 80
+Last activity: 2026-06-26 -- Phase 80 execution started
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 
