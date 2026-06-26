@@ -158,13 +158,11 @@ export function isLocalDatabaseUrl(connStr: string): boolean {
 }
 
 /**
- * Slug generator for new `brands.name` rows inserted by Phase 79's apply path.
- * Matches the established slug shape in the existing `brands` table (53 rows
- * inspected). 3 LOC per 79-PATTERNS.md L292-294.
+ * Slug generator — now extracted to src/lib/slug.ts (Phase 80 Plan 01).
+ * Re-exported here for backward compatibility with Phase 79 apply path.
+ * New callers should import directly from '@/lib/slug'.
  */
-export function slugify(name: string): string {
-  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
+export { slugify } from '@/lib/slug'
 
 /**
  * Apply-summary block printed to stdout before the prod confirmation prompt.
