@@ -498,11 +498,12 @@ export const watchesCatalog = pgTable(
     confidence:       numeric('confidence',       { precision: 3, scale: 2 }),
     extractedFromPhoto: boolean('extracted_from_photo').notNull().default(false),
 
-    // ----- Phase 34 D-02: nullable FKs to brand + family entities (CAT-15) -----
-    // ON DELETE RESTRICT — service-role-only writes; orphan-detection signal at delete.
+    // ----- Phase 80 CANON-01/02: brand + family FKs flipped to NOT NULL -----
+    // Phase 79 MIG-04 backfilled all 205 prod rows; zero NULLs confirmed before flip.
+    // ON DELETE RESTRICT preserved — service-role-only writes; orphan-detection signal at delete.
     // Different from watches.catalogId 'set null' (Phase 36 wipes catalog rows; brands/families don't).
-    brandId: uuid('brand_id').references(() => brands.id, { onDelete: 'restrict' }),
-    familyId: uuid('family_id').references(() => watchFamilies.id, { onDelete: 'restrict' }),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'restrict' }),
+    familyId: uuid('family_id').notNull().references(() => watchFamilies.id, { onDelete: 'restrict' }),
 
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
