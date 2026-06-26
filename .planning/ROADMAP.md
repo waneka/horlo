@@ -324,7 +324,22 @@ Plans:
   3. Calling `/api/extract-watch` with a URL whose extracted brand has no exact match but scores above 0.6 `pg_trgm` similarity against a single existing `brands.name_normalized` attaches that fuzzy-matched `brand_id` and emits a structured `fuzzy_brand_match` log event; user flow has no visible delay (INGEST-02)
   4. Calling `/api/extract-watch` with a URL whose extracted brand has neither exact nor fuzzy match auto-creates a new `brands` row with `needs_review: true` and attaches its `brand_id` to the catalog row — user flow never blocks; operator can surface the row later via `/admin/brands` (INGEST-03)
   5. The same exact-then-fuzzy-then-create resolution path applies to model → `watch_families` resolution, with the additional step of checking `watch_families.aliases` containment (`@>`) alongside `name_normalized` — so a future `/api/extract-watch` call for a `Brut Date` URL resolves to the canonical `Brut Datejust` family via the alias rather than creating a new family row (INGEST-04)
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+**Wave 1**
+- [ ] 80-01-PLAN.md — Wave 0 RED test stubs (3 test files: catalog-resolver unit, NOT NULL integration, local-DB resolver integration) + extract slugify helper to src/lib/slug.ts — INGEST-01..04, CANON-01, CANON-02
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 80-02-PLAN.md — Implement catalog-resolver (brand 3-tier with D-80-01 clear-gap + family 4-tier with D-80-02 alias-before-fuzzy + D-80-04 structured log events) — INGEST-01..04
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 80-03-PLAN.md — Wire resolver into BOTH upsert helpers (upsertCatalogFromExtractedUrl + upsertCatalogFromUserInput); ON CONFLICT preserves existing FKs (Discretion iii); zero route changes (D-80-04 silent surface) — INGEST-01..04
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 80-04-PLAN.md — NOT NULL migration: Drizzle schema notNull() + hand-written supabase/migrations/20260626000000_phase80_catalog_brand_family_not_null.sql with pre/post-flight predicate divergence; [BLOCKING] local drizzle-kit push + Plan 01 NOT NULL constraint test green — CANON-01, CANON-02
+
+**Wave 5** *(blocked on Wave 4 completion — autonomous: false; operator checkpoint)*
+- [ ] 80-05-PLAN.md — Local-First Verification Recipe (4 extractions) + 80-POST-DEPLOY.md staged-deploy runbook (D-80-03: code deploy → manual extract proof → migration push) + operator human-action checkpoint — all 6 requirements
 **UI hint**: no
 
 ### Phase 81: Recommender + Display Server Action Swap
