@@ -8,6 +8,7 @@ import { brands, watches, watchesCatalog } from '@/db/schema'
 import { and, arrayOverlaps, asc, between, desc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm'
 import type { CatalogEntry, CatalogSource, ImageSourceQuality, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
+import { resolveBrandId, resolveFamilyId } from '@/data/catalog-resolver'
 
 // ---------------------------------------------------------------------------
 // Input sanitizers
@@ -139,11 +140,16 @@ export async function upsertCatalogFromUserInput(
   input: UserPromotedCatalogInput,
 ): Promise<string | null> {
   const { brand, model, reference } = input
+  // Phase 80 INGEST-01..04: resolve brand + family FKs BEFORE the CTE INSERT.
+  // Decision is intentionally dropped — D-80-04 silent contract; the resolver
+  // emits structured console.log events internally for fuzzy + auto-create paths.
+  const { brandId } = await resolveBrandId(brand)
+  const { familyId } = await resolveFamilyId(brandId, model)
   // Server Actions already validate non-empty brand/model via zod (src/app/actions/watches.ts).
   const result = await db.execute<{ id: string }>(sql`
     WITH ins AS (
-      INSERT INTO watches_catalog (brand, model, reference, source)
-      VALUES (${brand}, ${model}, ${reference}, 'user_promoted')
+      INSERT INTO watches_catalog (brand, model, reference, source, brand_id, family_id)
+      VALUES (${brand}, ${model}, ${reference}, 'user_promoted', ${brandId}, ${familyId})
       ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
       RETURNING id
     )
@@ -187,6 +193,12 @@ export async function upsertCatalogFromExtractedUrl(
   const safeRoleTags = sanitizeTagArray(input.roleTags)
   const safeComplications = sanitizeTagArray(input.complications)
 
+  // Phase 80 INGEST-01..03: resolve brand + family FKs BEFORE INSERT.
+  // Decision is intentionally dropped — D-80-04 silent contract; the resolver
+  // emits structured console.log events internally for fuzzy + auto-create paths.
+  const { brandId } = await resolveBrandId(input.brand)
+  const { familyId } = await resolveFamilyId(brandId, input.model)
+
   // postgres.js renders an empty JS array as `()::text[]` which is invalid SQL.
   // Use the Postgres array literal `'{}'::text[]` for empty arrays; otherwise
   // use the `sql` helper to emit `ARRAY[$1,$2,...]::text[]` for non-empty arrays.
@@ -201,7 +213,8 @@ export async function upsertCatalogFromExtractedUrl(
       movement_type, movement_caliber, case_size_mm, lug_to_lug_mm, water_resistance_m,
       crystal_type, dial_color, is_chronometer, production_year,
       image_url, image_source_url, image_source_quality,
-      style_tags, design_traits, role_tags, complications
+      style_tags, design_traits, role_tags, complications,
+      brand_id, family_id
     )
     VALUES (
       ${input.brand}, ${input.model}, ${input.reference}, 'url_extracted',
@@ -213,7 +226,8 @@ export async function upsertCatalogFromExtractedUrl(
       ${safeImageUrl}, ${safeImageSourceUrl},
       ${input.imageSourceQuality ?? null},
       ${toTextArraySql(safeStyleTags)}, ${toTextArraySql(safeDesignTraits)},
-      ${toTextArraySql(safeRoleTags)}, ${toTextArraySql(safeComplications)}
+      ${toTextArraySql(safeRoleTags)}, ${toTextArraySql(safeComplications)},
+      ${brandId}, ${familyId}
     )
     ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO UPDATE SET
       source = CASE
