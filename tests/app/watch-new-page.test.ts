@@ -94,7 +94,7 @@ describe('Phase 20.1 Plan 04 — /watch/new searchParams + intent whitelist', ()
     const result = await NewWatchPage({ searchParams: Promise.resolve({}) } as never)
     // Heading copy exact-match per UI-SPEC Copywriting Contract.
     const rendered = JSON.stringify(result)
-    expect(rendered).toContain('Add a watch — or just evaluate one')
+    expect(rendered).toContain('Find a watch')
   })
 
   it('deep-link ?catalogId=X&intent=owned — passes initialCatalogId, initialIntent="owned", non-null prefill to AddWatchFlow', async () => {

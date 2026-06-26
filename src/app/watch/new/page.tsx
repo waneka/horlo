@@ -124,9 +124,13 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-8">
-        Add a watch — or just evaluate one
+      <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-2">
+        Find a watch
       </h1>
+      <p className="text-muted-foreground mb-8 max-w-prose">
+        Paste a link, search the catalog, or enter details manually. We&apos;ll show
+        you how it fits your collection — saving is optional.
+      </p>
       <AddWatchFlow
         collectionRevision={collection.length}
         initialCatalogId={catalogId}
