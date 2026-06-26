@@ -48,8 +48,8 @@ files-changed: 2
 
 | Task | Name | Commit | Files |
 |------|------|--------|-------|
-| 1 | Execute Local-First Verification Recipe — 4 resolver tier paths verified | (this commit) | 80-05-SUMMARY.md (verification outcomes) |
-| 2 | Author `80-POST-DEPLOY.md` operator runbook | TBD | 80-POST-DEPLOY.md |
+| 1 | Execute Local-First Verification Recipe — 4 resolver tier paths verified | 87e05f30 | 80-05-SUMMARY.md (verification outcomes) |
+| 2 | Author `80-POST-DEPLOY.md` operator runbook | 6c80408d | 80-POST-DEPLOY.md |
 | 3 | Operator staged-deploy checkpoint | PENDING (human-action) | 80-POST-DEPLOY.md (operator updates status rows) |
 
 ## Task 1: Local-First Verification Recipe
@@ -315,6 +315,7 @@ Tyler must execute the three D-80-03 staged-deploy steps documented in `80-POST-
 
 ### Commits exist
 
-(to be filled after commit)
+- [x] `87e05f30` — test(80-05): Local-First Verification Recipe — 4 paths verified (exact / fuzzy / auto-create / alias)
+- [x] `6c80408d` — docs(80-05): add 80-POST-DEPLOY.md operator runbook (D-80-03 staged deploy)
 
-### Self-Check: PENDING (will update after commits)
+### Self-Check: PASSED
