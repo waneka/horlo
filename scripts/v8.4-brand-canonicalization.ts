@@ -159,10 +159,11 @@ export function isLocalDatabaseUrl(connStr: string): boolean {
 
 /**
  * Slug generator — now extracted to src/lib/slug.ts (Phase 80 Plan 01).
- * Re-exported here for backward compatibility with Phase 79 apply path.
+ * Imported locally for in-file callers; re-exported for backward compatibility.
  * New callers should import directly from '@/lib/slug'.
  */
-export { slugify } from '@/lib/slug'
+import { slugify } from '@/lib/slug'
+export { slugify }
 
 /**
  * Apply-summary block printed to stdout before the prod confirmation prompt.
