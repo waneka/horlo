@@ -11,11 +11,40 @@
 
 | Step | Description | Status |
 |------|-------------|--------|
-| Step 1 | Deploy ingest code to prod (Vercel) | pending |
-| Step 2 | Manual prod extract proof (Hamilton URL) | pending |
-| Step 3 | Push NOT NULL migration (`supabase db push --linked`) | pending |
+| Step 1 | Deploy ingest code to prod (Vercel) | complete (2026-06-26 06:34 UTC — fix commit `922a378c` after `334e0a55` build failed on slugify scope; deploy `horlo-ach55t2p0`) |
+| Step 2 | Manual prod extract proof (Hamilton URL) | complete (2026-06-26 06:38 UTC) |
+| Step 3 | Push NOT NULL migration (`supabase db push --linked`) | complete (2026-06-26 06:55 UTC) |
 
-Update each row from `pending` to `complete (YYYY-MM-DD HH:MM)` as you complete each step. Paste the Step 2 + Step 3 SQL results inline.
+---
+
+## Sign-Off — Captured 2026-06-26
+
+**Step 1 (deploy):** First push (`334e0a55`) failed Vercel build in TypeScript pass — `scripts/v8.4-brand-canonicalization.ts:980` had bare `slugify(...)` after Plan 80-01 replaced the local definition with `export { slugify } from '@/lib/slug'` (re-export only — symbol not in local scope). Fix in `922a378c` adds an `import` alongside the re-export. Second build went Ready. Lesson: re-export-only doesn't bind the name locally; in-file callers need an explicit `import`.
+
+**Step 2 (manual extract proof):** Extracted `https://www.hamiltonwatch.com/en-us/khaki-...-h82425110.html`. Catalog row `78aba362-846f-43aa-bd5a-4cafec9c708f` written with both FKs non-NULL. JOIN against `brands` shows `canonical_brand = "Hamilton"` (`needs_review = false`) — fuzzy clear-gap path matched canonical Hamilton from extracted "Hamilton Watch" with no runner-up (clean win, score 0.6). **Hamilton drift loop closed end-to-end.** Family side: novel model "Khaki Navy Scuba Auto 40mm" auto-created (`needs_review = true`, scoped to canonical Hamilton brand_id `294591c7-...`). Vercel structured logs fired with full 8-key D-80-04 unified payload — `[extract-watch] fuzzy_brand_match` for the brand resolution + `[extract-watch] family_auto_created` for the family auto-create. Zero `brand_auto_created` event for "Hamilton Watch" (the regression signal CONTEXT explicitly warned about — confirmed absent).
+
+**Step 3 (NOT NULL push):** `supabase db push --linked` applied `20260626000000_phase80_catalog_brand_family_not_null.sql`. Pre-flight DO $$ (count NULL FKs) passed at 0. Post-flight DO $$ (information_schema is_nullable) confirmed both columns flipped. Total runtime sub-second.
+
+**Post-Step-3 prod verification (sign-off SQL):**
+
+```
+column_name | is_nullable
+brand_id    | NO
+family_id   | NO
+
+total = 206 | null_brand_id = 0 | null_family_id = 0
+
+brands_needs_review   = 0
+families_needs_review = 1  (the Khaki Navy Scuba auto-create from Step 2)
+
+New Hamilton family row:
+  id           = 3bb58bec-7657-41da-9bd4-bfc74f79db57
+  name         = Khaki Navy Scuba Auto 40mm
+  needs_review = t
+  created_at   = 2026-06-26 06:38:17 UTC
+```
+
+Phase 80 is FULLY PROD-VERIFIED. The two coordinated changes — resolver wiring + NOT NULL constraint — landed in the correct order; the soak step caught zero regressions; the database itself now refuses canonical drift. Operator queue depth (1 family) is the expected Phase 82 input from this Step 2 manual extraction.
 
 ---
 
