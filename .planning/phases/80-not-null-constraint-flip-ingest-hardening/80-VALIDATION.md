@@ -2,8 +2,8 @@
 phase: 80
 slug: not-null-constraint-flip-ingest-hardening
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-25
 ---
 
@@ -46,8 +46,8 @@ created: 2026-06-25
 | 80-01-06 | 01 | 1 | INGEST-04 | T-80-V5 | Family alias hit via `aliases @>` containment beats fuzzy tier | unit + integration | `npm run test -- catalog-resolver` + local-DB integration | ❌ W0 | ⬜ pending |
 | 80-01-07 | 01 | 1 | INGEST-04 | T-80-V5 | Family fuzzy `word_similarity ≥ 0.6` attaches family_id + logs `fuzzy_family_match` | unit | `npm run test -- catalog-resolver` | ❌ W0 | ⬜ pending |
 | 80-01-08 | 01 | 1 | INGEST-04 | T-80-V5 | Family no-match auto-creates `watch_families` row with `needs_review=true` scoped to brand | unit | `npm run test -- catalog-resolver` | ❌ W0 | ⬜ pending |
-| 80-02-01 | 02 | 2 | INGEST-01, 02, 03 | T-80-A1 | `upsertCatalogFromExtractedUrl` invokes resolver and writes both FKs to catalog row | integration | `npm run test -- upsertCatalogFromExtractedUrl` | ❌ W0 | ⬜ pending |
-| 80-03-01 | 03 | 2 | INGEST-01, 04 | T-80-A1 | `upsertCatalogFromUserInput` invokes resolver and writes both FKs to catalog row | integration | `npm run test -- upsertCatalogFromUserInput` | ❌ W0 | ⬜ pending |
+| 80-02-01 | 02 | 2 | INGEST-01, 02, 03 | T-80-A1 | `upsertCatalogFromExtractedUrl` invokes resolver and writes both FKs to catalog row | integration | `npm run test -- upsert-catalog-from-extracted-url` | ⬜ pending | ⬜ pending |
+| 80-03-01 | 03 | 2 | INGEST-01, 04 | T-80-A1 | `upsertCatalogFromUserInput` invokes resolver and writes both FKs to catalog row | integration | `npm run test -- upsert-catalog-from-user-input` | ⬜ pending | ⬜ pending |
 | 80-04-01 | 04 | 3 | CANON-01 | T-80-NN | `brand_id IS NULL` insert raises `23502` not-null violation after migration | integration | `npm run test -- 80-not-null-constraint` | ❌ W0 | ⬜ pending |
 | 80-04-02 | 04 | 3 | CANON-02 | T-80-NN | `family_id IS NULL` insert raises `23502` not-null violation after migration | integration | `npm run test -- 80-not-null-constraint` | ❌ W0 | ⬜ pending |
 
@@ -59,10 +59,12 @@ created: 2026-06-25
 
 ## Wave 0 Requirements
 
-- [ ] `tests/unit/data/catalog-resolver.test.ts` — 8 unit cases (INGEST-01..04 all branches incl. ambiguous fuzzy + family alias precedence)
-- [ ] `tests/integration/data/catalog-resolver-against-local-db.test.ts` — INGEST-04 alias path verified end-to-end against local Supabase
-- [ ] `tests/integration/migrations/80-not-null-constraint.test.ts` — CANON-01 + CANON-02 (`23502` assertions on NULL inserts)
-- [ ] Framework install: NONE — vitest 3.x already configured
+- [x] `tests/unit/data/catalog-resolver.test.ts` — 10 unit cases (INGEST-01..04 all branches incl. ambiguous fuzzy + family alias precedence + empty model + idempotency)
+- [x] `tests/integration/data/catalog-resolver-against-local-db.test.ts` — INGEST-04 alias path verified end-to-end against local Supabase
+- [x] `tests/integration/migrations/80-not-null-constraint.test.ts` — CANON-01 + CANON-02 (`23502` assertions on NULL inserts)
+- [x] `tests/integration/data/upsert-catalog-from-extracted-url.test.ts` — INGEST-01..03 upsert helper writes NON-NULL brand_id + family_id (closes 80-02-01 W0 gap)
+- [x] `tests/integration/data/upsert-catalog-from-user-input.test.ts` — INGEST-01/04 upsert helper writes NON-NULL brand_id + family_id (closes 80-03-01 W0 gap)
+- [x] Framework install: NONE — vitest 3.x already configured
 
 ---
 
@@ -78,11 +80,11 @@ created: 2026-06-25
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (3 test files listed above)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60 seconds (full) / < 5 seconds (quick)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (5 test files seeded: unit + 2 integration migration/data + 2 upsert-helper integration)
+- [x] No watch-mode flags
+- [x] Feedback latency < 60 seconds (full) / < 5 seconds (quick)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete — Wave 0 delivered by Plan 01 (2026-06-26)
