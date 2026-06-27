@@ -128,7 +128,7 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         Find a watch
       </h1>
       <p className="text-muted-foreground mb-8 max-w-prose">
-        Paste a link, search the catalog, or enter details manually. We&apos;ll show
+        Search the catalog, paste a link, or enter details manually. We&apos;ll show
         you how it fits your collection — saving is optional.
       </p>
       <AddWatchFlow
