@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-07-12T19:40:30.242Z"
-last_activity: 2026-07-12 -- Phase 81 planning complete
+last_updated: "2026-07-12T19:58:00.000Z"
+last_activity: 2026-07-12 -- Phase 81 Plan 01 complete (type + DAL widening)
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 14
-  percent: 78
+  completed_plans: 15
+  percent: 83
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 80 — NOT NULL Constraint Flip + Ingest Hardening
+**Current focus:** Phase 81 — Recommender + Display Server Action Swap
 
 ## Current Position
 
-Phase: 80 — COMPLETE
-Plan: 1 of 5
-Status: Ready to execute
-Last activity: 2026-07-12 -- Phase 81 planning complete
+Phase: 81 (Recommender + Display Server Action Swap) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute Plan 02 (recommender read-path swap)
+Last activity: 2026-07-12 -- Phase 81 Plan 01 complete (Watch type + DAL widening foundation)
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 
@@ -79,6 +79,7 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 
 ## Performance Metrics
 
+- Phase 81 P01: ~12min, 2 tasks (both auto), 19 files modified (6 src + 2 scripts + 11 tests), 2 commits (ea893912 + aa5df614), 0 requirements marked complete (DISP-01/02 close in Plan 03 — Plan 01 is foundation only), 3 auto-fixes (2 Rule-3 script callsites surfaced by build per `[[reexport-only-doesnt-bind-locally]]` + 1 Rule-1 grep-armor comment reword); `npm run build` ✓ in 7.8s; 19/19 targeted vitest suites pass; grep armor `= ANY(` = 0 across all 6 core files.
 - Phase 76 P04: ~8min executor portion, 2 of 3 tasks complete (Task 3 operator-blocked), 3 files (1 created `76-POST-DEPLOY.md`, 1 created `76-04-SUMMARY.md`, 1 modified `76-VALIDATION.md`), 7/7 phase reqs verified green (VID-07/08/09/10/11/12/16); no deviations. `npm run build` ✓ in 5.5s; 4 targeted vitest invocations all green (2 env-skipped, 2 pass — 15/15 tests pass for the run ones); 2 grep-based VID-15 regression guards = 1.
 - Phase 76 P03: ~20min, 3 tasks, 3 files (2 modified, 1 created), 5/5 reqs (VID-07, VID-08, VID-09, VID-10, VID-16 — VID-07 + VID-16 were already complete from P02 but the Server Action enforces them server-side); 1 auto-fix (mockStorage `.list()` two-arg signature)
 - Phase 76 P02: ~10min, 2 tasks, 2 files (1 modified, 1 created), 2/2 reqs (VID-07, VID-16); no deviations
@@ -96,6 +97,14 @@ Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-vid
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 81 P01 (Plan 01) — foundation type + DAL widening (2026-07-12):**
+
+- Watch domain type gains optional `brandId?: string` + `familyId?: string` (D-81-02); projected via LEFT JOIN in getWatchesByUser + getWatchById with `?? undefined` at the map() boundary.
+- CatalogEntryWithCanonical (extends CatalogEntry) exposes `canonicalBrand` + `canonicalFamily` via LEFT JOIN on brands + watch_families in getCatalogById (D-81-01). Additive-safe — all 6 existing callers unchanged.
+- upsertCatalogFromUserInput + upsertCatalogFromExtractedUrl return shape widens from `string | null` to `{ catalogId: string; brandName: string; familyName: string } | null` via extended CTE + constant-column subselects (D-81-01 Option A single round-trip).
+- 7 upsert callsites updated (5 planned per RESEARCH Pitfall 3 + 2 script callsites surfaced as Rule 3 blocking auto-fixes by `npm run build` — matches `[[reexport-only-doesnt-bind-locally]]` pattern).
+- No requirements marked complete — Plans 02/03 close RECO-01..04 + DISP-01/02.
 
 **v8.4 Catalog Brand+Model Canonicalization — locked decisions from SEED-021 + kickoff:**
 
@@ -242,6 +251,7 @@ None.
 | Phase 79 P02 | 10 | 3 tasks | 2 files |
 | Phase 79 P03 | 14min | 3 tasks | 2 files |
 | Phase 79 P04 | 17min | 3 tasks | 4 files |
+| Phase 81 P01 | 12m | 2 tasks | 19 files |
 
 ## Session Continuity
 

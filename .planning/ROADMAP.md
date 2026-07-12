@@ -355,7 +355,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 **Wave 1**
-- [ ] 81-01-PLAN.md — Type + DAL projection foundation: Watch.brandId?/familyId? optional fields + getWatchesByUser/getWatchById LEFT JOIN projection + getCatalogById extended with canonicalBrand/canonicalFamily + upsertCatalogFromUserInput/upsertCatalogFromExtractedUrl return-type widening to { catalogId, brandName, familyName } + all 5 callsite updates (extract-watch route x2, wishlist.ts, watches.ts x2)
+- [x] 81-01-PLAN.md — Type + DAL projection foundation: Watch.brandId?/familyId? optional fields + getWatchesByUser/getWatchById LEFT JOIN projection + getCatalogById extended with canonicalBrand/canonicalFamily + upsertCatalogFromUserInput/upsertCatalogFromExtractedUrl return-type widening to { catalogId, brandName, familyName } + all 5 callsite updates (extract-watch route x2, wishlist.ts, watches.ts x2)
 
 **Wave 2** *(blocked on Wave 1 completion; parallel plans within the wave)*
 - [ ] 81-02-PLAN.md — Recommender read-path swap: topBrandOf signature widen + RationaleContext.viewerTopBrand restructure + brandNameLookup construction in getRecommendationsForViewer + exclusion set switches to brandId|familyId + topUpFromCatalogPopularity INNER JOINs on brands + watch_families + brand_id IN clause + synthetic Watch FK propagation + test extensions — RECO-01, RECO-02, RECO-03, RECO-04
@@ -419,5 +419,5 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
-| 81. Recommender + Display Server Action Swap | 0/4 | Not started | — |
+| 81. Recommender + Display Server Action Swap | 1/4 | In Progress|  |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |
