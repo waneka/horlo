@@ -92,6 +92,16 @@ export interface Watch {
   // Used by Phase 20 composer to look up catalog taste attributes for the verdict bundle.
   catalogId?: string | null
 
+  // Phase 81 D-81-02 — canonical brand/family FK ids, resolved via
+  // watches.catalogId → watches_catalog.brand_id / family_id LEFT JOIN in
+  // getWatchesByUser + getWatchById. Optional (`?: string`, undefined) so
+  // legacy fixtures and catalogId=null (Phase 17 ON DELETE SET NULL) rows
+  // remain back-compat — no forced fixture updates. Downstream recommender
+  // (Plan 02) keys exclusion + multi-brand-match on these instead of
+  // lower-trimmed free-text brand/model strings.
+  brandId?: string
+  familyId?: string
+
   // Phase 38 D-10 — catalog taste, populated by getWatchesByUser LEFT JOIN.
   // `null` represents both "no catalog row" (legacy pre-Plan-A) AND "catalog row
   // exists but no fields populated yet" — the engine gates on confidence >= 0.5

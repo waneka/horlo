@@ -144,6 +144,13 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
       },
       // Phase 60 D-04: catalog imageUrl for fallback chain (D-05).
       catalogImageUrl: watchesCatalog.imageUrl,
+      // Phase 81 D-81-02 — canonical brand + family FK ids projected through
+      // the existing LEFT JOIN. LEFT JOIN miss (catalogId=null legacy row) →
+      // null → converted to undefined at the map() boundary per RESEARCH
+      // Pitfall 4. Downstream recommender (Plan 02) keys exclusion +
+      // multi-brand-match on these instead of free-text brand/model strings.
+      catalogBrandId: watchesCatalog.brandId,
+      catalogFamilyId: watchesCatalog.familyId,
       // Phase 60 D-04/D-05: cover subquery — lowest sort_order watch_photos row.
       // Returns the RAW storagePath (Phase 61 signs URLs; keep DAL admin-client-free).
       // Cover wins over catalog when both present (D-06).
@@ -160,12 +167,16 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
     .where(eq(watches.userId, userId))
     .orderBy(asc(watches.sortOrder), desc(watches.createdAt))
 
-  return rows.map(({ watch, taste, coverStoragePath, catalogImageUrl }) => ({
+  return rows.map(({ watch, taste, coverStoragePath, catalogImageUrl, catalogBrandId, catalogFamilyId }) => ({
     ...mapRowToWatch(watch),
     // Phase 60 D-04/D-05/D-06: cover->catalog->undefined fallback chain.
     // coverStoragePath is the lowest-sort_order watch_photos row storage_path (raw path).
     // catalogImageUrl is the catalog imageUrl (fallback when no watch_photos exist).
     imageUrl: coverStoragePath ?? (catalogImageUrl ?? undefined),
+    // Phase 81 D-81-02 — LEFT JOIN nullable → optional-undefined at the domain boundary
+    // (Watch.brandId / familyId are `?: string`, not nullable).
+    brandId: catalogBrandId ?? undefined,
+    familyId: catalogFamilyId ?? undefined,
     // Numeric columns surface as strings via postgres-js — coerce at the boundary.
     // RESEARCH Pitfall 2: if forgotten, cosine3D produces NaN and all scores collapse.
     // LEFT JOIN miss: taste itself is null when no catalog row matched.
@@ -193,6 +204,9 @@ export async function getWatchById(userId: string, watchId: string): Promise<Wat
     .select({
       watch: watches,
       catalogImageUrl: watchesCatalog.imageUrl,
+      // Phase 81 D-81-02 — mirror getWatchesByUser projection.
+      catalogBrandId: watchesCatalog.brandId,
+      catalogFamilyId: watchesCatalog.familyId,
       coverStoragePath: sql<string | null>`(
         SELECT wp.storage_path
         FROM watch_photos wp
@@ -205,10 +219,13 @@ export async function getWatchById(userId: string, watchId: string): Promise<Wat
     .leftJoin(watchesCatalog, eq(watchesCatalog.id, watches.catalogId))
     .where(and(eq(watches.userId, userId), eq(watches.id, watchId)))
   if (!rows[0]) return null
-  const { watch, coverStoragePath, catalogImageUrl } = rows[0]
+  const { watch, coverStoragePath, catalogImageUrl, catalogBrandId, catalogFamilyId } = rows[0]
   return {
     ...mapRowToWatch(watch),
     imageUrl: coverStoragePath ?? (catalogImageUrl ?? undefined),
+    // Phase 81 D-81-02 — LEFT JOIN nullable → undefined per Pitfall 4.
+    brandId: catalogBrandId ?? undefined,
+    familyId: catalogFamilyId ?? undefined,
   }
 }
 
