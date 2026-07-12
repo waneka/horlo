@@ -157,7 +157,12 @@ describe('addWatch fail-loud catalog contract — Phase 38 D-06 (CAT-13 closeout
   // ---------------------------------------------------------------------------
 
   it('returns {success: true} when upsertCatalogFromUserInput returns a catalogId', async () => {
-    vi.mocked(catalogDAL.upsertCatalogFromUserInput).mockResolvedValueOnce('cat-resilience-01')
+    // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName } | null.
+    vi.mocked(catalogDAL.upsertCatalogFromUserInput).mockResolvedValueOnce({
+      catalogId: 'cat-resilience-01',
+      brandName: 'Omega',
+      familyName: 'Seamaster',
+    })
     vi.mocked(watchDAL.createWatch).mockResolvedValueOnce({
       id: 'w-resilience-01',
       ...validWatchInput,
@@ -180,7 +185,12 @@ describe('addWatch fail-loud catalog contract — Phase 38 D-06 (CAT-13 closeout
   // ---------------------------------------------------------------------------
 
   it('does NOT call linkWatchToCatalog even on the happy path (Phase 38 D-06: atomic catalogId at insert)', async () => {
-    vi.mocked(catalogDAL.upsertCatalogFromUserInput).mockResolvedValueOnce('cat-resilience-02')
+    // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName } | null.
+    vi.mocked(catalogDAL.upsertCatalogFromUserInput).mockResolvedValueOnce({
+      catalogId: 'cat-resilience-02',
+      brandName: 'Omega',
+      familyName: 'Seamaster',
+    })
     vi.mocked(watchDAL.createWatch).mockResolvedValueOnce({
       id: 'w-resilience-02',
       ...validWatchInput,

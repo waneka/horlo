@@ -59,8 +59,15 @@ vi.mock('@/data/catalog', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/data/catalog')>()
   return {
     ...actual,
+    // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName } | null.
     // Return the pre-inserted catalog id — bypasses natural_key constraint dep.
-    upsertCatalogFromUserInput: vi.fn(() => Promise.resolve(_mockCatalogId)),
+    upsertCatalogFromUserInput: vi.fn(() =>
+      Promise.resolve(
+        _mockCatalogId
+          ? { catalogId: _mockCatalogId, brandName: 'MockBrand', familyName: 'MockModel' }
+          : null,
+      ),
+    ),
   }
 })
 

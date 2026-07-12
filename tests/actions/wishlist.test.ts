@@ -26,7 +26,12 @@ vi.mock('@/data/activities', () => ({
 // Phase 38 D-06: upsertCatalogFromUserInput fires BEFORE createWatch in addToWishlistFromWearEvent.
 // Must mock @/data/catalog so unit tests don't hit the real DAL (server-only module).
 vi.mock('@/data/catalog', () => ({
-  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('wishlist-cat-id-1'),
+  // Phase 81 D-81-01 — upsert helper returns { catalogId, brandName, familyName } | null.
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue({
+    catalogId: 'wishlist-cat-id-1',
+    brandName: 'MockBrand',
+    familyName: 'MockModel',
+  }),
   upsertCatalogFromExtractedUrl: vi.fn(),
   getCatalogById: vi.fn(),
 }))

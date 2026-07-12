@@ -135,11 +135,15 @@ export async function addToWishlistFromWearEvent(
     // Phase 38 D-06 step 2b (RESEARCH Pitfall 1): upsert catalog BEFORE createWatch.
     // The wear_event row carries denormalized brand/model; no reference is available.
     // Re-upsert is idempotent (first-write-wins per Phase 17 D-13); mirrors addWatch shape.
-    const catalogId = await catalogDAL.upsertCatalogFromUserInput({
+    //
+    // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName }.
+    // This callsite (wear-event → wishlist) discards the canonical names; unwrap via `?? null`.
+    const upsertResult = await catalogDAL.upsertCatalogFromUserInput({
       brand: row.brand,
       model: row.model,
       reference: null, // wear_event row carries no reference; upsert tolerates null
     })
+    const catalogId = upsertResult?.catalogId ?? null
     if (!catalogId) {
       throw new Error('[addToWishlistFromWearEvent] catalog upsert returned null — cannot insert watches row')
     }

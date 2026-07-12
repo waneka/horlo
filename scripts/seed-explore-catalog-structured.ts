@@ -209,11 +209,14 @@ async function main() {
       let catalogIdError: string | null = null
 
       try {
-        catalogId = await upsertCatalogFromUserInput({
+        // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName }.
+        // Seed script discards the canonical names; unwrap via `?? null`.
+        const upsertResult = await upsertCatalogFromUserInput({
           brand,
           model,
           reference: reference ?? null,
         })
+        catalogId = upsertResult?.catalogId ?? null
 
         if (!catalogId) {
           catalogIdError = 'catalog upsert returned null id'

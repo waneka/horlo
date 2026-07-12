@@ -159,9 +159,15 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
       // Phase 38 D-06 step 2a: catalog upsert BEFORE createWatch (fail-loud).
       // Pre-Phase-38 this was fire-and-forget after createWatch; post-Phase-38
       // catalog_id is NOT NULL so a failed upsert must block the insert.
-      let catalogIdResult: string | null
+      //
+      // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName }.
+      // Plan 01 destructures the extended shape and stores only catalogId; Plan 03
+      // will consume brandName/familyName here for cleanData.brand/model overwrite
+      // (DISP-01 canonical write-time overwrite). Leaving the destructure in place
+      // now keeps the Plan 03 seam clean.
+      let upsertResult: { catalogId: string; brandName: string; familyName: string } | null
       try {
-        catalogIdResult = await catalogDAL.upsertCatalogFromUserInput({
+        upsertResult = await catalogDAL.upsertCatalogFromUserInput({
           brand: parsed.data.brand,
           model: parsed.data.model,
           reference: parsed.data.reference ?? null,
@@ -170,10 +176,12 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
         console.error('[addWatch] catalog upsert failed (fatal post-Phase-38 — catalog_id is NOT NULL):', err)
         throw err // fail-loud: cannot insert watches row without catalogId
       }
-      if (!catalogIdResult) {
+      if (!upsertResult) {
         throw new Error('[addWatch] catalog upsert returned null — cannot insert watches row without catalogId')
       }
-      catalogId = catalogIdResult
+      catalogId = upsertResult.catalogId
+      // Plan 03 — Phase 81 DISP-01: consume brandName/familyName here for cleanData.brand/model overwrite
+      // e.g. cleanData.brand = upsertResult.brandName; cleanData.model = upsertResult.familyName
     }
 
     // Payload type widens cleanData to allow re-adding sortOrder server-side.
@@ -827,7 +835,9 @@ export async function saveCatalogOnlyFromExtract(
 
   // Step 3: Catalog upsert (idempotent COALESCE) + cache invalidation.
   try {
-    const catalogId = await catalogDAL.upsertCatalogFromExtractedUrl({
+    // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName }.
+    // SEED-018 admin-only catalog write (no user watches write); unwrap via `?? null`.
+    const upsertResult = await catalogDAL.upsertCatalogFromExtractedUrl({
       brand: parsed.data.brand,
       model: parsed.data.model,
       reference: parsed.data.reference ?? null,
@@ -845,6 +855,7 @@ export async function saveCatalogOnlyFromExtract(
       designTraits: parsed.data.designTraits ?? [],
       complications: parsed.data.complications ?? [],
     })
+    const catalogId = upsertResult?.catalogId ?? null
     if (!catalogId) {
       return { success: false, error: 'Catalog upsert failed — brand and model required' }
     }

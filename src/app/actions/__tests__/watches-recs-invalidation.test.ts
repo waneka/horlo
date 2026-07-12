@@ -131,9 +131,12 @@ describe('Phase 75 — watch mutations invalidate viewer:${user.id}:recs (DISC-R
   // Case 1: addWatch — happy-path INSERT fires updateTag(viewer:${id}:recs)
   // ──────────────────────────────────────────────────────────────────────
   it('addWatch — calls updateTag(viewer:${user.id}:recs) once with default semantics', async () => {
-    vi.mocked(upsertCatalogFromUserInput).mockResolvedValue(
-      '22222222-2222-4222-8222-222222222222',
-    )
+    // Phase 81 D-81-01 — upsert helper returns { catalogId, brandName, familyName } | null.
+    vi.mocked(upsertCatalogFromUserInput).mockResolvedValue({
+      catalogId: '22222222-2222-4222-8222-222222222222',
+      brandName: 'MockBrand',
+      familyName: 'MockModel',
+    })
     vi.mocked(getMaxWishlistSortOrder).mockResolvedValue(0)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(createWatch).mockResolvedValue(mkWatchRow({ status: 'owned' }) as any)

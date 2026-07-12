@@ -4,7 +4,7 @@ import 'server-only'
 import { cacheLife } from 'next/cache'
 
 import { db } from '@/db'
-import { brands, watches, watchesCatalog } from '@/db/schema'
+import { brands, watches, watchesCatalog, watchFamilies } from '@/db/schema'
 import { and, arrayOverlaps, asc, between, desc, eq, ilike, inArray, isNotNull, or, sql } from 'drizzle-orm'
 import type { CatalogEntry, CatalogSource, ImageSourceQuality, EraSignal, CatalogTasteAttributes } from '@/lib/types'
 import type { SearchCatalogWatchResult } from '@/lib/searchTypes'
@@ -132,13 +132,17 @@ export interface UrlExtractedCatalogInput {
 /**
  * CAT-06: Upserts a catalog row from typed user input.
  * Writes natural key only — spec columns left NULL for URL extraction to enrich (D-05).
- * Returns the catalog row id (newly inserted OR pre-existing).
+ * Returns { catalogId, brandName, familyName } — canonical brand/family strings
+ * resolved via subselects against `brands` + `watch_families` on the row's
+ * resolved brand_id / family_id (Phase 81 D-81-01). This lets Server Action
+ * callers (addWatch user-input branch, Plan 03) auto-overwrite watches.brand
+ * and watches.model with the canonical strings before INSERT (DISP-01).
  *
  * Failure semantics: caller MUST wrap in try/catch — fire-and-forget per CAT-08.
  */
 export async function upsertCatalogFromUserInput(
   input: UserPromotedCatalogInput,
-): Promise<string | null> {
+): Promise<{ catalogId: string; brandName: string; familyName: string } | null> {
   const { brand, model, reference } = input
   // Phase 80 INGEST-01..04: resolve brand + family FKs BEFORE the CTE INSERT.
   // Decision is intentionally dropped — D-80-04 silent contract; the resolver
@@ -146,27 +150,54 @@ export async function upsertCatalogFromUserInput(
   const { brandId } = await resolveBrandId(brand)
   const { familyId } = await resolveFamilyId(brandId, model)
   // Server Actions already validate non-empty brand/model via zod (src/app/actions/watches.ts).
-  const result = await db.execute<{ id: string }>(sql`
+  //
+  // Phase 81 D-81-01 — extended CTE. `resolved` CTE projects id + brand_id +
+  // family_id; the final SELECT wraps two constant-column subselects against
+  // brands.name / watch_families.name so callers get canonical display strings
+  // in the same round-trip. Post-Phase-80 NOT NULL FKs guarantee both subselects
+  // resolve. Drizzle sql-ANY-array anti-pattern intentionally NOT introduced
+  // (grep armor per drizzle-sql-any-array-pitfall).
+  const result = await db.execute<{
+    id: string
+    brand_name: string
+    family_name: string
+  }>(sql`
     WITH ins AS (
       INSERT INTO watches_catalog (brand, model, reference, source, brand_id, family_id)
       VALUES (${brand}, ${model}, ${reference}, 'user_promoted', ${brandId}, ${familyId})
       ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO NOTHING
-      RETURNING id
+      RETURNING id, brand_id, family_id
+    ),
+    resolved AS (
+      SELECT id, brand_id, family_id FROM ins
+      UNION ALL
+      SELECT id, brand_id, family_id FROM watches_catalog
+       WHERE brand_normalized = lower(trim(${brand}))
+         AND model_normalized = lower(trim(${model}))
+         AND reference_normalized IS NOT DISTINCT FROM (
+           CASE WHEN ${reference}::text IS NULL THEN NULL
+                ELSE regexp_replace(lower(trim(${reference}::text)), '[^a-z0-9]+', '', 'g')
+           END
+         )
+       LIMIT 1
     )
-    SELECT id FROM ins
-    UNION ALL
-    SELECT id FROM watches_catalog
-     WHERE brand_normalized = lower(trim(${brand}))
-       AND model_normalized = lower(trim(${model}))
-       AND reference_normalized IS NOT DISTINCT FROM (
-         CASE WHEN ${reference}::text IS NULL THEN NULL
-              ELSE regexp_replace(lower(trim(${reference}::text)), '[^a-z0-9]+', '', 'g')
-         END
-       )
-     LIMIT 1
+    SELECT r.id,
+           (SELECT name FROM brands WHERE id = r.brand_id) AS brand_name,
+           (SELECT name FROM watch_families WHERE id = r.family_id) AS family_name
+    FROM resolved r
+    LIMIT 1
   `)
-  const rows = result as unknown as Array<{ id: string }>
-  return rows[0]?.id ?? null
+  const rows = result as unknown as Array<{
+    id: string
+    brand_name: string
+    family_name: string
+  }>
+  if (rows.length === 0) return null
+  return {
+    catalogId: rows[0].id,
+    brandName: rows[0].brand_name,
+    familyName: rows[0].family_name,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -179,11 +210,18 @@ export async function upsertCatalogFromUserInput(
  * Promotes source to 'url_extracted' unless existing row is 'admin_curated' (D-10, D-11).
  * Tag arrays only enrich when the catalog row's array is empty (Assumption A4).
  *
+ * Phase 81 D-81-01 — Return shape widened to { catalogId, brandName, familyName }
+ * (was `string | null`) to match the sibling upsertCatalogFromUserInput helper.
+ * The INSERT ... ON CONFLICT ... RETURNING is wrapped in a CTE that resolves
+ * canonical brand/family names via subselects. Extract-watch route callsites
+ * unwrap via `result?.catalogId ?? null`; Server Action callsites (Plan 03)
+ * destructure `{ brandName, familyName }` for canonical write-time overwrite.
+ *
  * Failure semantics: caller MUST wrap in try/catch — fire-and-forget per CAT-08.
  */
 export async function upsertCatalogFromExtractedUrl(
   input: UrlExtractedCatalogInput,
-): Promise<string | null> {
+): Promise<{ catalogId: string; brandName: string; familyName: string } | null> {
   // T-17-02-01: sanitize image URLs before write — reject non-http/https
   const safeImageUrl = sanitizeHttpUrl(input.imageUrl)
   const safeImageSourceUrl = sanitizeHttpUrl(input.imageSourceUrl)
@@ -207,54 +245,80 @@ export async function upsertCatalogFromExtractedUrl(
       ? sql`'{}'::text[]`
       : sql`ARRAY[${sql.join(arr.map((v) => sql`${v}`), sql`, `)}]::text[]`
 
-  const result = await db.execute<{ id: string }>(sql`
-    INSERT INTO watches_catalog (
-      brand, model, reference, source,
-      movement_type, movement_caliber, case_size_mm, lug_to_lug_mm, water_resistance_m,
-      crystal_type, dial_color, is_chronometer, production_year,
-      image_url, image_source_url, image_source_quality,
-      style_tags, design_traits, role_tags, complications,
-      brand_id, family_id
+  // Phase 81 D-81-01 — Wrap the INSERT ... ON CONFLICT ... RETURNING in a CTE
+  // (`upserted`) that returns id + brand_id + family_id; the outer SELECT
+  // resolves canonical brand/family names via subselects against brands +
+  // watch_families. Post-Phase-80 NOT NULL FKs guarantee both subselects
+  // resolve. Drizzle sql-ANY-array anti-pattern intentionally NOT introduced
+  // (grep armor per drizzle-sql-any-array-pitfall).
+  const result = await db.execute<{
+    id: string
+    brand_name: string
+    family_name: string
+  }>(sql`
+    WITH upserted AS (
+      INSERT INTO watches_catalog (
+        brand, model, reference, source,
+        movement_type, movement_caliber, case_size_mm, lug_to_lug_mm, water_resistance_m,
+        crystal_type, dial_color, is_chronometer, production_year,
+        image_url, image_source_url, image_source_quality,
+        style_tags, design_traits, role_tags, complications,
+        brand_id, family_id
+      )
+      VALUES (
+        ${input.brand}, ${input.model}, ${input.reference}, 'url_extracted',
+        ${input.movementType ?? null}::movement_type_enum, ${input.movementCaliber ?? null},
+        ${input.caseSizeMm ?? null},
+        ${input.lugToLugMm ?? null}, ${input.waterResistanceM ?? null},
+        ${input.crystalType ?? null}, ${input.dialColor ?? null},
+        ${input.isChronometer ?? null}, ${input.productionYear ?? null},
+        ${safeImageUrl}, ${safeImageSourceUrl},
+        ${input.imageSourceQuality ?? null},
+        ${toTextArraySql(safeStyleTags)}, ${toTextArraySql(safeDesignTraits)},
+        ${toTextArraySql(safeRoleTags)}, ${toTextArraySql(safeComplications)},
+        ${brandId}, ${familyId}
+      )
+      ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO UPDATE SET
+        source = CASE
+          WHEN watches_catalog.source = 'admin_curated' THEN watches_catalog.source
+          ELSE 'url_extracted'
+        END,
+        movement_type    = COALESCE(watches_catalog.movement_type,    EXCLUDED.movement_type),
+        movement_caliber = COALESCE(watches_catalog.movement_caliber, EXCLUDED.movement_caliber),
+        case_size_mm          = COALESCE(watches_catalog.case_size_mm,          EXCLUDED.case_size_mm),
+        lug_to_lug_mm         = COALESCE(watches_catalog.lug_to_lug_mm,         EXCLUDED.lug_to_lug_mm),
+        water_resistance_m    = COALESCE(watches_catalog.water_resistance_m,    EXCLUDED.water_resistance_m),
+        crystal_type          = COALESCE(watches_catalog.crystal_type,          EXCLUDED.crystal_type),
+        dial_color            = COALESCE(watches_catalog.dial_color,            EXCLUDED.dial_color),
+        is_chronometer        = COALESCE(watches_catalog.is_chronometer,        EXCLUDED.is_chronometer),
+        production_year       = COALESCE(watches_catalog.production_year,       EXCLUDED.production_year),
+        image_url             = COALESCE(watches_catalog.image_url,             EXCLUDED.image_url),
+        image_source_url      = COALESCE(watches_catalog.image_source_url,      EXCLUDED.image_source_url),
+        image_source_quality  = COALESCE(watches_catalog.image_source_quality,  EXCLUDED.image_source_quality),
+        style_tags    = CASE WHEN array_length(watches_catalog.style_tags, 1)    IS NULL THEN EXCLUDED.style_tags    ELSE watches_catalog.style_tags END,
+        design_traits = CASE WHEN array_length(watches_catalog.design_traits, 1) IS NULL THEN EXCLUDED.design_traits ELSE watches_catalog.design_traits END,
+        role_tags     = CASE WHEN array_length(watches_catalog.role_tags, 1)     IS NULL THEN EXCLUDED.role_tags     ELSE watches_catalog.role_tags END,
+        complications = CASE WHEN array_length(watches_catalog.complications, 1) IS NULL THEN EXCLUDED.complications ELSE watches_catalog.complications END,
+        updated_at = now()
+      RETURNING id, brand_id, family_id
     )
-    VALUES (
-      ${input.brand}, ${input.model}, ${input.reference}, 'url_extracted',
-      ${input.movementType ?? null}::movement_type_enum, ${input.movementCaliber ?? null},
-      ${input.caseSizeMm ?? null},
-      ${input.lugToLugMm ?? null}, ${input.waterResistanceM ?? null},
-      ${input.crystalType ?? null}, ${input.dialColor ?? null},
-      ${input.isChronometer ?? null}, ${input.productionYear ?? null},
-      ${safeImageUrl}, ${safeImageSourceUrl},
-      ${input.imageSourceQuality ?? null},
-      ${toTextArraySql(safeStyleTags)}, ${toTextArraySql(safeDesignTraits)},
-      ${toTextArraySql(safeRoleTags)}, ${toTextArraySql(safeComplications)},
-      ${brandId}, ${familyId}
-    )
-    ON CONFLICT ON CONSTRAINT watches_catalog_natural_key DO UPDATE SET
-      source = CASE
-        WHEN watches_catalog.source = 'admin_curated' THEN watches_catalog.source
-        ELSE 'url_extracted'
-      END,
-      movement_type    = COALESCE(watches_catalog.movement_type,    EXCLUDED.movement_type),
-      movement_caliber = COALESCE(watches_catalog.movement_caliber, EXCLUDED.movement_caliber),
-      case_size_mm          = COALESCE(watches_catalog.case_size_mm,          EXCLUDED.case_size_mm),
-      lug_to_lug_mm         = COALESCE(watches_catalog.lug_to_lug_mm,         EXCLUDED.lug_to_lug_mm),
-      water_resistance_m    = COALESCE(watches_catalog.water_resistance_m,    EXCLUDED.water_resistance_m),
-      crystal_type          = COALESCE(watches_catalog.crystal_type,          EXCLUDED.crystal_type),
-      dial_color            = COALESCE(watches_catalog.dial_color,            EXCLUDED.dial_color),
-      is_chronometer        = COALESCE(watches_catalog.is_chronometer,        EXCLUDED.is_chronometer),
-      production_year       = COALESCE(watches_catalog.production_year,       EXCLUDED.production_year),
-      image_url             = COALESCE(watches_catalog.image_url,             EXCLUDED.image_url),
-      image_source_url      = COALESCE(watches_catalog.image_source_url,      EXCLUDED.image_source_url),
-      image_source_quality  = COALESCE(watches_catalog.image_source_quality,  EXCLUDED.image_source_quality),
-      style_tags    = CASE WHEN array_length(watches_catalog.style_tags, 1)    IS NULL THEN EXCLUDED.style_tags    ELSE watches_catalog.style_tags END,
-      design_traits = CASE WHEN array_length(watches_catalog.design_traits, 1) IS NULL THEN EXCLUDED.design_traits ELSE watches_catalog.design_traits END,
-      role_tags     = CASE WHEN array_length(watches_catalog.role_tags, 1)     IS NULL THEN EXCLUDED.role_tags     ELSE watches_catalog.role_tags END,
-      complications = CASE WHEN array_length(watches_catalog.complications, 1) IS NULL THEN EXCLUDED.complications ELSE watches_catalog.complications END,
-      updated_at = now()
-    RETURNING id
+    SELECT u.id,
+           (SELECT name FROM brands WHERE id = u.brand_id) AS brand_name,
+           (SELECT name FROM watch_families WHERE id = u.family_id) AS family_name
+    FROM upserted u
+    LIMIT 1
   `)
-  const rows = result as unknown as Array<{ id: string }>
-  return rows[0]?.id ?? null
+  const rows = result as unknown as Array<{
+    id: string
+    brand_name: string
+    family_name: string
+  }>
+  if (rows.length === 0) return null
+  return {
+    catalogId: rows[0].id,
+    brandName: rows[0].brand_name,
+    familyName: rows[0].family_name,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -262,13 +326,48 @@ export async function upsertCatalogFromExtractedUrl(
 // ---------------------------------------------------------------------------
 
 /**
+ * Phase 81 D-81-01 — Extended CatalogEntry that carries canonical brand/family
+ * names resolved via LEFT JOIN on brands.name / watch_families.name. Additive
+ * over CatalogEntry so all 6 existing callers (verdict.ts L54; watch/new/page
+ * L167; w/[ref]/page L322/L436/L516; watches.ts L143) continue to read the
+ * existing fields unchanged. Server Action callers (Plan 03) read
+ * `canonicalBrand` / `canonicalFamily` to auto-overwrite watches.brand /
+ * watches.model on add/edit (DISP-01/02).
+ */
+export interface CatalogEntryWithCanonical extends CatalogEntry {
+  canonicalBrand: string
+  canonicalFamily: string
+}
+
+/**
  * CAT-11: Reads a single catalog row by id.
  * Public-read RLS allows this from any client context (server-only here for type safety).
+ *
+ * Phase 81 D-81-01 — LEFT JOIN brands + watch_families to expose
+ * `canonicalBrand` + `canonicalFamily` on the returned row. Post-Phase-80
+ * NOT NULL FKs guarantee the JOIN cannot miss for well-formed rows; the
+ * `?? catalog.brand` / `?? catalog.model` fallback is belt-and-suspenders
+ * against a theoretical NULL FK (dead code post-Phase-80).
  */
-export async function getCatalogById(id: string): Promise<CatalogEntry | null> {
-  const rows = await db.select().from(watchesCatalog).where(eq(watchesCatalog.id, id)).limit(1)
+export async function getCatalogById(id: string): Promise<CatalogEntryWithCanonical | null> {
+  const rows = await db
+    .select({
+      catalog: watchesCatalog,
+      brandName: brands.name,
+      familyName: watchFamilies.name,
+    })
+    .from(watchesCatalog)
+    .leftJoin(brands, eq(brands.id, watchesCatalog.brandId))
+    .leftJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))
+    .where(eq(watchesCatalog.id, id))
+    .limit(1)
   if (rows.length === 0) return null
-  return mapRowToCatalogEntry(rows[0])
+  const { catalog, brandName, familyName } = rows[0]
+  return {
+    ...mapRowToCatalogEntry(catalog),
+    canonicalBrand: brandName ?? catalog.brand,
+    canonicalFamily: familyName ?? catalog.model,
+  }
 }
 
 // ---------------------------------------------------------------------------

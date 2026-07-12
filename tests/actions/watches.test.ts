@@ -33,7 +33,12 @@ vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 // Phase 19.1 Plan 05: mock catalog DAL taste helpers (fire-and-forget paths)
 // CONF-11: also mock getCatalogById for the catalogId-supplied branch
 vi.mock('@/data/catalog', () => ({
-  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('cat-id-1'),
+  // Phase 81 D-81-01 — upsert helper returns { catalogId, brandName, familyName } | null.
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue({
+    catalogId: 'cat-id-1',
+    brandName: 'MockBrand',
+    familyName: 'MockModel',
+  }),
   updateCatalogTaste: vi.fn().mockResolvedValue({ updated: true }),
   applyUserUploadedPhoto: vi.fn().mockResolvedValue({ applied: true }),
   getCatalogById: vi.fn(),

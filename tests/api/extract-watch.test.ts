@@ -35,10 +35,19 @@ vi.mock('@/lib/ssrf', () => ({
 }))
 
 vi.mock('@/data/catalog', () => ({
-  upsertCatalogFromExtractedUrl: vi.fn().mockResolvedValue('cat-123'),
+  // Phase 81 D-81-01 — upsert helpers now return { catalogId, brandName, familyName } | null.
+  upsertCatalogFromExtractedUrl: vi.fn().mockResolvedValue({
+    catalogId: 'cat-123',
+    brandName: 'MockBrand',
+    familyName: 'MockModel',
+  }),
   // Phase 66 EXTR-08: structured branch dispatches to upsertCatalogFromUserInput
   // — verified by the structured-mode describe block below.
-  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('cat-structured-456'),
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue({
+    catalogId: 'cat-structured-456',
+    brandName: 'MockBrand',
+    familyName: 'MockModel',
+  }),
   updateCatalogTaste: vi.fn().mockResolvedValue(undefined),
 }))
 

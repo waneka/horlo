@@ -12,7 +12,8 @@ maybe('Phase 17 image provenance -- D-06 / CAT-12 sibling', () => {
   })
 
   it('image columns round-trip via upsertCatalogFromExtractedUrl', async () => {
-    const id = await upsertCatalogFromExtractedUrl({
+    // Phase 81 D-81-01 — upsert helpers return { catalogId, brandName, familyName } | null.
+    const upsertResult = await upsertCatalogFromExtractedUrl({
       brand: `Ip-${STAMP}-A`,
       model: 'Sub',
       reference: 'r1',
@@ -20,7 +21,8 @@ maybe('Phase 17 image provenance -- D-06 / CAT-12 sibling', () => {
       imageSourceUrl: 'https://chrono24.com/listing/123',
       imageSourceQuality: 'official',
     })
-    expect(id).toBeTruthy()
+    expect(upsertResult).toBeTruthy()
+    const id = upsertResult!.catalogId
     const result = await db.execute<{ image_url: string | null; image_source_url: string | null; image_source_quality: string | null }>(sql`
       SELECT image_url, image_source_url, image_source_quality FROM watches_catalog WHERE id = ${id}
     `)
@@ -32,15 +34,16 @@ maybe('Phase 17 image provenance -- D-06 / CAT-12 sibling', () => {
 
   it('COALESCE preserves first non-null image_url (D-13)', async () => {
     const brand = `Ip-${STAMP}-B`
-    const id1 = await upsertCatalogFromExtractedUrl({
+    const r1 = await upsertCatalogFromExtractedUrl({
       brand, model: 'Sub', reference: 'r2',
       imageUrl: 'https://a.com/x.jpg',
     })
-    const id2 = await upsertCatalogFromExtractedUrl({
+    const r2 = await upsertCatalogFromExtractedUrl({
       brand, model: 'Sub', reference: 'r2',
       imageUrl: 'https://b.com/y.jpg',
     })
-    expect(id1).toBe(id2)
+    const id1 = r1!.catalogId
+    expect(id1).toBe(r2?.catalogId)
     const result = await db.execute<{ image_url: string | null }>(sql`
       SELECT image_url FROM watches_catalog WHERE id = ${id1}
     `)

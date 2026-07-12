@@ -92,8 +92,10 @@ maybe(
           complications: [],
         } as const
 
-        const catalogId = await upsertCatalogFromExtractedUrl(input)
-        expect(catalogId).not.toBeNull()
+        // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName } | null.
+        const upsertResult = await upsertCatalogFromExtractedUrl(input)
+        expect(upsertResult).not.toBeNull()
+        const catalogId = upsertResult!.catalogId
         insertedCatalogId = catalogId
 
         // SELECT the inserted row and check both FK columns.

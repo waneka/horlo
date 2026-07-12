@@ -223,7 +223,9 @@ export async function POST(request: NextRequest) {
       let catalogIdError: string | null = null
       try {
         if (result.data?.brand && result.data?.model) {
-          catalogId = await catalogDAL.upsertCatalogFromExtractedUrl({
+          // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName }.
+          // Extract-watch route discards the canonical names; unwrap via `?? null`.
+          const upsertResult = await catalogDAL.upsertCatalogFromExtractedUrl({
             brand: result.data.brand,
             model: result.data.model,
             reference: result.data.reference ?? null,
@@ -243,6 +245,7 @@ export async function POST(request: NextRequest) {
             roleTags: [],
             complications: result.data.complications ?? [],
           })
+          catalogId = upsertResult?.catalogId ?? null
           // Even when the upsert helper does not throw, it CAN return null when
           // the SQL execution shape doesn't yield a row id (per debug session
           // 2026-04-30T18:30:00Z). Mark this case explicitly.
@@ -364,11 +367,14 @@ export async function POST(request: NextRequest) {
       let catalogIdError: string | null = null
       try {
         if (extracted.brand && extracted.model) {
-          catalogId = await catalogDAL.upsertCatalogFromUserInput({
+          // Phase 81 D-81-01 — upsert helper now returns { catalogId, brandName, familyName }.
+          // Extract-watch route discards the canonical names; unwrap via `?? null`.
+          const upsertResult = await catalogDAL.upsertCatalogFromUserInput({
             brand: extracted.brand,
             model: extracted.model,
             reference: extracted.reference ?? null,
           })
+          catalogId = upsertResult?.catalogId ?? null
           if (!catalogId) {
             catalogIdError = 'catalog upsert returned null id'
           }

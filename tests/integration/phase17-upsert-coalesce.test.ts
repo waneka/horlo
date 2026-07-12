@@ -19,12 +19,14 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   })
 
   it('user input writes natural key only', async () => {
-    const id = await upsertCatalogFromUserInput({
+    // Phase 81 D-81-01 — upsert helpers now return { catalogId, brandName, familyName } | null.
+    const upsertResult = await upsertCatalogFromUserInput({
       brand: stampedBrand('A'),
       model: 'Submariner',
       reference: '116610LN',
     })
-    expect(id).toBeTruthy()
+    expect(upsertResult).toBeTruthy()
+    const id = upsertResult!.catalogId
     const result = await db.execute<{ source: string; case_size_mm: number | null; movement_type: string | null; style_tags: string[] }>(
       sql`SELECT source, case_size_mm, movement_type, style_tags FROM watches_catalog WHERE id = ${id}`
     )
@@ -36,18 +38,20 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   })
 
   it('user input does nothing on conflict', async () => {
-    const id1 = await upsertCatalogFromUserInput({ brand: stampedBrand('B'), model: 'Sub', reference: 'ref1' })
-    const id2 = await upsertCatalogFromUserInput({ brand: stampedBrand('B'), model: 'Sub', reference: 'ref1' })
-    expect(id1).toBe(id2)
+    // Phase 81 D-81-01 — unwrap catalogId from { catalogId, brandName, familyName }.
+    const r1 = await upsertCatalogFromUserInput({ brand: stampedBrand('B'), model: 'Sub', reference: 'ref1' })
+    const r2 = await upsertCatalogFromUserInput({ brand: stampedBrand('B'), model: 'Sub', reference: 'ref1' })
+    expect(r1?.catalogId).toBe(r2?.catalogId)
   })
 
   it('user input does nothing on conflict — does NOT downgrade source', async () => {
-    const id1 = await upsertCatalogFromExtractedUrl({
+    const r1 = await upsertCatalogFromExtractedUrl({
       brand: stampedBrand('C'), model: 'Sub', reference: 'ref-c',
       caseSizeMm: 40, movementType: 'auto',
     })
-    const id2 = await upsertCatalogFromUserInput({ brand: stampedBrand('C'), model: 'Sub', reference: 'ref-c' })
-    expect(id1).toBe(id2)
+    const id1 = r1!.catalogId
+    const r2 = await upsertCatalogFromUserInput({ brand: stampedBrand('C'), model: 'Sub', reference: 'ref-c' })
+    expect(id1).toBe(r2?.catalogId)
     const result = await db.execute<{ source: string; case_size_mm: number | null }>(
       sql`SELECT source, case_size_mm FROM watches_catalog WHERE id = ${id1}`
     )
@@ -57,12 +61,13 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   })
 
   it('url extract enriches NULL columns via COALESCE', async () => {
-    const id1 = await upsertCatalogFromUserInput({ brand: stampedBrand('D'), model: 'Sub', reference: 'ref-d' })
-    const id2 = await upsertCatalogFromExtractedUrl({
+    const r1 = await upsertCatalogFromUserInput({ brand: stampedBrand('D'), model: 'Sub', reference: 'ref-d' })
+    const r2 = await upsertCatalogFromExtractedUrl({
       brand: stampedBrand('D'), model: 'Sub', reference: 'ref-d',
       caseSizeMm: 40, movementType: 'auto',
     })
-    expect(id1).toBe(id2)
+    const id1 = r1!.catalogId
+    expect(id1).toBe(r2?.catalogId)
     const result = await db.execute<{ source: string; case_size_mm: number | null; movement_type: string | null }>(
       sql`SELECT source, case_size_mm, movement_type FROM watches_catalog WHERE id = ${id1}`
     )
@@ -89,9 +94,10 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   })
 
   it('source upgrade user_promoted → url_extracted', async () => {
-    const id1 = await upsertCatalogFromUserInput({ brand: stampedBrand('F'), model: 'Sub', reference: 'ref-f' })
-    const id2 = await upsertCatalogFromExtractedUrl({ brand: stampedBrand('F'), model: 'Sub', reference: 'ref-f' })
-    expect(id1).toBe(id2)
+    const r1 = await upsertCatalogFromUserInput({ brand: stampedBrand('F'), model: 'Sub', reference: 'ref-f' })
+    const r2 = await upsertCatalogFromExtractedUrl({ brand: stampedBrand('F'), model: 'Sub', reference: 'ref-f' })
+    const id1 = r1!.catalogId
+    expect(id1).toBe(r2?.catalogId)
     const result = await db.execute<{ source: string }>(
       sql`SELECT source FROM watches_catalog WHERE id = ${id1}`
     )
@@ -125,10 +131,11 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   })
 
   it('image_source_url rejects non-http (T-17-02-01)', async () => {
-    const id = await upsertCatalogFromExtractedUrl({
+    const upsertResult = await upsertCatalogFromExtractedUrl({
       brand: stampedBrand('H'), model: 'Sub', reference: 'ref-h',
       imageSourceUrl: 'javascript:alert(1)',
     })
+    const id = upsertResult!.catalogId
     const result = await db.execute<{ image_source_url: string | null }>(
       sql`SELECT image_source_url FROM watches_catalog WHERE id = ${id}`
     )
@@ -137,8 +144,8 @@ maybe('Phase 17 upsert helpers — CAT-06 + CAT-07', () => {
   })
 
   it('casing collapse via helper', async () => {
-    const id1 = await upsertCatalogFromUserInput({ brand: stampedBrand('i'), model: 'Sub', reference: 'ref-i' })
-    const id2 = await upsertCatalogFromUserInput({ brand: stampedBrand('I').toUpperCase(), model: 'SUB', reference: 'REF-I' })
-    expect(id1).toBe(id2)
+    const r1 = await upsertCatalogFromUserInput({ brand: stampedBrand('i'), model: 'Sub', reference: 'ref-i' })
+    const r2 = await upsertCatalogFromUserInput({ brand: stampedBrand('I').toUpperCase(), model: 'SUB', reference: 'REF-I' })
+    expect(r1?.catalogId).toBe(r2?.catalogId)
   })
 })

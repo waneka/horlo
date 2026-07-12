@@ -53,8 +53,13 @@ vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn().mockResolvedValue(nu
 vi.mock('@/data/activities', () => ({ logActivity: vi.fn().mockResolvedValue(undefined) }))
 
 // Phase 19.1 catalog DAL mocks (Phase 38 D-06: upsert BEFORE createWatch — must return non-null).
+// Phase 81 D-81-01 — upsert helper returns { catalogId, brandName, familyName } | null.
 vi.mock('@/data/catalog', () => ({
-  upsertCatalogFromUserInput: vi.fn().mockResolvedValue('cat-id-1'),
+  upsertCatalogFromUserInput: vi.fn().mockResolvedValue({
+    catalogId: 'cat-id-1',
+    brandName: 'MockBrand',
+    familyName: 'MockModel',
+  }),
   updateCatalogTaste: vi.fn().mockResolvedValue({ updated: true }),
   applyUserUploadedPhoto: vi.fn().mockResolvedValue({ applied: true }),
 }))
