@@ -359,7 +359,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion; parallel plans within the wave)*
 - [x] 81-02-PLAN.md — Recommender read-path swap: topBrandOf signature widen + RationaleContext.viewerTopBrand restructure + brandNameLookup construction in getRecommendationsForViewer + exclusion set switches to brandId|familyId + topUpFromCatalogPopularity INNER JOINs on brands + watch_families + brand_id IN clause + synthetic Watch FK propagation + test extensions — RECO-01, RECO-02, RECO-03, RECO-04
-- [ ] 81-03-PLAN.md — Server Action canonical overwrite: addWatch catalogId branch reads canonicalBrand/canonicalFamily + user-input branch consumes upsertResult.brandName/familyName + editWatch overwrite path before UPDATE + 4 new DISP unit cases in watches-recs-invalidation.test.ts — DISP-01, DISP-02
+- [x] 81-03-PLAN.md — Server Action canonical overwrite: addWatch catalogId branch reads canonicalBrand/canonicalFamily + user-input branch consumes upsertResult.brandName/familyName + editWatch overwrite path before UPDATE + 4 new DISP unit cases in watches-recs-invalidation.test.ts — DISP-01, DISP-02
 
 **Wave 3** *(blocked on Wave 2 completion — autonomous: false; operator checkpoint)*
 - [ ] 81-04-PLAN.md — Local-First Verification + Bundled Prod Deploy: reversible drift-fixture SQL (fixtures/drift-hamilton.sql) + 4-step D-81-04 walkthrough on npm run dev + local Supabase + 81-POST-DEPLOY.md operator runbook + human-verify checkpoint gating git push — all 6 requirements verified end-to-end
@@ -419,5 +419,5 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
-| 81. Recommender + Display Server Action Swap | 2/4 | In Progress|  |
+| 81. Recommender + Display Server Action Swap | 3/4 | In Progress|  |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
 status: executing
-last_updated: "2026-07-12T20:13:14.084Z"
-last_activity: 2026-07-12 -- Phase 81 Plan 02 complete (recommender read-path canonical FK swap)
+last_updated: "2026-07-12T20:25:47.969Z"
+last_activity: 2026-07-12
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 ## Current Position
 
 Phase: 81 (Recommender + Display Server Action Swap) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute Plan 03 (Server Action canonical overwrite)
-Last activity: 2026-07-12 -- Phase 81 Plan 02 complete (recommender read-path canonical FK swap)
+Plan: 4 of 4
+Status: Ready to execute Plan 04 (local-first drift-fixture UAT + prod deploy)
+Last activity: 2026-07-12 -- Phase 81 Plan 03 complete (DISP-01/02 canonical write-time overwrite in addWatch + editWatch)
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 
@@ -267,6 +267,7 @@ None.
 | Phase 81 P01 | 12m | 2 tasks | 19 files |
 | Phase 81 P02 | 17m | 2 tasks | 4 files |
 | Phase 81 P02 | 17m | 2 tasks | 4 files |
+| Phase 81 P03 | 7m | 1 tasks | 3 files |
 
 ## Session Continuity
 

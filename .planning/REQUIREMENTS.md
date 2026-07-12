@@ -64,8 +64,8 @@ The home rail's exclusion key + multi-brand-match scoring + rationale templates 
 
 Personal `watches` rows show canonical brand + model on every read, even for legacy free-text data.
 
-- [ ] **DISP-01**: `addWatch` Server Action auto-overwrites the persisted `watches.brand` and `watches.model` with `brands.name` and `watch_families.name` (resolved via the canonical `catalogId`) before INSERT, regardless of what the user typed.
-- [ ] **DISP-02**: `editWatch` Server Action runs the same auto-overwrite path on UPDATE — if the user edits brand/model in the WatchForm, the resolved canonical name wins on save.
+- [x] **DISP-01**: `addWatch` Server Action auto-overwrites the persisted `watches.brand` and `watches.model` with `brands.name` and `watch_families.name` (resolved via the canonical `catalogId`) before INSERT, regardless of what the user typed.
+- [x] **DISP-02**: `editWatch` Server Action runs the same auto-overwrite path on UPDATE — if the user edits brand/model in the WatchForm, the resolved canonical name wins on save.
 - [x] **DISP-03**: Existing `watches` rows that already point to a canonical `catalogId` get their `brand` / `model` columns auto-overwritten in a one-shot data migration alongside MIG-02/MIG-03 — no UI surface still renders stale free-text variants after v8.4 ships.
 
 ### UI (UI)
@@ -128,8 +128,8 @@ Explicitly excluded from v8.4:
 | RECO-02 | Phase 81 | Complete |
 | RECO-03 | Phase 81 | Complete |
 | RECO-04 | Phase 81 | Complete |
-| DISP-01 | Phase 81 | Pending |
-| DISP-02 | Phase 81 | Pending |
+| DISP-01 | Phase 81 | Complete |
+| DISP-02 | Phase 81 | Complete |
 | DISP-03 | Phase 79 | Complete |
 | UI-01 | Phase 82 | Pending |
 | UI-02 | Phase 82 | Pending |
