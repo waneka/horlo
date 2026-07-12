@@ -352,7 +352,17 @@ Plans:
   3. Recommendation rationale strings render the canonical brand name from `brands.name` joined through `watches_catalog.brand_id` — `Fans of {brand} love this` shows `Hamilton Watch` (canonical) not `Hamilton` (user free-text) regardless of which user owns the source row (RECO-04)
   4. Adding a new watch through the existing add-watch flow with a free-text brand string persists `watches.brand` as the canonical `brands.name` resolved through the eventual `catalogId` — not the user's typed string. Same on edit (DISP-01, DISP-02)
   5. Existing recommendation tests + collection-rail tests still pass against the new JOIN-through path; no measurable p95 regression on the home rail (per Phase 19.1 baselines acknowledged in CANON-V2-01 defer rationale)
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1**
+- [ ] 81-01-PLAN.md — Type + DAL projection foundation: Watch.brandId?/familyId? optional fields + getWatchesByUser/getWatchById LEFT JOIN projection + getCatalogById extended with canonicalBrand/canonicalFamily + upsertCatalogFromUserInput/upsertCatalogFromExtractedUrl return-type widening to { catalogId, brandName, familyName } + all 5 callsite updates (extract-watch route x2, wishlist.ts, watches.ts x2)
+
+**Wave 2** *(blocked on Wave 1 completion; parallel plans within the wave)*
+- [ ] 81-02-PLAN.md — Recommender read-path swap: topBrandOf signature widen + RationaleContext.viewerTopBrand restructure + brandNameLookup construction in getRecommendationsForViewer + exclusion set switches to brandId|familyId + topUpFromCatalogPopularity INNER JOINs on brands + watch_families + brand_id IN clause + synthetic Watch FK propagation + test extensions — RECO-01, RECO-02, RECO-03, RECO-04
+- [ ] 81-03-PLAN.md — Server Action canonical overwrite: addWatch catalogId branch reads canonicalBrand/canonicalFamily + user-input branch consumes upsertResult.brandName/familyName + editWatch overwrite path before UPDATE + 4 new DISP unit cases in watches-recs-invalidation.test.ts — DISP-01, DISP-02
+
+**Wave 3** *(blocked on Wave 2 completion — autonomous: false; operator checkpoint)*
+- [ ] 81-04-PLAN.md — Local-First Verification + Bundled Prod Deploy: reversible drift-fixture SQL (fixtures/drift-hamilton.sql) + 4-step D-81-04 walkthrough on npm run dev + local Supabase + 81-POST-DEPLOY.md operator runbook + human-verify checkpoint gating git push — all 6 requirements verified end-to-end
 **UI hint**: no
 
 ### Phase 82: Add-Watch UI + Operator Admin
@@ -409,5 +419,5 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
-| 81. Recommender + Display Server Action Swap | 0/? | Not started | — |
+| 81. Recommender + Display Server Action Swap | 0/4 | Not started | — |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |
