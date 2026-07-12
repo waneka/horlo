@@ -78,13 +78,14 @@ import {
   deleteWatch,
   getMaxWishlistSortOrder,
 } from '@/data/watches'
-import { upsertCatalogFromUserInput } from '@/data/catalog'
+import { upsertCatalogFromUserInput, getCatalogById } from '@/data/catalog'
 import { findOverlapRecipients } from '@/data/notifications'
 import { getProfileById } from '@/data/profiles'
 import { updateTag, revalidateTag } from 'next/cache'
 
 // RFC 4122 v4 strict UUID — passes Zod uuid validation.
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
+const VALID_CATALOG_UUID = '22222222-2222-4222-8222-222222222222'
 const VIEWER_ID = 'viewer-1'
 const RECS_TAG = `viewer:${VIEWER_ID}:recs`
 
@@ -100,15 +101,64 @@ function mkAddWatchInput() {
 // Build a minimal Watch row that the DAL mocks resolve with. Cast at
 // the use-site to keep the helper free of `any` while matching the
 // canonical pattern from moveWishlistToCollection.test.ts.
-function mkWatchRow(overrides: Partial<{ status: string; brand: string; model: string }> = {}) {
+//
+// Phase 81 Plan 03: extended with `catalogId` override for DISP-02 test
+// cases (Case 8 exercises the non-catalog-linked-watch skip branch).
+function mkWatchRow(
+  overrides: Partial<{
+    status: string
+    brand: string
+    model: string
+    catalogId: string | null
+  }> = {},
+) {
   return {
     id: VALID_UUID,
-    catalogId: '22222222-2222-4222-8222-222222222222',
+    catalogId:
+      overrides.catalogId === undefined ? VALID_CATALOG_UUID : overrides.catalogId,
     brand: overrides.brand ?? 'Omega',
     model: overrides.model ?? 'Speedmaster',
     status: overrides.status ?? 'owned',
     imageUrl: null,
     notes: null,
+  }
+}
+
+// Phase 81 Plan 03: minimal CatalogEntryWithCanonical shape for getCatalogById
+// mocks. Fields not read by addWatch/editWatch are left minimal — the branches
+// only touch canonicalBrand, canonicalFamily, brand, model, reference,
+// styleTags (enrichment-skip gate in addWatch catalogId branch).
+function mkCatalogRow(
+  overrides: Partial<{
+    canonicalBrand: string
+    canonicalFamily: string
+    brand: string
+    model: string
+  }> = {},
+) {
+  return {
+    id: VALID_CATALOG_UUID,
+    brand: overrides.brand ?? 'Hamilton Watch', // drift denorm
+    model: overrides.model ?? 'Khaki Field', // drift denorm
+    reference: null,
+    canonicalBrand: overrides.canonicalBrand ?? 'Hamilton',
+    canonicalFamily: overrides.canonicalFamily ?? 'Khaki Field Mechanical',
+    styleTags: [] as string[],
+    // Additional fields getCatalogById returns — kept null/empty to avoid
+    // touching enrichment paths in the Server Actions under test.
+    designTraits: [],
+    roleTags: [],
+    complications: [],
+    dialColor: null,
+    caseSizeMm: null,
+    lugToLugMm: null,
+    waterResistanceM: null,
+    movement: null,
+    strapType: null,
+    crystalType: null,
+    productionYear: null,
+    imageUrl: null,
+    isChronometer: null,
   }
 }
 
@@ -227,5 +277,186 @@ describe('Phase 75 — watch mutations invalidate viewer:${user.id}:recs (DISC-R
       .mocked(revalidateTag)
       .mock.calls.filter((c) => c[0] === RECS_TAG)
     expect(staleCalls).toHaveLength(0)
+  })
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Phase 81 DISP-01/02 — canonical write-time overwrite unit cases.
+  //
+  // Cases 5-8 cover the four surfaces of the canonical-overwrite contract:
+  //   5. addWatch catalogId branch — canonical strings from getCatalogById
+  //   6. addWatch user-input branch — canonical strings from upsert result
+  //   7. editWatch on catalog-linked watch — overwrite fires
+  //   8. editWatch on non-catalog-linked watch — overwrite SKIPPED
+  //
+  // Each case inspects the DAL-writer mock's captured arg to assert the
+  // canonical string actually landed in the persist payload. The Phase 75
+  // 4 cache-invalidation cases above stay green (updateTag semantic
+  // unchanged; mock return-shape widenings absorb transparently).
+  // ──────────────────────────────────────────────────────────────────────
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Case 5: addWatch catalogId branch — persists canonical brand/model
+  // ──────────────────────────────────────────────────────────────────────
+  it('addWatch catalogId branch — persists canonicalBrand/canonicalFamily from getCatalogById (DISP-01)', async () => {
+    // Simulate the Hamilton drift-loop fixture: catalog row's DENORM columns
+    // carry drift (`Hamilton Watch` / `Khaki Field`) but its canonical FKs
+    // resolve to `Hamilton` / `Khaki Field Mechanical`. The Server Action
+    // MUST write the CANONICAL strings, not the denorm.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(getCatalogById).mockResolvedValue(mkCatalogRow() as any)
+    vi.mocked(getMaxWishlistSortOrder).mockResolvedValue(0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(createWatch).mockResolvedValue(mkWatchRow({ status: 'owned' }) as any)
+
+    const result = await addWatch({
+      catalogId: VALID_CATALOG_UUID,
+      brand: 'Anything Client Typed',
+      model: 'Whatever Client Typed',
+      status: 'owned' as const,
+    })
+
+    expect(result.success).toBe(true)
+
+    // createWatch(userId, catalogId, payload) — payload is the third arg (idx 2).
+    const createCalls = vi.mocked(createWatch).mock.calls
+    expect(createCalls).toHaveLength(1)
+    const persistedPayload = createCalls[0][2] as {
+      brand: string
+      model: string
+    }
+    expect(persistedPayload).toMatchObject({
+      brand: 'Hamilton',
+      model: 'Khaki Field Mechanical',
+    })
+
+    // Cache-invalidation contract preserved verbatim.
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith(RECS_TAG)
+  })
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Case 6: addWatch user-input branch — persists canonical brand/model
+  //         from upsertCatalogFromUserInput's brandName/familyName
+  // ──────────────────────────────────────────────────────────────────────
+  it('addWatch user-input branch — persists canonical brand/model from upsertResult.brandName/familyName (DISP-01)', async () => {
+    // Simulate Phase 80 resolver landing on canonical Hamilton even though
+    // user typed `Hamilton Watch`. The upsert helper's returned canonical
+    // strings drive cleanData.brand/model overwrite BEFORE createPayload.
+    vi.mocked(upsertCatalogFromUserInput).mockResolvedValue({
+      catalogId: VALID_CATALOG_UUID,
+      brandName: 'Hamilton',
+      familyName: 'Khaki Field Mechanical',
+    })
+    vi.mocked(getMaxWishlistSortOrder).mockResolvedValue(0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(createWatch).mockResolvedValue(mkWatchRow({ status: 'owned' }) as any)
+
+    const result = await addWatch({
+      brand: 'Hamilton Watch', // drift — user-typed
+      model: 'Khaki Field', // drift — user-typed
+      status: 'owned' as const,
+    })
+
+    expect(result.success).toBe(true)
+
+    // createWatch(userId, catalogId, payload) — payload is the third arg (idx 2).
+    const createCalls = vi.mocked(createWatch).mock.calls
+    expect(createCalls).toHaveLength(1)
+    const persistedPayload = createCalls[0][2] as {
+      brand: string
+      model: string
+    }
+    expect(persistedPayload).toMatchObject({
+      brand: 'Hamilton',
+      model: 'Khaki Field Mechanical',
+    })
+
+    // Cache-invalidation contract preserved verbatim.
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith(RECS_TAG)
+  })
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Case 7: editWatch on catalog-linked watch — canonical overwrite fires
+  // ──────────────────────────────────────────────────────────────────────
+  it('editWatch on catalog-linked watch — overwrites brand/model with canonical strings (DISP-02)', async () => {
+    const priorRow = mkWatchRow({
+      status: 'owned',
+      brand: 'Hamilton',
+      model: 'Old Model',
+      catalogId: VALID_CATALOG_UUID,
+    })
+    const updatedRow = mkWatchRow({ status: 'owned' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(getWatchById).mockResolvedValue(priorRow as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(getCatalogById).mockResolvedValue(mkCatalogRow() as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(updateWatch).mockResolvedValue(updatedRow as any)
+
+    // User re-typed drift; server MUST canonicalize on save.
+    const result = await editWatch(VALID_UUID, {
+      brand: 'Hamilton Watch',
+      model: 'New Model Attempt',
+    })
+
+    expect(result.success).toBe(true)
+
+    // updateWatch(userId, watchId, updatePayload) — updatePayload is 3rd (idx 2).
+    const updateCalls = vi.mocked(updateWatch).mock.calls
+    expect(updateCalls).toHaveLength(1)
+    const persistedPayload = updateCalls[0][2] as {
+      brand?: string
+      model?: string
+    }
+    expect(persistedPayload).toMatchObject({
+      brand: 'Hamilton',
+      model: 'Khaki Field Mechanical',
+    })
+
+    // Ownership + FK contracts intact.
+    expect(vi.mocked(getCatalogById)).toHaveBeenCalledWith(VALID_CATALOG_UUID)
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith(RECS_TAG)
+  })
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Case 8: editWatch on non-catalog-linked watch (priorRow.catalogId=null)
+  //         — canonical overwrite SKIPPED; user's typed strings persist.
+  //
+  // Guards the D-81 Specifics § "Legacy watches with catalogId = null bypass
+  // the overwrite" contract. Phase 17 `onDelete: 'set null'` schema means a
+  // catalog-row deletion leaves a stranded watch — there's no FK to resolve,
+  // so canonical overwrite gracefully no-ops (fail-safe over fail-loud).
+  // ──────────────────────────────────────────────────────────────────────
+  it('editWatch on non-catalog-linked watch — canonical overwrite SKIPPED, user typed strings persist (DISP-02 legacy)', async () => {
+    const priorRow = mkWatchRow({
+      status: 'owned',
+      brand: 'Hamilton',
+      model: 'Some Model',
+      catalogId: null, // Phase 17 ON DELETE SET NULL legacy row
+    })
+    const updatedRow = mkWatchRow({ status: 'owned' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(getWatchById).mockResolvedValue(priorRow as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(updateWatch).mockResolvedValue(updatedRow as any)
+
+    const result = await editWatch(VALID_UUID, {
+      brand: 'Whatever Typed',
+    })
+
+    expect(result.success).toBe(true)
+
+    // The DISP-02 guard MUST short-circuit before touching getCatalogById.
+    // (There's no catalogId to resolve — overwrite would be a no-op with a
+    // wasted round-trip.)
+    expect(vi.mocked(getCatalogById)).not.toHaveBeenCalled()
+
+    // User's typed string persists — the legacy edge case gracefully bypasses.
+    const updateCalls = vi.mocked(updateWatch).mock.calls
+    expect(updateCalls).toHaveLength(1)
+    const persistedPayload = updateCalls[0][2] as { brand?: string }
+    expect(persistedPayload).toMatchObject({ brand: 'Whatever Typed' })
+
+    // Cache-invalidation contract preserved on the legacy path too.
+    expect(vi.mocked(updateTag)).toHaveBeenCalledWith(RECS_TAG)
   })
 })
