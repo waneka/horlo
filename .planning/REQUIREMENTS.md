@@ -55,10 +55,10 @@ Data migration backfills every existing watch and catalog row to canonical brand
 
 The home rail's exclusion key + multi-brand-match scoring + rationale templates read brand/family from canonical FKs.
 
-- [ ] **RECO-01**: `getRecommendationsForViewer` exclusion key in `src/data/recommendations.ts` switches from `lower(trim(watches.brand)) | lower(trim(watches.model))` to `watches_catalog.brand_id | watches_catalog.family_id` (joined via `watches.catalogId`). `Brut Date` vs `Brut Datejust` and `Héron` vs `Héron Watches` no longer surface a user's own watch in the rail.
-- [ ] **RECO-02**: `topUpFromCatalogPopularity` multi-brand match in `src/data/recommendations.ts` switches from `lower(trim(watches_catalog.brand)) IN (...)` to `brand_id IN (...)`. Multi-brand `+100` fires reliably for every owned brand regardless of free-text spelling.
-- [ ] **RECO-03**: `topBrandOf` in `src/lib/recommendations.ts` operates on resolved `brand_id` (counted from joined catalog rows), not on free-text `watches.brand`. Returns canonical `brands.name` string for downstream rationale template substitution.
-- [ ] **RECO-04**: Rationale templates (`Fans of {brand} love this`, `Matches your {style} collection`) read `{brand}` from joined `brands.name`, not `watches.brand` or `watches_catalog.brand`. Display drift across the rail is eliminated.
+- [x] **RECO-01**: `getRecommendationsForViewer` exclusion key in `src/data/recommendations.ts` switches from `lower(trim(watches.brand)) | lower(trim(watches.model))` to `watches_catalog.brand_id | watches_catalog.family_id` (joined via `watches.catalogId`). `Brut Date` vs `Brut Datejust` and `Héron` vs `Héron Watches` no longer surface a user's own watch in the rail.
+- [x] **RECO-02**: `topUpFromCatalogPopularity` multi-brand match in `src/data/recommendations.ts` switches from `lower(trim(watches_catalog.brand)) IN (...)` to `brand_id IN (...)`. Multi-brand `+100` fires reliably for every owned brand regardless of free-text spelling.
+- [x] **RECO-03**: `topBrandOf` in `src/lib/recommendations.ts` operates on resolved `brand_id` (counted from joined catalog rows), not on free-text `watches.brand`. Returns canonical `brands.name` string for downstream rationale template substitution.
+- [x] **RECO-04**: Rationale templates (`Fans of {brand} love this`, `Matches your {style} collection`) read `{brand}` from joined `brands.name`, not `watches.brand` or `watches_catalog.brand`. Display drift across the rail is eliminated.
 
 ### Display (DISP)
 
@@ -124,10 +124,10 @@ Explicitly excluded from v8.4:
 | INGEST-02 | Phase 80 | Pending |
 | INGEST-03 | Phase 80 | Pending |
 | INGEST-04 | Phase 80 | Pending |
-| RECO-01 | Phase 81 | Pending |
-| RECO-02 | Phase 81 | Pending |
-| RECO-03 | Phase 81 | Pending |
-| RECO-04 | Phase 81 | Pending |
+| RECO-01 | Phase 81 | Complete |
+| RECO-02 | Phase 81 | Complete |
+| RECO-03 | Phase 81 | Complete |
+| RECO-04 | Phase 81 | Complete |
 | DISP-01 | Phase 81 | Pending |
 | DISP-02 | Phase 81 | Pending |
 | DISP-03 | Phase 79 | Complete |
