@@ -3,7 +3,13 @@ import 'server-only'
 import { and, asc, desc, eq, isNotNull, ne, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { profiles, profileSettings, watchesCatalog } from '@/db/schema'
+import {
+  brands,
+  profiles,
+  profileSettings,
+  watchesCatalog,
+  watchFamilies,
+} from '@/db/schema'
 import { getWatchesByUser } from '@/data/watches'
 import { getPreferencesByUser } from '@/data/preferences'
 import { getAllWearEventsByUser } from '@/data/wearEvents'
@@ -12,6 +18,35 @@ import { computeTasteOverlap } from '@/lib/tasteOverlap'
 import { rationaleFor, topBrandOf, dominantStyleOf } from '@/lib/recommendations'
 import type { Recommendation } from '@/lib/discoveryTypes'
 import type { Watch } from '@/lib/types'
+
+/**
+ * Phase 81 D-81-02 — shared exclusion-key helper.
+ *
+ * Used by THREE call sites in this file to guarantee IDENTICAL key format
+ * across (a) the viewer's owned/wishlist/grail exclusion set, (b) the peer-
+ * pool candidateMap keying, and (c) the synthetic-Watch keying inside
+ * `topUpFromCatalogPopularity`. Any drift between these three would surface
+ * as a self-in-own-rail bug (Pitfall 5, HIGH cost — the exact class of bug
+ * Phase 81 exists to close).
+ *
+ * Post-Phase-80 all catalog rows have brand_id + family_id NOT NULL, so all
+ * watches with a non-null `catalogId` propagate brandId + familyId via the
+ * LEFT JOIN in `getWatchesByUser`. The `brand|model` fallback is defensive
+ * belt-and-suspenders for the Phase 17 `onDelete: 'set null'` edge case
+ * (catalog row wiped → watches.catalogId=null → brandId=undefined via LEFT
+ * JOIN nullable propagation). D-81 leaves the fallback in place per
+ * Deferred Idea §Stripping fallback.
+ */
+function excludeKey(w: {
+  brandId?: string
+  familyId?: string
+  brand: string
+  model: string
+}): string {
+  return w.brandId && w.familyId
+    ? `${w.brandId}|${w.familyId}`
+    : `${w.brand.trim().toLowerCase()}|${w.model.trim().toLowerCase()}`
+}
 
 /**
  * Pool of top similar collectors from which we deterministically sample
@@ -108,18 +143,46 @@ export async function getRecommendationsForViewer(
   // ordering — back-compat with the prior behavior. These same values are
   // also derived per-candidate inside rationaleFor below; that loop is left
   // alone (this change only avoids redundant derivation inside the top-up).
-  // Phase 81 Task 1 boundary — minimal glue to keep typecheck green.
-  // Task 2 replaces this stub with a real brandNameLookup + viewerOwnedBrandIds
-  // wire-up + brandId-keyed exclusion set.
-  const viewerTopBrand = topBrandOf(viewerWatches, new Map<string, string>())
+  //
+  // Phase 81 D-81-05 — brandNameLookup is built INSIDE this function scope
+  // (never memoized at module scope — T-81-P02-01 cross-viewer poisoning
+  // mitigation). Sourced from `SELECT id, name FROM brands WHERE id IN (…)`
+  // using canonical FKs off the LEFT-JOIN-projected viewerWatches.
+  const viewerBrandIds = [
+    ...new Set(
+      viewerWatches
+        .map((w) => w.brandId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
+  // Pitfall 2 mitigation — `sql.join([], …)` emits `IN ()` (Postgres 42601).
+  // Skip the SELECT entirely when the viewer has zero brandId-keyed watches.
+  const brandNameRows =
+    viewerBrandIds.length === 0
+      ? []
+      : await db
+          .select({ id: brands.id, name: brands.name })
+          .from(brands)
+          .where(
+            sql`${brands.id} IN (${sql.join(
+              viewerBrandIds.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          )
+  const brandNameLookup = new Map<string, string>(
+    brandNameRows.map((r) => [r.id, r.name]),
+  )
+  const viewerTopBrand = topBrandOf(viewerWatches, brandNameLookup)
   const viewerDominantStyleLabel = dominantStyleOf(viewerWatches)?.label ?? null
-  // Set of ALL owned brand strings (lowercased, trimmed) — used by the top-up
-  // to score ANY owned brand match, not just `topBrandOf`'s alphabetical winner.
-  // Fixes the single-brand-bias surfaced by live walk after 260623-mn3 shipped.
-  const viewerOwnedBrandsLower = new Set(
+  // Phase 81 D-81-02 — SET of owned brand FKs (was: lowercase brand strings).
+  // Fixes RECO-02 literally: Hamilton + Hamilton Watch catalog rows both
+  // trigger the +100 owned-brand boost against canonical Hamilton brand_id.
+  // Legacy watches (brandId=undefined) drop out — under the old strings
+  // impl they inflated stale-string totals.
+  const viewerOwnedBrandIds = new Set(
     viewerWatches
-      .filter((w) => w.status === 'owned')
-      .map((w) => w.brand.trim().toLowerCase()),
+      .filter((w) => w.status === 'owned' && w.brandId)
+      .map((w) => w.brandId!),
   )
 
   // 3. Candidate public collectors (T-10-04-01: require BOTH profile_public
@@ -197,9 +260,15 @@ export async function getRecommendationsForViewer(
   const seeds = rankedTop30.slice(0, SAMPLED_SEED_SIZE)
 
   // 6. Build candidate pool. Exclude viewer's owned/wishlist/grail (C-02 +
-  //    normalized-dedupe per C-07: .trim().toLowerCase()).
-  const norm = (w: { brand: string; model: string }) =>
-    `${w.brand.trim().toLowerCase()}|${w.model.trim().toLowerCase()}`
+  //    normalized-dedupe per C-07).
+  //
+  // Phase 81 D-81-02 — keys on `${brandId}|${familyId}` when both FKs are
+  // present (canonical identity, drift-immune), with `${brand}|${model}`
+  // string fallback for the ON DELETE SET NULL legacy case. `excludeKey`
+  // is used at ALL THREE sites (this exclusion loop + candidateMap key
+  // below + synthetic-Watch key inside topUpFromCatalogPopularity) so the
+  // identity property holds end-to-end (Pitfall 5 mitigation).
+  const norm = excludeKey
   const excluded = new Set<string>()
   for (const v of viewerWatches) {
     if (v.status === 'owned' || v.status === 'wishlist' || v.status === 'grail') {
@@ -256,7 +325,7 @@ export async function getRecommendationsForViewer(
       needed,
       viewerTopBrand,
       viewerDominantStyleLabel,
-      viewerOwnedBrandsLower,
+      viewerOwnedBrandIds,
     )
   }
 
@@ -400,7 +469,7 @@ export async function topUpFromCatalogPopularity(
   needed: number,
   viewerTopBrand: { brandId: string; brandName: string } | null,
   viewerDominantStyleLabel: string | null,
-  viewerOwnedBrandsLower: Set<string>,
+  viewerOwnedBrandIds: Set<string>,
 ): Promise<void> {
   if (needed <= 0) return
 
@@ -412,51 +481,65 @@ export async function topUpFromCatalogPopularity(
     ne(watchesCatalog.imageUrl, ''),
   )
 
+  // Phase 81 D-81-03 — INNER JOIN brands + watch_families so the synthetic
+  // Watch rows carry CANONICAL brand + model (from brands.name / watch_families.name)
+  // instead of the potentially-drift `watches_catalog.brand`/`.model` denorm
+  // columns. INNER JOIN is safe post-Phase-80: watches_catalog.brand_id +
+  // family_id are NOT NULL → JOINs cannot lose rows.
   const popularityRows = await db
     .select({
       id: watchesCatalog.id,
-      brand: watchesCatalog.brand,
-      model: watchesCatalog.model,
+      brand: brands.name,
+      model: watchFamilies.name,
+      brandId: watchesCatalog.brandId,
+      familyId: watchesCatalog.familyId,
       reference: watchesCatalog.reference,
       imageUrl: watchesCatalog.imageUrl,
       ownersCount: watchesCatalog.ownersCount,
       styleTags: watchesCatalog.styleTags,
     })
     .from(watchesCatalog)
+    .innerJoin(brands, eq(brands.id, watchesCatalog.brandId))
+    .innerJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))
     .where(hasImage)
-    .orderBy(desc(watchesCatalog.ownersCount), asc(watchesCatalog.brand))
+    // Tiebreak by canonical `brands.name` for consistency with the JOIN
+    // (was: `watchesCatalog.brand` denorm — could drift from canonical).
+    .orderBy(desc(watchesCatalog.ownersCount), asc(brands.name))
     .limit(60)
 
-  // Second query: ALL catalog rows whose brand matches any owned brand
-  // (case-insensitive). Guarantees owned brands surface even when their
-  // alphabetical position pushes them outside the popularity LIMIT 60.
-  // Skipped when viewer owns nothing (degenerate but valid signature).
+  // Second query: ALL catalog rows whose brand_id matches any viewer-owned
+  // brand_id (canonical FK identity — closes RECO-02). Skipped when viewer
+  // owns zero brandId-keyed watches (Pitfall 2 guard — `sql.join([], …)`
+  // would emit `IN ()` and Postgres 42601s).
   //
-  // SQL gotcha (post-260623-pzz revert): Drizzle's `sql\`= ANY(${array})\``
-  // emits a Postgres ROW literal `($1,$2,...)`, NOT an array — Postgres
-  // rejects with `42809: op ANY/ALL (array) requires array on right side`.
-  // Use `IN (sql.join(arr.map(b => sql\`${b}\`), sql\`, \`))` instead — it
+  // Anti-pitfall correct shape per [[drizzle-sql-any-array-pitfall]] — the
+  // Drizzle sql-ANY-array anti-pattern that crashed prod home 2026-06-23
+  // (digest 2193629549) is intentionally NOT introduced. `IN (sql.join(...))`
   // emits correct `IN ($1,$2,...)` syntax. Verified against local Supabase
-  // before commit.
+  // before commit; forward-armor grep for the anti-pattern returns 0.
   let ownedBrandRows: typeof popularityRows = []
-  if (viewerOwnedBrandsLower.size > 0) {
-    const brandArr = [...viewerOwnedBrandsLower]
+  if (viewerOwnedBrandIds.size > 0) {
+    const brandArr = [...viewerOwnedBrandIds]
     ownedBrandRows = await db
       .select({
         id: watchesCatalog.id,
-        brand: watchesCatalog.brand,
-        model: watchesCatalog.model,
+        brand: brands.name,
+        model: watchFamilies.name,
+        brandId: watchesCatalog.brandId,
+        familyId: watchesCatalog.familyId,
         reference: watchesCatalog.reference,
         imageUrl: watchesCatalog.imageUrl,
         ownersCount: watchesCatalog.ownersCount,
         styleTags: watchesCatalog.styleTags,
       })
       .from(watchesCatalog)
+      .innerJoin(brands, eq(brands.id, watchesCatalog.brandId))
+      .innerJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))
       .where(
         and(
           hasImage,
-          sql`lower(trim(${watchesCatalog.brand})) IN (${sql.join(
-            brandArr.map((b) => sql`${b}`),
+          sql`${watchesCatalog.brandId} IN (${sql.join(
+            brandArr.map((id) => sql`${id}`),
             sql`, `,
           )})`,
         ),
@@ -472,12 +555,13 @@ export async function topUpFromCatalogPopularity(
     rows.push(r)
   }
 
-  // Score each row by viewer taste signal. Brand match fires for ANY owned
-  // brand (not just topBrandOf winner), case-insensitive. Style match
-  // unchanged from 260623-mn3.
+  // Score each row by viewer taste signal. Phase 81 D-81-03 — brand match
+  // now fires on canonical brand_id set membership (was: case-insensitive
+  // string equality on denorm brand text). Closes the Hamilton / Hamilton
+  // Watch drift-boost bug (RECO-02). Style match unchanged from 260623-mn3.
   const styleLabelLower = viewerDominantStyleLabel?.toLowerCase() ?? null
   const scored = rows.map((row) => {
-    const brandMatch = viewerOwnedBrandsLower.has(row.brand.trim().toLowerCase())
+    const brandMatch = viewerOwnedBrandIds.has(row.brandId)
     const styleMatch =
       styleLabelLower !== null &&
       (row.styleTags ?? []).some((s) => s.toLowerCase() === styleLabelLower)
@@ -496,24 +580,39 @@ export async function topUpFromCatalogPopularity(
 
   // Pre-seed brand counts from peer-pool entries already in candidateMap
   // so the variety cap applies across the FULL rail, not just top-up rows.
+  // Phase 81 D-81-03 — key on canonical `brandId` when available, with the
+  // lowercased-string fallback for legacy (catalogId=null) peer watches.
   const brandCount = new Map<string, number>()
   for (const c of candidateMap.values()) {
-    const bk = c.watch.brand.trim().toLowerCase()
+    const bk = c.watch.brandId ?? c.watch.brand.trim().toLowerCase()
     brandCount.set(bk, (brandCount.get(bk) ?? 0) + 1)
   }
 
   let appended = 0
   for (const { row } of scored) {
     if (appended >= needed) break
-    const key = `${row.brand.trim().toLowerCase()}|${row.model.trim().toLowerCase()}`
+    // Phase 81 D-81-02 — synthetic key uses the SAME `excludeKey` helper as
+    // the viewer's exclusion set + candidateMap keying above. Row always
+    // carries brandId + familyId (INNER JOIN guarantees), so this resolves
+    // to `${brandId}|${familyId}` — identity match with viewer's exclusion
+    // key when the same catalog row is involved (Pitfall 5 mitigation).
+    const key = excludeKey(row)
     if (excluded.has(key)) continue
     if (candidateMap.has(key)) continue
-    const brandKey = row.brand.trim().toLowerCase()
+    // Variety cap keyed on canonical brand_id (INNER JOIN guarantees non-null).
+    const brandKey = row.brandId
     if ((brandCount.get(brandKey) ?? 0) >= MAX_PER_BRAND_IN_TOPUP) continue
+    // Phase 81 D-81-03 — synthetic Watch carries the JOIN-derived canonical
+    // brand + model AND the FK identity (brandId + familyId). The FK fields
+    // are the load-bearing addition — without them, the exclusion-key match
+    // between viewer + synthetic paths falls back to string keys and drift-
+    // branded rows leak through (self-in-own-rail — Pitfall 5).
     const syntheticWatch: Watch = {
       id: row.id,
       brand: row.brand,
       model: row.model,
+      brandId: row.brandId,
+      familyId: row.familyId,
       status: 'owned',
       movement: 'auto',
       complications: [],
@@ -532,6 +631,6 @@ export async function topUpFromCatalogPopularity(
     appended++
   }
   // viewerTopBrand intentionally unused inside this function — caller still
-  // derives it for the rationaleFor rule loop on peer-pool watches.
+  // threads it through per-candidate rationaleFor contexts.
   void viewerTopBrand
 }

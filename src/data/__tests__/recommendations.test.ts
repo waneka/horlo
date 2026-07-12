@@ -13,11 +13,25 @@
 // `mulberry32` (D-08) which the rotation logic depends on — these run
 // without any DB or data-layer mocking.
 //
+// Phase 81 Plan 02 extensions:
+//
+//   Case 5: exclusion-key identity  — viewer owns Watch with (brandId, familyId);
+//                                     top-up returns catalog row with same
+//                                     (brandId, familyId) but drift denorm brand
+//                                     string → synthetic candidate DROPPED
+//                                     (Pitfall 5 — self-in-own-rail identity check)
+//   Case 6: synthetic FK propagation — top-up rows carry brandId + familyId;
+//                                     synthetic Watch surfaces JOIN-derived
+//                                     canonical brand string (not row denorm)
+//   Case 7: brandNameLookup empty guard — viewer with zero brandId watches
+//                                     never awaits the brands SELECT
+//                                     (Pitfall 2 — sql.join(empty, …) guard)
+//
 // Test config notes:
 //   - jsdom default per D-17 (no vitest environment-override directive)
-//   - vi.mock('@/db') intercepts BOTH the public-profiles query AND the
-//     watchesCatalog top-up query via a single fluent-chain factory routed
-//     by the table passed to .from()
+//   - vi.mock('@/db') intercepts the public-profiles query AND the watchesCatalog
+//     top-up query AND (Phase 81) the brands brandNameLookup query via a single
+//     fluent-chain factory routed by the table passed to .from()
 //   - vi.mock the per-user DALs (watches/preferences/wearEvents) so seed
 //     collectors' owned-watches lists are deterministic per case
 //   - vi.useFakeTimers + vi.setSystemTime control the 6h windowBucket
@@ -42,11 +56,19 @@ let catalogTopUpResolver: () => Promise<
     id: string
     brand: string
     model: string
+    brandId: string
+    familyId: string
     reference: string | null
     imageUrl: string | null
     ownersCount: number
     styleTags: string[]
   }>
+> = async () => []
+
+// Phase 81 D-81-05 — brandNameLookup resolver. Routes to the `brands` SELECT
+// path in getRecommendationsForViewer.
+let brandNameLookupResolver: () => Promise<
+  Array<{ id: string; name: string }>
 > = async () => []
 
 // Per-user resolvers keyed by userId — used by getWatchesByUser mock.
@@ -59,7 +81,7 @@ vi.mock('@/db', () => {
   // The watchesCatalog chain ends in `.limit(...)`, the profiles chain ends
   // in `.where(...)`; both are awaited as the final step.
   const makeChain = () => {
-    let routedTo: 'profiles' | 'catalog' | null = null
+    let routedTo: 'profiles' | 'catalog' | 'brands' | null = null
     const chain: Record<string, unknown> = {}
     const passthrough = () => chain
     chain.select = passthrough
@@ -70,10 +92,12 @@ vi.mock('@/db', () => {
       // Simpler: each schema symbol mock returns a tagged object below.
       const t = table as { __tag?: string } | undefined
       if (t?.__tag === 'watchesCatalog') routedTo = 'catalog'
+      else if (t?.__tag === 'brands') routedTo = 'brands'
       else routedTo = 'profiles'
       return chain
     }
     chain.innerJoin = passthrough
+    chain.leftJoin = passthrough
     chain.where = (...args: unknown[]) => {
       void args
       // Profiles terminal — return a thenable that resolves to the resolver.
@@ -81,6 +105,15 @@ vi.mock('@/db', () => {
         return {
           then: (resolve: (v: Array<{ id: string }>) => unknown) =>
             publicProfilesResolver().then(resolve),
+        }
+      }
+      // Brands terminal — Phase 81 brandNameLookup SELECT: chain is
+      // `.select(...).from(brands).where(...)` with no orderBy/limit tail.
+      if (routedTo === 'brands') {
+        return {
+          then: (
+            resolve: (v: Array<{ id: string; name: string }>) => unknown,
+          ) => brandNameLookupResolver().then(resolve),
         }
       }
       // Catalog: support BOTH the popularity-path chain (.where().orderBy().limit())
@@ -123,10 +156,28 @@ vi.mock('@/db/schema', () => ({
     id: { __col: 'watchesCatalog.id' },
     brand: { __col: 'watchesCatalog.brand' },
     model: { __col: 'watchesCatalog.model' },
+    // Phase 81 — brandId + familyId added to the mock so INNER JOIN eq()
+    // + the brand_id IN clause typecheck against the mock schema tag.
+    brandId: { __col: 'watchesCatalog.brandId' },
+    familyId: { __col: 'watchesCatalog.familyId' },
     reference: { __col: 'watchesCatalog.reference' },
     imageUrl: { __col: 'watchesCatalog.imageUrl' },
     ownersCount: { __col: 'watchesCatalog.ownersCount' },
     styleTags: { __col: 'watchesCatalog.styleTags' },
+  },
+  // Phase 81 — brands mock, tagged so the fluent-chain factory routes the
+  // brandNameLookup SELECT to brandNameLookupResolver.
+  brands: {
+    __tag: 'brands',
+    id: { __col: 'brands.id' },
+    name: { __col: 'brands.name' },
+  },
+  // Phase 81 — watchFamilies mock, targeted by the INNER JOIN inside
+  // topUpFromCatalogPopularity.
+  watchFamilies: {
+    __tag: 'watchFamilies',
+    id: { __col: 'watchFamilies.id' },
+    name: { __col: 'watchFamilies.name' },
   },
 }))
 
@@ -315,6 +366,7 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     vi.clearAllMocks()
     publicProfilesResolver = async () => []
     catalogTopUpResolver = async () => []
+    brandNameLookupResolver = async () => []
     watchesByUser = new Map()
     vi.useFakeTimers()
   })
@@ -377,7 +429,9 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
   // pure-popularity, AND real catalog styleTags project onto synthetic rows
   // so rationale templates fire (quick task 260623-mn3); EXTENDED by
   // quick task 260623-pzz with three new assertions covering multi-brand
-  // SET-based match, per-brand variety cap, and pool-broadening call count.
+  // SET-based match, per-brand variety cap, and pool-broadening call count;
+  // Phase 81 Plan 02 — catalog rows carry brandId + familyId, viewer's
+  // rolex-uuid/tudor-uuid brandIds drive canonical set membership.
   // ──────────────────────────────────────────────────────────────────────
   it('sparse-pool top-up: brand-match outranks style-match outranks pure-popularity, and real styleTags project onto synthetic rows so rationale templates fire', async () => {
     // 2 peers seed the pool (peer-0 + peer-1 each own 1 unrelated watch).
@@ -386,16 +440,24 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     const profiles = buildSeedPool(2)
     publicProfilesResolver = async () => profiles
 
-    // 4-watch fixture (3 Rolex + 1 Tudor) — topBrandOf still returns 'Rolex'
-    // (3>1), but viewerOwnedBrandsLower is now {rolex, tudor}. This exercises
-    // the multi-brand SET match (260623-pzz). dominantStyleOf still returns
-    // 'sport' with share 1.0 (all four watches share styleTags: ['sport']).
+    // 4-watch fixture (3 Rolex + 1 Tudor) with canonical brandIds — Phase 81
+    // topBrandOf returns { brandId: 'rolex-uuid', brandName: 'Rolex' } (3>1),
+    // viewerOwnedBrandIds is now {rolex-uuid, tudor-uuid}. All four watches
+    // share styleTags: ['sport'] so dominantStyleOf returns 'sport' share 1.0.
     watchesByUser.set('viewer-1', [
-      mkWatch({ id: 'v-1', brand: 'Rolex', model: 'Submariner', styleTags: ['sport'] }),
-      mkWatch({ id: 'v-2', brand: 'Rolex', model: 'Explorer',   styleTags: ['sport'] }),
-      mkWatch({ id: 'v-3', brand: 'Rolex', model: 'GMT',        styleTags: ['sport'] }),
-      mkWatch({ id: 'v-4', brand: 'Tudor', model: 'Black Bay',  styleTags: ['sport'] }),
+      mkWatch({ id: 'v-1', brand: 'Rolex', model: 'Submariner', styleTags: ['sport'], brandId: 'rolex-uuid', familyId: 'submariner-uuid' }),
+      mkWatch({ id: 'v-2', brand: 'Rolex', model: 'Explorer',   styleTags: ['sport'], brandId: 'rolex-uuid', familyId: 'explorer-uuid' }),
+      mkWatch({ id: 'v-3', brand: 'Rolex', model: 'GMT',        styleTags: ['sport'], brandId: 'rolex-uuid', familyId: 'gmt-uuid' }),
+      mkWatch({ id: 'v-4', brand: 'Tudor', model: 'Black Bay',  styleTags: ['sport'], brandId: 'tudor-uuid', familyId: 'black-bay-uuid' }),
     ])
+
+    // brandNameLookup — 2 rows, one per owned canonical brandId. Feeds
+    // topBrandOf's canonical-name resolution + Phase 81 rationaleFor's
+    // viewerTopBrand.brandName substitution.
+    brandNameLookupResolver = async () => [
+      { id: 'rolex-uuid', name: 'Rolex' },
+      { id: 'tudor-uuid', name: 'Tudor' },
+    ]
 
     // 10 rows: 4 Rolex (one brand-match-only from 260623-mn3 + three new for
     // the variety-cap test), 1 Seiko (style-match), 1 Tudor (brand-match via
@@ -416,20 +478,21 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     catalogTopUpResolver = async () => {
       catalogResolverCalls++
       return [
-        // Deliberately interleaved so fetch-order != score-order.
-        { id: 'cat-omega', brand: 'Omega', model: 'Speedmaster', reference: '310', imageUrl: null, ownersCount: 80, styleTags: ['casual'] },
-        { id: 'cat-rolex', brand: 'Rolex', model: 'Datejust',    reference: '126200', imageUrl: null, ownersCount: 5, styleTags: ['dress'] },
-        { id: 'cat-cartier', brand: 'Cartier', model: 'Tank',    reference: 'WSTA',   imageUrl: null, ownersCount: 60, styleTags: ['dress'] },
-        { id: 'cat-seiko', brand: 'Seiko', model: 'SKX007',      reference: 'SKX',    imageUrl: null, ownersCount: 99, styleTags: ['sport'] },
-        { id: 'cat-filler1', brand: 'Zenith', model: 'Defy',     reference: 'DEFY',   imageUrl: null, ownersCount: 10, styleTags: ['casual'] },
-        { id: 'cat-filler2', brand: 'Yema', model: 'Superman',   reference: 'SUP',    imageUrl: null, ownersCount: 8,  styleTags: ['casual'] },
+        // Deliberately interleaved so fetch-order != score-order. Phase 81 —
+        // each row carries brandId + familyId (INNER JOIN would populate).
+        { id: 'cat-omega',   brand: 'Omega',   model: 'Speedmaster',     brandId: 'omega-uuid',   familyId: 'speedmaster-uuid',    reference: '310',    imageUrl: null, ownersCount: 80, styleTags: ['casual'] },
+        { id: 'cat-rolex',   brand: 'Rolex',   model: 'Datejust',        brandId: 'rolex-uuid',   familyId: 'datejust-uuid',       reference: '126200', imageUrl: null, ownersCount: 5,  styleTags: ['dress'] },
+        { id: 'cat-cartier', brand: 'Cartier', model: 'Tank',            brandId: 'cartier-uuid', familyId: 'tank-uuid',           reference: 'WSTA',   imageUrl: null, ownersCount: 60, styleTags: ['dress'] },
+        { id: 'cat-seiko',   brand: 'Seiko',   model: 'SKX007',          brandId: 'seiko-uuid',   familyId: 'skx007-uuid',         reference: 'SKX',    imageUrl: null, ownersCount: 99, styleTags: ['sport'] },
+        { id: 'cat-filler1', brand: 'Zenith',  model: 'Defy',            brandId: 'zenith-uuid',  familyId: 'defy-uuid',           reference: 'DEFY',   imageUrl: null, ownersCount: 10, styleTags: ['casual'] },
+        { id: 'cat-filler2', brand: 'Yema',    model: 'Superman',        brandId: 'yema-uuid',    familyId: 'superman-uuid',       reference: 'SUP',    imageUrl: null, ownersCount: 8,  styleTags: ['casual'] },
         // 260623-pzz extensions: 1 Tudor (owned-set brand-match) + 3 more
         // Rolex rows (variety-cap stress — all score 150+, would dominate
         // the top-up unbounded).
-        { id: 'cat-tudor',   brand: 'Tudor', model: 'Pelagos',         reference: '25600',  imageUrl: null, ownersCount: 30, styleTags: ['sport'] },
-        { id: 'cat-rolex-2', brand: 'Rolex', model: 'GMT Master II',   reference: '126710', imageUrl: null, ownersCount: 90, styleTags: ['sport'] },
-        { id: 'cat-rolex-3', brand: 'Rolex', model: 'Submariner Date', reference: '126610', imageUrl: null, ownersCount: 85, styleTags: ['sport'] },
-        { id: 'cat-rolex-4', brand: 'Rolex', model: 'Daytona',         reference: '116500', imageUrl: null, ownersCount: 70, styleTags: ['sport'] },
+        { id: 'cat-tudor',   brand: 'Tudor',   model: 'Pelagos',         brandId: 'tudor-uuid',   familyId: 'pelagos-uuid',        reference: '25600',  imageUrl: null, ownersCount: 30, styleTags: ['sport'] },
+        { id: 'cat-rolex-2', brand: 'Rolex',   model: 'GMT Master II',   brandId: 'rolex-uuid',   familyId: 'gmt-master-ii-uuid',  reference: '126710', imageUrl: null, ownersCount: 90, styleTags: ['sport'] },
+        { id: 'cat-rolex-3', brand: 'Rolex',   model: 'Submariner Date', brandId: 'rolex-uuid',   familyId: 'submariner-date-uuid',reference: '126610', imageUrl: null, ownersCount: 85, styleTags: ['sport'] },
+        { id: 'cat-rolex-4', brand: 'Rolex',   model: 'Daytona',         brandId: 'rolex-uuid',   familyId: 'daytona-uuid',        reference: '116500', imageUrl: null, ownersCount: 70, styleTags: ['sport'] },
       ]
     }
 
@@ -494,23 +557,10 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
 
     // ── 260623-pzz new assertions ──────────────────────────────────────
 
-    // 7a. Multi-brand surfacing: Tudor is owned (viewer's brand SET is
-    //     {rolex, tudor}) so the Tudor catalog row brand-matches via the
-    //     SET — under the old single-string brandMatch (= topBrandOf only,
-    //     which returns 'Rolex' for this fixture) Tudor would have scored
-    //     only 50 internally (style-only) and tied with Seiko at 50.030
-    //     vs 50.099, so Seiko would beat it in internal sort; under the
-    //     new SET-membership check Tudor scores 150 internally (brand +
-    //     style). The OBSERVABLE diff in `recs` (the outer re-sort
-    //     flattens rule-matched rows to score=50 and alpha-tiebreaks by
-    //     brand, so Seiko < Tudor in the final list regardless) is that
-    //     Tudor surfaces AHEAD of the community-fallback rows (Cartier,
-    //     Omega) because it lands in the rule-matched 50-bucket — which
-    //     it does under both impls. The strict differentiator is that the
-    //     cap (7b) frees enough slots that Cartier+Omega ALSO surface in
-    //     the synthetic top-up; under the unbounded old impl those two
-    //     get crowded out by the 4-Rolex pile and `idx('Cartier')` == -1,
-    //     so this assertion is meaningful as a cap-presence proxy too.
+    // 7a. Multi-brand surfacing: Tudor is owned (viewer's brand SET now uses
+    //     brandIds — {rolex-uuid, tudor-uuid}) so the Tudor catalog row
+    //     brand-matches via the SET. Under Phase 81 the check is on canonical
+    //     brand_id (was: case-insensitive string) — closes RECO-02.
     expect(idx('Tudor', 'Pelagos')).toBeGreaterThanOrEqual(0)
     expect(idx('Cartier', 'Tank')).toBeGreaterThanOrEqual(0)
     expect(idx('Tudor', 'Pelagos')).toBeLessThan(idx('Cartier', 'Tank'))
@@ -524,8 +574,8 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     expect(rolexCount).toBeGreaterThanOrEqual(1) // cap is 2, not 0
 
     // 7c. Pool-broadening: the catalog terminal must be awaited at least
-    //     once for the popularity slice, and (when viewerOwnedBrandsLower
-    //     is non-empty) ideally a second time for the owned-brands query.
+    //     once for the popularity slice, and (when viewerOwnedBrandIds is
+    //     non-empty) ideally a second time for the owned-brands query.
     //     Two separate queries OR a single UNION both satisfy `>= 1`; the
     //     executor's implementation choice is documented in the SUMMARY.
     //     If the executor chose the two-query strategy, this will be 2;
@@ -567,5 +617,191 @@ describe('getRecommendationsForViewer — rotation + sparse-pool top-up (D-16)',
     // Defensive: catalog top-up resolver must NOT have been awaited
     // (candidateMap.size=30 >= SPARSE_POOL_THRESHOLD=8).
     expect(catalogResolverCalls).toBe(0)
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 81 Plan 02 — new test cases.
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('getRecommendationsForViewer — Phase 81 D-81-02/03/05', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    publicProfilesResolver = async () => []
+    catalogTopUpResolver = async () => []
+    brandNameLookupResolver = async () => []
+    watchesByUser = new Map()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  // Case 5: Pitfall 5 exclusion-key identity — viewer owns a Watch with
+  // (brandId='hamilton-uuid', familyId='khaki-field-uuid'). A synthetic
+  // top-up catalog row shares the same (brandId, familyId) but a drift denorm
+  // brand ('Hamilton Watch' vs canonical 'Hamilton') AND drift denorm model.
+  // The exclusion set MUST match on FK identity — the drift row MUST be
+  // dropped from the rail even though its string keys differ. This is the
+  // load-bearing correctness check for Phase 81's whole point.
+  it('exclusion-key identity: viewer owns brandId+familyId → synthetic top-up sharing same FKs is DROPPED even with drift denorm strings (Pitfall 5)', async () => {
+    // Single peer so candidateMap.size stays sparse and top-up fires.
+    publicProfilesResolver = async () => [{ id: 'peer-0' }]
+
+    // Viewer owns Hamilton Khaki Field (canonical strings + canonical FKs).
+    watchesByUser.set('viewer-1', [
+      mkWatch({
+        id: 'v-1',
+        brand: 'Hamilton',
+        model: 'Khaki Field',
+        brandId: 'hamilton-uuid',
+        familyId: 'khaki-field-uuid',
+      }),
+    ])
+    // Peer owns something entirely different so the top-up has to fire.
+    watchesByUser.set('peer-0', [
+      mkWatch({
+        id: 'p0-w',
+        brand: 'Seiko',
+        model: 'SKX',
+        brandId: 'seiko-uuid',
+        familyId: 'skx-uuid',
+      }),
+    ])
+
+    brandNameLookupResolver = async () => [
+      { id: 'hamilton-uuid', name: 'Hamilton' },
+    ]
+
+    // Drift-branded catalog row shares canonical FKs with viewer's watch —
+    // MUST be excluded. String key `hamilton watch|khaki field mechanical`
+    // is DIFFERENT from viewer's `hamilton|khaki field` (a pre-D-81-02
+    // exclusion set would MISS this row, surfacing viewer's own family
+    // in their own rail). FK key `hamilton-uuid|khaki-field-uuid` MATCHES.
+    catalogTopUpResolver = async () => [
+      {
+        id: 'cat-hamilton-drift',
+        brand: 'Hamilton Watch', // drift denorm — canonical is 'Hamilton'
+        model: 'Khaki Field Mechanical', // drift denorm — canonical is 'Khaki Field'
+        brandId: 'hamilton-uuid', // CANONICAL FK — matches viewer's owned brand_id
+        familyId: 'khaki-field-uuid', // CANONICAL FK — matches viewer's owned family_id
+        reference: 'H69439931',
+        imageUrl: null,
+        ownersCount: 42,
+        styleTags: ['field'],
+      },
+      // A control row that MUST surface — different family_id.
+      {
+        id: 'cat-seiko',
+        brand: 'Seiko',
+        model: 'SKX007',
+        brandId: 'seiko-uuid',
+        familyId: 'skx007-uuid',
+        reference: 'SKX',
+        imageUrl: null,
+        ownersCount: 99,
+        styleTags: ['sport'],
+      },
+    ]
+
+    setBucket(200)
+    const recs = await getRecommendationsForViewer('viewer-1')
+
+    // The drift-branded Hamilton row MUST be excluded — self-in-own-rail
+    // check. Under old string-key impl the drift denorm string wouldn't
+    // match viewer's exclusion set and this would surface (Pitfall 5).
+    const hamiltonRec = recs.find((r) => r.brand === 'Hamilton Watch')
+    expect(hamiltonRec).toBeUndefined()
+
+    // The control row MUST surface — proves the top-up is running + the
+    // exclusion is not overbroad.
+    const seikoRec = recs.find((r) => r.brand === 'Seiko')
+    expect(seikoRec).toBeDefined()
+  })
+
+  // Case 6: synthetic Watch FK propagation — the JOIN-derived canonical
+  // brand string (from brands.name via INNER JOIN) surfaces in the
+  // Recommendation, not the row's original drift denorm string.
+  it('synthetic FK propagation: top-up row surfaces JOIN-derived canonical brand string in the Recommendation', async () => {
+    publicProfilesResolver = async () => [{ id: 'peer-0' }]
+    watchesByUser.set('viewer-1', [
+      mkWatch({
+        id: 'v-1',
+        brand: 'ViewerBrand',
+        model: 'ViewerModel',
+        brandId: 'viewer-brand-uuid',
+        familyId: 'viewer-family-uuid',
+      }),
+    ])
+    watchesByUser.set('peer-0', [
+      mkWatch({
+        id: 'p0-w',
+        brand: 'PeerBrand',
+        model: 'PeerModel',
+        brandId: 'peer-brand-uuid',
+        familyId: 'peer-family-uuid',
+      }),
+    ])
+    brandNameLookupResolver = async () => [
+      { id: 'viewer-brand-uuid', name: 'ViewerBrand' },
+    ]
+
+    // Under Phase 81's INNER JOIN, `row.brand` IS the canonical `brands.name`.
+    // The mock resolver simulates this — the recommender does NOT further
+    // massage the string. Assert the Recommendation's `brand` field matches.
+    catalogTopUpResolver = async () => [
+      {
+        id: 'cat-canonical',
+        brand: 'Hamilton', // canonical (as if from brands.name INNER JOIN)
+        model: 'Khaki Field', // canonical (as if from watch_families.name INNER JOIN)
+        brandId: 'hamilton-uuid',
+        familyId: 'khaki-field-uuid',
+        reference: 'H69439931',
+        imageUrl: null,
+        ownersCount: 42,
+        styleTags: ['field'],
+      },
+    ]
+
+    setBucket(300)
+    const recs = await getRecommendationsForViewer('viewer-1')
+
+    // Synthetic Hamilton row surfaces with the JOIN-derived canonical brand.
+    const rec = recs.find((r) => r.representativeWatchId === 'cat-canonical')
+    expect(rec).toBeDefined()
+    expect(rec?.brand).toBe('Hamilton')
+    expect(rec?.model).toBe('Khaki Field')
+    expect(rec?.representativeOwnerId).toBeNull() // synthetic marker
+  })
+
+  // Case 7: brandNameLookup empty guard — viewer with zero brandId-keyed
+  // watches must skip the brands SELECT entirely (Pitfall 2 — sql.join([])
+  // emits invalid `IN ()`). If the guard trips, the resolver would throw
+  // and propagate; if the guard holds, the resolver is never called.
+  it('brandNameLookup empty guard: viewer with zero brandId watches skips the brands SELECT (Pitfall 2)', async () => {
+    publicProfilesResolver = async () => [{ id: 'peer-0' }]
+
+    // Viewer has an owned watch but NO brandId (legacy catalogId=null case).
+    watchesByUser.set('viewer-1', [
+      mkWatch({ id: 'v-1', brand: 'Legacy', model: 'Model' }),
+    ])
+    watchesByUser.set('peer-0', [
+      mkWatch({ id: 'p0-w', brand: 'Other', model: 'OtherModel' }),
+    ])
+
+    // If the empty-guard breaks, this resolver is awaited and throws —
+    // propagating the failure to the test.
+    let brandLookupCalls = 0
+    brandNameLookupResolver = async () => {
+      brandLookupCalls++
+      throw new Error(
+        'brandNameLookup SELECT invoked with zero viewerBrandIds — sql.join empty guard broken (Pitfall 2)',
+      )
+    }
+
+    setBucket(400)
+    await expect(getRecommendationsForViewer('viewer-1')).resolves.toBeDefined()
+    expect(brandLookupCalls).toBe(0)
   })
 })
