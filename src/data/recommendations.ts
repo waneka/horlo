@@ -108,7 +108,10 @@ export async function getRecommendationsForViewer(
   // ordering — back-compat with the prior behavior. These same values are
   // also derived per-candidate inside rationaleFor below; that loop is left
   // alone (this change only avoids redundant derivation inside the top-up).
-  const viewerTopBrand = topBrandOf(viewerWatches)
+  // Phase 81 Task 1 boundary — minimal glue to keep typecheck green.
+  // Task 2 replaces this stub with a real brandNameLookup + viewerOwnedBrandIds
+  // wire-up + brandId-keyed exclusion set.
+  const viewerTopBrand = topBrandOf(viewerWatches, new Map<string, string>())
   const viewerDominantStyleLabel = dominantStyleOf(viewerWatches)?.label ?? null
   // Set of ALL owned brand strings (lowercased, trimmed) — used by the top-up
   // to score ANY owned brand match, not just `topBrandOf`'s alphabetical winner.
@@ -266,6 +269,7 @@ export async function getRecommendationsForViewer(
       candidateStyleTags: c.watch.styleTags,
       viewerOwnedWatches: viewerWatches,
       viewerOwnershipCount: c.count,
+      viewerTopBrand,
     })
     return {
       representativeWatchId: c.watch.id,
@@ -394,7 +398,7 @@ export async function topUpFromCatalogPopularity(
   >,
   excluded: Set<string>,
   needed: number,
-  viewerTopBrand: string | null,
+  viewerTopBrand: { brandId: string; brandName: string } | null,
   viewerDominantStyleLabel: string | null,
   viewerOwnedBrandsLower: Set<string>,
 ): Promise<void> {

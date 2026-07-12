@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { rationaleFor, RATIONALE_TEMPLATES } from '@/lib/recommendations'
+import {
+  rationaleFor,
+  RATIONALE_TEMPLATES,
+  topBrandOf,
+} from '@/lib/recommendations'
 import type { Watch } from '@/lib/types'
 
 // Minimal Watch factory used across rationale cases.
+// Phase 81 D-81-05: accepts optional `brandId` override so brand-match cases
+// can wire canonical FK identity.
 function mkWatch(overrides: Partial<Watch> = {}): Watch {
   return {
     id: overrides.id ?? Math.random().toString(36).slice(2),
@@ -20,12 +26,14 @@ function mkWatch(overrides: Partial<Watch> = {}): Watch {
 
 describe('rationaleFor', () => {
   it('Test 1 [brand-match]: viewer owns 3 Rolex + 2 Omega; candidate brand=Rolex → "Fans of Rolex love this"', () => {
+    // Phase 81: brandId propagated through viewerOwnedWatches +
+    // viewerTopBrand pre-computed by the caller (DAL) and passed via ctx.
     const viewerOwnedWatches = [
-      mkWatch({ brand: 'Rolex', model: 'Submariner' }),
-      mkWatch({ brand: 'Rolex', model: 'GMT' }),
-      mkWatch({ brand: 'Rolex', model: 'Datejust' }),
-      mkWatch({ brand: 'Omega', model: 'Speedmaster' }),
-      mkWatch({ brand: 'Omega', model: 'Seamaster' }),
+      mkWatch({ brand: 'Rolex', model: 'Submariner', brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Rolex', model: 'GMT', brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Rolex', model: 'Datejust', brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Omega', model: 'Speedmaster', brandId: 'omega-uuid' }),
+      mkWatch({ brand: 'Omega', model: 'Seamaster', brandId: 'omega-uuid' }),
     ]
     const result = rationaleFor({
       candidateBrand: 'Rolex',
@@ -34,6 +42,7 @@ describe('rationaleFor', () => {
       candidateStyleTags: [],
       viewerOwnedWatches,
       viewerOwnershipCount: 1,
+      viewerTopBrand: { brandId: 'rolex-uuid', brandName: 'Rolex' },
     })
     expect(result).toBe('Fans of Rolex love this')
   })
@@ -49,6 +58,7 @@ describe('rationaleFor', () => {
       candidateStyleTags: [],
       viewerOwnedWatches,
       viewerOwnershipCount: 5,
+      viewerTopBrand: null,
     })
     expect(result).toBe('Popular among dive watch collectors')
   })
@@ -70,6 +80,7 @@ describe('rationaleFor', () => {
       candidateStyleTags: ['casual'],
       viewerOwnedWatches,
       viewerOwnershipCount: 1,
+      viewerTopBrand: null,
     })
     expect(result).toBe('Matches your casual collection')
   })
@@ -89,6 +100,7 @@ describe('rationaleFor', () => {
       candidateStyleTags: [],
       viewerOwnedWatches,
       viewerOwnershipCount: 1,
+      viewerTopBrand: null,
     })
     expect(result).toBe('Often paired with sport watches')
   })
@@ -107,6 +119,7 @@ describe('rationaleFor', () => {
       candidateStyleTags: ['dress'],
       viewerOwnedWatches,
       viewerOwnershipCount: 1,
+      viewerTopBrand: null,
     })
     expect(result).toBe('Popular in the community')
   })
@@ -114,8 +127,8 @@ describe('rationaleFor', () => {
   it('Test 6 [priority]: multiple matches — earlier template wins (brand match beats role match)', () => {
     // Viewer top brand = Rolex; candidate is Rolex AND shares top role sport.
     const viewerOwnedWatches = [
-      mkWatch({ brand: 'Rolex', roleTags: ['sport'] }),
-      mkWatch({ brand: 'Rolex', roleTags: ['sport'] }),
+      mkWatch({ brand: 'Rolex', roleTags: ['sport'], brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Rolex', roleTags: ['sport'], brandId: 'rolex-uuid' }),
     ]
     const result = rationaleFor({
       candidateBrand: 'Rolex',
@@ -124,6 +137,7 @@ describe('rationaleFor', () => {
       candidateStyleTags: [],
       viewerOwnedWatches,
       viewerOwnershipCount: 10, // would ALSO match popular-role
+      viewerTopBrand: { brandId: 'rolex-uuid', brandName: 'Rolex' },
     })
     // brand-match is first → "Fans of Rolex love this" wins.
     expect(result).toBe('Fans of Rolex love this')
@@ -139,6 +153,7 @@ describe('rationaleFor', () => {
         mkWatch({ brand: 'Tudor', styleTags: ['sport'], roleTags: ['dive'] }),
       ],
       viewerOwnershipCount: 3,
+      viewerTopBrand: null,
     }
     expect(rationaleFor(ctx)).toBe(rationaleFor(ctx))
   })
@@ -151,5 +166,50 @@ describe('rationaleFor', () => {
       'top-role-pair',
       'community-fallback',
     ])
+  })
+})
+
+describe('topBrandOf — Phase 81 D-81-05 signature widen', () => {
+  it('counts by brandId when brandId present + returns { brandId, brandName }', () => {
+    const lookup = new Map<string, string>([
+      ['rolex-uuid', 'Rolex'],
+      ['omega-uuid', 'Omega'],
+    ])
+    const owned = [
+      mkWatch({ brand: 'Rolex', model: 'Submariner', brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Rolex', model: 'GMT', brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Rolex', model: 'Datejust', brandId: 'rolex-uuid' }),
+      mkWatch({ brand: 'Omega', model: 'Speedmaster', brandId: 'omega-uuid' }),
+      mkWatch({ brand: 'Omega', model: 'Seamaster', brandId: 'omega-uuid' }),
+    ]
+    expect(topBrandOf(owned, lookup)).toEqual({
+      brandId: 'rolex-uuid',
+      brandName: 'Rolex',
+    })
+  })
+
+  it('legacy watches with brandId=undefined are excluded from counting', () => {
+    // Two legacy Rolex rows (brandId=undefined) + one Omega row with brandId.
+    // Under old string-key impl Rolex wins 2-1; under Phase 81 impl the two
+    // legacy Rolex rows are EXCLUDED from counting → Omega (1) wins.
+    const lookup = new Map<string, string>([['omega-uuid', 'Omega']])
+    const owned = [
+      mkWatch({ brand: 'Rolex', model: 'Submariner' }), // no brandId
+      mkWatch({ brand: 'Rolex', model: 'GMT' }), // no brandId
+      mkWatch({ brand: 'Omega', model: 'Speedmaster', brandId: 'omega-uuid' }),
+    ]
+    expect(topBrandOf(owned, lookup)).toEqual({
+      brandId: 'omega-uuid',
+      brandName: 'Omega',
+    })
+  })
+
+  it('returns null when all owned watches have brandId=undefined (fully-legacy collection)', () => {
+    const lookup = new Map<string, string>()
+    const owned = [
+      mkWatch({ brand: 'Rolex', model: 'Submariner' }),
+      mkWatch({ brand: 'Omega', model: 'Speedmaster' }),
+    ]
+    expect(topBrandOf(owned, lookup)).toBeNull()
   })
 })

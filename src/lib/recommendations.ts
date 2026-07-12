@@ -14,6 +14,17 @@ export interface RationaleContext {
   viewerOwnedWatches: readonly Watch[]
   /** How many similar collectors in the sampled pool own this candidate. */
   viewerOwnershipCount: number
+  /**
+   * Pre-computed viewer top brand (Phase 81 D-81-05). Caller (DAL) computes
+   * once via `topBrandOf(viewerWatches, brandNameLookup)` and threads through
+   * per-candidate contexts — avoids N² per-candidate re-derivation AND
+   * removes the need to thread a `brandNameLookup: Map` through this pure
+   * function's signature. Null when the viewer's collection has no FK-keyed
+   * brand identity (all owned watches carry brandId=undefined — Phase 17
+   * `onDelete: 'set null'` edge case) or when the resolved brandName misses
+   * the lookup (Pitfall 6 defensive).
+   */
+  viewerTopBrand: { brandId: string; brandName: string } | null
 }
 
 /**
@@ -52,10 +63,18 @@ const DOMINANT_STYLE_THRESHOLD = 0.5
  */
 export function rationaleFor(ctx: RationaleContext): string {
   // 1. Brand match (case-insensitive — top brand is case-normalized).
-  const topBrand = topBrandOf(ctx.viewerOwnedWatches)
+  // Phase 81: read pre-computed viewerTopBrand from ctx (was: internal
+  // topBrandOf call on viewerOwnedWatches). The canonical brandName comes
+  // from the DAL-built brandNameLookup; comparison against ctx.candidateBrand
+  // stays case-insensitive because candidateBrand can arrive from either
+  // (a) a JOIN-derived canonical string (synthetic top-up) or (b) a peer
+  // watch's canonical `watches.brand` (DISP-01 hydrated). Pitfall 6:
+  // viewerTopBrand?.brandName can never be `undefined` in the substitution
+  // — the DAL null-guards when the lookup misses.
+  const topBrand = ctx.viewerTopBrand
   if (
     topBrand &&
-    topBrand.toLowerCase() === ctx.candidateBrand.toLowerCase()
+    topBrand.brandName.toLowerCase() === ctx.candidateBrand.toLowerCase()
   ) {
     return `Fans of ${ctx.candidateBrand} love this`
   }
@@ -93,16 +112,58 @@ export function rationaleFor(ctx: RationaleContext): string {
 
 // -------- helpers --------
 
-export function topBrandOf(watches: readonly Watch[]): string | null {
-  const owned = watches.filter((w) => w.status === 'owned')
+/**
+ * Return the viewer's top-owned brand keyed by canonical `brandId` (FK to
+ * `brands.id`) with the resolved `brandName` from `brandNameLookup`.
+ *
+ * Phase 81 D-81-05 signature widen. Was: `(watches) => string | null` that
+ * counted by free-text `w.brand`; now: counts by `w.brandId!` with legacy
+ * `brandId=undefined` rows correctly excluded (Phase 17 `ON DELETE SET NULL`
+ * edge case would otherwise inflate stale-string totals).
+ *
+ * Tiebreak: count DESC, then resolved brandName ASC (via `localeCompare`).
+ * Returns `null` when no owned watches carry a brandId OR when the resolved
+ * brandName is missing from `brandNameLookup` (Pitfall 6 defensive — better
+ * to return null than substitute `undefined` into a rationale template).
+ *
+ * @param watches   Viewer's full watch list (all statuses; internally filters to owned+brandId).
+ * @param brandNameLookup Pre-fetched `brand_id → brands.name` map. DAL builds
+ *   once per request from `SELECT id, name FROM brands WHERE id IN (…viewer's brandIds…)`
+ *   — cheap pk-indexed query, 5-30 rows per typical viewer.
+ */
+export function topBrandOf(
+  watches: readonly Watch[],
+  brandNameLookup: Map<string, string>,
+): { brandId: string; brandName: string } | null {
+  // Filter to owned AND brandId-present. Legacy watches (catalog wiped via
+  // Phase 17 onDelete: 'set null') carry brandId=undefined and are excluded
+  // — under D-81-05 they no longer inflate stale-string counts.
+  const owned = watches.filter((w) => w.status === 'owned' && w.brandId)
   if (owned.length === 0) return null
+
   const counts = new Map<string, number>()
-  for (const w of owned) counts.set(w.brand, (counts.get(w.brand) ?? 0) + 1)
-  // Sort by count DESC, then alphabetical ASC for deterministic tiebreak.
-  const sorted = [...counts.entries()].sort(
-    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
-  )
-  return sorted[0]?.[0] ?? null
+  for (const w of owned) {
+    // Filter above guarantees brandId non-null.
+    counts.set(w.brandId!, (counts.get(w.brandId!) ?? 0) + 1)
+  }
+
+  // Sort by count DESC, then resolved brandName ASC for deterministic tiebreak
+  // (was: raw brand string ASC — now canonical brand name).
+  const sorted = [...counts.entries()].sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1]
+    const aName = brandNameLookup.get(a[0]) ?? ''
+    const bName = brandNameLookup.get(b[0]) ?? ''
+    return aName.localeCompare(bName)
+  })
+
+  const winner = sorted[0]
+  if (!winner) return null
+  const brandName = brandNameLookup.get(winner[0])
+  // Pitfall 6 defensive — if the DAL-built lookup missed this brandId (race
+  // condition: viewer added a watch mid-request), return null rather than
+  // surface `Fans of undefined love this` downstream.
+  if (!brandName) return null
+  return { brandId: winner[0], brandName }
 }
 
 export function dominantStyleOf(
