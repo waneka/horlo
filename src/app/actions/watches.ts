@@ -150,8 +150,16 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
       // no reference number), the canonical value IS null — coerce to undefined to
       // match Watch.reference: string | undefined. A conditional guard would let
       // a client forge a reference string on a null-reference catalog row.
-      cleanData.brand = catalogRow.brand
-      cleanData.model = catalogRow.model
+      //
+      // DISP-01 Phase 81 (D-81-01): read canonical strings from the extended
+      // getCatalogById projection (LEFT JOIN brands.name / watch_families.name)
+      // — NOT the denorm columns catalogRow.brand / catalogRow.model, which
+      // may carry drift (`Hamilton Watch`) even when the FK resolves to the
+      // canonical brand row (`Hamilton`). The `?? catalog.brand` fallback
+      // inside getCatalogById covers the theoretical NULL-FK case; here we
+      // trust that projection unconditionally.
+      cleanData.brand = catalogRow.canonicalBrand
+      cleanData.model = catalogRow.canonicalFamily
       cleanData.reference = catalogRow.reference ?? undefined
       catalogId = cleanData.catalogId
       catalogRowForSkipCheck = catalogRow
@@ -180,8 +188,14 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
         throw new Error('[addWatch] catalog upsert returned null — cannot insert watches row without catalogId')
       }
       catalogId = upsertResult.catalogId
-      // Plan 03 — Phase 81 DISP-01: consume brandName/familyName here for cleanData.brand/model overwrite
-      // e.g. cleanData.brand = upsertResult.brandName; cleanData.model = upsertResult.familyName
+      // DISP-01 Phase 81 (D-81-01) — consume the canonical brand/family names
+      // returned by upsertCatalogFromUserInput (Plan 01's extended shape). The
+      // user's typed strings (parsed.data.brand / parsed.data.model) are drift
+      // candidates; the resolver landed the row on canonical brand_id +
+      // family_id, and its RETURNING JOIN gave us the canonical strings. Write
+      // them into cleanData BEFORE createPayload spreads it below at L189.
+      cleanData.brand = upsertResult.brandName
+      cleanData.model = upsertResult.familyName
     }
 
     // Payload type widens cleanData to allow re-adding sortOrder server-side.
@@ -614,6 +628,51 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
         const maxSort = await watchDAL.getMaxWishlistSortOrder(user.id)
         updatePayload = { ...cleanData, sortOrder: maxSort + 1 }
       }
+    }
+
+    // DISP-02 Phase 81 (D-81-01) — canonical brand/model overwrite before UPDATE.
+    //
+    // Fires only when BOTH:
+    //   (a) priorRow has a catalogId (i.e. this watch is FK-linked to a
+    //       canonical catalog row — the standard post-Phase-80 case), AND
+    //   (b) the user is editing brand OR model on this request.
+    //
+    // Legacy Phase 17 ON DELETE SET NULL rows (priorRow.catalogId=null) bypass
+    // the overwrite — their user-typed strings persist untouched (D-81 Specifics
+    // § "Legacy watches with catalogId = null bypass the overwrite"). Post-
+    // Phase-80 those rows shouldn't exist for new writes, but the guard keeps
+    // legacy edits behavior-preserving.
+    //
+    // Failure semantics: if getCatalogById returns null (defensive — shouldn't
+    // happen when priorRow.catalogId is populated post-Phase-80 NOT NULL FKs),
+    // skip overwrite and let the user's typed strings persist (fail-safe over
+    // fail-loud — the request is on an existing watch with an existing catalog
+    // link, so a null return implies a race with catalog deletion that we
+    // tolerate silently rather than surfacing a 500).
+    //
+    // Both cleanData AND updatePayload are updated because:
+    //   - the non-transition path (L676) reads from updatePayload;
+    //   - the owned→sold transaction path (L639-670) also reads updatePayload
+    //     via the `Object.entries(updatePayload).filter(...)` rowData build at
+    //     L658 — so the overwrite lands atomically with the status flip.
+    //   - cleanData is kept in sync as belt-and-suspenders in case a future
+    //     edit inserts another consumer that reads cleanData directly.
+    if (
+      priorRow.catalogId &&
+      (cleanData.brand !== undefined || cleanData.model !== undefined)
+    ) {
+      const catalogRow = await catalogDAL.getCatalogById(priorRow.catalogId)
+      if (catalogRow) {
+        if (cleanData.brand !== undefined) {
+          cleanData.brand = catalogRow.canonicalBrand
+          updatePayload = { ...updatePayload, brand: catalogRow.canonicalBrand }
+        }
+        if (cleanData.model !== undefined) {
+          cleanData.model = catalogRow.canonicalFamily
+          updatePayload = { ...updatePayload, model: catalogRow.canonicalFamily }
+        }
+      }
+      // else: catalogRow-null defensive skip — see failure semantics above.
     }
 
     // Phase 37 D-11 + CRITICAL OVERRIDE #2 — owned→sold transition detection.

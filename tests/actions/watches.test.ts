@@ -34,10 +34,15 @@ vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 // CONF-11: also mock getCatalogById for the catalogId-supplied branch
 vi.mock('@/data/catalog', () => ({
   // Phase 81 D-81-01 — upsert helper returns { catalogId, brandName, familyName } | null.
+  // Phase 81 Plan 03: brandName/familyName MUST match validWatch's brand/model
+  // (`Omega` / `Seamaster`) — addWatch's user-input branch now overwrites
+  // cleanData.brand/model from upsertResult.brandName/familyName, so the
+  // AUTH-02 test that asserts `createWatch(_, _, expect.objectContaining(validWatch))`
+  // requires the canonical mock values match validWatch verbatim.
   upsertCatalogFromUserInput: vi.fn().mockResolvedValue({
     catalogId: 'cat-id-1',
-    brandName: 'MockBrand',
-    familyName: 'MockModel',
+    brandName: 'Omega',
+    familyName: 'Seamaster',
   }),
   updateCatalogTaste: vi.fn().mockResolvedValue({ updated: true }),
   applyUserUploadedPhoto: vi.fn().mockResolvedValue({ applied: true }),
@@ -377,12 +382,22 @@ describe('addWatch — catalogId branch (CONF-11)', () => {
   const CATALOG_UUID = '11111111-2222-4333-8444-555555555555'
   const CATALOG_UUID_MISSING = '99999999-9999-4999-8999-999999999999'
 
+  // Phase 81 D-81-01: getCatalogById returns CatalogEntryWithCanonical, which
+  // extends CatalogEntry with `canonicalBrand` + `canonicalFamily` (LEFT JOIN
+  // brands.name / watch_families.name). addWatch's catalogId branch now reads
+  // canonicalBrand/canonicalFamily (not the denorm brand/model columns), so
+  // the mock MUST project both — otherwise the branch writes undefined into
+  // cleanData and test (c) fails. Kept the canonical strings identical to the
+  // denorm columns since there's no drift being exercised here (the CONF-11
+  // suite predates Phase 81's drift-loop scope).
   const catalogRow = {
     id: CATALOG_UUID,
     brand: 'Omega',
     model: 'Speedmaster',
     reference: '311.30.42.30.01.005',
     styleTags: ['sport', 'dress'],
+    canonicalBrand: 'Omega',
+    canonicalFamily: 'Speedmaster',
   }
 
   it('(a) catalogId supplied + row exists → no upsertCatalogFromUserInput call', async () => {
