@@ -3,7 +3,7 @@ import 'server-only'
 
 import { db } from '@/db'
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
-import { watches, watchesCatalog } from '@/db/schema'
+import { brands, watches, watchesCatalog, watchFamilies } from '@/db/schema'
 
 /**
  * Phase 35 D-08 — getLineageForReference(catalogId)
@@ -73,15 +73,24 @@ export async function getSameFamilyForCatalog(
   const familyId = rootRows[0]?.familyId
   if (!familyId) return []  // D-39b-07 hide-if-empty
 
+  // Phase 81 Plan 05 (Task 05-1) — read-time canonical JOIN pattern (mirrors
+  // Plan 02's `topUpFromCatalogPopularity` fix). Project `brand` and `model`
+  // from canonical FK targets (`brands.name` / `watch_families.name`), not
+  // from the drift-prone `watches_catalog.brand`/`.model` denorm columns.
+  // Post-Phase-80 `brand_id` + `family_id` are NOT NULL on every catalog row,
+  // so INNER JOINs cannot lose rows. GROUP BY substitutes the canonical
+  // columns for the denorm ones to satisfy Postgres aggregation rules.
   const rows = await db
     .select({
       id: watchesCatalog.id,
-      brand: watchesCatalog.brand,
-      model: watchesCatalog.model,
+      brand: brands.name,
+      model: watchFamilies.name,
       imageUrl: watchesCatalog.imageUrl,
       ownersCount: sql<number>`COUNT(${watches.id})::int`,
     })
     .from(watchesCatalog)
+    .innerJoin(brands, eq(brands.id, watchesCatalog.brandId))
+    .innerJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))
     .leftJoin(watches, eq(watches.catalogId, watchesCatalog.id))
     .where(
       and(
@@ -91,14 +100,14 @@ export async function getSameFamilyForCatalog(
     )
     .groupBy(
       watchesCatalog.id,
-      watchesCatalog.brand,
-      watchesCatalog.model,
+      brands.name,
+      watchFamilies.name,
       watchesCatalog.imageUrl,
     )
     .orderBy(
       desc(sql`COUNT(${watches.id})`),
-      asc(watchesCatalog.brand),
-      asc(watchesCatalog.model),
+      asc(brands.name),
+      asc(watchFamilies.name),
     )
     .limit(limit)
 
