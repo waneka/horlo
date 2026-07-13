@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
-status: verifying
+status: ready_to_plan
 last_updated: "2026-07-13T23:10:55Z"
 last_activity: 2026-07-13
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
   completed_plans: 18
-  percent: 95
+  percent: 80
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 81 — Recommender + Display Server Action Swap
+**Current focus:** Phase 82 — Add-Watch UI + Operator Admin
 
 ## Current Position
 
-Phase: 81 (Recommender + Display Server Action Swap) — EXECUTING
-Plan: 5 of 5 (Plan 05 scope patch: canonical JOIN on same-family + lineage rail DALs)
-Status: Phase complete — ready for verification
-Last activity: 2026-07-13 -- Phase 81 Plan 05 complete (scope-patched CONTEXT.md § Deferred Ideas revisit trigger — read-time canonical JOIN pattern applied to getSameFamilyForCatalog + getLineageForReference)
+Phase: 82
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-13
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 

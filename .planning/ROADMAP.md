@@ -419,5 +419,5 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
-| 81. Recommender + Display Server Action Swap | 5/5 | Complete   | 2026-07-13 |
+| 81. Recommender + Display Server Action Swap | 5/5 | Complete    | 2026-07-13 |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |
