@@ -115,6 +115,14 @@ export async function getSameFamilyForCatalog(
 }
 
 export async function getLineageForReference(catalogId: string): Promise<LineageRow[]> {
+  // Phase 81 Plan 05 (Task 05-2) — read-time canonical JOIN pattern extended
+  // to the recursive lineage CTE. Both arms JOIN `brands b` (on wc.brand_id)
+  // and `watch_families f` (on wc.family_id) and project `b.name AS brand`
+  // and `f.name AS model` in place of the drift-prone `wc.brand` / `wc.model`
+  // denorm columns. INNER JOINs are safe post-Phase-80: watches_catalog.brand_id
+  // + family_id are NOT NULL → JOINs cannot lose rows. Pitfall 5 invariant
+  // extends to `b.name` + `f.name`: BOTH arms MUST carry the same JOINs +
+  // projections or the outer SELECT type-check fails.
   const result = await db.execute(sql`
     WITH RECURSIVE lineage(
       id, brand, model, reference, image_url,
@@ -124,7 +132,7 @@ export async function getLineageForReference(catalogId: string): Promise<Lineage
     ) AS (
       -- Seed: edges that touch the input catalog row (both directions).
       SELECT
-        wc.id, wc.brand, wc.model, wc.reference, wc.image_url,
+        wc.id, b.name AS brand, f.name AS model, wc.reference, wc.image_url,
         e.predecessor_catalog_id, e.successor_catalog_id,
         e.relationship_type::text,
         1 AS depth,
@@ -139,6 +147,8 @@ export async function getLineageForReference(catalogId: string): Promise<Lineage
           ELSE wc.id = e.predecessor_catalog_id
         END
       )
+      JOIN brands b ON b.id = wc.brand_id
+      JOIN watch_families f ON f.id = wc.family_id
       WHERE e.predecessor_catalog_id = ${catalogId}::uuid
          OR e.successor_catalog_id   = ${catalogId}::uuid
 
@@ -146,9 +156,10 @@ export async function getLineageForReference(catalogId: string): Promise<Lineage
 
       -- Recursive arm: follow edges from discovered catalog rows.
       -- depth < 10 guard bounds recursion (CAT-16 SC#2 mandatory).
-      -- Pitfall 5: BOTH arms must carry wc.image_url for the column list to type-check.
+      -- Pitfall 5: BOTH arms must carry wc.image_url AND canonical b.name/f.name
+      -- for the column list to type-check + surface canonical strings.
       SELECT
-        wc.id, wc.brand, wc.model, wc.reference, wc.image_url,
+        wc.id, b.name AS brand, f.name AS model, wc.reference, wc.image_url,
         e.predecessor_catalog_id, e.successor_catalog_id,
         e.relationship_type::text,
         c.depth + 1,
@@ -166,6 +177,8 @@ export async function getLineageForReference(catalogId: string): Promise<Lineage
           ELSE wc.id = e.predecessor_catalog_id
         END
       )
+      JOIN brands b ON b.id = wc.brand_id
+      JOIN watch_families f ON f.id = wc.family_id
       WHERE c.depth < 10
     )
     -- Postgres 15 CYCLE clause (CAT-16 SC#2 mandatory).
