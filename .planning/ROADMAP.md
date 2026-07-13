@@ -257,7 +257,7 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 - [x] **Phase 78: Schema Additions + Operator-Resolve Queue** — CANON-03, CANON-04, MIG-01 (completed 2026-06-25)
 - [x] **Phase 79: Backfill Migration + Display Hydration** — MIG-02, MIG-03, MIG-04, MIG-05, DISP-03 (completed 2026-06-25)
 - [ ] **Phase 80: NOT NULL Flip + Ingest Hardening** — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04
-- [ ] **Phase 81: Recommender + Display Server Action Swap** — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02
+- [x] **Phase 81: Recommender + Display Server Action Swap** — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02 (completed 2026-07-13)
 - [ ] **Phase 82: Add-Watch UI + Operator Admin** — UI-01, UI-02, UI-03, OPS-01, OPS-02
 
 25/25 v8.4 requirements mapped across 5 phases (CANON 4, MIG 5, INGEST 4, RECO 4, DISP 3, UI 3, OPS 2). Sequencing: schema → backfill → NOT NULL+ingest → recommender+display → UI+admin. Each phase delivers a coherent, prod-verifiable capability with the next phase resting on the previous one's invariants. Phases 78-80 are DB-touching (`workflow.use_worktrees=false` already globally set per `project_next_clear_operational_debt`).
@@ -362,7 +362,7 @@ Plans:
 - [x] 81-03-PLAN.md — Server Action canonical overwrite: addWatch catalogId branch reads canonicalBrand/canonicalFamily + user-input branch consumes upsertResult.brandName/familyName + editWatch overwrite path before UPDATE + 4 new DISP unit cases in watches-recs-invalidation.test.ts — DISP-01, DISP-02
 
 **Wave 3** *(blocked on Wave 2 completion — autonomous: false; operator checkpoint)*
-- [ ] 81-04-PLAN.md — Local-First Verification + Bundled Prod Deploy: reversible drift-fixture SQL (fixtures/drift-hamilton.sql) + 4-step D-81-04 walkthrough on npm run dev + local Supabase + 81-POST-DEPLOY.md operator runbook + human-verify checkpoint gating git push — all 6 requirements verified end-to-end
+- [x] 81-04-PLAN.md — Local-First Verification + Bundled Prod Deploy: reversible drift-fixture SQL (fixtures/drift-hamilton.sql) + 4-step D-81-04 walkthrough on npm run dev + local Supabase + 81-POST-DEPLOY.md operator runbook + human-verify checkpoint gating git push — all 6 requirements verified end-to-end
 **UI hint**: no
 
 ### Phase 82: Add-Watch UI + Operator Admin
@@ -419,5 +419,5 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
-| 81. Recommender + Display Server Action Swap | 4/5 | In Progress|  |
+| 81. Recommender + Display Server Action Swap | 5/5 | Complete   | 2026-07-13 |
 | 82. Add-Watch UI + Operator Admin | 0/? | Not started | — |
