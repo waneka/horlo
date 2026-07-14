@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v8.4
-milestone_name: Catalog Brand+Model Canonicalization
-status: Awaiting next milestone
-last_updated: "2026-07-14T04:56:30.034Z"
-last_activity: 2026-07-14 — Milestone v8.4 completed and archived
+milestone: v9.0
+milestone_name: Collection Lifecycle & Wear Depth
+status: planning
+last_updated: "2026-07-14T05:51:00.184Z"
+last_activity: 2026-07-14
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 25
-  completed_plans: 25
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 
 ## Current Position
 
-Phase: Milestone v8.4 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-14 — Milestone v8.4 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-14 — Milestone v9.0 started
 
 ## Deferred Items
 
