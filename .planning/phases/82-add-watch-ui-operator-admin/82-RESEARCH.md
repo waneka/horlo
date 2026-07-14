@@ -646,22 +646,21 @@ export async function listBrands(): Promise<{ id: string; name: string }[]> {
 
 **All other claims in this research were verified via direct codebase inspection or official Next.js 16 docs.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Canonical display source for UI-03 chip (Pitfall 4)**
-   - What we know: `getWatchById` does NOT project `brands.name`; `watch.brand` is canonical for all post-Phase-81 writes but may be stale for older rows.
-   - What's unclear: Whether extending `getWatchById` to LEFT JOIN `brands`/`watch_families` for canonical names is worth the DAL change vs. trusting `watch.brand`.
-   - Recommendation: Extend `getWatchById` (Option B). The edit page already has a `leftJoin(watchesCatalog, ...)` — adding two more LEFT JOINs on `brands` and `watchFamilies` is minimal cost and eliminates the legacy-row ambiguity CONTEXT explicitly flagged.
+All three questions are resolved by Phase 82 plans (see plan-checker verification 2026-07-13).
 
-2. **`watch_families.slug` regeneration on rename**
-   - What we know: `watch_families.slug` is nullable [VERIFIED: schema.ts L551]. The resolver does NOT use family slug for any lookup. No route references family slug.
-   - What's unclear: Whether to regenerate family slug on rename (adds complexity) or leave it null/stale.
-   - Recommendation: Leave family slug unchanged on rename (or set to `slugify(newName)` without random suffix since the nullable column has no UNIQUE constraint). Resolver doesn't need it; skip `slugifyWithRandomSuffix` overhead for families.
+1. **Canonical display source for UI-03 chip (Pitfall 4)** — **RESOLVED (Option B): extend `getWatchById`.**
+   - Resolution: Plan 82-03 Task 1 extends `getWatchById` with two additional LEFT JOINs on `brands` and `watchFamilies` and projects `canonicalBrand` / `canonicalFamily`; WatchForm chip reads `canonicalBrand ?? watch.brand` (belt-and-suspenders per CONTEXT).
+   - Original: `getWatchById` does NOT project `brands.name`; `watch.brand` is canonical for all post-Phase-81 writes but may be stale for older rows.
 
-3. **FamiliesQueue DAL: scope to `brandId` filter**
-   - What we know: OPS-02 page receives `?brandId=` from WatchForm "Edit family" link.
-   - What's unclear: Whether to add a `listFamiliesForQueue(brandIdFilter?: string)` DAL function that optionally filters by `brand_id`, or fetch all families and let the client filter.
-   - Recommendation: Server-side filter — with ~200+ families, fetching all and client-filtering is fine at current scale, but a WHERE clause is cleaner. Add optional `brandIdFilter` param to the DAL function.
+2. **`watch_families.slug` regeneration on rename** — **RESOLVED: leave unchanged.**
+   - Resolution: Plan 82-05 Task 1 leaves `watch_families.slug` unchanged on rename. Family slug is nullable, has no UNIQUE constraint, is not referenced by resolver or any route — skip `slugifyWithRandomSuffix` overhead for families. Brand rename still regenerates slug (UNIQUE constraint).
+   - Original: `watch_families.slug` is nullable [VERIFIED: schema.ts L551]; resolver does NOT use family slug.
+
+3. **FamiliesQueue DAL: scope to `brandId` filter** — **RESOLVED: server-side WHERE.**
+   - Resolution: Plan 82-05 Task 1 adds an optional `brandIdFilter` param to the DAL function; server-side WHERE clause (with Zod uuid() validation per T-82-05) rather than fetch-all + client-filter.
+   - Original: OPS-02 page receives `?brandId=` from WatchForm "Edit family" link.
 
 ## Environment Availability
 
