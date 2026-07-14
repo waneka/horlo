@@ -81,7 +81,16 @@ export function BrandPicker({
       itemToStringValue={(b) => b.id}
       isItemEqualToValue={(a, b) => a.id === b.id}
       onValueChange={(picked) => {
-        if (picked) onChange(picked)
+        if (picked) {
+          onChange(picked)
+          // Push the selected label into inputValue explicitly. The onInputValueChange
+          // guard above (details.reason !== 'input-change') is intentional — it prevents
+          // clobbering the user's typed value during ancillary events — but that same
+          // guard blocks the 'item-press' reason base-ui fires on selection. Without
+          // this explicit set, clicking "Hamilton" closes the popup but the input stays
+          // showing "Ham" (parent state updates, but the visible field looks broken).
+          setInputValue(picked.name)
+        }
       }}
       open={open}
       onOpenChange={(next) => setOpen(next)}

@@ -109,6 +109,31 @@ describe('BrandPicker — selection fires onChange and closes popup', () => {
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     })
   })
+
+  // Regression: clicking an item was updating parent state but leaving the visible
+  // input showing the user's typed prefix (e.g., "Ham" instead of "Hamilton"). The
+  // onInputValueChange guard (details.reason !== 'input-change') is intentional but
+  // was also blocking the 'item-press' event base-ui fires to sync the label. The
+  // fix pushes the picked.name into inputValue explicitly in onValueChange.
+  it('(2b) selection updates the visible input value to the picked brand name', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<BrandPicker {...BASE_PROPS} onChange={onChange} />)
+
+    const input = screen.getByRole('combobox') as HTMLInputElement
+    await user.click(input)
+    await user.type(input, 'long')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: 'Longines' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('option', { name: 'Longines' }))
+
+    expect(onChange).toHaveBeenCalledWith({ id: 'c', name: 'Longines' })
+    // Input should now show the FULL selected brand name, not the typed prefix
+    expect(input.value).toBe('Longines')
+  })
 })
 
 describe('BrandPicker — UI-02 affordance gate: empty input', () => {
