@@ -21,6 +21,7 @@ must_haves:
     - "The add flow remains reachable via the existing `AddWatchCard` entries on Collection and Wishlist tabs — no substitute affordance is added to DesktopTopNav (per D-02)."
     - "The mobile `BottomNav` is unchanged — it never had a `+` add-watch button in the first place (per D-01)."
     - "DesktopTopNav.test.tsx passes with the add-watch link assertions removed/rewritten to reflect the new nav composition (per D-12)."
+    - "Cross-cutting verification cadence per D-13: desktop surfaces (POLISH-01, POLISH-02 dropdown, POLISH-03 dialog) verified via `npm run dev` against local Supabase before push; mobile-only surfaces (POLISH-02 mobile dropdown, POLISH-03 mobile dialog) verified on iPhone Safari against prod per `feedback_mobile_ui_verify_on_prod`."
   artifacts:
     - path: src/components/layout/DesktopTopNav.tsx
       provides: "Desktop top chrome without the `+` add-watch Link/Button/Plus block"
