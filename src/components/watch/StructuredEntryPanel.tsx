@@ -47,6 +47,7 @@ import { Loader2, Link2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { BrandPicker } from '@/components/watch/BrandPicker'
 import { CatalogPhotoUploader } from '@/components/watch/CatalogPhotoUploader'
 import { VerdictSkeleton } from '@/components/insights/VerdictSkeleton'
 import {
@@ -105,10 +106,17 @@ export function StructuredEntryPanel({
   initialBrand,
   initialModel,
   initialReference,
+  brandsWithIds,
   onSubmitStructured,
   onSwitchToUrl,
 }: StructuredEntryPanelProps) {
   const [brand, setBrand] = useState(initialBrand ?? '')
+  // Phase 82 Plan 02 — tracks the picker's selected brand identity.
+  // Set on BrandPicker onChange (canonical selection) or cleared by onCouldntFind
+  // (typed value locked; auto-create fires via /api/extract-watch → resolveBrandId tier 3).
+  const [selectedBrand, setSelectedBrand] = useState<{ id: string; name: string } | null>(
+    initialBrand ? { id: '', name: initialBrand } : null,
+  )
   const [model, setModel] = useState(initialModel ?? '')
   const [reference, setReference] = useState(initialReference ?? '')
   // Year is tracked as string for input ergonomics; converted to number-or-null
@@ -220,12 +228,26 @@ export function StructuredEntryPanel({
               *
             </span>
           </Label>
-          <Input
-            id="se-brand"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            required
-            aria-required="true"
+          {/* Phase 82 Plan 02 — D-82-01: BrandPicker replaces the raw brand Input.
+              inputId="se-brand" forwards the id to Combobox.Input so the Label htmlFor
+              association is preserved (accessibility + existing tests).
+              onChange: updates both identity (selectedBrand) and string (brand) state.
+              onCouldntFind: clears identity, locks typed string — auto-create fires via
+              /api/extract-watch → resolveBrandId tier 3 on the next Find specs click.
+              POST body construction (brand: brand.trim()) is UNCHANGED — the picker
+              constrains what the user CAN type; the outbound string shape is identical. */}
+          <BrandPicker
+            brands={brandsWithIds ?? []}
+            value={selectedBrand}
+            inputId="se-brand"
+            onChange={(next) => {
+              setSelectedBrand(next)
+              setBrand(next.name)
+            }}
+            onCouldntFind={(typed) => {
+              setSelectedBrand(null)
+              setBrand(typed)
+            }}
             disabled={isExtracting}
           />
         </div>

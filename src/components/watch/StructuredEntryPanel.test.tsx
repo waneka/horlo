@@ -26,12 +26,72 @@
  * Phase 70 Wave 0 — onSubmitStructured signature widened to (extracted, catalogId)
  * so the AddWatchFlow orchestrator can DUPE-lookup + addWatch without a side-channel.
  *
- * RED until Task 2 ships `@/components/watch/StructuredEntryPanel`.
+ * Phase 82 Plan 02 — BrandPicker wired in:
+ *  (P82-02-a) SEP threads brands prop to BrandPicker (mock assert data-brand-count)
+ *  (P82-02-b) raw <Input id="se-brand"> replaced by <BrandPicker> (grep armor)
+ *  (P82-02-c) <BrandPicker> mount count in SEP source (grep armor)
+ *  (P82-02-d) UI-02 affordance wired: onCouldntFind locks typed value as brand string
+ *
+ * BrandPicker is mocked as a transparent test-double so tests stay focused on SEP's
+ * prop-threading contract. The mock exposes data-* attributes for assertions and
+ * simulates required semantics matching the original brand Input behaviour.
+ *
+ * RED until Task 2 wires BrandPicker into StructuredEntryPanel.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+
+// Phase 82 Plan 02 — BrandPicker mock. Renders a transparent test-double that:
+//   - Exposes data-testid="brand-picker-mock" for SEP mount assertion
+//   - Exposes data-brand-count={brands.length} for prop-threading assertion (P82-02-a)
+//   - Renders an <input id={inputId}> so the existing Label htmlFor="se-brand"
+//     association and aria-required semantics are preserved for tests (1)-(10)
+//   - On change, calls onChange with a synthetic brand object so existing tests
+//     that fire change events on the brand label still drive the brand state
+//   - Exposes a "couldnt-find" button that triggers onCouldntFind for (P82-02-d) test
+vi.mock('@/components/watch/BrandPicker', () => ({
+  BrandPicker: (props: {
+    brands: { id: string; name: string }[]
+    value: { id: string; name: string } | null
+    onChange: (next: { id: string; name: string }) => void
+    onCouldntFind?: (typed: string) => void
+    disabled?: boolean
+    inputId?: string
+  }) => (
+    <div
+      data-testid="brand-picker-mock"
+      data-brand-count={props.brands.length}
+    >
+      <input
+        id={props.inputId}
+        aria-label="Search brands"
+        required
+        aria-required="true"
+        disabled={props.disabled}
+        defaultValue={props.value?.name ?? ''}
+        onChange={(e) => {
+          // Simulate a selection by calling onChange with a synthetic brand.
+          // This preserves backward compatibility with tests that use
+          // fireEvent.change(getByLabelText(/Brand/i), { target: { value: 'X' } })
+          // to drive the brand state (previously set via the raw Input).
+          // The id 'mock-id' is not a real catalog id — just a test sentinel.
+          props.onChange({ id: 'mock-id', name: e.target.value })
+        }}
+      />
+      {props.onCouldntFind && (
+        <button
+          type="button"
+          data-testid="brand-picker-mock-couldnt-find"
+          onClick={() => props.onCouldntFind?.('TestBrand')}
+        >
+          couldnt find
+        </button>
+      )}
+    </div>
+  ),
+}))
 
 // Mock CatalogPhotoUploader to avoid pulling EXIF / canvas workers into jsdom.
 // The mock exposes a "Pick photo" button and a "Clear" button so tests can drive
@@ -82,6 +142,9 @@ const BASE_PROPS = {
   viewerUserId: 'user-a',
   onSubmitStructured: vi.fn(),
   onSwitchToUrl: vi.fn(),
+  // Phase 82 Plan 02 — brandsWithIds required by BrandPicker (empty list for tests
+  // that don't exercise brand selection; prop-threading test (P82-02-a) uses non-empty)
+  brandsWithIds: [] as { id: string; name: string }[],
 }
 
 beforeEach(() => {
@@ -424,5 +487,79 @@ describe('Phase 70 gap plan 06 — photoBlob forwarding (CR-01 closure)', () => 
 
     expect(onSubmitStructured).toHaveBeenCalledTimes(1)
     expect(onSubmitStructured).toHaveBeenCalledWith(cachedExtracted, 'cat-1', undefined)
+  })
+})
+
+// ─── Phase 82 Plan 02 — BrandPicker prop threading (new tests) ───────────────
+
+describe('Phase 82 Plan 02 — BrandPicker wired into StructuredEntryPanel', () => {
+  it('(P82-02-a) brands prop threads to BrandPicker mock (data-brand-count assertion)', () => {
+    const brands = [
+      { id: 'a', name: 'Omega' },
+      { id: 'b', name: 'Rolex' },
+    ]
+    render(
+      <StructuredEntryPanel
+        {...BASE_PROPS}
+        brandsWithIds={brands}
+      />,
+    )
+    const pickerEl = screen.getByTestId('brand-picker-mock')
+    expect(pickerEl).toBeInTheDocument()
+    expect(pickerEl).toHaveAttribute('data-brand-count', '2')
+  })
+
+  it('(P82-02-b) raw <Input id="se-brand"> is gone — SEP source has no id="se-brand" raw Input', () => {
+    const src = readFileSync(
+      resolve(process.cwd(), 'src/components/watch/StructuredEntryPanel.tsx'),
+      'utf8',
+    )
+    // The raw <Input id="se-brand"> should no longer exist in source
+    expect(src).not.toMatch(/id="se-brand"[^/]*\/>/)
+    // But BrandPicker mount MUST be present
+    expect(src).toMatch(/<BrandPicker/)
+  })
+
+  it('(P82-02-c) SEP source contains exactly one <BrandPicker mount', () => {
+    const src = readFileSync(
+      resolve(process.cwd(), 'src/components/watch/StructuredEntryPanel.tsx'),
+      'utf8',
+    )
+    const count = (src.match(/<BrandPicker/g) ?? []).length
+    expect(count).toBe(1)
+  })
+
+  it('(P82-02-d) UI-02 affordance wired: onCouldntFind locks typed value as brand string state', async () => {
+    // When BrandPicker fires onCouldntFind('TestBrand'), the panel's brand string
+    // state should update to 'TestBrand' so the POST body sends that value.
+    // The mock BrandPicker exposes a "couldnt find" button that triggers this.
+    const brands = [{ id: 'a', name: 'Omega' }]
+    ;(global.fetch as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      new Promise(() => {}),
+    )
+
+    render(
+      <StructuredEntryPanel
+        {...BASE_PROPS}
+        brandsWithIds={brands}
+      />,
+    )
+
+    // Trigger onCouldntFind via the mock affordance button
+    const couldntFindBtn = screen.getByTestId('brand-picker-mock-couldnt-find')
+    expect(couldntFindBtn).toBeInTheDocument()
+    fireEvent.click(couldntFindBtn)
+
+    // After onCouldntFind('TestBrand') fires, the brand string state should be 'TestBrand'
+    // Verify by also filling model and clicking Find specs — the fetch body should have brand='TestBrand'
+    fireEvent.change(screen.getByLabelText(/Model/i), { target: { value: 'TestModel' } })
+    fireEvent.click(screen.getByRole('button', { name: /find specs/i }))
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
+    const call = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
+    const body = JSON.parse((call[1] as RequestInit).body as string)
+    expect(body.brand).toBe('TestBrand')
   })
 })

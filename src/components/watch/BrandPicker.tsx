@@ -39,6 +39,9 @@ export interface BrandPickerProps {
   onCouldntFind?: (typed: string) => void
   /** Optional — forwards to Combobox.Input; gates the picker during extraction. */
   disabled?: boolean
+  /** Optional — id forwarded to Combobox.Input so an external <Label htmlFor> can
+   *  associate with the input (e.g. "se-brand" in StructuredEntryPanel). */
+  inputId?: string
 }
 
 export function BrandPicker({
@@ -47,6 +50,7 @@ export function BrandPicker({
   onChange,
   onCouldntFind,
   disabled,
+  inputId,
 }: BrandPickerProps) {
   // Seed inputValue from current value's name so a pre-selected brand shows its name.
   const [inputValue, setInputValue] = useState(value?.name ?? '')
@@ -84,6 +88,7 @@ export function BrandPicker({
       value={value}
     >
       <Combobox.Input
+        id={inputId}
         aria-label="Search brands"
         placeholder="Search brands…"
         disabled={disabled}
