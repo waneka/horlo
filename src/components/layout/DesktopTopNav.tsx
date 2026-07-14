@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { isPublicPath } from '@/lib/constants/public-paths'
 import { NavWearButton } from '@/components/layout/NavWearButton'
