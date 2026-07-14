@@ -1042,11 +1042,13 @@ export async function applyUserUploadedPhoto(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 69 D-13 — listCatalogBrands: SSR-fetched brand list for SRCH-26 pre-seed
+// Phase 69 D-13 — listCatalogBrandNames: SSR-fetched brand list for SRCH-26 pre-seed
+// Phase 82 D-82-02 — listBrands: { id, name }[] for BrandPicker
+// Note: listCatalogBrandNames was renamed from the original D-13 export (Phase 82 D-82-02 decision).
 // ---------------------------------------------------------------------------
 
 /**
- * Phase 69 D-13 — listCatalogBrands.
+ * Phase 69 D-13 — listCatalogBrandNames (Phase 82 D-82-02 rename).
  *
  * Returns the DISTINCT set of brand strings present in `watches_catalog`,
  * sorted ascending. SSR-fetched at `/watch/new` render time and prop-drilled
@@ -1071,11 +1073,40 @@ export async function applyUserUploadedPhoto(
  * `project_local_catalog_natural_key_drift` memory: D-12 normalization is
  * conceptually symmetric with the catalog DAL's natural-key
  * `regexp_replace(lower(trim(...)))` on the cache-key axis.
+ *
+ * parseSearchQuery continues to consume this DENORM string list (D-82-02).
+ * Its longest-prefix match doesn't need canonical brand_ids.
  */
-export async function listCatalogBrands(): Promise<string[]> {
+export async function listCatalogBrandNames(): Promise<string[]> {
   const rows = await db
     .selectDistinct({ brand: watchesCatalog.brand })
     .from(watchesCatalog)
     .orderBy(asc(watchesCatalog.brand))
   return rows.map((r) => r.brand)
+}
+
+/**
+ * Phase 82 D-82-02 — listBrands.
+ *
+ * Returns all brands as { id, name }[] ordered by name ASC.
+ * SSR-fetched at `/watch/new` render time and prop-drilled through
+ * `AddWatchFlow` → `SearchEntry` → `StructuredEntryPanel` → `BrandPicker`
+ * (Plan 02). Client filters via substring match — no per-keystroke round-trip.
+ *
+ * NO `'use cache'` — matches listCatalogBrandNames rationale: cheap (~100 rows),
+ * per-request-fresh, brand-list staleness has no behavioral failure mode.
+ *
+ * Sourced from `brands` table (canonical FK source, post-Phase-80) rather
+ * than watches_catalog.brand DISTINCT (denorm). This is intentional —
+ * BrandPicker needs canonical id+name pairs for the FK write path.
+ *
+ * See also: src/data/recommendations.ts L164-165 for the same SELECT shape
+ * (select({ id: brands.id, name: brands.name }).from(brands)) pattern reference.
+ */
+export async function listBrands(): Promise<{ id: string; name: string }[]> {
+  const rows = await db
+    .select({ id: brands.id, name: brands.name })
+    .from(brands)
+    .orderBy(asc(brands.name))
+  return rows
 }
