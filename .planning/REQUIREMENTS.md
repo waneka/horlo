@@ -89,29 +89,29 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| POLISH-01 | — | Pending |
-| POLISH-02 | — | Pending |
-| POLISH-03 | — | Pending |
-| WEAR-01 | — | Pending |
-| WEAR-02 | — | Pending |
-| WEAR-03 | — | Pending |
-| WEAR-04 | — | Pending |
-| LIFE-01 | — | Pending |
-| LIFE-02 | — | Pending |
-| LIFE-03 | — | Pending |
-| LIFE-04 | — | Pending |
-| LIFE-05 | — | Pending |
-| LIFE-06 | — | Pending |
-| REORDER-01 | — | Pending |
-| REORDER-02 | — | Pending |
-| REORDER-03 | — | Pending |
-| REORDER-04 | — | Pending |
+| POLISH-01 | Phase 83 | Pending |
+| POLISH-02 | Phase 83 | Pending |
+| POLISH-03 | Phase 83 | Pending |
+| WEAR-01 | Phase 84 | Pending |
+| WEAR-02 | Phase 84 | Pending |
+| WEAR-03 | Phase 84 | Pending |
+| WEAR-04 | Phase 84 | Pending |
+| LIFE-01 | Phase 85 | Pending |
+| LIFE-02 | Phase 85 | Pending |
+| LIFE-03 | Phase 85 | Pending |
+| LIFE-04 | Phase 85 | Pending |
+| LIFE-05 | Phase 85 | Pending |
+| LIFE-06 | Phase 85 | Pending |
+| REORDER-01 | Phase 86 | Pending |
+| REORDER-02 | Phase 86 | Pending |
+| REORDER-03 | Phase 86 | Pending |
+| REORDER-04 | Phase 86 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
-- Mapped to phases: 0 (roadmapper will fill this in)
-- Unmapped: 17 (expected — pre-roadmap)
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-14*
-*Last updated: 2026-07-14 after initial definition for v9.0 kickoff*
+*Last updated: 2026-07-14 — traceability populated after roadmap creation (Phases 83-86)*

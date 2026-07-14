@@ -3,31 +3,40 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: planning
-last_updated: "2026-07-14T05:51:00.184Z"
+last_updated: "2026-07-14T06:15:00.000Z"
 last_activity: 2026-07-14
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
   percent: 0
+next_phase: 83
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
+See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** v8.4 shipped end-to-end; next step is `/gsd-complete-milestone v8.4` to archive and prep for v9.0
+**Current focus:** v9.0 roadmap created; 4 phases (83-86) mapped 1:1 to requirement categories (POLISH → WEAR → LIFE → REORDER); 17/17 v1 requirements covered. Next step is `/gsd-plan-phase 83`.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 83 — Polish sweep (planned, not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-14 — Milestone v9.0 started
+Status: Roadmap approved; awaiting plan-phase for Phase 83
+Last activity: 2026-07-14 — v9.0 roadmap created (Phases 83-86)
+
+**Upcoming phases:**
+- Phase 83: Polish sweep — POLISH-01/02/03 (3 requirements)
+- Phase 84: Wear history depth — WEAR-01/02/03/04 (4 requirements)
+- Phase 85: Collection lifecycle — LIFE-01..06 (6 requirements; DB-touching)
+- Phase 86: Reorder mode — REORDER-01/02/03/04 (4 requirements)
+
+**Requirement counts:** 17 total, 17 mapped (100%), 0 unmapped.
 
 ## Deferred Items
 
@@ -65,6 +74,7 @@ Items acknowledged and deferred at v8.4 milestone close on 2026-07-13 (carries f
 | seed | SEED-005-v6-market-value | dormant (next post-v9.0 candidate; needs SEED-007 spike first) |
 | seed | SEED-007-market-pricing-api-spike | dormant (precursor to SEED-005) |
 | seed | SEED-008-v5.1-explore-redesign | active — flagged for re-classification (v5.1 shipped) |
+| seed | SEED-009-v9.0-catalog-expansion | dormant — preempted by THIS v9.0 (per PROJECT.md kickoff decision 2026-07-13); will resume as v9.x when volume pinches |
 | seed | SEED-010-v5.3-add-watch-redesign | dormant — flagged for re-classification (v8.0 shipped this) |
 | seed | SEED-012-v6.0-social-interaction | active — flagged for re-classification (v6.0 shipped) |
 | seed | SEED-013-v7.0-watch-photos | dormant — flagged for re-classification (v7.0 shipped) |
@@ -72,12 +82,12 @@ Items acknowledged and deferred at v8.4 milestone close on 2026-07-13 (carries f
 | seed | SEED-015-inline-grid-engagement | dormant — flagged for re-classification (v7.0 Phase 63 shipped) |
 | seed | SEED-016-watch-detail-redesign | dormant — flagged for re-classification (v7.0 Phase 64 shipped) |
 
-Total: 37 items (2 debug + 19 quick_task + 1 todo + 14 seed + 1 stale verification_gap). SEED-021 (v8.4 canonicalization) is the one v8.4 just shipped — flip its seed file `status:` to `shipped, shipped_in: v8.4` post-close. The 14 seeds represent the forward roadmap + re-classification backlog, not operational debt; SEED-001/002/003/005/007/014 are genuine future work; SEED-008/010/012/013/015/016 are already shipped and need their seed-file `status:` field flipped to `shipped:`. Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 / v8.2 / v8.3 closes.
+Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verification_gap). SEED-021 (v8.4 canonicalization) shipped in v8.4 — flip its seed file `status:` to `shipped, shipped_in: v8.4` post-close. The 15 seeds represent the forward roadmap + re-classification backlog, not operational debt; SEED-001/002/003/005/007/014 are genuine future work; SEED-008/010/012/013/015/016 are already shipped and need their seed-file `status:` field flipped to `shipped:`; SEED-009 was preempted by v9.0 (this milestone chose depth over expansion). Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 / v8.2 / v8.3 / v8.4 closes.
 
-**Phase 82 close-time followups (not in audit; tracked as this session's tasks #18 + #20):**
+**Phase 82 close-time followups (candidates for v9.0 Phase 83 fold-in or a future v9.x polish milestone):**
 
-- skip-search entry path on `/watch/new` still uses a raw Brand input instead of BrandPicker (SEED-018 D-19 CLNP-06 skip link); real usability defect, candidate for v9.0 or a v8.5 polish milestone
-- alias chips on `/admin/families` queue rows are decorative-only (removal requires opening Add-alias dialog); design was intentional but discoverability gap
+- skip-search entry path on `/watch/new` still uses a raw Brand input instead of BrandPicker (SEED-018 D-19 CLNP-06 skip link); real usability defect. NOT in v9.0 POLISH scope (POLISH-01/02/03 are the locked three items).
+- alias chips on `/admin/families` queue rows are decorative-only (removal requires opening Add-alias dialog); design was intentional but discoverability gap. NOT in v9.0 scope.
 
 ## Performance Metrics
 
@@ -87,6 +97,7 @@ Total: 37 items (2 debug + 19 quick_task + 1 todo + 14 seed + 1 stale verificati
 - Phase 76 P03: ~20min, 3 tasks, 3 files (2 modified, 1 created), 5/5 reqs (VID-07, VID-08, VID-09, VID-10, VID-16 — VID-07 + VID-16 were already complete from P02 but the Server Action enforces them server-side); 1 auto-fix (mockStorage `.list()` two-arg signature)
 - Phase 76 P02: ~10min, 2 tasks, 2 files (1 modified, 1 created), 2/2 reqs (VID-07, VID-16); no deviations
 - Phase 76 P01: ~35min, 4 tasks, 4 files (1 modified, 3 created), 2/2 reqs (VID-11, VID-12); 1 auto-fix (drizzle .cause.code unwrap pattern documented)
+- v8.4: 5 phases (78-82), 25 plans, ~450 commits over ~3 weeks (2026-06-24 → 2026-07-13), 25/25 reqs
 - v8.2: 1 phase (75), 2 plans, ~2h code, 14 commits, 2/2 reqs (close held 10 days for DISC-RECS-VARIATION rotation observation)
 - v8.1: 3 phases (72-74), 5 plans, 1 day, 47 commits, 6/6 reqs (all bundled prod UAT items passed)
 - v8.0: 6 phases (66-71), 22 plans, 2 days, 150 commits, 39/39 reqs
@@ -100,6 +111,21 @@ Total: 37 items (2 debug + 19 quick_task + 1 todo + 14 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**v9.0 Collection Lifecycle & Wear Depth — locked decisions from `/gsd-new-milestone` kickoff (2026-07-13):**
+
+- **D-01 (v9.0)**: DnD scope = reorder existing lists only. No sub-collections / folders in v9.0; no drag-to-promote-status. Folders deferred to v9.x+ (much larger schema + UI surface).
+- **D-02 (v9.0)**: Status model = single `previously_owned` WatchStatus value + `disposal_reason` sub-enum (`sold` | `lost` | `gifted` | `stolen` | `traded`) + optional `sell_price` + `disposal_date`. NOT distinct per-disposal-type statuses. Rationale: cleaner filters, simpler insights code.
+- **D-03 (v9.0)**: One bundled milestone (not two — polish → wear depth → lifecycle → reorder ships as one v9.0).
+- **D-04 (v9.0)**: Wear aggregates live on the Worn tab as an across-collection view (leaderboard). NOT per-watch on the detail page — WEAR-V2-01 defers per-watch wear-count stats to v9.x.
+- **D-05 (v9.0)**: Worn detail = existing `/wear/[id]` route (already built in v6.0 Phase 56A). Phase 84 wires Worn-tab items into it rather than building a new page. No new route work.
+- **D-06 (v9.0)**: Previously-owned = excluded from similarity + recommender. Cleaner mental model; matches "it's not part of your collection anymore." Locked in LIFE-06.
+- **D-07 (v9.0)**: Reorder persistence = per-tab, becomes the new default sort. Collection and Wishlist each get their own user-chosen order that applies on load.
+- **D-08 (v9.0)**: Backfill wear entries (WEAR-02) are intentionally photo-less. Scope: "I forgot to log this yesterday" affordance. Photo capture stays on the same-day WYWT path.
+- **D-09 (v9.0)**: Bring-back-into-collection flow (previously-owned → owned again) is v2 (`LIFE-V2-03`). v9.0 disposal is one-way.
+- **D-10 (v9.0)**: Single-currency numeric `sell_price` in v9.0. Multi-currency deferred to `LIFE-V2-01`.
+- **v9.0 phase sequencing (locked)**: 83 (Polish) ships first — smallest scope, no schema, unblocks quick wins. 84 (Wear depth) before 85 (Lifecycle) — additive UI on existing data, no schema change. 85 (Lifecycle) is the DB-touching phase (new `previously_owned` WatchStatus + `disposal_reason` enum + 2 new columns `sell_price` + `disposal_date`); `workflow.use_worktrees=false` is already set globally per `[[execute-phase-no-worktree-when-db]]`. 86 (Reorder) closes last — touches Collection + Wishlist grids that the lifecycle "Show previously owned" toggle also touches, so ordering after 85 avoids merge churn.
+- **v9.0 preempts SEED-009 Catalog Expansion.** The ~205-row catalog on v8.4's canonical foundation is fine for now; volume work will resume as v9.x when it actually pinches.
 
 **Phase 81 P05 (Plan 05, scope patch) — same-family + lineage rail canonical display (2026-07-13):**
 
@@ -286,18 +312,16 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-07-13 — Phase 81 Plan 05 (scope patch: canonical JOIN on watch-detail-page same-family + lineage rails) complete. `src/data/hierarchy.ts` +26 LOC across 2 tasks. Task 05-1 (commit `39b7783e`): extended import to include `brands` + `watchFamilies` from `@/db/schema`; `getSameFamilyForCatalog` gains `.innerJoin(brands, eq(brands.id, watchesCatalog.brandId))` + `.innerJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))`; SELECT projection swaps `brand: watchesCatalog.brand` → `brand: brands.name` and `model: watchesCatalog.model` → `model: watchFamilies.name`; GROUP BY substitutes `brands.name` + `watchFamilies.name` for `watchesCatalog.brand` + `watchesCatalog.model` (keeping `watchesCatalog.id` + `watchesCatalog.imageUrl` intact); ORDER BY tiebreak switches to canonical `asc(brands.name), asc(watchFamilies.name)`. Task 05-2 (commit `748c0b5f`): `getLineageForReference` raw-SQL recursive CTE — BOTH the seed arm and the recursive arm gain `JOIN brands b ON b.id = wc.brand_id` + `JOIN watch_families f ON f.id = wc.family_id`; both arms' SELECT lists swap `wc.brand, wc.model` → `b.name AS brand, f.name AS model`; outer SELECT L165-172 unchanged (reads by name from CTE column list); CYCLE clause + depth-10 guard untouched; Pitfall 5 invariant extended in an inline docstring from just `wc.image_url` to also cover `b.name` + `f.name`. Live psql smoke against drift fixture `90c4ac1f-…4af4` (denorm `Hamilton Watch / DriftTest Chrono` on canonical Hamilton brand_id) returns canonical `Hamilton / Khaki Field Mechanical` under the new JOIN pattern. Public interfaces `SameFamilyWatch` (L53-59) + `LineageRow` (L28-40) unchanged. Consumer components `SameFamilyRail.tsx` + `LineageRail.tsx` untouched (they render `.brand` / `.model` by name and now receive canonical strings automatically). Forward armor: `grep -c '= ANY(' src/data/hierarchy.ts` = 0; `innerJoin(brands` = 1; `innerJoin(watchFamilies` = 1; `JOIN brands b` = 2 (seed + recursive); `JOIN watch_families f` = 2. `npm run build` exits 0. Zero deviations — plan executed exactly as written. Drift fixture LEFT APPLIED for operator re-walkthrough on the detail page; operator will run REVERT block after visual confirmation. Commits: `39b7783e` (Task 05-1 getSameFamilyForCatalog canonical JOIN), `748c0b5f` (Task 05-2 getLineageForReference CTE both-arms canonical JOIN). 0 new requirements marked complete (RECO-01 + RECO-04 already closed at Plan 02 boundary; scope patch is a re-application of the same read-time canonical JOIN pattern to two additional read surfaces per CONTEXT.md § Deferred Ideas revisit trigger).
+Last activity: 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth roadmap created. 4 phases (83, 84, 85, 86) mapped 1:1 to REQUIREMENTS.md categories: Phase 83 covers POLISH-01/02/03 (top-nav `+` removal, Worn-tab dropdown scope-to-owned, wishlist "Remove" copy); Phase 84 covers WEAR-01/02/03/04 (`/wear/[id]` link-through from Worn tab, photo-less past-date backfill, segmented 1/3/6/12mo/All wear-count aggregate + across-collection leaderboard); Phase 85 covers LIFE-01..06 (new `previously_owned` WatchStatus + `disposal_reason` enum + `sell_price` + `disposal_date` schema, disposal flow from collection card, wishlist→owned celebration, "Show previously owned" default-off toggle, similarity+recommender exclusion); Phase 86 covers REORDER-01..04 (explicit on-screen Reorder toggle on Collection + Wishlist grids, independent per-tab persistent order becomes new default sort, fixes mobile long-press vs. link-menu conflict). Sequencing: Polish (no schema) → Wear depth (additive UI on existing data) → Lifecycle (DB-touching; `use_worktrees=false` already set globally) → Reorder (touches the same grids Lifecycle changes, ordering last avoids merge churn). 17/17 v1 requirements mapped; 0 orphaned. Files written: `.planning/ROADMAP.md` (v9.0 active section added under milestone header + Phase Details for 83-86 with per-phase Success Criteria and `UI hint: yes` annotations on all four phases + Progress table), `.planning/REQUIREMENTS.md` (Traceability table populated with Phase 83/84/85/86 assignments; coverage line updated to 17 mapped / 0 unmapped), `.planning/STATE.md` (frontmatter `total_phases: 4`, `next_phase: 83`; Current Position points at Phase 83; SEED-009 added to Deferred Items as `dormant — preempted by v9.0`). Zero code changes yet — roadmap creation only.
 
-Prior activity: 2026-07-12 — Phase 81 Plan 02 (recommender read-path canonical FK swap) complete. `src/lib/recommendations.ts` +61 LOC: `topBrandOf` signature widened to `(watches, brandNameLookup) => { brandId, brandName } | null` per D-81-05 (filter `w.status === 'owned' && w.brandId`, count by `w.brandId!`, tiebreak by resolved brandName ASC, defensive null-return on lookup miss per Pitfall 6); `RationaleContext` gains `viewerTopBrand: { brandId, brandName } | null` — caller pre-computes once, threaded through per-candidate ctx (removes N² compute inside outer rec-mapping loop); `rationaleFor` brand-match reads `ctx.viewerTopBrand?.brandName`. `src/data/recommendations.ts` +103 LOC: module-scope `excludeKey(w)` helper (reads `${brandId}|${familyId}` when both FKs present, `${brand.trim().toLowerCase()}|${model.trim().toLowerCase()}` fallback) called at 3 sites (exclusion loop + candidateMap key + synthetic Watch key via top-up) — Pitfall 5 identity guarantee by construction; `brandNameLookup` Map built INSIDE `getRecommendationsForViewer` from `SELECT id, name FROM brands WHERE id IN (…)` with empty-viewerBrandIds guard (Pitfall 2) — T-81-P02-01 cross-viewer poisoning mitigation; `viewerOwnedBrandsLower: Set<string>` → `viewerOwnedBrandIds: Set<string>` (canonical UUIDs); owned-brand IN clause switched from `lower(trim(brand)) IN (…strings…)` to `watches_catalog.brand_id IN (${sql.join(brandArr.map(id => sql\`${id}\`), sql\`, \`)})` — anti-pitfall correct per [[drizzle-sql-any-array-pitfall]] (closes RECO-02 literally); `topUpFromCatalogPopularity` both SELECTs INNER JOIN brands + watch_families safe under Phase 80 NOT NULL guarantee, project `brand: brands.name, model: watchFamilies.name, brandId, familyId`; popularity tiebreak switched from denorm `watchesCatalog.brand` to canonical `brands.name`; synthetic Watch gains `brandId + familyId` from JOIN row; brandCount variety cap keys on brand_id. Tests: `tests/lib/recommendations.test.ts` +59 LOC (8 rationaleFor tests updated with `viewerTopBrand` ctx + 3 new topBrandOf cases: brandId-keyed counting, legacy-row exclusion, all-undefined null return); `src/data/__tests__/recommendations.test.ts` +235 LOC (schema mock extended with brandId/familyId + brands/watchFamilies tags, fluent-chain routes `__tag === 'brands'` SELECTs to brandNameLookupResolver, catalogTopUpResolver row shape gains brandId/familyId, 3 new Phase 81 describe cases: Pitfall 5 exclusion-key identity drops drift-branded rows, synthetic Watch FK propagation surfaces JOIN-derived canonical brand string, Pitfall 2 brandNameLookup empty guard proven by throw-on-call resolver never being awaited). Forward armor: `= ANY(` grep = 0 across src/data + src/lib recommendations files (2 in-file comment reword after false-positive trip — recurrence of Plan 01 Task 2 Rule 1 deviation #3); `innerJoin brands|watchFamilies` = 4 matches; `sql.join` = 5 matches; `excludeKey|norm(` = 7 matches; `new Map<string, string>(` = 1 match INSIDE getRecommendationsForViewer body (T-81-P02-01 satisfied structurally). `npm run build` ✓ 7.3s; 24/24 targeted tests pass (11 lib + 13 DAL). 2 auto-fixes: (1) Rule 3 Task 1 build-boundary glue (passed empty Map into topBrandOf so `npm run build` exits 0 at Task 1 done gate; Task 2 replaced with real brandNameLookup wire-up); (2) Rule 1 grep-armor comment reword. Commits: `95e090e3` (Task 1 topBrandOf + RationaleContext widening + tests/lib updates), `a28a6615` (Task 2 recommender read-path canonical FK swap + DAL tests). RECO-01/02/03/04 marked complete.
+Prior activity: 2026-07-13 — Phase 81 Plan 05 (scope patch: canonical JOIN on watch-detail-page same-family + lineage rails) complete. `src/data/hierarchy.ts` +26 LOC across 2 tasks. Task 05-1 (commit `39b7783e`): extended import to include `brands` + `watchFamilies` from `@/db/schema`; `getSameFamilyForCatalog` gains `.innerJoin(brands, eq(brands.id, watchesCatalog.brandId))` + `.innerJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))`; SELECT projection swaps `brand: watchesCatalog.brand` → `brand: brands.name` and `model: watchesCatalog.model` → `model: watchFamilies.name`; GROUP BY substitutes `brands.name` + `watchFamilies.name` for `watchesCatalog.brand` + `watchesCatalog.model` (keeping `watchesCatalog.id` + `watchesCatalog.imageUrl` intact); ORDER BY tiebreak switches to canonical `asc(brands.name), asc(watchFamilies.name)`. Task 05-2 (commit `748c0b5f`): `getLineageForReference` raw-SQL recursive CTE — BOTH the seed arm and the recursive arm gain `JOIN brands b ON b.id = wc.brand_id` + `JOIN watch_families f ON f.id = wc.family_id`; both arms' SELECT lists swap `wc.brand, wc.model` → `b.name AS brand, f.name AS model`; outer SELECT L165-172 unchanged (reads by name from CTE column list); CYCLE clause + depth-10 guard untouched; Pitfall 5 invariant extended in an inline docstring from just `wc.image_url` to also cover `b.name` + `f.name`. Live psql smoke against drift fixture `90c4ac1f-…4af4` (denorm `Hamilton Watch / DriftTest Chrono` on canonical Hamilton brand_id) returns canonical `Hamilton / Khaki Field Mechanical` under the new JOIN pattern. Public interfaces `SameFamilyWatch` (L53-59) + `LineageRow` (L28-40) unchanged. Consumer components `SameFamilyRail.tsx` + `LineageRail.tsx` untouched (they render `.brand` / `.model` by name and now receive canonical strings automatically). Forward armor: `grep -c '= ANY(' src/data/hierarchy.ts` = 0; `innerJoin(brands` = 1; `innerJoin(watchFamilies` = 1; `JOIN brands b` = 2 (seed + recursive); `JOIN watch_families f` = 2. `npm run build` exits 0. Zero deviations — plan executed exactly as written. Commits: `39b7783e` (Task 05-1 getSameFamilyForCatalog canonical JOIN), `748c0b5f` (Task 05-2 getLineageForReference CTE both-arms canonical JOIN). 0 new requirements marked complete (RECO-01 + RECO-04 already closed at Plan 02 boundary; scope patch is a re-application of the same read-time canonical JOIN pattern to two additional read surfaces per CONTEXT.md § Deferred Ideas revisit trigger).
 
-Prior activity: 2026-06-25 — Phase 79 Plan 04 (Wave 3 unified atomic apply transaction + post-flight assertion + auto-generated POST-DEPLOY artifact) complete. `scripts/v8.4-brand-canonicalization.ts` extended 1643 → 2125 LOC with applyHydration (DISP-03 / D-79-08 unconditional UPDATE FROM JOIN) + postFlightAssertion (MIG-04 / positive `IS DISTINCT FROM NULL` predicate) + renderPostDeployMarkdown (pure exported function) + writePostDeployArtifact (FS wrapper). main() `--apply --mode=both` branch fully wired with 5-stage flow + ONE outer `sql.begin` callback containing 6 mutation steps + 1 post-flight assertion per D-79-03 (Plan 02's transient brand-only sql.begin DELETED; Plan 02 "Plan 03/04" throw at the families/both gate DELETED). Local DB end-to-end smoke ran successfully: 205/205 catalog rows resolved + 33 new brands + 143 new families + 16 user watches hydrated; Hamilton + Hamilton Watch BOTH resolve to canonical UUID `20969364-...`; zero `watches.brand = 'Hamilton Watch'` rows post-apply; D-79-04 idempotent re-run gate verified (re-apply exits 0 with "Already applied"); D-79-06 alias cardinality stable across re-runs. 2 Rule 1 deviations auto-fixed: (1) strictPreflightGate family-triple keying must use canonical brand UUID identity not raw brand_norm; (2) applyFamilyPath needs optional brandMap param to re-resolve brandUuid at INSERT time since buildFamilyMap captures stale synthetic keys before applyBrandPath reifies brandMap. Plan 01 stub greens (ALL 6 Phase 79 stub files now green): v8.4-post-deploy-template 9/0/0; v8.4-apply-atomic 11/0/0 (DATABASE_URL set); v8.4-apply-idempotent 4/0/0 (DATABASE_URL set). Forward armor: 0 `= ANY(` patterns; 0 process.exit inside sql.begin callback; 1 actual sql.begin call site; 6 `IS DISTINCT FROM NULL` occurrences; npm run build exit 0. Commits: `ac69a781` (Task 1 helpers + unit test green), `f2652cf2` (Task 2 atomic-transaction wiring), `d732d996` (Task 3 integration tests + 2 Rule 1 deviations). MIG-02 + MIG-04 + DISP-03 marked complete.
+Prior activity: 2026-07-12 — Phase 81 Plan 02 (recommender read-path canonical FK swap) complete. See prior STATE.md snapshots for full detail; abbreviated here for size. Key: RECO-01/02/03/04 marked complete via canonical FK swap + brandNameLookup + Pitfall 5 excludeKey helper + Pitfall 2 empty-guard.
 
-Next action: operator re-walkthrough on `npm run dev` — click into the local viewer's Hamilton on the watch detail page, confirm SameFamilyRail + LineageRail now render `Hamilton / Khaki Field Mechanical` for the drift catalog row `90c4ac1f-…4af4` (was `Hamilton Watch / DriftTest Chrono`). After visual confirmation, run the drift fixture REVERT block per Plan 04 spec. Then re-run Plan 04's bundled deploy path: `git push` main (bundles Plans 01-05) + prod smoke walkthrough per D-81-04 UAT script (rail exclusion, canonical rationale on home rail, canonical strings on detail-page rails, DISP-01/02 add/edit persistence). Phase 81 verification then complete. Prior queue depth at Plan 05 close: Phase 79 Plan 05 + 260623-uua + Phase 76 all remain CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md / 79-POST-DEPLOY.md.
+Prior activity: 2026-06-25 — Phase 79 Plan 04 (Wave 3 unified atomic apply transaction + post-flight assertion + auto-generated POST-DEPLOY artifact) complete. See prior STATE.md snapshots for full detail. MIG-02 + MIG-04 + DISP-03 marked complete.
 
-Prior next action (2026-07-12): `/gsd-execute-phase 81` → Plan 03 (Wave 3 — Server Action canonical overwrite for addWatch + editWatch). Consumes Plan 01's `upsertCatalogFromUserInput`/`upsertCatalogFromExtractedUrl` `{ catalogId, brandName, familyName } | null` return shape + extended `getCatalogById` `canonicalBrand`/`canonicalFamily` fields; closes DISP-01/02 (user types "Hamilton Watch" → persisted `watches.brand = 'Hamilton'` canonical). Then Plan 04 (Wave 4 — bundled local drift-fixture UAT + prod deploy per D-81-04). Prior queue depth at Plan 02 close: Phase 79 Plan 05 + 260623-uua + Phase 76 all remain CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md / 79-POST-DEPLOY.md.
-
-Prior next action (2026-06-25): `/gsd-execute-phase 79` → Plan 05 (Wave 4 — local-first verification gate + prod push). Plan 05 is gate execution only (no new code): operator runs final local-first verification (`npm run dev` smoke against the post-apply local DB to confirm display strings render canonical), THEN runs the script against prod via `tsx scripts/v8.4-brand-canonicalization.ts --apply --mode=both` with a prod DATABASE_URL inline (D-79-02 prompts for `yes`); reviews the auto-generated 79-POST-DEPLOY.md; runs the 6 operator sign-off SQL queries in the Supabase SQL editor; commits the file with sign-off. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md (both unblocked by Plan 05's prod migration push window).
+Next action: `/gsd-plan-phase 83` — Polish sweep is the first v9.0 phase and the lowest-risk starting point (no schema, three surgical UI edits scoped to POLISH-01/02/03). Zero DB work; zero cross-cutting refactor. After 83 ships, sequence continues 84 → 85 → 86 per locked v9.0 sequencing rationale.
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- `/gsd-plan-phase 83` — plan the v9.0 Polish sweep phase (POLISH-01 top-nav `+` removal, POLISH-02 Worn-tab dropdown owned-only scope, POLISH-03 wishlist "Remove" copy).

@@ -17,8 +17,9 @@
 - ✅ **v8.2 Discovery Freshness** — Phase 75 (shipped 2026-06-10) — [archive](milestones/v8.2-ROADMAP.md)
 - ✅ **v8.3 WYWT Video** — Phases 76-77 (shipped 2026-06-23) — [archive](milestones/v8.3-ROADMAP.md)
 - ✅ **v8.4 Catalog Brand+Model Canonicalization** — Phases 78-82 (shipped 2026-07-13) — [archive](milestones/v8.4-ROADMAP.md)
-- 💤 **v9.0 Catalog Expansion** — next milestone target (SEED-009; lands on v8.4's canonical foundation)
-- 💤 **Market Value** — future, after v9.0 (SEED-005; needs the SEED-007 pricing spike first)
+- 🚧 **v9.0 Collection Lifecycle & Wear Depth** — Phases 83-86 (in progress; started 2026-07-14)
+- 💤 **v9.x Catalog Expansion** — future (SEED-009; deferred from v9.0; lands on v8.4's canonical foundation)
+- 💤 **Market Value** — future, after v9.x (SEED-005; needs the SEED-007 pricing spike first)
 
 ## Phases
 
@@ -266,3 +267,83 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 
 </details>
+
+### 🚧 v9.0 Collection Lifecycle & Wear Depth (In Progress)
+
+**Milestone Goal:** Deepen what a collector can do with the watches they already own — richer wear history, persistent ordering, and honest lifecycle tracking (including watches they've parted with).
+
+**Kickoff decisions (locked 2026-07-13 via `/gsd-new-milestone`):**
+- DnD scope = reorder existing lists only (no folders, no drag-to-promote-status).
+- Status model = single `previously_owned` value + `disposal_reason` enum + optional `sell_price` + `disposal_date` (not distinct per-disposal-type statuses).
+- Wear aggregates live on the Worn tab as an across-collection view (not per-watch on the detail page).
+- Worn detail = existing `/wear/[id]` route (already built in v6.0 Phase 56A); no new route.
+- Previously-owned watches are excluded from similarity + recommender.
+- Reorder persistence = per-tab, becomes the new default sort on subsequent loads.
+
+**Sequencing rationale:** 83 (Polish) ships first — smallest scope, no schema, unblocks quick wins. 84 (Wear depth) before 85 (Lifecycle) — additive UI on existing data, no schema. 85 (Lifecycle) is the DB-touching phase (new `previously_owned` WatchStatus + `disposal_reason` enum + 2 new columns); `workflow.use_worktrees=false` is already set globally per project convention. 86 (Reorder) closes last — touches Collection + Wishlist grids that lifecycle changes also touch, so ordering after 85 avoids merge churn.
+
+- [ ] **Phase 83: Polish sweep** — remove the desktop `+` add-watch nav button, scope the Worn-tab "log a wear" dropdown to owned watches only, and soften wishlist "Delete" copy to "Remove from wishlist."
+- [ ] **Phase 84: Wear history depth** — wire Worn-tab items into the existing `/wear/[id]` detail route, add a photo-less backfill affordance for past-date wears, and surface a time-windowed across-collection wear-count leaderboard on the Worn tab.
+- [ ] **Phase 85: Collection lifecycle** — introduce the `previously_owned` status + `disposal_reason` / `sell_price` / `disposal_date` fields, the disposal flow from a collection card, the wishlist → owned promotion celebration, the "Show previously owned" toggle, and exclude previously-owned from similarity + recommender.
+- [ ] **Phase 86: Reorder mode** — explicit "Reorder" toggle on Collection + Wishlist grids that opts into DnD; user-chosen order persists per tab and becomes the new default sort.
+
+## Phase Details
+
+### Phase 83: Polish sweep
+**Goal**: Ship three small, low-risk UX cleanups that unblock the v9.0 pile before any schema work begins.
+**Depends on**: Nothing (first v9.0 phase; no schema, no cross-cutting refactor).
+**Requirements**: POLISH-01, POLISH-02, POLISH-03
+**Success Criteria** (what must be TRUE):
+  1. On the desktop top nav, the user no longer sees a `+` add-watch button (add flow reachable via the existing dedicated entry point).
+  2. Opening the "log a wear" watch dropdown on the Worn tab shows only currently-owned watches — no wishlist items, no previously-owned items.
+  3. Removing a watch from the wishlist shows "Remove from wishlist" copy on both the action affordance and the confirmation prompt (not "Delete").
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 84: Wear history depth
+**Goal**: Give the Worn tab teeth — every entry links into its own detail page, past dates can be backfilled without a photo, and the tab surfaces an across-collection wear-count leaderboard with a time-window control.
+**Depends on**: Phase 83 (polish clears the Worn-tab surface first; POLISH-02 constrains the same dropdown Phase 84 will keep working alongside its new backfill affordance).
+**Requirements**: WEAR-01, WEAR-02, WEAR-03, WEAR-04
+**Success Criteria** (what must be TRUE):
+  1. Tapping any entry in the Worn tab opens that wear's existing `/wear/[id]` detail page.
+  2. The user can log a wear on a past date without providing a photo, using a backfill affordance on the Worn tab, and the entry appears in the Worn tab dated to the chosen day.
+  3. The Worn tab shows a wear-count aggregate section with a segmented time-window control offering 1 mo / 3 mo / 6 mo / 12 mo / All time.
+  4. The aggregate section renders a leaderboard of the user's owned watches ranked by wear count within the selected time window; changing the window updates the ranking.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 85: Collection lifecycle
+**Goal**: Track what leaves the collection honestly — a first-class `previously_owned` status with disposal metadata, a distinct promotion moment for wishlist → owned, and a default-hidden previously-owned view — while keeping similarity + recommender clean of watches the user no longer owns.
+**Depends on**: Phase 84 (Worn tab depth ships on the current status model; Phase 85's schema change is the first v9.0 DB-touching phase and lands cleanly once wear-depth is stable).
+**Requirements**: LIFE-01, LIFE-02, LIFE-03, LIFE-04, LIFE-05, LIFE-06
+**Success Criteria** (what must be TRUE):
+  1. From an owned watch's collection card, the user can mark it as previously-owned by choosing a disposal reason (sold / lost / gifted / stolen / traded) plus optionally recording a sell price and disposal date; the watch persists with all three fields.
+  2. Previously-owned watches are hidden from the Collection view by default, and turning on a "Show previously owned" toggle makes them visible.
+  3. Promoting a wishlist watch to owned shows a celebration moment that visibly distinguishes the promotion from a normal edit.
+  4. Previously-owned watches never appear in the recommender output on the home rail, and they are excluded from the similarity engine's "role duplicate" / "core fit" math against a candidate watch.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 86: Reorder mode
+**Goal**: Fix the mobile long-press vs. link-menu conflict by making drag-and-drop opt-in via an explicit on-screen "Reorder" affordance on both Collection and Wishlist grids, with each tab's user-chosen order persisting as its new default sort.
+**Depends on**: Phase 85 (Reorder touches the same Collection + Wishlist grid surfaces the lifecycle "Show previously owned" toggle lives on; ordering last avoids merge churn against the lifecycle UI).
+**Requirements**: REORDER-01, REORDER-02, REORDER-03, REORDER-04
+**Success Criteria** (what must be TRUE):
+  1. The user can enter a "Reorder" mode on the Collection grid from a visible on-screen affordance (not a hidden gesture); enabling it suppresses tap-to-open and enables drag.
+  2. The user can enter the same "Reorder" mode on the Wishlist grid; the Wishlist's order is independent of Collection's.
+  3. A user-chosen order on either grid persists across page loads and applies as that tab's default sort until the user changes it again.
+  4. On mobile, entering Reorder mode no longer triggers the long-press link menu conflict — drag works cleanly, and exiting Reorder mode restores tap-to-open.
+**Plans**: TBD
+**UI hint**: yes
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 83 → 84 → 85 → 86
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 83. Polish sweep | v9.0 | 0/TBD | Not started | - |
+| 84. Wear history depth | v9.0 | 0/TBD | Not started | - |
+| 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
+| 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
