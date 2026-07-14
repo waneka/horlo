@@ -282,7 +282,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 
 **Sequencing rationale:** 83 (Polish) ships first — smallest scope, no schema, unblocks quick wins. 84 (Wear depth) before 85 (Lifecycle) — additive UI on existing data, no schema. 85 (Lifecycle) is the DB-touching phase (new `previously_owned` WatchStatus + `disposal_reason` enum + 2 new columns); `workflow.use_worktrees=false` is already set globally per project convention. 86 (Reorder) closes last — touches Collection + Wishlist grids that lifecycle changes also touch, so ordering after 85 avoids merge churn.
 
-- [ ] **Phase 83: Polish sweep** — remove the desktop `+` add-watch nav button, scope the Worn-tab "log a wear" dropdown to owned watches only, and soften wishlist "Delete" copy to "Remove from wishlist."
+- [x] **Phase 83: Polish sweep** — remove the desktop `+` add-watch nav button, scope the Worn-tab "log a wear" dropdown to owned watches only, and soften wishlist "Delete" copy to "Remove from wishlist." (completed 2026-07-14)
 - [ ] **Phase 84: Wear history depth** — wire Worn-tab items into the existing `/wear/[id]` detail route, add a photo-less backfill affordance for past-date wears, and surface a time-windowed across-collection wear-count leaderboard on the Worn tab.
 - [ ] **Phase 85: Collection lifecycle** — introduce the `previously_owned` status + `disposal_reason` / `sell_price` / `disposal_date` fields, the disposal flow from a collection card, the wishlist → owned promotion celebration, the "Show previously owned" toggle, and exclude previously-owned from similarity + recommender.
 - [ ] **Phase 86: Reorder mode** — explicit "Reorder" toggle on Collection + Wishlist grids that opts into DnD; user-chosen order persists per tab and becomes the new default sort.
@@ -300,7 +300,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 **Plans**: 3 plans (Wave 1 parallel — all three touch disjoint files)
 - [x] 83-01-desktop-nav-plus-removal-PLAN.md — POLISH-01: remove `+` icon-button + Plus import from DesktopTopNav.tsx; update DesktopTopNav.test.tsx assertions
 - [x] 83-02-worn-tab-owned-only-dropdown-PLAN.md — POLISH-02: swap `watchOptions` derivation from `Object.values(watchMap)` to the existing `ownedWatches` prop in WornTabContent.tsx
-- [ ] 83-03-wishlist-remove-copy-PLAN.md — POLISH-03: `isWishlistLike`-conditional "Remove from wishlist" copy + outline trigger variant in WatchDetail.tsx (owned "Delete" preserved)
+- [x] 83-03-wishlist-remove-copy-PLAN.md — POLISH-03: `isWishlistLike`-conditional "Remove from wishlist" copy + outline trigger variant in WatchDetail.tsx (owned "Delete" preserved)
 **UI hint**: yes
 
 ### Phase 84: Wear history depth
@@ -346,7 +346,7 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 83. Polish sweep | v9.0 | 2/3 | In Progress|  |
+| 83. Polish sweep | v9.0 | 3/3 | Complete   | 2026-07-14 |
 | 84. Wear history depth | v9.0 | 0/TBD | Not started | - |
 | 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
