@@ -122,7 +122,7 @@ Source: `src/app/globals.css` `:root` + `.dark` blocks, `src/components/watch/Se
 
 | Component | Usage in Phase 82 |
 |-----------|-------------------|
-| `Button` | All action buttons: `variant="default"` (Confirm, Add alias primary), `variant="ghost"` (nav links, affordance, "Edit brand"/"Edit family" chips), `variant="outline"` (Cancel in dialogs), `variant="destructive"` (Merge — irreversible action) |
+| `Button` | All action buttons: `variant="default"` (Confirm as new, Add alias primary), `variant="ghost"` (nav links, affordance, "Edit brand"/"Edit family" chips), `variant="outline"` (dismissal buttons in dialogs), `variant="destructive"` (Merge — irreversible action) |
 | `Badge` | `variant="secondary"` for `needs_review` pill on queue rows and alias chips in Add-Alias dialog |
 | `Card` / `CardContent` | Queue row container: `<Card><CardContent className="pt-4">…</CardContent></Card>` |
 | `Dialog` + sub-primitives | Rename, Merge, Add-Alias dialogs; `showCloseButton={false}` on confirmation dialogs |
@@ -202,6 +202,9 @@ props:
 
 ### Admin Queue Rows (OPS-01 + OPS-02)
 
+**Visual hierarchy — /admin/brands and /admin/families:**
+> Primary visual anchor: the `needs_review = true` row cluster at the top of the queue. Operator eye lands on the `needs_review` badge (`variant="secondary"`, warm neutral) first, then the brand/family name (`font-semibold`), then the action buttons. The `ORDER BY needs_review DESC, name ASC` sort order enforces this — review-required rows always occupy the top of the viewport on page load.
+
 **Row structure (exact from ListIndexClient.tsx L152–215):**
 ```jsx
 <Card key={brand.id} id={`brand-${brand.id}`} data-testid={`brand-row-${brand.id}`}>
@@ -220,12 +223,17 @@ props:
       {/* Actions block */}
       <div className="flex gap-2 shrink-0">
         <Button size="sm" variant="outline" onClick={handleConfirm}>Confirm as new</Button>
-        <Button size="sm" variant="outline" onClick={() => setRenameTarget(brand)}>Rename</Button>
+        <Button size="sm" variant="outline" onClick={() => setRenameTarget(brand)}>Rename brand</Button>
         <Button size="sm" variant="destructive" onClick={() => setMergeTarget(brand)}>Merge into…</Button>
       </div>
     </div>
   </CardContent>
 </Card>
+```
+
+For `/admin/families` rows, the inline rename button reads `Rename family` (same pattern; noun changes to match the entity):
+```jsx
+<Button size="sm" variant="outline" onClick={() => setRenameTarget(family)}>Rename family</Button>
 ```
 
 **Sort order:** `ORDER BY needs_review DESC, name ASC` — `needs_review = true` rows float to top
@@ -238,10 +246,16 @@ props:
 
 ### Dialogs
 
-**Rename dialog:**
+**Rename dialog — /admin/brands:**
 - Title: `Rename {name}` (e.g. "Rename Hamilton Watch")
 - Field: `<Input>` pre-filled with current name, `<Label>Name</Label>`
-- Footer: `<Button variant="outline">Cancel</Button>` + `<Button variant="default">Save</Button>`
+- Footer: `<Button variant="outline">Keep current name</Button>` + `<Button variant="default">Rename brand</Button>`
+- `showCloseButton={false}` per ListIndexClient.tsx L225 pattern
+
+**Rename dialog — /admin/families:**
+- Title: `Rename {name}` (e.g. "Rename Submariner")
+- Field: `<Input>` pre-filled with current name, `<Label>Name</Label>`
+- Footer: `<Button variant="outline">Keep current name</Button>` + `<Button variant="default">Rename family</Button>`
 - `showCloseButton={false}` per ListIndexClient.tsx L225 pattern
 
 **Merge dialog (OPS-01):**
@@ -253,7 +267,8 @@ props:
   - Option 2: "Cancel — resolve families first"
   - Source: CONTEXT.md D-82-12, RESEARCH.md §Pattern 3 (critical transaction ordering note)
 - When source has 0 families: skip pre-flight, render BrandPicker + confirm button directly
-- Footer: `<Button variant="outline">Cancel</Button>` + `<Button variant="destructive">Merge</Button>`
+- Footer (target not yet selected): `<Button variant="outline">Cancel merge</Button>` + `<Button variant="destructive" disabled>Merge brands</Button>`
+- Footer (target selected): `<Button variant="outline">Cancel merge</Button>` + `<Button variant="destructive">Merge into {target.name}</Button>`
 - Success: `toast.success('Brand merged.')`, `revalidatePath('/admin/brands')` + `revalidatePath('/admin/families')`
 - Error: `toast.error("Couldn't merge brand. Try again.")`
 
@@ -264,6 +279,7 @@ props:
 - Normalization: `alias.trim().toLowerCase()` before storage — must match resolver's `lower(trim($1))` SQL (RESEARCH.md Pitfall 3)
 - `space-y-*` guardrail: chip list needs `flex flex-wrap gap-2` on parent, NOT `space-y-*`. Source: `[[space-y-inline-block-siblings]]` memory
 - Alias chip: `<Badge variant="secondary">` (inline-block); remove button `<Button size="icon-sm" variant="ghost">`
+- Footer: `<Button variant="outline">Close aliases</Button>` (dismissal only — no primary CTA in the footer; "Add alias" lives inline above)
 - Success: silent row refresh via `router.refresh()` (no toast for add-alias — minor non-destructive action)
 - Remove-alias: `toast.success('Alias removed.')` on success; `toast.error("Couldn't remove alias. Try again.")` on error
 
@@ -322,12 +338,20 @@ useEffect(() => {
 |---------|------|--------|
 | UI-02 affordance | `Couldn't find that brand — add as "{typed}"` | D-82-05, ROADMAP.md verbatim |
 | Admin primary CTA (brands) | "Confirm as new" | D-82-09 |
-| Admin rename CTA | "Rename" | D-82-09 |
+| Admin inline rename CTA (brands page) | "Rename brand" | D-82-09 + specific-label discipline |
+| Admin inline rename CTA (families page) | "Rename family" | D-82-09 + specific-label discipline |
 | Admin merge CTA | "Merge into…" | D-82-09 |
 | Admin add-alias CTA | "Add alias" | D-82-11 |
 | Rename dialog title | "Rename {name}" | RESEARCH.md Pattern (implied) |
+| Rename dialog primary CTA (brands) | "Rename brand" | specific-label discipline |
+| Rename dialog primary CTA (families) | "Rename family" | specific-label discipline |
+| Rename dialog dismissal | "Keep current name" | specific-label discipline — describes what happens on click |
 | Merge dialog title | "Merge {sourceName} into…" | Additional context block |
+| Merge dialog primary CTA (target selected) | "Merge into {target.name}" | specific-label discipline — names the target |
+| Merge dialog primary CTA (target not yet selected) | "Merge brands" (disabled state) | specific-label discipline — describes action type |
+| Merge dialog dismissal | "Cancel merge" | specific-label discipline |
 | Add-alias dialog title | "Aliases for {familyName}" | Additional context block |
+| Add-alias dialog dismissal | "Close aliases" | specific-label discipline |
 | Merge pre-flight prompt | "Source brand has {N} families. Merging will move all families to target. Continue?" | D-82-12 |
 | Merge pre-flight radio 1 (default) | "Move all {N} families to target" | D-82-12 |
 | Merge pre-flight radio 2 | "Cancel — resolve families first" | D-82-12 |
@@ -347,6 +371,8 @@ useEffect(() => {
 
 **Note:** UI-02 affordance click itself shows NO toast, NO hint — D-82-04 silent. The user sees only the picker closing and the typed value locked.
 
+**Generic-label block list — prohibited in Phase 82:** `Save`, `Cancel`, `OK`, `Submit`, `Done`, `Delete` as standalone bare labels. Every button label in this phase is a verb+noun phrase or describes the specific outcome of the action.
+
 ---
 
 ## State Rendering Map
@@ -361,12 +387,14 @@ useEffect(() => {
 | WatchForm — catalogId present, admin+owner | Edit page | Read-only chips + "Edit brand" / "Edit family" ghost links |
 | WatchForm — catalogId null (legacy) | Edit page | Editable `<Input>` fields (unchanged) |
 | /admin/brands — queue empty | BrandsQueue | "No brands need review." centered muted text |
-| /admin/brands — needs_review rows | BrandsQueue | `needs_review=true` rows floated to top; `<Badge variant="secondary">needs review</Badge>` |
-| Rename dialog — open | BrandsQueue / FamiliesQueue | Dialog with pre-filled Input; Save CTA |
-| Merge dialog — source has 0 families | BrandsQueue | BrandPicker target + Merge button directly |
-| Merge dialog — source has N families | BrandsQueue | Pre-flight radiogroup prompt before merge |
-| Add-alias dialog — no aliases | FamiliesQueue | Empty chip area; Input + Add alias button |
-| Add-alias dialog — has aliases | FamiliesQueue | `flex flex-wrap gap-2` chip strip + removable chips |
+| /admin/brands — needs_review rows | BrandsQueue | `needs_review=true` rows floated to top; `<Badge variant="secondary">needs review</Badge>`; primary visual anchor is the badge cluster at the top of the viewport |
+| Rename dialog — open (brands) | BrandsQueue | Dialog with pre-filled Input; "Rename brand" primary CTA; "Keep current name" dismissal |
+| Rename dialog — open (families) | FamiliesQueue | Dialog with pre-filled Input; "Rename family" primary CTA; "Keep current name" dismissal |
+| Merge dialog — target not yet selected | BrandsQueue | BrandPicker + "Merge brands" button disabled + "Cancel merge" dismissal |
+| Merge dialog — target selected, source has 0 families | BrandsQueue | BrandPicker + "Merge into {target.name}" destructive button enabled + "Cancel merge" |
+| Merge dialog — target selected, source has N families | BrandsQueue | Pre-flight radiogroup prompt; "Move all" radio selected by default |
+| Add-alias dialog — no aliases | FamiliesQueue | Empty chip area; Input + "Add alias" button; "Close aliases" footer |
+| Add-alias dialog — has aliases | FamiliesQueue | `flex flex-wrap gap-2` chip strip + removable chips; "Close aliases" footer |
 | Deep-link arrival | BrandsQueue | Row scrolls into center view + 1s accent/30 bg flash |
 | /admin/families?brandId= | FamiliesQueue | Filter banner + filtered family rows only |
 | Server Action loading | BrandsQueue / FamiliesQueue | Button `disabled`; `<Loader2 className="animate-spin">` (mirrors ListIndexClient L127) |
@@ -397,7 +425,7 @@ The following project memory rules are encoded into the specifications above. Ex
 | Memory | Rule | Where Enforced |
 |--------|------|----------------|
 | `[[accent-is-active-token]]` | `bg-accent text-accent-foreground dark:bg-accent dark:text-accent-foreground` for selected state — NEVER `bg-primary` | Merge pre-flight radio selected; Combobox.Item highlighted |
-| `[[button-outline-dark-override]]` | Pair every `bg-*` override with `dark:bg-*` on outline Button | Any explicit bg override on Cancel/outline buttons |
+| `[[button-outline-dark-override]]` | Pair every `bg-*` override with `dark:bg-*` on outline Button | Any explicit bg override on dismissal/outline buttons |
 | `[[space-y-inline-block-siblings]]` | Alias chip list: `flex flex-wrap gap-2` on parent, NOT `space-y-*` | Add-Alias dialog chip strip |
 | `[[button-medium-guardrail]]` | No raw `font-medium` — use `font-semibold` | All new labels, AdminSubNav active state, queue row names |
 | `[[assert-disappearance-too]]` | Affordance click tests: assert BOTH popup closes AND onCouldntFind called | BrandPicker.test.tsx |
