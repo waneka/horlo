@@ -63,6 +63,9 @@ export interface StructuredEntryPanelProps {
   initialBrand?: string
   initialModel?: string
   initialReference?: string
+  /** Phase 82 D-82-02 — SSR-fetched brands with ids for BrandPicker (Plan 02).
+   *  Plan 02 wires BrandPicker to consume this; this plan threads the prop through. */
+  brandsWithIds?: { id: string; name: string }[]
   /** D-03 — emits the extracted data + catalogId + photoBlob upward; Phase 70
    *  transitions to ConfirmStep.
    *  catalogId is null when the catalog upsert side-channel failed but the LLM

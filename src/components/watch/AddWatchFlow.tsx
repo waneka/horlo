@@ -73,6 +73,9 @@ interface AddWatchFlowProps {
   viewerUserId: string
   /** Phase 69 D-13 — SSR-fetched catalog brand list for SearchEntry / parseSearchQuery SRCH-26 pre-seed. */
   catalogBrands: string[]
+  /** Phase 82 D-82-02 — SSR-fetched brands with ids for BrandPicker (Plan 02).
+   *  Prop-drilled to SearchEntry → StructuredEntryPanel → BrandPicker; client filters via substring match. */
+  brandsWithIds: { id: string; name: string }[]
   /** SEED-018 — resolved server-side from profiles.is_admin; gates the catalog-only save option. */
   isAdmin: boolean
 }
@@ -88,6 +91,7 @@ export function AddWatchFlow({
   viewerUsername,
   viewerUserId,
   catalogBrands,
+  brandsWithIds,
   isAdmin,
 }: AddWatchFlowProps) {
   const router = useRouter()
@@ -637,6 +641,7 @@ export function AddWatchFlow({
           <SearchEntry
             viewerUserId={viewerUserId}
             catalogBrands={catalogBrands}
+            brandsWithIds={brandsWithIds}
             onPick={handleSearchPick}
             onSubmitStructured={handleStructuredSubmit}
             onSwitchToUrl={handleSwitchToUrl}

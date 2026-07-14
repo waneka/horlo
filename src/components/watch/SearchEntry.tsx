@@ -67,6 +67,9 @@ export interface SearchEntryProps {
   viewerUserId: string
   /** D-13 — SSR-fetched catalog brand list, prop-drilled to parseSearchQuery. */
   catalogBrands: string[]
+  /** Phase 82 D-82-02 — SSR-fetched brands with ids for BrandPicker.
+   *  Prop-drilled through to StructuredEntryPanel; Plan 02 wires BrandPicker to consume it. */
+  brandsWithIds: { id: string; name: string }[]
   /** D-03 — emits FULL SearchCatalogWatchResult upward; Phase 70 owns DUPE branching. */
   onPick: (result: SearchCatalogWatchResult) => void
   /** D-11 — bubbled up from the inline StructuredEntryPanel on extract success.
@@ -89,6 +92,7 @@ export interface SearchEntryProps {
 export function SearchEntry({
   viewerUserId,
   catalogBrands,
+  brandsWithIds,
   onPick,
   onSubmitStructured,
   onSwitchToUrl,
@@ -347,6 +351,7 @@ export function SearchEntry({
           initialBrand={seeded.brand}
           initialModel={seeded.model}
           initialReference={seeded.reference}
+          brandsWithIds={brandsWithIds}
           onSubmitStructured={onSubmitStructured}
           onSwitchToUrl={onSwitchToUrl}
         />

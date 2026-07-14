@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser, UnauthorizedError } from '@/lib/auth'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getWatchesByUser } from '@/data/watches'
-import { getCatalogById, listCatalogBrands } from '@/data/catalog'
+import { getCatalogById, listCatalogBrandNames, listBrands } from '@/data/catalog'
 import { getProfileById } from '@/data/profiles'
 import { AddWatchFlow } from '@/components/watch/AddWatchFlow'
 import { validateReturnTo } from '@/lib/watchFlow/destinations'
@@ -92,12 +92,13 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
   // Mirrors the assertOwner select pattern (src/lib/auth.ts:73-77).
   // Defensive: a fetch error or missing row collapses to isAdmin=false (fail-closed).
   const supabase = await createSupabaseServerClient()
-  const [collection, catalogPrefill, viewerProfile, catalogBrands, profileAdminRow] =
+  const [collection, catalogPrefill, viewerProfile, catalogBrandNames, brandsWithIds, profileAdminRow] =
     await Promise.all([
       getWatchesByUser(user.id),
       catalogId ? hydrateCatalogPrefill(catalogId) : Promise.resolve(null),
       getProfileById(user.id),
-      listCatalogBrands(),
+      listCatalogBrandNames(),
+      listBrands(),
       supabase.from('profiles').select('is_admin').eq('id', user.id).single(),
     ])
   const viewerUsername = viewerProfile?.username ?? null
@@ -141,11 +142,15 @@ export default async function NewWatchPage({ searchParams }: NewWatchPageProps) 
         initialReturnTo={initialReturnTo}
         viewerUsername={viewerUsername}
         viewerUserId={user.id}
-        // Phase 69 D-13 — SSR-fetched brand list for SearchEntry / parseSearchQuery
+        // Phase 69 D-13 — SSR-fetched catalog brand string list for SearchEntry / parseSearchQuery
         // SRCH-26 pre-seed. Per-request fetch (uncached on purpose); cheap SELECT DISTINCT.
         // Public-read RLS on watches_catalog already allows this without viewer identity.
-        // Phase 70 mounts SearchEntry which consumes this list.
-        catalogBrands={catalogBrands}
+        // Phase 70 mounts SearchEntry which consumes this list. Sourced via listCatalogBrandNames (Phase 82 rename).
+        catalogBrands={catalogBrandNames}
+        // Phase 82 D-82-02 — SSR-fetched brands with ids for BrandPicker (Plan 02).
+        // Prop-drilled through AddWatchFlow → SearchEntry → StructuredEntryPanel → BrandPicker.
+        // No per-keystroke round-trip; client filters via substring match (~100 rows).
+        brandsWithIds={brandsWithIds}
         // SEED-018 — admin-gated catalog-only save path.
         isAdmin={isAdmin}
       />
