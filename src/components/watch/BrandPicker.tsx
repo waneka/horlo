@@ -92,12 +92,16 @@ export function BrandPicker({
         aria-label="Search brands"
         placeholder="Search brands…"
         disabled={disabled}
-        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-base md:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
       />
 
+      {/* z-[100] on Positioner: Dialog overlay is z-50 + isolate + backdrop-blur.
+          Without this, when BrandPicker is embedded in the merge Dialog (Plan 04),
+          the popup renders behind the overlay — visually blurred and click-blocked.
+          Higher than any Dialog stacking context we ship. */}
       <Combobox.Portal>
-        <Combobox.Positioner sideOffset={4} align="start">
-          <Combobox.Popup className="z-50 w-[var(--anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
+        <Combobox.Positioner sideOffset={4} align="start" className="z-[100]">
+          <Combobox.Popup className="w-[var(--anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md">
             {filteredBrands.length > 0 && (
               <Combobox.List className="max-h-[60vh] overflow-y-auto p-1">
                 {filteredBrands.map((b) => (

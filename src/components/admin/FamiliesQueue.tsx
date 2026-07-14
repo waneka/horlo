@@ -288,18 +288,17 @@ export function FamiliesQueue({ families, brandIdFilter, filterBrandName }: Fami
             {currentAliases.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {currentAliases.map((alias) => (
-                  <Badge key={alias} variant="secondary" className="flex items-center gap-1 pr-1">
-                    {alias}
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
+                  <Badge key={alias} variant="secondary" className="inline-flex h-6 items-center gap-1 pl-2 pr-1">
+                    <span>{alias}</span>
+                    <button
+                      type="button"
                       aria-label={`Remove alias ${alias}`}
                       onClick={() => aliasTarget && handleRemoveAlias(aliasTarget.id, alias)}
                       disabled={busy === `${aliasTarget?.id}:${alias}`}
-                      className="ml-1 h-4 w-4 p-0"
+                      className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-secondary-foreground/70 hover:bg-secondary-foreground/10 hover:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                     >
                       <X className="size-3" aria-hidden="true" />
-                    </Button>
+                    </button>
                   </Badge>
                 ))}
               </div>
