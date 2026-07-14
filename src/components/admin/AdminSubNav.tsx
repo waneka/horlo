@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils'
 const NAV_LINKS = [
   { href: '/admin/lists', label: 'Curated Lists' },
   { href: '/admin/paths', label: 'Collection Paths' },
+  { href: '/admin/brands', label: 'Brands' },
+  { href: '/admin/families', label: 'Families' },
 ]
 
 export function AdminSubNav() {
