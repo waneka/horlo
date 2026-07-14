@@ -2,16 +2,14 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: planning
-last_updated: "2026-07-14T06:15:00.000Z"
-last_activity: 2026-07-14
+status: Roadmap approved; awaiting plan-phase for Phase 83
+last_updated: "2026-07-14T19:53:53.816Z"
+last_activity: 2026-07-14 — v9.0 roadmap created (Phases 83-86)
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 0
-next_phase: 83
 ---
 
 # Project State
@@ -31,6 +29,7 @@ Status: Roadmap approved; awaiting plan-phase for Phase 83
 Last activity: 2026-07-14 — v9.0 roadmap created (Phases 83-86)
 
 **Upcoming phases:**
+
 - Phase 83: Polish sweep — POLISH-01/02/03 (3 requirements)
 - Phase 84: Wear history depth — WEAR-01/02/03/04 (4 requirements)
 - Phase 85: Collection lifecycle — LIFE-01..06 (6 requirements; DB-touching)
