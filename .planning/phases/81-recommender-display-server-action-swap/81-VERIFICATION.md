@@ -1,10 +1,10 @@
 ---
 phase: 81-recommender-display-server-action-swap
 verified: 2026-07-13T23:20:00Z
-status: human_needed
-score: 5/5 must-haves verified (technical); prod deploy pending operator
+status: passed
+score: 5/5 must-haves verified (technical); prod deploy walk green 2026-07-13
 overrides_applied: 0
-re_verification: null
+re_verification: 2026-07-13T23:59:00Z
 human_verification:
   - test: "Bundled Vercel deploy per 81-POST-DEPLOY.md — `git push origin main` then run the 4-step prod smoke walkthrough on Tyler's real account against horlo.app (mirrors D-81-04 with Tyler's collection; no drift fixture on prod because prod is canonical post-Phase-79)"
     expected: "All 4 assertions green on prod: (i) Tyler's own watches NOT in home rail (RECO-01 self-exclusion sanity); (ii) rec rationale strings render canonical brand names (RECO-04); (iii) addWatch with typed drift brand persists canonical (DISP-01); (iv) editWatch retyping drift persists canonical (DISP-02); throwaway watch DELETEd after walk"
