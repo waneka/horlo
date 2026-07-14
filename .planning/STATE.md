@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
-status: milestone_complete
-last_updated: "2026-07-14T03:00:41.296Z"
-last_activity: 2026-07-13 -- v8.4 milestone complete (Phase 82 shipped, all 5 UAT green on prod)
+status: Awaiting next milestone
+last_updated: "2026-07-14T04:56:30.034Z"
+last_activity: 2026-07-14 — Milestone v8.4 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
@@ -24,21 +24,14 @@ See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canon
 
 ## Current Position
 
-Phase: — (v8.4 shipped)
+Phase: Milestone v8.4 complete
 Plan: —
-Status: Milestone complete
-Last activity: 2026-07-13
-
-**Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
-
-- CANON-03: `watch_families.aliases text[] NOT NULL DEFAULT '{}'` + GIN containment index
-- CANON-04: `brands.needs_review` + `watch_families.needs_review` boolean columns
-- MIG-01: `scripts/v8.4-brand-canonicalization.ts` dry-run → writes `.planning/v8.4-brand-merge-decisions.md`
-- MIG-05 (portability foundation): `extensions.unaccent` + pinned `SET search_path` per `project_drizzle_supabase_db_mismatch`; full MIG-05 closes in Phase 79
+Status: Awaiting next milestone
+Last activity: 2026-07-14 — Milestone v8.4 completed and archived
 
 ## Deferred Items
 
-Items acknowledged and deferred at v8.3 milestone close on 2026-06-23 (carries forward v8.2's list — SEED-020 dropped because it shipped THIS milestone; 5 new quick_tasks + 1 todo added since v8.2; SEED-008/012/013/015/016 re-classification still pending separately):
+Items acknowledged and deferred at v8.4 milestone close on 2026-07-13 (carries forward v8.3's list — 3 new quick_tasks since v8.3 close + Phase 79 verification-gap stale marker; SEED-021 dropped from active list because THIS milestone shipped it; SEED-008/010/012/013/015/016 re-classification still pending):
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -60,7 +53,11 @@ Items acknowledged and deferred at v8.3 milestone close on 2026-06-23 (carries f
 | quick_task | 260620-lbn-seed-018-surgical-slice-surface-url-extr | missing (new since v8.2) |
 | quick_task | 260622-exo-fix-wear-duplicate-day-across-utc-midnig | missing (new since v8.2) |
 | quick_task | 260622-lcd-audit-missing-on-local-supabase-migrations | missing (new since v8.2) |
+| quick_task | 260623-mn3-taste-aware-sparse-pool-top-up-for-colle | missing (new since v8.3) |
+| quick_task | 260623-pzz-multi-brand-match-per-brand-variety-cap- | missing (new since v8.3) |
+| quick_task | 260623-uua-improve-catalog-and-collection-search-er | missing (new since v8.3) |
 | todo | drizzle-kit-pg-net-introspection-bug | medium priority (new since v8.2) |
+| verification_gap | Phase 79 79-VERIFICATION.md | human_needed (stale marker; Phase 79 shipped 2026-06-25 per project_phase_79_v8_4_prod_shipped) |
 | seed | SEED-001-catalog-hierarchy-and-attributes | dormant |
 | seed | SEED-002-hybrid-recommender | dormant (future paid-feature candidate per `project_monetization_stance_2026_05_06`) |
 | seed | SEED-003-onboarding-cold-start-flow | dormant |
@@ -75,7 +72,12 @@ Items acknowledged and deferred at v8.3 milestone close on 2026-06-23 (carries f
 | seed | SEED-015-inline-grid-engagement | dormant — flagged for re-classification (v7.0 Phase 63 shipped) |
 | seed | SEED-016-watch-detail-redesign | dormant — flagged for re-classification (v7.0 Phase 64 shipped) |
 
-Total: 33 items (2 debug + 16 quick_task + 1 todo + 14 seed). SEED-020 (wywt-video-3s) is the one v8.3 just shipped — marked `status: shipped, shipped_in: v8.3` in `.planning/seeds/SEED-020-wywt-video-3s.md` and excluded from this list. The 14 seeds represent the forward roadmap + re-classification backlog, not operational debt; SEED-001/002/003/005/007/014 are genuine future work; SEED-008/010/012/013/015/016 are already shipped and need their seed-file `status:` field flipped to `shipped:`. Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 / v8.2 closes.
+Total: 37 items (2 debug + 19 quick_task + 1 todo + 14 seed + 1 stale verification_gap). SEED-021 (v8.4 canonicalization) is the one v8.4 just shipped — flip its seed file `status:` to `shipped, shipped_in: v8.4` post-close. The 14 seeds represent the forward roadmap + re-classification backlog, not operational debt; SEED-001/002/003/005/007/014 are genuine future work; SEED-008/010/012/013/015/016 are already shipped and need their seed-file `status:` field flipped to `shipped:`. Quick tasks are long-tail backlog (oldest from April 2026) consistent with the `project_next_clear_operational_debt` pattern across v6.0 / v7.0 / v8.0 / v8.1 / v8.2 / v8.3 closes.
+
+**Phase 82 close-time followups (not in audit; tracked as this session's tasks #18 + #20):**
+
+- skip-search entry path on `/watch/new` still uses a raw Brand input instead of BrandPicker (SEED-018 D-19 CLNP-06 skip link); real usability defect, candidate for v9.0 or a v8.5 polish milestone
+- alias chips on `/admin/families` queue rows are decorative-only (removal requires opening Add-alias dialog); design was intentional but discoverability gap
 
 ## Performance Metrics
 
@@ -297,3 +299,5 @@ Prior next action (2026-07-12): `/gsd-execute-phase 81` → Plan 03 (Wave 3 — 
 Prior next action (2026-06-25): `/gsd-execute-phase 79` → Plan 05 (Wave 4 — local-first verification gate + prod push). Plan 05 is gate execution only (no new code): operator runs final local-first verification (`npm run dev` smoke against the post-apply local DB to confirm display strings render canonical), THEN runs the script against prod via `tsx scripts/v8.4-brand-canonicalization.ts --apply --mode=both` with a prod DATABASE_URL inline (D-79-02 prompts for `yes`); reviews the auto-generated 79-POST-DEPLOY.md; runs the 6 operator sign-off SQL queries in the Supabase SQL editor; commits the file with sign-off. Note: 260623-uua + Phase 76 still CODE-COMPLETE on `main` awaiting operator prod migration push per 76-POST-DEPLOY.md (both unblocked by Plan 05's prod migration push window).
 
 ## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

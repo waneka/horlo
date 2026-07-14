@@ -702,6 +702,58 @@ A 4-second wrist-rotation video capture flow paralleling the existing WYWT photo
 
 ---
 
+## Milestone: v8.4 — Catalog Brand+Model Canonicalization
+
+**Shipped:** 2026-07-13
+**Phases:** 5 (78, 79, 80, 81, 82) | **Plans:** 25 | **Timeline:** 3 weeks (2026-06-24 → 2026-07-13)
+
+### What Was Built
+
+- **Schema foundation (Phase 78):** additive `brands.needs_review`, `watch_families.needs_review`, `watch_families.aliases text[]` + GIN containment index. Additive schema landed idempotently on local + prod via `supabase db push --linked`.
+- **Operator-in-the-loop backfill (Phase 79):** `scripts/v8.4-brand-canonicalization.ts` produces `.md` decision files for review; `--apply` runs the atomic UPDATE. 205/205 catalog rows resolved; 37 new brands + 139 new families created; Hamilton drift collapsed (`Hamilton Watch` → `Hamilton`). First prod attempt aborted on local-keyed decision files (`[[catalog-id-divergence]]`); recovered via `--force` regen against prod.
+- **NOT NULL flip + ingest hardening (Phase 80):** `watches_catalog.brand_id` + `.family_id` are now NOT NULL. `resolveBrandId` / `resolveFamilyId` (3-tier: exact → alias → `pg_trgm.word_similarity > 0.2`) with atomic ON CONFLICT auto-create flagging new rows `needs_review = true`. First prod push failed Vercel build on slugify scope bug (`[[reexport-only-doesnt-bind-locally]]`); forward-fix committed same day.
+- **Recommender + display server-action swap (Phase 81):** `getRecommendationsForViewer` exclusion key + `topUpFromCatalogPopularity` multi-brand match + `topBrandOf` all switched from `lower(trim(watches.brand))` to `watches_catalog.brand_id`. `addWatch` / `editWatch` auto-overwrite persisted `watches.brand` / `.model` with canonical names on every INSERT/UPDATE. Detail-page same-family + lineage rails read canonical too (mid-walk scope-patch Plan 05 — CONTEXT § Deferred Ideas revisit trigger fired during walkthrough).
+- **User-facing loop closure (Phase 82):** `BrandPicker` typeahead in `StructuredEntryPanel` (SSR-fetched brand list + client filter). UI-02 "Couldn't find" affordance routes silently through Phase 80's resolver auto-create. `WatchForm` renders canonical `brands.name` / `watch_families.name` as read-only chips (belt-and-suspenders via `getWatchById` LEFT JOINs); admin-owners see `Edit brand` / `Edit family` deep-links. `/admin/brands` full queue (Confirm / Rename / Merge with WAI-ARIA radiogroup pre-flight + `db.transaction()` respecting `watch_families.brand_id` RESTRICT FK). `/admin/families` mirror minus merge (D-82-10) + Add-alias / Remove-alias with `trim().toLowerCase()` normalization matching resolver tier-2 alias lookup.
+
+### What Worked
+
+- **Sequencing invariant carried through 5 phases without rework:** schema → backfill → NOT NULL flip → recommender/display → UI+admin. Each phase's success criteria depended on the previous phase's invariants being live. No phase had to be re-planned because the prior phase changed something under it.
+- **Operator-in-the-loop backfill with review-before-apply:** the `.planning/v8.4-brand-merge-decisions.md` artifact let the operator see and adjust auto-resolved matches (53 brand rows, 19 auto / 34 needs-review) before the atomic UPDATE. Prevented the class of "auto-migration surprises operator" incidents.
+- **Local-first walkthrough caught real bugs across all 5 phases.** Phase 82's walkthrough alone surfaced 3 distinct BrandPicker issues (z-index in Dialog, height mismatch, item-click didn't update visible input) that would have been shipped as prod defects.
+- **Mid-walk scope-patch pattern (Phase 81 Plan 05 → this milestone's `[[mid-walk-scope-patch-pattern]]` memory):** when a CONTEXT § Deferred Ideas revisit-trigger fires during human-verify walkthrough AND the fix mirrors an already-shipped pattern in the same phase, fold via a scoped inline plan rather than defer. Turned a would-be follow-up into a same-day close.
+- **`assertOwner()` first + Zod `.strict()` + `revalidatePath` remains the frozen CMS Server Action pattern.** Reused verbatim in `src/app/actions/cms/brands.ts` + `families.ts` — zero deviation, zero incidents.
+
+### What Was Inefficient
+
+- **`milestone.complete` extractor garbage — 6th recurrence.** Auto-generated accomplishments block in MILESTONES.md was mostly "One-liner:" and "Found during:" placeholder text lifted from SUMMARY.md headers. Hand-rewriting the entry took ~10 minutes. This is a durable tooling defect at this point — pattern confirmed across v6.0/v7.0/v8.0/v8.1/v8.2/v8.3/v8.4.
+- **5th recurrence of `[[phase-complete-999-1-misset]]` on Phase 82 close** — STATE.md got `completed_phases: 6` (should be 5) + `percent: 120`. Hand-corrected. Same class of tooling defect as extractor garbage.
+- **Two Phase-80 close-hygiene misses swept during v8.4 close:** REQUIREMENTS.md traceability rows for CANON-01/02 + INGEST-01/02/03/04 were still marked Pending; ROADMAP.md milestone-list Phase 80 entry was unchecked. Both shipped in Phase 80 (2026-06-26) but never got flipped. Suggests Phase-close STATE.md verification should also sweep sibling planning artifacts, not just STATE.md itself.
+- **BrandPicker regression tests missed the item-click bug.** Test (2) asserted `onChange` fires and popup closes — but not that the visible input value updates. Added test 2b as regression during the walkthrough fix. Pattern: test both directions of every observable state change, not just the callback side.
+
+### Patterns Established
+
+- **Combobox popup embedded in Dialog needs `z-[100]` on Positioner.** Dialog overlay `z-50 + isolate + backdrop-blur` creates a stacking context that captures the popup blurred + click-blocked. Recorded in `[[phase-82-complete]]`; not yet promoted to a general memory.
+- **Base-ui Combobox `onInputValueChange` guard vs `onValueChange` label sync:** the `details.reason !== 'input-change'` guard is intentional (prevents ancillary clobbering) but ALSO blocks the `'item-press'` label sync. Must push `picked.name` into `inputValue` explicitly in `onValueChange`.
+- **`getWatchById` extended with LEFT JOINs (Option B) for canonical chip display.** RESEARCH Open Question 1 resolved with belt-and-suspenders: chip reads `canonicalBrand ?? watch.brand` so post-Phase-81-write-time-overwrite stale rows still render canonical strings.
+- **`db.transaction()` FK-ordering for merge operations.** `UPDATE watches_catalog SET brand_id=target → UPDATE watch_families SET brand_id=target → DELETE FROM brands WHERE id=source`. Order matters because `watch_families.brand_id` has `onDelete: 'restrict'`.
+- **Alias normalization must match resolver tier-2:** `trim().toLowerCase()` at storage matches `lower(trim($1))` at lookup. Operator-added aliases feed straight back into the next ingest.
+
+### Key Lessons
+
+- **`[[pg_trgm-word-similarity-for-brand-typos]]`** — for typo-tolerant search where user types one word but DB value is multi-word (`jaeger-lecoultre`, `héron watches`), use `word_similarity(haystack, needle) > 0.2`, not plain `similarity > 0.3`. Suffix dilution kills the score (`jeager` vs `jaeger-lecoultre` scores only 0.143 on plain similarity).
+- **`[[supabase-extension-schema-function-pin]]`** — Supabase prod has pg_trgm/unaccent in `extensions` schema; local CLI installs in `public`. Migrations using them in functional indexes need `SET search_path` PINNED on the function definition. Local-first verification doesn't catch this — the first `supabase db push --linked` is the gate.
+- **`[[post-flight-assertion-predicate-divergence]]`** — a `DO $$ ASSERT` gated by the SAME WHERE-clause as the operation it validates inherits the same bug. Rephrase in broader terms (`coalesce`/`is distinct from`).
+- **`[[mid-walk-scope-patch-pattern]]`** — CONTEXT § Deferred Ideas revisit triggers during walkthroughs are same-day scope-patch candidates when the fix mirrors an already-shipped pattern in the same phase.
+- **`[[catalog-id-divergence]]`** — local/prod UUIDs diverge across `watches_catalog`, `brands`, `watch_families`. Id-keyed migrations are no-ops cross-DB. Decision files must be regenerated against prod before `--apply`.
+
+### Cost Observations
+
+- **Model mix:** ~85% Opus (Sonnet 4.6 for lower-stakes executors + verifiers; Opus 4.7 for orchestrators and planners), ~15% Sonnet
+- **Sessions:** ~15 across the milestone (planning-heavy front + steady execution + close)
+- **Notable:** Phase 82 shipped from `/gsd-plan-phase 82 --chain` fully autonomously through 5 executor waves + verifier, with operator UAT the only human-in-loop step. The `--chain` mode + `mode: yolo` + `workflow.use_worktrees: false` combination worked cleanly.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution

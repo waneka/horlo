@@ -1,5 +1,45 @@
 # Milestones
 
+## v8.4 Catalog Brand+Model Canonicalization (Shipped: 2026-07-13)
+
+**Phases completed:** 5 phases (78-82), 25 plans, ~450 commits over ~3 weeks (2026-06-24 → 2026-07-13)
+
+**Delivered:** Every `watches_catalog` row now resolves to a canonical `brand_id` + `family_id` (NOT NULL FKs); user drift is prevented at ingest (extract-watch resolver with 3-tier lookup + auto-create-with-needs-review); user-visible display strings (WatchForm, recommender rails, add-watch flow) all read canonical `brands.name` / `watch_families.name`; operator has a `/admin/brands` + `/admin/families` queue UI to walk the `needs_review` backlog without dropping to CLI.
+
+**Key accomplishments:**
+
+- **Additive schema landed idempotently on local + prod** — `brands.needs_review`, `watch_families.needs_review`, `watch_families.aliases text[]` + GIN containment index. Drizzle schema mirrors the shape; migrations shipped via `supabase db push --linked` per `[[drizzle-supabase-db-mismatch]]` gotcha list.
+- **Backfill migration with operator-in-the-loop dry-run** — `scripts/v8.4-brand-canonicalization.ts` (+ family sibling) produces `.planning/v8.4-brand-*-decisions.md` for review; operator approves inline; `--apply` runs the atomic UPDATE. Prod attempt 1 aborted on local-keyed decision files ([[catalog-id-divergence]]); recovery via `--force` regen against prod. 205/205 catalog rows resolved; 37 new brands + 139 new families created; Hamilton merge collapsed (`Hamilton Watch` → `Hamilton`).
+- **NOT NULL flip after backfill quiesces the schema** — `watches_catalog.brand_id` + `.family_id` are now NOT NULL. Ingest hardening: `resolveBrandId` / `resolveFamilyId` (3-tier: exact → alias → fuzzy pg_trgm word_similarity > 0.2, per `[[pg_trgm-word-similarity-for-brand-typos]]`) with atomic ON CONFLICT auto-create that flags new rows `needs_review = true`. `supabase/migrations/` extension-schema portability trap surfaced ([[supabase-extension-schema-function-pin]]).
+- **Recommender + display Server Actions read canonical FKs end-to-end** — `getRecommendationsForViewer` exclusion + `topUpFromCatalogPopularity` multi-brand key + `topBrandOf` all switched from `lower(trim(watches.brand))` to `watches_catalog.brand_id`. `Brut Date` vs `Brut Datejust` and `Héron` vs `Héron Watches` no longer collide. `addWatch` / `editWatch` auto-overwrite persisted `watches.brand` / `.model` with canonical names on every INSERT/UPDATE. Detail-page same-family + lineage rails read canonical too (mid-walk scope-patch Plan 05).
+- **`BrandPicker` typeahead + UI-02 affordance close the user-visible loop** — `StructuredEntryPanel` Brand field is now a `@base-ui/react/combobox` sourced from SSR-fetched `brands` list; unknown-brand affordance `Couldn't find that brand — add as "{typed}"` (verbatim ROADMAP.md copy) locks the string and routes through the existing `/api/extract-watch` → `resolveBrandId` tier-3 auto-create. Silent per D-80-04 — no toast, no envelope field.
+- **WatchForm renders canonical strings as read-only chips + admin-only deep-links** — catalog-linked watches show canonical `brands.name` / `watch_families.name` (via `getWatchById` extended with LEFT JOINs; belt-and-suspenders vs stale legacy `watch.brand`); admin owners see `Edit brand` → `/admin/brands#brand-{id}` (scroll + pulse) and `Edit family` → `/admin/families?brandId={id}` (filter banner). Non-admin owners see chips without links. Legacy `catalogId = null` rows still show editable Inputs.
+- **`/admin/brands` full queue** — Confirm as new (`needs_review` flip), Rename (slug regen via `slugifyWithRandomSuffix`), Merge into with WAI-ARIA radiogroup pre-flight when source has referencing families. Merge transaction: UPDATE watches_catalog → UPDATE watch_families → DELETE brands, respecting `watch_families.brand_id` RESTRICT FK ordering. `assertOwner()` first + Zod `.strict()` + `revalidatePath` per D-06 canonical CMS pattern.
+- **`/admin/families` mirrors OPS-01 minus merge (D-82-10)** — plus Add-alias / Remove-alias with `trim().toLowerCase()` normalization matching the resolver's tier-2 alias lookup. Add-alias round-trip verified end-to-end: adding `test alias 82` to a family made it resolvable on the very next `/watch/new` extract. `?brandId=` deep-link filter with Clear-filter banner.
+- **`AdminSubNav` grew from 2 → 4 flat links** — Curated Lists · Collection Paths · Brands · Families.
+
+**Known deferred items at close:** 37 (see STATE.md § Deferred Items). All pre-existing operational backlog; SEED-021 (this milestone's origin seed) dropped from active list.
+
+**Phase 82 close-time followups (real defects, not backlog):**
+
+- Skip-search entry path on `/watch/new` bypasses BrandPicker (SEED-018 D-19 CLNP-06 skip link mounts a different structured entry surface whose Brand field is a raw Input). Two entry points, two code paths. Candidate for a v8.5 polish or v9.0 fold-in.
+- `/admin/families` row-level alias chips are decorative-only (removal requires opening Add-alias dialog). Design was intentional but discoverability gap surfaced in Step 1d walkthrough.
+
+**Durable lessons captured (memory-linked):**
+
+- `[[pg_trgm-word-similarity-for-brand-typos]]` — for typo-tolerant search where user types one word but DB value is multi-word (`jaeger-lecoultre`), use `word_similarity(haystack, needle) > 0.2`, not plain `similarity > 0.3` (suffix dilution kills the score).
+- `[[supabase-extension-schema-function-pin]]` — Supabase prod has pg_trgm/unaccent in `extensions` schema; migrations using them in functional indexes need `SET search_path` PINNED on the function definition. Local CLI installs in `public` — first `supabase db push --linked` is the gate.
+- `[[reexport-only-doesnt-bind-locally]]` — `export { x } from 'X'` doesn't bind `x` for in-file callers; they need their own `import`. `npm run build` is the authoritative gate (vitest doesn't walk scripts/, `tsc --noEmit` has baseline noise).
+- `[[catalog-id-divergence]]` — local/prod UUIDs diverge; id-keyed migrations are no-ops cross-DB. Decision files must be regenerated against prod before `--apply`.
+- `[[post-flight-assertion-predicate-divergence]]` — a `DO $$ ASSERT` gated by the SAME WHERE-clause as the operation it validates inherits the same bug. Rephrase in broader terms.
+- `[[mid-walk-scope-patch-pattern]]` — when a CONTEXT § Deferred Ideas revisit-trigger fires during human-verify walkthrough AND the fix mirrors an already-shipped pattern in the same phase, fold via a scoped inline plan rather than defer to a follow-up. Precedent: Phase 81 Plan 05 (detail-page rail drift).
+- Combobox popup embedded in Dialog needs `z-[100]` on Positioner (Dialog overlay `z-50 + isolate + backdrop-blur` creates a stacking context that captures the popup blurred + click-blocked). Not a memory yet; captured in `[[phase-82-complete]]`.
+- Base-ui Combobox `onInputValueChange` guard `details.reason !== 'input-change'` prevents ancillary clobbering but ALSO blocks the `'item-press'` label sync — must push `picked.name` into `inputValue` explicitly in `onValueChange`. Regression test 2b added.
+- `milestone.complete` extractor garbage continues (6th recurrence — hand-rewritten this entry).
+- 5th recurrence of `[[phase-complete-999-1-misset]]` on Phase 82 close (`completed_phases: 6` + `percent: 120`) — hand-corrected.
+
+---
+
 ## v8.3 WYWT Video (Shipped: 2026-06-23)
 
 **Phases completed:** 2 phases (76 + 77), 12 plans, ~80 commits over 2 days
@@ -16,6 +56,7 @@
 **Known deferred items at close:** 33 (see STATE.md Deferred Items). All pre-existing operational backlog; no v8.3 regressions or unresolved gaps.
 
 **Durable lessons captured:**
+
 - iOS gesture-context discipline via stream-as-prop architecture — applies to any future MediaStream-consuming component
 - jsdom `URL.createObjectURL` shim pattern via `beforeAll` `Object.defineProperty` — needed by any component that creates blob URLs
 - `milestone.complete` extractor garbage continues (6th recurrence — hand-rewritten this entry)

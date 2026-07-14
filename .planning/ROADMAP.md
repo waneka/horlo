@@ -16,7 +16,7 @@
 - ✅ **v8.1 Add-Watch Polish** — Phases 72-74 (shipped 2026-05-30) — [archive](milestones/v8.1-ROADMAP.md)
 - ✅ **v8.2 Discovery Freshness** — Phase 75 (shipped 2026-06-10) — [archive](milestones/v8.2-ROADMAP.md)
 - ✅ **v8.3 WYWT Video** — Phases 76-77 (shipped 2026-06-23) — [archive](milestones/v8.3-ROADMAP.md)
-- 🚧 **v8.4 Catalog Brand+Model Canonicalization** — Phases 78-82 (active; SEED-021 — promoted ahead of v9.0)
+- ✅ **v8.4 Catalog Brand+Model Canonicalization** — Phases 78-82 (shipped 2026-07-13) — [archive](milestones/v8.4-ROADMAP.md)
 - 💤 **v9.0 Catalog Expansion** — next milestone target (SEED-009; lands on v8.4's canonical foundation)
 - 💤 **Market Value** — future, after v9.0 (SEED-005; needs the SEED-007 pricing spike first)
 
@@ -252,186 +252,17 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 
 </details>
 
-### ✅ v8.4 Catalog Brand+Model Canonicalization (Phases 78-82) — COMPLETE
+<details>
+<summary>✅ v8.4 Catalog Brand+Model Canonicalization (Phases 78-82) — SHIPPED 2026-07-13</summary>
 
-- [x] **Phase 78: Schema Additions + Operator-Resolve Queue** — CANON-03, CANON-04, MIG-01 (completed 2026-06-25)
-- [x] **Phase 79: Backfill Migration + Display Hydration** — MIG-02, MIG-03, MIG-04, MIG-05, DISP-03 (completed 2026-06-25)
-- [x] **Phase 80: NOT NULL Flip + Ingest Hardening** — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04 (completed 2026-06-26)
-- [x] **Phase 81: Recommender + Display Server Action Swap** — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02 (completed 2026-07-13)
-- [x] **Phase 82: Add-Watch UI + Operator Admin** — UI-01, UI-02, UI-03, OPS-01, OPS-02 (completed 2026-07-13)
+- [x] Phase 78: Schema Additions + Operator-Resolve Queue (4/4 plans) — CANON-03, CANON-04, MIG-01 (completed 2026-06-25)
+- [x] Phase 79: Backfill Migration + Display Hydration (5/5 plans) — MIG-02, MIG-03, MIG-04, MIG-05, DISP-03 (completed 2026-06-25)
+- [x] Phase 80: NOT NULL Flip + Ingest Hardening (5/5 plans) — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04 (completed 2026-06-26)
+- [x] Phase 81: Recommender + Display Server Action Swap (5/5 plans) — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02 (completed 2026-07-13)
+- [x] Phase 82: Add-Watch UI + Operator Admin (6/6 plans) — UI-01, UI-02, UI-03, OPS-01, OPS-02 (completed 2026-07-13)
 
-25/25 v8.4 requirements mapped across 5 phases (CANON 4, MIG 5, INGEST 4, RECO 4, DISP 3, UI 3, OPS 2). Sequencing: schema → backfill → NOT NULL+ingest → recommender+display → UI+admin. Each phase delivers a coherent, prod-verifiable capability with the next phase resting on the previous one's invariants. Phases 78-80 are DB-touching (`workflow.use_worktrees=false` already globally set per `project_next_clear_operational_debt`).
+25/25 v8.4 requirements shipped across 5 phases (CANON 4, MIG 5, INGEST 4, RECO 4, DISP 3, UI 3, OPS 2). Sequencing: schema → backfill → NOT NULL+ingest → recommender+display → UI+admin — each phase's invariants unblock the next. All prod-verified: bundled Vercel deploys, local-first walkthroughs against local Supabase, iPhone Safari UAT for user-facing changes. Ships the operator admin queues (`/admin/brands` + `/admin/families`) that close v8.4's user-facing loop.
 
-## Phase Details
+See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 
-### Phase 78: Schema Additions + Operator-Resolve Queue
-**Goal**: The schema can carry alias data and a needs-review flag, and a dry-run script proposes brand+family mappings for operator approval — no data UPDATE runs yet.
-**Depends on**: Phase 77 (v8.3 shipped; v8.4 starts here)
-**Requirements**: CANON-03, CANON-04, MIG-01
-**Success Criteria** (what must be TRUE):
-  1. `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column exists with a GIN containment index that returns rows in <50ms on the seeded local catalog for `aliases @> ARRAY['datejust']` queries (CANON-03) — note: per RESEARCH R-FIND-03, aliases are EMPTY in Phase 78 (D-78-08) so the `<50ms` claim is satisfied trivially by a seqscan on the ~205-row local table; the index EXISTS and is correctness-verifiable via `pg_indexes`; the perf-on-populated-data test is post-Phase-79.
-  2. `brands.needs_review boolean NOT NULL DEFAULT false` and `watch_families.needs_review boolean NOT NULL DEFAULT false` columns exist; existing rows backfill to `false`; new INSERT-from-ingest paths can set `true` (CANON-04)
-  3. Running `scripts/v8.4-brand-canonicalization.ts` (no `--apply` flag) writes `.planning/v8.4-brand-merge-decisions.md` listing every distinct `lower(trim(watches_catalog.brand))` value with either an auto-resolved `brands.id` or a `needs-review` marker for ambiguous cases — without touching any row in any table (MIG-01)
-  4. The migration is portable across local Supabase + prod Supabase per `[[drizzle-supabase-db-mismatch]]` — filename ordering and additive ADD COLUMN shape verified. Per RESEARCH R-FIND-01: this Phase 78 migration does NOT define new helper functions and therefore does NOT need `extensions.unaccent` / pinned `SET search_path` on any function (the pinned-search-path rule applies to the dry-run SCRIPT's `extensions.word_similarity` calls, not the SQL migration). Full MIG-05 closure deferred to Phase 79's larger migration.
-**Plans**: 4 plans
-Plans:
-**Wave 1**
-- [x] 78-01-PLAN.md — Wave 0 RED test stubs (7 test files; static schema-shape, GIN index introspection, script integration + units; `it.todo` per Phase 77 convention)
-- [x] 78-02-PLAN.md — Schema additions migration (edit `src/db/schema.ts` + hand-write `supabase/migrations/20260624000000_phase78_aliases_needs_review.sql` + drizzle mirror + apply locally + green 2 Wave 0 stubs)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 78-03-PLAN.md — Dry-run script (`scripts/v8.4-brand-canonicalization.ts` Stages 1-4: distinct catalog brands, exact-only auto-resolve per D-78-04, top 3 fuzzy candidates ≥0.5 via `extensions.word_similarity`, GFM emission; refuse-to-overwrite + `--regenerate` merge-forward per D-78-07; npm script entry; green remaining 5 Wave 0 stubs)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 78-04-PLAN.md — Prod push handoff (operator-facing `78-POST-DEPLOY.md`; `supabase db push --linked`; verification SQL checklist; sign-off — autonomous: false)
-**UI hint**: no
-
-### Phase 79: Backfill Migration + Display Hydration
-**Goal**: Every existing `watches_catalog` row resolves to a canonical `brand_id` and `family_id`; every existing `watches` row whose `catalogId` is set has its display strings hydrated from the canonical names — and a post-flight assertion proves zero unresolved NULLs.
-**Depends on**: Phase 78 (needs the `aliases` + `needs_review` columns and an operator-approved decisions `.md` artifact)
-**Requirements**: MIG-02, MIG-03, MIG-04, MIG-05, DISP-03
-**Success Criteria** (what must be TRUE):
-  1. Running `scripts/v8.4-brand-canonicalization.ts --apply` after operator approves the decisions `.md` artifact populates `watches_catalog.brand_id` for every row — auto-mapped exact matches use the existing brand row, operator-resolved ambiguous cases use the operator-chosen target, net-new brands get a new `brands` row with `needs_review: false` (operator-approved). Idempotent on re-run (MIG-02)
-  2. Running the same script for families populates `watches_catalog.family_id` for every row — typo cases (`Brut Date` → `Brut Datejust`) routed into the `aliases` array on the canonical family rather than creating a duplicate family row (MIG-03)
-  3. A post-flight assertion using a DIFFERENT predicate from the UPDATE's WHERE-clause (e.g. `COUNT(*) WHERE brand_id IS DISTINCT FROM NULL` vs the operation's `WHERE brand_id IS NULL`) verifies zero unresolved rows on `watches_catalog` AFTER the migration — per the post-flight-predicate divergence lesson from `project_post_flight_assertion_predicate_divergence` (MIG-04)
-  4. Every existing `watches` row whose `catalogId` is non-NULL has its `brand` and `model` columns overwritten with the canonical `brands.name` / `watch_families.name` resolved through that `catalogId` — no UI surface (collection grid, detail page, profile rail) still renders stale free-text variants like `Hamilton` vs `Hamilton Watch` (DISP-03)
-  5. The full migration pushes cleanly to prod via `supabase db push --linked` on the first attempt — no `extensions` schema portability surprises, no enum-bound dependent failures, no filename ordering issues (MIG-05 full closure)
-**Plans**: 5 plans
-Plans:
-**Wave 1**
-- [x] 79-01-PLAN.md — Wave 0 RED test stubs (4 unit + 2 integration; covers MIG-02/MIG-03/MIG-04/DISP-03 + D-79-01..10)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [x] 79-02-PLAN.md — Brand apply scaffold (parseArgs --apply --mode + isLocalDatabaseUrl + strictPreflightGate brand-only + idempotentReRunGate + applyBrandPath in sql.begin; greens Plan 01 host-detect + strict-gate brand cases) — MIG-02
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [x] 79-03-PLAN.md — Family dry-run + apply scaffold (--mode=families artifact emission + buildFamilyMap + applyFamilyPath with idempotent alias-append + extended strict gate; greens Plan 01 family-build-decisions + family strict-gate cases) — MIG-03
-
-**Wave 4** *(blocked on Wave 3 completion)*
-- [x] 79-04-PLAN.md — Atomic 6-step transaction wiring + hydration UPDATE FROM JOIN + post-flight assertion with predicate divergence + renderPostDeployMarkdown auto-generator; greens all Plan 01 integration stubs — MIG-04, DISP-03
-
-**Wave 5** *(blocked on Wave 4 completion — autonomous: false; operator checkpoint)*
-- [x] 79-05-PLAN.md — Local-first verification (13 steps) + prod apply with interactive yes-prompt + 6 sign-off SQL queries against prod + ROADMAP/STATE/REQUIREMENTS update; MIG-05 full closure + final DISP-03 prod verification
-**UI hint**: no
-
-### Phase 80: NOT NULL Constraint Flip + Ingest Hardening
-**Goal**: The schema enforces that every `watches_catalog` row resolves to a brand and family, and `/api/extract-watch` cannot create new canonical drift after this phase — every extract attempt either matches an existing `brand_id` (exact or fuzzy) or auto-creates a `needs_review: true` row.
-**Depends on**: Phase 79 (needs backfill complete — cannot flip NOT NULL while NULLs exist; needs ingest fixed BEFORE constraint flip so the next extract doesn't crash on a NULL insert)
-**Requirements**: CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04
-**Success Criteria** (what must be TRUE):
-  1. `watches_catalog.brand_id` and `watches_catalog.family_id` are both `NOT NULL` after the constraint migration runs; attempting to INSERT a row with either column NULL fails at the database layer with a 23502 not-null violation (CANON-01, CANON-02)
-  2. Calling `/api/extract-watch` with a URL whose extracted brand exactly matches an existing `brands.name_normalized` attaches that `brand_id` on the upserted `watches_catalog` row (no fuzzy lookup, no new row created) (INGEST-01)
-  3. Calling `/api/extract-watch` with a URL whose extracted brand has no exact match but scores above 0.6 `pg_trgm` similarity against a single existing `brands.name_normalized` attaches that fuzzy-matched `brand_id` and emits a structured `fuzzy_brand_match` log event; user flow has no visible delay (INGEST-02)
-  4. Calling `/api/extract-watch` with a URL whose extracted brand has neither exact nor fuzzy match auto-creates a new `brands` row with `needs_review: true` and attaches its `brand_id` to the catalog row — user flow never blocks; operator can surface the row later via `/admin/brands` (INGEST-03)
-  5. The same exact-then-fuzzy-then-create resolution path applies to model → `watch_families` resolution, with the additional step of checking `watch_families.aliases` containment (`@>`) alongside `name_normalized` — so a future `/api/extract-watch` call for a `Brut Date` URL resolves to the canonical `Brut Datejust` family via the alias rather than creating a new family row (INGEST-04)
-**Plans**: 5 plans
-Plans:
-**Wave 1**
-- [ ] 80-01-PLAN.md — Wave 0 RED test stubs (3 test files: catalog-resolver unit, NOT NULL integration, local-DB resolver integration) + extract slugify helper to src/lib/slug.ts — INGEST-01..04, CANON-01, CANON-02
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 80-02-PLAN.md — Implement catalog-resolver (brand 3-tier with D-80-01 clear-gap + family 4-tier with D-80-02 alias-before-fuzzy + D-80-04 structured log events) — INGEST-01..04
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 80-03-PLAN.md — Wire resolver into BOTH upsert helpers (upsertCatalogFromExtractedUrl + upsertCatalogFromUserInput); ON CONFLICT preserves existing FKs (Discretion iii); zero route changes (D-80-04 silent surface) — INGEST-01..04
-
-**Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 80-04-PLAN.md — NOT NULL migration: Drizzle schema notNull() + hand-written supabase/migrations/20260626000000_phase80_catalog_brand_family_not_null.sql with pre/post-flight predicate divergence; [BLOCKING] local drizzle-kit push + Plan 01 NOT NULL constraint test green — CANON-01, CANON-02
-
-**Wave 5** *(blocked on Wave 4 completion — autonomous: false; operator checkpoint)*
-- [ ] 80-05-PLAN.md — Local-First Verification Recipe (4 extractions) + 80-POST-DEPLOY.md staged-deploy runbook (D-80-03: code deploy → manual extract proof → migration push) + operator human-action checkpoint — all 6 requirements
-**UI hint**: no
-
-### Phase 81: Recommender + Display Server Action Swap
-**Goal**: The home rail's exclusion key + multi-brand-match scoring + rationale templates read brand/family from canonical FKs (eliminating `Héron` vs `Héron Watches`-class drift in user-visible recs), and the `addWatch` / `editWatch` Server Actions auto-overwrite the stored display strings from the canonical FK targets on every write.
-**Depends on**: Phase 80 (recommender reads through `brand_id` JOIN — needs the FK populated AND NOT NULL so a single code path is safe; Server Actions write through the canonical name — needs ingest to have produced the canonical row first)
-**Requirements**: RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02
-**Success Criteria** (what must be TRUE):
-  1. The home "From Collectors Like You" rail no longer surfaces a user's own watch when that watch's free-text `brand`/`model` differs from the catalog's canonical strings — e.g. an owner of a `Brut Date` (catalog `Brut Datejust`) sees that family excluded from their rail; an owner of `Héron` (catalog `Héron Watches`) sees their brand excluded (RECO-01)
-  2. The multi-brand `+100` scoring fires for every owned brand regardless of the user's free-text spelling — `Hamilton` and `Hamilton Watch` both trigger the boost for the same canonical brand row (RECO-02, RECO-03)
-  3. Recommendation rationale strings render the canonical brand name from `brands.name` joined through `watches_catalog.brand_id` — `Fans of {brand} love this` shows `Hamilton Watch` (canonical) not `Hamilton` (user free-text) regardless of which user owns the source row (RECO-04)
-  4. Adding a new watch through the existing add-watch flow with a free-text brand string persists `watches.brand` as the canonical `brands.name` resolved through the eventual `catalogId` — not the user's typed string. Same on edit (DISP-01, DISP-02)
-  5. Existing recommendation tests + collection-rail tests still pass against the new JOIN-through path; no measurable p95 regression on the home rail (per Phase 19.1 baselines acknowledged in CANON-V2-01 defer rationale)
-**Plans**: 4 plans
-Plans:
-**Wave 1**
-- [x] 81-01-PLAN.md — Type + DAL projection foundation: Watch.brandId?/familyId? optional fields + getWatchesByUser/getWatchById LEFT JOIN projection + getCatalogById extended with canonicalBrand/canonicalFamily + upsertCatalogFromUserInput/upsertCatalogFromExtractedUrl return-type widening to { catalogId, brandName, familyName } + all 5 callsite updates (extract-watch route x2, wishlist.ts, watches.ts x2)
-
-**Wave 2** *(blocked on Wave 1 completion; parallel plans within the wave)*
-- [x] 81-02-PLAN.md — Recommender read-path swap: topBrandOf signature widen + RationaleContext.viewerTopBrand restructure + brandNameLookup construction in getRecommendationsForViewer + exclusion set switches to brandId|familyId + topUpFromCatalogPopularity INNER JOINs on brands + watch_families + brand_id IN clause + synthetic Watch FK propagation + test extensions — RECO-01, RECO-02, RECO-03, RECO-04
-- [x] 81-03-PLAN.md — Server Action canonical overwrite: addWatch catalogId branch reads canonicalBrand/canonicalFamily + user-input branch consumes upsertResult.brandName/familyName + editWatch overwrite path before UPDATE + 4 new DISP unit cases in watches-recs-invalidation.test.ts — DISP-01, DISP-02
-
-**Wave 3** *(blocked on Wave 2 completion — autonomous: false; operator checkpoint)*
-- [x] 81-04-PLAN.md — Local-First Verification + Bundled Prod Deploy: reversible drift-fixture SQL (fixtures/drift-hamilton.sql) + 4-step D-81-04 walkthrough on npm run dev + local Supabase + 81-POST-DEPLOY.md operator runbook + human-verify checkpoint gating git push — all 6 requirements verified end-to-end
-**UI hint**: no
-
-### Phase 82: Add-Watch UI + Operator Admin
-**Goal**: The add-watch flow surfaces a brand-picker autocomplete that locks new entries to canonical brands (with a labeled escape hatch for net-new), the edit-watch form renders canonical strings as read-only, and an operator can walk the `needs_review` queue without dropping to CLI.
-**Depends on**: Phase 81 (needs the canonical-name auto-overwrite already wired so the picker's `brand_id` selection flows cleanly through addWatch; needs ingest's auto-create path live so the "couldn't find" affordance has a destination)
-**Requirements**: UI-01, UI-02, UI-03, OPS-01, OPS-02
-**Success Criteria** (what must be TRUE):
-  1. The `StructuredEntryPanel` Brand field renders as a typeahead autocomplete sourced from `brands.name` (via the existing `catalogBrands` SSR prop pipeline); typing surfaces matching brands as a dropdown; selecting one attaches `brand_id` to the eventual catalog upsert (UI-01)
-  2. If the user types a brand string that doesn't match any existing `brands.name` after typeahead settles, a "Couldn't find that brand — add as '{typed}'" affordance appears; clicking it routes through the INGEST-03 auto-create path with `needs_review: true` on submit and the user flow continues without operator gating (UI-02)
-  3. The `WatchForm` edit screen renders the canonical `brands.name` and `watch_families.name` resolved through `catalogId` as read-only display strings with an "Edit catalog mapping" admin link visible only to the watch owner — user cannot type a non-canonical string and persist it (UI-03)
-  4. `/admin/brands` lists all brands ordered by `needs_review DESC, name ASC`; each `needs_review: true` row exposes confirm-as-new / rename / merge-into-existing actions; merge UPDATEs every referencing `watches_catalog.brand_id` to the target and deletes the source row in a single transaction (OPS-01)
-  5. `/admin/families` mirrors OPS-01 for `watch_families` and adds an "Add alias" action that appends to the `aliases text[]` column — so the operator can route `Brut Date` → `Brut Datejust` from the queue UI rather than from a migration script (OPS-02)
-**Plans**: 6 plans
-Plans:
-**Wave 1**
-- [x] 82-01-PLAN.md — DAL foundation: rename listCatalogBrands → listCatalogBrandNames + new listBrands() {id,name}[] + /watch/new Promise.all extended + AddWatchFlow prop threading — UI-01 (data path)
-
-**Wave 2** *(blocked on Wave 1 completion; two plans run in parallel — different files)*
-- [x] 82-02-PLAN.md — BrandPicker.tsx + StructuredEntryPanel wire-in + SearchEntry prop forwarding + BrandPicker.test.tsx + StructuredEntryPanel test extension — UI-01, UI-02
-- [x] 82-03-PLAN.md — WatchForm read-only chips + admin link cluster + viewerIsAdmin threading + getWatchById canonical LEFT JOIN + edit page is_admin fetch + WatchForm.test.tsx — UI-03
-
-**Wave 3** *(blocked on Wave 1 for BrandPicker + listBrands; two plans run in parallel — different files)*
-- [x] 82-04-PLAN.md — /admin/brands page + BrandsQueue (Confirm/Rename/Merge with pre-flight radiogroup + BrandPicker reuse + deep-link scroll) + brands DAL + cms/brands.ts Server Actions + AdminSubNav extension to 4 links + cms-brands.test.ts — OPS-01
-- [x] 82-05-PLAN.md — /admin/families page + FamiliesQueue (Confirm/Rename/Add-alias/Remove-alias with chip strip + ?brandId filter banner) + families DAL + cms/families.ts Server Actions + cms-families.test.ts — OPS-02
-
-**Wave 4** *(blocked on Waves 2 + 3 completion — autonomous: false; operator checkpoints)*
-- [x] 82-06-PLAN.md — Local-first verification walkthrough (Steps 1a-1d) + bundled Vercel push + iPhone Safari prod UAT (Steps 3a-3c) + REQUIREMENTS/ROADMAP/STATE close — all 5 requirements verified end-to-end
-**UI hint**: yes
-
-## Coverage
-
-All 25 v8.4 requirements mapped to exactly one phase. No orphans.
-
-| Requirement | Phase | Category |
-|-------------|-------|----------|
-| CANON-01 | Phase 80 | Schema (NOT NULL flip — after backfill) |
-| CANON-02 | Phase 80 | Schema (NOT NULL flip — after backfill) |
-| CANON-03 | Phase 78 | Schema (aliases column — foundation) |
-| CANON-04 | Phase 78 | Schema (needs_review column — foundation) |
-| MIG-01 | Phase 78 | Migration (dry-run script + decisions .md) |
-| MIG-02 | Phase 79 | Migration (brand backfill --apply) |
-| MIG-03 | Phase 79 | Migration (family backfill --apply) |
-| MIG-04 | Phase 79 | Migration (post-flight assertion) |
-| MIG-05 | Phase 79 | Migration (portability — closes in P79) |
-| INGEST-01 | Phase 80 | Ingest (exact match on extract) |
-| INGEST-02 | Phase 80 | Ingest (fuzzy match on extract) |
-| INGEST-03 | Phase 80 | Ingest (auto-create + needs_review) |
-| INGEST-04 | Phase 80 | Ingest (family lookup incl. aliases) |
-| RECO-01 | Phase 81 | Recommender (exclusion key swap) |
-| RECO-02 | Phase 81 | Recommender (multi-brand match swap) |
-| RECO-03 | Phase 81 | Recommender (topBrandOf canonical) |
-| RECO-04 | Phase 81 | Recommender (rationale templates) |
-| DISP-01 | Phase 81 | Display (addWatch auto-overwrite) |
-| DISP-02 | Phase 81 | Display (editWatch auto-overwrite) |
-| DISP-03 | Phase 79 | Display (one-shot hydration data migration) |
-| UI-01 | Phase 82 | UI (brand-picker autocomplete) |
-| UI-02 | Phase 82 | UI (couldn't-find affordance) |
-| UI-03 | Phase 82 | UI (WatchForm read-only canonical) |
-| OPS-01 | Phase 82 | Operator (/admin/brands queue) |
-| OPS-02 | Phase 82 | Operator (/admin/families queue) |
-
-**Coverage:** 25/25 mapped (100%). No requirement appears in more than one phase. No requirement is orphaned.
-
-## Progress Table
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
-| 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
-| 80. NOT NULL Flip + Ingest Hardening | 5/5 | Complete    | 2026-06-26 |
-| 81. Recommender + Display Server Action Swap | 5/5 | Complete    | 2026-07-13 |
-| 82. Add-Watch UI + Operator Admin | 6/6 | Complete    | 2026-07-14 |
+</details>
