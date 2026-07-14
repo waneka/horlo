@@ -81,7 +81,7 @@ Add-watch flow surfaces a brand-picker autocomplete locked to canonical brands.
 A minimal operator UI surfaces the `needs_review` queue.
 
 - [x] **OPS-01**: `/admin/brands` view (reusing v5.1 admin CMS pattern from Phase 47) lists all brands ordered by `needs_review DESC, name ASC`. Each `needs_review: true` row exposes three actions: confirm-as-new (flips flag), rename (edits `name`), merge-into-existing (UPDATEs all referencing catalog rows to the target `brand_id`, deletes the source row).
-- [ ] **OPS-02**: `/admin/families` view mirrors OPS-01 for `watch_families`, plus an "Add alias" action that appends to the `aliases text[]` column.
+- [x] **OPS-02**: `/admin/families` view mirrors OPS-01 for `watch_families`, plus an "Add alias" action that appends to the `aliases text[]` column.
 
 ## v2 Requirements (deferred)
 
@@ -135,7 +135,7 @@ Explicitly excluded from v8.4:
 | UI-02 | Phase 82 | Complete |
 | UI-03 | Phase 82 | Complete |
 | OPS-01 | Phase 82 | Complete |
-| OPS-02 | Phase 82 | Pending |
+| OPS-02 | Phase 82 | Complete |
 
 **Coverage:**
 - v8.4 requirements: 25 total

@@ -386,7 +386,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 1 for BrandPicker + listBrands; two plans run in parallel — different files)*
 - [x] 82-04-PLAN.md — /admin/brands page + BrandsQueue (Confirm/Rename/Merge with pre-flight radiogroup + BrandPicker reuse + deep-link scroll) + brands DAL + cms/brands.ts Server Actions + AdminSubNav extension to 4 links + cms-brands.test.ts — OPS-01
-- [ ] 82-05-PLAN.md — /admin/families page + FamiliesQueue (Confirm/Rename/Add-alias/Remove-alias with chip strip + ?brandId filter banner) + families DAL + cms/families.ts Server Actions + cms-families.test.ts — OPS-02
+- [x] 82-05-PLAN.md — /admin/families page + FamiliesQueue (Confirm/Rename/Add-alias/Remove-alias with chip strip + ?brandId filter banner) + families DAL + cms/families.ts Server Actions + cms-families.test.ts — OPS-02
 
 **Wave 4** *(blocked on Waves 2 + 3 completion — autonomous: false; operator checkpoints)*
 - [ ] 82-06-PLAN.md — Local-first verification walkthrough (Steps 1a-1d) + bundled Vercel push + iPhone Safari prod UAT (Steps 3a-3c) + REQUIREMENTS/ROADMAP/STATE close — all 5 requirements verified end-to-end
@@ -434,4 +434,4 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 5/5 | Complete    | 2026-07-13 |
-| 82. Add-Watch UI + Operator Admin | 4/6 | In Progress|  |
+| 82. Add-Watch UI + Operator Admin | 5/6 | In Progress|  |
