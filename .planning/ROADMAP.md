@@ -252,13 +252,13 @@ See [v8.3-ROADMAP.md](milestones/v8.3-ROADMAP.md) for full phase details.
 
 </details>
 
-### 🚧 v8.4 Catalog Brand+Model Canonicalization (Phases 78-82) — ACTIVE
+### ✅ v8.4 Catalog Brand+Model Canonicalization (Phases 78-82) — COMPLETE
 
 - [x] **Phase 78: Schema Additions + Operator-Resolve Queue** — CANON-03, CANON-04, MIG-01 (completed 2026-06-25)
 - [x] **Phase 79: Backfill Migration + Display Hydration** — MIG-02, MIG-03, MIG-04, MIG-05, DISP-03 (completed 2026-06-25)
-- [ ] **Phase 80: NOT NULL Flip + Ingest Hardening** — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04
+- [x] **Phase 80: NOT NULL Flip + Ingest Hardening** — CANON-01, CANON-02, INGEST-01, INGEST-02, INGEST-03, INGEST-04 (completed 2026-06-26)
 - [x] **Phase 81: Recommender + Display Server Action Swap** — RECO-01, RECO-02, RECO-03, RECO-04, DISP-01, DISP-02 (completed 2026-07-13)
-- [ ] **Phase 82: Add-Watch UI + Operator Admin** — UI-01, UI-02, UI-03, OPS-01, OPS-02
+- [x] **Phase 82: Add-Watch UI + Operator Admin** — UI-01, UI-02, UI-03, OPS-01, OPS-02 (completed 2026-07-13)
 
 25/25 v8.4 requirements mapped across 5 phases (CANON 4, MIG 5, INGEST 4, RECO 4, DISP 3, UI 3, OPS 2). Sequencing: schema → backfill → NOT NULL+ingest → recommender+display → UI+admin. Each phase delivers a coherent, prod-verifiable capability with the next phase resting on the previous one's invariants. Phases 78-80 are DB-touching (`workflow.use_worktrees=false` already globally set per `project_next_clear_operational_debt`).
 
@@ -389,7 +389,7 @@ Plans:
 - [x] 82-05-PLAN.md — /admin/families page + FamiliesQueue (Confirm/Rename/Add-alias/Remove-alias with chip strip + ?brandId filter banner) + families DAL + cms/families.ts Server Actions + cms-families.test.ts — OPS-02
 
 **Wave 4** *(blocked on Waves 2 + 3 completion — autonomous: false; operator checkpoints)*
-- [ ] 82-06-PLAN.md — Local-first verification walkthrough (Steps 1a-1d) + bundled Vercel push + iPhone Safari prod UAT (Steps 3a-3c) + REQUIREMENTS/ROADMAP/STATE close — all 5 requirements verified end-to-end
+- [x] 82-06-PLAN.md — Local-first verification walkthrough (Steps 1a-1d) + bundled Vercel push + iPhone Safari prod UAT (Steps 3a-3c) + REQUIREMENTS/ROADMAP/STATE close — all 5 requirements verified end-to-end
 **UI hint**: yes
 
 ## Coverage
@@ -432,6 +432,6 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 |-------|----------------|--------|-----------|
 | 78. Schema Additions + Operator-Resolve Queue | 4/4 | Complete    | 2026-06-25 |
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
-| 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
+| 80. NOT NULL Flip + Ingest Hardening | 5/5 | Complete    | 2026-06-26 |
 | 81. Recommender + Display Server Action Swap | 5/5 | Complete    | 2026-07-13 |
-| 82. Add-Watch UI + Operator Admin | 5/6 | In Progress|  |
+| 82. Add-Watch UI + Operator Admin | 6/6 | Complete    | 2026-07-14 |

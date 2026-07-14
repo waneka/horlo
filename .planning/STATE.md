@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.4
 milestone_name: Catalog Brand+Model Canonicalization
-status: executing
-last_updated: "2026-07-14T01:39:43.715Z"
-last_activity: 2026-07-14 -- Phase 82 planning complete
+status: milestone_complete
+last_updated: "2026-07-14T03:00:41.296Z"
+last_activity: 2026-07-13 -- v8.4 milestone complete (Phase 82 shipped, all 5 UAT green on prod)
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 25
-  completed_plans: 19
-  percent: 76
+  completed_plans: 25
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-24 — v8.4 Catalog Brand+Model Canonicalization STARTED; see §Current State)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 82 — Add-Watch UI + Operator Admin
+**Current focus:** v8.4 shipped end-to-end; next step is `/gsd-complete-milestone v8.4` to archive and prep for v9.0
 
 ## Current Position
 
-Phase: 82
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-14 -- Phase 82 planning complete
+Phase: — (v8.4 shipped)
+Plan: —
+Status: Milestone complete
+Last activity: 2026-07-13
 
 **Phase 78 scope preview** (full plan derived by `/gsd-plan-phase 78`):
 

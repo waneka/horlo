@@ -27,8 +27,8 @@ Resolved during kickoff (`/gsd-new-milestone`) on 2026-06-24:
 
 The brand + family FKs become canonical identity for every catalog row.
 
-- [ ] **CANON-01**: `watches_catalog.brand_id` is `NOT NULL` after the backfill data migration completes (was nullable since Phase 34).
-- [ ] **CANON-02**: `watches_catalog.family_id` is `NOT NULL` after the backfill data migration completes — every catalog row resolves to a family (one-row-per-family fallback for catalogs where no family exists yet; e.g. "Other Casio" pattern).
+- [x] **CANON-01**: `watches_catalog.brand_id` is `NOT NULL` after the backfill data migration completes (was nullable since Phase 34).
+- [x] **CANON-02**: `watches_catalog.family_id` is `NOT NULL` after the backfill data migration completes — every catalog row resolves to a family (one-row-per-family fallback for catalogs where no family exists yet; e.g. "Other Casio" pattern).
 - [x] **CANON-03**: `watch_families.aliases text[] NOT NULL DEFAULT '{}'` column added, indexed for GIN containment lookup, populated from the operator-resolve queue for known typo/abbreviation cases.
 - [x] **CANON-04**: `brands.needs_review boolean NOT NULL DEFAULT false` and `watch_families.needs_review boolean NOT NULL DEFAULT false` columns added; INSERT-from-ingest sets `true`; operator confirms via `/admin/brands` and `/admin/families` flips to `false`.
 
@@ -46,10 +46,10 @@ Data migration backfills every existing watch and catalog row to canonical brand
 
 `/api/extract-watch` cannot create new drift after this milestone.
 
-- [ ] **INGEST-01**: On extract success, `/api/extract-watch` looks up the extracted brand string against `brands.name_normalized` (exact) first; attaches the matched `brand_id` to the upserted `watches_catalog` row.
-- [ ] **INGEST-02**: On exact-match miss, `/api/extract-watch` runs a `pg_trgm` `similarity > 0.6` fuzzy lookup against `brands.name_normalized`; if a single match exceeds threshold, attaches that `brand_id` and logs a structured `fuzzy_brand_match` event (no user-visible delay).
-- [ ] **INGEST-03**: On fuzzy-match miss, `/api/extract-watch` auto-creates a new `brands` row with `needs_review: true` and attaches its `brand_id` to the catalog row. User flow never blocks; operator surfaces the row later via `/admin/brands`.
-- [ ] **INGEST-04**: Same lookup pattern (INGEST-01 → INGEST-02 → INGEST-03) applies to model → `watch_families` resolution, with the additional step of checking `watch_families.aliases` containment (`@>`) alongside `name_normalized`.
+- [x] **INGEST-01**: On extract success, `/api/extract-watch` looks up the extracted brand string against `brands.name_normalized` (exact) first; attaches the matched `brand_id` to the upserted `watches_catalog` row.
+- [x] **INGEST-02**: On exact-match miss, `/api/extract-watch` runs a `pg_trgm` `similarity > 0.6` fuzzy lookup against `brands.name_normalized`; if a single match exceeds threshold, attaches that `brand_id` and logs a structured `fuzzy_brand_match` event (no user-visible delay).
+- [x] **INGEST-03**: On fuzzy-match miss, `/api/extract-watch` auto-creates a new `brands` row with `needs_review: true` and attaches its `brand_id` to the catalog row. User flow never blocks; operator surfaces the row later via `/admin/brands`.
+- [x] **INGEST-04**: Same lookup pattern (INGEST-01 → INGEST-02 → INGEST-03) applies to model → `watch_families` resolution, with the additional step of checking `watch_families.aliases` containment (`@>`) alongside `name_normalized`.
 
 ### Recommender (RECO)
 
@@ -111,8 +111,8 @@ Explicitly excluded from v8.4:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CANON-01 | Phase 80 | Pending |
-| CANON-02 | Phase 80 | Pending |
+| CANON-01 | Phase 80 | Complete |
+| CANON-02 | Phase 80 | Complete |
 | CANON-03 | Phase 78 | Complete |
 | CANON-04 | Phase 78 | Complete |
 | MIG-01 | Phase 78 | Complete |
@@ -120,10 +120,10 @@ Explicitly excluded from v8.4:
 | MIG-03 | Phase 79 | Complete |
 | MIG-04 | Phase 79 | Complete |
 | MIG-05 | Phase 79 | Complete |
-| INGEST-01 | Phase 80 | Pending |
-| INGEST-02 | Phase 80 | Pending |
-| INGEST-03 | Phase 80 | Pending |
-| INGEST-04 | Phase 80 | Pending |
+| INGEST-01 | Phase 80 | Complete |
+| INGEST-02 | Phase 80 | Complete |
+| INGEST-03 | Phase 80 | Complete |
+| INGEST-04 | Phase 80 | Complete |
 | RECO-01 | Phase 81 | Complete |
 | RECO-02 | Phase 81 | Complete |
 | RECO-03 | Phase 81 | Complete |
