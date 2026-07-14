@@ -38,32 +38,15 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
     mockPathname = '/'
   })
 
-  it('Test 9 — renders wordmark, search input, NavWearButton, Add icon, NotificationBell, UserMenu (all present)', () => {
+  it('Test 9 — renders wordmark, search input, NavWearButton, NotificationBell, UserMenu (all present)', () => {
     const { container } = render(<DesktopTopNav {...userProps()} />)
     expect(screen.getByText('Horlo')).toBeInTheDocument()
     expect(
       container.querySelector('input[type="search"]'),
     ).toBeTruthy()
     expect(screen.getByTestId('nav-wear')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /add watch/i })).toBeInTheDocument()
     expect(screen.getByTestId('bell')).toBeInTheDocument()
     expect(screen.getByTestId('user-menu')).toBeInTheDocument()
-  })
-
-  it('Test 10 — Add icon link points at /watch/new with Phase 28 ?returnTo= capture', () => {
-    render(<DesktopTopNav {...userProps()} />)
-    const add = screen.getByRole('link', { name: /add watch/i })
-    // Phase 28 D-08 — Add link now appends ?returnTo=ENC(pathname). The
-    // mocked usePathname() returns '/' (default in this test file), so the
-    // returnTo encodes to %2F.
-    const href = add.getAttribute('href') ?? ''
-    expect(href.startsWith('/watch/new?returnTo=')).toBe(true)
-    // Decoded value MUST match a same-origin path that the /watch/new
-    // server-side validator accepts (validateReturnTo in destinations.ts).
-    const url = new URL(href, 'http://localhost')
-    const decoded = url.searchParams.get('returnTo')
-    expect(decoded).toBeTruthy()
-    expect(decoded!.startsWith('/')).toBe(true)
   })
 
   it('Test 11 — Search input is a form/input targeting /search on submit', () => {
@@ -105,7 +88,7 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
     expect(screen.queryByTestId('bell')).toBeNull()
   })
 
-  it('Test 15 — when user is null, NavWearButton and Add link are NOT rendered', () => {
+  it('Test 15 — when user is null, NavWearButton is NOT rendered', () => {
     render(
       <DesktopTopNav
         user={null}
@@ -116,7 +99,6 @@ describe('DesktopTopNav (Phase 14 D-16 / D-23 — desktop top chrome)', () => {
       />,
     )
     expect(screen.queryByTestId('nav-wear')).toBeNull()
-    expect(screen.queryByRole('link', { name: /add watch/i })).toBeNull()
   })
 
   it('Test 16 — ThemeToggle is NOT rendered anywhere inside DesktopTopNav', () => {
