@@ -378,7 +378,7 @@ Plans:
 **Plans**: 6 plans
 Plans:
 **Wave 1**
-- [ ] 82-01-PLAN.md — DAL foundation: rename listCatalogBrands → listCatalogBrandNames + new listBrands() {id,name}[] + /watch/new Promise.all extended + AddWatchFlow prop threading — UI-01 (data path)
+- [x] 82-01-PLAN.md — DAL foundation: rename listCatalogBrands → listCatalogBrandNames + new listBrands() {id,name}[] + /watch/new Promise.all extended + AddWatchFlow prop threading — UI-01 (data path)
 
 **Wave 2** *(blocked on Wave 1 completion; two plans run in parallel — different files)*
 - [ ] 82-02-PLAN.md — BrandPicker.tsx + StructuredEntryPanel wire-in + SearchEntry prop forwarding + BrandPicker.test.tsx + StructuredEntryPanel test extension — UI-01, UI-02
@@ -434,4 +434,4 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 5/5 | Complete    | 2026-07-13 |
-| 82. Add-Watch UI + Operator Admin | 0/6 | Not started | — |
+| 82. Add-Watch UI + Operator Admin | 1/6 | In Progress|  |
