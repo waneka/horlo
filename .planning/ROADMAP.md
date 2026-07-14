@@ -299,7 +299,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
   3. Removing a watch from the wishlist shows "Remove from wishlist" copy on both the action affordance and the confirmation prompt (not "Delete").
 **Plans**: 3 plans (Wave 1 parallel — all three touch disjoint files)
 - [x] 83-01-desktop-nav-plus-removal-PLAN.md — POLISH-01: remove `+` icon-button + Plus import from DesktopTopNav.tsx; update DesktopTopNav.test.tsx assertions
-- [ ] 83-02-worn-tab-owned-only-dropdown-PLAN.md — POLISH-02: swap `watchOptions` derivation from `Object.values(watchMap)` to the existing `ownedWatches` prop in WornTabContent.tsx
+- [x] 83-02-worn-tab-owned-only-dropdown-PLAN.md — POLISH-02: swap `watchOptions` derivation from `Object.values(watchMap)` to the existing `ownedWatches` prop in WornTabContent.tsx
 - [ ] 83-03-wishlist-remove-copy-PLAN.md — POLISH-03: `isWishlistLike`-conditional "Remove from wishlist" copy + outline trigger variant in WatchDetail.tsx (owned "Delete" preserved)
 **UI hint**: yes
 
@@ -346,7 +346,7 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 83. Polish sweep | v9.0 | 1/3 | In Progress|  |
+| 83. Polish sweep | v9.0 | 2/3 | In Progress|  |
 | 84. Wear history depth | v9.0 | 0/TBD | Not started | - |
 | 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |

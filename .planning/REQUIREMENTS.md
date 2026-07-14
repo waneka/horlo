@@ -15,7 +15,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 Small UX cleanups that unblock the pile with low risk. Ships first.
 
 - [x] **POLISH-01**: User no longer sees a `+` add-watch button in the desktop top nav.
-- [ ] **POLISH-02**: User selecting the "log a wear" watch dropdown on the Worn tab sees only currently-owned watches (not wishlist, not previously-owned).
+- [x] **POLISH-02**: User selecting the "log a wear" watch dropdown on the Worn tab sees only currently-owned watches (not wishlist, not previously-owned).
 - [ ] **POLISH-03**: User removing a watch from wishlist sees "Remove from wishlist" copy on the action affordance and confirmation prompt, not "Delete."
 
 ### WEAR
@@ -90,7 +90,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | POLISH-01 | Phase 83 | Complete |
-| POLISH-02 | Phase 83 | Pending |
+| POLISH-02 | Phase 83 | Complete |
 | POLISH-03 | Phase 83 | Pending |
 | WEAR-01 | Phase 84 | Pending |
 | WEAR-02 | Phase 84 | Pending |
