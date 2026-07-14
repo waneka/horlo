@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Plus, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { isPublicPath } from '@/lib/constants/public-paths'
@@ -25,7 +25,7 @@ interface DesktopTopNavProps {
  *
  * Composition (left → right):
  *   Horlo wordmark · Explore link · persistent search input (D-24 muted fill +
- *   leading magnifier) · NavWearButton · Add icon · NotificationBell · UserMenu
+ *   leading magnifier) · NavWearButton · NotificationBell · UserMenu
  *
  * Phase 16 changes (D-23, D-24):
  *   - HeaderNav inline links removed (Profile + Settings now exclusively in
@@ -95,14 +95,6 @@ export function DesktopTopNav({
           {user && (
             <>
               <NavWearButton ownedWatches={ownedWatches} viewerId={user.id} />
-              <Link
-                href={`/watch/new?returnTo=${encodeURIComponent(pathname || '/')}`}
-                aria-label="Add watch"
-              >
-                <Button variant="ghost" size="icon">
-                  <Plus className="h-5 w-5" aria-hidden />
-                </Button>
-              </Link>
               {bell}
             </>
           )}
