@@ -69,11 +69,13 @@ export function WornTabContent({
 
   const watchOptions = useMemo(
     () =>
-      Object.values(watchMap).sort(
-        (a, b) =>
-          a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model),
-      ),
-    [watchMap],
+      ownedWatches
+        .map((w) => ({ id: w.id, brand: w.brand, model: w.model }))
+        .sort(
+          (a, b) =>
+            a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model),
+        ),
+    [ownedWatches],
   )
 
   const filtered = useMemo(
