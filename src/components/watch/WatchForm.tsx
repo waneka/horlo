@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import { Accordion } from '@base-ui/react/accordion'
 import { Button } from '@/components/ui/button'
@@ -39,8 +40,16 @@ import {
 import type { Watch, WatchStatus, MovementType, StrapType, CrystalType, ConditionGrade, BoxPapersStatus, CurrencyCode } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
+// Phase 82-03: extended shape returned by getWatchById for canonical display.
+// These fields are optional and additive — callers that pass a bare Watch
+// (e.g. create mode) are unaffected.
+type WatchWithCanonical = Watch & {
+  canonicalBrand?: string
+  canonicalFamily?: string
+}
+
 interface WatchFormProps {
-  watch?: Watch
+  watch?: WatchWithCanonical
   mode: 'create' | 'edit'
   /** Phase 20.1 D-12: when set, the status field is locked to this value
    *  and rendered as a read-only chip (no Select). The verdict step's
@@ -75,6 +84,10 @@ interface WatchFormProps {
    *  the gate is trivially true there; manual-entry's user-chosen status
    *  flows through the third arg. */
   onWatchCreated?: (watchId: string, destination: string, status: WatchStatus) => void
+  /** Phase 82-03 D-82-07: sourced server-side from profiles.is_admin at the
+   *  edit page. Gates the "Edit catalog mapping" link cluster — non-admin
+   *  editors see read-only chips without the admin links (no disclosure). */
+  viewerIsAdmin?: boolean
 }
 
 type FormData = Omit<Watch, 'id'>
@@ -115,7 +128,7 @@ const initialFormData: FormData = {
   purchaseDate: undefined,
 }
 
-export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, viewerUsername, onWatchCreated }: WatchFormProps) {
+export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, viewerUsername, onWatchCreated, viewerIsAdmin = false }: WatchFormProps) {
   const router = useRouter()
   // Phase 25 / UX-06 — hybrid toast + banner via shared hook (D-17). Hook
   // owns the transition; consumers MUST NOT keep their own (FG-8). The hook's
@@ -326,14 +339,27 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
         <CardContent className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="brand">Brand *</Label>
-            <Input
-              id="brand"
-              value={formData.brand}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, brand: e.target.value }))
-              }
-              placeholder="e.g., Omega"
-            />
+            {/* Phase 82-03 D-82-06: read-only chip when catalogId is present (canonical lock).
+                Legacy catalogId=null rows keep the editable Input as a compatibility fallback.
+                Chip content: canonicalBrand (brands.name LEFT JOIN) ?? watch.brand (Pitfall 4 Option B). */}
+            {watch?.catalogId != null ? (
+              <div
+                id="brand"
+                aria-readonly="true"
+                className="flex h-9 items-center rounded-md border border-input bg-muted px-3 text-sm capitalize"
+              >
+                {watch.canonicalBrand ?? watch.brand}
+              </div>
+            ) : (
+              <Input
+                id="brand"
+                value={formData.brand}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, brand: e.target.value }))
+                }
+                placeholder="e.g., Omega"
+              />
+            )}
             {errors.brand && (
               <p className="text-sm text-destructive">{errors.brand}</p>
             )}
@@ -341,18 +367,44 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
 
           <div className="space-y-2">
             <Label htmlFor="model">Model *</Label>
-            <Input
-              id="model"
-              value={formData.model}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, model: e.target.value }))
-              }
-              placeholder="e.g., Speedmaster"
-            />
+            {/* Phase 82-03 D-82-06: same conditional chip pattern for model field.
+                Chip content: canonicalFamily (watch_families.name LEFT JOIN) ?? watch.model. */}
+            {watch?.catalogId != null ? (
+              <div
+                id="model"
+                aria-readonly="true"
+                className="flex h-9 items-center rounded-md border border-input bg-muted px-3 text-sm capitalize"
+              >
+                {watch.canonicalFamily ?? watch.model}
+              </div>
+            ) : (
+              <Input
+                id="model"
+                value={formData.model}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, model: e.target.value }))
+                }
+                placeholder="e.g., Speedmaster"
+              />
+            )}
             {errors.model && (
               <p className="text-sm text-destructive">{errors.model}</p>
             )}
           </div>
+
+          {/* Phase 82-03 D-82-07/D-82-08: "Edit catalog mapping" link cluster.
+              Gates on mode=edit + catalogId present + viewerIsAdmin.
+              Non-admin owners see chips without the cluster (no information disclosure per T-82-04). */}
+          {mode === 'edit' && watch?.catalogId != null && viewerIsAdmin && (
+            <div className="sm:col-span-2 flex gap-2 mt-1">
+              <Button variant="ghost" size="sm" render={<Link href={`/admin/brands#brand-${watch.brandId}`} />}>
+                Edit brand
+              </Button>
+              <Button variant="ghost" size="sm" render={<Link href={`/admin/families?brandId=${watch.brandId}`} />}>
+                Edit family
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="reference">Reference Number</Label>

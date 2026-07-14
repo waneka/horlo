@@ -2,7 +2,7 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { watches, profileSettings, watchesCatalog, watchPhotos } from '@/db/schema'
+import { watches, profileSettings, watchesCatalog, watchPhotos, brands, watchFamilies } from '@/db/schema'
 import { eq, and, or, asc, desc, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Watch, EraSignal } from '@/lib/types'
 
@@ -198,8 +198,13 @@ export async function getWatchesByUser(userId: string): Promise<Watch[]> {
  * Return a single watch by ID, scoped to userId. Returns null if not found.
  * Not-found is an expected outcome, not a thrown error (D-08).
  */
-export async function getWatchById(userId: string, watchId: string): Promise<Watch | null> {
+export async function getWatchById(
+  userId: string,
+  watchId: string,
+): Promise<Watch & { canonicalBrand: string | undefined; canonicalFamily: string | undefined } | null> {
   // Phase 60 D-04/D-05: add catalog leftJoin (previously absent) for the cover->catalog fallback.
+  // Phase 82-03: extend with brands + watchFamilies LEFT JOINs for read-only chip canonical display
+  // (RESEARCH Pitfall 4 Option B — belt-and-suspenders against pre-Phase-81 legacy rows).
   const rows = await db
     .select({
       watch: watches,
@@ -214,18 +219,26 @@ export async function getWatchById(userId: string, watchId: string): Promise<Wat
         ORDER BY wp.sort_order ASC
         LIMIT 1
       )`,
+      // Phase 82-03 canonical brand/family names via catalog → brand/family LEFT JOINs.
+      canonicalBrand: brands.name,
+      canonicalFamily: watchFamilies.name,
     })
     .from(watches)
     .leftJoin(watchesCatalog, eq(watchesCatalog.id, watches.catalogId))
+    .leftJoin(brands, eq(brands.id, watchesCatalog.brandId))
+    .leftJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))
     .where(and(eq(watches.userId, userId), eq(watches.id, watchId)))
   if (!rows[0]) return null
-  const { watch, coverStoragePath, catalogImageUrl, catalogBrandId, catalogFamilyId } = rows[0]
+  const { watch, coverStoragePath, catalogImageUrl, catalogBrandId, catalogFamilyId, canonicalBrand, canonicalFamily } = rows[0]
   return {
     ...mapRowToWatch(watch),
     imageUrl: coverStoragePath ?? (catalogImageUrl ?? undefined),
     // Phase 81 D-81-02 — LEFT JOIN nullable → undefined per Pitfall 4.
     brandId: catalogBrandId ?? undefined,
     familyId: catalogFamilyId ?? undefined,
+    // Phase 82-03 — coerce Drizzle null → undefined for downstream consumers.
+    canonicalBrand: canonicalBrand ?? undefined,
+    canonicalFamily: canonicalFamily ?? undefined,
   }
 }
 
