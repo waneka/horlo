@@ -73,7 +73,7 @@ Personal `watches` rows show canonical brand + model on every read, even for leg
 Add-watch flow surfaces a brand-picker autocomplete locked to canonical brands.
 
 - [x] **UI-01**: `StructuredEntryPanel` (no-URL add-watch path) Brand field becomes a typeahead autocomplete sourced from `brands.name` (cached in the existing `catalogBrands` SSR prop pipeline). User types → matching brands surface as a dropdown; selection sets `brand_id` on the eventual catalog upsert.
-- [ ] **UI-02**: If user types a brand string that doesn't match any existing `brands.name` (after typing-ahead settles), a "Couldn't find that brand — add as '{typed}'" affordance appears, routing through the INGEST-03 auto-create path with `needs_review: true` on submit.
+- [x] **UI-02**: If user types a brand string that doesn't match any existing `brands.name` (after typing-ahead settles), a "Couldn't find that brand — add as '{typed}'" affordance appears, routing through the INGEST-03 auto-create path with `needs_review: true` on submit.
 - [ ] **UI-03**: `WatchForm` (edit existing watch) renders the canonical `brands.name` / `watch_families.name` resolved from `catalogId` as read-only display strings (with an "Edit catalog mapping" admin link visible only to the watch owner) — user cannot edit brand/model into a non-canonical string after v8.4.
 
 ### Operator (OPS)
@@ -132,7 +132,7 @@ Explicitly excluded from v8.4:
 | DISP-02 | Phase 81 | Complete |
 | DISP-03 | Phase 79 | Complete |
 | UI-01 | Phase 82 | Complete |
-| UI-02 | Phase 82 | Pending |
+| UI-02 | Phase 82 | Complete |
 | UI-03 | Phase 82 | Pending |
 | OPS-01 | Phase 82 | Pending |
 | OPS-02 | Phase 82 | Pending |
