@@ -382,7 +382,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion; two plans run in parallel — different files)*
 - [x] 82-02-PLAN.md — BrandPicker.tsx + StructuredEntryPanel wire-in + SearchEntry prop forwarding + BrandPicker.test.tsx + StructuredEntryPanel test extension — UI-01, UI-02
-- [ ] 82-03-PLAN.md — WatchForm read-only chips + admin link cluster + viewerIsAdmin threading + getWatchById canonical LEFT JOIN + edit page is_admin fetch + WatchForm.test.tsx — UI-03
+- [x] 82-03-PLAN.md — WatchForm read-only chips + admin link cluster + viewerIsAdmin threading + getWatchById canonical LEFT JOIN + edit page is_admin fetch + WatchForm.test.tsx — UI-03
 
 **Wave 3** *(blocked on Wave 1 for BrandPicker + listBrands; two plans run in parallel — different files)*
 - [ ] 82-04-PLAN.md — /admin/brands page + BrandsQueue (Confirm/Rename/Merge with pre-flight radiogroup + BrandPicker reuse + deep-link scroll) + brands DAL + cms/brands.ts Server Actions + AdminSubNav extension to 4 links + cms-brands.test.ts — OPS-01
@@ -434,4 +434,4 @@ All 25 v8.4 requirements mapped to exactly one phase. No orphans.
 | 79. Backfill Migration + Display Hydration | 5/5 | Complete   | 2026-06-25 |
 | 80. NOT NULL Flip + Ingest Hardening | 0/? | Not started | — |
 | 81. Recommender + Display Server Action Swap | 5/5 | Complete    | 2026-07-13 |
-| 82. Add-Watch UI + Operator Admin | 2/6 | In Progress|  |
+| 82. Add-Watch UI + Operator Admin | 3/6 | In Progress|  |
