@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: verifying
+status: ready_to_plan
 last_updated: "2026-07-14T21:17:10.298Z"
 last_activity: 2026-07-14
 progress:
@@ -10,7 +10,7 @@ progress:
   completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 100
+  percent: 25
 ---
 
 # Project State
@@ -20,18 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 83 — Polish sweep
+**Current focus:** Phase 84 — Wear history depth (next up; Phase 83 shipped 2026-07-15)
 
 ## Current Position
 
-Phase: 83 (Polish sweep) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-07-14
+Phase: 84
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-15
 
 **Upcoming phases:**
 
-- Phase 83: Polish sweep — POLISH-01/02/03 (3 requirements)
 - Phase 84: Wear history depth — WEAR-01/02/03/04 (4 requirements)
 - Phase 85: Collection lifecycle — LIFE-01..06 (6 requirements; DB-touching)
 - Phase 86: Reorder mode — REORDER-01/02/03/04 (4 requirements)
