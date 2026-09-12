@@ -377,15 +377,20 @@ export function WatchDetailHero({
               <Button variant="outline">Edit</Button>
             </Link>
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <DialogTrigger render={<Button variant="destructive" />}>
-                Delete
+              <DialogTrigger
+                render={<Button variant={isWishlistLike ? 'outline' : 'destructive'} />}
+              >
+                {isWishlistLike ? 'Remove from wishlist' : 'Delete'}
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Delete Watch</DialogTitle>
+                  <DialogTitle>
+                    {isWishlistLike ? 'Remove from wishlist' : 'Delete Watch'}
+                  </DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to delete {watch.brand} {watch.model}?
-                    This action cannot be undone.
+                    {isWishlistLike
+                      ? `Remove ${watch.brand} ${watch.model} from your wishlist? You can add it back any time.`
+                      : `Are you sure you want to delete ${watch.brand} ${watch.model}? This action cannot be undone.`}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -401,7 +406,7 @@ export function WatchDetailHero({
                     onClick={handleDelete}
                     disabled={isPending}
                   >
-                    Delete
+                    {isWishlistLike ? 'Remove from wishlist' : 'Delete'}
                   </Button>
                 </DialogFooter>
               </DialogContent>

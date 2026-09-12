@@ -80,7 +80,9 @@ describe('<WatchDetailHero> — delete dialog copy (POLISH-03 gap closure, D-07.
     await user.click(screen.getByRole('button', { name: 'Remove from wishlist' }))
 
     const dialog = within(await screen.findByRole('dialog'))
-    expect(dialog.getByText('Remove from wishlist')).toBeInTheDocument()
+    expect(
+      dialog.getByRole('heading', { name: 'Remove from wishlist' }),
+    ).toBeInTheDocument()
     expect(
       dialog.getByText(
         'Remove Rolex Datejust from your wishlist? You can add it back any time.',
@@ -113,7 +115,9 @@ describe('<WatchDetailHero> — delete dialog copy (POLISH-03 gap closure, D-07.
     await user.click(trigger)
 
     const dialog = within(await screen.findByRole('dialog'))
-    expect(dialog.getByText('Remove from wishlist')).toBeInTheDocument()
+    expect(
+      dialog.getByRole('heading', { name: 'Remove from wishlist' }),
+    ).toBeInTheDocument()
     expect(
       dialog.getByText(
         'Remove Rolex Datejust from your wishlist? You can add it back any time.',
