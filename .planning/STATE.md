@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: ready_to_plan
-last_updated: "2026-07-14T21:17:10.298Z"
-last_activity: 2026-07-14
+status: executing
+last_updated: "2026-09-12T20:51:32.722Z"
+last_activity: 2026-09-12 -- Phase 83 Plan 04 (gap closure) complete; 4/4 plans done
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 4
+  completed_plans: 4
   percent: 25
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 84 — Wear history depth (next up; Phase 83 shipped 2026-07-15)
+**Current focus:** Phase 83 — polish-sweep
 
 ## Current Position
 
-Phase: 84
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-15
+Phase: 83 (polish-sweep) — 4 of 4 plans complete (Plan 04 gap closure landed)
+Plan: 4 of 4
+Status: Phase 83 execution complete — pending operator local-dev walk + prod push before formal phase close
+Last activity: 2026-09-12 -- Plan 04 (83-04-hero-wishlist-remove-copy) closed the 83-HUMAN-UAT test 2 gap by porting the isWishlistLike wishlist-remove copy into the LIVE WatchDetailHero.tsx (not the legacy WatchDetail.tsx that Plan 83-03 had edited)
 
 **Upcoming phases:**
 
@@ -110,6 +110,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 83 Plan 04 (gap closure, 2026-09-12):** Root cause of 83-HUMAN-UAT test 2 failure was that Plan 83-03 edited `src/components/watch/WatchDetail.tsx`, a legacy component `/w/[ref]` stopped rendering in Phase 64 (replaced by `WatchDetailHero`). Plan 04 ported the exact 83-03 `isWishlistLike` branching (trigger variant+label, title, description, confirm label) verbatim into the LIVE `WatchDetailHero.tsx` Dialog block; confirm button keeps `variant="destructive"` on both branches (D-09 — only the trigger softens to `outline` for wishlist-like watches). Legacy `WatchDetail.tsx` left untouched (dead-island cleanup candidate — see 83-04-SUMMARY.md Follow-ups). New regression test targets the rendered component directly to prevent recurrence of this failure mode.
 
 **v9.0 Collection Lifecycle & Wear Depth — locked decisions from `/gsd-new-milestone` kickoff (2026-07-13):**
 
@@ -310,10 +312,13 @@ None.
 | Phase 81 P05 | 9m | 2 tasks | 1 files |
 | Phase 83 P01 | 5min | 2 tasks | 2 files |
 | Phase 83-polish-sweep P02 | 5 | 1 tasks | 1 files |
+| Phase 83-polish-sweep P04 | ~15min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last activity: 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth roadmap created. 4 phases (83, 84, 85, 86) mapped 1:1 to REQUIREMENTS.md categories: Phase 83 covers POLISH-01/02/03 (top-nav `+` removal, Worn-tab dropdown scope-to-owned, wishlist "Remove" copy); Phase 84 covers WEAR-01/02/03/04 (`/wear/[id]` link-through from Worn tab, photo-less past-date backfill, segmented 1/3/6/12mo/All wear-count aggregate + across-collection leaderboard); Phase 85 covers LIFE-01..06 (new `previously_owned` WatchStatus + `disposal_reason` enum + `sell_price` + `disposal_date` schema, disposal flow from collection card, wishlist→owned celebration, "Show previously owned" default-off toggle, similarity+recommender exclusion); Phase 86 covers REORDER-01..04 (explicit on-screen Reorder toggle on Collection + Wishlist grids, independent per-tab persistent order becomes new default sort, fixes mobile long-press vs. link-menu conflict). Sequencing: Polish (no schema) → Wear depth (additive UI on existing data) → Lifecycle (DB-touching; `use_worktrees=false` already set globally) → Reorder (touches the same grids Lifecycle changes, ordering last avoids merge churn). 17/17 v1 requirements mapped; 0 orphaned. Files written: `.planning/ROADMAP.md` (v9.0 active section added under milestone header + Phase Details for 83-86 with per-phase Success Criteria and `UI hint: yes` annotations on all four phases + Progress table), `.planning/REQUIREMENTS.md` (Traceability table populated with Phase 83/84/85/86 assignments; coverage line updated to 17 mapped / 0 unmapped), `.planning/STATE.md` (frontmatter `total_phases: 4`, `next_phase: 83`; Current Position points at Phase 83; SEED-009 added to Deferred Items as `dormant — preempted by v9.0`). Zero code changes yet — roadmap creation only.
+Last activity: 2026-09-12 — Phase 83 Plan 04 (gap closure) complete: `83-04-hero-wishlist-remove-copy`. 83-HUMAN-UAT test 2 (POLISH-03) failed because Plan 83-03 had edited the legacy, unrendered `src/components/watch/WatchDetail.tsx` instead of the live `WatchDetailHero.tsx` that `/w/[ref]/page.tsx` actually imports. Plan 04 ported the exact 83-03 `isWishlistLike` branching into `WatchDetailHero.tsx`'s Dialog block (commits `3d7638b5` RED test / `28a3a2b3` GREEN implementation): outline `Remove from wishlist` trigger + softened title/body/confirm copy for `wishlist`/`grail` watches; unchanged destructive `Delete` / `Delete Watch` for `owned` watches; `handleDelete`/`removeWatch(watch.id)`/`isDeleteDialogOpen`/`isWishlistLike` derivation all unchanged. New test `tests/components/watch/WatchDetailHero.removeCopy.test.tsx` renders the LIVE component and covers wishlist/grail/owned/non-owner branches (9/9 pass alongside the pre-existing `WatchDetail.isChronometer.test.tsx`). 1 Rule-1 auto-fix: disambiguated a `getByText` collision in the test itself (DialogTitle and the confirm Button both render the exact string "Remove from wishlist") by switching title assertions to `getByRole('heading', ...)`. Rendered-path greps confirm `page.tsx` imports `WatchDetailHero` (not legacy `WatchDetail`) and the copy lives in that file. `npm run build` exits 0. Legacy `WatchDetail.tsx` left untouched — flagged as a dead-island cleanup candidate (only consumer: `WatchDetail.isChronometer.test.tsx`) in `83-04-SUMMARY.md` Follow-ups. Phase 83 is now 4/4 plans complete. Local `npm run dev` desktop walk + prod push + iPhone Safari re-walk of 83-HUMAN-UAT test 2 are pending operator steps (this agent runs sequentially without a browser and does not push).
+
+Prior activity: 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth roadmap created. 4 phases (83, 84, 85, 86) mapped 1:1 to REQUIREMENTS.md categories: Phase 83 covers POLISH-01/02/03 (top-nav `+` removal, Worn-tab dropdown scope-to-owned, wishlist "Remove" copy); Phase 84 covers WEAR-01/02/03/04 (`/wear/[id]` link-through from Worn tab, photo-less past-date backfill, segmented 1/3/6/12mo/All wear-count aggregate + across-collection leaderboard); Phase 85 covers LIFE-01..06 (new `previously_owned` WatchStatus + `disposal_reason` enum + `sell_price` + `disposal_date` schema, disposal flow from collection card, wishlist→owned celebration, "Show previously owned" default-off toggle, similarity+recommender exclusion); Phase 86 covers REORDER-01..04 (explicit on-screen Reorder toggle on Collection + Wishlist grids, independent per-tab persistent order becomes new default sort, fixes mobile long-press vs. link-menu conflict). Sequencing: Polish (no schema) → Wear depth (additive UI on existing data) → Lifecycle (DB-touching; `use_worktrees=false` already set globally) → Reorder (touches the same grids Lifecycle changes, ordering last avoids merge churn). 17/17 v1 requirements mapped; 0 orphaned. Files written: `.planning/ROADMAP.md` (v9.0 active section added under milestone header + Phase Details for 83-86 with per-phase Success Criteria and `UI hint: yes` annotations on all four phases + Progress table), `.planning/REQUIREMENTS.md` (Traceability table populated with Phase 83/84/85/86 assignments; coverage line updated to 17 mapped / 0 unmapped), `.planning/STATE.md` (frontmatter `total_phases: 4`, `next_phase: 83`; Current Position points at Phase 83; SEED-009 added to Deferred Items as `dormant — preempted by v9.0`). Zero code changes yet — roadmap creation only.
 
 Prior activity: 2026-07-13 — Phase 81 Plan 05 (scope patch: canonical JOIN on watch-detail-page same-family + lineage rails) complete. `src/data/hierarchy.ts` +26 LOC across 2 tasks. Task 05-1 (commit `39b7783e`): extended import to include `brands` + `watchFamilies` from `@/db/schema`; `getSameFamilyForCatalog` gains `.innerJoin(brands, eq(brands.id, watchesCatalog.brandId))` + `.innerJoin(watchFamilies, eq(watchFamilies.id, watchesCatalog.familyId))`; SELECT projection swaps `brand: watchesCatalog.brand` → `brand: brands.name` and `model: watchesCatalog.model` → `model: watchFamilies.name`; GROUP BY substitutes `brands.name` + `watchFamilies.name` for `watchesCatalog.brand` + `watchesCatalog.model` (keeping `watchesCatalog.id` + `watchesCatalog.imageUrl` intact); ORDER BY tiebreak switches to canonical `asc(brands.name), asc(watchFamilies.name)`. Task 05-2 (commit `748c0b5f`): `getLineageForReference` raw-SQL recursive CTE — BOTH the seed arm and the recursive arm gain `JOIN brands b ON b.id = wc.brand_id` + `JOIN watch_families f ON f.id = wc.family_id`; both arms' SELECT lists swap `wc.brand, wc.model` → `b.name AS brand, f.name AS model`; outer SELECT L165-172 unchanged (reads by name from CTE column list); CYCLE clause + depth-10 guard untouched; Pitfall 5 invariant extended in an inline docstring from just `wc.image_url` to also cover `b.name` + `f.name`. Live psql smoke against drift fixture `90c4ac1f-…4af4` (denorm `Hamilton Watch / DriftTest Chrono` on canonical Hamilton brand_id) returns canonical `Hamilton / Khaki Field Mechanical` under the new JOIN pattern. Public interfaces `SameFamilyWatch` (L53-59) + `LineageRow` (L28-40) unchanged. Consumer components `SameFamilyRail.tsx` + `LineageRail.tsx` untouched (they render `.brand` / `.model` by name and now receive canonical strings automatically). Forward armor: `grep -c '= ANY(' src/data/hierarchy.ts` = 0; `innerJoin(brands` = 1; `innerJoin(watchFamilies` = 1; `JOIN brands b` = 2 (seed + recursive); `JOIN watch_families f` = 2. `npm run build` exits 0. Zero deviations — plan executed exactly as written. Commits: `39b7783e` (Task 05-1 getSameFamilyForCatalog canonical JOIN), `748c0b5f` (Task 05-2 getLineageForReference CTE both-arms canonical JOIN). 0 new requirements marked complete (RECO-01 + RECO-04 already closed at Plan 02 boundary; scope patch is a re-application of the same read-time canonical JOIN pattern to two additional read surfaces per CONTEXT.md § Deferred Ideas revisit trigger).
 
@@ -321,8 +326,10 @@ Prior activity: 2026-07-12 — Phase 81 Plan 02 (recommender read-path canonical
 
 Prior activity: 2026-06-25 — Phase 79 Plan 04 (Wave 3 unified atomic apply transaction + post-flight assertion + auto-generated POST-DEPLOY artifact) complete. See prior STATE.md snapshots for full detail. MIG-02 + MIG-04 + DISP-03 marked complete.
 
-Next action: `/gsd-plan-phase 83` — Polish sweep is the first v9.0 phase and the lowest-risk starting point (no schema, three surgical UI edits scoped to POLISH-01/02/03). Zero DB work; zero cross-cutting refactor. After 83 ships, sequence continues 84 → 85 → 86 per locked v9.0 sequencing rationale.
+Next action: Operator local `npm run dev` desktop walk (wishlist/grail + owned watch dialogs on `/w/[ref]`) against local Supabase, then push + iPhone Safari re-walk of 83-HUMAN-UAT test 2 on prod. Once verified, Phase 83 (4/4 plans) can be formally closed and `/gsd-plan-phase 84` (Wear history depth) can begin per locked v9.0 sequencing rationale.
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 83` — plan the v9.0 Polish sweep phase (POLISH-01 top-nav `+` removal, POLISH-02 Worn-tab dropdown owned-only scope, POLISH-03 wishlist "Remove" copy).
+- Run `npm run dev` against local Supabase; sign in as a seeded user with a wishlist/grail watch (`vintage-anna@horlo.test` / `password123`); confirm the outline "Remove from wishlist" trigger + softened dialog copy on `/w/{id}`, and confirm an owned watch still shows destructive "Delete" / "Delete Watch". See `83-04-hero-wishlist-remove-copy-SUMMARY.md` § Local-First Verification for the full checklist.
+- Push, then re-walk 83-HUMAN-UAT test 2 on iPhone Safari against prod.
+- Once verified, formally close Phase 83 (4/4 plans complete) and run `/gsd-plan-phase 84` (Wear history depth).

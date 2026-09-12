@@ -301,7 +301,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 - [x] 83-01-desktop-nav-plus-removal-PLAN.md — POLISH-01: remove `+` icon-button + Plus import from DesktopTopNav.tsx; update DesktopTopNav.test.tsx assertions
 - [x] 83-02-worn-tab-owned-only-dropdown-PLAN.md — POLISH-02: swap `watchOptions` derivation from `Object.values(watchMap)` to the existing `ownedWatches` prop in WornTabContent.tsx
 - [x] 83-03-wishlist-remove-copy-PLAN.md — POLISH-03: `isWishlistLike`-conditional "Remove from wishlist" copy + outline trigger variant in WatchDetail.tsx (owned "Delete" preserved)
-- [ ] 83-04-hero-wishlist-remove-copy-PLAN.md — POLISH-03 gap closure (UAT test 2): port `isWishlistLike` remove-copy branching into the LIVE `WatchDetailHero.tsx` dialog (83-03 landed in dead legacy WatchDetail.tsx) + WatchDetailHero component test
+- [x] 83-04-hero-wishlist-remove-copy-PLAN.md — POLISH-03 gap closure (UAT test 2): port `isWishlistLike` remove-copy branching into the LIVE `WatchDetailHero.tsx` dialog (83-03 landed in dead legacy WatchDetail.tsx) + WatchDetailHero component test
 **UI hint**: yes
 
 ### Phase 84: Wear history depth
@@ -347,7 +347,7 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 83. Polish sweep | v9.0 | 3/3 | Complete    | 2026-07-15 |
+| 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
 | 84. Wear history depth | v9.0 | 0/TBD | Not started | - |
 | 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
