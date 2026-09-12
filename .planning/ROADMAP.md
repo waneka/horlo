@@ -297,10 +297,11 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
   1. On the desktop top nav, the user no longer sees a `+` add-watch button (add flow reachable via the existing dedicated entry point).
   2. Opening the "log a wear" watch dropdown on the Worn tab shows only currently-owned watches — no wishlist items, no previously-owned items.
   3. Removing a watch from the wishlist shows "Remove from wishlist" copy on both the action affordance and the confirmation prompt (not "Delete").
-**Plans**: 3 plans (Wave 1 parallel — all three touch disjoint files)
+**Plans**: 4 plans (Wave 1 parallel — all three touch disjoint files; 83-04 gap closure)
 - [x] 83-01-desktop-nav-plus-removal-PLAN.md — POLISH-01: remove `+` icon-button + Plus import from DesktopTopNav.tsx; update DesktopTopNav.test.tsx assertions
 - [x] 83-02-worn-tab-owned-only-dropdown-PLAN.md — POLISH-02: swap `watchOptions` derivation from `Object.values(watchMap)` to the existing `ownedWatches` prop in WornTabContent.tsx
 - [x] 83-03-wishlist-remove-copy-PLAN.md — POLISH-03: `isWishlistLike`-conditional "Remove from wishlist" copy + outline trigger variant in WatchDetail.tsx (owned "Delete" preserved)
+- [ ] 83-04-hero-wishlist-remove-copy-PLAN.md — POLISH-03 gap closure (UAT test 2): port `isWishlistLike` remove-copy branching into the LIVE `WatchDetailHero.tsx` dialog (83-03 landed in dead legacy WatchDetail.tsx) + WatchDetailHero component test
 **UI hint**: yes
 
 ### Phase 84: Wear history depth
