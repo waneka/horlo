@@ -4,7 +4,7 @@ milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: ready_to_plan
 last_updated: "2026-09-12T20:51:32.722Z"
-last_activity: 2026-09-12 -- Phase 83 closed (gap closure 83-04 shipped + prod UAT 2/2 pass)
+last_activity: 2026-09-12 - Completed quick task 260912-jo6: delete dead legacy WatchDetail.tsx
 progress:
   total_phases: 4
   completed_phases: 1
@@ -295,6 +295,7 @@ None.
 | 260623-mn3 | Taste-aware sparse-pool top-up for collectors-like-you recommendations | cd3c2efb, 9f754300 | 2026-06-23 |
 | 260623-pzz | Multi-brand match + per-brand variety cap for collectors-like-you sparse-pool top-up (initial deploy CRASHED prod home with Postgres 42809 / digest 2193629549 — Drizzle `sql\`= ANY(${arr})\`` emitted ROW literal not array; reverted f4967cb9 + cf9c942b; forward-fixed in 81f78084 using `IN (sql.join(...))`. See `project_drizzle_sql_any_array_pitfall.md` memory.) | 95ab7301, 0d842731, f4967cb9, cf9c942b, 81f78084 | 2026-06-23 |
 | 260623-uua | Search ergonomics — multi-token AND-of-ORs, `unaccent` diacritic fold, `pg_trgm` `word_similarity > 0.2` fuzzy fallback. Fixes "omega seamaster" / "Heron" / "Jaeger la" / "Jeager" failing queries on /search Watches + Collections tabs. Read-path only — SEED-021 brand canonicalization explicitly deferred. Local UAT 12/12 pass; awaiting `git push` + `supabase db push --linked` for prod. | 81e21fb3, ac89ad1f, 50621739, 99172df2 | 2026-06-24 |
+| 260912-jo6 | Delete dead legacy `src/components/watch/WatchDetail.tsx` (WR-01) — unrendered since Phase 64, caused 83-03 to edit a dead island; migrated FEAT-08/D-11 Certification tests + no-raw-img guard onto live `WatchDetailHero`/`WatchDetailTrailing`/`WatchPhotoSection`; added static re-introduction guard; fixed stale comments | 8abf4c51, 02cabc05, 2c686432 | 2026-09-12 |
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
