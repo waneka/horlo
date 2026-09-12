@@ -132,3 +132,12 @@ All automated gates (targeted vitest, rendered-path greps, `npm run build`) are 
 ---
 *Phase: 83-polish-sweep*
 *Completed: 2026-09-12*
+
+## Self-Check: PASSED
+
+- FOUND: src/components/watch/WatchDetailHero.tsx
+- FOUND: tests/components/watch/WatchDetailHero.removeCopy.test.tsx
+- FOUND: .planning/phases/83-polish-sweep/83-04-hero-wishlist-remove-copy-SUMMARY.md
+- FOUND commit: 3d7638b5 (RED)
+- FOUND commit: 28a3a2b3 (GREEN)
+- FOUND commit: 27ed14c6 (SUMMARY)
