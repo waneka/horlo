@@ -63,7 +63,7 @@ export const unstable_instant = false
  *
  * B1 invariant: RSC siblings (CommentThread, rails, OtherOwnersRoster,
  * CatalogPageActions, CollectionFitCard, ReferenceIdentityCard) compose AROUND
- * the 'use client' WatchDetail island — never imported into it.
+ * the 'use client' WatchDetailHero island — never imported into it.
  *
  * Phase 61 debug (phase61-404-react-419-soft-nav) — STRUCTURAL #419 fix
  * (D-52-16 "outer-sync / inner-async / <Suspense>"). The default export is a
@@ -300,7 +300,7 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
         ? await isFollowing(user.id, ownerUserId)
         : false
 
-    // Resolve comment count for the WatchDetail footer badge (CMNT-09).
+    // Resolve comment count for the WatchDetailHero footer badge (CMNT-09).
     const commentCount = canComment
       ? (await getCommentsForTarget(user.id, target)).length
       : 0
@@ -334,7 +334,7 @@ async function UnifiedWatchContent({ params }: UnifiedWatchPageProps) {
     // Phase 39b NSV-02 + NSV-16 — lineage rail data. watch.catalogId is nullable
     // per Phase 36 deferred-items.md Item 1. Falsy-fallback to [] so rails
     // self-hide via internal rows.length === 0 guard when catalogId is missing.
-    // Both rails render as Server-Component siblings of <WatchDetail/> (B1 invariant).
+    // Both rails render as Server-Component siblings of <WatchDetailHero/> (B1 invariant).
     const sameFamily = watch.catalogId ? await getSameFamilyForCatalog(watch.catalogId) : []
     const lineage = watch.catalogId ? await getLineageForReference(watch.catalogId) : []
 

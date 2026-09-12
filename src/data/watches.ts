@@ -751,7 +751,7 @@ export async function deleteWatchPhoto(
  * No userId param — ownership framing is resolved by the RSC that already
  * confirmed the viewer has access to this watch. This is a pure read by watchId
  * used to populate the carousel and filmstrip. The RSC signs the URLs before
- * passing signedPhotos to WatchDetail/WatchPhotoSection.
+ * passing signedPhotos to WatchDetailHero/WatchPhotoSection.
  */
 export async function getWatchPhotosForWatch(
   watchId: string,

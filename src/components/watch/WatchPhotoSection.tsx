@@ -2,10 +2,10 @@
 
 // src/components/watch/WatchPhotoSection.tsx
 //
-// Phase 61 Plan 02 — Owner photo carousel + always-on filmstrip for WatchDetail.
+// Phase 61 Plan 02 — Owner photo carousel + always-on filmstrip for WatchDetailHero.
 //
 // This is the central new component for PHOTO-02/03/05/06. It replaces the
-// single <Image> block in WatchDetail (lines 128-143) with:
+// single <Image> block in the legacy WatchDetail (deleted quick-260912-jo6) with:
 //   - embla-carousel-react viewport (one photo at a time, swipe on mobile)
 //   - Always-on filmstrip (64×64 thumbnails, tap-to-jump, horizontal scroll)
 //   - Edit toggle (owner only, viewerCanEdit gate)
@@ -491,7 +491,7 @@ export function WatchPhotoSection({
                 />
               </div>
             ) : (
-              // Empty: WatchIcon placeholder — same as current WatchDetail fallback
+              // Empty: WatchIcon placeholder — same as WatchDetailHero fallback
               <div className="flex-none w-full h-full flex items-center justify-center">
                 <span role="img" aria-label="No photo yet">
                   <WatchIcon className="h-16 w-16 text-muted-foreground/40" />

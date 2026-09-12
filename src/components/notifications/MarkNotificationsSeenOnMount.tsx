@@ -26,7 +26,8 @@ import { markNotificationsSeen } from '@/app/actions/notifications'
  * Header payload across soft navigations, so without router.refresh() the bell
  * dot would never clear on subsequent nav. This mirrors the Next 16 pattern
  * used by every other SA-triggered layout refresh in this codebase
- * (FollowButton:98, WatchDetail:87/96, login-form:33, etc.). D-07 / RESEARCH
+ * (FollowButton:98, WatchDetailHero handleMarkAsWorn/handleFlagDealChange,
+ * login-form:33, etc.). D-07 / RESEARCH
  * Pitfall 6 — "visit clears bell dot" requires both server-side tag invalidation
  * AND a client-side refresh hint.
  */
