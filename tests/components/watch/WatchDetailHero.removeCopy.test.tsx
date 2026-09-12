@@ -7,9 +7,9 @@
 // owned / non-owner delete-dialog branches directly, so a repeat of the
 // dead-island failure mode is structurally impossible.
 //
-// This file MUST FAIL today on the wishlist + grail cases (trigger still
-// reads "Delete", dialog still reads "Delete Watch") — GREEN lands in
-// Task 2 by porting the isWishlistLike branching into the Dialog block.
+// Review CR-01: the "You can add it back any time." sentence was dropped —
+// removeWatch cascades wear history/likes/comments/photos, so re-adding does
+// not restore a demoted watch. Tests assert the sentence stays gone.
 
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
@@ -84,10 +84,9 @@ describe('<WatchDetailHero> — delete dialog copy (POLISH-03 gap closure, D-07.
       dialog.getByRole('heading', { name: 'Remove from wishlist' }),
     ).toBeInTheDocument()
     expect(
-      dialog.getByText(
-        'Remove Rolex Datejust from your wishlist? You can add it back any time.',
-      ),
+      dialog.getByText('Remove Rolex Datejust from your wishlist?'),
     ).toBeInTheDocument()
+    expect(dialog.queryByText(/add it back/)).not.toBeInTheDocument()
 
     const confirmBtn = dialog.getByRole('button', { name: 'Remove from wishlist' })
     expect(confirmBtn).toBeInTheDocument()
@@ -119,10 +118,10 @@ describe('<WatchDetailHero> — delete dialog copy (POLISH-03 gap closure, D-07.
       dialog.getByRole('heading', { name: 'Remove from wishlist' }),
     ).toBeInTheDocument()
     expect(
-      dialog.getByText(
-        'Remove Rolex Datejust from your wishlist? You can add it back any time.',
-      ),
+      dialog.getByText('Remove Rolex Datejust from your wishlist?'),
     ).toBeInTheDocument()
+    expect(dialog.queryByText(/add it back/)).not.toBeInTheDocument()
+    expect(dialog.queryByText(/cannot be undone/)).not.toBeInTheDocument()
   })
 
   it('owned: trigger reads "Delete" (destructive), dialog keeps original copy (D-08)', async () => {
@@ -152,7 +151,7 @@ describe('<WatchDetailHero> — delete dialog copy (POLISH-03 gap closure, D-07.
       ),
     ).toBeInTheDocument()
     expect(dialog.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-    expect(dialog.queryByText(/You can add it back any time/)).not.toBeInTheDocument()
+    expect(dialog.queryByText(/from your wishlist/)).not.toBeInTheDocument()
   })
 
   it('non-owner: neither "Remove from wishlist" nor "Delete" trigger renders (existing owner gate)', () => {

@@ -161,3 +161,8 @@ Use the project's toast pattern if it has one for the other two handlers.
 _Reviewed: 2026-09-12_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+## Resolution Log
+
+- **CR-01** — resolved 2026-09-12 (operator choice: drop the sentence). Body now `Remove {brand} {model} from your wishlist?` in `WatchDetailHero.tsx`; tests assert `/add it back/` absent; 83-CONTEXT D-09 amended. Legacy `WatchDetail.tsx` left untouched (dead island, WR-01).
+- WR-01, WR-02, IN-01..IN-06 — open (advisory; not addressed in 83-04).

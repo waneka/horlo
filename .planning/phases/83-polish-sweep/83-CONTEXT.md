@@ -37,7 +37,7 @@ Three UI-only changes. No schema, no cross-cutting refactor, no new capabilities
 - **D-09:** Softened copy (for `isWishlistLike === true`):
   - Action button on the page: `Remove from wishlist` (variant `outline`)
   - Dialog title: `Remove from wishlist`
-  - Dialog body: `Remove {brand} {model} from your wishlist? You can add it back any time.`
+  - Dialog body: `Remove {brand} {model} from your wishlist?` — **amended 2026-09-12 (review CR-01):** the original trailing sentence "You can add it back any time." was dropped. `removeWatch` cascades wear events, likes, comments (incl. other users') and photo rows; a watch demoted owned→wishlist/grail keeps its wear history, so re-adding does not restore it. Soft label/outline trigger kept (D-10 visual weight unchanged).
   - Confirm button: `Remove from wishlist` (variant `destructive` — visual weight matches finality of the action inside the confirm step)
   - Cancel button: `Cancel` (unchanged)
 - **D-10:** Action-button variant differs by status: `variant="outline"` for wishlist/grail (low-stakes — the shared `watches_catalog` row is untouched; only the user's own `watches` row and their uploaded photos are removed; user can re-add any time), `variant="destructive"` for owned (real data-loss risk). Same button element, conditional `variant` prop.

@@ -389,7 +389,7 @@ export function WatchDetailHero({
                   </DialogTitle>
                   <DialogDescription>
                     {isWishlistLike
-                      ? `Remove ${watch.brand} ${watch.model} from your wishlist? You can add it back any time.`
+                      ? `Remove ${watch.brand} ${watch.model} from your wishlist?`
                       : `Are you sure you want to delete ${watch.brand} ${watch.model}? This action cannot be undone.`}
                   </DialogDescription>
                 </DialogHeader>
