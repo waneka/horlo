@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 phase: 83-polish-sweep
 source: [83-VERIFICATION.md]
 started: 2026-07-14T21:28:54Z
-updated: 2026-09-12T00:00:00Z
+updated: 2026-09-12T21:30:00Z
 ---
 
 ## Current Test
@@ -18,23 +18,23 @@ result: pass
 
 ### 2. POLISH-03 mobile dialog copy (iPhone Safari on prod)
 expected: On a wishlist or grail watch detail page (as owner), tap the "Remove from wishlist" outline button; the confirmation dialog title reads "Remove from wishlist"; body reads "Remove {brand} {model} from your wishlist?" (no "add it back" sentence — D-09 amended per review CR-01); confirm button reads "Remove from wishlist" (destructive variant). Tapping Cancel dismisses; tapping confirm removes and navigates away. On an OWNED watch detail page, the affordance still reads "Delete" with the destructive variant (per D-08 — unchanged).
-result: [pending]
+result: pass
 retest: true
 previous_result: issue — "on my wishlist, i still see \"delete\" instead of \"remove from wishlist\"" (fixed by 83-04, 23bcca75)
 
 ## Summary
 
 total: 2
-passed: 1
+passed: 2
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
 - truth: "Owner viewing a wishlist/grail watch detail page sees an outline 'Remove from wishlist' trigger; dialog title/body/confirm use 'Remove from wishlist' copy ('You can add it back any time.'); owned watches keep destructive 'Delete'"
-  status: fix_deployed_pending_retest
+  status: resolved
   reason: "User reported: on my wishlist, i still see \"delete\" instead of \"remove from wishlist\""
   severity: major
   test: 2

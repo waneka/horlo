@@ -1,9 +1,9 @@
 ---
 phase: 83-polish-sweep
 verified: 2026-09-12T00:00:00Z
-status: human_needed
+status: passed
 score: 12/12 must-haves verified
-overrides_applied: 0
+overrides_applied: 1
 overrides:
   - must_have: "Dialog body for wishlist/grail remove reads 'Remove {brand} {model} from your wishlist? You can add it back any time.' (original D-09 copy)"
     reason: "Code review CR-01 found the reassurance sentence factually wrong — removeWatch cascade-deletes wear history, likes, comments, and photos, so 'add it back any time' overstates recoverability. Operator accepted dropping the trailing sentence; 83-CONTEXT D-09 amended in place on 2026-09-12. Amended copy (no trailing sentence) is now the contract this verification checks against."
@@ -151,3 +151,7 @@ No code-level gaps remain. The single outstanding item is operational, not a cod
 
 _Verified: 2026-09-12_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification Outcome
+
+- 2026-09-12: 83-HUMAN-UAT test 2 (POLISH-03) re-walked on prod iPhone Safari after push of 23bcca75 — **pass**. Test 1 (POLISH-02) passed earlier the same day. All human items resolved; status → passed.

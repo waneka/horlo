@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: executing
+status: ready_to_plan
 last_updated: "2026-09-12T20:51:32.722Z"
-last_activity: 2026-09-12 -- Phase 83 Plan 04 (gap closure) complete; 4/4 plans done
+last_activity: 2026-09-12 -- Phase 83 closed (gap closure 83-04 shipped + prod UAT 2/2 pass)
 progress:
   total_phases: 4
   completed_phases: 1
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 83 — polish-sweep
+**Current focus:** Phase 84 — Wear history depth (next up; Phase 83 closed 2026-09-12 after 83-04 gap closure)
 
 ## Current Position
 
-Phase: 83 (polish-sweep) — 4 of 4 plans complete (Plan 04 gap closure landed)
-Plan: 4 of 4
-Status: Phase 83 execution complete — pending operator local-dev walk + prod push before formal phase close
-Last activity: 2026-09-12 -- Plan 04 (83-04-hero-wishlist-remove-copy) closed the 83-HUMAN-UAT test 2 gap by porting the isWishlistLike wishlist-remove copy into the LIVE WatchDetailHero.tsx (not the legacy WatchDetail.tsx that Plan 83-03 had edited)
+Phase: 84
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-12 -- Phase 83 closed: 83-04 ported the wishlist-remove copy into the live WatchDetailHero (83-03 had edited the dead WatchDetail.tsx); review CR-01 dropped the "add it back any time" sentence; prod iPhone UAT 2/2 pass
 
 **Upcoming phases:**
 
