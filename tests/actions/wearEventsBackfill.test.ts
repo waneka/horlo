@@ -13,7 +13,7 @@
 // getCurrentUser + DAL + next/cache + Storage; per-test mock configuration
 // via (mockedFn as Mock).mockResolvedValueOnce / mockRejectedValueOnce.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
 
 // ---------------------------------------------------------------------------
@@ -122,6 +122,74 @@ function mkInput(overrides: Record<string, unknown> = {}): ValidInput {
 describe('logBackfillWear (Phase 84 Plan 02 — WEAR-02)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // WR-01: the action bounds the client `today` to ±14h of server UTC, so
+    // pin the server clock to the fixture day (mkInput today = 2026-09-12).
+    // Only Date is faked — promise/microtask scheduling stays real.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-12T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  // Test 12: WR-01 — a crafted far-future `today` (with matching wornDate)
+  // no longer slips past the D-02 future check or the D-06 activity gate.
+  it('(12) WR-01 implausible future today → rejected before IDOR; no insert, no activity', async () => {
+    authAs()
+
+    const r = await logBackfillWear(
+      mkInput({ wornDate: '2099-01-01', today: '2099-01-01' }),
+    )
+
+    expect(r).toEqual({
+      success: false,
+      error: "Couldn't log that wear. Check your device's date and try again.",
+    })
+    expect(watchDAL.getWatchById).not.toHaveBeenCalled()
+    expect(wearEventDAL.logWearEventWithPhoto).not.toHaveBeenCalled()
+    expect(logActivity).not.toHaveBeenCalled()
+  })
+
+  // Test 13: WR-01 — a crafted old `today` equal to an old wornDate cannot
+  // post a months-old backfill to the feed as new activity.
+  it('(13) WR-01 implausible past today → rejected; no insert, no activity', async () => {
+    authAs()
+
+    const r = await logBackfillWear(
+      mkInput({ wornDate: '2026-01-01', today: '2026-01-01' }),
+    )
+
+    expect(r.success).toBe(false)
+    expect(wearEventDAL.logWearEventWithPhoto).not.toHaveBeenCalled()
+    expect(logActivity).not.toHaveBeenCalled()
+  })
+
+  // Test 14: WR-01 tolerance — real timezones at the UTC±12/14 extremes are
+  // accepted (server never owns the user's day), two days off is rejected.
+  it('(14) WR-01 tolerance: UTC+14 / UTC-12 local days accepted, 2 days off rejected', async () => {
+    ;(getCurrentUser as Mock).mockResolvedValue(mockUser)
+    ;(watchDAL.getWatchById as Mock).mockResolvedValue(mockWatch)
+    ;(wearEventDAL.logWearEventWithPhoto as Mock).mockResolvedValue(undefined)
+    ;(profilesDAL.getProfileById as Mock).mockResolvedValue(mockProfile)
+
+    // Server at 2026-09-12T11:00Z: UTC+14 local is 2026-09-13 01:00.
+    vi.setSystemTime(new Date('2026-09-12T11:00:00Z'))
+    const ahead = await logBackfillWear(
+      mkInput({ wornDate: '2026-09-13', today: '2026-09-13' }),
+    )
+    expect(ahead.success).toBe(true)
+
+    // Server at 2026-09-12T11:00Z: UTC-12 local is 2026-09-11 23:00.
+    const behind = await logBackfillWear(
+      mkInput({ wornDate: '2026-09-11', today: '2026-09-11' }),
+    )
+    expect(behind.success).toBe(true)
+
+    const tooFar = await logBackfillWear(
+      mkInput({ wornDate: '2026-09-14', today: '2026-09-14' }),
+    )
+    expect(tooFar.success).toBe(false)
   })
 
   // Test 1: auth gate — fail BEFORE Zod/IDOR/DAL

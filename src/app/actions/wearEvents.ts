@@ -150,6 +150,25 @@ const isoCalendarDate = z
     return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s
   }, 'Invalid calendar date')
 
+/**
+ * 84-REVIEW WR-01 — timezone-tolerant sanity bound on a client-supplied
+ * `today`. This does NOT derive the user's calendar day (260622-exo still
+ * holds: the client owns "today"); it only rejects values no real timezone
+ * could produce right now. Every real zone lies within UTC-12..UTC+14, so a
+ * genuine local date is always between the UTC date of (now - 14h) and the
+ * UTC date of (now + 14h) — i.e. never more than one calendar day off the
+ * server's UTC date. A crafted `today` far in the future (pinning a wear to
+ * the top of the WYWT rail) or far in the past (posting an old backfill as
+ * new feed activity via the D-06 `wornDate === today` gate) is rejected.
+ */
+const TODAY_TOLERANCE_MS = 14 * 60 * 60 * 1000
+
+function isPlausibleClientToday(today: string, nowMs: number = Date.now()): boolean {
+  const minPlausible = new Date(nowMs - TODAY_TOLERANCE_MS).toISOString().slice(0, 10)
+  const maxPlausible = new Date(nowMs + TODAY_TOLERANCE_MS).toISOString().slice(0, 10)
+  return today >= minPlausible && today <= maxPlausible
+}
+
 // .strict() rejects extra keys such as photoUrl or wearEventId — a
 // mass-assignment guard mirroring hideWearPicSchema. The wear id is always
 // generated server-side (crypto.randomUUID()), never accepted from the client.
@@ -517,7 +536,11 @@ export async function logWearWithVideo(input: {
  * - T-84-DATE (D-02): both `wornDate` and `today` are client-supplied
  *   (260622-exo — the server MUST NOT compute "today" itself; see
  *   src/lib/wear.ts header comment). The server independently rejects
- *   `wornDate > today` — it never trusts the client's `<input max>`.
+ *   `wornDate > today` — it never trusts the client's `<input max>`. Because
+ *   `today` itself is client-supplied, it is also bounded to ±14h of the
+ *   server's UTC clock (84-REVIEW WR-01, `isPlausibleClientToday`) so a
+ *   crafted `today` cannot smuggle a future wear or a backdated feed
+ *   activity past those checks.
  * - T-84-DUP (D-05): the `wear_events_unique_day` DB constraint is the
  *   backstop. An explicit PG 23505 catch (NOT onConflictDoNothing) returns
  *   the friendly error and logs no activity.
@@ -542,6 +565,15 @@ export async function logBackfillWear(input: {
   const parsed = logBackfillWearSchema.safeParse(input)
   if (!parsed.success) {
     return { success: false, error: 'Invalid input' }
+  }
+
+  // WR-01: bound the client-supplied `today` to what some real timezone
+  // could currently be (±14h of server UTC). Runs before any DB access.
+  if (!isPlausibleClientToday(parsed.data.today)) {
+    return {
+      success: false,
+      error: "Couldn't log that wear. Check your device's date and try again.",
+    }
   }
 
   // IDOR defense (matches markAsWorn / logWearWithPhoto): scope the watch
