@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: planning
-last_updated: "2026-09-13T19:01:29.274Z"
+last_updated: "2026-09-13T20:21:34.638Z"
 last_activity: "2026-09-13 -- Phase 84 (Wear history depth) complete: 7/7 plans, review fixes CR-01/CR-02/WR-01..06 shipped, prod UAT 5/5 pass"
 progress:
   total_phases: 4
@@ -11,7 +11,7 @@ progress:
   total_plans: 11
   completed_plans: 11
   percent: 50
-stopped_at: Phase 85 context gathered — ready to plan (resume .planning/phases/85-collection-lifecycle/85-CONTEXT.md)
+stopped_at: Phase 85 UI-SPEC approved — ready to plan (research + validation + UI-SPEC committed)
 ---
 
 # Project State
