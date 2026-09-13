@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: verifying
-last_updated: "2026-09-13T17:18:41.559Z"
+status: ready_to_plan
+last_updated: 2026-09-13T18:18:03.568Z
 last_activity: 2026-09-13 -- 84-07-SUMMARY.md written; STATE/ROADMAP updated for plan 7/7 completion
 progress:
   total_phases: 4
@@ -11,6 +11,7 @@ progress:
   total_plans: 11
   completed_plans: 11
   percent: 50
+stopped_at: Phase 84 complete (7/7) — ready to discuss Phase 85
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 84 — Wear history depth
+**Current focus:** Phase 85 — collection lifecycle
 
 ## Current Position
 
-Phase: 84 (Wear history depth) — PLANS COMPLETE, AWAITING VERIFICATION
-Plan: 7 of 7 complete
-Status: 84-07 checkpoint resolved as approved via prod walk (operator invoked CLAUDE.md Local-First exception, skipped local walk, pushed 84-01..06 to prod at 6fa86db9, walked prod, approved). Task 3 (local SQL assertions) SKIPPED — its fixture preconditions (local backfill/today wears) were never created since the local walk didn't run. WEAR-01..04 all complete in REQUIREMENTS.md. Phase ready for /gsd:verify-work; phase.complete not yet run (orchestrator's responsibility after verification).
-Last activity: 2026-09-13 -- 84-07-SUMMARY.md written; STATE/ROADMAP updated for plan 7/7 completion
+Phase: 85
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-13 -- Phase 84 (Wear history depth) complete: 7/7 plans, review fixes CR-01/CR-02/WR-01..06 shipped, prod UAT 5/5 pass
 
 **Upcoming phases:**
 

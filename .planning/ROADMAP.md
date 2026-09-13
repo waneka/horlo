@@ -355,6 +355,6 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
-| 84. Wear history depth | v9.0 | 7/7 | Complete   | 2026-09-13 |
+| 84. Wear history depth | v9.0 | 7/7 | Complete    | 2026-09-13 |
 | 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
