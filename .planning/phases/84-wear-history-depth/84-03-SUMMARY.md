@@ -110,3 +110,7 @@ None - no external service configuration required. Pure in-process TypeScript lo
 ---
 *Phase: 84-wear-history-depth*
 *Completed: 2026-09-12*
+
+## Self-Check: PASSED
+
+All created/modified files verified present (src/lib/wear.ts, src/lib/stats.ts, src/lib/wornTabScope.ts, tests/unit/leaderboard.test.ts, tests/unit/wornTabScope.test.ts, this SUMMARY). All 3 commits verified present in git log (545beb15 test RED, 057549c2 feat GREEN, 2083e5ac docs SUMMARY).

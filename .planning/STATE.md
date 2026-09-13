@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-13T04:18:02.679Z"
-last_activity: 2026-09-13 -- Phase 84 Plan 02 complete (WEAR-02 backfill server action)
+last_updated: "2026-09-13T04:28:48.740Z"
+last_activity: 2026-09-13 -- Phase 84 Plan 03 complete (WEAR-03/04 leaderboard logic + worn tab privacy scoping)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 11
-  completed_plans: 6
+  completed_plans: 7
   percent: 25
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 84 (Wear history depth) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 84 Plan 02 complete (WEAR-02 backfill server action)
+Last activity: 2026-09-13 -- Phase 84 Plan 03 complete (WEAR-03/04 leaderboard logic + worn tab privacy scoping)
 
 **Upcoming phases:**
 
@@ -110,6 +110,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 84 Plan 03 (leaderboard logic + worn tab privacy scoping, 2026-09-13):** `filterEventsByWindow` has no upper bound on the rolling window (only a lower cutoff) so a cross-timezone viewer's clock skew never drops an owner's same-day wear; comparison against `wornDate` stays lexical (never `::date`/`INTERVAL` casts) per RESEARCH Pitfall 4. `buildLeaderboard` reuses `wearCountByWatchMap` for count aggregation rather than re-implementing counting, per the plan's key_links contract. `scopeWornTabWatches` (new `src/lib/wornTabScope.ts`) deliberately imports nothing beyond types so it stays testable without rendering the Suspense/`'use cache'` Worn tab page — it mirrors the Collection tab's `settings.collectionPublic` gate, closing T-84-LEAK (a non-owner without collection access only sees watches they've already seen a wear for). WEAR-03/WEAR-04 stay unmarked in REQUIREMENTS.md — this plan ships only the logic half; 84-05/84-06 deliver the UI and wiring.
 
 **Phase 84 Plan 02 (backfill server action, 2026-09-13):** `logBackfillWear` (WEAR-02 server half) is a dedicated Server Action rather than an extension of `markAsWorn`/`logWearWithPhoto` — those go through `logWearEvent`'s `onConflictDoNothing`, which silently swallows a duplicate-day insert but still logs a `watch_worn` activity (RESEARCH Pitfall 6). The new action follows `logWearWithPhoto`'s explicit-insert-then-catch-23505 shape instead, avoiding that bug by construction. Its cache invalidation uses `updateTag(`profile:${username}`)` (read-your-own-writes, matching `src/app/actions/profile.ts`'s `updateProfile`) rather than the sibling wear actions' `revalidateTag(tag, 'max')` cross-user SWR form, because the caller is always the owner viewing their own Worn tab immediately after logging. WEAR-02 stays unmarked in REQUIREMENTS.md — this plan ships only the server half; 84-04 ships the client form and completes the requirement.
 
@@ -320,6 +322,7 @@ None.
 | Phase 83-polish-sweep P04 | ~15min | 2 tasks | 2 files |
 | Phase 84 P01 | ~25min | 2 tasks | 4 files |
 | Phase 84 P02 | ~20min | 2 tasks | 2 files |
+| Phase 84 P03 | 10min | 2 tasks | 5 files |
 
 ## Session Continuity
 

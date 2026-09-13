@@ -316,7 +316,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 **Plans**: 7 plans (Wave 1: 01/02/03 parallel; Wave 2: 04/05; Wave 3: 06; Wave 4: 07 local-dev walk checkpoint)
 - [x] 84-01-PLAN.md — WEAR-01: WornTimeline + WornCalendar panel rows link to /wear/[id] (D-15)
 - [x] 84-02-PLAN.md — WEAR-02: logBackfillWear Server Action (no-future, 23505 friendly error, activity only for today, updateTag) + contract tests
-- [ ] 84-03-PLAN.md — WEAR-03/04: WINDOW_DAYS + filterEventsByWindow + buildLeaderboard (D-13 tie-break) + scopeWornTabWatches privacy helper (TDD)
+- [x] 84-03-PLAN.md — WEAR-03/04: WINDOW_DAYS + filterEventsByWindow + buildLeaderboard (D-13 tie-break) + scopeWornTabWatches privacy helper (TDD)
 - [ ] 84-04-PLAN.md — WEAR-02: unified "Log a wear" form (date max today, note, visibility, date-aware preflight) on both Worn-tab entry points
 - [ ] 84-05-PLAN.md — WEAR-03/04: WearLeaderboard component (roving-tabindex window control, ranked rows, Show all, /w/[id] links)
 - [ ] 84-06-PLAN.md — WEAR-03/04: mount leaderboard above Timeline/Calendar + page.tsx viewer scoping (D-08, D-14)
@@ -355,6 +355,6 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
-| 84. Wear history depth | v9.0 | 2/7 | In Progress|  |
+| 84. Wear history depth | v9.0 | 3/7 | In Progress|  |
 | 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
