@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-13T04:37:22.913Z"
-last_activity: 2026-09-13 -- Phase 84 Plan 04 complete (WEAR-02 client half - unified Log a wear form)
+last_updated: "2026-09-13T04:43:54.422Z"
+last_activity: 2026-09-13 -- Phase 84 Plan 05 complete (WearLeaderboard component, WEAR-03/WEAR-04 UI half)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 25
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 84 (Wear history depth) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 84 Plan 04 complete (WEAR-02 client half - unified Log a wear form)
+Last activity: 2026-09-13 -- Phase 84 Plan 05 complete (WearLeaderboard component, WEAR-03/WEAR-04 UI half)
 
 **Upcoming phases:**
 
@@ -111,6 +111,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 84 Plan 05 (WearLeaderboard component, 2026-09-12):** Window control clones `ViewTogglePill`'s visual shape + ports `ConfirmStep`'s roving-tabindex `handleKeyDown` rather than using `ui/tabs.tsx`, per the plan's documented discretion (UI-SPEC's `bg-accent text-accent-foreground` active-segment requirement would need heavy `TabsTrigger` overrides; the hand-ported handler is deterministic under jsdom, so keyboard behavior is unit-tested rather than assumed). `todayISO` is computed via `useSyncExternalStore(subscribeNoop, () => todayLocalISO(), () => null)` so SSR and hydration never disagree on window counts (React #418 guard) — a skeleton renders until the client snapshot resolves. Component returns `null` when `watches.length === 0`. All 11 RTL tests passed on the first implementation attempt with zero deviations. Not yet mounted — 84-06 wires it into the Worn tab's `WornTabContent` and completes WEAR-03/WEAR-04 (both stay unmarked in REQUIREMENTS.md per this plan's component-only scope).
 
 **Phase 84 Plan 04 (unified Log a wear form, client half, 2026-09-13):** `LogTodaysWearButton`'s watch picker was rebuilt as a `role="listbox"`/`role="option"` button pattern ported from `WatchPickerDialog`, not "extended" — the prior component was a bare `<Select>` with no preflight logic at all (RESEARCH Pitfall 1), so there was nothing to extend. The owner's zero-wear empty-state CTA switched from `WywtPostDialog` (today-only photo flow) to this same form per D-07 ("Log a wear always opens the form") — otherwise a zero-wear owner could never backfill a past date. The photo flow stays reachable via `NavWearButton` and `WywtRail`, both untouched and still importing `WywtPostDialog` directly. WEAR-02 is now fully complete (server half from 84-02 + this client half) and marked complete in REQUIREMENTS.md.
 
@@ -326,10 +328,13 @@ None.
 | Phase 84 P01 | ~25min | 2 tasks | 4 files |
 | Phase 84 P02 | ~20min | 2 tasks | 2 files |
 | Phase 84 P03 | 10min | 2 tasks | 5 files |
+| Phase 84 P05 | ~25min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last activity: 2026-09-13 — Phase 84 Plan 01 (WEAR-01 row linking) complete. Both Worn-tab surfaces now tap through to the existing `/wear/[id]` detail page (D-15). Task 1: `WornTimeline.tsx` rows wrapped in a whole-row `<Link href="/wear/${e.id}">` (row shell classes moved off the `<li>` onto the `Link`, added `hover:bg-muted/40` + `focus-visible:ring-2` + trailing `ChevronRight`); commits `b1fe8b9c` (RED test) / `345db212` (GREEN impl). Task 2: `WornCalendar.tsx` selected-day panel rows get the same whole-row `Link` idiom (`href="/wear/${event.id}"`, `-mx-2` offset, reused existing `ChevronRight` import); grid day cells (`div role="button"`, `onClick={setSelectedDate}`) completely untouched — commits `99429222` (RED test) / `d1b2dc22` (GREEN impl). 1 Rule-1 deviation: new WornCalendar WEAR-01 tests anchor fixture dates to the current month computed at test-run time instead of hardcoded `2026-05-*`, because the grid cursor always opens on the actual current month regardless of the test-only `initialSelectedDate` prop — avoids reintroducing the same month-drift flake already present in 3 pre-existing tests in that file (today's date has moved past May 2026). `npm run build` exits 0; targeted vitest suites green (7/7 WornTimeline incl. 3 new; 4/4 new WornCalendar WEAR-01 tests; the 3 pre-existing month-dependent WornCalendar tests carry the pre-existing baseline failure, called out and left untouched per plan `<verification>`). `tests/no-raw-palette.test.ts` has 5 pre-existing failures in unrelated files (BrandPicker/SearchEntry/CommentGateLocked) — confirmed out of scope. WEAR-01 requirement complete. Summary: `84-01-SUMMARY.md`.
+Last activity: 2026-09-12 — Phase 84 Plan 05 (WearLeaderboard component) complete. Built `src/components/profile/WearLeaderboard.tsx`, a self-contained client section: "Wear leaderboard" heading, a 5-segment rolling-window tablist (1/3/6/12mo/All, default 3 mo per D-09) with roving-tabindex keyboard nav ported from `ConfirmStep`'s WAI-ARIA radiogroup handler rather than `ui/tabs.tsx` (documented plan discretion), and ranked owned-watch rows (rank, size-10 thumbnail via `getSafeImageUrl`, Brand Model, wear count, proportional `bg-accent` bar) sourced from 84-03's `filterEventsByWindow` + `buildLeaderboard`. Shows top 5 with a "Show all"/"Show less" expander (D-11), links each row to `/w/[id]` (D-12), and surfaces "No wears in this window." when every count is zero. `todayISO` computed via `useSyncExternalStore` with a null server snapshot (React #418 guard). Commits: `56a2569f` (test RED) / `f6819491` (feat GREEN). All 11 RTL tests passed on the first implementation attempt — 0 deviations. `npm run build` exits 0; `tests/no-raw-palette.test.ts` has the same 5 pre-existing failures in unrelated files, none touching `WearLeaderboard.tsx`. Component is NOT yet mounted — 84-06 wires it into `WornTabContent` above the `ViewTogglePill` row and completes WEAR-03/WEAR-04 (both intentionally left unmarked in REQUIREMENTS.md). Summary: `84-05-SUMMARY.md`.
+
+Prior activity: 2026-09-13 — Phase 84 Plan 01 (WEAR-01 row linking) complete. Both Worn-tab surfaces now tap through to the existing `/wear/[id]` detail page (D-15). Task 1: `WornTimeline.tsx` rows wrapped in a whole-row `<Link href="/wear/${e.id}">` (row shell classes moved off the `<li>` onto the `Link`, added `hover:bg-muted/40` + `focus-visible:ring-2` + trailing `ChevronRight`); commits `b1fe8b9c` (RED test) / `345db212` (GREEN impl). Task 2: `WornCalendar.tsx` selected-day panel rows get the same whole-row `Link` idiom (`href="/wear/${event.id}"`, `-mx-2` offset, reused existing `ChevronRight` import); grid day cells (`div role="button"`, `onClick={setSelectedDate}`) completely untouched — commits `99429222` (RED test) / `d1b2dc22` (GREEN impl). 1 Rule-1 deviation: new WornCalendar WEAR-01 tests anchor fixture dates to the current month computed at test-run time instead of hardcoded `2026-05-*`, because the grid cursor always opens on the actual current month regardless of the test-only `initialSelectedDate` prop — avoids reintroducing the same month-drift flake already present in 3 pre-existing tests in that file (today's date has moved past May 2026). `npm run build` exits 0; targeted vitest suites green (7/7 WornTimeline incl. 3 new; 4/4 new WornCalendar WEAR-01 tests; the 3 pre-existing month-dependent WornCalendar tests carry the pre-existing baseline failure, called out and left untouched per plan `<verification>`). `tests/no-raw-palette.test.ts` has 5 pre-existing failures in unrelated files (BrandPicker/SearchEntry/CommentGateLocked) — confirmed out of scope. WEAR-01 requirement complete. Summary: `84-01-SUMMARY.md`.
 
 Prior activity: 2026-09-12 — Phase 83 Plan 04 (gap closure) complete: `83-04-hero-wishlist-remove-copy`. 83-HUMAN-UAT test 2 (POLISH-03) failed because Plan 83-03 had edited the legacy, unrendered `src/components/watch/WatchDetail.tsx` instead of the live `WatchDetailHero.tsx` that `/w/[ref]/page.tsx` actually imports. Plan 04 ported the exact 83-03 `isWishlistLike` branching into `WatchDetailHero.tsx`'s Dialog block (commits `3d7638b5` RED test / `28a3a2b3` GREEN implementation): outline `Remove from wishlist` trigger + softened title/body/confirm copy for `wishlist`/`grail` watches; unchanged destructive `Delete` / `Delete Watch` for `owned` watches; `handleDelete`/`removeWatch(watch.id)`/`isDeleteDialogOpen`/`isWishlistLike` derivation all unchanged. New test `tests/components/watch/WatchDetailHero.removeCopy.test.tsx` renders the LIVE component and covers wishlist/grail/owned/non-owner branches (9/9 pass alongside the pre-existing `WatchDetail.isChronometer.test.tsx`). 1 Rule-1 auto-fix: disambiguated a `getByText` collision in the test itself (DialogTitle and the confirm Button both render the exact string "Remove from wishlist") by switching title assertions to `getByRole('heading', ...)`. Rendered-path greps confirm `page.tsx` imports `WatchDetailHero` (not legacy `WatchDetail`) and the copy lives in that file. `npm run build` exits 0. Legacy `WatchDetail.tsx` left untouched — flagged as a dead-island cleanup candidate (only consumer: `WatchDetail.isChronometer.test.tsx`) in `83-04-SUMMARY.md` Follow-ups. Phase 83 is now 4/4 plans complete. Local `npm run dev` desktop walk + prod push + iPhone Safari re-walk of 83-HUMAN-UAT test 2 are pending operator steps (this agent runs sequentially without a browser and does not push).
 
