@@ -113,3 +113,7 @@ None - no external service configuration required.
 ---
 *Phase: 84-wear-history-depth*
 *Completed: 2026-09-13*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk; all 5 task/summary commits (b1fe8b9c, 345db212, 99429222, d1b2dc22, f69a99a4) verified in `git log`.

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-13T03:55:57.301Z"
-last_activity: 2026-09-13 -- Phase 84 planning complete
+last_updated: "2026-09-13T04:09:57.086Z"
+last_activity: 2026-09-13 -- Phase 84 Plan 01 complete (WEAR-01 row linking)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 11
-  completed_plans: 4
+  completed_plans: 5
   percent: 25
 ---
 
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 84 — Wear history depth (next up; Phase 83 closed 2026-09-12 after 83-04 gap closure)
+**Current focus:** Phase 84 — Wear history depth
 
 ## Current Position
 
-Phase: 84
-Plan: Not started
+Phase: 84 (Wear history depth) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 84 planning complete
+Last activity: 2026-09-13 -- Phase 84 Plan 01 complete (WEAR-01 row linking)
 
 **Upcoming phases:**
 
@@ -110,6 +110,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 84 Plan 01 (row linking, 2026-09-13):** WornCalendar's grid cursor always initializes to the actual current month on mount, independent of the test-only `initialSelectedDate` prop (which only seeds the *selected* date, not the displayed month). New WEAR-01 tests therefore anchor fixture dates to the current month computed at test-run time rather than a hardcoded past month, avoiding the same month-drift flake already present in 3 pre-existing tests in `tests/components/profile/WornCalendar.test.tsx`.
 
 **Phase 83 Plan 04 (gap closure, 2026-09-12):** Root cause of 83-HUMAN-UAT test 2 failure was that Plan 83-03 edited `src/components/watch/WatchDetail.tsx`, a legacy component `/w/[ref]` stopped rendering in Phase 64 (replaced by `WatchDetailHero`). Plan 04 ported the exact 83-03 `isWishlistLike` branching (trigger variant+label, title, description, confirm label) verbatim into the LIVE `WatchDetailHero.tsx` Dialog block; confirm button keeps `variant="destructive"` on both branches (D-09 — only the trigger softens to `outline` for wishlist-like watches). Legacy `WatchDetail.tsx` left untouched (dead-island cleanup candidate — see 83-04-SUMMARY.md Follow-ups). New regression test targets the rendered component directly to prevent recurrence of this failure mode.
 
@@ -314,10 +316,13 @@ None.
 | Phase 83 P01 | 5min | 2 tasks | 2 files |
 | Phase 83-polish-sweep P02 | 5 | 1 tasks | 1 files |
 | Phase 83-polish-sweep P04 | ~15min | 2 tasks | 2 files |
+| Phase 84 P01 | ~25min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last activity: 2026-09-12 — Phase 83 Plan 04 (gap closure) complete: `83-04-hero-wishlist-remove-copy`. 83-HUMAN-UAT test 2 (POLISH-03) failed because Plan 83-03 had edited the legacy, unrendered `src/components/watch/WatchDetail.tsx` instead of the live `WatchDetailHero.tsx` that `/w/[ref]/page.tsx` actually imports. Plan 04 ported the exact 83-03 `isWishlistLike` branching into `WatchDetailHero.tsx`'s Dialog block (commits `3d7638b5` RED test / `28a3a2b3` GREEN implementation): outline `Remove from wishlist` trigger + softened title/body/confirm copy for `wishlist`/`grail` watches; unchanged destructive `Delete` / `Delete Watch` for `owned` watches; `handleDelete`/`removeWatch(watch.id)`/`isDeleteDialogOpen`/`isWishlistLike` derivation all unchanged. New test `tests/components/watch/WatchDetailHero.removeCopy.test.tsx` renders the LIVE component and covers wishlist/grail/owned/non-owner branches (9/9 pass alongside the pre-existing `WatchDetail.isChronometer.test.tsx`). 1 Rule-1 auto-fix: disambiguated a `getByText` collision in the test itself (DialogTitle and the confirm Button both render the exact string "Remove from wishlist") by switching title assertions to `getByRole('heading', ...)`. Rendered-path greps confirm `page.tsx` imports `WatchDetailHero` (not legacy `WatchDetail`) and the copy lives in that file. `npm run build` exits 0. Legacy `WatchDetail.tsx` left untouched — flagged as a dead-island cleanup candidate (only consumer: `WatchDetail.isChronometer.test.tsx`) in `83-04-SUMMARY.md` Follow-ups. Phase 83 is now 4/4 plans complete. Local `npm run dev` desktop walk + prod push + iPhone Safari re-walk of 83-HUMAN-UAT test 2 are pending operator steps (this agent runs sequentially without a browser and does not push).
+Last activity: 2026-09-13 — Phase 84 Plan 01 (WEAR-01 row linking) complete. Both Worn-tab surfaces now tap through to the existing `/wear/[id]` detail page (D-15). Task 1: `WornTimeline.tsx` rows wrapped in a whole-row `<Link href="/wear/${e.id}">` (row shell classes moved off the `<li>` onto the `Link`, added `hover:bg-muted/40` + `focus-visible:ring-2` + trailing `ChevronRight`); commits `b1fe8b9c` (RED test) / `345db212` (GREEN impl). Task 2: `WornCalendar.tsx` selected-day panel rows get the same whole-row `Link` idiom (`href="/wear/${event.id}"`, `-mx-2` offset, reused existing `ChevronRight` import); grid day cells (`div role="button"`, `onClick={setSelectedDate}`) completely untouched — commits `99429222` (RED test) / `d1b2dc22` (GREEN impl). 1 Rule-1 deviation: new WornCalendar WEAR-01 tests anchor fixture dates to the current month computed at test-run time instead of hardcoded `2026-05-*`, because the grid cursor always opens on the actual current month regardless of the test-only `initialSelectedDate` prop — avoids reintroducing the same month-drift flake already present in 3 pre-existing tests in that file (today's date has moved past May 2026). `npm run build` exits 0; targeted vitest suites green (7/7 WornTimeline incl. 3 new; 4/4 new WornCalendar WEAR-01 tests; the 3 pre-existing month-dependent WornCalendar tests carry the pre-existing baseline failure, called out and left untouched per plan `<verification>`). `tests/no-raw-palette.test.ts` has 5 pre-existing failures in unrelated files (BrandPicker/SearchEntry/CommentGateLocked) — confirmed out of scope. WEAR-01 requirement complete. Summary: `84-01-SUMMARY.md`.
+
+Prior activity: 2026-09-12 — Phase 83 Plan 04 (gap closure) complete: `83-04-hero-wishlist-remove-copy`. 83-HUMAN-UAT test 2 (POLISH-03) failed because Plan 83-03 had edited the legacy, unrendered `src/components/watch/WatchDetail.tsx` instead of the live `WatchDetailHero.tsx` that `/w/[ref]/page.tsx` actually imports. Plan 04 ported the exact 83-03 `isWishlistLike` branching into `WatchDetailHero.tsx`'s Dialog block (commits `3d7638b5` RED test / `28a3a2b3` GREEN implementation): outline `Remove from wishlist` trigger + softened title/body/confirm copy for `wishlist`/`grail` watches; unchanged destructive `Delete` / `Delete Watch` for `owned` watches; `handleDelete`/`removeWatch(watch.id)`/`isDeleteDialogOpen`/`isWishlistLike` derivation all unchanged. New test `tests/components/watch/WatchDetailHero.removeCopy.test.tsx` renders the LIVE component and covers wishlist/grail/owned/non-owner branches (9/9 pass alongside the pre-existing `WatchDetail.isChronometer.test.tsx`). 1 Rule-1 auto-fix: disambiguated a `getByText` collision in the test itself (DialogTitle and the confirm Button both render the exact string "Remove from wishlist") by switching title assertions to `getByRole('heading', ...)`. Rendered-path greps confirm `page.tsx` imports `WatchDetailHero` (not legacy `WatchDetail`) and the copy lives in that file. `npm run build` exits 0. Legacy `WatchDetail.tsx` left untouched — flagged as a dead-island cleanup candidate (only consumer: `WatchDetail.isChronometer.test.tsx`) in `83-04-SUMMARY.md` Follow-ups. Phase 83 is now 4/4 plans complete. Local `npm run dev` desktop walk + prod push + iPhone Safari re-walk of 83-HUMAN-UAT test 2 are pending operator steps (this agent runs sequentially without a browser and does not push).
 
 Prior activity: 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth roadmap created. 4 phases (83, 84, 85, 86) mapped 1:1 to REQUIREMENTS.md categories: Phase 83 covers POLISH-01/02/03 (top-nav `+` removal, Worn-tab dropdown scope-to-owned, wishlist "Remove" copy); Phase 84 covers WEAR-01/02/03/04 (`/wear/[id]` link-through from Worn tab, photo-less past-date backfill, segmented 1/3/6/12mo/All wear-count aggregate + across-collection leaderboard); Phase 85 covers LIFE-01..06 (new `previously_owned` WatchStatus + `disposal_reason` enum + `sell_price` + `disposal_date` schema, disposal flow from collection card, wishlist→owned celebration, "Show previously owned" default-off toggle, similarity+recommender exclusion); Phase 86 covers REORDER-01..04 (explicit on-screen Reorder toggle on Collection + Wishlist grids, independent per-tab persistent order becomes new default sort, fixes mobile long-press vs. link-menu conflict). Sequencing: Polish (no schema) → Wear depth (additive UI on existing data) → Lifecycle (DB-touching; `use_worktrees=false` already set globally) → Reorder (touches the same grids Lifecycle changes, ordering last avoids merge churn). 17/17 v1 requirements mapped; 0 orphaned. Files written: `.planning/ROADMAP.md` (v9.0 active section added under milestone header + Phase Details for 83-86 with per-phase Success Criteria and `UI hint: yes` annotations on all four phases + Progress table), `.planning/REQUIREMENTS.md` (Traceability table populated with Phase 83/84/85/86 assignments; coverage line updated to 17 mapped / 0 unmapped), `.planning/STATE.md` (frontmatter `total_phases: 4`, `next_phase: 83`; Current Position points at Phase 83; SEED-009 added to Deferred Items as `dormant — preempted by v9.0`). Zero code changes yet — roadmap creation only.
 

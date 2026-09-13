@@ -314,7 +314,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
   3. The Worn tab shows a wear-count aggregate section with a segmented time-window control offering 1 mo / 3 mo / 6 mo / 12 mo / All time.
   4. The aggregate section renders a leaderboard of the user's owned watches ranked by wear count within the selected time window; changing the window updates the ranking.
 **Plans**: 7 plans (Wave 1: 01/02/03 parallel; Wave 2: 04/05; Wave 3: 06; Wave 4: 07 local-dev walk checkpoint)
-- [ ] 84-01-PLAN.md — WEAR-01: WornTimeline + WornCalendar panel rows link to /wear/[id] (D-15)
+- [x] 84-01-PLAN.md — WEAR-01: WornTimeline + WornCalendar panel rows link to /wear/[id] (D-15)
 - [ ] 84-02-PLAN.md — WEAR-02: logBackfillWear Server Action (no-future, 23505 friendly error, activity only for today, updateTag) + contract tests
 - [ ] 84-03-PLAN.md — WEAR-03/04: WINDOW_DAYS + filterEventsByWindow + buildLeaderboard (D-13 tie-break) + scopeWornTabWatches privacy helper (TDD)
 - [ ] 84-04-PLAN.md — WEAR-02: unified "Log a wear" form (date max today, note, visibility, date-aware preflight) on both Worn-tab entry points
@@ -355,6 +355,6 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
-| 84. Wear history depth | v9.0 | 0/TBD | Not started | - |
+| 84. Wear history depth | v9.0 | 1/7 | In Progress|  |
 | 85. Collection lifecycle | v9.0 | 0/TBD | Not started | - |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
