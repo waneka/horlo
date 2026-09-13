@@ -110,4 +110,6 @@ None — no external service configuration required. Pure client-side component 
 *Phase: 84-wear-history-depth*
 *Completed: 2026-09-12*
 
-## Self-Check: PENDING
+## Self-Check: PASSED
+
+All created files verified present (src/components/profile/WearLeaderboard.tsx, tests/components/profile/WearLeaderboard.test.tsx, this SUMMARY). All 3 commits verified present in git log (56a2569f test RED, f6819491 feat GREEN, fe309209 docs SUMMARY).
