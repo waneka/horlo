@@ -443,7 +443,10 @@ useEffect(() => {
 
 **Note:** Package-name provenance is N/A (no new packages). Both assumptions above are implementation-detail risks, not compliance/security/retention claims — neither requires user confirmation before planning, but A1 should be resolved by reading `src/components/ui/tabs.tsx` at plan time (one file read, not a research-blocking unknown).
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+- RESOLVED Q1: 84-05 does not depend on Base UI `Tabs` keyboard behavior — it clones `ViewTogglePill` and ports `ConfirmStep`'s roving-tabindex handler, with arrow-key behavior covered by unit tests.
+- RESOLVED Q2: 84-04 adopts the recommended default — disabled-row label "Worn today" when the selected date is today, otherwise "Already logged".
 
 1. **Does Base UI's `Tabs` primitive (underlying `src/components/ui/tabs.tsx`) actually implement roving-tabindex keyboard nav?**
    - What we know: `src/components/ui/tabs.tsx` was read directly — it's a thin styling wrapper (`TabsList`/`TabsTrigger`) around `@base-ui/react/tabs`'s `Tabs.List`/`Tabs.Tab` primitives, with zero custom `onKeyDown`/`tabIndex` code in the wrapper itself. Radix-compatible primitive libraries (which Base UI is designed to be) conventionally bake WAI-ARIA tab keyboard behavior into the primitive.
