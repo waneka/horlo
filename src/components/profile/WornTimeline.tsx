@@ -1,5 +1,6 @@
 import Image from 'next/image'
-import { Watch as WatchIcon } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, Watch as WatchIcon } from 'lucide-react'
 import { getSafeImageUrl } from '@/lib/images'
 
 interface WatchSummary {
@@ -67,28 +68,34 @@ export function WornTimeline({ events, watchMap }: WornTimelineProps) {
               const wearPhotoSafe = e.photoUrl ? getSafeImageUrl(e.photoUrl) : null
               const safe = wearPhotoSafe ?? (watch ? getSafeImageUrl(watch.imageUrl) : null)
               return (
-                <li
-                  key={e.id}
-                  className="flex items-center gap-3 rounded-lg border bg-card p-2"
-                >
-                  <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">
-                    {safe ? (
-                      <Image
-                        src={safe}
-                        alt=""
-                        fill
-                        sizes="40px"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <WatchIcon className="size-4 text-muted-foreground/40" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-sm">
-                    {watch ? `${watch.brand} ${watch.model}` : 'Unknown watch'}
-                  </div>
+                <li key={e.id}>
+                  <Link
+                    href={`/wear/${e.id}`}
+                    className="flex items-center gap-3 rounded-lg border bg-card p-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">
+                      {safe ? (
+                        <Image
+                          src={safe}
+                          alt=""
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <WatchIcon className="size-4 text-muted-foreground/40" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm">
+                      {watch ? `${watch.brand} ${watch.model}` : 'Unknown watch'}
+                    </div>
+                    <ChevronRight
+                      className="ml-auto size-4 shrink-0 text-muted-foreground/40"
+                      aria-hidden
+                    />
+                  </Link>
                 </li>
               )
             })}
