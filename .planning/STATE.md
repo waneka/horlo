@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: executing
-last_updated: "2026-09-13T04:52:00.000Z"
-last_activity: 2026-09-13 -- Phase 84 Plan 06 complete (WearLeaderboard mounted + Worn-tab privacy scoping; WEAR-03/WEAR-04 complete)
+status: verifying
+last_updated: "2026-09-13T17:18:41.559Z"
+last_activity: 2026-09-13 -- 84-07-SUMMARY.md written; STATE/ROADMAP updated for plan 7/7 completion
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
-  completed_plans: 10
-  percent: 25
+  completed_plans: 11
+  percent: 50
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 
 ## Current Position
 
-Phase: 84 (Wear history depth) — EXECUTING
-Plan: 7 of 7
-Status: 84-07 checkpoint (human-verify) awaiting prod walk — operator skipped local walk and pushed 84-01..06 to prod (6fa86db9); 84-07 Task 3 (local SQL assertions) + SUMMARY, code review, and phase verification still pending
-Last activity: 2026-09-13 - Completed quick task 260913-csl: Delete wear moved into /wear/[id] overflow menu (follows 260913-cae delete wear). Phase 84 plans 01-06 pushed to prod; walk deferred to prod per operator
+Phase: 84 (Wear history depth) — PLANS COMPLETE, AWAITING VERIFICATION
+Plan: 7 of 7 complete
+Status: 84-07 checkpoint resolved as approved via prod walk (operator invoked CLAUDE.md Local-First exception, skipped local walk, pushed 84-01..06 to prod at 6fa86db9, walked prod, approved). Task 3 (local SQL assertions) SKIPPED — its fixture preconditions (local backfill/today wears) were never created since the local walk didn't run. WEAR-01..04 all complete in REQUIREMENTS.md. Phase ready for /gsd:verify-work; phase.complete not yet run (orchestrator's responsibility after verification).
+Last activity: 2026-09-13 -- 84-07-SUMMARY.md written; STATE/ROADMAP updated for plan 7/7 completion
 
 **Upcoming phases:**
 
@@ -112,6 +112,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 84 Plan 07 (checkpoint resolved via prod walk, 2026-09-13):** The Task 2 human-verify checkpoint — a local-dev walk of all four WEAR requirements required by CLAUDE.md's Local-First Development gate — was approved, but not via the local walk this plan specifies. The operator explicitly invoked CLAUDE.md's stated exception ("explicit user request to skip local verification"), pushed Phase 84 plans 01-06 to prod (`6fa86db9`), walked the same checklist against prod, and approved from there. Task 3 (local SQL assertions against a local backfill wear + local today-dated Followers wear) was consequently marked SKIPPED rather than executed against nonexistent local fixtures or against prod (prohibited by this plan's threat model T-84-08). Two follow-up quick tasks (`260913-cae` add owner-only wear delete, `260913-csl` move delete into the `/wear/[id]` overflow menu) shipped during the prod walk and were used to clean up prod test wears. The 9 local-only `phase 84 walk fixture` rows from Task 1 remain in the local DB, untouched and inert. WEAR-01..04 were already complete in REQUIREMENTS.md from prior plans — not re-edited by this plan. Phase 84 is 7/7 plans complete and ready for `/gsd:verify-work`; `phase.complete` intentionally not run by this plan (orchestrator's responsibility after verification).
 
 **Phase 84 Plan 06 (leaderboard wiring + Worn-tab privacy scoping, 2026-09-13):** `WearLeaderboard` (84-05) is now mounted as the first child in every `WornTabContent` render branch (populated, owner-empty, non-owner-empty) inside a `gap-6` outer wrapper, always fed the unfiltered `events` array so the watch-filter `Select` never affects the leaderboard (D-08). In `src/app/u/[username]/[tab]/page.tsx`'s worn branch, `scopeWornTabWatches` (84-03) now gates both `watchMap` and `ownedWatches` on `settings.collectionPublic` — closing T-84-LEAK, the privacy gap RESEARCH Pitfall 5 found: previously a non-owner viewer of a private collection received the full owned-watch list (and thus the full filter dropdown + zero-wear leaderboard rows) regardless of `collectionPublic`. No new `await` added and `unstable_instant` stays `false` — the Suspense/`connection()` structure above the worn branch is untouched. WEAR-03/WEAR-04 both marked complete in REQUIREMENTS.md.
 
@@ -334,6 +336,7 @@ None.
 | Phase 84 P02 | ~20min | 2 tasks | 2 files |
 | Phase 84 P03 | 10min | 2 tasks | 5 files |
 | Phase 84 P05 | ~25min | 2 tasks | 2 files |
+| Phase 84 P07 | ~10min | 3 tasks | 0 files |
 
 ## Session Continuity
 
