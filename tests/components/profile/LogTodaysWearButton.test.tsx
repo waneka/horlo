@@ -277,6 +277,70 @@ describe('LogTodaysWearButton', () => {
     await waitFor(() => expect(submitButton).toBeDisabled())
   })
 
+  it('T12 (WR-02): submit blocked and stale labels hidden while the new date preflight is in flight', async () => {
+    mockPreflight.mockResolvedValueOnce([W1])
+    renderButton()
+    openDialog()
+
+    await screen.findByText('Worn today')
+    const w2Option = screen.getByRole('option', { name: /Tudor Black Bay/ })
+    fireEvent.click(w2Option)
+    const submitButton = screen.getByRole('button', { name: 'Log wear' })
+    await waitFor(() => expect(submitButton).not.toBeDisabled())
+
+    // Hold the next preflight open.
+    let resolveNext: (ids: string[]) => void = () => {}
+    mockPreflight.mockImplementationOnce(
+      () => new Promise<string[]>((r) => (resolveNext = r)),
+    )
+    fireEvent.change(screen.getByLabelText('Date'), {
+      target: { value: '2026-09-01' },
+    })
+
+    // In flight: submit blocked, the old date's "Worn today" row is not
+    // shown as disabled for the new date.
+    expect(submitButton).toBeDisabled()
+    expect(screen.queryByText('Worn today')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: /Omega Speedmaster/ }),
+    ).toHaveAttribute('aria-disabled', 'false')
+
+    resolveNext([])
+    await waitFor(() => expect(submitButton).not.toBeDisabled())
+  })
+
+  it('T13 (WR-02): reopening does not carry the previous session preflight over', async () => {
+    mockPreflight.mockResolvedValueOnce([W1])
+    renderButton()
+    openDialog()
+    await screen.findByText('Worn today')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Log a wear' }),
+      ).not.toBeInTheDocument(),
+    )
+
+    let resolveNext: (ids: string[]) => void = () => {}
+    mockPreflight.mockImplementationOnce(
+      () => new Promise<string[]>((r) => (resolveNext = r)),
+    )
+    openDialog()
+
+    await screen.findByRole('heading', { name: 'Log a wear' })
+    expect(screen.queryByText('Worn today')).not.toBeInTheDocument()
+
+    resolveNext([])
+    const w1Option = await screen.findByRole('option', {
+      name: /Omega Speedmaster/,
+    })
+    fireEvent.click(w1Option)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Log wear' })).not.toBeDisabled(),
+    )
+  })
+
   it('T11: empty watches array shows "Add a watch first" and no date input', async () => {
     render(<LogTodaysWearButton watches={[]} viewerId={VIEWER} />)
     openDialog()

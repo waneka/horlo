@@ -30,6 +30,8 @@ interface WatchSummary {
   model: string
 }
 
+const EMPTY_ID_SET: ReadonlySet<string> = new Set()
+
 interface LogTodaysWearButtonProps {
   watches: WatchSummary[]
   viewerId: string
@@ -62,6 +64,11 @@ export function LogTodaysWearButton({
   const [wornOnDateIds, setWornOnDateIds] = useState<ReadonlySet<string>>(
     new Set(),
   )
+  // 84-REVIEW WR-02: the date the current `wornOnDateIds` result belongs to.
+  // While it differs from `wornDate` the preflight for the selected date is
+  // still in flight, so the previous date's results are stale — they are not
+  // rendered and submit stays blocked until the fresh result lands.
+  const [preflightDate, setPreflightDate] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const pathname = usePathname() ?? ''
@@ -81,6 +88,9 @@ export function LogTodaysWearButton({
     setNoteOpen(false)
     setVisibility('public')
     setError(null)
+    // WR-02: drop the previous session's preflight so it can't carry over.
+    setWornOnDateIds(new Set())
+    setPreflightDate(null)
     setOpen(true)
   }
 
@@ -95,20 +105,32 @@ export function LogTodaysWearButton({
         if (cancelled) return
         const set = new Set(ids)
         setWornOnDateIds(set)
+        setPreflightDate(wornDate)
         setWatchId((cur) => (set.has(cur) ? '' : cur))
       })
       .catch(() => {
-        if (!cancelled) setWornOnDateIds(new Set())
+        if (cancelled) return
+        // Preflight is a UX guard only — on failure, unblock submit and let
+        // the server's duplicate-day backstop decide.
+        setWornOnDateIds(new Set())
+        setPreflightDate(wornDate)
       })
     return () => {
       cancelled = true
     }
   }, [open, wornDate, viewerId])
 
+  const preflightReady = preflightDate !== null && preflightDate === wornDate
+  // Stale results (for a previous date) are never shown as disabled rows.
+  const loggedIds: ReadonlySet<string> = preflightReady
+    ? wornOnDateIds
+    : EMPTY_ID_SET
+
   const canSubmit =
     !pending &&
+    preflightReady &&
     watchId !== '' &&
-    !wornOnDateIds.has(watchId) &&
+    !loggedIds.has(watchId) &&
     wornDate !== '' &&
     wornDate <= maxDate
 
@@ -183,7 +205,7 @@ export function LogTodaysWearButton({
                     className="max-h-56 overflow-y-auto rounded-lg border"
                   >
                     {watches.map((w) => {
-                      const isLogged = wornOnDateIds.has(w.id)
+                      const isLogged = loggedIds.has(w.id)
                       const isSelected = watchId === w.id
                       return (
                         <li key={w.id}>
