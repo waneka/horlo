@@ -1,7 +1,8 @@
 import type { Watch, WatchWithWear, CollectionGoal } from '@/lib/types'
 import { MOVEMENT_LABELS } from '@/lib/constants'
 import { detectLoyalBrands } from '@/lib/similarity'
-import { daysSince, SLEEPING_BEAUTY_DAYS } from '@/lib/wear'
+import { daysSince, SLEEPING_BEAUTY_DAYS, WINDOW_DAYS } from '@/lib/wear'
+import type { WearWindowKey } from '@/lib/wear'
 
 export interface DistributionRow {
   label: string
@@ -156,4 +157,76 @@ export function wearCountByWatchMap(
   const m = new Map<string, number>()
   for (const e of events) m.set(e.watchId, (m.get(e.watchId) ?? 0) + 1)
   return m
+}
+
+/**
+ * Filters wear events to those within a rolling window through the
+ * caller-supplied local `today` (D-13, WEAR-04). The window has no upper
+ * bound — a cross-timezone viewer's clock skew should never drop an
+ * owner's same-day wear.
+ *
+ * `wornDate` is compared lexically because it's a text ISO column
+ * (`YYYY-MM-DD`), never cast to a SQL/JS date for the comparison — see
+ * 84-RESEARCH.md Pitfall 4.
+ */
+export function filterEventsByWindow<T extends { wornDate: string }>(
+  events: T[],
+  window: WearWindowKey,
+  todayISO: string,
+): T[] {
+  const days = WINDOW_DAYS[window]
+  if (days === null) return events.slice()
+  const cutoff = new Date(`${todayISO}T00:00:00Z`)
+  cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1))
+  const cutoffISO = cutoff.toISOString().slice(0, 10)
+  return events.filter((e) => e.wornDate >= cutoffISO)
+}
+
+export interface LeaderboardRow<W> {
+  watch: W
+  count: number
+  mostRecentWornDate: string | null
+}
+
+/**
+ * Builds the across-collection wear-count leaderboard (D-11, D-13,
+ * WEAR-04). Every owned watch gets a row, including zero-wear watches;
+ * wears of watches not present in `ownedWatches` never produce a row.
+ *
+ * Ranking: count desc, then most-recent wornDate desc, then
+ * "Brand Model" A→Z. Zero-wear rows fall to the bottom, sorted A→Z
+ * among themselves.
+ */
+export function buildLeaderboard<
+  W extends { id: string; brand: string; model: string },
+>(
+  ownedWatches: W[],
+  windowedEvents: Array<{ watchId: string; wornDate: string }>,
+): LeaderboardRow<W>[] {
+  const counts = wearCountByWatchMap(windowedEvents)
+  const mostRecent = new Map<string, string>()
+  for (const e of windowedEvents) {
+    const existing = mostRecent.get(e.watchId)
+    if (!existing || e.wornDate > existing) mostRecent.set(e.watchId, e.wornDate)
+  }
+  const nameOf = (w: W) => `${w.brand} ${w.model}`
+
+  const rows: LeaderboardRow<W>[] = ownedWatches.map((watch) => ({
+    watch,
+    count: counts.get(watch.id) ?? 0,
+    mostRecentWornDate: mostRecent.get(watch.id) ?? null,
+  }))
+
+  return rows.slice().sort((a, b) => {
+    if (a.count === 0 && b.count === 0) {
+      return nameOf(a.watch).localeCompare(nameOf(b.watch))
+    }
+    const countDiff = b.count - a.count
+    if (countDiff !== 0) return countDiff
+    const dateDiff = (b.mostRecentWornDate ?? '').localeCompare(
+      a.mostRecentWornDate ?? '',
+    )
+    if (dateDiff !== 0) return dateDiff
+    return nameOf(a.watch).localeCompare(nameOf(b.watch))
+  })
 }

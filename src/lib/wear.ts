@@ -45,3 +45,27 @@ export function todayLocalISO(now: Date = new Date()): string {
 }
 
 export const SLEEPING_BEAUTY_DAYS = 30
+
+/**
+ * Rolling window day-counts for the Worn tab leaderboard (D-13, WEAR-04).
+ *
+ * Windows are rolling days through the caller-supplied local `today`,
+ * inclusive of today: 1mo=30, 3mo=90, 6mo=182, 12mo=365, all=no lower
+ * bound. This file NEVER computes "today" itself — the caller always
+ * supplies `todayISO` to `filterEventsByWindow` (see `src/lib/stats.ts`),
+ * because Server Actions/Server Components run on UTC infra and would
+ * silently disagree with the user's local calendar day near midnight
+ * (see the `todayLocalISO` warning above and the 260622-exo incident
+ * this mirrors).
+ */
+export const WINDOW_DAYS = {
+  '1mo': 30,
+  '3mo': 90,
+  '6mo': 182,
+  '12mo': 365,
+  all: null,
+} as const
+
+export type WearWindowKey = keyof typeof WINDOW_DAYS
+
+export const DEFAULT_WEAR_WINDOW: WearWindowKey = '3mo'
