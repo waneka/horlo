@@ -735,7 +735,7 @@ export async function unhideWearPicAction(
 // - T-QK-IDOR: the DAL's SELECT and DELETE are both scoped with
 //   eq(wearEvents.userId, user.id) — a cross-user or non-existent
 //   wearEventId returns the SAME 'Wear not found' so existence is never
-//   leaked. The client-side owner check in WearDeleteButton/page.tsx is
+//   leaked. The client-side owner check in WearOverflowMenu (canDelete) is
 //   cosmetic only; this action is IDOR-safe on its own.
 // - T-QK-STORAGE: only Storage paths starting with `${user.id}/` (and not
 //   containing '..') are ever passed to `.remove()`. DB delete happens

@@ -10,7 +10,6 @@ import { getCommentsForTarget } from '@/data/comments'
 import { getProfilesByIds } from '@/data/profiles'
 import { WearCard } from '@/components/wear/WearCard'
 import { WearDetailMetadata } from '@/components/wear/WearDetailMetadata'
-import { WearDeleteButton } from '@/components/wear/WearDeleteButton'
 import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
 import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
@@ -42,8 +41,10 @@ import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/type
  * Phase 56 D-04/05/06/07: footer action row with LikeButton is now
  * owned by WearCard.
  *
- * Quick task 260913-cae: an owner-only "Delete wear" control renders below
- * WearDetailMetadata, gated on wear.userId === viewerId (server-derived).
+ * Quick task 260913-csl: the owner-only "Delete wear" action lives in the
+ * WearCard overflow menu, gated on wear.userId === viewerId (server-derived)
+ * and threaded down as canDelete. (Quick task 260913-cae originally shipped
+ * this as a standalone control below WearDetailMetadata.)
  */
 export default async function WearDetailPage({
   params,
@@ -110,14 +111,12 @@ export default async function WearDetailPage({
           permalinkUrl={`/wear/${wearEventId}`}
           ownerUserId={wear.userId}
           ownerUsername={wear.username ?? ''}
+          canDelete={wear.userId === viewerId}
         />
       </Suspense>
       <WearDetailMetadata
         note={wear.note}
       />
-      {wear.userId === viewerId && (
-        <WearDeleteButton wearEventId={wearEventId} ownerUsername={wear.username ?? ''} />
-      )}
     </article>
   )
 }
@@ -155,6 +154,7 @@ async function WearPhotoStreamed({
   permalinkUrl,
   ownerUserId,
   ownerUsername,
+  canDelete,
 }: {
   photoUrl: string | null
   mediaType?: 'photo' | 'video'
@@ -177,6 +177,7 @@ async function WearPhotoStreamed({
   permalinkUrl: string
   ownerUserId: string
   ownerUsername: string
+  canDelete: boolean
 }) {
   // Phase 77 (VID-14, T-77-03): admin client mints signed URLs for both
   // video paths in parallel when this is a video wear; otherwise the
@@ -261,6 +262,7 @@ async function WearPhotoStreamed({
       ownerUsername={ownerUsername}
       viewerAuthor={viewerAuthor}
       commentCount={commentCount}
+      canDelete={canDelete}
     />
   )
 }

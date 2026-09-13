@@ -38,6 +38,13 @@ interface WearCardProps {
   /** /wear/{wearEventId} (D-01) */
   permalinkUrl: string
   /**
+   * Server-derived owner flag (260913-csl), set only by the /wear/[wearEventId]
+   * page (wear.userId === viewerId). The stories lane passes nothing — this
+   * defaults to false. Ignored for the bottom-sheet variant: the stories lane
+   * never offers delete regardless of this prop (locked user decision).
+   */
+  canDelete?: boolean
+  /**
    * Optional: called when the bottom-sheet comment host opens or closes.
    * The stories lane (Plan 03) uses this to pause embla swipe.
    */
@@ -74,7 +81,9 @@ interface WearCardProps {
  * second overlay is added here. Native <img> NOT next/image (Pitfall F-2).
  *
  * Folds in:
- *   - WearOverflowMenu (absolute top-3 right-3 z-20 over the photo)
+ *   - WearOverflowMenu (absolute top-3 right-3 z-20 over the photo) — shows an
+ *     owner-only "Delete wear" item on the inline (detail-page) variant when
+ *     canDelete is true (260913-csl); never on the bottom-sheet variant
  *   - engagement row: comment trigger (left) + LikeButton (right)
  *   - WearCommentHost (bottom-sheet or inline, driven by commentHostVariant)
  *
@@ -99,6 +108,7 @@ export function WearCard({
   commentHostVariant,
   showAddToWishlist,
   permalinkUrl,
+  canDelete = false,
   onCommentOpenChange,
   initialComments,
   canComment,
@@ -187,6 +197,8 @@ export function WearCard({
             showAddToWishlist={showAddToWishlist}
             onPhoto={hasPhoto}
             showGoToPost={commentHostVariant === 'bottom-sheet'}
+            canDelete={canDelete && commentHostVariant === 'inline'}
+            ownerUsername={ownerUsername}
           />
         </div>
       </div>
