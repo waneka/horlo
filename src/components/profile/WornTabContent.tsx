@@ -94,15 +94,13 @@ export function WornTabContent({
   // branch (and anonymous viewers, since viewerId is null then) sees
   // owner-aware copy with NO CTA.
   // Note: this check is placed after hooks to comply with React's Rules of Hooks.
+  // 84-REVIEW WR-05: the leaderboard is NOT mounted when there are no wears at
+  // all — the empty card below already covers that state, and mounting it
+  // stacked a "0 wears" list + "No wears in this window." note on top of it.
   if (events.length === 0) {
     if (isOwner && viewerId) {
       return (
         <div className="flex flex-col gap-6">
-          <WearLeaderboard
-            events={events}
-            watches={ownedWatches}
-            linkable={leaderboardLinkable}
-          />
           <div className="rounded-xl border bg-card p-12 text-center">
             <p className="text-base font-semibold">No wears logged yet.</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -121,11 +119,6 @@ export function WornTabContent({
     }
     return (
       <div className="flex flex-col gap-6">
-        <WearLeaderboard
-          events={events}
-          watches={ownedWatches}
-          linkable={leaderboardLinkable}
-        />
         <div className="rounded-xl border bg-card p-12 text-center">
           <p className="text-base font-semibold">Nothing here yet.</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -142,6 +135,7 @@ export function WornTabContent({
         events={events}
         watches={ownedWatches}
         linkable={leaderboardLinkable}
+        isOwner={isOwner}
       />
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

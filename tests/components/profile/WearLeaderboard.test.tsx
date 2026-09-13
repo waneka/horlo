@@ -198,7 +198,9 @@ describe('WearLeaderboard', () => {
   })
 
   it('L7: shows the empty-window note only when every count is zero', () => {
-    const { rerender } = render(<WearLeaderboard events={[]} watches={ALL_WATCHES} />)
+    const { rerender } = render(
+      <WearLeaderboard events={[]} watches={ALL_WATCHES} isOwner />,
+    )
 
     expect(screen.getByText('No wears in this window.')).toBeInTheDocument()
     expect(
@@ -210,9 +212,18 @@ describe('WearLeaderboard', () => {
       <WearLeaderboard
         events={[{ watchId: WATCH_A.id, wornDate: '2026-09-01' }]}
         watches={ALL_WATCHES}
+        isOwner
       />,
     )
     expect(screen.queryByText('No wears in this window.')).not.toBeInTheDocument()
+  })
+
+  it('L7b (WR-05): non-owner empty-window note has no "log a wear" call to action', () => {
+    render(<WearLeaderboard events={[]} watches={ALL_WATCHES} isOwner={false} />)
+
+    expect(screen.getByText('No wears in this window.')).toBeInTheDocument()
+    expect(screen.getByText('Try a longer window.')).toBeInTheDocument()
+    expect(screen.queryByText(/log a wear/i)).not.toBeInTheDocument()
   })
 
   it('L8: bar fill widths are proportional to the top row count', () => {

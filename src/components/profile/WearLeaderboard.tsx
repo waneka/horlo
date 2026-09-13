@@ -27,6 +27,9 @@ interface WearLeaderboardProps {
    *  would 404 — rows render as plain (unlinked) rows instead. Callers
    *  derive this as `isOwner || collectionPublic`. */
   linkable?: boolean
+  /** 84-REVIEW WR-05: the "log a wear" call to action in the empty-window
+   *  note is owner-only — a non-owner can't log wears on this profile. */
+  isOwner?: boolean
 }
 
 const ROW_CLASS = 'flex min-h-11 items-center gap-3 rounded-lg p-2'
@@ -54,6 +57,7 @@ export function WearLeaderboard({
   events,
   watches,
   linkable = true,
+  isOwner = false,
 }: WearLeaderboardProps) {
   const todayISO = useSyncExternalStore(
     subscribeNoop,
@@ -159,7 +163,9 @@ export function WearLeaderboard({
             <div className="mb-2 rounded-lg bg-muted p-3">
               <p className="text-sm font-semibold">No wears in this window.</p>
               <p className="text-xs text-muted-foreground">
-                Try a longer window, or log a wear to get started.
+                {isOwner
+                  ? 'Try a longer window, or log a wear to get started.'
+                  : 'Try a longer window.'}
               </p>
             </div>
           )}
