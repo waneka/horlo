@@ -12,6 +12,7 @@ import { ViewTogglePill } from './ViewTogglePill'
 import { WornTimeline } from './WornTimeline'
 import { WornCalendar } from './WornCalendar'
 import { LogTodaysWearButton } from './LogTodaysWearButton'
+import { WearLeaderboard } from './WearLeaderboard'
 import type { Watch } from '@/lib/types'
 
 interface WatchSummary {
@@ -92,67 +93,76 @@ export function WornTabContent({
   if (events.length === 0) {
     if (isOwner && viewerId) {
       return (
-        <div className="rounded-xl border bg-card p-12 text-center">
-          <p className="text-base font-semibold">No wears logged yet.</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Track which watch you wore on which day.
-          </p>
-          <div className="mx-auto mt-6 max-w-xs">
-            <LogTodaysWearButton
-              watches={watchOptions}
-              viewerId={viewerId}
-              className="w-full"
-            />
+        <div className="flex flex-col gap-6">
+          <WearLeaderboard events={events} watches={ownedWatches} />
+          <div className="rounded-xl border bg-card p-12 text-center">
+            <p className="text-base font-semibold">No wears logged yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Track which watch you wore on which day.
+            </p>
+            <div className="mx-auto mt-6 max-w-xs">
+              <LogTodaysWearButton
+                watches={watchOptions}
+                viewerId={viewerId}
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
       )
     }
     return (
-      <div className="rounded-xl border bg-card p-12 text-center">
-        <p className="text-base font-semibold">Nothing here yet.</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {username} hasn&apos;t logged any wears yet.
-        </p>
+      <div className="flex flex-col gap-6">
+        <WearLeaderboard events={events} watches={ownedWatches} />
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <p className="text-base font-semibold">Nothing here yet.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {username} hasn&apos;t logged any wears yet.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <ViewTogglePill
-            options={VIEW_OPTIONS}
-            value={view}
-            onChange={setView}
-            ariaLabel="Worn view"
-          />
-          <Select
-            value={filterWatchId}
-            onValueChange={(v) => setFilterWatchId(v ?? 'all')}
-          >
-            <SelectTrigger className="w-44 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All watches</SelectItem>
-              {watchOptions.map((w) => (
-                <SelectItem key={w.id} value={w.id}>
-                  {w.brand} {w.model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="flex flex-col gap-6">
+      <WearLeaderboard events={events} watches={ownedWatches} />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <ViewTogglePill
+              options={VIEW_OPTIONS}
+              value={view}
+              onChange={setView}
+              ariaLabel="Worn view"
+            />
+            <Select
+              value={filterWatchId}
+              onValueChange={(v) => setFilterWatchId(v ?? 'all')}
+            >
+              <SelectTrigger className="w-44 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All watches</SelectItem>
+                {watchOptions.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    {w.brand} {w.model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {isOwner && viewerId && (
+            <LogTodaysWearButton watches={watchOptions} viewerId={viewerId} />
+          )}
         </div>
-        {isOwner && viewerId && (
-          <LogTodaysWearButton watches={watchOptions} viewerId={viewerId} />
+        {view === 'timeline' ? (
+          <WornTimeline events={filtered} watchMap={watchMap} />
+        ) : (
+          <WornCalendar events={filtered} watchMap={watchMap} />
         )}
       </div>
-      {view === 'timeline' ? (
-        <WornTimeline events={filtered} watchMap={watchMap} />
-      ) : (
-        <WornCalendar events={filtered} watchMap={watchMap} />
-      )}
     </div>
   )
 }
