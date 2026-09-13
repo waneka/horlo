@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
-status: ready_to_plan
-last_updated: "2026-09-13T02:15:22.780Z"
-last_activity: 2026-09-12 -- Phase 84 context gathered (84-CONTEXT.md, 15 decisions)
+status: planning
+last_updated: "2026-09-13T02:30:00.000Z"
+last_activity: "2026-09-12 -- Phase 84 UI-SPEC approved (84-UI-SPEC.md, 6/6 dimensions, 2 non-blocking flags)"
 progress:
   total_phases: 4
   completed_phases: 1
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 
 Phase: 84
 Plan: Not started
-Status: Ready to plan (context gathered — .planning/phases/84-wear-history-depth/84-CONTEXT.md)
-Last activity: 2026-09-12 -- Phase 83 closed: 83-04 ported the wishlist-remove copy into the live WatchDetailHero (83-03 had edited the dead WatchDetail.tsx); review CR-01 dropped the "add it back any time" sentence; prod iPhone UAT 2/2 pass
+Status: Ready to plan (context gathered + UI-SPEC approved — .planning/phases/84-wear-history-depth/84-CONTEXT.md, 84-UI-SPEC.md)
+Last activity: 2026-09-12 -- Phase 84 UI-SPEC approved (6/6 dimensions; flags: generic submit-error copy lacks a next step, no explicit primary-anchor sentence for the Worn tab)
 
 **Upcoming phases:**
 
