@@ -106,3 +106,7 @@ None.
 ---
 *Phase: 84-wear-history-depth*
 *Completed: 2026-09-13*
+
+## Self-Check: PASSED
+
+All modified/created files verified present on disk (`src/components/profile/LogTodaysWearButton.tsx`, `src/components/profile/WornTabContent.tsx`, `tests/components/profile/LogTodaysWearButton.test.tsx`); all three commits (`764b86c9`, `6861979d`, `994e8d78`) verified in `git log`.

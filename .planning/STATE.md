@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-13T04:28:48.740Z"
-last_activity: 2026-09-13 -- Phase 84 Plan 03 complete (WEAR-03/04 leaderboard logic + worn tab privacy scoping)
+last_updated: "2026-09-13T04:37:22.913Z"
+last_activity: 2026-09-13 -- Phase 84 Plan 04 complete (WEAR-02 client half - unified Log a wear form)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 11
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 84 (Wear history depth) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 84 Plan 03 complete (WEAR-03/04 leaderboard logic + worn tab privacy scoping)
+Last activity: 2026-09-13 -- Phase 84 Plan 04 complete (WEAR-02 client half - unified Log a wear form)
 
 **Upcoming phases:**
 
@@ -90,6 +90,7 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 
 ## Performance Metrics
 
+- Phase 84 P04: ~35min, 2 tasks (Task 1 tdd, Task 2 auto), 3 files modified (2 src + 1 test), 3 commits (764b86c9 + 6861979d + 994e8d78), 1 requirement marked complete (WEAR-02, client half completes it — server half shipped in 84-02); 0 deviations; 11/11 targeted vitest tests pass; `npm run build` ✓; 14 pre-existing failures in tests/components/WywtPostDialog.test.tsx + tests/components/profile/WornCalendar.test.tsx confirmed identical at HEAD~2 via throwaway git worktree (out of scope); 5 pre-existing failures in tests/no-raw-palette.test.ts confirmed unrelated to modified files.
 - Phase 81 P02: ~17min, 2 tasks (both auto+tdd), 4 files modified (2 src + 2 tests), 2 commits (95e090e3 + a28a6615), 4 requirements marked complete (RECO-01/02/03/04 close read-path); 2 auto-fixes (1 Rule-3 Task 1 build-boundary glue in src/data/recommendations.ts + 1 Rule-1 grep-armor comment reword — recurrence of Plan 01 Task 2 pattern); `npm run build` ✓ in 7.3s; 24/24 targeted vitest suites pass (11 lib + 13 DAL); grep armor `= ANY(` = 0 across src/data/recommendations.ts + src/lib/recommendations.ts; innerJoin brands|watchFamilies = 4 matches; sql.join = 5 matches; excludeKey|norm( = 7 matches; brandNameLookup Map construction verified INSIDE getRecommendationsForViewer body (T-81-P02-01 satisfied).
 - Phase 81 P01: ~12min, 2 tasks (both auto), 19 files modified (6 src + 2 scripts + 11 tests), 2 commits (ea893912 + aa5df614), 0 requirements marked complete (DISP-01/02 close in Plan 03 — Plan 01 is foundation only), 3 auto-fixes (2 Rule-3 script callsites surfaced by build per `[[reexport-only-doesnt-bind-locally]]` + 1 Rule-1 grep-armor comment reword); `npm run build` ✓ in 7.8s; 19/19 targeted vitest suites pass; grep armor `= ANY(` = 0 across all 6 core files.
 - Phase 76 P04: ~8min executor portion, 2 of 3 tasks complete (Task 3 operator-blocked), 3 files (1 created `76-POST-DEPLOY.md`, 1 created `76-04-SUMMARY.md`, 1 modified `76-VALIDATION.md`), 7/7 phase reqs verified green (VID-07/08/09/10/11/12/16); no deviations. `npm run build` ✓ in 5.5s; 4 targeted vitest invocations all green (2 env-skipped, 2 pass — 15/15 tests pass for the run ones); 2 grep-based VID-15 regression guards = 1.
@@ -110,6 +111,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 84 Plan 04 (unified Log a wear form, client half, 2026-09-13):** `LogTodaysWearButton`'s watch picker was rebuilt as a `role="listbox"`/`role="option"` button pattern ported from `WatchPickerDialog`, not "extended" — the prior component was a bare `<Select>` with no preflight logic at all (RESEARCH Pitfall 1), so there was nothing to extend. The owner's zero-wear empty-state CTA switched from `WywtPostDialog` (today-only photo flow) to this same form per D-07 ("Log a wear always opens the form") — otherwise a zero-wear owner could never backfill a past date. The photo flow stays reachable via `NavWearButton` and `WywtRail`, both untouched and still importing `WywtPostDialog` directly. WEAR-02 is now fully complete (server half from 84-02 + this client half) and marked complete in REQUIREMENTS.md.
 
 **Phase 84 Plan 03 (leaderboard logic + worn tab privacy scoping, 2026-09-13):** `filterEventsByWindow` has no upper bound on the rolling window (only a lower cutoff) so a cross-timezone viewer's clock skew never drops an owner's same-day wear; comparison against `wornDate` stays lexical (never `::date`/`INTERVAL` casts) per RESEARCH Pitfall 4. `buildLeaderboard` reuses `wearCountByWatchMap` for count aggregation rather than re-implementing counting, per the plan's key_links contract. `scopeWornTabWatches` (new `src/lib/wornTabScope.ts`) deliberately imports nothing beyond types so it stays testable without rendering the Suspense/`'use cache'` Worn tab page — it mirrors the Collection tab's `settings.collectionPublic` gate, closing T-84-LEAK (a non-owner without collection access only sees watches they've already seen a wear for). WEAR-03/WEAR-04 stay unmarked in REQUIREMENTS.md — this plan ships only the logic half; 84-05/84-06 deliver the UI and wiring.
 
