@@ -8,8 +8,6 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { WywtPostDialog } from '@/components/wywt/WywtPostDialog'
 import { ViewTogglePill } from './ViewTogglePill'
 import { WornTimeline } from './WornTimeline'
 import { WornCalendar } from './WornCalendar'
@@ -38,12 +36,14 @@ interface WornTabContentProps {
   /** Phase 25 D-10: non-owner empty-state copy "{username} hasn't logged any
    *  wears yet." Threaded from [tab]/page.tsx (profile.username). */
   username: string
-  /** Phase 25 D-06: passed to WywtPostDialog mounted in the owner empty state.
-   *  null when viewer is anonymous (the dialog only renders inside the
-   *  isOwner && viewerId branch — non-owner branch never reads this). */
+  /** Phase 25 D-06 / Phase 84 D-01: passed to LogTodaysWearButton (both the
+   *  header row and the zero-wear empty state). null when viewer is
+   *  anonymous (LogTodaysWearButton only renders inside isOwner && viewerId
+   *  branches — non-owner branch never reads this). */
   viewerId: string | null
-  /** Phase 25 D-06: WywtPostDialog needs the owner's owned-status watches for
-   *  the picker step. Server-derived in [tab]/page.tsx. */
+  /** Phase 25 D-06 / Phase 83 POLISH-02: LogTodaysWearButton's owned-watch
+   *  listbox derives from this (watchOptions below). Server-derived in
+   *  [tab]/page.tsx. */
   ownedWatches: Watch[]
 }
 
@@ -62,10 +62,6 @@ export function WornTabContent({
 }: WornTabContentProps) {
   const [view, setView] = useState<'timeline' | 'calendar'>('timeline')
   const [filterWatchId, setFilterWatchId] = useState<string>('all')
-  // Phase 25 D-06: local state for WywtPostDialog mounted in the owner empty
-  // state. Declared before the early return to comply with the Rules of Hooks
-  // (the file already places hooks before the early return).
-  const [wywtOpen, setWywtOpen] = useState(false)
 
   const watchOptions = useMemo(
     () =>
@@ -86,37 +82,29 @@ export function WornTabContent({
     [events, filterWatchId],
   )
 
-  // Phase 25 D-06/D-10: replaces the old border-dashed shape with the locked
-  // empty-state Card shape. Owner branch (with viewerId) gets the "Log a wear"
-  // CTA which opens WywtPostDialog. Non-owner branch (and anonymous viewers,
-  // since viewerId is null then) sees owner-aware copy with NO CTA.
+  // Phase 25 D-06/D-10 / Phase 84 D-07: replaces the old border-dashed shape
+  // with the locked empty-state Card shape. Owner branch (with viewerId) gets
+  // the unified "Log a wear" form (same entry point as the header row — a
+  // zero-wear owner must still be able to backfill, per D-07). Non-owner
+  // branch (and anonymous viewers, since viewerId is null then) sees
+  // owner-aware copy with NO CTA.
   // Note: this check is placed after hooks to comply with React's Rules of Hooks.
   if (events.length === 0) {
     if (isOwner && viewerId) {
       return (
-        <>
-          <div className="rounded-xl border bg-card p-12 text-center">
-            <p className="text-base font-semibold">No wears logged yet.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Track which watch you wore on which day.
-            </p>
-            <div className="mx-auto mt-6 max-w-xs">
-              <Button
-                variant="default"
-                className="w-full"
-                onClick={() => setWywtOpen(true)}
-              >
-                Log a wear
-              </Button>
-            </div>
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <p className="text-base font-semibold">No wears logged yet.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track which watch you wore on which day.
+          </p>
+          <div className="mx-auto mt-6 max-w-xs">
+            <LogTodaysWearButton
+              watches={watchOptions}
+              viewerId={viewerId}
+              className="w-full"
+            />
           </div>
-          <WywtPostDialog
-            open={wywtOpen}
-            onOpenChange={setWywtOpen}
-            ownedWatches={ownedWatches}
-            viewerId={viewerId}
-          />
-        </>
+        </div>
       )
     }
     return (
@@ -156,7 +144,9 @@ export function WornTabContent({
             </SelectContent>
           </Select>
         </div>
-        {isOwner && <LogTodaysWearButton watches={watchOptions} />}
+        {isOwner && viewerId && (
+          <LogTodaysWearButton watches={watchOptions} viewerId={viewerId} />
+        )}
       </div>
       {view === 'timeline' ? (
         <WornTimeline events={filtered} watchMap={watchMap} />
