@@ -721,3 +721,105 @@ export async function unhideWearPicAction(
     return { success: false, error: "Couldn't update. Try again." }
   }
 }
+
+// ---------------------------------------------------------------------------
+// deleteWearEvent — quick task 260913-cae. Owner-only permanent delete of a
+// single wear (see src/data/wearEvents.ts deleteWearEventForOwner doc comment
+// for the DD-1/DD-2 matching rules this action relies on).
+//
+// Pipeline (mirrors logBackfillWear ordering): auth -> zod -> DAL delete
+// (ownership + DD-1/DD-2 all inside one transaction) -> non-fatal owner-
+// prefixed storage cleanup -> cache invalidation.
+//
+// Security (threat model, 260913-cae-PLAN.md):
+// - T-QK-IDOR: the DAL's SELECT and DELETE are both scoped with
+//   eq(wearEvents.userId, user.id) — a cross-user or non-existent
+//   wearEventId returns the SAME 'Wear not found' so existence is never
+//   leaked. The client-side owner check in WearDeleteButton/page.tsx is
+//   cosmetic only; this action is IDOR-safe on its own.
+// - T-QK-STORAGE: only Storage paths starting with `${user.id}/` (and not
+//   containing '..') are ever passed to `.remove()`. DB delete happens
+//   FIRST (DD-3) so a storage failure can never leave a live wear pointing
+//   at deleted media — it can at worst leave an orphan object, which is
+//   logged and non-fatal.
+// - T-QK-MASS: `.strict()` rejects extra keys (e.g. a client-supplied
+//   userId).
+// - DD-6 cache invalidation: revalidatePath('/') (home rail + feed),
+//   revalidatePath('/w/[ref]', 'page') (watch-detail wear-pic carousel,
+//   same form as hideWearPicAction), updateTag(`profile:<username>`)
+//   (read-your-own-writes on the Worn tab — expires for ALL viewers, so no
+//   extra revalidateTag(tag, 'max') is needed, same reasoning as
+//   logBackfillWear), and updateTag(`viewer:<userId>`) (bell, because owner
+//   notifications referencing this wear were deleted).
+// ---------------------------------------------------------------------------
+
+const deleteWearEventSchema = z.object({ wearEventId: z.string().uuid() }).strict()
+
+export async function deleteWearEvent(
+  input: unknown,
+): Promise<ActionResult<{ username: string | null }>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = deleteWearEventSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid input' }
+  }
+
+  let result
+  try {
+    result = await wearEventDAL.deleteWearEventForOwner(user.id, parsed.data.wearEventId)
+  } catch (err) {
+    console.error('[deleteWearEvent] delete failed:', err)
+    return { success: false, error: "Couldn't delete that wear." }
+  }
+
+  if (!result) {
+    // Uniform for missing vs. cross-user (T-QK-IDOR) — no existence leak.
+    return { success: false, error: 'Wear not found' }
+  }
+
+  if (result.activityMatch === 'ambiguous') {
+    console.warn(
+      '[deleteWearEvent] watch_worn activity left in place (ambiguous match):',
+      parsed.data.wearEventId,
+    )
+  }
+
+  // DD-3/DD-4: storage cleanup is best-effort and non-fatal. Only paths under
+  // the caller's own folder are ever removed (T-QK-STORAGE).
+  const ownerPrefix = `${user.id}/`
+  const safePaths = result.storagePaths.filter(
+    (p) => p.startsWith(ownerPrefix) && !p.includes('..'),
+  )
+  const droppedPaths = result.storagePaths.filter((p) => !safePaths.includes(p))
+  if (droppedPaths.length > 0) {
+    console.error('[deleteWearEvent] dropped unsafe storage path(s):', droppedPaths)
+  }
+  if (safePaths.length > 0) {
+    try {
+      const supabase = await createSupabaseServerClient()
+      const { error } = await supabase.storage.from('wear-photos').remove(safePaths)
+      if (error) {
+        console.error('[deleteWearEvent] storage cleanup failed (non-fatal):', error)
+      }
+    } catch (err) {
+      console.error('[deleteWearEvent] storage cleanup failed (non-fatal):', err)
+    }
+  }
+
+  // DD-6 cache invalidation.
+  revalidatePath('/')
+  revalidatePath('/w/[ref]', 'page')
+  const ownerProfile = await profilesDAL.getProfileById(user.id)
+  if (ownerProfile?.username) {
+    updateTag(`profile:${ownerProfile.username}`)
+  }
+  updateTag(`viewer:${user.id}`)
+
+  return { success: true, data: { username: ownerProfile?.username ?? null } }
+}
