@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getSafeImageUrl } from '@/lib/images'
@@ -270,28 +271,37 @@ export function WornCalendar({
                 const wearPhotoSafe = event.photoUrl ? getSafeImageUrl(event.photoUrl) : null
                 const safe = wearPhotoSafe ?? (watch ? getSafeImageUrl(watch.imageUrl) : null)
                 return (
-                  <li key={event.id} className="flex items-start gap-3">
-                    <div className="relative size-12 shrink-0 overflow-hidden rounded bg-muted">
-                      {safe && (
-                        <Image
-                          src={safe}
-                          alt=""
-                          fill
-                          sizes="48px"
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">
-                        {watch?.brand} {watch?.model}
-                      </p>
-                      {event.note && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {event.note}
+                  <li key={event.id}>
+                    <Link
+                      href={`/wear/${event.id}`}
+                      className="-mx-2 flex items-start gap-3 rounded-lg p-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="relative size-12 shrink-0 overflow-hidden rounded bg-muted">
+                        {safe && (
+                          <Image
+                            src={safe}
+                            alt=""
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {watch?.brand} {watch?.model}
                         </p>
-                      )}
-                    </div>
+                        {event.note && (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {event.note}
+                          </p>
+                        )}
+                      </div>
+                      <ChevronRight
+                        className="ml-auto size-4 shrink-0 self-center text-muted-foreground/40"
+                        aria-hidden
+                      />
+                    </Link>
                   </li>
                 )
               })}
