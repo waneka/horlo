@@ -447,17 +447,17 @@ This phase is a rename + additive migration, not a full rebrand/refactor, but th
 | A1 | `canvas-confetti` is the right package name/library for the celebration effect | Standard Stack, Don't Hand-Roll | If the name is wrong or the library has changed API shape since training, `npm install` would 404 or the call signature (`confetti({...})`) could differ — mitigated by the registry+slopcheck check already run (both passed), but the RECOMMENDATION itself is training-derived, so verify the actual API via its README/`npm view canvas-confetti readme` at implementation time before wiring calls |
 | A2 | No project skill files or additional lint rules constrain confetti/celebration UI patterns beyond what CLAUDE.md states | Standard Stack | Low — `.claude/skills`/`.agents/skills` were confirmed absent for this repo at research time |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Comments/reactions on a previously-owned watch remain reachable if a non-owner already has the `watch_id` (e.g., a stale bookmark or an old notification link), even though `/w/[id]` itself will 404 for that non-owner per D-14.**
    - What we know: `src/data/comments.ts:82` (`status !== 'wishlist'`) and `src/data/reactions.ts:220,254` are allowlist-inverse checks that treat `previously_owned` exactly like `sold`/`owned`/`grail` today — i.e., comment/reaction visibility for a previously-owned watch is unaffected by this phase and stays "visible if not wishlist."
    - What's unclear: Since the watch detail PAGE itself 404s for non-owners on a previously-owned watch (D-14), a non-owner can no longer discover the `watch_id` through normal navigation — but any pre-existing comment thread, notification, or direct link a non-owner already holds could still resolve if the comments/reactions endpoints are hit directly (defense-in-depth question, not a UI-reachable path under normal use).
-   - Recommendation: Out of this phase's locked scope (D-14 only requires the `/w/[id]` page itself to 404). Flag as a candidate defense-in-depth follow-up for a future phase; do not block Phase 85 on it since D-13/D-14 as literally stated only govern the watch detail page and the toggle, not the comments/reactions data-layer predicates.
+   - RESOLVED: Recommendation: Out of this phase's locked scope (D-14 only requires the `/w/[id]` page itself to 404). Flag as a candidate defense-in-depth follow-up for a future phase; do not block Phase 85 on it since D-13/D-14 as literally stated only govern the watch detail page and the toggle, not the comments/reactions data-layer predicates.
 
 2. **Whether `disposal_reason`/`sell_price`/`disposal_date` should get a DB CHECK constraint tying their non-null-ness to `status='previously_owned'` (Claude's Discretion per CONTEXT.md).**
    - What we know: Drizzle 0.45.2 in this repo cannot express CHECK constraints in its pg-core DSL (confirmed via existing `src/db/schema.ts` Phase 45 comment) — any such constraint requires hand-written raw SQL in the Supabase migration, mirroring the `path_type_check`/`cms_settings_single_row` precedent from Phase 45.
    - What's unclear: D-04's undo path already handles nulling server-side on every status-exit from `previously_owned` via the Server Action — a DB CHECK would be a second, redundant enforcement layer (defense-in-depth vs. added migration complexity).
-   - Recommendation: Skip the CHECK constraint. The Server Action is the sole write path (no direct client DB access), D-04's null-out logic is deterministic, and the existing precedent shows CHECK constraints are used in this codebase for un-bypassable structural invariants (e.g., `cms_settings_single_row`), not defense-in-depth on already-server-gated fields.
+   - RESOLVED: Recommendation: Skip the CHECK constraint. The Server Action is the sole write path (no direct client DB access), D-04's null-out logic is deterministic, and the existing precedent shows CHECK constraints are used in this codebase for un-bypassable structural invariants (e.g., `cms_settings_single_row`), not defense-in-depth on already-server-gated fields.
 
 ## Environment Availability
 
