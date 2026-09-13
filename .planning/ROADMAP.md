@@ -332,7 +332,16 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
   2. Previously-owned watches are hidden from the Collection view by default, and turning on a "Show previously owned" toggle makes them visible.
   3. Promoting a wishlist watch to owned shows a celebration moment that visibly distinguishes the promotion from a normal edit.
   4. Previously-owned watches never appear in the recommender output on the home rail, and they are excluded from the similarity engine's "role duplicate" / "core fit" math against a candidate watch.
-**Plans**: TBD
+**Plans**: 9 plans (6 waves; sequential execution without worktrees — DB-touching + build-gated)
+- [ ] 85-01-PLAN.md — Wave 1: idempotent migration (disposal_reason pgEnum + 3 nullable columns, sold→previously_owned backfill, comments RLS re-create) + Drizzle mirror + [BLOCKING] local apply
+- [ ] 85-02-PLAN.md — Wave 2: rename sweep (WatchStatus/constants/DAL mapping), D-14 visitor predicate, D-18 recommender exclusion, D-03 divestments dual-write retirement, test fixtures; build gate
+- [ ] 85-03-PLAN.md — Wave 3: markWatchPreviouslyOwned action, editWatch D-04 undo / D-07 guard, promoted/promotedFrom signal, shared client-today validators
+- [ ] 85-04-PLAN.md — Wave 3: owner-only previously-owned data split + "Show previously owned" toggle + empty-state gate; visitor Notes exclusion
+- [ ] 85-05-PLAN.md — Wave 3: /wear/[id] brand/model link hidden for visitors on previously-owned watches (D-14)
+- [ ] 85-06-PLAN.md — Wave 4: DisposalFields + MarkPreviouslyOwnedDialog + owner ⋯ menu + muted reason·date card (D-05/D-06/D-16)
+- [ ] 85-07-PLAN.md — Wave 4: canvas-confetti legitimacy checkpoint + celebratePromotion wired into AddWatchFlow and WatchForm (LIFE-04)
+- [ ] 85-08-PLAN.md — Wave 5: WatchForm status filtering, disposal-field correction and undo (D-04/D-07)
+- [ ] 85-09-PLAN.md — Wave 6: local-dev walk + SQL assertions + operator prod `supabase db push --linked` before deploy
 **UI hint**: yes
 
 ### Phase 86: Reorder mode

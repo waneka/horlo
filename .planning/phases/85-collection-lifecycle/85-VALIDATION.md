@@ -2,7 +2,7 @@
 phase: 85
 slug: collection-lifecycle
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-09-13
 ---
@@ -36,18 +36,31 @@ created: 2026-09-13
 
 ## Per-Task Verification Map
 
-*Populated by the planner/executor once PLAN.md task IDs exist. Requirement → test map from RESEARCH.md §Validation Architecture:*
-
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | LIFE-01 | — | N/A | static/type | `npm run build` + updated `tests/static/WatchCard.sold-badge.test.tsx` | ✅ (update/delete) | ⬜ pending |
-| TBD | TBD | TBD | LIFE-02 | — | N/A | unit | `npx vitest run src/app/actions/__tests__/watches.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | LIFE-03 | IDOR / future-date tampering | Owner-scoped fetch; server rejects future disposalDate; reason required; undo nulls fields | unit | `npx vitest run src/app/actions/__tests__/watches.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | LIFE-04 | — | N/A | unit | `npx vitest run src/app/actions/__tests__/moveWishlistToCollection.test.ts` | ✅ (extend) | ⬜ pending |
-| TBD | TBD | TBD | LIFE-04 | — | Reduced-motion skips confetti | unit | `npx vitest run src/lib/__tests__/celebrate.test.ts` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | LIFE-05 | Info disclosure | Non-owner never receives previously_owned rows; toggle owner-only | component | `npx vitest run src/components/profile/__tests__/CollectionTabContent.test.tsx` | ✅ (extend) | ⬜ pending |
-| TBD | TBD | TBD | LIFE-06 | Info disclosure | Visitor notFound on previously-owned /w/[id] | unit (DAL) | `npx vitest run tests/data/getWatchByIdForViewer.test.ts` | ✅ (extend) | ⬜ pending |
-| TBD | TBD | TBD | LIFE-06 | — | N/A | unit | similarity + recommendations excludeKey tests | ✅ + ❌ W0 | ⬜ pending |
+| 85-01-T1 | 01 | 1 | LIFE-01, LIFE-02 | T-85-01, T-85-03 | No destructive DDL; divergent post-flight predicates | static (grep) | `grep -v '^\s*--' supabase/migrations/20260913000000_phase85_collection_lifecycle.sql \| grep -ciE "drop (table\|type\|column\|constraint)"` → 0 | ❌ created by task | ⬜ pending |
+| 85-01-T2 | 01 | 1 | LIFE-01, LIFE-02 | — | N/A | static (grep) | `grep -n "disposalReasonEnum = pgEnum('disposal_reason'" src/db/schema.ts` | ✅ | ⬜ pending |
+| 85-01-T3 | 01 | 1 | LIFE-01, LIFE-02 | T-85-02, T-85-04 | Local-only apply; RLS policies re-created | SQL (local DB) [BLOCKING] | psql verify query prints `0\|3\|1` | n/a | ⬜ pending |
+| 85-02-T1 | 02 | 2 | LIFE-02, LIFE-06 | T-85-05 | Visitor predicate IN ('owned','grail') | unit | `npx vitest run tests/data/getWatchByIdForViewer.test.ts src/data/__tests__/recommendations.test.ts tests/lib/previouslyOwnedExclusion.test.ts` | ✅ + ❌ new exclusion test | ⬜ pending |
+| 85-02-T2 | 02 | 2 | LIFE-01 | T-85-06 | No divestments writes | unit + grep | `npx vitest run src/lib/watchFlow/destinations.test.ts tests/static/WatchCard.sold-badge.test.tsx` | ✅ | ⬜ pending |
+| 85-02-T3 | 02 | 2 | LIFE-01 | — | N/A | grep + build | `grep -rn "'sold'" src tests \| grep -vi disposal` empty && `npm run build` | ✅ | ⬜ pending |
+| 85-03-T1 | 03 | 3 | LIFE-03 | T-85-09 | Client owns today (260622-exo) | unit | `npx vitest run tests/actions/wearEventsBackfill.test.ts` | ✅ | ⬜ pending |
+| 85-03-T2 | 03 | 3 | LIFE-02, LIFE-03 | T-85-08, T-85-09, T-85-10, T-85-13 | Owner-scoped; strict zod; future-date rejection | unit | `npx vitest run src/app/actions/__tests__/watches-lifecycle.test.ts -t markWatchPreviouslyOwned` | ❌ created by task | ⬜ pending |
+| 85-03-T3 | 03 | 3 | LIFE-03, LIFE-04 | T-85-11, T-85-12 | D-07 guard; D-04 undo clears fields | unit + build | `npx vitest run src/app/actions/__tests__/watches-lifecycle.test.ts src/app/actions/__tests__/moveWishlistToCollection.test.ts && npm run build` | ✅ (extend) | ⬜ pending |
+| 85-04-T1 | 04 | 3 | LIFE-05 | T-85-14, T-85-15 | Visitors receive [] and no notes rows | static (grep) | `grep -n "const previouslyOwnedWatches = isOwner" "src/app/u/[username]/[tab]/page.tsx"` | ✅ | ⬜ pending |
+| 85-04-T2 | 04 | 3 | LIFE-05 | T-85-14 | Toggle owner-only, not persisted | component | `npx vitest run src/components/profile/__tests__/CollectionTabContent.test.tsx` | ✅ (extend) | ⬜ pending |
+| 85-05-T1 | 05 | 3 | LIFE-05 | T-85-17 | No /w/ link when not linkable | component | `npx vitest run tests/components/wear/WearPhotoOverlays.linkable.test.tsx` | ❌ created by task | ⬜ pending |
+| 85-05-T2 | 05 | 3 | LIFE-05 | T-85-17 | watchLinkable computed server-side | grep + build | `grep -n "wear.watchStatus !== 'previously_owned'" "src/app/wear/[wearEventId]/page.tsx" && npm run build` | ✅ | ⬜ pending |
+| 85-06-T1 | 06 | 4 | LIFE-03 | T-85-19 | Client validation is UX only | unit + component | `npx vitest run src/lib/__tests__/disposal.test.ts src/components/profile/__tests__/MarkPreviouslyOwnedDialog.test.tsx` | ❌ created by task | ⬜ pending |
+| 85-06-T2 | 06 | 4 | LIFE-03, LIFE-05 | T-85-20, T-85-21 | Menu owner-only; trigger click defaultPrevented | component + build | `npx vitest run src/components/profile/__tests__/ProfileWatchCard-lifecycle.test.tsx && npm run build` | ❌ created by task | ⬜ pending |
+| 85-07-T1 | 07 | 4 | LIFE-04 | T-85-SC | Package legitimacy human gate | checkpoint (blocking-human) | manual | n/a | ⬜ pending |
+| 85-07-T2 | 07 | 4 | LIFE-04 | T-85-23 | Reduced motion skips confetti | unit | `npx vitest run src/lib/__tests__/celebrate.test.ts` | ❌ created by task | ⬜ pending |
+| 85-07-T3 | 07 | 4 | LIFE-04 | T-85-22 | Celebrate only on server promoted flag | component + build | `npx vitest run src/components/watch/AddWatchFlow.test.tsx tests/components/watch/WatchForm.celebration.test.tsx && npm run build` | ✅ + ❌ new | ⬜ pending |
+| 85-08-T1 | 08 | 5 | LIFE-02, LIFE-03 | T-85-24, T-85-25, T-85-26 | No previously_owned option for non-disposed watches | component + build | `npx vitest run tests/components/watch/WatchForm.lifecycle.test.tsx && npm run build` | ❌ created by task | ⬜ pending |
+| 85-09-T1 | 09 | 6 | LIFE-01..06 | — | Gates green before walk | build + unit + SQL | `npm run build` + targeted Phase 85 vitest + column query | n/a | ⬜ pending |
+| 85-09-T2 | 09 | 6 | LIFE-01..06 | T-85-LEAK | Cross-user gating in two real sessions | manual walk | manual | n/a | ⬜ pending |
+| 85-09-T3 | 09 | 6 | LIFE-01..04 | T-85-27 | Rename + D-04 invariants hold in SQL | SQL (local DB) | psql verify query prints `0\|0` | n/a | ⬜ pending |
+| 85-09-T4 | 09 | 6 | LIFE-01, LIFE-02 | T-85-28 | Operator-only prod push before deploy | checkpoint (human-action) | manual | n/a | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -55,13 +68,16 @@ created: 2026-09-13
 
 ## Wave 0 Requirements
 
-- [ ] Extend `src/app/actions/__tests__/watches.test.ts` — disposal-field round-trip, future-date rejection, undo-nulling (LIFE-02/03)
-- [ ] `src/lib/__tests__/celebrate.test.ts` — confetti wrapper + reduced-motion (LIFE-04)
-- [ ] Extend `src/app/actions/__tests__/moveWishlistToCollection.test.ts` — promoted/promotedFrom shape; repoint `sold` rejection case (LIFE-04)
-- [ ] Extend `src/components/profile/__tests__/CollectionTabContent.test.tsx` — toggle + owner gating (LIFE-05)
-- [ ] Update/delete `tests/static/WatchCard.sold-badge.test.tsx` (dead component island)
-- [ ] Update `tests/integration/phase37-rls.test.ts` — drop `recordDivestment` assertions, keep table-shape assertions
-- [ ] Locate and extend comments-RLS integration coverage for the `previously_owned` policy update
+Test scaffolds are created inside the owning tasks (TDD tasks write RED tests first), so there is no separate Wave 0 plan:
+
+- [ ] `src/app/actions/__tests__/watches-lifecycle.test.ts` — 85-03 T2/T3 (LIFE-02/03/04; replaces the suggested `src/app/actions/__tests__/watches.test.ts`, which does not exist)
+- [ ] `src/lib/__tests__/celebrate.test.ts` — 85-07 T2 (LIFE-04)
+- [ ] `src/app/actions/__tests__/moveWishlistToCollection.test.ts` — status literal in 85-02 T3; promoted shape in 85-03 T3
+- [ ] `src/components/profile/__tests__/CollectionTabContent.test.tsx` — 85-04 T2 (LIFE-05)
+- [ ] `tests/static/WatchCard.sold-badge.test.tsx` — repointed in 85-02 T2 (dead island)
+- [ ] `tests/integration/phase37-rls.test.ts` — recordDivestment block removed in 85-02 T2
+- [ ] Comments RLS: no dedicated phase53 comments-RLS integration test exists; the policy change is asserted by the migration's own post-flight block and by 85-01 T3's pg_policies query
+- [ ] `tests/lib/previouslyOwnedExclusion.test.ts`, `src/lib/__tests__/disposal.test.ts`, `src/components/profile/__tests__/MarkPreviouslyOwnedDialog.test.tsx`, `src/components/profile/__tests__/ProfileWatchCard-lifecycle.test.tsx`, `tests/components/wear/WearPhotoOverlays.linkable.test.tsx`, `tests/components/watch/WatchForm.celebration.test.tsx`, `tests/components/watch/WatchForm.lifecycle.test.tsx` — new, created by their owning tasks
 
 ---
 
