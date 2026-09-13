@@ -10,6 +10,7 @@ import { getCommentsForTarget } from '@/data/comments'
 import { getProfilesByIds } from '@/data/profiles'
 import { WearCard } from '@/components/wear/WearCard'
 import { WearDetailMetadata } from '@/components/wear/WearDetailMetadata'
+import { WearDeleteButton } from '@/components/wear/WearDeleteButton'
 import { PhotoSkeleton } from '@/components/wear/PhotoSkeleton'
 import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/types'
 
@@ -40,6 +41,9 @@ import type { CommentAuthor, CommentWithAuthor } from '@/components/comment/type
  *
  * Phase 56 D-04/05/06/07: footer action row with LikeButton is now
  * owned by WearCard.
+ *
+ * Quick task 260913-cae: an owner-only "Delete wear" control renders below
+ * WearDetailMetadata, gated on wear.userId === viewerId (server-derived).
  */
 export default async function WearDetailPage({
   params,
@@ -111,6 +115,9 @@ export default async function WearDetailPage({
       <WearDetailMetadata
         note={wear.note}
       />
+      {wear.userId === viewerId && (
+        <WearDeleteButton wearEventId={wearEventId} ownerUsername={wear.username ?? ''} />
+      )}
     </article>
   )
 }
