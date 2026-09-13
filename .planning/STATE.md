@@ -11,6 +11,7 @@ progress:
   total_plans: 11
   completed_plans: 11
   percent: 50
+stopped_at: Phase 85 context gathered — ready to plan (resume .planning/phases/85-collection-lifecycle/85-CONTEXT.md)
 ---
 
 # Project State
