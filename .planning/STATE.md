@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 
 Phase: 84 (Wear history depth) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 84 Plan 06 complete (WearLeaderboard mounted + Worn-tab privacy scoping; WEAR-03/WEAR-04 complete)
+Status: 84-07 checkpoint (human-verify) awaiting prod walk — operator skipped local walk and pushed 84-01..06 to prod (6fa86db9); 84-07 Task 3 (local SQL assertions) + SUMMARY, code review, and phase verification still pending
+Last activity: 2026-09-13 -- Phase 84 plans 01-06 pushed to prod; walk deferred to prod per operator
 
 **Upcoming phases:**
 
