@@ -10,9 +10,27 @@
  * They will turn GREEN in Plan 04.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
+
+// next/link stub — avoid Next.js router context in unit tests (precedent:
+// tests/components/home/WatchPickerDialog.test.tsx).
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    className,
+  }: {
+    href: string
+    children: React.ReactNode
+    className?: string
+  }) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  ),
+}))
 
 // ---------------------------------------------------------------------------
 // Import under test
@@ -111,5 +129,62 @@ describe('WornTimeline — photoUrl preference (WPIC-03)', () => {
     expect(() =>
       render(<WornTimeline events={events} watchMap={watchMap} />),
     ).not.toThrow()
+  })
+})
+
+describe('WornTimeline — WEAR-01 row links (D-15)', () => {
+  it('Test A: renders a link to /wear/[id] with the watch label as its text', () => {
+    const events = [
+      {
+        id: 'wear-1',
+        watchId: WATCH_WITH_IMAGE.id,
+        wornDate: '2026-05-20',
+        note: null,
+        photoUrl: null,
+      },
+    ]
+    render(<WornTimeline events={events} watchMap={watchMap} />)
+    const link = screen.getByRole('link')
+    expect(link.getAttribute('href')).toBe('/wear/wear-1')
+    expect(link.textContent).toContain('Rolex Submariner')
+  })
+
+  it('Test B: two events on the same day render two distinct links, one per event', () => {
+    const events = [
+      {
+        id: 'wear-1',
+        watchId: WATCH_WITH_IMAGE.id,
+        wornDate: '2026-05-20',
+        note: null,
+        photoUrl: null,
+      },
+      {
+        id: 'wear-2',
+        watchId: WATCH_WITHOUT_IMAGE.id,
+        wornDate: '2026-05-20',
+        note: null,
+        photoUrl: null,
+      },
+    ]
+    render(<WornTimeline events={events} watchMap={watchMap} />)
+    const links = screen.getAllByRole('link')
+    const hrefs = links.map((l) => l.getAttribute('href'))
+    expect(hrefs).toEqual(['/wear/wear-1', '/wear/wear-2'])
+  })
+
+  it('Test C: the link className includes hover and focus-visible ring states', () => {
+    const events = [
+      {
+        id: 'wear-1',
+        watchId: WATCH_WITH_IMAGE.id,
+        wornDate: '2026-05-20',
+        note: null,
+        photoUrl: null,
+      },
+    ]
+    render(<WornTimeline events={events} watchMap={watchMap} />)
+    const link = screen.getByRole('link')
+    expect(link.className).toContain('focus-visible:ring-2')
+    expect(link.className).toContain('hover:bg-muted/40')
   })
 })
