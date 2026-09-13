@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 Phase: 84 (Wear history depth) — EXECUTING
 Plan: 7 of 7
 Status: 84-07 checkpoint (human-verify) awaiting prod walk — operator skipped local walk and pushed 84-01..06 to prod (6fa86db9); 84-07 Task 3 (local SQL assertions) + SUMMARY, code review, and phase verification still pending
-Last activity: 2026-09-13 - Completed quick task 260913-cae: delete wear (owner-only action + /wear/[id] delete button; not yet pushed). Phase 84 plans 01-06 pushed to prod; walk deferred to prod per operator
+Last activity: 2026-09-13 - Completed quick task 260913-csl: Delete wear moved into /wear/[id] overflow menu (follows 260913-cae delete wear). Phase 84 plans 01-06 pushed to prod; walk deferred to prod per operator
 
 **Upcoming phases:**
 
@@ -311,6 +311,7 @@ None.
 | 260623-uua | Search ergonomics — multi-token AND-of-ORs, `unaccent` diacritic fold, `pg_trgm` `word_similarity > 0.2` fuzzy fallback. Fixes "omega seamaster" / "Heron" / "Jaeger la" / "Jeager" failing queries on /search Watches + Collections tabs. Read-path only — SEED-021 brand canonicalization explicitly deferred. Local UAT 12/12 pass; awaiting `git push` + `supabase db push --linked` for prod. | 81e21fb3, ac89ad1f, 50621739, 99172df2 | 2026-06-24 |
 | 260912-jo6 | Delete dead legacy `src/components/watch/WatchDetail.tsx` (WR-01) — unrendered since Phase 64, caused 83-03 to edit a dead island; migrated FEAT-08/D-11 Certification tests + no-raw-img guard onto live `WatchDetailHero`/`WatchDetailTrailing`/`WatchPhotoSection`; added static re-introduction guard; fixed stale comments | 8abf4c51, 02cabc05, 2c686432 | 2026-09-12 |
 | 260913-cae | Delete wear — owner-only `deleteWearEvent` Server Action + transactional `deleteWearEventForOwner` DAL (cascades likes/comments; removes matching `watch_worn` activity within 60s window unless ambiguous; removes wear-scoped notifications + `commented` activities; owner-prefixed storage cleanup, non-fatal) + owner-only `WearDeleteButton` confirm dialog on `/wear/[id]` → `router.replace` to Worn tab. Local walk pending before push. | fec90251, d45653fd, 8ad4834c | 2026-09-13 |
+| 260913-csl | Move "Delete wear" from standalone button into the `/wear/[id]` corner overflow menu (last item, destructive, below separator) — extracted controlled `WearDeleteDialog`; `canDelete` threaded page → `WearCard` (inline variant only) → `WearOverflowMenu`; stories lane never shows delete; `WearDeleteButton` removed | 81e2e41d, 258fa08c | 2026-09-13 |
 
 (Phase 76 P01 + P02 + P03 are standard plan execution, not ad-hoc quick tasks; removed from this table — see Performance Metrics above instead.)
 | Phase 77 P01 | 8min | 2 tasks | 13 files |
