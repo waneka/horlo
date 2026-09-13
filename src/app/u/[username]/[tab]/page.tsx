@@ -14,6 +14,7 @@ import {
   getWearEventsForViewer,
 } from '@/data/wearEvents'
 import { getPreferencesByUser } from '@/data/preferences'
+import { scopeWornTabWatches } from '@/lib/wornTabScope'
 import { CollectionTabContent } from '@/components/profile/CollectionTabContent'
 import { WishlistTabContent } from '@/components/profile/WishlistTabContent'
 import { NotesTabContent } from '@/components/profile/NotesTabContent'
@@ -431,8 +432,21 @@ export async function ProfileTabContent({
     const events = await getWearEventsForViewer(viewerId, profile.id)
     // signCoverUrls uses admin client — no cookies() dependency. See signCoverUrls.ts.
     const watches = await signCoverUrls(resolved.watches)
+    // Phase 84 D-14 / RESEARCH Pitfall 5 / T-84-LEAK: the Worn tab has no
+    // tab-level lock (Phase 12), so its watch lists mirror the Collection
+    // tab's collectionPublic gate — a non-owner viewer of a private
+    // collection only receives watches their visible wears already
+    // reference (never the full owned list via zero-wear leaderboard rows,
+    // the filter dropdown, or watchMap).
+    const { ownedWatches: scopedOwnedWatches, mapWatches } =
+      scopeWornTabWatches({
+        isOwner,
+        collectionPublic: settings.collectionPublic,
+        watches,
+        eventWatchIds: new Set(events.map((e) => e.watchId)),
+      })
     const watchMap = Object.fromEntries(
-      watches.map((w) => [
+      mapWatches.map((w) => [
         w.id,
         {
           id: w.id,
@@ -490,7 +504,7 @@ export async function ProfileTabContent({
         isOwner={isOwner}
         username={profile.username}
         viewerId={viewerId}
-        ownedWatches={watches.filter((w) => w.status === 'owned')}
+        ownedWatches={scopedOwnedWatches}
       />
     )
   }
