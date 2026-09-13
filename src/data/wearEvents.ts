@@ -1,8 +1,8 @@
 import 'server-only'
 
 import { db } from '@/db'
-import { wearEvents, profileSettings, follows, profiles, watches } from '@/db/schema'
-import { eq, and, desc, inArray, gte, or, sql, asc, isNotNull } from 'drizzle-orm'
+import { wearEvents, profileSettings, follows, profiles, watches, activities, notifications } from '@/db/schema'
+import { eq, and, desc, inArray, gte, lte, ne, or, sql, asc, isNotNull } from 'drizzle-orm'
 import type { WywtTile, WywtRailData } from '@/lib/wywtTypes'
 import type { WearVisibility } from '@/lib/wearVisibility'
 
@@ -708,4 +708,156 @@ export async function unhideWearPic(
         sql`${wearEvents.watchId} IN (SELECT id FROM watches WHERE user_id = ${userId})`,
       ),
     )
+}
+
+/**
+ * Ambiguity + activity-matching window for `deleteWearEventForOwner` (quick
+ * task 260913-cae, DD-1). All four watch_worn writers (markAsWorn,
+ * logWearWithPhoto, logWearWithVideo, logBackfillWear in
+ * src/app/actions/wearEvents.ts) insert the wear row FIRST and then call
+ * logActivity in the SAME request, and both `created_at` values come from the
+ * DB clock (`defaultNow`). So the activity for a wear lands at or shortly
+ * after `wear.createdAt` — this constant bounds "shortly after".
+ */
+export const WORN_ACTIVITY_MATCH_WINDOW_MS = 60_000
+
+export type DeleteWearEventResult = {
+  watchId: string
+  storagePaths: string[]
+  activityMatch: 'matched' | 'none' | 'ambiguous'
+  removedActivityCount: number
+}
+
+/**
+ * Owner-scoped transactional delete of a single wear event (quick task
+ * 260913-cae). Returns null when `wearEventId` does not exist OR belongs to
+ * a different user — both the SELECT and the final DELETE are scoped with
+ * `eq(wearEvents.userId, userId)`, so the ownership predicate lives in the
+ * WHERE clauses themselves (T-QK-IDOR: this DAL function is IDOR-safe on its
+ * own, independent of any UI gate).
+ *
+ * DD-1 activity matching rule (activities has no wear_event_id column):
+ *   (a) Ambiguity guard — if another wear_events row for the SAME
+ *       user+watch (different id) has created_at within
+ *       [wear.createdAt - WINDOW, wear.createdAt + WINDOW], no watch_worn
+ *       activity is deleted; activityMatch = 'ambiguous'. This avoids ever
+ *       deleting an activity that could belong to a sibling wear.
+ *   (b) Otherwise, delete activities where user_id = owner, type =
+ *       'watch_worn', watch_id = wear.watchId, and created_at is within
+ *       [wear.createdAt, wear.createdAt + WINDOW]. activityMatch = 'matched'
+ *       when rows were removed, 'none' when zero rows matched (e.g. a
+ *       past-date backfill wear, which writes no activity per 84 D-08).
+ *   Accepted edge: markAsWorn's onConflictDoNothing still logs an activity
+ *   on a duplicate same-day tap (84 RESEARCH Pitfall 6). If such a phantom
+ *   duplicate lands inside a DIFFERENT wear's 60s window, it is removed with
+ *   that wear — but that row is itself a duplicate of an existing activity,
+ *   so removing it never hides a real, unique wear from the feed. Legacy
+ *   activity rows written far from their wear's created_at (none known) are
+ *   left in place — the trade-off favors never deleting an activity that
+ *   could belong to another wear.
+ *
+ * DD-2 dangling-reference cleanup (exact-id matches only, zero ambiguity):
+ * also deletes wear_like/wear_comment notifications whose
+ * `payload->>'wear_event_id'` equals this id, and 'commented' activities
+ * whose `metadata->>'wearEventId'` equals this id — otherwise the feed/bell
+ * would render rows linking to a 404 after the wear is gone.
+ *
+ * DD-3: storage object removal is the CALLER's responsibility. This function
+ * only returns the non-null photoUrl/mediaPath/posterPath of the deleted row
+ * so the Server Action can remove them (owner-prefix-filtered) after this
+ * transaction commits.
+ */
+export async function deleteWearEventForOwner(
+  userId: string,
+  wearEventId: string,
+): Promise<DeleteWearEventResult | null> {
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        id: wearEvents.id,
+        watchId: wearEvents.watchId,
+        createdAt: wearEvents.createdAt,
+        photoUrl: wearEvents.photoUrl,
+        mediaPath: wearEvents.mediaPath,
+        posterPath: wearEvents.posterPath,
+      })
+      .from(wearEvents)
+      .where(and(eq(wearEvents.id, wearEventId), eq(wearEvents.userId, userId)))
+      .limit(1)
+
+    const row = rows[0]
+    if (!row) return null // covers both missing and cross-user (IDOR-safe by construction)
+
+    const windowStart = new Date(row.createdAt.getTime() - WORN_ACTIVITY_MATCH_WINDOW_MS)
+    const windowEnd = new Date(row.createdAt.getTime() + WORN_ACTIVITY_MATCH_WINDOW_MS)
+
+    // DD-1(a): ambiguity guard — another wear of the same user+watch inside the window.
+    const ambiguousRows = await tx
+      .select({ id: wearEvents.id })
+      .from(wearEvents)
+      .where(
+        and(
+          eq(wearEvents.userId, userId),
+          eq(wearEvents.watchId, row.watchId),
+          ne(wearEvents.id, wearEventId),
+          gte(wearEvents.createdAt, windowStart),
+          lte(wearEvents.createdAt, windowEnd),
+        ),
+      )
+      .limit(1)
+
+    let activityMatch: 'matched' | 'none' | 'ambiguous'
+    let removedActivityCount = 0
+
+    if (ambiguousRows.length > 0) {
+      activityMatch = 'ambiguous'
+    } else {
+      // DD-1(b): delete the matching watch_worn activity, if any.
+      const removed = await tx
+        .delete(activities)
+        .where(
+          and(
+            eq(activities.userId, userId),
+            eq(activities.type, 'watch_worn'),
+            eq(activities.watchId, row.watchId),
+            gte(activities.createdAt, row.createdAt),
+            lte(activities.createdAt, windowEnd),
+          ),
+        )
+        .returning({ id: activities.id })
+      removedActivityCount = removed.length
+      activityMatch = removedActivityCount > 0 ? 'matched' : 'none'
+    }
+
+    // DD-2: exact-id dangling-reference cleanup (jsonb scalar comparisons — no arrays, no = ANY).
+    await tx
+      .delete(activities)
+      .where(
+        and(
+          eq(activities.type, 'commented'),
+          sql`${activities.metadata} ->> 'wearEventId' = ${wearEventId}`,
+        ),
+      )
+
+    await tx
+      .delete(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          or(eq(notifications.type, 'wear_like'), eq(notifications.type, 'wear_comment')),
+          sql`${notifications.payload} ->> 'wear_event_id' = ${wearEventId}`,
+        ),
+      )
+
+    // Final delete — cascades remove wear_likes + comments for this wear.
+    await tx
+      .delete(wearEvents)
+      .where(and(eq(wearEvents.id, wearEventId), eq(wearEvents.userId, userId)))
+
+    const storagePaths = [row.photoUrl, row.mediaPath, row.posterPath].filter(
+      (p): p is string => typeof p === 'string' && p.length > 0,
+    )
+
+    return { watchId: row.watchId, storagePaths, activityMatch, removedActivityCount }
+  })
 }
