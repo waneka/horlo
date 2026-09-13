@@ -137,18 +137,26 @@ export function LogTodaysWearButton({
   function handleSubmit() {
     setError(null)
     startTransition(async () => {
-      const result = await logBackfillWear({
-        watchId,
-        wornDate,
-        today: todayLocalISO(),
-        note: note.trim() ? note.trim() : null,
-        visibility,
-      })
-      if (!result.success) {
-        setError(result.error)
-        return
+      // 84-REVIEW WR-03: a rejected action (network drop, deploy-skew
+      // "failed to find server action", or a throw after a successful insert)
+      // must surface inline — not bubble through the transition to the error
+      // boundary and replace the Worn tab.
+      try {
+        const result = await logBackfillWear({
+          watchId,
+          wornDate,
+          today: todayLocalISO(),
+          note: note.trim() ? note.trim() : null,
+          visibility,
+        })
+        if (!result.success) {
+          setError(result.error)
+          return
+        }
+        setOpen(false)
+      } catch {
+        setError("Couldn't log that wear. Please try again.")
       }
-      setOpen(false)
     })
   }
 

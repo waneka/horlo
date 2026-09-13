@@ -277,6 +277,29 @@ describe('LogTodaysWearButton', () => {
     await waitFor(() => expect(submitButton).toBeDisabled())
   })
 
+  it('T14 (WR-03): a rejected action renders an inline alert and keeps the dialog open', async () => {
+    renderButton()
+    openDialog()
+
+    const w1Option = await screen.findByRole('option', {
+      name: /Omega Speedmaster/,
+    })
+    fireEvent.click(w1Option)
+    const submitButton = screen.getByRole('button', { name: 'Log wear' })
+    await waitFor(() => expect(submitButton).not.toBeDisabled())
+
+    mockLog.mockRejectedValueOnce(new Error('Failed to fetch'))
+    fireEvent.click(submitButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't log that wear. Please try again.",
+    )
+    expect(
+      screen.getByRole('heading', { name: 'Log a wear' }),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(submitButton).not.toBeDisabled())
+  })
+
   it('T12 (WR-02): submit blocked and stale labels hidden while the new date preflight is in flight', async () => {
     mockPreflight.mockResolvedValueOnce([W1])
     renderButton()
