@@ -24,8 +24,8 @@ Depth on the wear-history surface — link into existing per-wear detail, backfi
 
 - [x] **WEAR-01**: User can tap any entry in the Worn tab to open that wear's `/wear/[id]` detail page (route already exists from v6.0 Phase 56A).
 - [x] **WEAR-02**: User can log a wear on a past date without providing a photo, via a backfill affordance on the Worn tab.
-- [ ] **WEAR-03**: User sees a wear-count aggregate section on the Worn tab with a segmented time-window control (1 mo / 3 mo / 6 mo / 12 mo / All time).
-- [ ] **WEAR-04**: User sees a leaderboard of their owned watches ranked by wear count within the selected time window.
+- [x] **WEAR-03**: User sees a wear-count aggregate section on the Worn tab with a segmented time-window control (1 mo / 3 mo / 6 mo / 12 mo / All time).
+- [x] **WEAR-04**: User sees a leaderboard of their owned watches ranked by wear count within the selected time window.
 
 ### LIFE
 
@@ -94,8 +94,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | POLISH-03 | Phase 83 | Complete |
 | WEAR-01 | Phase 84 | Complete |
 | WEAR-02 | Phase 84 | Complete |
-| WEAR-03 | Phase 84 | Pending |
-| WEAR-04 | Phase 84 | Pending |
+| WEAR-03 | Phase 84 | Complete |
+| WEAR-04 | Phase 84 | Complete |
 | LIFE-01 | Phase 85 | Pending |
 | LIFE-02 | Phase 85 | Pending |
 | LIFE-03 | Phase 85 | Pending |
