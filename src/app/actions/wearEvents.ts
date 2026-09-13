@@ -11,6 +11,22 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/lib/actionTypes'
 import type { WearVisibility } from '@/lib/wearVisibility'
 
+/**
+ * Extract the Postgres SQLSTATE from a thrown DB error.
+ *
+ * drizzle-orm 0.45 (postgres-js driver) wraps every driver error in a
+ * `DrizzleQueryError` whose top-level `code` is undefined — the SQLSTATE lives
+ * on `err.cause.code` (84-REVIEW CR-01, verified against local Postgres). The
+ * top-level `code` is still checked first so a raw driver error (or a future
+ * unwrapped shape) keeps working. Module-private: a 'use server' file may only
+ * export async functions.
+ */
+function pgErrorCode(err: unknown): string | undefined {
+  const e = err as { code?: unknown; cause?: { code?: unknown } | null } | null
+  const code = e?.code ?? e?.cause?.code
+  return typeof code === 'string' ? code : undefined
+}
+
 const markAsWornSchema = z.object({
   watchId: z.string().uuid(),
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -258,8 +274,7 @@ export async function logWearWithPhoto(input: {
       }
     }
 
-    const code = (err as { code?: string } | null)?.code
-    if (code === '23505') {
+    if (pgErrorCode(err) === '23505') {
       return { success: false, error: 'Already logged this watch today' }
     }
     console.error('[logWearWithPhoto] insert failed:', err)
@@ -443,8 +458,7 @@ export async function logWearWithVideo(input: {
       console.error('[logWearWithVideo] orphan cleanup threw:', cleanupErr)
     }
 
-    const code = (err as { code?: string } | null)?.code
-    if (code === '23505') {
+    if (pgErrorCode(err) === '23505') {
       return { success: false, error: 'Already logged this watch today' }
     }
     console.error('[logWearWithVideo] insert failed:', err)
@@ -561,8 +575,7 @@ export async function logBackfillWear(input: {
       visibility: parsed.data.visibility,
     })
   } catch (err) {
-    const code = (err as { code?: string } | null)?.code
-    if (code === '23505') {
+    if (pgErrorCode(err) === '23505') {
       return { success: false, error: 'Already logged this watch on that date.' }
     }
     console.error('[logBackfillWear] insert failed:', err)

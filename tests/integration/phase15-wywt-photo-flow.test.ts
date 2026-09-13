@@ -263,7 +263,10 @@ maybe('Phase 15 WYWT photo flow — DAL (Task 1) + Server Actions (Task 2)', () 
       }
 
       expect(caught).not.toBeNull()
-      expect((caught as { code?: string } | null)?.code).toBe('23505')
+      // 84-REVIEW CR-01 / WR-06: drizzle-orm 0.45 wraps driver errors in a
+      // DrizzleQueryError — the SQLSTATE is on `cause.code`, not top-level.
+      const e = caught as { code?: string; cause?: { code?: string } } | null
+      expect(e?.code ?? e?.cause?.code).toBe('23505')
 
       await db.delete(wearEvents).where(eq(wearEvents.userId, userA.id))
     })

@@ -92,6 +92,18 @@ function authFail() {
   ;(getCurrentUser as Mock).mockRejectedValueOnce(new Error('Not authenticated'))
 }
 
+// drizzle-orm 0.45 wraps every postgres-js driver error in a
+// DrizzleQueryError: the top-level error has no `code`, and the driver error
+// (carrying the SQLSTATE) is on `cause` (84-REVIEW CR-01 / WR-06).
+function mkDrizzleQueryError(sqlState: string) {
+  const err = Object.assign(new Error('Failed query: insert into "wear_events" ...'), {
+    name: 'DrizzleQueryError',
+    cause: Object.assign(new Error('driver error'), { code: sqlState }),
+  })
+  expect((err as { code?: string }).code).toBeUndefined()
+  return err
+}
+
 type ValidInput = Parameters<typeof logBackfillWear>[0]
 function mkInput(overrides: Record<string, unknown> = {}): ValidInput {
   return {
@@ -245,12 +257,14 @@ describe('logBackfillWear (Phase 84 Plan 02 — WEAR-02)', () => {
   })
 
   // Test 7: D-05 — duplicate-day 23505 backstop returns the friendly error
-  // and logs no activity.
+  // and logs no activity. 84-REVIEW CR-01 / WR-06: the mock uses the REAL
+  // drizzle-orm 0.45 error shape — a DrizzleQueryError-like wrapper with NO
+  // top-level `code`; the SQLSTATE lives on `cause.code`.
   it('(7) D-05 duplicate 23505 → friendly error; no activity; no cache invalidation', async () => {
     authAs()
     ;(watchDAL.getWatchById as Mock).mockResolvedValueOnce(mockWatch)
     ;(wearEventDAL.logWearEventWithPhoto as Mock).mockRejectedValueOnce(
-      Object.assign(new Error('dup'), { code: '23505' }),
+      mkDrizzleQueryError('23505'),
     )
 
     const r = await logBackfillWear(
@@ -272,13 +286,30 @@ describe('logBackfillWear (Phase 84 Plan 02 — WEAR-02)', () => {
     ;(watchDAL.getWatchById as Mock).mockResolvedValueOnce(mockWatch)
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     ;(wearEventDAL.logWearEventWithPhoto as Mock).mockRejectedValueOnce(
-      Object.assign(new Error('boom'), { code: 'XX000' }),
+      mkDrizzleQueryError('XX000'),
     )
 
     const r = await logBackfillWear(mkInput())
 
     expect(r).toEqual({ success: false, error: "Couldn't log that wear." })
     errSpy.mockRestore()
+  })
+
+  // Test 8b: a raw (unwrapped) driver error with a top-level code is still
+  // recognized — the shared pgErrorCode helper checks `code ?? cause.code`.
+  it('(8b) raw driver error with top-level 23505 → friendly duplicate error', async () => {
+    authAs()
+    ;(watchDAL.getWatchById as Mock).mockResolvedValueOnce(mockWatch)
+    ;(wearEventDAL.logWearEventWithPhoto as Mock).mockRejectedValueOnce(
+      Object.assign(new Error('duplicate key value'), { code: '23505' }),
+    )
+
+    const r = await logBackfillWear(mkInput())
+
+    expect(r).toEqual({
+      success: false,
+      error: 'Already logged this watch on that date.',
+    })
   })
 
   // Test 9: whitespace-only note normalizes to null

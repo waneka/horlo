@@ -267,8 +267,13 @@ describe('logWearWithVideo (Phase 76 — VID-07/08/09/10/16)', () => {
     ;(watchDAL.getWatchById as Mock).mockResolvedValueOnce(mockWatch)
     const stub = mockStorage({ videoFound: true, posterFound: true })
     ;(createSupabaseServerClient as Mock).mockResolvedValueOnce(stub)
+    // 84-REVIEW CR-01 / WR-06: real drizzle-orm 0.45 shape — no top-level
+    // `code`; the SQLSTATE is on `cause.code` (DrizzleQueryError wrapper).
     ;(wearEventDAL.logWearEventWithVideo as Mock).mockRejectedValueOnce(
-      Object.assign(new Error('dup'), { code: '23505' }),
+      Object.assign(new Error('Failed query: insert into "wear_events" ...'), {
+        name: 'DrizzleQueryError',
+        cause: Object.assign(new Error('duplicate key value'), { code: '23505' }),
+      }),
     )
 
     const r = await logWearWithVideo(mkInput())
