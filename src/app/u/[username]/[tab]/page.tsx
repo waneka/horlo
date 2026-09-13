@@ -501,6 +501,7 @@ export async function ProfileTabContent({
         username={profile.username}
         viewerId={viewerId}
         ownedWatches={ownedWatchSummaries}
+        collectionPublic={settings.collectionPublic}
       />
     )
   }

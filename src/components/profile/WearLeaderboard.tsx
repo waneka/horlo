@@ -21,7 +21,15 @@ interface LeaderboardWatch {
 interface WearLeaderboardProps {
   events: Array<{ watchId: string; wornDate: string }>
   watches: LeaderboardWatch[]
+  /** 84-REVIEW WR-04: whether rows link to `/w/{id}`. `/w/[ref]` only
+   *  resolves a per-user watch for the owner or when the collection is
+   *  public, so for a non-owner viewer of a private collection every link
+   *  would 404 — rows render as plain (unlinked) rows instead. Callers
+   *  derive this as `isOwner || collectionPublic`. */
+  linkable?: boolean
 }
+
+const ROW_CLASS = 'flex min-h-11 items-center gap-3 rounded-lg p-2'
 
 const WINDOW_OPTIONS: ReadonlyArray<{ value: WearWindowKey; label: string }> = [
   { value: '1mo', label: '1 mo' },
@@ -42,7 +50,11 @@ function subscribeNoop() {
   return () => {}
 }
 
-export function WearLeaderboard({ events, watches }: WearLeaderboardProps) {
+export function WearLeaderboard({
+  events,
+  watches,
+  linkable = true,
+}: WearLeaderboardProps) {
   const todayISO = useSyncExternalStore(
     subscribeNoop,
     () => todayLocalISO(),
@@ -155,45 +167,59 @@ export function WearLeaderboard({ events, watches }: WearLeaderboardProps) {
             {visibleRows.map((row, i) => {
               const safe = getSafeImageUrl(row.watch.imageUrl ?? null)
               const width = topCount > 0 ? Math.round((row.count / topCount) * 100) : 0
+              const rowContent = (
+                <>
+                  <span
+                    data-slot="leaderboard-rank"
+                    className="w-5 shrink-0 text-sm font-semibold tabular-nums"
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">
+                    {safe ? (
+                      <Image src={safe} alt="" fill sizes="40px" className="object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <WatchIcon className="size-4 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {row.watch.brand} {row.watch.model}
+                      </span>
+                      <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                        {row.count} wear{row.count === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        data-slot="leaderboard-bar-fill"
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )
               return (
                 <li key={row.watch.id}>
-                  <Link
-                    href={`/w/${row.watch.id}`}
-                    className="flex min-h-11 items-center gap-3 rounded-lg p-2 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span
-                      data-slot="leaderboard-rank"
-                      className="w-5 shrink-0 text-sm font-semibold tabular-nums"
-                    >
-                      {i + 1}
-                    </span>
-                    <div className="relative size-10 shrink-0 overflow-hidden rounded bg-muted">
-                      {safe ? (
-                        <Image src={safe} alt="" fill sizes="40px" className="object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <WatchIcon className="size-4 text-muted-foreground/40" />
-                        </div>
+                  {linkable ? (
+                    <Link
+                      href={`/w/${row.watch.id}`}
+                      className={cn(
+                        ROW_CLASS,
+                        'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       )}
+                    >
+                      {rowContent}
+                    </Link>
+                  ) : (
+                    <div data-slot="leaderboard-row" className={ROW_CLASS}>
+                      {rowContent}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-sm font-semibold">
-                          {row.watch.brand} {row.watch.model}
-                        </span>
-                        <span className="shrink-0 text-xs font-normal text-muted-foreground">
-                          {row.count} wear{row.count === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          data-slot="leaderboard-bar-fill"
-                          className="h-full rounded-full bg-accent"
-                          style={{ width: `${width}%` }}
-                        />
-                      </div>
-                    </div>
-                  </Link>
+                  )}
                 </li>
               )
             })}

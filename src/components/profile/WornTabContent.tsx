@@ -43,6 +43,11 @@ interface WornTabContentProps {
    *  client component, so full Watch rows (pricePaid, private notes) must
    *  never be passed here. */
   ownedWatches: WatchSummary[]
+  /** 84-REVIEW WR-04: profile's collection_public setting, threaded from
+   *  [tab]/page.tsx (already loaded — no extra fetch). `/w/[ref]` only opens
+   *  a per-user watch for the owner or a public collection, so leaderboard
+   *  rows link only when `isOwner || collectionPublic`. */
+  collectionPublic: boolean
 }
 
 const VIEW_OPTIONS = [
@@ -57,7 +62,9 @@ export function WornTabContent({
   username,
   viewerId,
   ownedWatches,
+  collectionPublic,
 }: WornTabContentProps) {
+  const leaderboardLinkable = isOwner || collectionPublic
   const [view, setView] = useState<'timeline' | 'calendar'>('timeline')
   const [filterWatchId, setFilterWatchId] = useState<string>('all')
 
@@ -91,7 +98,11 @@ export function WornTabContent({
     if (isOwner && viewerId) {
       return (
         <div className="flex flex-col gap-6">
-          <WearLeaderboard events={events} watches={ownedWatches} />
+          <WearLeaderboard
+            events={events}
+            watches={ownedWatches}
+            linkable={leaderboardLinkable}
+          />
           <div className="rounded-xl border bg-card p-12 text-center">
             <p className="text-base font-semibold">No wears logged yet.</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -110,7 +121,11 @@ export function WornTabContent({
     }
     return (
       <div className="flex flex-col gap-6">
-        <WearLeaderboard events={events} watches={ownedWatches} />
+        <WearLeaderboard
+          events={events}
+          watches={ownedWatches}
+          linkable={leaderboardLinkable}
+        />
         <div className="rounded-xl border bg-card p-12 text-center">
           <p className="text-base font-semibold">Nothing here yet.</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -123,7 +138,11 @@ export function WornTabContent({
 
   return (
     <div className="flex flex-col gap-6">
-      <WearLeaderboard events={events} watches={ownedWatches} />
+      <WearLeaderboard
+        events={events}
+        watches={ownedWatches}
+        linkable={leaderboardLinkable}
+      />
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">

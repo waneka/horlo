@@ -180,6 +180,23 @@ describe('WearLeaderboard', () => {
     expect(links[0].getAttribute('href')).toBe(`/w/${WATCH_E.id}`)
   })
 
+  it('L6b (WR-04): linkable=false renders plain unlinked rows (private collection, non-owner)', () => {
+    render(
+      <WearLeaderboard
+        events={[{ watchId: WATCH_A.id, wornDate: '2026-09-01' }]}
+        watches={ALL_WATCHES}
+        linkable={false}
+      />,
+    )
+    const list = screen.getByRole('list')
+    expect(within(list).queryAllByRole('link')).toHaveLength(0)
+    expect(document.querySelector('a[href^="/w/"]')).toBeNull()
+    const rows = document.querySelectorAll('[data-slot="leaderboard-row"]')
+    expect(rows).toHaveLength(5)
+    expect(rows[0].textContent).toContain('Omega Speedmaster')
+    expect(rows[0].textContent).toContain('1 wear')
+  })
+
   it('L7: shows the empty-window note only when every count is zero', () => {
     const { rerender } = render(<WearLeaderboard events={[]} watches={ALL_WATCHES} />)
 
