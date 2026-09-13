@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-13T04:09:57.086Z"
-last_activity: 2026-09-13 -- Phase 84 Plan 01 complete (WEAR-01 row linking)
+last_updated: "2026-09-13T04:18:02.679Z"
+last_activity: 2026-09-13 -- Phase 84 Plan 02 complete (WEAR-02 backfill server action)
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 11
-  completed_plans: 5
+  completed_plans: 6
   percent: 25
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 84 (Wear history depth) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 84 Plan 01 complete (WEAR-01 row linking)
+Last activity: 2026-09-13 -- Phase 84 Plan 02 complete (WEAR-02 backfill server action)
 
 **Upcoming phases:**
 
@@ -110,6 +110,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 84 Plan 02 (backfill server action, 2026-09-13):** `logBackfillWear` (WEAR-02 server half) is a dedicated Server Action rather than an extension of `markAsWorn`/`logWearWithPhoto` — those go through `logWearEvent`'s `onConflictDoNothing`, which silently swallows a duplicate-day insert but still logs a `watch_worn` activity (RESEARCH Pitfall 6). The new action follows `logWearWithPhoto`'s explicit-insert-then-catch-23505 shape instead, avoiding that bug by construction. Its cache invalidation uses `updateTag(`profile:${username}`)` (read-your-own-writes, matching `src/app/actions/profile.ts`'s `updateProfile`) rather than the sibling wear actions' `revalidateTag(tag, 'max')` cross-user SWR form, because the caller is always the owner viewing their own Worn tab immediately after logging. WEAR-02 stays unmarked in REQUIREMENTS.md — this plan ships only the server half; 84-04 ships the client form and completes the requirement.
 
 **Phase 84 Plan 01 (row linking, 2026-09-13):** WornCalendar's grid cursor always initializes to the actual current month on mount, independent of the test-only `initialSelectedDate` prop (which only seeds the *selected* date, not the displayed month). New WEAR-01 tests therefore anchor fixture dates to the current month computed at test-run time rather than a hardcoded past month, avoiding the same month-drift flake already present in 3 pre-existing tests in `tests/components/profile/WornCalendar.test.tsx`.
 
@@ -317,6 +319,7 @@ None.
 | Phase 83-polish-sweep P02 | 5 | 1 tasks | 1 files |
 | Phase 83-polish-sweep P04 | ~15min | 2 tasks | 2 files |
 | Phase 84 P01 | ~25min | 2 tasks | 4 files |
+| Phase 84 P02 | ~20min | 2 tasks | 2 files |
 
 ## Session Continuity
 
