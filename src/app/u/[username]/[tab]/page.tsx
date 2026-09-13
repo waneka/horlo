@@ -14,7 +14,7 @@ import {
   getWearEventsForViewer,
 } from '@/data/wearEvents'
 import { getPreferencesByUser } from '@/data/preferences'
-import { scopeWornTabWatches } from '@/lib/wornTabScope'
+import { scopeWornTabWatches, toWornTabWatchSummary } from '@/lib/wornTabScope'
 import { CollectionTabContent } from '@/components/profile/CollectionTabContent'
 import { WishlistTabContent } from '@/components/profile/WishlistTabContent'
 import { NotesTabContent } from '@/components/profile/NotesTabContent'
@@ -445,17 +445,13 @@ export async function ProfileTabContent({
         watches,
         eventWatchIds: new Set(events.map((e) => e.watchId)),
       })
+    // 84-REVIEW CR-02: WornTabContent is a client component — project to the
+    // minimal summary shape on the server so pricePaid / acquisitionDate /
+    // private notes never enter the RSC payload.
     const watchMap = Object.fromEntries(
-      mapWatches.map((w) => [
-        w.id,
-        {
-          id: w.id,
-          brand: w.brand,
-          model: w.model,
-          imageUrl: w.imageUrl ?? null,
-        },
-      ]),
+      mapWatches.map((w) => [w.id, toWornTabWatchSummary(w)]),
     )
+    const ownedWatchSummaries = scopedOwnedWatches.map(toWornTabWatchSummary)
     // Phase 62 D-16/D-19: sign raw wear-photo storage paths via admin client.
     // Admin client only — never cookie client in a route touching 'use cache'
     // (MEMORY project_ppr_dynamic_before_use_cache). Fail-safe to null on error.
@@ -504,7 +500,7 @@ export async function ProfileTabContent({
         isOwner={isOwner}
         username={profile.username}
         viewerId={viewerId}
-        ownedWatches={scopedOwnedWatches}
+        ownedWatches={ownedWatchSummaries}
       />
     )
   }

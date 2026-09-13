@@ -13,14 +13,9 @@ import { WornTimeline } from './WornTimeline'
 import { WornCalendar } from './WornCalendar'
 import { LogTodaysWearButton } from './LogTodaysWearButton'
 import { WearLeaderboard } from './WearLeaderboard'
-import type { Watch } from '@/lib/types'
+import type { WornTabWatchSummary } from '@/lib/wornTabScope'
 
-interface WatchSummary {
-  id: string
-  brand: string
-  model: string
-  imageUrl: string | null
-}
+type WatchSummary = WornTabWatchSummary
 
 interface WearEventLite {
   id: string
@@ -44,8 +39,10 @@ interface WornTabContentProps {
   viewerId: string | null
   /** Phase 25 D-06 / Phase 83 POLISH-02: LogTodaysWearButton's owned-watch
    *  listbox derives from this (watchOptions below). Server-derived in
-   *  [tab]/page.tsx. */
-  ownedWatches: Watch[]
+   *  [tab]/page.tsx. 84-REVIEW CR-02: minimal summary shape only — this is a
+   *  client component, so full Watch rows (pricePaid, private notes) must
+   *  never be passed here. */
+  ownedWatches: WatchSummary[]
 }
 
 const VIEW_OPTIONS = [
