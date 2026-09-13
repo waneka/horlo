@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { z } from 'zod'
 import { getCurrentUser } from '@/lib/auth'
 import * as wearEventDAL from '@/data/wearEvents'
@@ -114,6 +114,38 @@ const preflightSchema = z.object({
   userId: z.string().uuid(),
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
+
+// ---- Phase 84 (WEAR-02) — backfill (photo-less, past-or-today) wear ----
+
+/**
+ * ISO calendar-date schema shared by logBackfillWear's `wornDate` and
+ * `today` fields. The regex alone accepts shapes like `2026-02-30` that are
+ * not real calendar days; the `.refine` re-parses as a UTC date and checks
+ * the round-tripped ISO string matches the input exactly. This validates
+ * calendar validity ONLY — it never reads the current clock, so it cannot be
+ * (mis)used to derive "today" server-side (260622-exo invariant, see
+ * src/lib/wear.ts header comment).
+ */
+const isoCalendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((s) => {
+    const d = new Date(`${s}T00:00:00Z`)
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s
+  }, 'Invalid calendar date')
+
+// .strict() rejects extra keys such as photoUrl or wearEventId — a
+// mass-assignment guard mirroring hideWearPicSchema. The wear id is always
+// generated server-side (crypto.randomUUID()), never accepted from the client.
+const logBackfillWearSchema = z
+  .object({
+    watchId: z.string().uuid(),
+    wornDate: isoCalendarDate,
+    today: isoCalendarDate,
+    note: z.string().max(200).nullable(),
+    visibility: z.enum(['public', 'followers', 'private']),
+  })
+  .strict()
 
 /**
  * Photo-bearing WYWT post (WYWT-15, 15-CONTEXT.md D-15).
@@ -446,6 +478,124 @@ export async function logWearWithVideo(input: {
     revalidateTag(`profile:${ownerProfile.username}`, 'max')
   }
   return { success: true, data: { wearEventId: parsed.data.wearEventId } }
+}
+
+/**
+ * Backfill (photo-less) wear log — WEAR-02, 84-CONTEXT.md D-01..D-07.
+ *
+ * The single write path behind the unified "Log a wear" form (built in
+ * 84-04): logs a photo-less wear on any past-or-today date with a note and
+ * visibility. It is a DEDICATED action rather than an extension of
+ * `markAsWorn` — `markAsWorn` calls `logWearEvent`, whose
+ * `onConflictDoNothing` silently swallows a duplicate-day insert AND still
+ * logs an activity (RESEARCH Pitfall 6). Following `logWearWithPhoto`'s
+ * explicit insert + 23505 catch avoids that bug by construction.
+ * `markAsWorn` and `logWearWithPhoto` are left untouched — this path does
+ * not call either (84-CONTEXT.md "Claude's Discretion").
+ *
+ * Pipeline: auth -> zod -> IDOR watch-ownership check -> D-02 future-date
+ * reject -> insert (catch 23505) -> D-06 activity gate -> cache invalidation.
+ *
+ * Security (threat model):
+ * - T-84-IDOR: `watchDAL.getWatchById(user.id, watchId)` runs before any
+ *   write and returns the uniform 'Watch not found' on miss. The insert
+ *   always carries the server-resolved `user.id`, never a client value.
+ * - T-84-DATE (D-02): both `wornDate` and `today` are client-supplied
+ *   (260622-exo — the server MUST NOT compute "today" itself; see
+ *   src/lib/wear.ts header comment). The server independently rejects
+ *   `wornDate > today` — it never trusts the client's `<input max>`.
+ * - T-84-DUP (D-05): the `wear_events_unique_day` DB constraint is the
+ *   backstop. An explicit PG 23505 catch (NOT onConflictDoNothing) returns
+ *   the friendly error and logs no activity.
+ * - T-84-MASS: `.strict()` schema rejects unknown keys (e.g. photoUrl,
+ *   wearEventId); the wear id is generated server-side via
+ *   `crypto.randomUUID()` and photoUrl is hard-coded null.
+ */
+export async function logBackfillWear(input: {
+  watchId: string
+  wornDate: string
+  today: string
+  note: string | null
+  visibility: WearVisibility
+}): Promise<ActionResult<{ wearEventId: string }>> {
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
+    return { success: false, error: 'Not authenticated' }
+  }
+
+  const parsed = logBackfillWearSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid input' }
+  }
+
+  // IDOR defense (matches markAsWorn / logWearWithPhoto): scope the watch
+  // lookup to the caller; return the uniform 'Watch not found' for
+  // cross-user watch IDs so existence is not leaked.
+  const watch = await watchDAL.getWatchById(user.id, parsed.data.watchId)
+  if (!watch) {
+    return { success: false, error: 'Watch not found' }
+  }
+
+  // D-02: both dates are client-supplied; the server never derives "today"
+  // itself (260622-exo / src/lib/wear.ts WARNING). Lexical comparison is
+  // chronological for zero-padded ISO YYYY-MM-DD strings.
+  if (parsed.data.wornDate > parsed.data.today) {
+    return { success: false, error: "Can't log a wear for a future date." }
+  }
+
+  // The id is generated server-side because no Storage path needs a
+  // client-supplied id for this photo-less path.
+  const wearEventId = crypto.randomUUID()
+  const note = parsed.data.note?.trim() ? parsed.data.note.trim() : null
+
+  try {
+    await wearEventDAL.logWearEventWithPhoto({
+      id: wearEventId,
+      userId: user.id,
+      watchId: parsed.data.watchId,
+      wornDate: parsed.data.wornDate,
+      note,
+      photoUrl: null,
+      visibility: parsed.data.visibility,
+    })
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code
+    if (code === '23505') {
+      return { success: false, error: 'Already logged this watch on that date.' }
+    }
+    console.error('[logBackfillWear] insert failed:', err)
+    return { success: false, error: "Couldn't log that wear." }
+  }
+
+  // D-06: only wears dated "today" write feed activity. Past-date backfills
+  // intentionally write NO activity, because the feed sorts by createdAt —
+  // a backdated wear would otherwise surface to followers as new today.
+  if (parsed.data.wornDate === parsed.data.today) {
+    try {
+      await logActivity(user.id, 'watch_worn', parsed.data.watchId, {
+        brand: watch.brand,
+        model: watch.model,
+        imageUrl: watch.imageUrl ?? null,
+        visibility: parsed.data.visibility,
+      })
+    } catch (err) {
+      console.error('[logBackfillWear] activity log failed (non-fatal):', err)
+    }
+  }
+
+  revalidatePath('/')
+  // Read-your-own-writes: the owner immediately re-renders their own Worn
+  // tab after logging a backfill wear. updateTag expires the tag for every
+  // viewer, so the cross-user fan-out (RESEARCH Pitfall 2) is also covered —
+  // this does not additionally need revalidateTag(tag, 'max').
+  const ownerProfile = await profilesDAL.getProfileById(user.id)
+  if (ownerProfile?.username) {
+    updateTag(`profile:${ownerProfile.username}`)
+  }
+
+  return { success: true, data: { wearEventId } }
 }
 
 /**
