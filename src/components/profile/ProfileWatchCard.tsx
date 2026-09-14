@@ -12,6 +12,9 @@ import { getSafeImageUrl } from '@/lib/images'
 import { daysSince, SLEEPING_BEAUTY_DAYS } from '@/lib/wear'
 import { toggleLikeAction } from '@/app/actions/reactions'
 import { WatchCommentSheet } from '@/components/watch/WatchCommentSheet'
+import { WatchCardOverflowMenu } from '@/components/profile/WatchCardOverflowMenu'
+import { MarkPreviouslyOwnedDialog } from '@/components/profile/MarkPreviouslyOwnedDialog'
+import { formatDisposalBadge } from '@/lib/disposal'
 import type { Watch } from '@/lib/types'
 
 interface ProfileWatchCardProps {
@@ -57,11 +60,17 @@ export function ProfileWatchCard({
   // Phase 27 (VIS-08, D-15..D-21) — status-driven price line.
   // Replaces the legacy wishlist-only `Target: $X` block (was at lines 85-89).
   // Single rendering path for all card variants:
-  //   - owned/sold (paid bucket) → "Paid: $X" if pricePaid, else "Market: $X" if marketPrice, else hide
+  //   - owned/previously_owned (paid bucket) → "Paid: $X" if pricePaid, else "Market: $X" if marketPrice, else hide
   //   - wishlist/grail (target bucket) → "Target: $X" if targetPrice, else "Market: $X" if marketPrice, else hide
   // marketPrice is ONLY surfaced as a fallback (D-20) — v6.0 Market Value owns
   // first-class market display.
   const isWishlistLike = watch.status === 'wishlist' || watch.status === 'grail'
+  // Phase 85 (LIFE-05, D-16) — muted card + reason·date badge; see the CSS
+  // chain contract this extends (isWishlistLike precedent, wear badge/line).
+  const isPreviouslyOwned = watch.status === 'previously_owned'
+  const disposalBadge = isPreviouslyOwned
+    ? formatDisposalBadge(watch.disposalReason, watch.disposalDate)
+    : null
   const primary = isWishlistLike ? watch.targetPrice : watch.pricePaid
   const primaryLabel = isWishlistLike ? 'Target' : 'Paid'
   const priceLine =
@@ -79,6 +88,8 @@ export function ProfileWatchCard({
   const [likePending, startLikeTransition] = useTransition()
   const [commentCountState, setCommentCountState] = useState(commentCount ?? 0)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Phase 85 (LIFE-03, D-05) — disposal dialog, opened from WatchCardOverflowMenu.
+  const [disposeOpen, setDisposeOpen] = useState(false)
 
   function handleLikeClick(e: React.MouseEvent) {
     e.preventDefault() // D-02: stop <Link> navigation
@@ -118,7 +129,12 @@ export function ProfileWatchCard({
     <>
     <Link href={`/w/${watch.id}`}>
       {/* h-full flex flex-col on Card — NOT height:auto — is the equal-height key */}
-      <Card className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg h-full flex flex-col">
+      <Card
+        className={cn(
+          'group cursor-pointer overflow-hidden transition-shadow hover:shadow-lg h-full flex flex-col',
+          isPreviouslyOwned && 'opacity-60',
+        )}
+      >
         {/* Brand + model ABOVE image (D-04) */}
         <div className="px-3 pt-2 pb-1">
           <p className="text-sm font-normal text-muted-foreground truncate">{watch.brand}</p>
@@ -139,18 +155,39 @@ export function ProfileWatchCard({
               <WatchIcon className="size-10 text-muted-foreground/40" />
             </div>
           )}
-          {/* Wear badge — OWNED watches only (D-12, PLSH-03) */}
-          {!isWishlistLike && (isWornToday || isStale) && (
-            <span
-              className={cn(
-                'absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-normal',
-                isWornToday
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-background text-foreground shadow ring-1 ring-border',
-              )}
-            >
-              {isWornToday ? 'Worn today' : 'Not worn recently'}
-            </span>
+          {/* Top-left overlay: previously-owned reason·date badge (D-16) is
+              mutually exclusive with the wear badge (D-12, PLSH-03) — the
+              two never render together on the same corner. */}
+          {isPreviouslyOwned ? (
+            disposalBadge && (
+              <span className="absolute top-2 left-2 z-10 rounded-full bg-background/90 px-2 py-0.5 text-xs font-normal text-muted-foreground shadow ring-1 ring-border">
+                {disposalBadge}
+              </span>
+            )
+          ) : (
+            !isWishlistLike &&
+            (isWornToday || isStale) && (
+              <span
+                className={cn(
+                  'absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-normal',
+                  isWornToday
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-background text-foreground shadow ring-1 ring-border',
+                )}
+              >
+                {isWornToday ? 'Worn today' : 'Not worn recently'}
+              </span>
+            )
+          )}
+          {/* Owner-only ⋯ menu (D-05/D-16) — top-right, opposite corner from
+              the reason·date badge/wear badge. */}
+          {isOwner && (
+            <WatchCardOverflowMenu
+              watchId={watch.id}
+              status={watch.status}
+              onMarkPreviouslyOwned={() => setDisposeOpen(true)}
+              className="absolute top-2 right-2 z-10"
+            />
           )}
           {/* Non-owner engagement chips — D-03: gated on !isOwner.
               UAT-revised D-01: bottom-RIGHT circular chips, no scrim band; each chip carries its
@@ -212,8 +249,9 @@ export function ProfileWatchCard({
               {tag}
             </Badge>
           )}
-          {/* Wear line — OWNED watches only (D-12, PLSH-03) */}
-          {!isWishlistLike && (
+          {/* Wear line — OWNED watches only (D-12, PLSH-03); suppressed for
+              previously-owned cards (D-16 — no wear actions on these cards) */}
+          {!isWishlistLike && !isPreviouslyOwned && (
             <p className="text-xs text-muted-foreground">{lastWornLabel}</p>
           )}
           {priceLine && (
@@ -260,6 +298,17 @@ export function ProfileWatchCard({
         watch={watch}
         viewerId={viewerId ?? null}
         onSuccess={handleCommentSuccess}
+      />
+    )}
+    {/* Disposal dialog (LIFE-03, D-05) — rendered OUTSIDE the <Link>, same
+        placement as WatchCommentSheet above, so the dialog's own clicks
+        (Cancel / submit / overlay) don't React-bubble through the tree into
+        the Link's onClick and navigate to /w/[id]. */}
+    {isOwner && watch.status === 'owned' && (
+      <MarkPreviouslyOwnedDialog
+        open={disposeOpen}
+        onOpenChange={setDisposeOpen}
+        watch={watch}
       />
     )}
     </>
