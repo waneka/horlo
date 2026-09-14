@@ -27,6 +27,13 @@ interface WearCardProps {
   model: string
   /** brand/model → /watch/[watchId] link */
   watchId: string
+  /**
+   * Phase 85 D-14 — false when the viewer can't open /w/[watchId] (visitor
+   * viewing a wear of a previously-owned watch, which would 404 for them).
+   * Defaults to true — every other WearCard consumer keeps today's linking
+   * behavior unchanged.
+   */
+  watchLinkable?: boolean
   viewerId: string | null
   wearEventId: string
   initialLiked: boolean
@@ -101,6 +108,7 @@ export function WearCard({
   brand,
   model,
   watchId,
+  watchLinkable = true,
   viewerId,
   wearEventId,
   initialLiked,
@@ -161,6 +169,7 @@ export function WearCard({
             avatarUrl={avatarUrl}
             createdAt={createdAt}
             watchId={watchId}
+            watchLinkable={watchLinkable}
           />
         ) : signedUrl !== null ? (
           <WearPhotoClient
@@ -174,6 +183,7 @@ export function WearCard({
             avatarUrl={avatarUrl}
             createdAt={createdAt}
             watchId={watchId}
+            watchLinkable={watchLinkable}
           />
         ) : (
           <WearDetailHero
@@ -186,6 +196,7 @@ export function WearCard({
             avatarUrl={avatarUrl}
             createdAt={createdAt}
             watchId={watchId}
+            watchLinkable={watchLinkable}
           />
         )}
 

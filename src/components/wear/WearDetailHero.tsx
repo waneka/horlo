@@ -47,6 +47,11 @@ interface WearPhotoOverlaysProps {
   hasPhoto: boolean
   /** brand/model → /watch/[watchId] link (D-01) */
   watchId: string
+  /**
+   * Phase 85 D-14 — false when the viewer can't open /w/[watchId] (visitor +
+   * previously-owned watch). Defaults to true.
+   */
+  watchLinkable?: boolean
 }
 
 /**
@@ -67,6 +72,7 @@ export function WearPhotoOverlays({
   model,
   hasPhoto,
   watchId,
+  watchLinkable = true,
 }: WearPhotoOverlaysProps): JSX.Element {
   const textClass = hasPhoto ? 'text-white' : 'text-foreground'
 
@@ -107,14 +113,21 @@ export function WearPhotoOverlays({
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 40%)' }}
       >
         <div className="flex flex-col p-3 pointer-events-auto">
-          <Link
-            href={`/w/${watchId}`}
-            className={cn('text-sm hover:opacity-80', textClass)}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="font-semibold">{brand}</span>
-            <span className="block">{model}</span>
-          </Link>
+          {watchLinkable ? (
+            <Link
+              href={`/w/${watchId}`}
+              className={cn('text-sm hover:opacity-80', textClass)}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="font-semibold">{brand}</span>
+              <span className="block">{model}</span>
+            </Link>
+          ) : (
+            <div className={cn('text-sm', textClass)}>
+              <span className="font-semibold">{brand}</span>
+              <span className="block">{model}</span>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -135,6 +148,7 @@ export function WearDetailHero({
   avatarUrl,
   createdAt,
   watchId,
+  watchLinkable = true,
 }: {
   watchImageUrl: string | null
   brand: string
@@ -145,6 +159,8 @@ export function WearDetailHero({
   avatarUrl: string | null
   createdAt: Date
   watchId: string
+  /** Phase 85 D-14 — see WearPhotoOverlaysProps.watchLinkable. Defaults to true. */
+  watchLinkable?: boolean
 }): JSX.Element {
   if (watchImageUrl) {
     return (
@@ -165,6 +181,7 @@ export function WearDetailHero({
           model={model}
           hasPhoto={true}
           watchId={watchId}
+          watchLinkable={watchLinkable}
         />
       </div>
     )
@@ -185,6 +202,7 @@ export function WearDetailHero({
         model={model}
         hasPhoto={false}
         watchId={watchId}
+        watchLinkable={watchLinkable}
       />
     </div>
   )

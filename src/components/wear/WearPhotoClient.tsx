@@ -59,6 +59,7 @@ export function WearPhotoClient({
   avatarUrl,
   createdAt,
   watchId,
+  watchLinkable = true,
 }: {
   signedUrl: string
   altText: string
@@ -70,6 +71,8 @@ export function WearPhotoClient({
   avatarUrl: string | null
   createdAt: Date
   watchId: string
+  /** Phase 85 D-14 — see WearPhotoOverlaysProps.watchLinkable. Defaults to true. */
+  watchLinkable?: boolean
 }) {
   const [status, setStatus] = useState<'pending' | 'loaded' | 'failed'>('pending')
   const [retryCount, setRetryCount] = useState(0)
@@ -105,6 +108,7 @@ export function WearPhotoClient({
             model={model}
             hasPhoto={true}
             watchId={watchId}
+            watchLinkable={watchLinkable}
           />
         </div>
       )
@@ -125,6 +129,7 @@ export function WearPhotoClient({
           model={model}
           hasPhoto={false}
           watchId={watchId}
+          watchLinkable={watchLinkable}
         />
       </div>
     )
@@ -171,6 +176,7 @@ export function WearPhotoClient({
           model={model}
           hasPhoto={true}
           watchId={watchId}
+          watchLinkable={watchLinkable}
         />
       )}
     </div>

@@ -25,6 +25,8 @@ interface WearVideoClientProps {
   avatarUrl: string | null
   createdAt: Date
   watchId: string
+  /** Phase 85 D-14 — see WearPhotoOverlaysProps.watchLinkable. Defaults to true. */
+  watchLinkable?: boolean
 }
 
 export function WearVideoClient({
@@ -38,6 +40,7 @@ export function WearVideoClient({
   avatarUrl,
   createdAt,
   watchId,
+  watchLinkable = true,
 }: WearVideoClientProps) {
   const [paused, setPaused] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -72,6 +75,7 @@ export function WearVideoClient({
           model={model}
           hasPhoto={!!signedPosterUrl}
           watchId={watchId}
+          watchLinkable={watchLinkable}
         />
       </div>
     )
@@ -114,6 +118,7 @@ export function WearVideoClient({
         model={model}
         hasPhoto={true}
         watchId={watchId}
+        watchLinkable={watchLinkable}
       />
     </div>
   )
