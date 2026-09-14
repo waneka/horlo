@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-13T21:10:04.496Z"
-last_activity: 2026-09-13 -- Phase 85 planning complete
+last_updated: "2026-09-14T03:07:34.312Z"
+last_activity: 2026-09-14
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 22
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
-stopped_at: Phase 85 planned — 11 plans / 7 waves, plan-checker passed (iteration 2); ready to execute
 ---
 
 # Project State
@@ -21,14 +20,14 @@ stopped_at: Phase 85 planned — 11 plans / 7 waves, plan-checker passed (iterat
 See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & Wear Depth STARTED; see §Current Milestone)
 
 **Core value:** A collector can evaluate any watch against their collection and get a meaningful, preference-aware answer about whether it adds something or just duplicates what they already own.
-**Current focus:** Phase 85 — collection lifecycle
+**Current focus:** Phase 85 — collection-lifecycle
 
 ## Current Position
 
-Phase: 85
-Plan: Not started
+Phase: 85 (collection-lifecycle) — EXECUTING
+Plan: 2 of 11
 Status: Ready to execute
-Last activity: 2026-09-13 -- Phase 85 planning complete
+Last activity: 2026-09-14
 
 **Upcoming phases:**
 
@@ -113,6 +112,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 85 Plan 01 (DB migration + Drizzle mirror, 2026-09-14):** `watches.status` renamed `sold` → `previously_owned` via a single idempotent Supabase migration (`20260913000000_phase85_collection_lifecycle.sql`) — guarded `CREATE TYPE` (pg_type existence check), `ADD COLUMN IF NOT EXISTS` for the 3 new nullable disposal columns, and a WHERE-scoped `UPDATE` backfill; applied twice against local Supabase with the verify-query printing `0|3|1` both times, proving idempotency. `disposal_reason` is a pgEnum (matches the `condition_grade`/`box_papers_status` precedent) rather than text+CHECK; `watches.status` itself stays plain `text{enum:[...]}` — no DB CHECK/pgEnum conversion, since the rename requires zero column-type DDL. The `comments_select`/`comments_insert` RLS policies were re-created (`DROP POLICY IF EXISTS` + `CREATE POLICY`) with `previously_owned` substituted for `sold`, verbatim otherwise. `divestments` table/rows/RLS/FKs left completely untouched (D-03) — no `DROP TABLE`/`DROP TYPE`/`DROP COLUMN`/`DROP CONSTRAINT` anywhere in the file. A real `sold` fixture row was created on local user `vintage_anna` (note: local seed username is underscore-separated, not the hyphenated `vintage-anna` the plan referenced) before the first apply, confirmed migrated to `previously_owned`/`disposal_reason='sold'` afterward, and intentionally left in place for Plan 85-11's UI walk. `npm run build` is intentionally NOT this plan's gate — it is expected to fail on remaining `'sold'` literals in `src/data/watches.ts` and `src/app/actions/divestments.ts` until Plans 85-02/85-03 land; 85-04 owns the build-green gate. LIFE-01/LIFE-02 marked complete in REQUIREMENTS.md.
 
 **Phase 84 Plan 07 (checkpoint resolved via prod walk, 2026-09-13):** The Task 2 human-verify checkpoint — a local-dev walk of all four WEAR requirements required by CLAUDE.md's Local-First Development gate — was approved, but not via the local walk this plan specifies. The operator explicitly invoked CLAUDE.md's stated exception ("explicit user request to skip local verification"), pushed Phase 84 plans 01-06 to prod (`6fa86db9`), walked the same checklist against prod, and approved from there. Task 3 (local SQL assertions against a local backfill wear + local today-dated Followers wear) was consequently marked SKIPPED rather than executed against nonexistent local fixtures or against prod (prohibited by this plan's threat model T-84-08). Two follow-up quick tasks (`260913-cae` add owner-only wear delete, `260913-csl` move delete into the `/wear/[id]` overflow menu) shipped during the prod walk and were used to clean up prod test wears. The 9 local-only `phase 84 walk fixture` rows from Task 1 remain in the local DB, untouched and inert. WEAR-01..04 were already complete in REQUIREMENTS.md from prior plans — not re-edited by this plan. Phase 84 is 7/7 plans complete and ready for `/gsd:verify-work`; `phase.complete` intentionally not run by this plan (orchestrator's responsibility after verification).
 
@@ -338,6 +339,7 @@ None.
 | Phase 84 P03 | 10min | 2 tasks | 5 files |
 | Phase 84 P05 | ~25min | 2 tasks | 2 files |
 | Phase 84 P07 | ~10min | 3 tasks | 0 files |
+| Phase 85 P01 | ~20min | 3 tasks | 2 files |
 
 ## Session Continuity
 
