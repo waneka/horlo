@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-14T04:27:24.639Z"
+last_updated: "2026-09-14T05:13:45.985Z"
 last_activity: 2026-09-14
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 20
   percent: 50
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 85 (collection-lifecycle) — EXECUTING
-Plan: 9 of 11
+Plan: 10 of 11
 Status: Ready to execute
 Last activity: 2026-09-14
 
@@ -359,6 +359,7 @@ None.
 | Phase 85 P06 | ~25min | 2 tasks | 3 files |
 | Phase 85 P07 | ~30min | 2 tasks | 7 files |
 | Phase 85 P08 | ~35min | 2 tasks | 8 files |
+| Phase 85 P09 | ~25min | 3 tasks | 8 files |
 
 ## Session Continuity
 
