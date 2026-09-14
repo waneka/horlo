@@ -226,9 +226,10 @@ describe('WatchForm — TEST-06 form flow', () => {
 
   it('status default is wishlist for new watch creation', () => {
     render(<WatchForm mode="create" />)
-    // The Select trigger displays the current status.
+    // The Select trigger displays the current status's human label
+    // (Phase 85 D-07 — WATCH_STATUS_LABELS, not the raw enum string).
     // Default value is 'wishlist' per initialFormData.status.
-    expect(screen.getByText('wishlist')).toBeInTheDocument()
+    expect(screen.getByText('Wishlist')).toBeInTheDocument()
   })
 })
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -20,10 +20,12 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CatalogPhotoUploader } from './CatalogPhotoUploader'
+import { DisposalFields } from './DisposalFields'
 import { addWatch, editWatch } from '@/app/actions/watches'
 import { celebratePromotion } from '@/lib/celebrate'
 import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
 import { canonicalize, defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
+import { todayLocalISO } from '@/lib/wear'
 import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
 import {
   COMPLICATIONS,
@@ -33,6 +35,7 @@ import {
   STRAP_TYPES,
   CRYSTAL_TYPES,
   WATCH_STATUSES,
+  WATCH_STATUS_LABELS,
   CONDITION_GRADES,
   CONDITION_GRADE_LABELS,
   CURRENCY_CODES,
@@ -180,6 +183,11 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
           serviceHistory: watch.serviceHistory,
           paidCurrency: watch.paidCurrency,
           purchaseDate: watch.purchaseDate,
+          // Phase 85 D-02/D-04 — seed disposal metadata so an already
+          // previously-owned watch's fields are editable (correction/undo).
+          disposalReason: watch.disposalReason,
+          sellPrice: watch.sellPrice,
+          disposalDate: watch.disposalDate,
         }
       : {
           ...initialFormData,
@@ -189,6 +197,23 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Phase 85 D-07 — the dialog (MarkPreviouslyOwnedDialog) is the only way to
+  // dispose of a watch; this form can never manually select "Previously
+  // owned" for a watch that isn't already in that status. A watch that IS
+  // already previously owned keeps the option so its status (and disposal
+  // fields) stay correctable/undo-able here.
+  const isEditingPreviouslyOwned = watch?.status === 'previously_owned'
+  const statusOptions = WATCH_STATUSES.filter((s) => s !== 'previously_owned' || isEditingPreviouslyOwned)
+
+  // Phase 85 — this edit page is server-rendered; computing the browser-local
+  // "today" during SSR would disagree with the client's own local calendar
+  // day on hydration (React #418 guard). Resolve it client-side only, after
+  // mount, for the disposal date input's `max`.
+  const [disposalMaxDate, setDisposalMaxDate] = useState('')
+  useEffect(() => {
+    setDisposalMaxDate(todayLocalISO())
+  }, [])
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
 
@@ -197,6 +222,15 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
     }
     if (!formData.model.trim()) {
       newErrors.model = 'Model is required'
+    }
+    // Phase 85 D-06 — mirror the disposal dialog's own future-date guard for
+    // this form's disposal fields; the server independently re-validates.
+    if (
+      formData.status === 'previously_owned' &&
+      formData.disposalDate &&
+      formData.disposalDate > todayLocalISO()
+    ) {
+      newErrors.disposalDate = "Disposal date can't be in the future."
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -275,7 +309,7 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
 
       const result =
         mode === 'edit' && watch
-          ? await editWatch(watch.id, formData)
+          ? await editWatch(watch.id, { ...formData, today: todayLocalISO() })
           : await addWatch(submitData)
 
       if (result.success && mode === 'create') {
@@ -346,7 +380,7 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
   const isOwned = formData.status === 'owned'
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-8">
       {/* Basic Info */}
       <Card>
         <CardHeader>
@@ -455,18 +489,60 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string) => WATCH_STATUS_LABELS[value as WatchStatus] ?? value}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {WATCH_STATUSES.map((status) => (
+                  {statusOptions.map((status) => (
                     <SelectItem key={status} value={status}>
-                      <span className="capitalize">{status}</span>
+                      {WATCH_STATUS_LABELS[status]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           </div>
+
+          {/* Phase 85 D-04/D-07 — only rendered when editing a watch that is
+              already previously owned. Reuses the exact field markup the
+              disposal dialog (MarkPreviouslyOwnedDialog) uses, so correcting
+              or undoing a disposal never forks a second copy of these
+              fields. */}
+          {isEditingPreviouslyOwned && !lockedStatus && (
+            <div className="space-y-2 sm:col-span-2">
+              <DisposalFields
+                idPrefix="edit-disposal"
+                reason={formData.disposalReason ?? null}
+                onReasonChange={(r) =>
+                  setFormData((prev) => ({ ...prev, disposalReason: r }))
+                }
+                disposalDate={formData.disposalDate ?? ''}
+                onDisposalDateChange={(v) =>
+                  setFormData((prev) => ({ ...prev, disposalDate: v || undefined }))
+                }
+                sellPrice={formData.sellPrice != null ? String(formData.sellPrice) : ''}
+                onSellPriceChange={(v) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    sellPrice: v === '' ? undefined : Number(v),
+                  }))
+                }
+                maxDate={disposalMaxDate}
+                disabled={formData.status !== 'previously_owned'}
+              />
+              {formData.status !== 'previously_owned' && (
+                <p className="text-xs text-muted-foreground">
+                  Changing status will clear the disposal details recorded above.
+                </p>
+              )}
+              {errors.disposalDate && (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors.disposalDate}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="imageUrl">Image URL</Label>
