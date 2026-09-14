@@ -380,11 +380,16 @@ export async function ProfileTabContent({
       Object.fromEntries(countsMap)
     const watches = await signCoverUrls(rawWatches)
     const ownedWatches = watches.filter((w) => w.status === 'owned')
+    // Phase 85 D-13 — previously-owned watches (and their disposal reason/
+    // price/date) are owner-only; visitors receive an empty array, never a
+    // client-side-filtered list.
+    const previouslyOwnedWatches = isOwner ? watches.filter((w) => w.status === 'previously_owned') : []
 
     if (tab === 'collection') {
       return (
         <CollectionTabContent
           watches={ownedWatches}
+          previouslyOwnedWatches={previouslyOwnedWatches}
           wearDates={Object.fromEntries(wearDates)}
           isOwner={isOwner}
           hasUrlExtract={hasUrlExtract}
@@ -408,10 +413,14 @@ export async function ProfileTabContent({
       )
     }
     // tab === 'notes' — per-note visibility (D-13): non-owners only see notes_public !== false
+    // Phase 85 D-14 — a visitor's Notes tab never lists a previously-owned
+    // watch: NoteRow links to /w/[id], which 404s for a non-owner viewer of a
+    // previously-owned watch (D-14's visitor-visibility predicate excludes
+    // it entirely).
     const notedWatches = watches.filter(
       (w) =>
         Boolean(w.notes && w.notes.trim()) &&
-        (isOwner || w.notesPublic !== false),
+        (isOwner || (w.notesPublic !== false && w.status !== 'previously_owned')),
     )
     return (
       <NotesTabContent
