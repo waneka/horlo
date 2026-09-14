@@ -30,8 +30,8 @@ export function validateReturnTo(value: unknown): string | null {
  * Phase 28 D-02 / D-13 — status → profile-tab mapping. The default
  * destination when ?returnTo= is null OR invalid.
  *
- * - status ∈ {'wishlist', 'grail'} → /u/{username}/wishlist
- * - status ∈ {'owned', 'sold'}     → /u/{username}/collection
+ * - status ∈ {'wishlist', 'grail'}            → /u/{username}/wishlist
+ * - status ∈ {'owned', 'previously_owned'}    → /u/{username}/collection
  *
  * When username is null (data integrity issue — should not happen at v4.0+
  * since signup trigger guarantees a username), the function returns '/' as

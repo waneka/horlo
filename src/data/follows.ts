@@ -245,7 +245,7 @@ export interface FollowedOwner {
  *     Kept explicit for symmetry with the broad roster even though follower !=
  *     followee by definition.
  *   - D-05b: inArray(watches.status, ['owned','wishlist','grail']) — excludes
- *     'sold' so the chip-count matches "owns this" semantics.
+ *     'previously_owned' so the chip-count matches "owns this" semantics.
  *   - D-07 / FOLL-02 / Pitfall 1: innerJoin(follows, and(eq(followerId,
  *     viewerId), eq(followingId, profiles.id))) — viewer-as-follower ->
  *     owner-as-followee. NOT mutual; NOT reversed. Test 8 in

@@ -54,7 +54,7 @@ export interface CatalogCollector {
  *     NEW second-layer gate; does NOT exist in getMostFollowedCollectors
  *   - T-39b-04: sql`${profiles.id} != ${viewerId}` — viewer self-exclusion
  *   - Q1 RECOMMEND / A1: inArray(watches.status, ['owned','wishlist','grail'])
- *     excludes 'sold' so the count matches "X collectors own this" copy
+ *     excludes 'previously_owned' so the count matches "X collectors own this" copy
  *
  * Pitfalls:
  *   - Pitfall 3 — A single user can have multiple rows per catalog (e.g.
@@ -93,7 +93,7 @@ export async function getCollectorsForCatalog(
         eq(profileSettings.profilePublic, true),    // T-39b-01 layer 1
         eq(profileSettings.collectionPublic, true), // T-39b-01 layer 2 (D-39b-09 NEW)
         sql`${profiles.id} != ${viewerId}`,         // T-39b-04 self-exclusion
-        inArray(watches.status, ['owned', 'wishlist', 'grail']), // A1 / Q1 — exclude sold
+        inArray(watches.status, ['owned', 'wishlist', 'grail']), // A1 / Q1 — exclude previously_owned
       ),
     )
     .orderBy(desc(watches.createdAt), asc(profiles.username))
@@ -112,7 +112,7 @@ export async function getCollectorsForCatalog(
         eq(profileSettings.profilePublic, true),    // T-39b-01 layer 1
         eq(profileSettings.collectionPublic, true), // T-39b-01 layer 2 (D-39b-09 NEW)
         sql`${profiles.id} != ${viewerId}`,         // T-39b-04 self-exclusion
-        inArray(watches.status, ['owned', 'wishlist', 'grail']), // A1 / Q1 — exclude sold
+        inArray(watches.status, ['owned', 'wishlist', 'grail']), // A1 / Q1 — exclude previously_owned
       ),
     )
   const totalCount = totalRows[0]?.count ?? 0

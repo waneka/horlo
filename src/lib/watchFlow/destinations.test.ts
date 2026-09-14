@@ -64,9 +64,9 @@ describe('defaultDestinationForStatus (Phase 28 D-02/D-13)', () => {
     expect(defaultDestinationForStatus('grail', 'twwaneka')).toBe('/u/twwaneka/wishlist')
   })
 
-  it('routes owned / sold to /u/{username}/collection', () => {
+  it('routes owned / previously_owned to /u/{username}/collection', () => {
     expect(defaultDestinationForStatus('owned', 'twwaneka')).toBe('/u/twwaneka/collection')
-    expect(defaultDestinationForStatus('sold', 'twwaneka')).toBe('/u/twwaneka/collection')
+    expect(defaultDestinationForStatus('previously_owned', 'twwaneka')).toBe('/u/twwaneka/collection')
   })
 
   it('returns / as soft fallback when username is null', () => {

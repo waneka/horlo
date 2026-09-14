@@ -11,7 +11,7 @@ const statuses: { value: StatusFilter; label: string }[] = [
   { value: 'owned', label: 'Owned' },
   { value: 'wishlist', label: 'Wishlist' },
   { value: 'grail', label: 'Grail' },
-  { value: 'sold', label: 'Sold' },
+  { value: 'previously_owned', label: 'Previously owned' },
 ]
 
 export function StatusToggle() {

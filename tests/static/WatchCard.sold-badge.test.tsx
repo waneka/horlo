@@ -11,8 +11,8 @@ import { readFileSync } from 'node:fs'
 describe('WatchCard sold badge (Phase 37)', () => {
   const source = readFileSync('src/components/watch/WatchCard.tsx', 'utf8')
 
-  it('uses ternary variant for sold status: secondary vs outline (V-13; D-14)', () => {
-    expect(source).toContain(`watch.status === 'sold' ? 'secondary' : 'outline'`)
+  it('uses ternary variant for previously_owned status: secondary vs outline (V-13; D-14)', () => {
+    expect(source).toContain(`watch.status === 'previously_owned' ? 'secondary' : 'outline'`)
   })
 
   it('does NOT use hardcoded variant="outline" on {watch.status} badge', () => {

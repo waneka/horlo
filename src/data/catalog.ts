@@ -454,7 +454,7 @@ const SIZE_BAND_MAP: Record<NonNullable<CatalogSearchFilters['size']>, [number, 
  *
  * Anti-N+1 viewer-state hydration (SRCH-10 / D-05): a SINGLE batched
  * inArray(watches.catalogId, topIds) keyed by viewerId — never per-row. 'owned'
- * wins over 'wishlist' for the same catalogId; 'sold' + 'grail' are NOT badged.
+ * wins over 'wishlist' for the same catalogId; 'previously_owned' + 'grail' are NOT badged.
  *
  * Pitfall 1 (reference normalization, per-token): each token's reference branch
  * normalizes via regex-strip; if the stripped form is empty the branch falls
@@ -700,7 +700,7 @@ export async function searchCatalogWatches({
     : []
 
   // D-05 resolution: 'owned' wins over 'wishlist' for the same catalogId.
-  // 'sold' + 'grail' are NOT badged.
+  // 'previously_owned' + 'grail' are NOT badged.
   const stateMap = new Map<string, 'owned' | 'wishlist'>()
   for (const row of stateRows) {
     if (!row.catalogId) continue
@@ -710,7 +710,7 @@ export async function searchCatalogWatches({
     } else if (row.status === 'wishlist' && prior !== 'owned') {
       stateMap.set(row.catalogId, 'wishlist')
     }
-    // 'sold' and 'grail' deliberately fall through — no badge.
+    // 'previously_owned' and 'grail' deliberately fall through — no badge.
   }
 
   return top.map((r) => ({
@@ -854,7 +854,7 @@ export async function searchCatalogForAddFlow({
     : []
 
   // D-05 resolution: 'owned' wins over 'wishlist' for the same catalogId.
-  // 'sold' + 'grail' are NOT badged.
+  // 'previously_owned' + 'grail' are NOT badged.
   const stateMap = new Map<string, 'owned' | 'wishlist'>()
   for (const row of stateRows) {
     if (!row.catalogId) continue
@@ -864,7 +864,7 @@ export async function searchCatalogForAddFlow({
     } else if (row.status === 'wishlist' && prior !== 'owned') {
       stateMap.set(row.catalogId, 'wishlist')
     }
-    // 'sold' and 'grail' deliberately fall through — no badge.
+    // 'previously_owned' and 'grail' deliberately fall through — no badge.
   }
 
   return top.map((r) => ({

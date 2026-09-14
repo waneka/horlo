@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
  * Pure presentation. Sections rendered in order:
  *   1. Cover photo (catalogImageUrl → extractedImageUrl → WatchIcon placeholder) [D-06]
  *   2. Read-only brand+model identity + inline reference/year inputs [D-07]
- *   3. Segmented status picker (owned / wishlist / grail — sold absent) [D-04, CONF-03]
+ *   3. Segmented status picker (owned / wishlist / grail — previously_owned absent) [D-04, CONF-03]
  *   4. Status-gated price field (Price paid / Target price) [WatchForm isOwned pattern, CONF-06]
  *   5. Ghost escape row: "Edit details" + "Start over" buttons [D-09, D-10]
  *   6. Primary CTA full-width: label resolves via CTA_LABELS[status] [D-10, CONF-08]
@@ -82,7 +82,7 @@ interface ConfirmStepProps {
   productionYear: number | undefined
   onProductionYearChange: (value: number | undefined) => void
   /**
-   * Status picker controlled value. Restricted union excludes 'sold' (CONF-03).
+   * Status picker controlled value. Restricted union excludes 'previously_owned' (CONF-03).
    * SEED-018: widened to include 'catalog-only' for admin-gated path; only rendered
    * when isAdmin=true (additive; backward compat preserved via isAdmin default false).
    */
