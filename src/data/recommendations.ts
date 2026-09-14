@@ -259,8 +259,8 @@ export async function getRecommendationsForViewer(
   }
   const seeds = rankedTop30.slice(0, SAMPLED_SEED_SIZE)
 
-  // 6. Build candidate pool. Exclude viewer's owned/wishlist/grail (C-02 +
-  //    normalized-dedupe per C-07).
+  // 6. Build candidate pool. Exclude viewer's owned/wishlist/grail/previously_owned
+  //    (C-02 + Phase 85 D-18) with normalized-dedupe per C-07.
   //
   // Phase 81 D-81-02 — keys on `${brandId}|${familyId}` when both FKs are
   // present (canonical identity, drift-immune), with `${brand}|${model}`
@@ -271,7 +271,12 @@ export async function getRecommendationsForViewer(
   const norm = excludeKey
   const excluded = new Set<string>()
   for (const v of viewerWatches) {
-    if (v.status === 'owned' || v.status === 'wishlist' || v.status === 'grail') {
+    if (
+      v.status === 'owned' ||
+      v.status === 'wishlist' ||
+      v.status === 'grail' ||
+      v.status === 'previously_owned'
+    ) {
       excluded.add(norm(v))
     }
   }

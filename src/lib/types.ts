@@ -1,4 +1,4 @@
-export type WatchStatus = 'owned' | 'wishlist' | 'sold' | 'grail'
+export type WatchStatus = 'owned' | 'wishlist' | 'previously_owned' | 'grail'
 
 /**
  * Phase 60 D-01: Domain type for a single watch photo.
@@ -28,6 +28,9 @@ export type CrystalType = 'sapphire' | 'mineral' | 'acrylic' | 'hesalite' | 'har
 // Phase 37 D-02: collector-grade condition pgEnum mirror (CAT-18)
 export type ConditionGrade =
   | 'mint' | 'near_mint' | 'excellent' | 'good' | 'fair' | 'poor'
+
+// Phase 85 D-02: disposal reason pgEnum mirror (LIFE-02)
+export type DisposalReason = 'sold' | 'lost' | 'gifted' | 'stolen' | 'traded'
 
 // Phase 37 D-03 / D-04: currency code pgEnum mirror (CAT-18)
 // Covers 99%+ of watch-collecting transactions per D-03 rationale.
@@ -116,6 +119,11 @@ export interface Watch {
   serviceHistory?: string
   paidCurrency?: CurrencyCode
   purchaseDate?: string   // ISO date string 'YYYY-MM-DD' — matches <input type="date"> + Postgres date type
+
+  // Phase 85 D-02 — disposal metadata (all nullable; LIFE-02)
+  disposalReason?: DisposalReason
+  sellPrice?: number
+  disposalDate?: string   // ISO 'YYYY-MM-DD'
 
   // Phase 27 — sort_order for wishlist drag-reorder (D-01).
   // Optional in domain type; DB-side default 0 ensures it's always present

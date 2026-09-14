@@ -49,6 +49,24 @@ vi.mock('@/db', () => ({
 
 import { getWatchByIdForViewer } from '@/data/watches'
 
+// Phase 85 D-14 — walk a real drizzle-orm SQL object's queryChunks recursively
+// to build one plain-text string of the generated WHERE clause. StringChunk
+// nodes expose `.value` (a string[]); nested SQL combinator nodes (and/or/eq)
+// expose their own `.queryChunks`. Anything else (Column, Param, Table, ...)
+// contributes no literal text and is skipped.
+function collectSqlText(chunk: unknown): string {
+  if (chunk && typeof chunk === 'object') {
+    const c = chunk as { value?: unknown; queryChunks?: unknown[] }
+    if (Array.isArray(c.value) && c.value.every((v) => typeof v === 'string')) {
+      return (c.value as string[]).join('')
+    }
+    if (Array.isArray(c.queryChunks)) {
+      return c.queryChunks.map(collectSqlText).join('')
+    }
+  }
+  return ''
+}
+
 const VIEWER = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 const OWNER = '11111111-2222-4333-8444-555555555555'
 const WATCH_ID = 'ffffffff-1111-4222-8333-444444444444'
@@ -176,19 +194,30 @@ describe('getWatchByIdForViewer — privacy matrix (unit)', () => {
     expect(result).toBeNull()
   })
 
-  it('Unit 8: non-owner + sold watch uses collection_public', async () => {
+  it('Unit 8: predicate excludes previously_owned for non-owners (D-14)', async () => {
+    watchRows = []
+    await getWatchByIdForViewer(VIEWER, WATCH_ID)
+    const whereCall = calls.find((c) => c.op === 'watch.where')
+    expect(whereCall).toBeDefined()
+    const sqlText = whereCall!.args.map(collectSqlText).join('')
+    expect(sqlText).toContain("IN ('owned','grail')")
+    expect(sqlText).not.toContain('previously_owned')
+    expect(sqlText).not.toContain("'sold'") // retired status literal, now only a disposal reason
+  })
+
+  it('Unit 8b: owner still receives own previously_owned watch', async () => {
     watchRows = [
       {
-        watch: makeWatchRow({ userId: OWNER, status: 'sold' }),
-        profilePublic: true,
-        collectionPublic: true,
+        watch: makeWatchRow({ userId: VIEWER, status: 'previously_owned' }),
+        profilePublic: false,
+        collectionPublic: false,
         wishlistPublic: false,
       },
     ]
     const result = await getWatchByIdForViewer(VIEWER, WATCH_ID)
     expect(result).not.toBeNull()
-    expect(result!.isOwner).toBe(false)
-    expect(result!.watch.status).toBe('sold')
+    expect(result!.isOwner).toBe(true)
+    expect(result!.watch.status).toBe('previously_owned')
   })
 
   it('Unit 9: non-owner + grail watch uses collection_public', async () => {

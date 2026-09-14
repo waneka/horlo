@@ -804,4 +804,80 @@ describe('getRecommendationsForViewer — Phase 81 D-81-02/03/05', () => {
     await expect(getRecommendationsForViewer('viewer-1')).resolves.toBeDefined()
     expect(brandLookupCalls).toBe(0)
   })
+
+  // Case 8 (Phase 85 D-18): viewer's previously_owned watch must also be
+  // excluded from their own rail — modeled on Case 5's exclusion-key-identity
+  // shape. A Speedmaster the viewer sold no longer counts as owned, but it
+  // still must not be re-recommended to them.
+  it('D-18: viewer\'s previously_owned watch excludes a matching catalog top-up row from the rail', async () => {
+    publicProfilesResolver = async () => [{ id: 'peer-0' }]
+
+    watchesByUser.set('viewer-1', [
+      // Viewer needs >=1 CURRENTLY owned watch or getRecommendationsForViewer
+      // bails early with [] (L-02) — unrelated to the D-18 assertion below.
+      mkWatch({
+        id: 'v-0',
+        brand: 'ViewerBrand',
+        model: 'ViewerModel',
+        status: 'owned',
+        brandId: 'viewer-brand-uuid',
+        familyId: 'viewer-family-uuid',
+      }),
+      mkWatch({
+        id: 'v-1',
+        brand: 'Omega',
+        model: 'Speedmaster',
+        status: 'previously_owned',
+        brandId: 'omega-uuid',
+        familyId: 'speedmaster-uuid',
+      }),
+    ])
+    watchesByUser.set('peer-0', [
+      mkWatch({
+        id: 'p0-w',
+        brand: 'Seiko',
+        model: 'SKX',
+        brandId: 'seiko-uuid',
+        familyId: 'skx-uuid',
+      }),
+    ])
+
+    brandNameLookupResolver = async () => []
+
+    catalogTopUpResolver = async () => [
+      {
+        id: 'cat-speedmaster',
+        brand: 'Omega',
+        model: 'Speedmaster',
+        brandId: 'omega-uuid',
+        familyId: 'speedmaster-uuid',
+        reference: '310.30.42.50.01.001',
+        imageUrl: null,
+        ownersCount: 50,
+        styleTags: ['chronograph'],
+      },
+      {
+        id: 'cat-seiko',
+        brand: 'Seiko',
+        model: 'SKX007',
+        brandId: 'seiko-uuid',
+        familyId: 'skx007-uuid',
+        reference: 'SKX',
+        imageUrl: null,
+        ownersCount: 99,
+        styleTags: ['sport'],
+      },
+    ]
+
+    setBucket(500)
+    const recs = await getRecommendationsForViewer('viewer-1')
+
+    // The disposed Speedmaster must NOT be re-recommended to the viewer.
+    const speedmasterRec = recs.find((r) => r.representativeWatchId === 'cat-speedmaster')
+    expect(speedmasterRec).toBeUndefined()
+
+    // The unrelated control row must still surface.
+    const seikoRec = recs.find((r) => r.representativeWatchId === 'cat-seiko')
+    expect(seikoRec).toBeDefined()
+  })
 })

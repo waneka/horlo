@@ -1,4 +1,4 @@
-import type { MovementType, ConditionGrade, BoxPapersStatus } from './types'
+import type { MovementType, ConditionGrade, BoxPapersStatus, WatchStatus, DisposalReason } from './types'
 
 // Style: What TYPE of watch is this? (functional category)
 export const STYLE_TAGS = [
@@ -131,9 +131,17 @@ export const CRYSTAL_TYPES = [
 export const WATCH_STATUSES = [
   'owned',
   'wishlist',
-  'sold',
   'grail',
+  'previously_owned',
 ] as const
+
+// Display labels for the WatchForm <Select> and previously-owned badges.
+export const WATCH_STATUS_LABELS: Record<WatchStatus, string> = {
+  owned: 'Owned',
+  wishlist: 'Wishlist',
+  grail: 'Grail',
+  previously_owned: 'Previously owned',
+}
 
 export type StyleTag = (typeof STYLE_TAGS)[number]
 export type DesignTrait = (typeof DESIGN_TRAITS)[number]
@@ -179,4 +187,17 @@ export const BOX_PAPERS_LABELS: Record<BoxPapersStatus, string> = {
   box_only:     'Box only',
   papers_only:  'Papers only',
   full_set:     'Full set',
+}
+
+// ----- Phase 85 D-02: disposal reason values (LIFE-02) -----
+// UI-SPEC radiogroup order. Mirrors pgEnum disposal_reason in src/db/schema.ts.
+export const DISPOSAL_REASONS = ['sold', 'traded', 'gifted', 'lost', 'stolen'] as const
+
+// Display labels for the reason radiogroup + reason-date badge (D-16).
+export const DISPOSAL_REASON_LABELS: Record<DisposalReason, string> = {
+  sold: 'Sold',
+  traded: 'Traded',
+  gifted: 'Gifted',
+  lost: 'Lost',
+  stolen: 'Stolen',
 }

@@ -56,6 +56,10 @@ function mapRowToWatch(row: WatchRow): Watch {
     serviceHistory: row.serviceHistory ?? undefined,
     paidCurrency: row.paidCurrency ?? undefined,
     purchaseDate: row.purchaseDate ?? undefined,
+    // Phase 85 D-02 — disposal metadata (all nullable; LIFE-02)
+    disposalReason: row.disposalReason ?? undefined,
+    sellPrice: row.sellPrice ?? undefined,
+    disposalDate: row.disposalDate ?? undefined,
   }
 }
 
@@ -106,6 +110,13 @@ function mapDomainToRow(data: Partial<Watch>): Partial<Omit<WatchRow, 'id' | 'us
   if ('serviceHistory' in data) row.serviceHistory = data.serviceHistory ?? null
   if ('paidCurrency' in data) row.paidCurrency = data.paidCurrency ?? null
   if ('purchaseDate' in data) row.purchaseDate = data.purchaseDate ?? null
+
+  // Phase 85 D-02 — disposal metadata (all nullable; LIFE-02). `'key' in data`
+  // idiom (not `!== undefined`) so an explicitly-present `undefined`/`null`
+  // value clears the column — required for 85-05's D-04 undo path.
+  if ('disposalReason' in data) row.disposalReason = data.disposalReason ?? null
+  if ('sellPrice' in data) row.sellPrice = data.sellPrice ?? null
+  if ('disposalDate' in data) row.disposalDate = data.disposalDate ?? null
 
   return row
 }
@@ -249,8 +260,10 @@ export async function getWatchById(
  *   - OUTER: RLS on watches is owner-only at anon-key.
  *   - INNER (this WHERE clause): self-include short-circuits (OR owner branch);
  *     non-owner rows require profile_public=true AND the per-tab flag for the
- *     watch's status (collection_public for owned/sold/grail, wishlist_public
- *     for wishlist).
+ *     watch's status (collection_public for owned/grail, wishlist_public
+ *     for wishlist). Phase 85 D-14: previously_owned watches are owner-only —
+ *     they are deliberately absent from the non-owner collection_public branch,
+ *     so visitors get null (notFound) for a previously-owned watch's /w/[ref].
  *
  * Missing watch and "exists but private" both return null — uniform path
  * avoids leaking existence of private watches (precedent: Phase 10 WYWT DAL).
@@ -287,10 +300,13 @@ export async function getWatchByIdForViewer(
           and(
             eq(profileSettings.profilePublic, true),
             // per-tab gate by status — wishlist uses wishlist_public,
-            // owned/sold/grail use collection_public
+            // owned/grail use collection_public. Phase 85 D-14: previously_owned
+            // is intentionally absent from this OR-branch — visitors never match
+            // on it here (the owner short-circuit above still returns the
+            // owner's own previously-owned watch).
             sql`(
               (${watches.status} = 'wishlist' AND ${profileSettings.wishlistPublic} = true)
-              OR (${watches.status} IN ('owned','sold','grail') AND ${profileSettings.collectionPublic} = true)
+              OR (${watches.status} IN ('owned','grail') AND ${profileSettings.collectionPublic} = true)
             )`,
           ),
         ),
