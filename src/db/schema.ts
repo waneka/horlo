@@ -75,6 +75,9 @@ export const boxPapersStatusEnum = pgEnum('box_papers_status', [
   'none', 'box_only', 'papers_only', 'full_set',
 ] as const)
 
+// ----- Phase 85 D-02: disposal reason pgEnum (LIFE-02) -----
+export const disposalReasonEnum = pgEnum('disposal_reason', ['sold', 'lost', 'gifted', 'stolen', 'traded'] as const)
+
 // Shadow users table for FK integrity.
 // Supabase Auth owns the real user record; this table exists solely for foreign key references.
 export const users = pgTable('users', {
@@ -97,7 +100,7 @@ export const watches = pgTable(
     model: text('model').notNull(),
     reference: text('reference'),
 
-    status: text('status', { enum: ['owned', 'wishlist', 'sold', 'grail'] }).notNull(),
+    status: text('status', { enum: ['owned', 'wishlist', 'previously_owned', 'grail'] }).notNull(),
 
     pricePaid: real('price_paid'),
     targetPrice: real('target_price'),
@@ -145,6 +148,11 @@ export const watches = pgTable(
     serviceHistory: text('service_history'),
     paidCurrency: currencyCodeEnum('paid_currency'),
     purchaseDate: date('purchase_date'),
+
+    // ----- Phase 85 D-02: disposal metadata (all nullable; LIFE-02) -----
+    disposalReason: disposalReasonEnum('disposal_reason'),
+    sellPrice: real('sell_price'),
+    disposalDate: date('disposal_date'),
 
     // Phase 17 + Phase 36 + Phase 38: catalog FK — NOT NULL.
     // Phase 36 shipped SET NOT NULL to prod (20260511000000_phase36_layer_c_variants.sql).
@@ -628,9 +636,13 @@ export const watchVariants = pgTable(
 // ============================================================
 // Phase 37 — Layer D (CAT-18, D-09): divestments table
 // Records every sale with timestamp / price / replacement / notes —
-// replaces watches.status='sold' single-bit signal with a structured
-// sold record the future recommender (SEED-002) consumes for
-// temporal decay weighting.
+// originally replaced the legacy watches single-bit sold-status signal
+// with a structured sale record the future recommender (SEED-002) would
+// consume for temporal decay weighting.
+// Phase 85 D-03: replaced the legacy status value with previously_owned
+// plus dedicated disposal columns directly on watches (LIFE-02); this
+// table is no longer written to, but stays in place with its existing
+// rows, RLS policies and FKs untouched.
 // RLS = PER-USER (auth.uid() = user_id) — see Plan 02 Supabase migration
 // for ENABLE ROW LEVEL SECURITY + 4 policies + GRANT.
 // Drizzle-side carries column shapes only; no RLS, no GRANT, no triggers.
