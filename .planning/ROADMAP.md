@@ -342,7 +342,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 - [x] 85-07-PLAN.md — Wave 4: /wear/[id] brand/model link hidden for visitors on previously-owned watches (D-14)
 - [x] 85-08-PLAN.md — Wave 5: DisposalFields + MarkPreviouslyOwnedDialog + owner ⋯ menu + muted reason·date card (D-05/D-06/D-16)
 - [x] 85-09-PLAN.md — Wave 5: canvas-confetti legitimacy checkpoint + celebratePromotion wired into AddWatchFlow and WatchForm (LIFE-04)
-- [ ] 85-10-PLAN.md — Wave 6: WatchForm status filtering, disposal-field correction and undo (D-04/D-07)
+- [x] 85-10-PLAN.md — Wave 6: WatchForm status filtering, disposal-field correction and undo (D-04/D-07)
 - [ ] 85-11-PLAN.md — Wave 7: local-dev walk + SQL assertions + operator prod `supabase db push --linked` before deploy
 **UI hint**: yes
 
@@ -367,5 +367,5 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 |-------|-----------|----------------|--------|-----------|
 | 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
 | 84. Wear history depth | v9.0 | 7/7 | Complete    | 2026-09-13 |
-| 85. Collection lifecycle | v9.0 | 9/11 | In Progress|  |
+| 85. Collection lifecycle | v9.0 | 10/11 | In Progress|  |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |

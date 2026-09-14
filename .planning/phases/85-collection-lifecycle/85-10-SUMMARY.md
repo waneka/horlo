@@ -135,3 +135,12 @@ None - no external service configuration required.
 ---
 *Phase: 85-collection-lifecycle*
 *Completed: 2026-09-14*
+
+## Self-Check: PASSED
+
+- FOUND: src/components/watch/WatchForm.tsx
+- FOUND: tests/components/watch/WatchForm.lifecycle.test.tsx
+- FOUND: tests/components/watch/WatchForm.test.tsx
+- FOUND: .planning/phases/85-collection-lifecycle/85-10-SUMMARY.md
+- FOUND commit: d77ac656 (Task 1)
+- FOUND commit: 47f515b2 (plan metadata)
