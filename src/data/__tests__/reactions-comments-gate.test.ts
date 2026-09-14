@@ -130,8 +130,8 @@ describe('canViewerCommentOnTarget', () => {
     expect(result).toBe(true)
   })
 
-  it('non-wishlist (sold): returns true for any authenticated viewer', async () => {
-    mockRows = [{ userId: 'owner-user-id', status: 'sold' }]
+  it('non-wishlist (previously_owned): returns true for any authenticated viewer', async () => {
+    mockRows = [{ userId: 'owner-user-id', status: 'previously_owned' }]
     const result = await canViewerCommentOnTarget('other-viewer', { type: 'watch', id: 'watch-id' })
     expect(result).toBe(true)
   })

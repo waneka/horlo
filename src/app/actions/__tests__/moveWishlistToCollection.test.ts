@@ -9,7 +9,7 @@
 // Threat coverage:
 //   - T-70-01 IDOR — Zod uuid + watchDAL.getWatchById(user.id, watchId) two-layer gate
 //   - T-70-02 Tampering (double-click) — idempotent already-owned branch
-//   - T-70-03 Tampering (status whitelist) — sold/grail rejection
+//   - T-70-03 Tampering (status whitelist) — previously_owned/grail rejection
 //
 // Mock pattern mirrors src/app/actions/__tests__/reorderWishlist.test.ts.
 
@@ -179,15 +179,15 @@ describe('Phase 70 — moveWishlistToCollection (DUPE-03)', () => {
   })
 
   // ──────────────────────────────────────────────────────────────────────
-  // Case 5: Status whitelist — sold/grail rejection — T-70-03 mitigation
+  // Case 5: Status whitelist — previously_owned/grail rejection — T-70-03 mitigation
   // ──────────────────────────────────────────────────────────────────────
-  it('status whitelist — sold rejected with "Cannot move sold watch to collection"', async () => {
+  it('status whitelist — previously_owned rejected with "Cannot move previously_owned watch to collection"', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(getCurrentUser).mockResolvedValue({ id: 'user-id' } as any)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(getWatchById).mockResolvedValue({
       id: VALID_UUID,
-      status: 'sold',
+      status: 'previously_owned',
       brand: 'Tudor',
       model: 'Black Bay',
     } as any)
@@ -195,7 +195,7 @@ describe('Phase 70 — moveWishlistToCollection (DUPE-03)', () => {
     const result = await moveWishlistToCollection(VALID_UUID)
 
     expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toBe('Cannot move sold watch to collection')
+    if (!result.success) expect(result.error).toBe('Cannot move previously_owned watch to collection')
     expect(updateWatch).not.toHaveBeenCalled()
   })
 

@@ -9,7 +9,7 @@
  *   - wishlist + targetPrice null + marketPrice → "Market: $X"
  *   - wishlist + both null → no price line rendered
  *   - grail + targetPrice → "Target: $X"  (D-16: grail uses target bucket)
- *   - sold + pricePaid → "Paid: $X"        (D-16: sold uses paid bucket)
+ *   - previously_owned + pricePaid → "Paid: $X"        (D-16: previously_owned uses paid bucket)
  *
  * Plus 1 sizes-attr assertion (D-13):
  *   - Image sizes equals "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
@@ -142,10 +142,10 @@ describe('Phase 27 — ProfileWatchCard price line (VIS-08) + sizes (D-13)', () 
     expect(screen.getByText('Target: $50,000')).toBeInTheDocument()
   })
 
-  it('sold + pricePaid=3000 → renders "Paid: $3,000" (D-16: sold uses paid bucket)', () => {
+  it('previously_owned + pricePaid=3000 → renders "Paid: $3,000" (D-16: previously_owned uses paid bucket)', () => {
     render(
       <ProfileWatchCard
-        watch={buildWatch({ status: 'sold', pricePaid: 3000 })}
+        watch={buildWatch({ status: 'previously_owned', pricePaid: 3000 })}
         lastWornDate={null}
       />,
     )

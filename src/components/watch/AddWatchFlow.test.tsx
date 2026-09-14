@@ -262,7 +262,7 @@ vi.mock('@/components/watch/WatchForm', () => ({
   WatchForm: ({
     onWatchCreated,
   }: {
-    onWatchCreated?: (watchId: string, destination: string, status: 'owned' | 'wishlist' | 'grail' | 'sold') => void
+    onWatchCreated?: (watchId: string, destination: string, status: 'owned' | 'wishlist' | 'grail' | 'previously_owned') => void
   }) => (
     <div data-testid="watch-form">
       <button onClick={() => onWatchCreated?.('w-id', '/u/tester/wishlist', 'wishlist')}>

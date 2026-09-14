@@ -9,7 +9,7 @@
  *   (a) catalogImageUrl set + extractedImageUrl also set → catalog wins
  *   (b) only extractedImageUrl set → extracted renders
  *   (c) neither image set → WatchIcon placeholder (data-testid="confirm-cover-placeholder")
- *   (d) picker shows exactly 3 options (owned / wishlist / grail), no 'sold'
+ *   (d) picker shows exactly 3 options (owned / wishlist / grail), no 'previously_owned'
  *   (e) Star icon appears next to Grail label, not owned/wishlist
  *   (f) clicking Owned fires onStatusChange('owned') once; CTA shows "Add to Collection"
  *   (g) CTA label is "Add to Wishlist" when status=wishlist

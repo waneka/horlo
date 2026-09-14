@@ -243,7 +243,7 @@ describe('Phase 75 — watch mutations invalidate viewer:${user.id}:recs (DISC-R
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(updateWatch).mockResolvedValue(updatedRow as any)
 
-    // Edit payload: plain field update (NOT a status transition to 'sold' —
+    // Edit payload: plain field update (NOT a status transition to 'previously_owned' —
     // that path uses db.transaction which isn't wired through the DAL mocks).
     const result = await editWatch(VALID_UUID, { model: 'Speedmaster Pro' })
 
