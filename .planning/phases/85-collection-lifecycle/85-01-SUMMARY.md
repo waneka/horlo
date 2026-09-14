@@ -109,3 +109,12 @@ None - no external service configuration required.
 ---
 *Phase: 85-collection-lifecycle*
 *Completed: 2026-09-14*
+
+## Self-Check: PASSED
+
+- FOUND: supabase/migrations/20260913000000_phase85_collection_lifecycle.sql
+- FOUND: src/db/schema.ts
+- FOUND: .planning/phases/85-collection-lifecycle/85-01-SUMMARY.md
+- FOUND commit: 106b9dd4 (Task 1)
+- FOUND commit: 7f5bdc40 (Task 2)
+- FOUND commit: 082db106 (SUMMARY)
