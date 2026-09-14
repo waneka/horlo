@@ -10,7 +10,7 @@
  *   2. D-05 layer 2 (mirrors T-39b-01 layer 2 / D-39b-09) — collectionPublic =
  *      false → excluded. LOAD-BEARING: a follow does NOT override this gate.
  *   3. D-05a (mirrors T-39b-04) — viewer self → excluded.
- *   4. D-05b (mirrors A1 / Q1 RECOMMEND) — watches.status = 'sold' → excluded.
+ *   4. D-05b (mirrors A1 / Q1 RECOMMEND) — watches.status = 'previously_owned' → excluded.
  *   5. D-08 (mirrors D-39b-10) — ORDER BY watches.created_at DESC.
  *   6. Pitfall 3 — JS-side dedup: multi-row-per-user (owned + wishlist on the
  *      same catalog) collapses to one chip; totalCount = count(DISTINCT).
@@ -105,7 +105,7 @@ maybe('getFollowedOwnersForCatalog — DAL integration', () => {
   const seedWatchForCatalog = async (
     userId: string,
     catalogId: string,
-    status: 'owned' | 'wishlist' | 'grail' | 'sold' = 'owned',
+    status: 'owned' | 'wishlist' | 'grail' | 'previously_owned' = 'owned',
     createdAt?: Date,
   ) => {
     const values: Record<string, unknown> = {
@@ -289,13 +289,13 @@ maybe('getFollowedOwnersForCatalog — DAL integration', () => {
     expect(totalCount).toBe(0)
   })
 
-  it('Test 4: excludes sold-status rows even when viewer follows owner (D-05b)', async () => {
-    // Alice's catalog row is status='sold' AND viewer follows alice. The DAL
-    // filters by inArray(status, ['owned','wishlist','grail']) so a sold row
+  it('Test 4: excludes previously_owned-status rows even when viewer follows owner (D-05b)', async () => {
+    // Alice's catalog row is status='previously_owned' AND viewer follows alice. The DAL
+    // filters by inArray(status, ['owned','wishlist','grail']) so a previously_owned row
     // should NOT count alice as a current owner of this catalog (matches
     // "from your circle (owns this)" copy semantics).
     const catalogId = await seedTestCatalogRow('foll-t4')
-    await seedWatchForCatalog(alice.id, catalogId, 'sold')
+    await seedWatchForCatalog(alice.id, catalogId, 'previously_owned')
     await seedFollow(viewer.id, alice.id)
 
     const { owners, totalCount } = await dal.getFollowedOwnersForCatalog(

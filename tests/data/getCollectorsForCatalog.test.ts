@@ -8,7 +8,7 @@
  *      false → excluded. This second layer does not exist in
  *      getMostFollowedCollectors and is the load-bearing add for NSV-18.
  *   3. T-39b-04 — profiles.id === viewerId → excluded (self-exclusion).
- *   4. A1 / Q1 RECOMMEND — watches.status = 'sold' → row not counted as
+ *   4. A1 / Q1 RECOMMEND — watches.status = 'previously_owned' → row not counted as
  *      ownership (matches "X collectors own this" copy).
  *   5. D-39b-10 — ORDER BY watches.created_at DESC.
  *   6. Pitfall 3 — JS-side dedup: multi-row-per-user (owned + wishlist on the
@@ -99,7 +99,7 @@ maybe('getCollectorsForCatalog — DAL integration', () => {
   const seedWatchForCatalog = async (
     userId: string,
     catalogId: string,
-    status: 'owned' | 'wishlist' | 'grail' | 'sold' = 'owned',
+    status: 'owned' | 'wishlist' | 'grail' | 'previously_owned' = 'owned',
     createdAt?: Date,
   ) => {
     // watches table requires brand + model (NOT NULL) — pass dummy strings
@@ -256,13 +256,13 @@ maybe('getCollectorsForCatalog — DAL integration', () => {
     expect(totalCount).toBe(0)
   })
 
-  it("Test 4: excludes sold-status rows (A1 / Q1 RECOMMEND)", async () => {
-    // Alice's catalog row is status='sold'. The DAL filters by
-    // inArray(status, ['owned','wishlist','grail']) so a sold row should
+  it("Test 4: excludes previously_owned-status rows (A1 / Q1 RECOMMEND)", async () => {
+    // Alice's catalog row is status='previously_owned'. The DAL filters by
+    // inArray(status, ['owned','wishlist','grail']) so a previously_owned row should
     // NOT count alice as a collector of this catalog (matches "X collectors
     // own this" copy semantics).
     const catalogId = await seedTestCatalogRow('t4')
-    await seedWatchForCatalog(alice.id, catalogId, 'sold')
+    await seedWatchForCatalog(alice.id, catalogId, 'previously_owned')
 
     const { collectors, totalCount } = await dal.getCollectorsForCatalog(
       catalogId,

@@ -225,12 +225,12 @@ describe('searchCatalogWatches (SRCH-09, SRCH-10, D-01..D-06)', () => {
     expect(out[0].viewerState).toBe('owned')
   })
 
-  it('Test 8c: D-05 sold + grail are NOT badged (viewerState === null)', async () => {
+  it('Test 8c: D-05 previously_owned + grail are NOT badged (viewerState === null)', async () => {
     candidateRows = [
       { id: 'c1', brand: 'Rolex', model: 'Sub', reference: null, imageUrl: null, ownersCount: 5, wishlistCount: 0 },
     ]
     stateRows = [
-      { catalogId: 'c1', status: 'sold' },
+      { catalogId: 'c1', status: 'previously_owned' },
       { catalogId: 'c1', status: 'grail' },
     ]
     const out = await searchCatalogWatches({ q: 'rolex', viewerId: VIEWER })

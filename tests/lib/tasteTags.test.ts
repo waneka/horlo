@@ -29,7 +29,7 @@ describe('computeTasteTags (D-06 / PROF-10)', () => {
   it('ignores non-owned watches when computing tags', () => {
     const watches = [
       w({ status: 'wishlist', brand: 'Rolex' }),
-      w({ status: 'sold', brand: 'Rolex' }),
+      w({ status: 'previously_owned', brand: 'Rolex' }),
     ]
     expect(
       computeTasteTags({ watches, totalWearEvents: 0, collectionAgeDays: 0 })

@@ -109,8 +109,8 @@ describe('canViewerCommentOnTarget — GATE-03 gate assertions', () => {
     expect(isMutualFollow).not.toHaveBeenCalled()
   })
 
-  it('GATE-03: non-wishlist watch (sold) returns true for any viewer', async () => {
-    setupWatchSelect([{ userId: ownerId, status: 'sold' }])
+  it('GATE-03: non-wishlist watch (previously_owned) returns true for any viewer', async () => {
+    setupWatchSelect([{ userId: ownerId, status: 'previously_owned' }])
 
     const result = await canViewerCommentOnTarget(viewerId, { type: 'watch', id: watchId })
 

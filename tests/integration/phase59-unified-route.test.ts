@@ -14,7 +14,7 @@
  *                                  → catalog resolution path engaged
  *   Branch 2 + D-06 (owned):     on catalog branch, findViewerWatchByCatalogId returns {id}
  *                                  → full owned view rendered in place, framing 'same-user'
- *                                  → null for non-owned/sold rows (BUG-01 fix preserved)
+ *                                  → null for non-owned/previously_owned rows (BUG-01 fix preserved)
  *   Branch 1 cross-user:         getWatchByIdForViewer returns {isOwner:false}
  *                                  → framing = 'cross-user', viewerCanEdit false
  *
@@ -53,7 +53,7 @@ maybe('phase59: /w/[ref] resolution contract', () => {
 
   // Watch IDs populated in beforeAll.
   let ownedWatchId: string
-  let soldWatchId: string
+  let previouslyOwnedWatchId: string
   let publicWatchId: string   // public watch owned by owner; viewer is non-owner
 
   async function cleanup() {
@@ -91,7 +91,7 @@ maybe('phase59: /w/[ref] resolution contract', () => {
 
     // Seed watches for the owner.
     ownedWatchId = randomUUID()
-    soldWatchId = randomUUID()
+    previouslyOwnedWatchId = randomUUID()
     publicWatchId = randomUUID()
 
     await db.insert(watches).values([
@@ -108,11 +108,11 @@ maybe('phase59: /w/[ref] resolution contract', () => {
         roleTags: [],
       },
       {
-        id: soldWatchId,
+        id: previouslyOwnedWatchId,
         userId: ids.owner,
         brand: 'Rolex',
         model: 'Submariner',
-        status: 'sold',   // NOT 'owned' — BUG-01: should NOT trigger the owned render
+        status: 'previously_owned',   // NOT 'owned' — BUG-01: should NOT trigger the owned render
         catalogId: ids.catalog,
         complications: [],
         styleTags: [],
@@ -188,7 +188,7 @@ maybe('phase59: /w/[ref] resolution contract', () => {
   // Contract: findViewerWatchByCatalogId(owner, catalogId) returns {id}
   //           → owned view rendered in place, framing same-user (no redirect D-08).
   //
-  // Also asserts the BUG-01 fix (T-59-02): a sold row with the same catalogId
+  // Also asserts the BUG-01 fix (T-59-02): a previously_owned row with the same catalogId
   // must NOT trigger the owned render (status filter to 'owned' only).
   // ---------------------------------------------------------------------------
   it('Branch 2 D-06 (owned): findViewerWatchByCatalogId returns the owned row id', async () => {
@@ -197,16 +197,16 @@ maybe('phase59: /w/[ref] resolution contract', () => {
     expect(result!.id).toBe(ownedWatchId)
   })
 
-  it('Branch 2 D-06 BUG-01: sold row does NOT trigger the owned-render path (status filter)', async () => {
-    // The owner also has a sold watch with the same catalogId.
-    // findViewerWatchByCatalogId must return the owned row, not the sold row,
+  it('Branch 2 D-06 BUG-01: previously_owned row does NOT trigger the owned-render path (status filter)', async () => {
+    // The owner also has a previously_owned watch with the same catalogId.
+    // findViewerWatchByCatalogId must return the owned row, not the previously_owned row,
     // because the BUG-01 fix filters to status='owned' only.
     const result = await findViewerWatchByCatalogId(ids.owner, ids.catalog)
-    // Result should be the owned watch (not the sold one), proving the filter works.
-    // If BUG-01 were missing, this could return the sold watch id too.
+    // Result should be the owned watch (not the previously_owned one), proving the filter works.
+    // If BUG-01 were missing, this could return the previously_owned watch id too.
     expect(result).not.toBeNull()
-    expect(result!.id).toBe(ownedWatchId)   // ownedWatchId, not soldWatchId
-    expect(result!.id).not.toBe(soldWatchId)
+    expect(result!.id).toBe(ownedWatchId)   // ownedWatchId, not previouslyOwnedWatchId
+    expect(result!.id).not.toBe(previouslyOwnedWatchId)
   })
 
   it('Branch 2 D-06 (non-owned): viewer has no owned row → returns null → cross-user framing', async () => {

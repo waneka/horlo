@@ -17,7 +17,7 @@
  *
  * Phase 85 D-03 update: the Server Action dual-write formerly covered by
  * V-10 / T-37-TXN-01 (an INSERT into the disposal-tracking table alongside
- * an UPDATE of watches.status='sold', wrapped in an atomic transaction) has
+ * an UPDATE of watches.status='previously_owned', wrapped in an atomic transaction) has
  * been retired — `editWatch` no longer performs that dual-write, and the Server
  * Action module that owned it no longer exists. The `divestments`
  * table-shape and RLS assertions below (V-04..V-09) remain — the table itself
