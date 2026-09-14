@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-14T04:03:14.213Z"
+last_updated: "2026-09-14T04:13:57.108Z"
 last_activity: 2026-09-14
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 22
-  completed_plans: 17
+  completed_plans: 18
   percent: 50
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 85 (collection-lifecycle) — EXECUTING
-Plan: 7 of 11
+Plan: 8 of 11
 Status: Ready to execute
 Last activity: 2026-09-14
 
@@ -112,6 +112,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 85 Plan 07 (wear detail no-dead-link, D-14, 2026-09-14):** `watchLinkable` is computed once in `/wear/[wearEventId]`'s `WearDetailPage` (`wear.userId === viewerId || wear.watchStatus !== 'previously_owned'`) and threaded through the streamed `WearPhotoStreamed` child into `WearCard` → `WearVideoClient`/`WearPhotoClient`/`WearDetailHero` → `WearPhotoOverlays`, which swaps the brand/model `<Link href="/w/[id]">` for identically-styled plain text when `false` (defaults to `true` everywhere else, so no other `WearCard` consumer changes behavior). `getWearEventByIdForViewer` gained only an additive `watchStatus: watches.status` SELECT projection — no WHERE-clause or visibility change, so D-17 (the wear itself stays visible under existing rules) holds by construction, not by a new check. WearsLane (`/wears/[username]`) is deliberately untouched, per the plan's own threat model (T-85-18, accepted risk — not a D-14-named surface, 48h rail window, destination still 404s). Verified against real local Supabase (not just build/mocks, per CLAUDE.md's Local-First gate): inserted a temporary `wear_events` fixture on the existing local `previously_owned` watch, ran `getWearEventByIdForViewer` directly via `tsx --env-file=.env.development.local` as both the owner and a different real profile as viewer, confirmed `watchLinkable` evaluates `true`/`false` respectively, then deleted the fixture. No requirements newly marked complete (LIFE-05 was already completed by 85-06; this plan closes a D-14 gap on a surface RESEARCH identified as needing it, with no dedicated requirement ID of its own).
 
 **Phase 85 Plan 06 (owner-only previously-owned toggle on the live Collection tab, 2026-09-14):** `[tab]/page.tsx` now computes `previouslyOwnedWatches = isOwner ? watches.filter((w) => w.status === 'previously_owned') : []` in the shared collection/wishlist/notes branch and threads it into `CollectionTabContent`; the Notes tab's non-owner predicate additionally excludes `previously_owned` (D-14 — its `NoteRow` link to `/w/[id]` would 404 for a visitor). `CollectionTabContent` adds a non-persisted `useState(false)` toggle (D-15), a `disposed = isOwner ? previouslyOwnedWatches : []` defense-in-depth ignore on top of the server-side owner gate (D-13, T-85-14), a shared `matches()` predicate so the same role-chip/search filters apply to both the always-visible owned array and the toggle-gated disposed array (concatenated, never interleaved — disposed cards always sort after owned cards per D-16), and an empty-state guard widened to `ownedWatches.length === 0 && previouslyOwnedWatches.length === 0` so an owner whose only watch is previously-owned still reaches the toolbar and toggle instead of the full "Nothing here yet" state. The toggle chip copies `FilterChips`' own active/inactive class strings verbatim rather than extending `FilterChips` itself, per UI-SPEC. The muted card, reason·date badge, and ⋯ menu on `ProfileWatchCard` are explicitly out of this plan's scope (85-08) — a previously-owned card currently renders with no visual distinction from an owned card when the toggle is on. LIFE-05 marked complete in REQUIREMENTS.md.
 
@@ -353,6 +355,7 @@ None.
 | Phase 85 P04 | ~25min | 2 tasks | 13 files |
 | Phase 85 P05 | ~50min | 3 tasks | 8 files |
 | Phase 85 P06 | ~25min | 2 tasks | 3 files |
+| Phase 85 P07 | ~30min | 2 tasks | 7 files |
 
 ## Session Continuity
 

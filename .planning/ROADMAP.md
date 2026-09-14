@@ -339,7 +339,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
 - [x] 85-04-PLAN.md — Wave 3: test-fixture sold→previously_owned sweep + repo-wide literal gate + `npm run build` gate
 - [x] 85-05-PLAN.md — Wave 4: markWatchPreviouslyOwned action, editWatch D-04 undo / D-07 guard, promoted/promotedFrom signal, shared client-today validators
 - [x] 85-06-PLAN.md — Wave 4: owner-only previously-owned data split + "Show previously owned" toggle + empty-state gate; visitor Notes exclusion
-- [ ] 85-07-PLAN.md — Wave 4: /wear/[id] brand/model link hidden for visitors on previously-owned watches (D-14)
+- [x] 85-07-PLAN.md — Wave 4: /wear/[id] brand/model link hidden for visitors on previously-owned watches (D-14)
 - [ ] 85-08-PLAN.md — Wave 5: DisposalFields + MarkPreviouslyOwnedDialog + owner ⋯ menu + muted reason·date card (D-05/D-06/D-16)
 - [ ] 85-09-PLAN.md — Wave 5: canvas-confetti legitimacy checkpoint + celebratePromotion wired into AddWatchFlow and WatchForm (LIFE-04)
 - [ ] 85-10-PLAN.md — Wave 6: WatchForm status filtering, disposal-field correction and undo (D-04/D-07)
@@ -367,5 +367,5 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 |-------|-----------|----------------|--------|-----------|
 | 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
 | 84. Wear history depth | v9.0 | 7/7 | Complete    | 2026-09-13 |
-| 85. Collection lifecycle | v9.0 | 6/11 | In Progress|  |
+| 85. Collection lifecycle | v9.0 | 7/11 | In Progress|  |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
