@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { z } from 'zod'
+import { isoCalendarDate, isPlausibleClientToday } from '@/lib/clientToday'
 import { getCurrentUser } from '@/lib/auth'
 import * as wearEventDAL from '@/data/wearEvents'
 import * as watchDAL from '@/data/watches'
@@ -133,41 +134,9 @@ const preflightSchema = z.object({
 
 // ---- Phase 84 (WEAR-02) — backfill (photo-less, past-or-today) wear ----
 
-/**
- * ISO calendar-date schema shared by logBackfillWear's `wornDate` and
- * `today` fields. The regex alone accepts shapes like `2026-02-30` that are
- * not real calendar days; the `.refine` re-parses as a UTC date and checks
- * the round-tripped ISO string matches the input exactly. This validates
- * calendar validity ONLY — it never reads the current clock, so it cannot be
- * (mis)used to derive "today" server-side (260622-exo invariant, see
- * src/lib/wear.ts header comment).
- */
-const isoCalendarDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((s) => {
-    const d = new Date(`${s}T00:00:00Z`)
-    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s
-  }, 'Invalid calendar date')
-
-/**
- * 84-REVIEW WR-01 — timezone-tolerant sanity bound on a client-supplied
- * `today`. This does NOT derive the user's calendar day (260622-exo still
- * holds: the client owns "today"); it only rejects values no real timezone
- * could produce right now. Every real zone lies within UTC-12..UTC+14, so a
- * genuine local date is always between the UTC date of (now - 14h) and the
- * UTC date of (now + 14h) — i.e. never more than one calendar day off the
- * server's UTC date. A crafted `today` far in the future (pinning a wear to
- * the top of the WYWT rail) or far in the past (posting an old backfill as
- * new feed activity via the D-06 `wornDate === today` gate) is rejected.
- */
-const TODAY_TOLERANCE_MS = 14 * 60 * 60 * 1000
-
-function isPlausibleClientToday(today: string, nowMs: number = Date.now()): boolean {
-  const minPlausible = new Date(nowMs - TODAY_TOLERANCE_MS).toISOString().slice(0, 10)
-  const maxPlausible = new Date(nowMs + TODAY_TOLERANCE_MS).toISOString().slice(0, 10)
-  return today >= minPlausible && today <= maxPlausible
-}
+// isoCalendarDate / isPlausibleClientToday / TODAY_TOLERANCE_MS moved to
+// src/lib/clientToday.ts (Phase 85 85-05) so the Phase 85 disposal actions
+// can share them — a 'use server' file may only export async functions.
 
 // .strict() rejects extra keys such as photoUrl or wearEventId — a
 // mass-assignment guard mirroring hideWearPicSchema. The wear id is always

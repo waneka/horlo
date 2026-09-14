@@ -137,6 +137,22 @@ export interface WatchWithWear extends Watch {
   lastWornDate?: string  // computed from most recent wear_events row
 }
 
+// Phase 85 D-09 — promotion signal returned by editWatch / moveWishlistToCollection (LIFE-04)
+export interface WatchEditResult {
+  watch: Watch
+  promoted: boolean
+  promotedFrom: 'wishlist' | 'grail' | null
+}
+
+// Phase 85 D-06 — disposal dialog commit payload (LIFE-03)
+export interface MarkPreviouslyOwnedInput {
+  watchId: string
+  disposalReason: DisposalReason
+  sellPrice?: number
+  disposalDate?: string
+  today: string
+}
+
 /**
  * Phase 37 D-09 — divestments row (CAT-18).
  * Records the user's sale of a watch with timestamp / price / replacement / notes.
