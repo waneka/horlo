@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-14T03:54:48.406Z"
+last_updated: "2026-09-14T04:03:14.213Z"
 last_activity: 2026-09-14
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 22
-  completed_plans: 16
+  completed_plans: 17
   percent: 50
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 85 (collection-lifecycle) — EXECUTING
-Plan: 6 of 11
+Plan: 7 of 11
 Status: Ready to execute
 Last activity: 2026-09-14
 
@@ -112,6 +112,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 85 Plan 06 (owner-only previously-owned toggle on the live Collection tab, 2026-09-14):** `[tab]/page.tsx` now computes `previouslyOwnedWatches = isOwner ? watches.filter((w) => w.status === 'previously_owned') : []` in the shared collection/wishlist/notes branch and threads it into `CollectionTabContent`; the Notes tab's non-owner predicate additionally excludes `previously_owned` (D-14 — its `NoteRow` link to `/w/[id]` would 404 for a visitor). `CollectionTabContent` adds a non-persisted `useState(false)` toggle (D-15), a `disposed = isOwner ? previouslyOwnedWatches : []` defense-in-depth ignore on top of the server-side owner gate (D-13, T-85-14), a shared `matches()` predicate so the same role-chip/search filters apply to both the always-visible owned array and the toggle-gated disposed array (concatenated, never interleaved — disposed cards always sort after owned cards per D-16), and an empty-state guard widened to `ownedWatches.length === 0 && previouslyOwnedWatches.length === 0` so an owner whose only watch is previously-owned still reaches the toolbar and toggle instead of the full "Nothing here yet" state. The toggle chip copies `FilterChips`' own active/inactive class strings verbatim rather than extending `FilterChips` itself, per UI-SPEC. The muted card, reason·date badge, and ⋯ menu on `ProfileWatchCard` are explicitly out of this plan's scope (85-08) — a previously-owned card currently renders with no visual distinction from an owned card when the toggle is on. LIFE-05 marked complete in REQUIREMENTS.md.
 
 **Phase 85 Plan 04 (rename sweep closed, build gate green, 2026-09-14):** All 13 remaining test fixture files (6 `src/`-colocated, 6 `tests/`, plus 1 deviation fix in `tests/integration/phase37-rls.test.ts`) now model `previously_owned` instead of `sold` — the mechanical D-01 literal sweep 85-03 deferred. `phase59-unified-route.test.ts` renamed the `soldWatchId` variable itself (not just its string value) to `previouslyOwnedWatchId`, matching the plan's identity-preservation instruction. The repo-wide gate `grep -rn "'sold'|"sold"" src tests | grep -vi disposal` found one leftover the plan's own instructions required fixing even though it lived in an 85-03-owned file: a D-03 explanatory comment in `phase37-rls.test.ts` still read `status='sold'`; fixed here as a documented deviation. Gate is now empty and `npm run build` exits 0 (verified twice with a directly captured exit code, not through a piped `tail`) — Wave-4 plans (85-05/06/07) can now build on a compiling base. One pre-existing, out-of-scope test gap confirmed (not fixed): `moveWishlistToCollection.test.ts`'s own `vi.mock('next/cache', ...)` is missing an `updateTag` stub, causing its happy-path and side-effect-chain cases to fail — verified identical at HEAD via `git checkout --` revert-and-restore (no `git stash` used), same root cause 85-03 already logged for `watches.test.ts`/`watches.notesPublic.test.ts`. LIFE-01 was already marked complete by 85-01; no new requirements close in this plan.
 
@@ -350,10 +352,13 @@ None.
 | Phase 85 P03 | ~30min | 2 tasks | 12 files |
 | Phase 85 P04 | ~25min | 2 tasks | 13 files |
 | Phase 85 P05 | ~50min | 3 tasks | 8 files |
+| Phase 85 P06 | ~25min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last activity: 2026-09-14 — Phase 85 Plan 04 (close the sold → previously_owned rename, build gate) complete. Task 1 (commit `82c22ac1`): swept the 6 `src/`-colocated test fixtures listed in the plan (`moveWishlistToCollection.test.ts` Case 5, `ProfileWatchCard-priceLine.test.tsx`, `reactions-comments-gate.test.ts`, `AddWatchFlow.test.tsx`, plus comment-only touches in `watches-recs-invalidation.test.ts` + `ConfirmStep.test.tsx`) off `'sold'` as a `WatchStatus` literal. Task 2 (commit `ee267ecf`): swept the 6 `tests/` fixtures (`phase59-unified-route.test.ts` — including renaming the `soldWatchId` variable itself to `previouslyOwnedWatchId` — plus `tasteTags.test.ts`, `comments.test.ts`, `searchCatalogWatches.test.ts`, `getFollowedOwnersForCatalog.test.ts`, `getCollectorsForCatalog.test.ts`), then fixed one deviation leftover in an 85-03-owned file (`tests/integration/phase37-rls.test.ts`'s D-03 explanatory comment still read `status='sold'`). Repo-wide gate `grep -rn "'sold'|"sold"" src tests | grep -vi disposal` is empty. `npm run build` exits 0 (verified twice with a directly captured exit code) — the rename sweep's build gate that Wave-4 plans (85-05/06/07) depend on. 1 deviation (Rule 1, the phase37-rls.test.ts comment fix). One pre-existing, out-of-scope test gap confirmed but not fixed: `moveWishlistToCollection.test.ts`'s own `next/cache` mock is missing an `updateTag` stub (2 tests fail identically at HEAD, confirmed via `git checkout --` revert-and-restore) — same root cause 85-03 already logged for `watches.test.ts`/`watches.notesPublic.test.ts`. LIFE-01 was already marked complete by 85-01; no new requirements close in this plan. Summary: `85-04-SUMMARY.md`.
+Last activity: 2026-09-14 — Phase 85 Plan 06 (owner-only previously-owned toggle on the live Collection tab, LIFE-05) complete. Task 1 (commit `5a427e85`): `[tab]/page.tsx` gains `previouslyOwnedWatches = isOwner ? watches.filter((w) => w.status === 'previously_owned') : []` in the shared collection/wishlist/notes branch, threaded into `CollectionTabContent`; Notes tab's non-owner predicate now also excludes `previously_owned` (D-14). Task 2 TDD (commits `384e9038` RED / `0ab91728` GREEN): `CollectionTabContent` gains a non-persisted `useState(false)` toggle, a `disposed = isOwner ? previouslyOwnedWatches : []` defense-in-depth ignore, a shared `matches()` predicate concatenating toggle-gated disposed watches after owned watches (never interleaved), and an empty-state guard widened to `ownedWatches.length === 0 && previouslyOwnedWatches.length === 0`. Toggle chip copies `FilterChips`' own active/inactive classes verbatim. 0 deviations. 9/9 CollectionTabContent tests pass (8 new + 1 pre-existing grid-class test); `npm run build` exits 0. Muted card / reason·date badge / ⋯ menu deliberately out of scope (85-08). LIFE-05 marked complete in REQUIREMENTS.md. Summary: `85-06-SUMMARY.md`.
+
+Prior activity: 2026-09-14 — Phase 85 Plan 04 (close the sold → previously_owned rename, build gate) complete. Task 1 (commit `82c22ac1`): swept the 6 `src/`-colocated test fixtures listed in the plan (`moveWishlistToCollection.test.ts` Case 5, `ProfileWatchCard-priceLine.test.tsx`, `reactions-comments-gate.test.ts`, `AddWatchFlow.test.tsx`, plus comment-only touches in `watches-recs-invalidation.test.ts` + `ConfirmStep.test.tsx`) off `'sold'` as a `WatchStatus` literal. Task 2 (commit `ee267ecf`): swept the 6 `tests/` fixtures (`phase59-unified-route.test.ts` — including renaming the `soldWatchId` variable itself to `previouslyOwnedWatchId` — plus `tasteTags.test.ts`, `comments.test.ts`, `searchCatalogWatches.test.ts`, `getFollowedOwnersForCatalog.test.ts`, `getCollectorsForCatalog.test.ts`), then fixed one deviation leftover in an 85-03-owned file (`tests/integration/phase37-rls.test.ts`'s D-03 explanatory comment still read `status='sold'`). Repo-wide gate `grep -rn "'sold'|"sold"" src tests | grep -vi disposal` is empty. `npm run build` exits 0 (verified twice with a directly captured exit code) — the rename sweep's build gate that Wave-4 plans (85-05/06/07) depend on. 1 deviation (Rule 1, the phase37-rls.test.ts comment fix). One pre-existing, out-of-scope test gap confirmed but not fixed: `moveWishlistToCollection.test.ts`'s own `next/cache` mock is missing an `updateTag` stub (2 tests fail identically at HEAD, confirmed via `git checkout --` revert-and-restore) — same root cause 85-03 already logged for `watches.test.ts`/`watches.notesPublic.test.ts`. LIFE-01 was already marked complete by 85-01; no new requirements close in this plan. Summary: `85-04-SUMMARY.md`.
 
 Prior activity: 2026-09-14 — Phase 85 Plan 03 (retire divestments dual-write + sold-literal sweep) complete. Task 1 (commit `d27810c2`): extended the Server Action zod status enum to `['owned', 'wishlist', 'grail', 'previously_owned']`; deleted the entire `isTransitioningToSold` block in `editWatch` (the `db.transaction` + `divestments` INSERT dual-write) — the status-changing write is now a single `watchDAL.updateWatch` call identical in shape to every other edit; removed the now-unused `divestments`/`watches`/`db`/`eq`/`and` imports; deleted `src/app/actions/divestments.ts` (`recordDivestment` retired, D-03); `tests/integration/phase37-rls.test.ts` dropped the V-10/T-37-TXN-01 describe block + its exclusive mocks/fixtures while keeping V-02..V-09/V-14. Task 2 (commit `0977e2df`): swept the dead `StatusToggle`/`WatchCard` island, `watchFlow/destinations.ts`/`.test.ts`, and DAL allowlist/badge comments (`ConfirmStep.tsx`, `follows.ts`, `discovery.ts`, `catalog.ts`) off `'sold'` as a `WatchStatus` literal. 0 deviations (one comment-wording iteration to dodge the plan's own grep-armor gate, resolved within Task 1's verify loop). `npx tsc --noEmit` + `npx eslint` clean on every touched file; targeted vitest (`destinations.test.ts` + `WatchCard.sold-badge.test.tsx`) 17/17 pass. `npm run build` intentionally NOT run as this plan's gate (85-04 owns it) — 6 test fixture files still carry `'sold'` as `WatchStatus`, explicitly deferred to 85-04. LIFE-01 marked complete in REQUIREMENTS.md. Summary: `85-03-SUMMARY.md`.
 
@@ -373,7 +378,7 @@ Prior activity: 2026-07-12 — Phase 81 Plan 02 (recommender read-path canonical
 
 Prior activity: 2026-06-25 — Phase 79 Plan 04 (Wave 3 unified atomic apply transaction + post-flight assertion + auto-generated POST-DEPLOY artifact) complete. See prior STATE.md snapshots for full detail. MIG-02 + MIG-04 + DISP-03 marked complete.
 
-Next action: Run 85-05 (disposal flow from the collection card, LIFE-03) — the rename is closed and `npm run build` is green, so Wave-4 behavior plans (85-05 disposal flow, 85-06 celebration moment, 85-07 previously-owned visibility toggle) can now proceed.
+Next action: Run 85-07 — Plans 85-05 (server-side lifecycle contract) and 85-06 (previously-owned visibility toggle) are both complete; remaining Wave-4/5 plans (85-08 disposal dialog, 85-09/85-10 celebration + edit-form disposal fields, 85-11 UI walk) can now proceed.
 
 ## Operator Next Steps
 
