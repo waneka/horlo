@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { ChevronDown } from 'lucide-react'
 import { Accordion } from '@base-ui/react/accordion'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CatalogPhotoUploader } from './CatalogPhotoUploader'
 import { addWatch, editWatch } from '@/app/actions/watches'
+import { celebratePromotion } from '@/lib/celebrate'
 import { useFormFeedback } from '@/lib/hooks/useFormFeedback'
 import { canonicalize, defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 import { FormStatusBanner } from '@/components/ui/FormStatusBanner'
@@ -300,6 +302,18 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
         router.push(dest)
       } else if (result.success) {
         // Edit-mode commit — Phase 28 D-13/D-14 NOT in scope. Preserve existing redirect.
+        // Phase 85 D-09/D-10/D-12 — a wishlist/grail -> owned promotion celebrates
+        // instead of showing the normal 'Watch updated' toast (no action button,
+        // no price-paid prompt, no photo link). useFormFeedback's own toast is
+        // suppressed for edit mode below (run() opts = {}) so exactly one of these
+        // two toasts fires. Fired BEFORE router.push so it survives the navigation
+        // (Router Cache stale-instance hazard — no destination-page mount effect
+        // is involved either way).
+        if (result.data && 'promoted' in result.data && result.data.promoted) {
+          void celebratePromotion(result.data.promotedFrom)
+        } else {
+          toast.success('Watch updated')
+        }
         router.push('/')
       }
       return result
@@ -311,7 +325,9 @@ export function WatchForm({ watch, mode, lockedStatus, defaultStatus, returnTo, 
       // use the standard buildSuccessOpts toast (backward compatible with all
       // other WatchForm callers).
       ? (onWatchCreated ? {} : buildSuccessOpts(finalStatus, returnTo ?? null, viewerUsername ?? null, successMessage))
-      : { successMessage }
+      // Phase 85 — edit mode fires its own toast (celebration or 'Watch updated')
+      // above instead of useFormFeedback's, so no successMessage is passed here.
+      : {}
     )
   }
 

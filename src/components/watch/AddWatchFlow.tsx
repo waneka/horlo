@@ -18,6 +18,7 @@ import {
   findViewerWatchByCatalogIdAction,
   saveCatalogOnlyFromExtract,
 } from '@/app/actions/watches'
+import { celebratePromotion } from '@/lib/celebrate'
 import { defaultDestinationForStatus } from '@/lib/watchFlow/destinations'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -576,7 +577,14 @@ export function AddWatchFlow({
 
     const dest = initialReturnTo ?? defaultDestinationForStatus('owned', viewerUsername)
     const actionHref = viewerUsername ? `/u/${viewerUsername}/collection` : null
-    if (actionHref) {
+    // Phase 85 D-09/D-10 — a wishlist→owned promotion celebrates instead of
+    // showing the normal collection-move toast below. Fired BEFORE
+    // router.push (Pitfall 3 — sonner's portal toast + canvas-confetti's
+    // body-appended canvas both survive the soft navigation; no
+    // destination-page mount effect is involved).
+    if (result.data.promoted) {
+      void celebratePromotion(result.data.promotedFrom)
+    } else if (actionHref) {
       toast.success('Moved to collection', {
         action: {
           label: 'View',

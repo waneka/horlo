@@ -54,6 +54,12 @@ vi.mock('sonner', () => ({
   },
 }))
 
+// Phase 85 Plan 09 — celebratePromotion is asserted as its own mock; the real
+// implementation (confetti + toast) is covered by src/lib/__tests__/celebrate.test.ts.
+vi.mock('@/lib/celebrate', () => ({
+  celebratePromotion: vi.fn(),
+}))
+
 // Phase 70 gap plan 07 — CR-01 photo upload mocks.
 // `uploadCatalogSourcePhoto` is dynamic-imported from handleConfirmPrimary; Vitest's
 // vi.mock intercepts static AND dynamic imports of the same specifier by default.
@@ -302,6 +308,7 @@ import {
 } from '@/app/actions/watches'
 import { uploadCatalogSourcePhoto } from '@/lib/storage/catalogSourcePhotos'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { celebratePromotion } from '@/lib/celebrate'
 import { toast } from 'sonner'
 // Suppress unused-import lint for action handles consumed only by mockResolvedValueOnce.
 void addWatch
@@ -395,15 +402,21 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
   })
 
   // T-70-04 — DUPE-03 wishlist pick → DupeBanner-wishlist + Move to Collection succeeds.
-  it('T-70-04 — wishlist pick → DupeBanner-wishlist; Move to Collection calls action; success routes to /u/tester/collection', async () => {
+  // Phase 85 D-09: promoted:true → celebratePromotion fires (not the 'Moved to
+  // collection' toast); celebration fires BEFORE router.push (invocationCallOrder).
+  it('T-70-04 — wishlist pick → DupeBanner-wishlist; Move to Collection calls action; promoted celebrates before routing to /u/tester/collection', async () => {
     vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
       success: true,
       data: { id: 'wish-id-001', status: 'wishlist', reference: 'REF-001' },
     })
     vi.mocked(moveWishlistToCollection).mockResolvedValueOnce({
       success: true,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data: { id: 'wish-id-001', status: 'owned' } as any,
+      data: {
+        watch: { id: 'wish-id-001', status: 'owned' },
+        promoted: true,
+        promotedFrom: 'wishlist',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
     })
     renderFlow()
     fireEvent.click(screen.getByText('Pick wishlist'))
@@ -416,6 +429,39 @@ describe('Phase 70 — AddWatchFlow orchestrator state machine', () => {
     await waitFor(() => {
       expect(pushSpy).toHaveBeenCalledWith('/u/tester/collection')
     })
+    expect(celebratePromotion).toHaveBeenCalledWith('wishlist')
+    expect(toast.success).not.toHaveBeenCalledWith('Moved to collection', expect.anything())
+    const celebrateOrder = vi.mocked(celebratePromotion).mock.invocationCallOrder[0]
+    const pushOrder = pushSpy.mock.invocationCallOrder[pushSpy.mock.invocationCallOrder.length - 1]
+    expect(celebrateOrder).toBeLessThan(pushOrder)
+  })
+
+  // Phase 85 D-09: promoted:false (idempotent already-owned branch) keeps the
+  // existing 'Moved to collection' toast with its View action; no celebration.
+  it('T-70-04b — wishlist pick, promoted:false → "Moved to collection" toast fires; celebratePromotion is not called', async () => {
+    vi.mocked(findViewerWatchByCatalogIdAction).mockResolvedValueOnce({
+      success: true,
+      data: { id: 'wish-id-001', status: 'wishlist', reference: 'REF-001' },
+    })
+    vi.mocked(moveWishlistToCollection).mockResolvedValueOnce({
+      success: true,
+      data: {
+        watch: { id: 'wish-id-001', status: 'owned' },
+        promoted: false,
+        promotedFrom: null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+    })
+    renderFlow()
+    fireEvent.click(screen.getByText('Pick wishlist'))
+    expect(await screen.findByTestId('dupe-banner-wishlist')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Move to Collection'))
+    await waitFor(() => {
+      expect(pushSpy).toHaveBeenCalledWith('/u/tester/collection')
+    })
+    expect(toast.success).toHaveBeenCalledWith('Moved to collection', expect.anything())
+    expect(celebratePromotion).not.toHaveBeenCalled()
   })
 
   // T-70-05 — CLNP-06 skip link → manual-entry, no router.push.
