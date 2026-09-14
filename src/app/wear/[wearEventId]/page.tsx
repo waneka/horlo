@@ -62,6 +62,13 @@ export default async function WearDetailPage({
   const wear = await getWearEventByIdForViewer(viewerId, wearEventId)
   if (!wear) notFound()
 
+  // Phase 85 D-14: visitors must not see a link to /w/[watchId] on a wear of
+  // a previously-owned watch — the watch page 404s for them (D-14 predicate
+  // in getWatchByIdForViewer, 85-02). The owner keeps the link regardless of
+  // status. D-17: the wear itself stays visible under the existing gate above
+  // — no new gating here.
+  const watchLinkable = wear.userId === viewerId || wear.watchStatus !== 'previously_owned'
+
   // Real viewerId — no sentinel needed (EN-6 cleanup).
   const likeState = await getLikesForTargetCached(viewerId, { type: 'wear', id: wearEventId })
 
@@ -103,6 +110,7 @@ export default async function WearDetailPage({
           avatarUrl={wear.avatarUrl}
           createdAt={wear.createdAt}
           watchId={wear.watchId}
+          watchLinkable={watchLinkable}
           viewerId={viewerId}
           wearEventId={wearEventId}
           initialLiked={likeState.viewerHasLiked}
@@ -146,6 +154,7 @@ async function WearPhotoStreamed({
   avatarUrl,
   createdAt,
   watchId,
+  watchLinkable,
   viewerId,
   wearEventId,
   initialLiked,
@@ -169,6 +178,8 @@ async function WearPhotoStreamed({
   avatarUrl: string | null
   createdAt: Date
   watchId: string
+  /** Phase 85 D-14 — see WearCardProps.watchLinkable. */
+  watchLinkable: boolean
   viewerId: string
   wearEventId: string
   initialLiked: boolean
@@ -247,6 +258,7 @@ async function WearPhotoStreamed({
       brand={brand}
       model={model}
       watchId={watchId}
+      watchLinkable={watchLinkable}
       viewerId={viewerId}
       wearEventId={wearEventId}
       initialLiked={initialLiked}

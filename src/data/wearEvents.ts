@@ -319,6 +319,8 @@ export async function getWearEventByIdForViewer(
       avatarUrl: profiles.avatarUrl,
       brand: watches.brand,
       model: watches.model,
+      // Phase 85 D-14 — lets the page hide the /w/[id] link for visitors on previously-owned watches
+      watchStatus: watches.status,
       // Phase 60: watches.image_url column dropped; resolve cover via watch_photos subquery
       watchImageUrl: sql<string | null>`(
         SELECT wp.storage_path
