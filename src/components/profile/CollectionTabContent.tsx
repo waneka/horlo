@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search } from 'lucide-react'
+import { Search, Eye, EyeOff } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,6 +15,7 @@ import {
 import { ProfileWatchCard } from './ProfileWatchCard'
 import { FilterChips } from './FilterChips'
 import { AddWatchCard } from './AddWatchCard'
+import { cn } from '@/lib/utils'
 import type { Watch } from '@/lib/types'
 
 interface CollectionTabContentProps {
@@ -30,6 +31,8 @@ interface CollectionTabContentProps {
   counts?: Record<string, { likeCount: number; commentCount: number; liked: boolean; canComment: boolean }>
   /** D-03/D-04: viewer's own id for chip gate + anon-bounce; threaded from page.tsx RSC. */
   viewerId?: string | null
+  /** Phase 85 D-13/LIFE-05 — owner-only; page.tsx passes [] for visitors. */
+  previouslyOwnedWatches?: Watch[]
 }
 
 export function CollectionTabContent({
@@ -39,7 +42,11 @@ export function CollectionTabContent({
   hasUrlExtract,
   counts,
   viewerId,
+  previouslyOwnedWatches = [],
 }: CollectionTabContentProps) {
+  // Phase 85 D-13 — defense in depth: never treat previously-owned rows as
+  // visible when !isOwner, even if a caller mistakenly passes them.
+  const disposed = isOwner ? previouslyOwnedWatches : []
   const pathname = usePathname() ?? ''
   // Phase 28 D-08 — capture entry pathname so the Add-Watch flow can
   // route the user back to /u/{username}/collection on commit.
@@ -67,10 +74,12 @@ export function CollectionTabContent({
 
   const [activeChip, setActiveChip] = useState('All')
   const [search, setSearch] = useState('')
+  // D-15 — not persisted; resets to off on a fresh mount.
+  const [showPreviouslyOwned, setShowPreviouslyOwned] = useState(false)
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase()
-    return watches.filter((w) => {
+    function matches(w: Watch) {
       if (activeChip !== 'All') {
         const hasTag = (w.roleTags ?? []).some(
           (r) => r.toLowerCase() === activeChip.toLowerCase(),
@@ -82,10 +91,14 @@ export function CollectionTabContent({
         w.brand.toLowerCase().includes(s) ||
         w.model.toLowerCase().includes(s)
       )
-    })
-  }, [watches, activeChip, search])
+    }
+    return [
+      ...watches.filter(matches),
+      ...(showPreviouslyOwned ? disposed.filter(matches) : []),
+    ]
+  }, [watches, disposed, showPreviouslyOwned, activeChip, search])
 
-  if (watches.length === 0) {
+  if (watches.length === 0 && disposed.length === 0) {
     if (isOwner) {
       // Phase 25 D-09 branch: when ANTHROPIC_API_KEY is unset, show two
       // side-by-side primary buttons (disabled "Add by URL" + enabled "Add
@@ -163,6 +176,28 @@ export function CollectionTabContent({
           active={activeChip}
           onChange={setActiveChip}
         />
+        {isOwner && (
+          <button
+            type="button"
+            aria-pressed={showPreviouslyOwned}
+            onClick={() => setShowPreviouslyOwned((v) => !v)}
+            className={cn(
+              'ml-2 inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-xs font-normal uppercase tracking-wide transition-colors',
+              showPreviouslyOwned
+                ? 'bg-accent text-accent-foreground border-accent'
+                : 'bg-background text-muted-foreground border-border hover:text-foreground',
+            )}
+          >
+            {showPreviouslyOwned ? (
+              <EyeOff className="size-3.5" aria-hidden />
+            ) : (
+              <Eye className="size-3.5" aria-hidden />
+            )}
+            {disposed.length > 0
+              ? `Show previously owned (${disposed.length})`
+              : 'Show previously owned'}
+          </button>
+        )}
         <div className="relative ml-auto w-48 shrink-0">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
