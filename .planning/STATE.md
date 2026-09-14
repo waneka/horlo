@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v9.0
 milestone_name: Collection Lifecycle & Wear Depth
 status: executing
-last_updated: "2026-09-14T04:13:57.108Z"
+last_updated: "2026-09-14T04:27:24.639Z"
 last_activity: 2026-09-14
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 22
-  completed_plans: 18
+  completed_plans: 19
   percent: 50
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-14 — v9.0 Collection Lifecycle & We
 ## Current Position
 
 Phase: 85 (collection-lifecycle) — EXECUTING
-Plan: 8 of 11
+Plan: 9 of 11
 Status: Ready to execute
 Last activity: 2026-09-14
 
@@ -112,6 +112,8 @@ Total: 38 items (2 debug + 19 quick_task + 1 todo + 15 seed + 1 stale verificati
 ## Accumulated Context
 
 ### Key Decisions
+
+**Phase 85 Plan 08 (disposal dialog + previously-owned card treatment, LIFE-03, 2026-09-14):** `MarkPreviouslyOwnedDialog` is the only UI surface that calls `markWatchPreviouslyOwned` (85-05's already-unit-tested server action) — a client-side future-date guard mirrors the server's own re-validation but never replaces it. `DisposalFields` (reason radiogroup + optional date/amount) lives in `src/components/watch/` as a standalone component precisely so `WatchForm`'s 85-10 inline disposal block can import it verbatim rather than forking field markup. `WatchCardOverflowMenu` mirrors `WearOverflowMenu`'s shape and reuses the exact Link-swallow guard (`preventDefault`+`stopPropagation`) `ProfileWatchCard`'s existing like/comment chips already established; its popup content also stops propagation so a portaled item click can't bubble into the card's `<Link>`. `ProfileWatchCard` now applies `opacity-60` to the whole `Card` for `previously_owned`, swaps the top-left wear badge for a reason·date badge (mutually exclusive — never both), suppresses the wear line, and renders the dialog as a sibling to `<Link>` (the `WatchCommentSheet` placement precedent) — the price line is untouched (`previously_owned` still reads "Paid: $X"). Two auto-fixes caught during this plan's own TDD RED/GREEN loop before either task was committed: (1) a grep-armor comment collision — doc comments in `disposal.ts`/`DisposalFields.tsx` used the same literal substrings (`timeZone: 'UTC'`, `role="radiogroup"`) the plan's own acceptance-criteria greps scan for, reworded to non-literal prose; (2) `DisposalFields`' roving-tabindex math treated an unselected (`null`) reason as index `-1`, so `ArrowRight` from the always-tabbable first option (Sold) computed no movement instead of advancing to Traded — fixed to treat `null` as index `0`. LIFE-03 marked complete in REQUIREMENTS.md (85-05 shipped the server contract but deliberately left the requirement unmarked pending this plan's UI).
 
 **Phase 85 Plan 07 (wear detail no-dead-link, D-14, 2026-09-14):** `watchLinkable` is computed once in `/wear/[wearEventId]`'s `WearDetailPage` (`wear.userId === viewerId || wear.watchStatus !== 'previously_owned'`) and threaded through the streamed `WearPhotoStreamed` child into `WearCard` → `WearVideoClient`/`WearPhotoClient`/`WearDetailHero` → `WearPhotoOverlays`, which swaps the brand/model `<Link href="/w/[id]">` for identically-styled plain text when `false` (defaults to `true` everywhere else, so no other `WearCard` consumer changes behavior). `getWearEventByIdForViewer` gained only an additive `watchStatus: watches.status` SELECT projection — no WHERE-clause or visibility change, so D-17 (the wear itself stays visible under existing rules) holds by construction, not by a new check. WearsLane (`/wears/[username]`) is deliberately untouched, per the plan's own threat model (T-85-18, accepted risk — not a D-14-named surface, 48h rail window, destination still 404s). Verified against real local Supabase (not just build/mocks, per CLAUDE.md's Local-First gate): inserted a temporary `wear_events` fixture on the existing local `previously_owned` watch, ran `getWearEventByIdForViewer` directly via `tsx --env-file=.env.development.local` as both the owner and a different real profile as viewer, confirmed `watchLinkable` evaluates `true`/`false` respectively, then deleted the fixture. No requirements newly marked complete (LIFE-05 was already completed by 85-06; this plan closes a D-14 gap on a surface RESEARCH identified as needing it, with no dedicated requirement ID of its own).
 
@@ -356,6 +358,7 @@ None.
 | Phase 85 P05 | ~50min | 3 tasks | 8 files |
 | Phase 85 P06 | ~25min | 2 tasks | 3 files |
 | Phase 85 P07 | ~30min | 2 tasks | 7 files |
+| Phase 85 P08 | ~35min | 2 tasks | 8 files |
 
 ## Session Continuity
 
