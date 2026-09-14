@@ -36,7 +36,7 @@ Collection lifecycle — the wishlist→owned promotion moment, honest tracking 
 - [ ] **LIFE-03**: User can mark an owned watch as previously-owned from its collection card, capturing the disposal reason plus optional sell price and disposal date.
 - [ ] **LIFE-04**: User promoting a wishlist watch to owned sees a celebration moment distinguishing the promotion from a normal edit.
 - [ ] **LIFE-05**: User sees a "Show previously owned" toggle on the Collection view; previously-owned watches are hidden by default.
-- [ ] **LIFE-06**: Previously-owned watches are excluded from similarity insights and the recommender.
+- [x] **LIFE-06**: Previously-owned watches are excluded from similarity insights and the recommender.
 
 ### REORDER
 
@@ -101,7 +101,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | LIFE-03 | Phase 85 | Pending |
 | LIFE-04 | Phase 85 | Pending |
 | LIFE-05 | Phase 85 | Pending |
-| LIFE-06 | Phase 85 | Pending |
+| LIFE-06 | Phase 85 | Complete |
 | REORDER-01 | Phase 86 | Pending |
 | REORDER-02 | Phase 86 | Pending |
 | REORDER-03 | Phase 86 | Pending |

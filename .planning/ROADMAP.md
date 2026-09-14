@@ -334,7 +334,7 @@ See [v8.4-ROADMAP.md](milestones/v8.4-ROADMAP.md) for full phase details.
   4. Previously-owned watches never appear in the recommender output on the home rail, and they are excluded from the similarity engine's "role duplicate" / "core fit" math against a candidate watch.
 **Plans**: 11 plans (7 waves; sequential execution without worktrees — DB-touching + build-gated)
 - [x] 85-01-PLAN.md — Wave 1: idempotent migration (disposal_reason pgEnum + 3 nullable columns, sold→previously_owned backfill, comments RLS re-create) + Drizzle mirror + [BLOCKING] local apply
-- [ ] 85-02-PLAN.md — Wave 2: rename core (WatchStatus/constants/DAL disposal mapping), D-14 visitor predicate, D-18 recommender exclusion, D-19 LIFE-06 regression test
+- [x] 85-02-PLAN.md — Wave 2: rename core (WatchStatus/constants/DAL disposal mapping), D-14 visitor predicate, D-18 recommender exclusion, D-19 LIFE-06 regression test
 - [ ] 85-03-PLAN.md — Wave 2: D-03 divestments dual-write retirement + remaining application-source status references (dead island, destinations, comments)
 - [ ] 85-04-PLAN.md — Wave 3: test-fixture sold→previously_owned sweep + repo-wide literal gate + `npm run build` gate
 - [ ] 85-05-PLAN.md — Wave 4: markWatchPreviouslyOwned action, editWatch D-04 undo / D-07 guard, promoted/promotedFrom signal, shared client-today validators
@@ -367,5 +367,5 @@ Phases execute in numeric order: 83 → 84 → 85 → 86
 |-------|-----------|----------------|--------|-----------|
 | 83. Polish sweep | v9.0 | 4/4 | Complete   | 2026-09-12 |
 | 84. Wear history depth | v9.0 | 7/7 | Complete    | 2026-09-13 |
-| 85. Collection lifecycle | v9.0 | 1/11 | In Progress|  |
+| 85. Collection lifecycle | v9.0 | 2/11 | In Progress|  |
 | 86. Reorder mode | v9.0 | 0/TBD | Not started | - |
