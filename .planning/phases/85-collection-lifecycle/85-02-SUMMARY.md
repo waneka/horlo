@@ -109,3 +109,16 @@ None - no external service configuration required.
 ---
 *Phase: 85-collection-lifecycle*
 *Completed: 2026-09-13*
+
+## Self-Check: PASSED
+
+- FOUND: src/lib/types.ts
+- FOUND: src/lib/constants.ts
+- FOUND: src/data/watches.ts
+- FOUND: src/data/recommendations.ts
+- FOUND: tests/data/getWatchByIdForViewer.test.ts
+- FOUND: src/data/__tests__/recommendations.test.ts
+- FOUND: tests/lib/previouslyOwnedExclusion.test.ts
+- FOUND: .planning/phases/85-collection-lifecycle/85-02-SUMMARY.md
+- FOUND commit: 767822a0 (Task 1)
+- FOUND commit: cd2f34e4 (SUMMARY)
