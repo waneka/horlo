@@ -31,6 +31,15 @@ vi.mock('@/data/profiles', () => ({ getProfileById: vi.fn() }))
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
+  // Phase 85 Plan 05 (Rule 3 fix) — moveWishlistToCollection has always
+  // called updateTag(`viewer:${id}:recs`) (Phase 75 D-02/D-03); this mock
+  // never stubbed it, so every happy-path call threw inside the real
+  // next/cache updateTag (no Server Action context in a unit test) and was
+  // swallowed by the action's outer catch, silently flipping
+  // result.success to false. Pre-existing baseline gap logged in the
+  // 85-03/85-04 SUMMARYs — fixed here since this plan's own tests need
+  // these cases green.
+  updateTag: vi.fn(),
 }))
 
 import { moveWishlistToCollection } from '@/app/actions/watches'
@@ -109,7 +118,12 @@ describe('Phase 70 — moveWishlistToCollection (DUPE-03)', () => {
     const result = await moveWishlistToCollection(VALID_UUID)
 
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data).toEqual(updated)
+    // Phase 85 D-09 — result.data widened to { watch, promoted, promotedFrom }.
+    if (result.success) {
+      expect(result.data.watch).toEqual(updated)
+      expect(result.data.promoted).toBe(true)
+      expect(result.data.promotedFrom).toBe('wishlist')
+    }
 
     // updateWatch payload: status flipped, notes carried over.
     // Watch.pricePaid is `number | undefined` (not nullable per types.ts:60) —
@@ -169,7 +183,12 @@ describe('Phase 70 — moveWishlistToCollection (DUPE-03)', () => {
     const result = await moveWishlistToCollection(VALID_UUID)
 
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data).toEqual(priorRow)
+    // Phase 85 D-09 — not a promotion; the flip already happened previously.
+    if (result.success) {
+      expect(result.data.watch).toEqual(priorRow)
+      expect(result.data.promoted).toBe(false)
+      expect(result.data.promotedFrom).toBe(null)
+    }
 
     // T-70-02 verification: no re-fire of side-effects on double-click race
     expect(updateWatch).not.toHaveBeenCalled()

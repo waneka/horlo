@@ -81,6 +81,17 @@ const insertWatchSchema = z.object({
     .regex(/^[0-9a-f-]{36}\/(pending|[0-9a-f-]{36})\/[0-9a-f-]+\.jpg$/i, 'Invalid photo path')
     .max(256)
     .optional(),
+  // Phase 85 D-02/D-06 — disposal metadata (LIFE-02). `disposalDate`/`today`
+  // reuse the shared calendar-date schema (src/lib/clientToday.ts) so editWatch
+  // can bounds-check a disposalDate edit on an already-disposed watch without
+  // deriving "today" server-side (260622-exo). D-07/D-02 gate WHEN these are
+  // actually honored — addWatch rejects status:'previously_owned' outright,
+  // and editWatch ignores these fields entirely unless the watch is already
+  // previously_owned.
+  disposalReason: z.enum(['sold', 'lost', 'gifted', 'stolen', 'traded']).optional(),
+  sellPrice: z.number().min(0).optional(),
+  disposalDate: isoCalendarDate.optional(),
+  today: isoCalendarDate.optional(),
 })
 
 // Partial schema for updates — all fields optional.
@@ -114,6 +125,13 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     }
   }
 
+  // Phase 85 D-07 — a brand new watch has never left the collection; the
+  // disposal dialog (markWatchPreviouslyOwned) is the ONLY way to reach
+  // previously_owned. Reject here, before any DAL write.
+  if (parsed.data.status === 'previously_owned') {
+    return { success: false, error: 'New watches can not be added as previously owned.' }
+  }
+
   try {
     // Phase 27 D-03 — new wishlist/grail watch lands at end of the user's
     // wishlist+grail list. Universal column on every row, but we only assign
@@ -127,8 +145,25 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     // Without this, a malicious client could set sortOrder: -999999 to
     // force their watch to the top of their own list, bypassing the
     // bulkReorderWishlist 500-id cap.
-    const { sortOrder: _ignoredSortOrder, ...cleanData } = parsed.data
+    //
+    // Phase 85 D-07/D-02 — a brand new watch can never be previously_owned
+    // (rejected above) or carry disposal metadata (there's nothing to
+    // dispose of yet). Strip today/disposalReason/sellPrice/disposalDate the
+    // same way — they're accepted by the shared schema (back-compat with
+    // editWatch) but addWatch never persists them.
+    const {
+      sortOrder: _ignoredSortOrder,
+      today: _ignoredToday,
+      disposalReason: _ignoredDisposalReason,
+      sellPrice: _ignoredSellPrice,
+      disposalDate: _ignoredDisposalDate,
+      ...cleanData
+    } = parsed.data
     void _ignoredSortOrder
+    void _ignoredToday
+    void _ignoredDisposalReason
+    void _ignoredSellPrice
+    void _ignoredDisposalDate
 
     // CONF-11 D-09/D-10: catalogId-supplied branch.
     // Inserted BEFORE the wishlist-sortOrder block so D-10 identity override
@@ -422,7 +457,7 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
 export async function moveWishlistToCollection(
   watchId: string,
   opts?: { pricePaid?: number; notes?: string },
-): Promise<ActionResult<Watch>> {
+): Promise<ActionResult<WatchEditResult>> {
   let user
   try {
     user = await getCurrentUser()
@@ -457,8 +492,9 @@ export async function moveWishlistToCollection(
       // T-70-02 — double-click race: prior request already committed the flip.
       // Return success WITHOUT re-firing side-effects so the activity feed
       // doesn't double-log and recipients don't get duplicate notifications.
+      // D-09: not a promotion — the flip already happened on a prior request.
       if (priorRow.status === 'owned') {
-        return { success: true, data: priorRow }
+        return { success: true, data: { watch: priorRow, promoted: false, promotedFrom: null } }
       }
       // T-70-03 — previously_owned/grail are semantically incoherent transitions
       // to owned. Explicit rejection with the status interpolated for the
@@ -558,7 +594,10 @@ export async function moveWishlistToCollection(
     }
     revalidateTag('explore', 'max')
 
-    return { success: true, data: updatedWatch }
+    // D-09: this branch only runs when priorRow.status === 'wishlist' (the
+    // grail case is rejected above, T-70-03) — every success here is a
+    // wishlist→owned promotion.
+    return { success: true, data: { watch: updatedWatch, promoted: true, promotedFrom: 'wishlist' } }
   } catch (err) {
     console.error('[moveWishlistToCollection] unexpected error:', err)
     return { success: false, error: 'Failed to move watch to collection' }
@@ -590,7 +629,8 @@ const markWatchPreviouslyOwnedSchema = z
  * client-today plausibility (T-85-09) -> disposalDate > today reject ->
  * IDOR-scoped getWatchById (T-85-08) -> already-disposed idempotent no-op
  * (T-85-13) -> owned-only status guard -> single-table updateWatch (D-03: no
- * db.transaction, no divestments insert) -> D-08 cache fan-out.
+ * transaction, no historical dual-write to the retired disposal-tracking
+ * table) -> D-08 cache fan-out.
  */
 export async function markWatchPreviouslyOwned(
   input: MarkPreviouslyOwnedInput,
@@ -639,7 +679,7 @@ export async function markWatchPreviouslyOwned(
       }
     }
 
-    // D-03: single-table write — no db.transaction, no divestments insert.
+    // D-03: single-table write — no transaction, no historical dual-write.
     // All three disposal keys are always present so an absent optional field
     // (undefined) clears the corresponding column to NULL via
     // mapDomainToRow's `'key' in data` idiom.
@@ -680,7 +720,7 @@ export async function markWatchPreviouslyOwned(
  * Validates partial input, delegates to DAL, revalidates the home path on success.
  * Returns ActionResult — never throws across the boundary (D-12, D-15).
  */
-export async function editWatch(watchId: string, data: unknown): Promise<ActionResult<Watch>> {
+export async function editWatch(watchId: string, data: unknown): Promise<ActionResult<WatchEditResult>> {
   let user
   try { user = await getCurrentUser() } catch { return { success: false, error: 'Not authenticated' } }
 
@@ -710,8 +750,14 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     // server-assigned slot during a within-group edit (the prior code only
     // bumped on TRANSITIONS into the group, leaving same-group edits to pass
     // sortOrder through untouched).
-    const { sortOrder: _ignoredSortOrder, ...cleanData } = parsed.data
+    //
+    // Phase 85 — `today` is stripped from cleanData the same way: it's a
+    // validation-only field (D-06 disposalDate bounds-check below), never a
+    // Watch column. `parsed.data.today` (the raw parse) stays available for
+    // that check.
+    const { sortOrder: _ignoredSortOrder, today: _ignoredToday, ...cleanData } = parsed.data
     void _ignoredSortOrder
+    void _ignoredToday
     // Payload type widens cleanData to allow re-adding sortOrder server-side.
     let updatePayload: typeof parsed.data = cleanData
 
@@ -727,6 +773,65 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     if (!priorRow) {
       return { success: false, error: 'Watch not found' }
     }
+
+    // Phase 85 D-07/D-04/D-02/D-09 — dialog-only disposal guard, undo
+    // nulling, disposal-field ignore-when-not-disposed, and the promotion
+    // signal. Runs BEFORE the Phase 27 sort bump / DISP-02 overwrite blocks
+    // below so their cleanData/updatePayload spreads never reintroduce a key
+    // this block just stripped or forced to undefined.
+
+    // D-07: the disposal dialog (markWatchPreviouslyOwned) is the ONLY path
+    // into previously_owned — a watch that is not ALREADY previously_owned
+    // cannot be edited into it.
+    if (cleanData.status === 'previously_owned' && priorRow.status !== 'previously_owned') {
+      return {
+        success: false,
+        error: 'Use "Mark as previously owned" to record a watch leaving your collection.',
+      }
+    }
+
+    const nextStatus = cleanData.status ?? priorRow.status
+    const isExitingPreviouslyOwned =
+      priorRow.status === 'previously_owned' && nextStatus !== 'previously_owned'
+
+    if (nextStatus === 'previously_owned') {
+      // Editing an already-disposed watch's disposal metadata.
+      // D-04: reason cannot be cleared while the watch stays disposed — an
+      // explicitly-undefined disposalReason key is dropped entirely so
+      // mapDomainToRow's `'key' in data` idiom does not null it out.
+      if ('disposalReason' in cleanData && cleanData.disposalReason === undefined) {
+        delete cleanData.disposalReason
+      }
+      if (cleanData.disposalDate !== undefined) {
+        if (!parsed.data.today || !isPlausibleClientToday(parsed.data.today)) {
+          return { success: false, error: 'Invalid request' }
+        }
+        if (cleanData.disposalDate > parsed.data.today) {
+          return { success: false, error: "Disposal date can't be in the future." }
+        }
+      }
+    } else if (isExitingPreviouslyOwned) {
+      // D-04 undo — force all three disposal keys present with undefined
+      // values (-> NULL via mapDomainToRow) regardless of what the client
+      // sent for them.
+      cleanData.disposalReason = undefined
+      cleanData.sellPrice = undefined
+      cleanData.disposalDate = undefined
+    } else {
+      // D-02 — disposal fields are ignored entirely for a watch that isn't
+      // (and isn't becoming) previously_owned.
+      delete cleanData.disposalReason
+      delete cleanData.sellPrice
+      delete cleanData.disposalDate
+    }
+
+    // D-09: promotion happens on a wishlist/grail → owned transition.
+    const promoted =
+      (priorRow.status === 'wishlist' || priorRow.status === 'grail') &&
+      cleanData.status === 'owned'
+    const promotedFrom: 'wishlist' | 'grail' | null = promoted
+      ? (priorRow.status as 'wishlist' | 'grail')
+      : null
 
     // Phase 27 D-04 — wishlist/grail sort-order assignment on transition INTO
     // the group. Reuses priorRow (single fetch above — no duplicate round-trip).
@@ -789,7 +894,6 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     // race a concurrent delete that started before priorRow was fetched.
     const updatedWatch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
 
-    const watch = updatedWatch
     revalidatePath('/')
     // Phase 75 D-02/D-03 — per-viewer home rec rail invalidation. updateTag
     // is the Next 16 read-your-own-writes primitive for Server Actions
@@ -814,7 +918,7 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     // row via the upsert path. Fan-out is the safe default.
     revalidateTag('explore', 'max')
 
-    return { success: true, data: watch }
+    return { success: true, data: { watch: updatedWatch, promoted, promotedFrom } }
   } catch (err) {
     console.error('[editWatch] unexpected error:', err)
     if (err instanceof Error && err.message.includes('not found or access denied')) {

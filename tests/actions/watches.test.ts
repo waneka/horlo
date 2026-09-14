@@ -22,6 +22,15 @@ vi.mock('next/cache', () => ({
   // Bug fix (debug session notifications-revalidate-tag-in-render):
   // addWatch now invalidates each watch_overlap recipient's bell cache.
   revalidateTag: vi.fn(),
+  // Phase 85 Plan 05 (Rule 3 fix) — addWatch/editWatch have called
+  // updateTag(`viewer:${id}:recs`) since Phase 75 (D-02/D-03); this mock
+  // never stubbed it, so every real call threw inside the unmocked
+  // next/cache updateTag (no Server Action context in a unit test) and was
+  // swallowed by the action's outer catch, silently flipping
+  // result.success to false. Pre-existing baseline gap logged in the
+  // 85-03/85-04 SUMMARYs — fixed here since this plan's own tests need
+  // these files green.
+  updateTag: vi.fn(),
 }))
 vi.mock('@/lib/notifications/logger', () => ({
   // Explicit resolved Promise so the now-awaited logger call doesn't short-

@@ -42,6 +42,10 @@ vi.mock('@/data/watches', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
+  // Phase 85 Plan 05 (Rule 3 fix) — see tests/actions/watches.test.ts's
+  // identical comment; addWatch/editWatch call updateTag unconditionally
+  // and this mock never stubbed it.
+  updateTag: vi.fn(),
 }))
 
 vi.mock('@/lib/notifications/logger', () => ({
