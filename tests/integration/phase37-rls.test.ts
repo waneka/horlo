@@ -12,42 +12,22 @@
  *   - T-37-RLS-01 (anon read divestments): has_table_privilege returns false
  *   - T-37-RLS-02 (cross-user read): anon supabase-js SELECT returns empty
  *   - T-37-FK-01 (FK orphan): non-existent catalog_id INSERT raises FK violation
- *   - T-37-TXN-01 (partial dual-write): `recordDivestment dual-write` describe asserts both
- *     side effects together OR neither (rollback verified via forced FK violation on
- *     replacedByCatalogId)
  *
- * Validation map: covers V-02..V-10 + V-14 from 37-VALIDATION.md.
+ * Validation map: covers V-02..V-09 + V-14 from 37-VALIDATION.md.
  *
- * V-10 dual-write tests stub `@/lib/auth` via `vi.mock` to inject a stable test user id,
- * then call `recordDivestment` directly. The Server Action's `'use server'` directive
- * only affects the Next.js bundler — the function is a plain async function under vitest.
- *
- * NOTE on raw SQL fixture inserts (V-10 describe block): db.insert(watches).values({...})
- * generates column names from the Drizzle schema definition (e.g. `movement_type`,
- * `movement_caliber`). The local Docker DB may be at a different schema generation (e.g.
- * still has the pre-Phase-35 `movement` column). Raw SQL INSERT avoids this drift by
- * specifying only the columns that have existed since the initial schema — this is
- * intentional and does NOT reduce test coverage (the V-10 assertions target
- * divestments-side behavior, not watches column exhaustiveness).
+ * Phase 85 D-03 update: the Server Action dual-write formerly covered by
+ * V-10 / T-37-TXN-01 (an INSERT into the disposal-tracking table alongside
+ * an UPDATE of watches.status='sold', wrapped in an atomic transaction) has
+ * been retired — `editWatch` no longer performs that dual-write, and the Server
+ * Action module that owned it no longer exists. The `divestments`
+ * table-shape and RLS assertions below (V-04..V-09) remain — the table itself
+ * is left in place, just no longer written to.
  */
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { db } from '@/db'
-
-// Stable test user id — used across the V-10 describe block.
-const TEST_USER_ID = '00000000-0000-0000-0000-000000000037'
-
-vi.mock('@/lib/auth', () => ({
-  getCurrentUser: vi.fn(async () => ({ id: TEST_USER_ID, email: 'test@horlo.local' })),
-}))
-
-// Stub next/cache so revalidatePath / revalidateTag are no-ops under vitest.
-vi.mock('next/cache', () => ({
-  revalidatePath: vi.fn(),
-  revalidateTag: vi.fn(),
-}))
 
 const dbUrlIsLocal =
   typeof process.env.DATABASE_URL === 'string' &&
@@ -227,157 +207,5 @@ maybe('Phase 37 RLS + schema introspection — divestments + provenance (CAT-18)
     const fs = await import('node:fs/promises')
     const content = await fs.readFile('docs/deploy-db-setup.md', 'utf8')
     expect(content).toContain('## Phase 37')
-  })
-
-  // ========================================================================
-  // V-10 — Server Action atomic dual-write (recordDivestment)
-  //
-  // The dual-write is the FIRST `db.transaction()` usage in the codebase. We
-  // assert BOTH side effects together on happy path AND BOTH absent on rollback.
-  // This is the test the checker upgraded from "manual UI walkthrough" to
-  // "automated integration assertion" — see Plan 05 revision notes.
-  //
-  // Setup: each test inserts its own fixture watch (status='owned', valid
-  // catalog_id pulled from existing watches_catalog) so tests are independent.
-  // Teardown: afterAll() removes the synthetic catalog row, fixture watches,
-  // divestments, and the test user. A leaked synthetic catalog row otherwise
-  // pollutes the catalog-coverage tooling (backfill-taste / factual-propose /
-  // verify-catalog-coverage) — see Phase 44.
-  //
-  // Fixture watch insert uses raw SQL (not Drizzle ORM) to avoid column-name
-  // drift between the Drizzle schema definition and the local Docker DB's
-  // actual column shape (e.g. local may have `movement` pre-Phase-35 rename
-  // while Drizzle schema emits `movement_type`/`movement_caliber`). Raw SQL
-  // INSERT specifying only durable base columns is immune to this drift.
-  // ========================================================================
-  describe('recordDivestment dual-write (V-10; T-37-TXN-01)', () => {
-    let testCatalogId: string
-    // Synthetic catalog id for this block's fixtures — inserted in beforeAll,
-    // removed in afterAll so it never leaks into the shared local DB.
-    const syntheticCatalogId = '00000000-0000-4000-a000-000000000037'
-
-    beforeAll(async () => {
-      // Pull or create a catalog row for the test fixture's catalog_id.
-      // If watches_catalog is empty (e.g. after a `supabase db reset` or Phase 35
-      // TRUNCATE cascade), insert a synthetic row. Idempotent via ON CONFLICT DO NOTHING.
-      await db.execute(sql`
-        INSERT INTO watches_catalog (id, brand, model)
-        VALUES (${syntheticCatalogId}::uuid, 'Test Brand V10', 'Test Model V10')
-        ON CONFLICT (id) DO NOTHING
-      `)
-
-      const result = await db.execute<{ id: string }>(sql`
-        SELECT id FROM watches_catalog LIMIT 1
-      `)
-      const rows = result as unknown as Array<{ id: string }>
-      if (rows.length === 0) {
-        throw new Error('V-10 setup: watches_catalog is still empty after synthetic insert — check DB state')
-      }
-      testCatalogId = rows[0].id
-
-      // Ensure the synthetic test user exists in auth.users (required by the
-      // watches.user_id FK). If it already exists from a prior test run, the
-      // INSERT is skipped via ON CONFLICT DO NOTHING.
-      await db.execute(sql`
-        INSERT INTO auth.users (id, email, created_at, updated_at, confirmation_token, email_confirmed_at)
-        VALUES (
-          ${TEST_USER_ID}::uuid,
-          'test-v10@horlo.local',
-          now(), now(), '', now()
-        )
-        ON CONFLICT (id) DO NOTHING
-      `)
-    })
-
-    // Teardown: delete this block's fixtures in FK-safe order (dependents
-    // first). divestments.catalog_id is ON DELETE RESTRICT, so divestments and
-    // fixture watches must go before the synthetic catalog row.
-    afterAll(async () => {
-      await db.execute(sql`DELETE FROM divestments WHERE user_id = ${TEST_USER_ID}`)
-      await db.execute(sql`DELETE FROM watches WHERE user_id = ${TEST_USER_ID}`)
-      await db.execute(sql`DELETE FROM watches_catalog WHERE id = ${syntheticCatalogId}::uuid`)
-      await db.execute(sql`DELETE FROM profiles WHERE id = ${TEST_USER_ID}::uuid`)
-      await db.execute(sql`DELETE FROM auth.users WHERE id = ${TEST_USER_ID}::uuid`)
-    })
-
-    it('happy path: inserts divestments row + flips watches.status to "sold" atomically', async () => {
-      // 1) Insert fixture watch via raw SQL (bypasses Server Action auth gate AND
-      //    Drizzle ORM column-mapping drift — see file header NOTE).
-      const watchId = randomUUID()
-      await db.execute(sql`
-        INSERT INTO watches (id, user_id, brand, model, status, catalog_id)
-        VALUES (${watchId}, ${TEST_USER_ID}, 'TestBrand-V10-Happy', 'TestModel-V10-Happy', 'owned', ${testCatalogId})
-      `)
-
-      // 2) Call recordDivestment (Server Action; getCurrentUser is mocked above
-      //    to return TEST_USER_ID — bypasses the auth gate).
-      const { recordDivestment } = await import('@/app/actions/divestments')
-      const result = await recordDivestment(watchId)
-
-      // 3) Assert ActionResult shape: success.
-      expect(result.success).toBe(true)
-      if (result.success) {
-        expect(result.data.divestmentId).toMatch(/^[0-9a-f-]{36}$/i)
-      }
-
-      // 4) Assert side effect 1: exactly one divestments row exists for this
-      //    user + catalog, freshly inserted.
-      const divestmentRows = await db.execute<{ count: string }>(sql`
-        SELECT count(*)::text AS count FROM divestments
-         WHERE user_id = ${TEST_USER_ID}
-           AND catalog_id = ${testCatalogId}
-           AND created_at > now() - interval '1 minute'
-      `)
-      expect(Number((divestmentRows as unknown as Array<{ count: string }>)[0].count)).toBeGreaterThanOrEqual(1)
-
-      // 5) Assert side effect 2: watches.status = 'sold' for the fixture watch.
-      const watchRows = await db.execute<{ status: string }>(sql`
-        SELECT status FROM watches WHERE id = ${watchId}
-      `)
-      expect((watchRows as unknown as Array<{ status: string }>)[0].status).toBe('sold')
-    })
-
-    it('rollback path: forced FK violation rolls back BOTH writes (no divestment row, watches.status remains "owned")', async () => {
-      // 1) Insert fixture watch via raw SQL (status='owned', valid catalog_id).
-      const watchId = randomUUID()
-      await db.execute(sql`
-        INSERT INTO watches (id, user_id, brand, model, status, catalog_id)
-        VALUES (${watchId}, ${TEST_USER_ID}, 'TestBrand-V10-Rollback', 'TestModel-V10-Rollback', 'owned', ${testCatalogId})
-      `)
-
-      // Snapshot the divestment row count BEFORE the call so we can assert
-      // delta == 0 after the rollback (avoids cross-test contamination from
-      // the happy-path test).
-      const before = await db.execute<{ count: string }>(sql`
-        SELECT count(*)::text AS count FROM divestments
-         WHERE user_id = ${TEST_USER_ID} AND catalog_id = ${testCatalogId}
-      `)
-      const beforeCount = Number((before as unknown as Array<{ count: string }>)[0].count)
-
-      // 2) Call recordDivestment with a NON-EXISTENT replacedByCatalogId.
-      //    This is a valid uuid format (zod passes) but a FK violation at
-      //    INSERT time → the transaction rolls back BOTH writes.
-      const { recordDivestment } = await import('@/app/actions/divestments')
-      const result = await recordDivestment(watchId, {
-        replacedByCatalogId: randomUUID(),  // valid uuid; not a real catalog row
-      })
-
-      // 3) Assert ActionResult shape: failure (the catch block returns { success: false }).
-      expect(result.success).toBe(false)
-
-      // 4) Assert side effect 1 absent: divestment row count unchanged.
-      const after = await db.execute<{ count: string }>(sql`
-        SELECT count(*)::text AS count FROM divestments
-         WHERE user_id = ${TEST_USER_ID} AND catalog_id = ${testCatalogId}
-      `)
-      const afterCount = Number((after as unknown as Array<{ count: string }>)[0].count)
-      expect(afterCount).toBe(beforeCount)
-
-      // 5) Assert side effect 2 absent: watches.status STILL 'owned'.
-      const watchRows = await db.execute<{ status: string }>(sql`
-        SELECT status FROM watches WHERE id = ${watchId}
-      `)
-      expect((watchRows as unknown as Array<{ status: string }>)[0].status).toBe('owned')
-    })
   })
 })

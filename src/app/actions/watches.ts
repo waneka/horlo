@@ -17,9 +17,6 @@
 // for stale-while-revalidate semantics — that pattern is unchanged.
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { z } from 'zod'
-import { eq, and } from 'drizzle-orm'
-import { db } from '@/db'
-import { divestments, watches } from '@/db/schema'
 import * as watchDAL from '@/data/watches'
 import * as catalogDAL from '@/data/catalog'
 import { logActivity } from '@/data/activities'
@@ -38,7 +35,7 @@ const insertWatchSchema = z.object({
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
   reference: z.string().optional(),
-  status: z.enum(['owned', 'wishlist', 'sold', 'grail']),
+  status: z.enum(['owned', 'wishlist', 'grail', 'previously_owned']),
   pricePaid: z.number().optional(),
   targetPrice: z.number().optional(),
   marketPrice: z.number().optional(),
@@ -120,8 +117,8 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
     // Phase 27 D-03 — new wishlist/grail watch lands at end of the user's
     // wishlist+grail list. Universal column on every row, but we only assign
     // an explicit value when the new watch enters the wishlist+grail set.
-    // For owned/sold the DB-side default 0 is fine (Collection-tab reorder
-    // is deferred per CONTEXT).
+    // For owned/previously_owned the DB-side default 0 is fine (Collection-tab
+    // reorder is deferred per CONTEXT).
     //
     // WR-01 fix — strip client-supplied sortOrder unconditionally before
     // passing to the DAL. The schema accepts the field (back-compat) but
@@ -407,8 +404,8 @@ export async function addWatch(data: unknown): Promise<ActionResult<Watch>> {
  *   3. DAL ownership check via `watchDAL.getWatchById(user.id, watchId)`
  *      — null → "Watch not found" (T-70-01 second-layer IDOR mitigation).
  *   4. Status whitelist: wishlist → continue; owned → idempotent no-op
- *      (T-70-02 double-click mitigation); sold/grail → explicit rejection
- *      (T-70-03).
+ *      (T-70-02 double-click mitigation); previously_owned/grail → explicit
+ *      rejection (T-70-03).
  *   5. `updateWatch({ status:'owned', pricePaid, notes })` — sortOrder stripped
  *      (WR-01 server-truth; matches editWatch).
  *   6. `logActivity('watch_added', updatedWatch.id, { brand, model, imageUrl })`
@@ -462,8 +459,9 @@ export async function moveWishlistToCollection(
       if (priorRow.status === 'owned') {
         return { success: true, data: priorRow }
       }
-      // T-70-03 — sold/grail are semantically incoherent transitions to owned.
-      // Explicit rejection with the status interpolated for the operator log.
+      // T-70-03 — previously_owned/grail are semantically incoherent transitions
+      // to owned. Explicit rejection with the status interpolated for the
+      // operator log.
       return {
         success: false,
         error: `Cannot move ${priorRow.status} watch to collection`,
@@ -477,8 +475,8 @@ export async function moveWishlistToCollection(
     })
 
     // Build update payload — WR-01 server-truth: sortOrder is NOT set here
-    // (status entering owned/sold group; Collection-tab reorder deferred per
-    // CONTEXT). updateWatch's Partial<Watch> shape means absent fields are
+    // (status entering owned/previously_owned group; Collection-tab reorder
+    // deferred per CONTEXT). updateWatch's Partial<Watch> shape means absent fields are
     // not changed; only the explicit keys flip on the DB row.
     //
     // Rule 1 fix (build): Watch.pricePaid is `number | undefined`, not
@@ -587,9 +585,9 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
 
   try {
     // Phase 27 D-04 — status transition resets sort_order in the destination
-    // group. Wishlist+grail share one group; owned+sold are a separate group
-    // (Collection-tab reorder is deferred per CONTEXT, so we do not bump on
-    // owned/sold transitions today). Only bump when:
+    // group. Wishlist+grail share one group; owned+previously_owned are a
+    // separate group (Collection-tab reorder is deferred per CONTEXT, so we
+    // do not bump on owned/previously_owned transitions today). Only bump when:
     //   - parsed.data.status is 'wishlist' or 'grail', AND
     //   - the watch's CURRENT status is NOT wishlist/grail (transition INTO).
     // Within-group changes (wishlist ↔ grail) keep their slot — wishlist+grail
@@ -609,11 +607,12 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
 
     // Phase 37 — single hoisted fetch. priorRow is used by:
     //   (1) the null/ownership early-return (WARNING #4 — prevents UPDATE on a
-    //       row that was deleted between fetch and write, mirrors the pattern
-    //       used inside recordDivestment in src/app/actions/divestments.ts);
+    //       row that was deleted between fetch and write);
     //   (2) the existing wishlist/grail sort-order logic (was a separate
     //       in-branch fetch — folded in so we only round-trip once);
-    //   (3) the owned→sold transition detection (CRITICAL OVERRIDE #2).
+    //   (3) Phase 85 status-transition rules (promotion-to-owned celebration
+    //       detection, previously-owned disposal/undo) that read the prior
+    //       status to detect a transition.
     const priorRow = await watchDAL.getWatchById(user.id, watchId)
     if (!priorRow) {
       return { success: false, error: 'Watch not found' }
@@ -651,10 +650,7 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     // tolerate silently rather than surfacing a 500).
     //
     // Both cleanData AND updatePayload are updated because:
-    //   - the non-transition path (L676) reads from updatePayload;
-    //   - the owned→sold transaction path (L639-670) also reads updatePayload
-    //     via the `Object.entries(updatePayload).filter(...)` rowData build at
-    //     L658 — so the overwrite lands atomically with the status flip.
+    //   - the single updateWatch write below reads from updatePayload;
     //   - cleanData is kept in sync as belt-and-suspenders in case a future
     //     edit inserts another consumer that reads cleanData directly.
     if (
@@ -675,65 +671,13 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
       // else: catalogRow-null defensive skip — see failure semantics above.
     }
 
-    // Phase 37 D-11 + CRITICAL OVERRIDE #2 — owned→sold transition detection.
-    // If the user is flipping status to 'sold' AND the watch was not already
-    // 'sold', the dual-write (INSERT divestments + UPDATE watches.status='sold')
-    // MUST be atomic. Wrap both writes in db.transaction() — the FIRST
-    // transaction usage in this codebase per RESEARCH §4 Open Q #2.
-    //
-    // For all other status transitions (and non-status edits), the existing
-    // single-write updateWatch path is preserved. priorRow is non-null here
-    // by virtue of the early-return above.
-    let updatedWatch: Watch
-    const isTransitioningToSold =
-      updatePayload.status === 'sold' && priorRow.status !== 'sold'
-
-    if (isTransitioningToSold) {
-      // D-11 step 2: post-CAT-14 invariant — watches.catalog_id IS NOT NULL.
-      // Defensive guard because Drizzle .notNull() tightening is Phase 38 (L-09).
-      if (!priorRow.catalogId) {
-        return { success: false, error: 'Watch has no catalog link — cannot transition to sold' }
-      }
-
-      // D-11 step 3 + 4: atomic dual-write.
-      // Insert divestment row + apply the full update payload (which includes
-      // status='sold' and any other concurrent edits the user made on the form).
-      // divestedAt + createdAt + updatedAt default at DB level.
-      // Option (b): inline the watches UPDATE directly inside the transaction
-      // to avoid modifying updateWatch's signature (DAL accepts Partial<Watch>
-      // but db.transaction's tx type doesn't thread cleanly through the DAL
-      // without a signature change — inline is cleaner per plan Task 2 guidance).
-      updatedWatch = await db.transaction(async (tx) => {
-        await tx.insert(divestments).values({
-          catalogId: priorRow.catalogId!,
-          userId: user.id,
-          // Phase 37 D-12: status-chip click writes empty-metadata row.
-          // The future v5.x sell-dialog backfills salePrice / saleCurrency /
-          // replacedByCatalogId / notes via a separate recordDivestment call.
-        })
-        // Apply the full updatePayload INSIDE the transaction so any
-        // concurrent provenance edits the user made (e.g. condition, serial)
-        // land atomically with the status flip.
-        const rowData = Object.fromEntries(
-          Object.entries(updatePayload).filter(([, v]) => v !== undefined)
-        )
-        const [updated] = await tx
-          .update(watches)
-          .set({ ...rowData, updatedAt: new Date() })
-          .where(and(eq(watches.userId, user.id), eq(watches.id, watchId)))
-          .returning()
-        if (!updated) {
-          throw new Error(`Watch not found or access denied: watchId=${watchId}, userId=${user.id}`)
-        }
-        return updated as unknown as Watch
-      })
-    } else {
-      // Non-transition path — preserves existing behavior verbatim.
-      // priorRow is non-null here (early-return above guarantees it), so the
-      // updateWatch call cannot race a concurrent delete that started before
-      // priorRow was fetched.
-      updatedWatch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
-    }
+    // Phase 85 D-03 — the legacy dual-write (an INSERT into the historical
+    // disposal-tracking table alongside the watches UPDATE, wrapped in an
+    // atomic transaction) has been retired. Disposal to previously_owned is
+    // now a single-table write, same as any other status edit — priorRow is
+    // non-null here (early-return above guarantees it), so this call cannot
+    // race a concurrent delete that started before priorRow was fetched.
+    const updatedWatch = await watchDAL.updateWatch(user.id, watchId, updatePayload)
 
     const watch = updatedWatch
     revalidatePath('/')
@@ -753,7 +697,7 @@ export async function editWatch(watchId: string, data: unknown): Promise<ActionR
     }
 
     // Phase 18 DISC-05 / DISC-06 — same fan-out as addWatch. editWatch can
-    // change status (owned ↔ wishlist ↔ sold ↔ grail), and each transition
+    // change status (owned ↔ wishlist ↔ grail ↔ previously_owned), and each transition
     // shifts the catalog's denormalized counts (owners_count, wishlist_count)
     // on the next pg_cron refresh. Even non-status edits (brand/model fixes)
     // can affect Trending if they re-link the watch to a different catalog
